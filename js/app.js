@@ -152,10 +152,15 @@ function renderProfileStats(profile) {
 function openNewProfileModal() {
   App.editingProfileId = null;
   const modal = document.getElementById('modal-profile');
-  const form  = document.getElementById('form-profile');
-  form.reset();
+
+  // Alle Eingabefelder leeren
+  modal.querySelectorAll('input[type="number"], input[type="text"]').forEach(el => { el.value = ''; });
   document.getElementById('modal-profile-title').textContent = 'Neues Profil anlegen';
-  document.getElementById('field-profile-name').value = '';
+
+  // Ersten Tab aktivieren
+  modal.querySelectorAll('.form-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+  modal.querySelectorAll('.form-tab-panel').forEach((p, i) => p.classList.toggle('active', i === 0));
+
   modal.classList.add('open');
 }
 
