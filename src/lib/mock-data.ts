@@ -1,4 +1,4 @@
-import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest } from './types'
+import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission } from './types'
 
 export const LOCATIONS: Location[] = [
   { id: 'loc1', name: 'Kita Sonnenschein', address: 'Berliner Str. 12', city: 'Berlin', employeeCount: 8, adminId: 'adm1', active: true },
@@ -128,4 +128,203 @@ export function getTimeLogsByEmployee(employeeId: string): TimeLog[] {
 
 export function getVacationRequestsByLocation(locationId: string): VacationRequest[] {
   return VACATION_REQUESTS.filter(v => v.locationId === locationId)
+}
+
+// ─── Historical Schedule (last 4 weeks = Apr 7–26) for fairness calculation ──
+
+export const HISTORICAL_ENTRIES: ScheduleEntry[] = [
+  // Week Apr 7–11 ---------------------------------------------------------
+  // Maria: 3× Früh, 1× Mitte
+  { id: 'h1', employeeId: 'emp1', shiftId: 's1', date: '2026-04-07', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h2', employeeId: 'emp1', shiftId: 's1', date: '2026-04-08', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h3', employeeId: 'emp1', shiftId: 's3', date: '2026-04-09', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h4', employeeId: 'emp1', shiftId: 's1', date: '2026-04-11', locationId: 'loc1', status: 'confirmed' },
+  // Klaus: 3× Spät
+  { id: 'h5', employeeId: 'emp2', shiftId: 's2', date: '2026-04-07', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h6', employeeId: 'emp2', shiftId: 's2', date: '2026-04-09', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h7', employeeId: 'emp2', shiftId: 's2', date: '2026-04-11', locationId: 'loc1', status: 'confirmed' },
+  // Jan: 2× Früh, 2× Spät
+  { id: 'h8', employeeId: 'emp4', shiftId: 's1', date: '2026-04-07', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h9', employeeId: 'emp4', shiftId: 's2', date: '2026-04-08', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h10', employeeId: 'emp4', shiftId: 's1', date: '2026-04-10', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h11', employeeId: 'emp4', shiftId: 's2', date: '2026-04-11', locationId: 'loc1', status: 'confirmed' },
+
+  // Week Apr 14–18 --------------------------------------------------------
+  // Maria: 3× Früh (Freitag Früh!)
+  { id: 'h12', employeeId: 'emp1', shiftId: 's1', date: '2026-04-14', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h13', employeeId: 'emp1', shiftId: 's3', date: '2026-04-15', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h14', employeeId: 'emp1', shiftId: 's1', date: '2026-04-16', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h15', employeeId: 'emp1', shiftId: 's1', date: '2026-04-18', locationId: 'loc1', status: 'confirmed' }, // Freitag
+  // Klaus: Freitag Spät (2nd time)
+  { id: 'h16', employeeId: 'emp2', shiftId: 's2', date: '2026-04-14', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h17', employeeId: 'emp2', shiftId: 's2', date: '2026-04-16', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h18', employeeId: 'emp2', shiftId: 's2', date: '2026-04-18', locationId: 'loc1', status: 'confirmed' }, // Freitag Spät
+  // Jan: Montag Früh
+  { id: 'h19', employeeId: 'emp4', shiftId: 's1', date: '2026-04-14', locationId: 'loc1', status: 'confirmed' }, // Montag
+  { id: 'h20', employeeId: 'emp4', shiftId: 's2', date: '2026-04-17', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h21', employeeId: 'emp4', shiftId: 's1', date: '2026-04-18', locationId: 'loc1', status: 'confirmed' },
+
+  // Week Apr 21–25 --------------------------------------------------------
+  // Maria: 2× Früh, Freitag Früh (3rd Friday!)
+  { id: 'h22', employeeId: 'emp1', shiftId: 's1', date: '2026-04-21', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h23', employeeId: 'emp1', shiftId: 's3', date: '2026-04-22', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h24', employeeId: 'emp1', shiftId: 's1', date: '2026-04-23', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h25', employeeId: 'emp1', shiftId: 's1', date: '2026-04-25', locationId: 'loc1', status: 'confirmed' }, // Freitag Früh (3rd!)
+  // Klaus: Freitag Spät (3rd time – unfair!)
+  { id: 'h26', employeeId: 'emp2', shiftId: 's1', date: '2026-04-21', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h27', employeeId: 'emp2', shiftId: 's2', date: '2026-04-23', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h28', employeeId: 'emp2', shiftId: 's2', date: '2026-04-25', locationId: 'loc1', status: 'confirmed' }, // Freitag Spät (3rd!)
+  // Jan: 3× Früh (Montag Früh × 3!)
+  { id: 'h29', employeeId: 'emp4', shiftId: 's1', date: '2026-04-21', locationId: 'loc1', status: 'confirmed' }, // Montag
+  { id: 'h30', employeeId: 'emp4', shiftId: 's1', date: '2026-04-22', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h31', employeeId: 'emp4', shiftId: 's2', date: '2026-04-24', locationId: 'loc1', status: 'confirmed' },
+  { id: 'h32', employeeId: 'emp4', shiftId: 's1', date: '2026-04-25', locationId: 'loc1', status: 'confirmed' },
+]
+
+// ─── Swap Requests ───────────────────────────────────────────────────────────
+
+export const SWAP_REQUESTS: SwapRequest[] = [
+  {
+    id: 'swap1',
+    requesterId: 'emp1',
+    requesterName: 'Maria Schmidt',
+    requesterDate: '2026-04-28',
+    requesterShiftId: 's1',
+    targetEmployeeId: 'emp2',
+    targetEmployeeName: 'Klaus Becker',
+    targetDate: '2026-04-28',
+    targetShiftId: 's2',
+    message: 'Hallo Klaus, könntest du am Dienstag tauschen? Ich muss zum Arzt.',
+    status: 'pending',
+    submittedAt: '2026-04-26T09:15:00',
+    locationId: 'loc1',
+  },
+  {
+    id: 'swap2',
+    requesterId: 'emp3',
+    requesterName: 'Sarah Hofmann',
+    requesterDate: '2026-04-30',
+    requesterShiftId: 's3',
+    targetEmployeeId: 'emp4',
+    targetEmployeeName: 'Jan Peters',
+    targetDate: '2026-05-01',
+    targetShiftId: 's1',
+    message: 'Jan, kannst du den Donnerstag übernehmen? Ich tausche gerne deinen Freitag.',
+    status: 'accepted',
+    submittedAt: '2026-04-25T14:30:00',
+    respondedAt: '2026-04-25T17:05:00',
+    locationId: 'loc1',
+  },
+  {
+    id: 'swap3',
+    requesterId: 'emp4',
+    requesterName: 'Jan Peters',
+    requesterDate: '2026-05-02',
+    requesterShiftId: 's2',
+    targetEmployeeId: 'emp2',
+    targetEmployeeName: 'Klaus Becker',
+    targetDate: '2026-05-03',
+    targetShiftId: 's2',
+    message: 'Samstag käme für mich besser.',
+    status: 'declined',
+    submittedAt: '2026-04-24T10:00:00',
+    respondedAt: '2026-04-24T18:20:00',
+    locationId: 'loc1',
+  },
+]
+
+// ─── Wish Submissions (Dienstwünsche) ────────────────────────────────────────
+
+export const WISH_SUBMISSIONS: WishSubmission[] = [
+  // Maria: Frühdienst Fr 01.05 – fulfilled (submitted first)
+  {
+    id: 'w1',
+    employeeId: 'emp1',
+    employeeName: 'Maria Schmidt',
+    locationId: 'loc1',
+    date: '2026-05-01',
+    preferredShiftType: 'early',
+    reason: 'Kinderarzttermin nachmittags',
+    importance: 'important',
+    submittedAt: '2026-04-23T08:10:00',
+    status: 'fulfilled',
+  },
+  // Jan: ALSO wants Frühdienst Fr 01.05 – conflict with Maria
+  {
+    id: 'w2',
+    employeeId: 'emp4',
+    employeeName: 'Jan Peters',
+    locationId: 'loc1',
+    date: '2026-05-01',
+    preferredShiftType: 'early',
+    reason: 'Wäre schön',
+    importance: 'normal',
+    submittedAt: '2026-04-24T11:30:00', // submitted later than Maria
+    status: 'not_fulfilled',
+    conflictInfo: {
+      conflictedWith: ['Maria Schmidt'],
+      reason: 'Maria Schmidt hat denselben Wunsch früher eingereicht (23.04.) und hat in den letzten 4 Wochen weniger Frühschichten gehabt als du.',
+      winnerId: 'emp1',
+    },
+  },
+  // Klaus: kein Spätdienst Mo 28.04 – fulfilled
+  {
+    id: 'w3',
+    employeeId: 'emp2',
+    employeeName: 'Klaus Becker',
+    locationId: 'loc1',
+    date: '2026-04-28',
+    preferredShiftType: 'late',
+    reason: 'Morgentermin kann ich nicht',
+    importance: 'important',
+    submittedAt: '2026-04-22T09:00:00',
+    status: 'fulfilled',
+  },
+  // Sarah: freier Tag Mi 29.04 – not fulfilled (Unterbesetzung)
+  {
+    id: 'w4',
+    employeeId: 'emp3',
+    employeeName: 'Sarah Hofmann',
+    locationId: 'loc1',
+    date: '2026-04-29',
+    preferredShiftType: 'mid',
+    reason: 'Würde gerne frei haben',
+    importance: 'normal',
+    submittedAt: '2026-04-23T15:00:00',
+    status: 'not_fulfilled',
+    conflictInfo: {
+      conflictedWith: [],
+      reason: 'An diesem Tag besteht Unterbesetzung im Mitteldienst. Dein Wunsch konnte nicht berücksichtigt werden.',
+      winnerId: '',
+    },
+  },
+  // Maria: Frühdienst Mo 05.05 – pending
+  {
+    id: 'w5',
+    employeeId: 'emp1',
+    employeeName: 'Maria Schmidt',
+    locationId: 'loc1',
+    date: '2026-05-05',
+    preferredShiftType: 'early',
+    reason: 'Frühdienst bevorzugt',
+    importance: 'normal',
+    submittedAt: '2026-04-26T10:00:00',
+    status: 'pending',
+  },
+]
+
+export function getSwapRequestsByEmployee(employeeId: string): SwapRequest[] {
+  return SWAP_REQUESTS.filter(s => s.requesterId === employeeId || s.targetEmployeeId === employeeId)
+}
+
+export function getWishSubmissionsByEmployee(employeeId: string): WishSubmission[] {
+  return WISH_SUBMISSIONS.filter(w => w.employeeId === employeeId)
+}
+
+export function getWishSubmissionsByLocation(locationId: string): WishSubmission[] {
+  return WISH_SUBMISSIONS.filter(w => w.locationId === locationId)
+}
+
+export function getAllEntriesForFairness(locationId: string): ScheduleEntry[] {
+  return [...HISTORICAL_ENTRIES, ...SCHEDULE_ENTRIES].filter(e => e.locationId === locationId)
 }
