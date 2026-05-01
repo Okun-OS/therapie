@@ -29,11 +29,12 @@ const adminNav: NavItem[] = [
   { href: '/admin/employees', label: 'Mitarbeiter', icon: Users },
   { href: '/admin/schedule', label: 'Dienstplan', icon: Calendar, badge: 'KI' },
   { href: '/admin/vacation-requests', label: 'Urlaubsanträge', icon: Palmtree },
+  { href: '/admin/vacation-plan', label: 'Urlaubsplan', icon: ClipboardList, badge: 'KI' },
   { href: '/admin/reports', label: 'Berichte', icon: BarChart3 },
 ]
 
 const companyNav: NavItem[] = [
-  { href: '/company', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/company', label: 'Übersicht', icon: LayoutDashboard },
   { href: '/company/locations', label: 'Standorte', icon: MapPin },
   { href: '/company/reports', label: 'Berichte', icon: BarChart3 },
 ]

@@ -29,6 +29,7 @@ export interface Employee {
   preferences?: EmployeePreferences
   active: boolean
   joinedAt: string
+  hasChildren?: boolean
 }
 
 export interface EmployeePreferences {
@@ -168,4 +169,41 @@ export interface DashboardStats {
   openVacationRequests: number
   hoursThisMonth: number
   understaffedShifts: number
+}
+
+// ─── Vacation Planning ────────────────────────────────────────────────────────
+
+export interface VacationPlanPreference {
+  employeeId: string
+  hasChildren: boolean
+  preferredMonths: number[]  // 1–12
+  preferredPeriod?: string   // free text
+  notes?: string
+  priority: 'low' | 'medium' | 'high'
+}
+
+export interface SchoolHoliday {
+  name: string
+  startDate: string
+  endDate: string
+  state: string
+}
+
+export interface VacationPlanSlot {
+  startDate: string
+  endDate: string
+  days: number
+}
+
+export interface VacationPlanEntry {
+  employeeId: string
+  employeeName: string
+  slots: VacationPlanSlot[]
+  note?: string
+}
+
+export interface VacationPlan {
+  plan: VacationPlanEntry[]
+  reasoning: string
+  warnings: string[]
 }

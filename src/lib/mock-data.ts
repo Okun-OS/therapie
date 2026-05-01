@@ -1,4 +1,4 @@
-import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission } from './types'
+import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday } from './types'
 
 export const LOCATIONS: Location[] = [
   { id: 'loc1', name: 'Kita Sonnenschein', address: 'Berliner Str. 12', city: 'Berlin', employeeCount: 8, adminId: 'adm1', active: true },
@@ -19,22 +19,22 @@ export const SHIFTS: Shift[] = [
 
 export const EMPLOYEES: Employee[] = [
   // Kita Sonnenschein (loc1)
-  { id: 'emp1', name: 'Maria Schmidt', email: 'employee@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 38, position: 'Erzieherin', hoursBalance: 4.5, vacationDaysTotal: 30, vacationDaysUsed: 8, active: true, joinedAt: '2021-03-01', preferences: { preferredShifts: ['early', 'mid'], unavailableDays: [0, 6], noEarlyAfterLate: true, notes: 'Bevorzugt Frühschichten' } },
-  { id: 'emp2', name: 'Klaus Becker', email: 'k.becker@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 32, position: 'Erzieher', hoursBalance: -2.0, vacationDaysTotal: 30, vacationDaysUsed: 12, active: true, joinedAt: '2019-09-15', preferences: { preferredShifts: ['late'], unavailableDays: [1], noEarlyAfterLate: true } },
-  { id: 'emp3', name: 'Sarah Hofmann', email: 's.hofmann@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 20, position: 'Kinderpflegerin', hoursBalance: 1.0, vacationDaysTotal: 24, vacationDaysUsed: 5, active: true, joinedAt: '2022-01-10' },
-  { id: 'emp4', name: 'Jan Peters', email: 'j.peters@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 38, position: 'Erzieher', hoursBalance: 0.0, vacationDaysTotal: 30, vacationDaysUsed: 15, active: true, joinedAt: '2018-06-20' },
+  { id: 'emp1', name: 'Maria Schmidt', email: 'employee@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 38, position: 'Erzieherin', hoursBalance: 4.5, vacationDaysTotal: 30, vacationDaysUsed: 8, active: true, joinedAt: '2021-03-01', hasChildren: true, preferences: { preferredShifts: ['early', 'mid'], unavailableDays: [0, 6], noEarlyAfterLate: true, notes: 'Bevorzugt Frühschichten' } },
+  { id: 'emp2', name: 'Klaus Becker', email: 'k.becker@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 32, position: 'Erzieher', hoursBalance: -2.0, vacationDaysTotal: 30, vacationDaysUsed: 12, active: true, joinedAt: '2019-09-15', hasChildren: false, preferences: { preferredShifts: ['late'], unavailableDays: [1], noEarlyAfterLate: true } },
+  { id: 'emp3', name: 'Sarah Hofmann', email: 's.hofmann@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 20, position: 'Kinderpflegerin', hoursBalance: 1.0, vacationDaysTotal: 24, vacationDaysUsed: 5, active: true, joinedAt: '2022-01-10', hasChildren: false },
+  { id: 'emp4', name: 'Jan Peters', email: 'j.peters@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 38, position: 'Erzieher', hoursBalance: 0.0, vacationDaysTotal: 30, vacationDaysUsed: 15, active: true, joinedAt: '2018-06-20', hasChildren: true },
   // Admin of loc1
-  { id: 'adm1', name: 'Thomas Müller', email: 'admin@demo.de', role: 'admin', locationId: 'loc1', weeklyHours: 40, position: 'Teamleitung', hoursBalance: 2.0, vacationDaysTotal: 30, vacationDaysUsed: 10, active: true, joinedAt: '2017-01-01' },
+  { id: 'adm1', name: 'Thomas Müller', email: 'admin@demo.de', role: 'admin', locationId: 'loc1', weeklyHours: 40, position: 'Teamleitung', hoursBalance: 2.0, vacationDaysTotal: 30, vacationDaysUsed: 10, active: true, joinedAt: '2017-01-01', hasChildren: false },
   // Kita Regenbogen (loc2)
-  { id: 'emp5', name: 'Anna Weber', email: 'a.weber@demo.de', role: 'employee', locationId: 'loc2', weeklyHours: 38, position: 'Erzieherin', hoursBalance: 3.0, vacationDaysTotal: 30, vacationDaysUsed: 7, active: true, joinedAt: '2020-08-01' },
-  { id: 'emp6', name: 'Peter Wagner', email: 'p.wagner@demo.de', role: 'employee', locationId: 'loc2', weeklyHours: 32, position: 'Erzieher', hoursBalance: -1.5, vacationDaysTotal: 30, vacationDaysUsed: 20, active: true, joinedAt: '2016-04-01' },
-  { id: 'emp7', name: 'Lisa Fischer', email: 'l.fischer@demo.de', role: 'employee', locationId: 'loc2', weeklyHours: 25, position: 'Kinderpflegerin', hoursBalance: 0.5, vacationDaysTotal: 24, vacationDaysUsed: 3, active: true, joinedAt: '2023-02-15' },
-  { id: 'adm2', name: 'Sandra Wolf', email: 's.wolf@demo.de', role: 'admin', locationId: 'loc2', weeklyHours: 40, position: 'Teamleitung', hoursBalance: 1.0, vacationDaysTotal: 30, vacationDaysUsed: 9, active: true, joinedAt: '2018-03-01' },
+  { id: 'emp5', name: 'Anna Weber', email: 'a.weber@demo.de', role: 'employee', locationId: 'loc2', weeklyHours: 38, position: 'Erzieherin', hoursBalance: 3.0, vacationDaysTotal: 30, vacationDaysUsed: 7, active: true, joinedAt: '2020-08-01', hasChildren: true },
+  { id: 'emp6', name: 'Peter Wagner', email: 'p.wagner@demo.de', role: 'employee', locationId: 'loc2', weeklyHours: 32, position: 'Erzieher', hoursBalance: -1.5, vacationDaysTotal: 30, vacationDaysUsed: 20, active: true, joinedAt: '2016-04-01', hasChildren: false },
+  { id: 'emp7', name: 'Lisa Fischer', email: 'l.fischer@demo.de', role: 'employee', locationId: 'loc2', weeklyHours: 25, position: 'Kinderpflegerin', hoursBalance: 0.5, vacationDaysTotal: 24, vacationDaysUsed: 3, active: true, joinedAt: '2023-02-15', hasChildren: false },
+  { id: 'adm2', name: 'Sandra Wolf', email: 's.wolf@demo.de', role: 'admin', locationId: 'loc2', weeklyHours: 40, position: 'Teamleitung', hoursBalance: 1.0, vacationDaysTotal: 30, vacationDaysUsed: 9, active: true, joinedAt: '2018-03-01', hasChildren: false },
   // Kita Sternchen (loc3)
-  { id: 'emp8', name: 'Michael Bauer', email: 'm.bauer@demo.de', role: 'employee', locationId: 'loc3', weeklyHours: 38, position: 'Erzieher', hoursBalance: 2.5, vacationDaysTotal: 30, vacationDaysUsed: 11, active: true, joinedAt: '2019-11-01' },
-  { id: 'emp9', name: 'Julia Koch', email: 'j.koch@demo.de', role: 'employee', locationId: 'loc3', weeklyHours: 38, position: 'Erzieherin', hoursBalance: -0.5, vacationDaysTotal: 30, vacationDaysUsed: 14, active: true, joinedAt: '2020-02-01' },
-  { id: 'emp10', name: 'Stefan Schäfer', email: 's.schaefer@demo.de', role: 'employee', locationId: 'loc3', weeklyHours: 20, position: 'Kinderpfleger', hoursBalance: 0.0, vacationDaysTotal: 24, vacationDaysUsed: 2, active: true, joinedAt: '2023-09-01' },
-  { id: 'adm3', name: 'Nina Braun', email: 'n.braun@demo.de', role: 'admin', locationId: 'loc3', weeklyHours: 40, position: 'Teamleitung', hoursBalance: 0.5, vacationDaysTotal: 30, vacationDaysUsed: 6, active: true, joinedAt: '2019-06-01' },
+  { id: 'emp8', name: 'Michael Bauer', email: 'm.bauer@demo.de', role: 'employee', locationId: 'loc3', weeklyHours: 38, position: 'Erzieher', hoursBalance: 2.5, vacationDaysTotal: 30, vacationDaysUsed: 11, active: true, joinedAt: '2019-11-01', hasChildren: true },
+  { id: 'emp9', name: 'Julia Koch', email: 'j.koch@demo.de', role: 'employee', locationId: 'loc3', weeklyHours: 38, position: 'Erzieherin', hoursBalance: -0.5, vacationDaysTotal: 30, vacationDaysUsed: 14, active: true, joinedAt: '2020-02-01', hasChildren: false },
+  { id: 'emp10', name: 'Stefan Schäfer', email: 's.schaefer@demo.de', role: 'employee', locationId: 'loc3', weeklyHours: 20, position: 'Kinderpfleger', hoursBalance: 0.0, vacationDaysTotal: 24, vacationDaysUsed: 2, active: true, joinedAt: '2023-09-01', hasChildren: false },
+  { id: 'adm3', name: 'Nina Braun', email: 'n.braun@demo.de', role: 'admin', locationId: 'loc3', weeklyHours: 40, position: 'Teamleitung', hoursBalance: 0.5, vacationDaysTotal: 30, vacationDaysUsed: 6, active: true, joinedAt: '2019-06-01', hasChildren: false },
   // Company user
   { id: 'cmp1', name: 'BrightCare GmbH', email: 'company@demo.de', role: 'company', locationId: undefined, weeklyHours: 40, position: 'Geschäftsführung', hoursBalance: 0, vacationDaysTotal: 30, vacationDaysUsed: 0, active: true, joinedAt: '2015-01-01' },
 ]
@@ -67,19 +67,116 @@ export const SCHEDULE_ENTRIES: ScheduleEntry[] = [
   { id: 'se19', employeeId: 'emp1', shiftId: 's3', date: '2026-05-09', locationId: 'loc1', status: 'planned' },
 ]
 
-// Time logs for Maria Schmidt (last 2 weeks)
 export const TIME_LOGS: TimeLog[] = [
-  { id: 'tl1', employeeId: 'emp1', date: '2026-04-14', clockIn: '06:02', clockOut: '14:05', totalMinutes: 483, locationId: 'loc1' },
-  { id: 'tl2', employeeId: 'emp1', date: '2026-04-15', clockIn: '08:58', clockOut: '17:03', totalMinutes: 485, locationId: 'loc1' },
-  { id: 'tl3', employeeId: 'emp1', date: '2026-04-16', clockIn: '06:01', clockOut: '14:00', totalMinutes: 479, locationId: 'loc1' },
-  { id: 'tl4', employeeId: 'emp1', date: '2026-04-22', clockIn: '06:00', clockOut: '14:08', totalMinutes: 488, locationId: 'loc1' },
-  { id: 'tl5', employeeId: 'emp1', date: '2026-04-23', clockIn: '09:02', clockOut: '17:00', totalMinutes: 478, locationId: 'loc1' },
-  { id: 'tl6', employeeId: 'emp1', date: '2026-04-24', clockIn: '06:00', clockOut: '14:00', totalMinutes: 480, locationId: 'loc1' },
-  { id: 'tl7', employeeId: 'emp1', date: '2026-04-28', clockIn: '06:03', clockOut: '14:02', totalMinutes: 479, locationId: 'loc1' },
-  { id: 'tl8', employeeId: 'emp1', date: '2026-04-29', clockIn: '09:01', clockOut: '17:05', totalMinutes: 484, locationId: 'loc1' },
-  // Klaus
-  { id: 'tl9', employeeId: 'emp2', date: '2026-04-28', clockIn: '13:58', clockOut: '22:05', totalMinutes: 487, locationId: 'loc1' },
-  { id: 'tl10', employeeId: 'emp2', date: '2026-04-29', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc1' },
+  // ── Maria Schmidt (emp1) – Feb 2026 ────────────────────────────────────────
+  { id: 'tl1',  employeeId: 'emp1', date: '2026-02-02', clockIn: '06:02', clockOut: '14:05', totalMinutes: 483, locationId: 'loc1' },
+  { id: 'tl2',  employeeId: 'emp1', date: '2026-02-04', clockIn: '09:01', clockOut: '17:03', totalMinutes: 482, locationId: 'loc1' },
+  { id: 'tl3',  employeeId: 'emp1', date: '2026-02-05', clockIn: '05:59', clockOut: '14:00', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl4',  employeeId: 'emp1', date: '2026-02-09', clockIn: '06:03', clockOut: '14:02', totalMinutes: 479, locationId: 'loc1' },
+  { id: 'tl5',  employeeId: 'emp1', date: '2026-02-11', clockIn: '09:00', clockOut: '17:05', totalMinutes: 485, locationId: 'loc1' },
+  { id: 'tl6',  employeeId: 'emp1', date: '2026-02-12', clockIn: '06:00', clockOut: '14:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl7',  employeeId: 'emp1', date: '2026-02-16', clockIn: '06:01', clockOut: '14:04', totalMinutes: 483, locationId: 'loc1' },
+  { id: 'tl8',  employeeId: 'emp1', date: '2026-02-18', clockIn: '09:02', clockOut: '17:00', totalMinutes: 478, locationId: 'loc1' },
+  { id: 'tl9',  employeeId: 'emp1', date: '2026-02-19', clockIn: '06:00', clockOut: '14:01', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl10', employeeId: 'emp1', date: '2026-02-23', clockIn: '06:02', clockOut: '14:03', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl11', employeeId: 'emp1', date: '2026-02-25', clockIn: '09:00', clockOut: '17:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl12', employeeId: 'emp1', date: '2026-02-26', clockIn: '06:01', clockOut: '14:00', totalMinutes: 479, locationId: 'loc1' },
+  // ── Maria Schmidt (emp1) – Mär 2026 ────────────────────────────────────────
+  { id: 'tl13', employeeId: 'emp1', date: '2026-03-02', clockIn: '06:00', clockOut: '14:05', totalMinutes: 485, locationId: 'loc1' },
+  { id: 'tl14', employeeId: 'emp1', date: '2026-03-04', clockIn: '09:01', clockOut: '17:02', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl15', employeeId: 'emp1', date: '2026-03-05', clockIn: '06:02', clockOut: '14:00', totalMinutes: 478, locationId: 'loc1' },
+  { id: 'tl16', employeeId: 'emp1', date: '2026-03-09', clockIn: '06:03', clockOut: '14:04', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl17', employeeId: 'emp1', date: '2026-03-11', clockIn: '09:00', clockOut: '17:03', totalMinutes: 483, locationId: 'loc1' },
+  { id: 'tl18', employeeId: 'emp1', date: '2026-03-12', clockIn: '06:00', clockOut: '14:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl19', employeeId: 'emp1', date: '2026-03-16', clockIn: '06:01', clockOut: '14:02', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl20', employeeId: 'emp1', date: '2026-03-18', clockIn: '09:01', clockOut: '17:00', totalMinutes: 479, locationId: 'loc1' },
+  { id: 'tl21', employeeId: 'emp1', date: '2026-03-19', clockIn: '06:00', clockOut: '14:01', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl22', employeeId: 'emp1', date: '2026-03-23', clockIn: '06:02', clockOut: '14:03', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl23', employeeId: 'emp1', date: '2026-03-25', clockIn: '09:00', clockOut: '17:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl24', employeeId: 'emp1', date: '2026-03-26', clockIn: '06:01', clockOut: '14:00', totalMinutes: 479, locationId: 'loc1' },
+  // ── Maria Schmidt (emp1) – Apr 2026 ────────────────────────────────────────
+  { id: 'tl25', employeeId: 'emp1', date: '2026-04-14', clockIn: '06:02', clockOut: '14:05', totalMinutes: 483, locationId: 'loc1' },
+  { id: 'tl26', employeeId: 'emp1', date: '2026-04-15', clockIn: '08:58', clockOut: '17:03', totalMinutes: 485, locationId: 'loc1' },
+  { id: 'tl27', employeeId: 'emp1', date: '2026-04-16', clockIn: '06:01', clockOut: '14:00', totalMinutes: 479, locationId: 'loc1' },
+  { id: 'tl28', employeeId: 'emp1', date: '2026-04-22', clockIn: '06:00', clockOut: '14:08', totalMinutes: 488, locationId: 'loc1' },
+  { id: 'tl29', employeeId: 'emp1', date: '2026-04-23', clockIn: '09:02', clockOut: '17:00', totalMinutes: 478, locationId: 'loc1' },
+  { id: 'tl30', employeeId: 'emp1', date: '2026-04-24', clockIn: '06:00', clockOut: '14:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl31', employeeId: 'emp1', date: '2026-04-28', clockIn: '06:03', clockOut: '14:02', totalMinutes: 479, locationId: 'loc1' },
+  { id: 'tl32', employeeId: 'emp1', date: '2026-04-29', clockIn: '09:01', clockOut: '17:05', totalMinutes: 484, locationId: 'loc1' },
+  // ── Klaus Becker (emp2) – Feb/Mär/Apr 2026 ─────────────────────────────────
+  { id: 'tl33', employeeId: 'emp2', date: '2026-02-03', clockIn: '13:58', clockOut: '22:05', totalMinutes: 487, locationId: 'loc1' },
+  { id: 'tl34', employeeId: 'emp2', date: '2026-02-05', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl35', employeeId: 'emp2', date: '2026-02-10', clockIn: '14:01', clockOut: '22:03', totalMinutes: 482, locationId: 'loc1' },
+  { id: 'tl36', employeeId: 'emp2', date: '2026-02-12', clockIn: '13:59', clockOut: '22:00', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl37', employeeId: 'emp2', date: '2026-02-17', clockIn: '14:00', clockOut: '22:05', totalMinutes: 485, locationId: 'loc1' },
+  { id: 'tl38', employeeId: 'emp2', date: '2026-02-19', clockIn: '14:02', clockOut: '22:00', totalMinutes: 478, locationId: 'loc1' },
+  { id: 'tl39', employeeId: 'emp2', date: '2026-03-03', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl40', employeeId: 'emp2', date: '2026-03-05', clockIn: '14:01', clockOut: '22:03', totalMinutes: 482, locationId: 'loc1' },
+  { id: 'tl41', employeeId: 'emp2', date: '2026-03-10', clockIn: '14:00', clockOut: '22:05', totalMinutes: 485, locationId: 'loc1' },
+  { id: 'tl42', employeeId: 'emp2', date: '2026-03-12', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl43', employeeId: 'emp2', date: '2026-03-17', clockIn: '13:58', clockOut: '22:02', totalMinutes: 484, locationId: 'loc1' },
+  { id: 'tl44', employeeId: 'emp2', date: '2026-03-19', clockIn: '14:01', clockOut: '22:00', totalMinutes: 479, locationId: 'loc1' },
+  { id: 'tl45', employeeId: 'emp2', date: '2026-04-28', clockIn: '13:58', clockOut: '22:05', totalMinutes: 487, locationId: 'loc1' },
+  { id: 'tl46', employeeId: 'emp2', date: '2026-04-29', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc1' },
+  // ── Sarah Hofmann (emp3) – Feb/Mär/Apr 2026 ────────────────────────────────
+  { id: 'tl47', employeeId: 'emp3', date: '2026-02-04', clockIn: '09:00', clockOut: '17:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl48', employeeId: 'emp3', date: '2026-02-06', clockIn: '09:01', clockOut: '17:00', totalMinutes: 479, locationId: 'loc1' },
+  { id: 'tl49', employeeId: 'emp3', date: '2026-02-11', clockIn: '09:02', clockOut: '17:00', totalMinutes: 478, locationId: 'loc1' },
+  { id: 'tl50', employeeId: 'emp3', date: '2026-02-13', clockIn: '09:00', clockOut: '17:02', totalMinutes: 482, locationId: 'loc1' },
+  { id: 'tl51', employeeId: 'emp3', date: '2026-02-18', clockIn: '09:00', clockOut: '17:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl52', employeeId: 'emp3', date: '2026-02-20', clockIn: '09:01', clockOut: '17:01', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl53', employeeId: 'emp3', date: '2026-03-04', clockIn: '09:00', clockOut: '17:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl54', employeeId: 'emp3', date: '2026-03-06', clockIn: '09:01', clockOut: '17:03', totalMinutes: 482, locationId: 'loc1' },
+  { id: 'tl55', employeeId: 'emp3', date: '2026-03-11', clockIn: '09:00', clockOut: '17:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl56', employeeId: 'emp3', date: '2026-03-13', clockIn: '09:02', clockOut: '17:00', totalMinutes: 478, locationId: 'loc1' },
+  { id: 'tl57', employeeId: 'emp3', date: '2026-03-18', clockIn: '09:00', clockOut: '17:01', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl58', employeeId: 'emp3', date: '2026-03-20', clockIn: '09:00', clockOut: '17:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl59', employeeId: 'emp3', date: '2026-04-28', clockIn: '09:00', clockOut: '17:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl60', employeeId: 'emp3', date: '2026-04-30', clockIn: '09:01', clockOut: '17:02', totalMinutes: 481, locationId: 'loc1' },
+  // ── Jan Peters (emp4) – Feb/Mär/Apr 2026 ───────────────────────────────────
+  { id: 'tl61', employeeId: 'emp4', date: '2026-02-02', clockIn: '06:01', clockOut: '14:00', totalMinutes: 479, locationId: 'loc1' },
+  { id: 'tl62', employeeId: 'emp4', date: '2026-02-04', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl63', employeeId: 'emp4', date: '2026-02-09', clockIn: '06:00', clockOut: '14:02', totalMinutes: 482, locationId: 'loc1' },
+  { id: 'tl64', employeeId: 'emp4', date: '2026-02-11', clockIn: '13:59', clockOut: '22:00', totalMinutes: 481, locationId: 'loc1' },
+  { id: 'tl65', employeeId: 'emp4', date: '2026-02-16', clockIn: '06:02', clockOut: '14:00', totalMinutes: 478, locationId: 'loc1' },
+  { id: 'tl66', employeeId: 'emp4', date: '2026-02-18', clockIn: '14:01', clockOut: '22:03', totalMinutes: 482, locationId: 'loc1' },
+  { id: 'tl67', employeeId: 'emp4', date: '2026-03-02', clockIn: '06:01', clockOut: '14:00', totalMinutes: 479, locationId: 'loc1' },
+  { id: 'tl68', employeeId: 'emp4', date: '2026-03-04', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl69', employeeId: 'emp4', date: '2026-03-09', clockIn: '06:00', clockOut: '14:03', totalMinutes: 483, locationId: 'loc1' },
+  { id: 'tl70', employeeId: 'emp4', date: '2026-03-11', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl71', employeeId: 'emp4', date: '2026-03-16', clockIn: '06:02', clockOut: '14:01', totalMinutes: 479, locationId: 'loc1' },
+  { id: 'tl72', employeeId: 'emp4', date: '2026-03-18', clockIn: '14:00', clockOut: '22:02', totalMinutes: 482, locationId: 'loc1' },
+  { id: 'tl73', employeeId: 'emp4', date: '2026-04-28', clockIn: '06:01', clockOut: '14:01', totalMinutes: 480, locationId: 'loc1' },
+  { id: 'tl74', employeeId: 'emp4', date: '2026-04-30', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc1' },
+  // ── Anna Weber (emp5, loc2) – Mär/Apr 2026 ─────────────────────────────────
+  { id: 'tl75', employeeId: 'emp5', date: '2026-03-02', clockIn: '06:31', clockOut: '14:30', totalMinutes: 479, locationId: 'loc2' },
+  { id: 'tl76', employeeId: 'emp5', date: '2026-03-04', clockIn: '06:30', clockOut: '14:31', totalMinutes: 481, locationId: 'loc2' },
+  { id: 'tl77', employeeId: 'emp5', date: '2026-03-09', clockIn: '06:30', clockOut: '14:30', totalMinutes: 480, locationId: 'loc2' },
+  { id: 'tl78', employeeId: 'emp5', date: '2026-03-11', clockIn: '09:00', clockOut: '17:00', totalMinutes: 480, locationId: 'loc2' },
+  { id: 'tl79', employeeId: 'emp5', date: '2026-03-16', clockIn: '06:30', clockOut: '14:30', totalMinutes: 480, locationId: 'loc2' },
+  { id: 'tl80', employeeId: 'emp5', date: '2026-04-07', clockIn: '06:30', clockOut: '14:30', totalMinutes: 480, locationId: 'loc2' },
+  { id: 'tl81', employeeId: 'emp5', date: '2026-04-09', clockIn: '06:31', clockOut: '14:29', totalMinutes: 478, locationId: 'loc2' },
+  // ── Peter Wagner (emp6, loc2) – Mär/Apr 2026 ───────────────────────────────
+  { id: 'tl82', employeeId: 'emp6', date: '2026-03-03', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc2' },
+  { id: 'tl83', employeeId: 'emp6', date: '2026-03-05', clockIn: '14:01', clockOut: '22:02', totalMinutes: 481, locationId: 'loc2' },
+  { id: 'tl84', employeeId: 'emp6', date: '2026-03-10', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc2' },
+  { id: 'tl85', employeeId: 'emp6', date: '2026-03-12', clockIn: '13:59', clockOut: '22:01', totalMinutes: 482, locationId: 'loc2' },
+  { id: 'tl86', employeeId: 'emp6', date: '2026-04-07', clockIn: '14:00', clockOut: '22:00', totalMinutes: 480, locationId: 'loc2' },
+  { id: 'tl87', employeeId: 'emp6', date: '2026-04-09', clockIn: '14:01', clockOut: '22:03', totalMinutes: 482, locationId: 'loc2' },
+  // ── Michael Bauer (emp8, loc3) – Mär/Apr 2026 ──────────────────────────────
+  { id: 'tl88', employeeId: 'emp8', date: '2026-03-02', clockIn: '06:01', clockOut: '14:00', totalMinutes: 479, locationId: 'loc3' },
+  { id: 'tl89', employeeId: 'emp8', date: '2026-03-04', clockIn: '06:00', clockOut: '14:01', totalMinutes: 481, locationId: 'loc3' },
+  { id: 'tl90', employeeId: 'emp8', date: '2026-03-09', clockIn: '06:02', clockOut: '14:00', totalMinutes: 478, locationId: 'loc3' },
+  { id: 'tl91', employeeId: 'emp8', date: '2026-03-11', clockIn: '06:00', clockOut: '14:00', totalMinutes: 480, locationId: 'loc3' },
+  { id: 'tl92', employeeId: 'emp8', date: '2026-04-06', clockIn: '06:00', clockOut: '14:00', totalMinutes: 480, locationId: 'loc3' },
+  { id: 'tl93', employeeId: 'emp8', date: '2026-04-08', clockIn: '06:01', clockOut: '14:03', totalMinutes: 482, locationId: 'loc3' },
+  // ── Julia Koch (emp9, loc3) – Mär/Apr 2026 ─────────────────────────────────
+  { id: 'tl94', employeeId: 'emp9', date: '2026-03-03', clockIn: '09:00', clockOut: '17:00', totalMinutes: 480, locationId: 'loc3' },
+  { id: 'tl95', employeeId: 'emp9', date: '2026-03-05', clockIn: '06:00', clockOut: '14:00', totalMinutes: 480, locationId: 'loc3' },
+  { id: 'tl96', employeeId: 'emp9', date: '2026-03-10', clockIn: '09:01', clockOut: '17:02', totalMinutes: 481, locationId: 'loc3' },
+  { id: 'tl97', employeeId: 'emp9', date: '2026-03-12', clockIn: '06:01', clockOut: '14:00', totalMinutes: 479, locationId: 'loc3' },
+  { id: 'tl98', employeeId: 'emp9', date: '2026-04-07', clockIn: '09:00', clockOut: '17:01', totalMinutes: 481, locationId: 'loc3' },
+  { id: 'tl99', employeeId: 'emp9', date: '2026-04-09', clockIn: '06:00', clockOut: '14:00', totalMinutes: 480, locationId: 'loc3' },
 ]
 
 export const VACATION_REQUESTS: VacationRequest[] = [
@@ -328,3 +425,54 @@ export function getWishSubmissionsByLocation(locationId: string): WishSubmission
 export function getAllEntriesForFairness(locationId: string): ScheduleEntry[] {
   return [...HISTORICAL_ENTRIES, ...SCHEDULE_ENTRIES].filter(e => e.locationId === locationId)
 }
+
+export function getVacationRequestsByEmployee(employeeId: string): VacationRequest[] {
+  return VACATION_REQUESTS.filter(v => v.employeeId === employeeId)
+}
+
+export function getTimeLogsByMonth(employeeId: string, year: number, month: number): TimeLog[] {
+  return TIME_LOGS.filter(t => {
+    if (t.employeeId !== employeeId) return false
+    const d = new Date(t.date + 'T00:00:00')
+    return d.getFullYear() === year && d.getMonth() + 1 === month
+  }).sort((a, b) => a.date.localeCompare(b.date))
+}
+
+// ─── Vacation Planning ────────────────────────────────────────────────────────
+
+export const VACATION_PREFERENCES: VacationPlanPreference[] = [
+  { employeeId: 'emp1', hasChildren: true,  preferredMonths: [7, 8], preferredPeriod: 'Sommerferien Juli/August', notes: 'Kinder schulpflichtig – brauche Schulferienzeit', priority: 'high' },
+  { employeeId: 'emp2', hasChildren: false, preferredMonths: [6, 9], preferredPeriod: 'Juni oder September', notes: 'Lieber außerhalb der Hauptsaison reisen', priority: 'medium' },
+  { employeeId: 'emp3', hasChildren: false, preferredMonths: [5, 6], preferredPeriod: 'Mai oder Juni', notes: 'Frühling bevorzugt', priority: 'medium' },
+  { employeeId: 'emp4', hasChildren: true,  preferredMonths: [7, 8], preferredPeriod: 'Sommerferien', notes: 'Schulpflichtige Kinder – Sommerferien nötig', priority: 'high' },
+  { employeeId: 'emp5', hasChildren: true,  preferredMonths: [7],    preferredPeriod: 'Juli', notes: 'Zwei Kinder im Grundschulalter', priority: 'high' },
+  { employeeId: 'emp6', hasChildren: false, preferredMonths: [6, 9], preferredPeriod: 'Juni / September', notes: 'Flexibel, außerhalb der Ferienzeit bevorzugt', priority: 'low' },
+  { employeeId: 'emp7', hasChildren: false, preferredMonths: [8, 9], preferredPeriod: 'August oder September', notes: '', priority: 'low' },
+  { employeeId: 'emp8', hasChildren: true,  preferredMonths: [7],    preferredPeriod: 'Juli', notes: 'Sohn im Kindergartenalter, Sommer bevorzugt', priority: 'high' },
+  { employeeId: 'emp9', hasChildren: false, preferredMonths: [6, 7], preferredPeriod: 'Juni oder Juli', notes: '', priority: 'medium' },
+  { employeeId: 'emp10', hasChildren: false, preferredMonths: [8],   preferredPeriod: 'August', notes: 'Neu eingetreten, sehr flexibel', priority: 'low' },
+]
+
+export const SCHOOL_HOLIDAYS_2026: SchoolHoliday[] = [
+  // Berlin
+  { name: 'Winterferien', startDate: '2026-02-02', endDate: '2026-02-06', state: 'Berlin' },
+  { name: 'Osterferien',  startDate: '2026-03-30', endDate: '2026-04-11', state: 'Berlin' },
+  { name: 'Pfingstferien', startDate: '2026-05-22', endDate: '2026-05-23', state: 'Berlin' },
+  { name: 'Sommerferien', startDate: '2026-06-22', endDate: '2026-08-01', state: 'Berlin' },
+  { name: 'Herbstferien', startDate: '2026-10-05', endDate: '2026-10-16', state: 'Berlin' },
+  { name: 'Weihnachtsferien', startDate: '2026-12-21', endDate: '2027-01-02', state: 'Berlin' },
+  // Bayern
+  { name: 'Winterferien', startDate: '2026-02-12', endDate: '2026-02-20', state: 'Bayern' },
+  { name: 'Osterferien',  startDate: '2026-04-06', endDate: '2026-04-18', state: 'Bayern' },
+  { name: 'Pfingstferien', startDate: '2026-05-22', endDate: '2026-06-05', state: 'Bayern' },
+  { name: 'Sommerferien', startDate: '2026-07-27', endDate: '2026-09-07', state: 'Bayern' },
+  { name: 'Herbstferien', startDate: '2026-10-30', endDate: '2026-11-07', state: 'Bayern' },
+  { name: 'Weihnachtsferien', startDate: '2026-12-23', endDate: '2027-01-08', state: 'Bayern' },
+  // Hamburg
+  { name: 'Winterferien', startDate: '2026-01-30', endDate: '2026-02-04', state: 'Hamburg' },
+  { name: 'Osterferien',  startDate: '2026-03-23', endDate: '2026-04-01', state: 'Hamburg' },
+  { name: 'Pfingstferien', startDate: '2026-05-22', endDate: '2026-05-29', state: 'Hamburg' },
+  { name: 'Sommerferien', startDate: '2026-07-16', endDate: '2026-08-26', state: 'Hamburg' },
+  { name: 'Herbstferien', startDate: '2026-10-05', endDate: '2026-10-16', state: 'Hamburg' },
+  { name: 'Weihnachtsferien', startDate: '2026-12-18', endDate: '2027-01-01', state: 'Hamburg' },
+]
