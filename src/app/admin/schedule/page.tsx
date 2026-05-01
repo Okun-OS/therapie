@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { FairnessReport } from '@/components/schedule/FairnessReport'
+import { ShiftEditor } from '@/components/schedule/ShiftEditor'
 import { useAuth } from '@/lib/auth-context'
 import {
   EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, LOCATIONS,
@@ -16,7 +17,7 @@ import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, toDateString, formatDateShort, getDayName } from '@/lib/utils'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
-  CheckCircle, Loader, BarChart3, MessageSquare, AlertTriangle, Info, Scale,
+  CheckCircle, Loader, AlertTriangle, Info, Scale, Clock,
 } from 'lucide-react'
 
 const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase }
@@ -47,7 +48,17 @@ export default function AdminSchedule() {
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
   const [aiError, setAiError] = useState<string | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
+  const [shiftEditorOpen, setShiftEditorOpen] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [facilityDescription, setFacilityDescription] = useState('')
+  const [shiftTimeOverrides, setShiftTimeOverrides] = useState<Record<string, { startTime: string; endTime: string }>>({})
+
+  useEffect(() => {
+    const saved = localStorage.getItem('facilityDescription')
+    if (saved) setFacilityDescription(saved)
+    const overrides = localStorage.getItem('shiftTimeOverrides')
+    if (overrides) setShiftTimeOverrides(JSON.parse(overrides))
+  }, [])
 
   const weekDays = getWeekDays(currentDate)
   const weekStart = toDateString(weekDays[0])
@@ -79,6 +90,10 @@ export default function AdminSchedule() {
       })
   }, [wishSubmissions, fairnessData])
 
+  const effectiveShifts = locationShifts.map(s =>
+    shiftTimeOverrides[s.id] ? { ...s, ...shiftTimeOverrides[s.id] } : s
+  )
+
   const existingEntries = SCHEDULE_ENTRIES.filter(e => {
     const d = new Date(e.date + 'T00:00:00')
     return e.locationId === locationId && d >= weekDays[0] && d <= weekDays[6]
@@ -87,10 +102,10 @@ export default function AdminSchedule() {
   const getDisplayShift = (empId: string, dateStr: string) => {
     if (generatedSchedule) {
       const shiftId = generatedSchedule[empId]?.[dateStr]
-      return shiftId ? locationShifts.find(s => s.id === shiftId) : null
+      return shiftId ? effectiveShifts.find(s => s.id === shiftId) : null
     }
     const entry = existingEntries.find(e => e.employeeId === empId && e.date === dateStr)
-    return entry ? locationShifts.find(s => s.id === entry.shiftId) : null
+    return entry ? effectiveShifts.find(s => s.id === entry.shiftId) : null
   }
 
   const runAI = async () => {
@@ -116,11 +131,12 @@ export default function AdminSchedule() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employees,
-          shifts: locationShifts,
+          shifts: effectiveShifts,
           fairnessData,
           wishSubmissions,
           weekDates,
           locationName: location?.name ?? 'Standort',
+          facilityDescription: facilityDescription.trim() || undefined,
         }),
       })
 
@@ -222,13 +238,27 @@ export default function AdminSchedule() {
             {/* AI Panel */}
             <div className={`rounded-2xl p-5 border-2 transition-all ${aiDone ? 'bg-green-50 border-green-200' : 'bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-100'}`}>
               {!aiRunning && !aiDone ? (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Sparkles size={18} className="text-purple-600" />
-                      <p className="font-bold text-navy">KI-Dienstplan erstellen</p>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">Berücksichtigt Verfügbarkeit, Wünsche, Stundenkonto und Fairness-Score.</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={18} className="text-purple-600" />
+                    <p className="font-bold text-navy">KI-Dienstplan erstellen</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 block mb-1">
+                      Einrichtungsbeschreibung (optional)
+                    </label>
+                    <textarea
+                      value={facilityDescription}
+                      onChange={e => {
+                        setFacilityDescription(e.target.value)
+                        localStorage.setItem('facilityDescription', e.target.value)
+                      }}
+                      placeholder="Beschreibe deine Einrichtung, z.B. Öffnungszeiten, besondere Anforderungen, Gruppenstrukturen... Die KI leitet daraus automatisch Planungsregeln ab."
+                      rows={3}
+                      className="w-full px-3 py-2 text-sm border border-purple-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none placeholder:text-gray-400"
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <div
                         onClick={() => setUseFairnessAI(v => !v)}
@@ -241,11 +271,17 @@ export default function AdminSchedule() {
                         Fairness-Engine aktiviert
                       </span>
                     </label>
+                    <div className="flex gap-2 sm:ml-auto">
+                      <Button variant="ghost" size="sm" onClick={() => setShiftEditorOpen(true)} className="gap-1.5 border border-purple-200 text-purple-700 hover:bg-purple-50">
+                        <Clock size={13} />
+                        Dienstzeiten
+                      </Button>
+                      <Button onClick={runAI} size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
+                        <Sparkles size={14} />
+                        Plan erstellen
+                      </Button>
+                    </div>
                   </div>
-                  <Button onClick={runAI} size="lg" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
-                    <Sparkles size={18} />
-                    Plan erstellen
-                  </Button>
                 </div>
               ) : aiRunning ? (
                 <div className="text-center py-2">
@@ -396,7 +432,7 @@ export default function AdminSchedule() {
 
             {/* Shift legend */}
             <div className="flex flex-wrap gap-2">
-              {locationShifts.map(shift => {
+              {effectiveShifts.map(shift => {
                 const Icon = SHIFT_ICONS[shift.type]
                 return (
                   <div key={shift.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ backgroundColor: shift.bgColor }}>
@@ -511,6 +547,18 @@ export default function AdminSchedule() {
           </div>
         )}
       </div>
+
+      {/* Shift Editor Modal */}
+      <ShiftEditor
+        open={shiftEditorOpen}
+        onClose={() => setShiftEditorOpen(false)}
+        shifts={locationShifts}
+        overrides={shiftTimeOverrides}
+        onSave={overrides => {
+          setShiftTimeOverrides(overrides)
+          localStorage.setItem('shiftTimeOverrides', JSON.stringify(overrides))
+        }}
+      />
 
       {/* Rules Modal */}
       <Modal open={rulesOpen} onClose={() => setRulesOpen(false)} title="Planungsregeln">

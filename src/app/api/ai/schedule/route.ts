@@ -48,6 +48,7 @@ interface ScheduleRequest {
   wishSubmissions: WishSubmission[]
   weekDates: string[]
   locationName: string
+  facilityDescription?: string
 }
 
 export async function POST(req: NextRequest) {
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
 
-  const { employees, shifts, fairnessData, wishSubmissions, weekDates, locationName } = body
+  const { employees, shifts, fairnessData, wishSubmissions, weekDates, locationName, facilityDescription } = body
 
   const activeEmployees = employees.filter(e => e.role === 'employee' && e.active)
 
@@ -114,12 +115,16 @@ ${JSON.stringify(weekDates)}
 
 ## Dienstwünsche der Mitarbeiter
 ${wishSummary.length > 0 ? JSON.stringify(wishSummary, null, 2) : 'Keine Wünsche eingereicht.'}
+${facilityDescription ? `
+## Besondere Einrichtungsbeschreibung vom Teamleiter
+${facilityDescription}
 
+Beachte diese Einrichtungsbeschreibung besonders beim Erstellen des Plans. Leite daraus zusätzliche Planungsregeln ab und wende sie an.` : ''}
 Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor oder danach.`
 
   try {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-opus-4-7',
       max_tokens: 4096,
       system: [
         {
