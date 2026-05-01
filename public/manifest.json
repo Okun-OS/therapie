@@ -1,0 +1,16 @@
+{
+  "name": "PlanMate – Dienstplan Pro",
+  "short_name": "PlanMate",
+  "description": "Modernes Mitarbeiter- und Dienstplan-Management",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1F3A",
+  "theme_color": "#0B1F3A",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}
