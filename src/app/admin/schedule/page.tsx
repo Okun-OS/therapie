@@ -12,7 +12,7 @@ import {
   EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, LOCATIONS,
   getAllEntriesForFairness, getWishSubmissionsByLocation,
 } from '@/lib/mock-data'
-import { calculateFairnessData, generateFairSchedule, resolveWishConflict } from '@/lib/fairness'
+import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, toDateString, formatDateShort, getDayName } from '@/lib/utils'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
@@ -42,8 +42,11 @@ export default function AdminSchedule() {
   const [aiDone, setAiDone] = useState(false)
   const [useFairnessAI, setUseFairnessAI] = useState(true)
   const [generatedSchedule, setGeneratedSchedule] = useState<Record<string, Record<string, string>> | null>(null)
+  const [aiReasoning, setAiReasoning] = useState<string | null>(null)
+  const [aiDecisions, setAiDecisions] = useState<{ type: string; message: string }[]>([])
+  const [aiWarnings, setAiWarnings] = useState<string[]>([])
+  const [aiError, setAiError] = useState<string | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
-  const [conflictDetailId, setConflictDetailId] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
   const weekDays = getWeekDays(currentDate)
@@ -90,25 +93,71 @@ export default function AdminSchedule() {
     return entry ? locationShifts.find(s => s.id === entry.shiftId) : null
   }
 
-  const runAI = () => {
+  const runAI = async () => {
     setAiRunning(true)
     setAiDone(false)
     setAiStep(0)
+    setAiError(null)
+    setAiReasoning(null)
+    setAiDecisions([])
+    setAiWarnings([])
 
+    // Animate progress steps while waiting for the real API
     let step = 0
     const interval = setInterval(() => {
-      step++
+      step = Math.min(step + 1, AI_STEPS.length - 2) // stop one before last
       setAiStep(step)
-      if (step >= AI_STEPS.length) {
-        clearInterval(interval)
-        const schedule = useFairnessAI
-          ? generateFairSchedule(employees, locationShifts, weekDays, fairnessData)
-          : generateFairSchedule(employees, locationShifts, weekDays, fairnessData)
-        setGeneratedSchedule(schedule)
-        setAiRunning(false)
-        setAiDone(true)
+    }, 900)
+
+    try {
+      const weekDates = weekDays.slice(0, 5).map(toDateString)
+      const res = await fetch('/api/ai/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employees,
+          shifts: locationShifts,
+          fairnessData,
+          wishSubmissions,
+          weekDates,
+          locationName: location?.name ?? 'Standort',
+        }),
+      })
+
+      clearInterval(interval)
+      setAiStep(AI_STEPS.length - 1)
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }))
+        throw new Error(err.error ?? 'API-Fehler')
       }
-    }, 700)
+
+      const data = await res.json()
+
+      // API returns { date: { empId: shiftId } } – transpose to { empId: { date: shiftId } }
+      const transposed: Record<string, Record<string, string>> = {}
+      if (data.schedule) {
+        for (const [date, assignments] of Object.entries(data.schedule as Record<string, Record<string, string>>)) {
+          for (const [empId, shiftId] of Object.entries(assignments)) {
+            if (!transposed[empId]) transposed[empId] = {}
+            transposed[empId][date] = shiftId
+          }
+        }
+      }
+
+      setGeneratedSchedule(transposed)
+      setAiReasoning(data.reasoning ?? null)
+      setAiDecisions(data.decisions ?? [])
+      setAiWarnings(data.warnings ?? [])
+      setAiDone(true)
+    } catch (err: unknown) {
+      clearInterval(interval)
+      setAiError(err instanceof Error ? err.message : 'Unbekannter Fehler')
+      setAiRunning(false)
+      setAiStep(0)
+    } finally {
+      setAiRunning(false)
+    }
   }
 
   const unfairCount = fairnessData.filter(d => d.fairnessScore < 60).length
@@ -147,14 +196,14 @@ export default function AdminSchedule() {
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-3 justify-between">
               <div className="flex items-center gap-1">
-                <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); setGeneratedSchedule(null); setAiDone(false) }}
+                <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]) }}
                   className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all">
                   <ChevronLeft size={18} className="text-gray-600" />
                 </button>
                 <span className="px-4 py-2 text-sm font-semibold text-navy min-w-[200px] text-center">
                   {formatDateShort(weekStart)} – {formatDateShort(weekEnd)} {weekDays[0].getFullYear()}
                 </span>
-                <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); setGeneratedSchedule(null); setAiDone(false) }}
+                <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]) }}
                   className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all">
                   <ChevronRight size={18} className="text-gray-600" />
                 </button>
@@ -208,16 +257,28 @@ export default function AdminSchedule() {
                     ))}
                   </div>
                 </div>
+              ) : aiError ? (
+                <div className="flex items-center gap-3">
+                  <AlertTriangle size={24} className="text-red-500 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-bold text-red-700">KI-Fehler</p>
+                    <p className="text-sm text-red-600">{aiError}</p>
+                    <p className="text-xs text-gray-500 mt-1">Stelle sicher, dass ANTHROPIC_API_KEY in .env.local konfiguriert ist.</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setAiError(null)} className="text-gray-500">
+                    Erneut
+                  </Button>
+                </div>
               ) : (
                 <div className="flex items-center gap-3">
                   <CheckCircle size={24} className="text-green-600 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="font-bold text-green-700">Fairness-optimierter Dienstplan erstellt!</p>
+                    <p className="font-bold text-green-700">KI-Dienstplan erstellt!</p>
                     <p className="text-sm text-green-600">
-                      Alle Wünsche und Einschränkungen berücksichtigt · Fairness-Schulden ausgeglichen.
+                      Fairness-optimiert · Wünsche berücksichtigt · Schulden ausgeglichen.
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null) }} className="text-gray-500">
+                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]) }} className="text-gray-500">
                     Zurück
                   </Button>
                 </div>
@@ -298,6 +359,40 @@ export default function AdminSchedule() {
                 </table>
               </div>
             </Card>
+
+            {/* AI Reasoning Panel */}
+            {aiDone && (aiReasoning || aiDecisions.length > 0 || aiWarnings.length > 0) && (
+              <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-purple-600" />
+                  <p className="text-sm font-bold text-purple-800">KI-Begründung</p>
+                </div>
+                {aiReasoning && (
+                  <p className="text-sm text-purple-700">{aiReasoning}</p>
+                )}
+                {aiDecisions.length > 0 && (
+                  <div className="space-y-1.5">
+                    {aiDecisions.map((d, i) => (
+                      <div key={i} className={`flex items-start gap-2 px-3 py-2 rounded-xl text-xs ${d.type === 'conflict' ? 'bg-red-50 text-red-700' : d.type === 'warning' ? 'bg-amber-50 text-amber-700' : 'bg-white text-gray-700'}`}>
+                        {d.type === 'conflict' && <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />}
+                        {d.type === 'warning' && <Info size={12} className="flex-shrink-0 mt-0.5" />}
+                        {d.type === 'assignment' && <CheckCircle size={12} className="flex-shrink-0 mt-0.5 text-green-600" />}
+                        <span>{d.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {aiWarnings.length > 0 && (
+                  <div className="space-y-1">
+                    {aiWarnings.map((w, i) => (
+                      <p key={i} className="text-xs text-amber-700 flex items-start gap-1.5">
+                        <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" /> {w}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Shift legend */}
             <div className="flex flex-wrap gap-2">
