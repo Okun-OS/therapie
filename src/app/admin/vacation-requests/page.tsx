@@ -7,13 +7,15 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
-import { VACATION_REQUESTS } from '@/lib/mock-data'
+import { useToast } from '@/lib/toast-context'
+import { VACATION_REQUESTS, setVacationRequestStatus } from '@/lib/mock-data'
 import { CheckCircle, XCircle, Clock, Palmtree, Calendar, MessageSquare } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import type { VacationRequest, RequestStatus } from '@/lib/types'
 
 export default function AdminVacationRequests() {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const locationId = user?.locationId || 'loc1'
 
   const [requests, setRequests] = useState(
@@ -30,14 +32,18 @@ export default function AdminVacationRequests() {
   const denied = requests.filter(r => r.status === 'denied')
 
   const handleApprove = (id: string) => {
+    setVacationRequestStatus(id, 'approved', user?.name || 'Admin')
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', respondedAt: new Date().toISOString().split('T')[0], respondedBy: user?.name } : r))
     setSelected(null)
+    showToast('Urlaubsantrag genehmigt', 'success')
   }
 
   const handleDeny = (id: string) => {
+    setVacationRequestStatus(id, 'denied', user?.name || 'Admin')
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'denied', respondedAt: new Date().toISOString().split('T')[0], respondedBy: user?.name } : r))
     setSelected(null)
     setRejectNote('')
+    showToast('Urlaubsantrag abgelehnt', 'info')
   }
 
   const statusConfig = {

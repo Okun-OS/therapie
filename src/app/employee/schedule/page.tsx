@@ -9,10 +9,13 @@ import { Modal } from '@/components/ui/Modal'
 import { SwapModal } from '@/components/schedule/SwapModal'
 import { SwapList } from '@/components/schedule/SwapList'
 import { useAuth } from '@/lib/auth-context'
+import { useToast } from '@/lib/toast-context'
+import { useSearchParams } from 'next/navigation'
 import {
   SCHEDULE_ENTRIES, SHIFTS, EMPLOYEES, LOCATIONS,
-  getSwapRequestsByEmployee, getWishSubmissionsByEmployee,
+  getSwapRequestsByEmployee, getWishSubmissionsByEmployee, addWishSubmission,
 } from '@/lib/mock-data'
+import type { ShiftType } from '@/lib/types'
 import { googleCalendarLink, appleCalendarDownload } from '@/lib/calendar-export'
 import {
   ChevronLeft, ChevronRight, Sun, Moon, Briefcase, MessageSquare,
@@ -31,14 +34,18 @@ type Tab = 'schedule' | 'swaps' | 'wishes'
 
 export default function EmployeeSchedule() {
   const { user } = useAuth()
+  const { showToast } = useToast()
+  const searchParams = useSearchParams()
+  const initialTab = (searchParams.get('tab') as Tab) || 'schedule'
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [tab, setTab] = useState<Tab>('schedule')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [selectedEntry, setSelectedEntry] = useState<ScheduleEntry | null>(null)
   const [swapEntry, setSwapEntry] = useState<ScheduleEntry | null>(null)
   const [wishModal, setWishModal] = useState(false)
   const [wish, setWish] = useState({ type: '', date: '', reason: '', importance: 'normal' })
   const [calendarModal, setCalendarModal] = useState(false)
   const [swaps, setSwaps] = useState(() => getSwapRequestsByEmployee(user?.id ?? ''))
+  const [, forceWishRefresh] = useState(0)
 
   const weekDays = getWeekDays(currentDate)
   const weekStart = toDateString(weekDays[0])
@@ -100,6 +107,33 @@ export default function EmployeeSchedule() {
     }
     setSwaps(prev => [newSwap, ...prev])
     setSwapEntry(null)
+  }
+
+  const handleWishSubmit = () => {
+    if (!wish.type || !wish.date) {
+      showToast('Bitte Diensttyp und Datum auswählen', 'error')
+      return
+    }
+    if (!user || !employee) return
+
+    const validShiftTypes: ShiftType[] = ['early', 'late', 'mid']
+    const preferredShiftType = (validShiftTypes as string[]).includes(wish.type) ? (wish.type as ShiftType) : 'mid'
+    const specialNote = wish.type === 'free' ? 'Freier Tag gewünscht. ' : wish.type === 'no_early_after_late' ? 'Kein Frühdienst nach Spätdienst gewünscht. ' : ''
+
+    addWishSubmission({
+      employeeId: user.id,
+      employeeName: user.name,
+      locationId: employee.locationId || 'loc1',
+      date: wish.date,
+      preferredShiftType,
+      reason: `${specialNote}${wish.reason}`.trim() || undefined,
+      importance: wish.importance as 'normal' | 'important' | 'urgent',
+    })
+
+    showToast('Wunsch gespeichert', 'success')
+    setWishModal(false)
+    setWish({ type: '', date: '', reason: '', importance: 'normal' })
+    forceWishRefresh(n => n + 1)
   }
 
   const handleAcceptSwap = (id: string) => setSwaps(p => p.map(s => s.id === id ? { ...s, status: 'accepted' as const } : s))
@@ -562,7 +596,7 @@ export default function EmployeeSchedule() {
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setWishModal(false)}>Abbrechen</Button>
-            <Button className="flex-1" onClick={() => { alert('Wunsch gespeichert!'); setWishModal(false) }}>Absenden</Button>
+            <Button className="flex-1" onClick={handleWishSubmit} disabled={!wish.type || !wish.date}>Absenden</Button>
           </div>
         </div>
       </Modal>

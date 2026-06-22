@@ -86,17 +86,19 @@ export default function AdminReports() {
             <CardTitle>Stunden pro Monat (2026)</CardTitle>
             <Badge variant="info">Stunden</Badge>
           </CardHeader>
-          <div className="flex items-end gap-1 h-40">
+          <div className="flex items-stretch gap-1 h-40">
             {monthlyHours.map((h, i) => {
               const height = maxHours > 0 ? (h / maxHours) * 100 : 0
               const isCurrent = i === 3 // April
               return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[10px] text-gray-500 font-medium">{h > 0 ? `${h}h` : ''}</span>
-                  <div
-                    className={`w-full rounded-t-lg transition-all ${isCurrent ? 'bg-brand' : 'bg-navy-100'}`}
-                    style={{ height: `${Math.max(height, 2)}%`, minHeight: h > 0 ? '4px' : '2px' }}
-                  />
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
+                  <span className="text-[10px] text-gray-500 font-medium h-3">{h > 0 ? `${h}h` : ''}</span>
+                  <div className="flex-1 w-full flex items-end">
+                    <div
+                      className={`w-full rounded-t-lg transition-all ${isCurrent ? 'bg-brand' : 'bg-navy-100'}`}
+                      style={{ height: `${Math.max(height, 2)}%`, minHeight: h > 0 ? '4px' : '2px' }}
+                    />
+                  </div>
                   <span className={`text-[10px] font-medium ${isCurrent ? 'text-navy font-bold' : 'text-gray-400'}`}>{months[i]}</span>
                 </div>
               )

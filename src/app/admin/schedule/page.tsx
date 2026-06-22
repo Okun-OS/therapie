@@ -9,16 +9,38 @@ import { Modal } from '@/components/ui/Modal'
 import { FairnessReport } from '@/components/schedule/FairnessReport'
 import { ShiftEditor } from '@/components/schedule/ShiftEditor'
 import { useAuth } from '@/lib/auth-context'
+import { useToast } from '@/lib/toast-context'
 import {
   EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, LOCATIONS,
   getAllEntriesForFairness, getWishSubmissionsByLocation,
+  setShiftMinStaff, saveScheduleForWeek,
 } from '@/lib/mock-data'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
-import { getWeekDays, toDateString, formatDateShort, getDayName } from '@/lib/utils'
+import { getWeekDays, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
-  CheckCircle, Loader, AlertTriangle, Info, Scale, Clock,
+  CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff,
 } from 'lucide-react'
+
+interface PlanningRules {
+  maxWeeklyHours: number
+  restHours: number
+  maxConsecutiveDays: number
+  fridayLateMax: number
+  mondayEarlyMax: number
+  considerWishes: boolean
+  balanceHoursAccount: boolean
+}
+
+const DEFAULT_RULES: PlanningRules = {
+  maxWeeklyHours: 40,
+  restHours: 11,
+  maxConsecutiveDays: 5,
+  fridayLateMax: 2,
+  mondayEarlyMax: 3,
+  considerWishes: true,
+  balanceHoursAccount: true,
+}
 
 const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase }
 const AI_STEPS = [
@@ -34,6 +56,7 @@ type Tab = 'plan' | 'fairness' | 'wishes'
 
 export default function AdminSchedule() {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const locationId = user?.locationId ?? 'loc1'
   const location = LOCATIONS.find(l => l.id === locationId)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -52,12 +75,21 @@ export default function AdminSchedule() {
   const [saved, setSaved] = useState(false)
   const [facilityDescription, setFacilityDescription] = useState('')
   const [shiftTimeOverrides, setShiftTimeOverrides] = useState<Record<string, { startTime: string; endTime: string }>>({})
+  const [planningRules, setPlanningRules] = useState<PlanningRules>(DEFAULT_RULES)
+  const [rulesDraft, setRulesDraft] = useState<PlanningRules>(DEFAULT_RULES)
+  const [minStaffDraft, setMinStaffDraft] = useState<Record<string, number>>({})
 
   useEffect(() => {
     const saved = localStorage.getItem('facilityDescription')
     if (saved) setFacilityDescription(saved)
     const overrides = localStorage.getItem('shiftTimeOverrides')
     if (overrides) setShiftTimeOverrides(JSON.parse(overrides))
+    const rules = localStorage.getItem('planningRules')
+    if (rules) {
+      const parsed = { ...DEFAULT_RULES, ...JSON.parse(rules) }
+      setPlanningRules(parsed)
+      setRulesDraft(parsed)
+    }
   }, [])
 
   const weekDays = getWeekDays(currentDate)
@@ -70,8 +102,11 @@ export default function AdminSchedule() {
   const wishSubmissions = getWishSubmissionsByLocation(locationId)
 
   const fairnessData = useMemo(
-    () => calculateFairnessData(employees, allHistoricalEntries, locationShifts),
-    [employees, allHistoricalEntries, locationShifts]
+    () => calculateFairnessData(employees, allHistoricalEntries, locationShifts, {
+      fridayLateMax: planningRules.fridayLateMax,
+      mondayEarlyMax: planningRules.mondayEarlyMax,
+    }),
+    [employees, allHistoricalEntries, locationShifts, planningRules.fridayLateMax, planningRules.mondayEarlyMax]
   )
 
   // Resolve wish conflicts for display
@@ -126,6 +161,9 @@ export default function AdminSchedule() {
 
     try {
       const weekDates = weekDays.slice(0, 5).map(toDateString)
+      const ruleSummary = `Zusätzliche Planungsregeln des Admins: maximal ${planningRules.maxWeeklyHours}h Wochenarbeitszeit, mindestens ${planningRules.restHours}h Ruhezeit zwischen zwei Diensten, maximal ${planningRules.maxConsecutiveDays} aufeinanderfolgende Arbeitstage, Freitag-Spätdienst max. ${planningRules.fridayLateMax}×/Monat pro Mitarbeiter, Montag-Frühdienst max. ${planningRules.mondayEarlyMax}×/Monat pro Mitarbeiter. Mitarbeiterwünsche ${planningRules.considerWishes ? 'sollen aktiv berücksichtigt werden' : 'müssen dieses Mal NICHT berücksichtigt werden'}. Stundenkonten ${planningRules.balanceHoursAccount ? 'sollen ausgeglichen werden' : 'müssen dieses Mal nicht ausgeglichen werden'}.`
+      const combinedDescription = [facilityDescription.trim(), ruleSummary].filter(Boolean).join('\n\n')
+
       const res = await fetch('/api/ai/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,10 +171,10 @@ export default function AdminSchedule() {
           employees,
           shifts: effectiveShifts,
           fairnessData,
-          wishSubmissions,
+          wishSubmissions: planningRules.considerWishes ? wishSubmissions : [],
           weekDates,
           locationName: location?.name ?? 'Standort',
-          facilityDescription: facilityDescription.trim() || undefined,
+          facilityDescription: combinedDescription || undefined,
         }),
       })
 
@@ -162,9 +200,9 @@ export default function AdminSchedule() {
       }
 
       setGeneratedSchedule(transposed)
-      setAiReasoning(data.reasoning ?? null)
-      setAiDecisions(data.decisions ?? [])
-      setAiWarnings(data.warnings ?? [])
+      setAiReasoning(data.reasoning ? sanitizeAiText(data.reasoning) : null)
+      setAiDecisions((data.decisions ?? []).map((d: { type: string; message: string }) => ({ ...d, message: sanitizeAiText(d.message) })))
+      setAiWarnings((data.warnings ?? []).map((w: string) => sanitizeAiText(w)))
       setAiDone(true)
     } catch (err: unknown) {
       clearInterval(interval)
@@ -178,6 +216,52 @@ export default function AdminSchedule() {
 
   const unfairCount = fairnessData.filter(d => d.fairnessScore < 60).length
   const pendingWishes = wishSubmissions.filter(w => w.status === 'pending').length
+
+  const openRules = () => {
+    setRulesDraft(planningRules)
+    const staffByShift: Record<string, number> = {}
+    locationShifts.forEach(s => { staffByShift[s.id] = s.minStaff })
+    setMinStaffDraft(staffByShift)
+    setRulesOpen(true)
+  }
+
+  const handleSaveRules = () => {
+    setPlanningRules(rulesDraft)
+    localStorage.setItem('planningRules', JSON.stringify(rulesDraft))
+    Object.entries(minStaffDraft).forEach(([shiftId, minStaff]) => setShiftMinStaff(shiftId, minStaff))
+    setRulesOpen(false)
+    showToast('Planungsregeln gespeichert')
+  }
+
+  const handleSaveSchedule = () => {
+    if (!generatedSchedule) return
+    const weekDates = weekDays.slice(0, 5).map(toDateString)
+    saveScheduleForWeek(locationId, weekDates, generatedSchedule)
+    setSaved(true)
+    showToast('Dienstplan gespeichert – für alle Mitarbeiter sichtbar')
+  }
+
+  const handleExport = () => {
+    const rows = [['Mitarbeiter', 'Datum', 'Wochentag', 'Dienst', 'Start', 'Ende']]
+    employees.forEach(emp => {
+      weekDays.forEach((day, i) => {
+        if (i >= 5) return
+        const dateStr = toDateString(day)
+        const shift = getDisplayShift(emp.id, dateStr)
+        if (!shift) return
+        rows.push([emp.name, dateStr, getDayName(dateStr), shift.name, shift.startTime, shift.endTime])
+      })
+    })
+    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(';')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `dienstplan_${location?.name ?? 'standort'}_${weekStart}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('Export gestartet')
+  }
 
   return (
     <>
@@ -212,23 +296,23 @@ export default function AdminSchedule() {
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-3 justify-between">
               <div className="flex items-center gap-1">
-                <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]) }}
+                <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setSaved(false) }}
                   className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all">
                   <ChevronLeft size={18} className="text-gray-600" />
                 </button>
                 <span className="px-4 py-2 text-sm font-semibold text-navy min-w-[200px] text-center">
                   {formatDateShort(weekStart)} – {formatDateShort(weekEnd)} {weekDays[0].getFullYear()}
                 </span>
-                <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]) }}
+                <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setSaved(false) }}
                   className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all">
                   <ChevronRight size={18} className="text-gray-600" />
                 </button>
               </div>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setRulesOpen(true)} className="border border-gray-200">Regeln</Button>
-                <Button variant="ghost" size="sm" className="gap-1 border border-gray-200"><Download size={14} /> Export</Button>
+                <Button variant="ghost" size="sm" onClick={openRules} className="border border-gray-200">Regeln</Button>
+                <Button variant="ghost" size="sm" onClick={handleExport} className="gap-1 border border-gray-200"><Download size={14} /> Export</Button>
                 {aiDone && (
-                  <Button variant="success" size="sm" onClick={() => setSaved(true)} className="gap-1">
+                  <Button variant="success" size="sm" onClick={handleSaveSchedule} className="gap-1">
                     <Save size={14} />{saved ? 'Gespeichert!' : 'Speichern'}
                   </Button>
                 )}
@@ -314,7 +398,7 @@ export default function AdminSchedule() {
                       Fairness-optimiert · Wünsche berücksichtigt · Schulden ausgeglichen.
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]) }} className="text-gray-500">
+                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setSaved(false) }} className="text-gray-500">
                     Zurück
                   </Button>
                 </div>
@@ -322,6 +406,17 @@ export default function AdminSchedule() {
             </div>
 
             {/* Schedule Grid */}
+            {!generatedSchedule && existingEntries.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center py-14 px-6 bg-white border border-gray-100 rounded-2xl">
+                <div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center mb-4">
+                  <CalendarOff size={28} className="text-purple-400" />
+                </div>
+                <p className="text-sm font-semibold text-navy">Noch kein Dienstplan für diese Woche</p>
+                <p className="text-xs text-gray-400 mt-1 max-w-sm">
+                  Erstelle oben mit einem Klick einen fairness-optimierten KI-Dienstplan, oder trage Dienste manuell ein.
+                </p>
+              </div>
+            ) : (
             <Card padding="none" className="overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[700px]">
@@ -358,13 +453,25 @@ export default function AdminSchedule() {
                         <tr key={emp.id} className={empIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
                           <td className="p-3 pl-4">
                             <div className="flex items-center gap-2">
-                              {hasIssues && <AlertTriangle size={10} className="text-red-400 flex-shrink-0" />}
+                              {hasIssues && (
+                                <span
+                                  className="flex-shrink-0 cursor-help"
+                                  title={`Fairness-Hinweis: ${fd!.issues.join(' · ')}`}
+                                >
+                                  <AlertTriangle size={10} className="text-red-400" />
+                                </span>
+                              )}
                               <div className="w-7 h-7 rounded-lg bg-navy flex items-center justify-center text-brand text-[10px] font-bold flex-shrink-0">
                                 {emp.name.split(' ').map(n => n[0]).join('')}
                               </div>
                               <div>
                                 <p className="text-xs font-semibold text-navy leading-tight">{emp.name.split(' ')[0]}</p>
-                                <p className="text-[10px] text-gray-400">{fd ? `Score ${fd.fairnessScore}` : `${emp.weeklyHours}h`}</p>
+                                <p
+                                  className="text-[10px] text-gray-400 underline decoration-dotted cursor-help"
+                                  title={fd ? `Fairness-Punktzahl ${fd.fairnessScore}/100 – misst wie gleichmäßig Früh-, Spät- und Mitteldienste sowie Montag/Freitag-Sonderdienste in den letzten 4 Wochen verteilt wurden. Unter 60 = Handlungsbedarf.` : `Vertraglich ${emp.weeklyHours}h/Woche`}
+                                >
+                                  {fd ? `Score ${fd.fairnessScore}` : `${emp.weeklyHours}h`}
+                                </p>
                               </div>
                             </div>
                           </td>
@@ -395,6 +502,7 @@ export default function AdminSchedule() {
                 </table>
               </div>
             </Card>
+            )}
 
             {/* AI Reasoning Panel */}
             {aiDone && (aiReasoning || aiDecisions.length > 0 || aiWarnings.length > 0) && (
@@ -441,9 +549,12 @@ export default function AdminSchedule() {
                   </div>
                 )
               })}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-xl">
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-xl cursor-help"
+                title="Montag und Freitag gelten als Sondertage: Frühdienst am Montag und Spätdienst am Freitag werden in der Fairness-Engine besonders streng begrenzt, damit niemand diese unpopulären Dienste überdurchschnittlich oft bekommt."
+              >
                 <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-                <span className="text-xs text-yellow-700 font-medium">Gelbe Spalten = Montag/Freitag (Sondertage)</span>
+                <span className="text-xs text-yellow-700 font-medium">Gelbe Spalten = Montag/Freitag (Sondertage) – begrenzte Häufigkeit pro Mitarbeiter, siehe Fairness-Tab</span>
               </div>
             </div>
           </>
@@ -561,27 +672,106 @@ export default function AdminSchedule() {
       />
 
       {/* Rules Modal */}
-      <Modal open={rulesOpen} onClose={() => setRulesOpen(false)} title="Planungsregeln">
-        <div className="space-y-3">
-          {[
-            { label: 'Mindestbesetzung Frühdienst', value: '2 Personen' },
-            { label: 'Mindestbesetzung Spätdienst', value: '2 Personen' },
-            { label: 'Mindestbesetzung Mitteldienst', value: '1 Person' },
-            { label: 'Max. Wochenstunden', value: '40h' },
-            { label: 'Ruhezeit zwischen Diensten', value: '11 Stunden' },
-            { label: 'Max. Folgetage', value: '5 Tage' },
-            { label: 'Freitag-Spätdienst je MA', value: 'max. 2×/Monat' },
-            { label: 'Montag-Frühdienst je MA', value: 'max. 3×/Monat' },
-            { label: 'Wünsche berücksichtigen', value: 'Ja' },
-            { label: 'Fairness-Engine', value: useFairnessAI ? 'Aktiv' : 'Inaktiv' },
-            { label: 'Stundenkonten ausgleichen', value: 'Ja' },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-sm text-gray-600">{label}</span>
-              <Badge variant={value === 'Aktiv' ? 'success' : value === 'Inaktiv' ? 'danger' : 'info'}>{value}</Badge>
+      <Modal open={rulesOpen} onClose={() => setRulesOpen(false)} title="Planungsregeln" size="md">
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500">
+            Diese Regeln steuern die Mindestbesetzung sowie die KI-Dienstplanung für {location?.name}. Änderungen wirken sich auf den nächsten erstellten Plan aus.
+          </p>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Mindestbesetzung pro Dienst</p>
+            <div className="space-y-2">
+              {locationShifts.map(shift => (
+                <div key={shift.id} className="flex items-center justify-between py-1.5">
+                  <span className="text-sm text-gray-700">{shift.name}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={minStaffDraft[shift.id] ?? shift.minStaff}
+                    onChange={e => setMinStaffDraft(d => ({ ...d, [shift.id]: Math.max(0, Number(e.target.value)) }))}
+                    className="w-20 px-2 py-1.5 text-sm text-center rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-          <Button className="w-full mt-2" onClick={() => setRulesOpen(false)}>Schließen</Button>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Arbeitszeit & Ruhezeit</p>
+            <div className="space-y-2">
+              {([
+                ['maxWeeklyHours', 'Max. Wochenstunden'],
+                ['restHours', 'Ruhezeit zwischen Diensten (h)'],
+                ['maxConsecutiveDays', 'Max. aufeinanderfolgende Tage'],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="flex items-center justify-between py-1.5">
+                  <span className="text-sm text-gray-700">{label}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={rulesDraft[key]}
+                    onChange={e => setRulesDraft(d => ({ ...d, [key]: Math.max(1, Number(e.target.value)) }))}
+                    className="w-20 px-2 py-1.5 text-sm text-center rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Sondertage</p>
+            <div className="space-y-2">
+              {([
+                ['fridayLateMax', 'Freitag-Spätdienst je MA (×/Monat)'],
+                ['mondayEarlyMax', 'Montag-Frühdienst je MA (×/Monat)'],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="flex items-center justify-between py-1.5">
+                  <span className="text-sm text-gray-700">{label}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={rulesDraft[key]}
+                    onChange={e => setRulesDraft(d => ({ ...d, [key]: Math.max(0, Number(e.target.value)) }))}
+                    className="w-20 px-2 py-1.5 text-sm text-center rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">KI-Verhalten</p>
+            <div className="space-y-1">
+              {([
+                ['considerWishes', 'Mitarbeiterwünsche berücksichtigen'],
+                ['balanceHoursAccount', 'Stundenkonten ausgleichen'],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="flex items-center justify-between py-1.5 cursor-pointer">
+                  <span className="text-sm text-gray-700">{label}</span>
+                  <div
+                    onClick={() => setRulesDraft(d => ({ ...d, [key]: !d[key] }))}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${rulesDraft[key] ? 'bg-brand' : 'bg-gray-300'}`}
+                  >
+                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${rulesDraft[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </div>
+                </label>
+              ))}
+              <label className="flex items-center justify-between py-1.5 cursor-pointer">
+                <span className="text-sm text-gray-700">Fairness-Engine</span>
+                <div
+                  onClick={() => setUseFairnessAI(v => !v)}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${useFairnessAI ? 'bg-brand' : 'bg-gray-300'}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${useFairnessAI ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setRulesOpen(false)}>Abbrechen</Button>
+            <Button className="flex-1" onClick={handleSaveRules}>Speichern</Button>
+          </div>
         </div>
       </Modal>
     </>

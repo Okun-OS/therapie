@@ -7,18 +7,59 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
-import { EMPLOYEES } from '@/lib/mock-data'
+import { useToast } from '@/lib/toast-context'
+import { EMPLOYEES, updateEmployee, addEmployee } from '@/lib/mock-data'
 import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Mail, Edit, ChevronRight } from 'lucide-react'
 import type { Employee } from '@/lib/types'
 
 export default function AdminEmployees() {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const locationId = user?.locationId || 'loc1'
 
   const [search, setSearch] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({ name: '', email: '', position: '', weeklyHours: 38 })
   const [addModal, setAddModal] = useState(false)
   const [newEmployee, setNewEmployee] = useState({ name: '', email: '', position: '', weeklyHours: 38 })
+  const [addErrors, setAddErrors] = useState<string[]>([])
+
+  const startEditing = (emp: Employee) => {
+    setEditForm({ name: emp.name, email: emp.email, position: emp.position, weeklyHours: emp.weeklyHours })
+    setIsEditing(true)
+  }
+
+  const saveEdit = () => {
+    if (!selectedEmployee) return
+    if (!editForm.name.trim() || !editForm.email.trim() || !editForm.position.trim()) {
+      showToast('Bitte alle Pflichtfelder ausfüllen', 'error')
+      return
+    }
+    updateEmployee(selectedEmployee.id, editForm)
+    showToast('Mitarbeiter aktualisiert', 'success')
+    setIsEditing(false)
+    setSelectedEmployee(null)
+  }
+
+  const handleAddEmployee = () => {
+    const errors: string[] = []
+    if (!newEmployee.name.trim()) errors.push('Name ist erforderlich')
+    if (!newEmployee.email.trim()) errors.push('E-Mail ist erforderlich')
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmployee.email.trim())) errors.push('E-Mail-Adresse ist ungültig')
+    if (!newEmployee.position.trim()) errors.push('Position ist erforderlich')
+
+    if (errors.length > 0) {
+      setAddErrors(errors)
+      return
+    }
+
+    addEmployee({ ...newEmployee, locationId })
+    showToast('Mitarbeiter gespeichert', 'success')
+    setAddModal(false)
+    setAddErrors([])
+    setNewEmployee({ name: '', email: '', position: '', weeklyHours: 38 })
+  }
 
   const employees = EMPLOYEES.filter(
     e => e.locationId === locationId && e.role === 'employee'
@@ -118,9 +159,13 @@ export default function AdminEmployees() {
         </div>
       </div>
 
-      {/* Employee Detail Modal */}
-      <Modal open={!!selectedEmployee} onClose={() => setSelectedEmployee(null)} title="Mitarbeiter-Details">
-        {selectedEmployee && (
+      {/* Employee Detail / Edit Modal */}
+      <Modal
+        open={!!selectedEmployee}
+        onClose={() => { setSelectedEmployee(null); setIsEditing(false) }}
+        title={isEditing ? 'Mitarbeiter bearbeiten' : 'Mitarbeiter-Details'}
+      >
+        {selectedEmployee && !isEditing && (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-2xl bg-navy flex items-center justify-center font-bold text-brand text-xl flex-shrink-0">
@@ -163,18 +208,73 @@ export default function AdminEmployees() {
               <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setSelectedEmployee(null)}>
                 Schließen
               </Button>
-              <Button className="flex-1 gap-2">
+              <Button className="flex-1 gap-2" onClick={() => startEditing(selectedEmployee)}>
                 <Edit size={16} />
                 Bearbeiten
               </Button>
             </div>
           </div>
         )}
+
+        {selectedEmployee && isEditing && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">Name</label>
+              <input
+                value={editForm.name}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
+              <input
+                type="email"
+                value={editForm.email}
+                onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">Position</label>
+              <input
+                value={editForm.position}
+                onChange={e => setEditForm(f => ({ ...f, position: e.target.value }))}
+                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">Wochenstunden</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range" min={10} max={40} step={2}
+                  value={editForm.weeklyHours}
+                  onChange={e => setEditForm(f => ({ ...f, weeklyHours: Number(e.target.value) }))}
+                  className="flex-1 accent-brand"
+                />
+                <span className="font-bold text-navy w-12 text-center">{editForm.weeklyHours}h</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setIsEditing(false)}>
+                Abbrechen
+              </Button>
+              <Button className="flex-1" onClick={saveEdit}>Speichern</Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Add Employee Modal */}
-      <Modal open={addModal} onClose={() => setAddModal(false)} title="Mitarbeiter hinzufügen">
+      <Modal open={addModal} onClose={() => { setAddModal(false); setAddErrors([]) }} title="Mitarbeiter hinzufügen">
         <div className="space-y-4">
+          {addErrors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <ul className="text-xs text-red-700 list-disc list-inside space-y-0.5">
+                {addErrors.map(err => <li key={err}>{err}</li>)}
+              </ul>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-semibold text-navy mb-1.5">Name</label>
             <input
@@ -225,8 +325,8 @@ export default function AdminEmployees() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setAddModal(false)}>Abbrechen</Button>
-            <Button className="flex-1" onClick={() => { alert('Mitarbeiter gespeichert!'); setAddModal(false) }}>Speichern</Button>
+            <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setAddModal(false); setAddErrors([]) }}>Abbrechen</Button>
+            <Button className="flex-1" onClick={handleAddEmployee}>Speichern</Button>
           </div>
         </div>
       </Modal>

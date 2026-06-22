@@ -6,9 +6,9 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
-import { TIME_LOGS } from '@/lib/mock-data'
+import { TIME_LOGS, SCHEDULE_ENTRIES } from '@/lib/mock-data'
 import { PlayCircle, StopCircle, Clock, Timer, TrendingUp, Calendar } from 'lucide-react'
-import { formatDate, formatTime } from '@/lib/utils'
+import { formatDate, formatTime, getWeekDays, toDateString } from '@/lib/utils'
 
 export default function TimeTracking() {
   const { user } = useAuth()
@@ -33,16 +33,15 @@ export default function TimeTracking() {
     .filter(t => t.date === new Date().toISOString().split('T')[0])
     .reduce((s, t) => s + (t.totalMinutes || 0), 0)
 
+  const weekDays = getWeekDays(new Date())
+  const weekStart = toDateString(weekDays[0])
+  const weekEnd = toDateString(weekDays[6])
   const weekMinutes = myLogs
-    .filter(t => {
-      const d = new Date(t.date + 'T00:00:00')
-      const now = new Date()
-      const monday = new Date(now)
-      monday.setDate(now.getDate() - now.getDay() + 1)
-      monday.setHours(0, 0, 0, 0)
-      return d >= monday
-    })
+    .filter(t => t.date >= weekStart && t.date <= weekEnd)
     .reduce((s, t) => s + (t.totalMinutes || 0), 0)
+
+  const todayStr = toDateString(new Date())
+  const hasShiftToday = SCHEDULE_ENTRIES.some(e => e.employeeId === user?.id && e.date === todayStr)
 
   const monthMinutes = myLogs
     .filter(t => {
@@ -100,11 +99,13 @@ export default function TimeTracking() {
               </div>
             )}
 
+            <div className="flex flex-col items-center gap-2">
             <div className="flex justify-center">
               {!clockedIn ? (
                 <button
                   onClick={handleClockIn}
-                  className="w-24 h-24 rounded-full bg-brand hover:bg-brand-dark transition-all shadow-xl hover:shadow-2xl active:scale-95 flex flex-col items-center justify-center gap-1 group"
+                  disabled={!hasShiftToday}
+                  className="w-24 h-24 rounded-full bg-brand hover:bg-brand-dark transition-all shadow-xl hover:shadow-2xl active:scale-95 flex flex-col items-center justify-center gap-1 group disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-xl disabled:active:scale-100"
                 >
                   <PlayCircle size={36} className="text-navy group-hover:scale-110 transition-transform" />
                   <span className="text-navy text-xs font-bold">Starten</span>
@@ -118,6 +119,10 @@ export default function TimeTracking() {
                   <span className="text-white text-xs font-bold">Stoppen</span>
                 </button>
               )}
+            </div>
+            {!clockedIn && !hasShiftToday && (
+              <p className="text-navy-100 text-xs">Kein Dienst heute geplant – Einstempeln nicht möglich</p>
+            )}
             </div>
           </div>
         </Card>

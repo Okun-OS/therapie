@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth-context'
 import {
   EMPLOYEES, LOCATIONS, VACATION_PREFERENCES, SCHOOL_HOLIDAYS_2026,
 } from '@/lib/mock-data'
-import { formatDate } from '@/lib/utils'
+import { formatDate, sanitizeAiText } from '@/lib/utils'
 import type { VacationPlanEntry } from '@/lib/types'
 import {
   Sparkles, Loader, CheckCircle, AlertTriangle, Baby, Palmtree,
@@ -147,8 +147,8 @@ export default function VacationPlanPage() {
 
       const data = await res.json()
       setGeneratedPlan(data.plan ?? [])
-      setReasoning(data.reasoning ?? null)
-      setWarnings(data.warnings ?? [])
+      setReasoning(data.reasoning ? sanitizeAiText(data.reasoning) : null)
+      setWarnings((data.warnings ?? []).map((w: string) => sanitizeAiText(w)))
     } catch (err: unknown) {
       clearInterval(interval)
       setAiError(err instanceof Error ? err.message : 'Unbekannter Fehler')

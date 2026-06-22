@@ -1,12 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList,
-  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles
+  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare
 } from 'lucide-react'
 
 interface NavItem {
@@ -19,6 +19,7 @@ interface NavItem {
 const employeeNav: NavItem[] = [
   { href: '/employee', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/employee/schedule', label: 'Dienstplan', icon: Calendar },
+  { href: '/employee/schedule?tab=wishes', label: 'Wunschdienste', icon: MessageSquare },
   { href: '/employee/time-tracking', label: 'Zeiterfassung', icon: Clock },
   { href: '/employee/vacation', label: 'Urlaub', icon: Palmtree },
   { href: '/employee/profile', label: 'Profil', icon: User },
@@ -42,7 +43,9 @@ const companyNav: NavItem[] = [
 export function Sidebar() {
   const { user, logout } = useAuth()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
+  const currentUrl = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname
 
   const nav = user?.role === 'employee' ? employeeNav : user?.role === 'admin' ? adminNav : companyNav
 
@@ -79,7 +82,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-4 pt-3 pb-4 space-y-1">
         {nav.map(({ href, label, icon: Icon, badge }) => {
-          const active = pathname === href
+          const active = href.includes('?') ? currentUrl === href : pathname === href && !searchParams.get('tab')
           return (
             <Link
               key={href}

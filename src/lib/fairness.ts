@@ -2,10 +2,16 @@ import type { Employee, ScheduleEntry, Shift, ShiftFairnessData, WishSubmission 
 
 // ─── Core Fairness Calculation ───────────────────────────────────────────────
 
+export interface PlanningRuleLimits {
+  fridayLateMax?: number
+  mondayEarlyMax?: number
+}
+
 export function calculateFairnessData(
   employees: Employee[],
   entries: ScheduleEntry[],
   shifts: Shift[],
+  ruleLimits?: PlanningRuleLimits,
 ): ShiftFairnessData[] {
   return employees.map(emp => {
     const empEntries = entries.filter(e => e.employeeId === emp.id)
@@ -49,8 +55,8 @@ export function calculateFairnessData(
     const midDebt = midTarget - midCnt
 
     // Friday/Monday special days: fair share = 1 per 4 weeks per type
-    const fridayLateMax = 2
-    const mondayEarlyMax = 2
+    const fridayLateMax = ruleLimits?.fridayLateMax ?? 2
+    const mondayEarlyMax = ruleLimits?.mondayEarlyMax ?? 2
 
     const issues: string[] = []
 
@@ -189,7 +195,10 @@ export function generateFairSchedule(
   shifts: Shift[],
   weekDays: Date[],
   fairnessData: ShiftFairnessData[],
+  ruleLimits?: PlanningRuleLimits,
 ): Record<string, Record<string, string>> {
+  const fridayLateMax = ruleLimits?.fridayLateMax ?? 2
+  const mondayEarlyMax = ruleLimits?.mondayEarlyMax ?? 3
   const result: Record<string, Record<string, string>> = {}
   const sessionCounts: Record<string, Record<string, number>> = {}
 
@@ -215,9 +224,9 @@ export function generateFairSchedule(
           // Skip unavailable days
           if (emp.preferences?.unavailableDays?.includes(dow)) return false
           // Skip Friday-late cap
-          if (isFriday && shift.type === 'late' && fd && fd.fridayLateCnt >= 2) return false
+          if (isFriday && shift.type === 'late' && fd && fd.fridayLateCnt >= fridayLateMax) return false
           // Skip Monday-early cap
-          if (isMonday && shift.type === 'early' && fd && fd.mondayEarlyCnt >= 3) return false
+          if (isMonday && shift.type === 'early' && fd && fd.mondayEarlyCnt >= mondayEarlyMax) return false
           return true
         })
         .sort((a, b) => {

@@ -7,15 +7,18 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
-import { EMPLOYEES, VACATION_REQUESTS } from '@/lib/mock-data'
+import { useToast } from '@/lib/toast-context'
+import { EMPLOYEES, VACATION_REQUESTS, addVacationRequest, getLocationById } from '@/lib/mock-data'
 import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { formatDate, diffDays } from '@/lib/utils'
 
 export default function EmployeeVacation() {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ startDate: '', endDate: '', reason: '' })
   const [submitted, setSubmitted] = useState(false)
+  const [, forceRefresh] = useState(0)
 
   const employee = EMPLOYEES.find(e => e.id === user?.id)
   const myRequests = VACATION_REQUESTS.filter(v => v.employeeId === user?.id)
@@ -23,13 +26,14 @@ export default function EmployeeVacation() {
 
   const vacationTotal = employee?.vacationDaysTotal || 30
   const vacationUsed = employee?.vacationDaysUsed || 0
-  const vacationRemaining = vacationTotal - vacationUsed
   const pendingDays = myRequests
     .filter(r => r.status === 'pending')
     .reduce((s, r) => s + r.days, 0)
   const approvedDays = myRequests
     .filter(r => r.status === 'approved')
     .reduce((s, r) => s + r.days, 0)
+  // Tage, die noch frei beantragt werden koennen: Gesamt minus bereits genutzt minus offene Antraege
+  const vacationRemaining = vacationTotal - vacationUsed - pendingDays
 
   const requestDays = form.startDate && form.endDate
     ? diffDays(form.startDate, form.endDate)
@@ -37,9 +41,36 @@ export default function EmployeeVacation() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!form.startDate || !form.endDate) {
+      showToast('Bitte Von- und Bis-Datum auswählen', 'error')
+      return
+    }
+    if (form.endDate < form.startDate) {
+      showToast('Das Bis-Datum darf nicht vor dem Von-Datum liegen', 'error')
+      return
+    }
+    if (requestDays <= 0 || requestDays > vacationRemaining) {
+      showToast('Ungültiger Zeitraum oder nicht genug Resturlaub', 'error')
+      return
+    }
+    if (!employee) return
+
+    addVacationRequest({
+      employeeId: employee.id,
+      employeeName: employee.name,
+      locationId: employee.locationId || 'loc1',
+      locationName: getLocationById(employee.locationId || 'loc1')?.name || '',
+      startDate: form.startDate,
+      endDate: form.endDate,
+      days: requestDays,
+      reason: form.reason || undefined,
+    })
+
     setSubmitted(true)
     setModal(false)
     setForm({ startDate: '', endDate: '', reason: '' })
+    forceRefresh(n => n + 1)
     setTimeout(() => setSubmitted(false), 3000)
   }
 

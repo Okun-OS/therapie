@@ -26,6 +26,11 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 10. Bei Konflikt (gleicher Tag, gleiche Schicht, mehrere Wünsche): Wichtigkeit > historische Fairness > Einreichzeitpunkt (früher = besser).
 11. Begründe bei Konflikten, wer den Vorzug erhält und warum.
 
+## Sprache & Ton der Texte (reasoning, decisions[].message, warnings)
+12. Diese Texte werden der EINRICHTUNGSLEITUNG (Admin) angezeigt, NICHT den Mitarbeitern. Schreibe daher konsequent in der dritten Person über Mitarbeiter (z.B. "Maria Schmidt bekommt den Frühdienst, da..."), niemals in der zweiten Person ("du", "dein", "dich").
+13. Verwende AUSSCHLIESSLICH natürliches, allgemeinverständliches Deutsch. Interne Feldnamen/Variablen wie "earlyDebt", "lateDebt", "midDebt", "fridayLateCnt", "mondayEarlyCnt", "fairnessScore", "debt" oder Mitarbeiter-IDs wie "emp1"/"emp2" dürfen NIEMALS im Text vorkommen – verwende stattdessen den echten Namen des Mitarbeiters und beschreibe den Sachverhalt in Worten (z.B. statt "earlyDebt: 2.5" schreibe "hatte zuletzt unterdurchschnittlich viele Frühdienste").
+14. Mische niemals Deutsch und Englisch in einem Satz.
+
 ## Output-Format (JSON, kein Markdown drumherum)
 Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
 {
@@ -72,13 +77,13 @@ export async function POST(req: NextRequest) {
     return {
       id: emp.id,
       name: emp.name,
-      weeklyHours: emp.weeklyHours,
-      earlyDebt: fd ? Math.round(fd.earlyDebt * 10) / 10 : 0,
-      lateDebt: fd ? Math.round(fd.lateDebt * 10) / 10 : 0,
-      midDebt: fd ? Math.round(fd.midDebt * 10) / 10 : 0,
-      fridayLateCnt: fd?.fridayLateCnt ?? 0,
-      mondayEarlyCnt: fd?.mondayEarlyCnt ?? 0,
-      fairnessScore: fd?.fairnessScore ?? 100,
+      wochenstunden: emp.weeklyHours,
+      frueh_unterversorgung: fd ? Math.round(fd.earlyDebt * 10) / 10 : 0,
+      spaet_unterversorgung: fd ? Math.round(fd.lateDebt * 10) / 10 : 0,
+      mittel_unterversorgung: fd ? Math.round(fd.midDebt * 10) / 10 : 0,
+      freitag_spaetdienste_letzte_4_wochen: fd?.fridayLateCnt ?? 0,
+      montag_fruehdienste_letzte_4_wochen: fd?.mondayEarlyCnt ?? 0,
+      fairness_punktzahl: fd?.fairnessScore ?? 100,
     }
   })
 
@@ -105,7 +110,7 @@ export async function POST(req: NextRequest) {
 ## Mitarbeiter (mit Fairness-Daten aus den letzten 4 Wochen)
 ${JSON.stringify(employeeSummary, null, 2)}
 
-Hinweis zu "debt": positiver Wert = Mitarbeiter sollte diese Schicht öfter bekommen, negativer Wert = hat diese Schicht schon überdurchschnittlich oft gehabt.
+Hinweis: "id" wird NUR als Schlüssel im "schedule"-Objekt der Antwort verwendet, niemals in reasoning/decisions/warnings. Höherer "_unterversorgung"-Wert = Mitarbeiter sollte diese Schicht öfter bekommen, negativer Wert = hat diese Schicht schon überdurchschnittlich oft gehabt – beschreibe das in reasoning/decisions/warnings immer in eigenen Worten, nie mit dem Feldnamen.
 
 ## Verfügbare Schichten
 ${JSON.stringify(shiftSummary, null, 2)}

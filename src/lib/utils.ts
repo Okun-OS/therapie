@@ -81,3 +81,22 @@ export function getStatusLabel(status: string): string {
     default: return status
   }
 }
+
+// Defensive net in case AI output still slips raw developer tokens into
+// admin-facing text despite the prompt instructions forbidding it.
+const AI_TEXT_REPLACEMENTS: [RegExp, string][] = [
+  [/\bearlyDebt\b/gi, 'Frühdienst-Verteilung'],
+  [/\blateDebt\b/gi, 'Spätdienst-Verteilung'],
+  [/\bmidDebt\b/gi, 'Mitteldienst-Verteilung'],
+  [/\bfridayLateCnt\b/gi, 'Anzahl Freitag-Spätdienste'],
+  [/\bmondayEarlyCnt\b/gi, 'Anzahl Montag-Frühdienste'],
+  [/\bfairnessScore\b/gi, 'Fairness-Punktzahl'],
+  [/\bhasChildren\s*[=:]?\s*(true|false)?\b/gi, 'hat schulpflichtige Kinder'],
+  [/\bpriority[\s-=:]*(high|medium|low)?\b/gi, 'Priorität'],
+  [/\bremainingDays\b/gi, 'Resturlaub'],
+  [/\bemp\d+\b/gi, 'der Mitarbeiter'],
+]
+
+export function sanitizeAiText(text: string): string {
+  return AI_TEXT_REPLACEMENTS.reduce((acc, [pattern, replacement]) => acc.replace(pattern, replacement), text)
+}

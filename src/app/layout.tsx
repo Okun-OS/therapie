@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
+import { ToastProvider } from '@/lib/toast-context'
 
 export const metadata: Metadata = {
   title: 'PlanMate – Dienstplan Pro',
@@ -25,7 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de">
       <body>
         <AuthProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

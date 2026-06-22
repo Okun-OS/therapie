@@ -6,8 +6,8 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
-import { EMPLOYEES, LOCATIONS } from '@/lib/mock-data'
-import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield } from 'lucide-react'
+import { EMPLOYEES, LOCATIONS, updateEmployee } from '@/lib/mock-data'
+import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle } from 'lucide-react'
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 
@@ -16,7 +16,7 @@ export default function EmployeeProfile() {
   const employee = EMPLOYEES.find(e => e.id === user?.id)
   const location = LOCATIONS.find(l => l.id === employee?.locationId)
 
-  const [prefs, setPrefs] = useState({
+  const initialPrefs = {
     preferEarly: employee?.preferences?.preferredShifts?.includes('early') ?? true,
     preferLate: employee?.preferences?.preferredShifts?.includes('late') ?? false,
     preferMid: employee?.preferences?.preferredShifts?.includes('mid') ?? true,
@@ -24,9 +24,13 @@ export default function EmployeeProfile() {
     unavailableDays: employee?.preferences?.unavailableDays ?? [0, 6],
     maxConsecutive: employee?.preferences?.maxConsecutiveDays ?? 5,
     notes: employee?.preferences?.notes ?? '',
-  })
+  }
 
+  const [prefs, setPrefs] = useState(initialPrefs)
+  const [savedPrefs, setSavedPrefs] = useState(initialPrefs)
   const [saved, setSaved] = useState(false)
+
+  const isDirty = JSON.stringify(prefs) !== JSON.stringify(savedPrefs)
 
   const toggleDay = (day: number) => {
     setPrefs(p => ({
@@ -38,6 +42,22 @@ export default function EmployeeProfile() {
   }
 
   const handleSave = () => {
+    if (employee) {
+      updateEmployee(employee.id, {
+        preferences: {
+          preferredShifts: [
+            ...(prefs.preferEarly ? ['early' as const] : []),
+            ...(prefs.preferLate ? ['late' as const] : []),
+            ...(prefs.preferMid ? ['mid' as const] : []),
+          ],
+          unavailableDays: prefs.unavailableDays,
+          maxConsecutiveDays: prefs.maxConsecutive,
+          noEarlyAfterLate: prefs.noEarlyAfterLate,
+          notes: prefs.notes,
+        },
+      })
+    }
+    setSavedPrefs(prefs)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -176,6 +196,13 @@ export default function EmployeeProfile() {
                 className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
               />
             </div>
+
+            {isDirty && !saved && (
+              <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                <AlertCircle size={14} />
+                Ungespeicherte Änderungen
+              </div>
+            )}
 
             <Button onClick={handleSave} size="lg" className={`w-full gap-2 transition-all ${saved ? 'bg-green-500 hover:bg-green-600' : ''}`}>
               <Save size={18} />

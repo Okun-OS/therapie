@@ -11,7 +11,7 @@ import {
   EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS, VACATION_REQUESTS
 } from '@/lib/mock-data'
 import { Clock, Palmtree, Calendar, TrendingUp, PlayCircle, StopCircle, Sun, Moon, Briefcase, ChevronRight, AlertCircle } from 'lucide-react'
-import { formatDate, formatTime, toDateString, getDayName } from '@/lib/utils'
+import { formatDate, formatTime, toDateString, getDayName, getWeekDays } from '@/lib/utils'
 import Link from 'next/link'
 
 export default function EmployeeDashboard() {
@@ -30,7 +30,10 @@ export default function EmployeeDashboard() {
     .filter(s => s.employeeId === user?.id && s.date >= today)
     .slice(0, 5)
 
-  const thisWeekLogs = TIME_LOGS.filter(t => t.employeeId === user?.id)
+  const weekDays = getWeekDays(now)
+  const weekStart = toDateString(weekDays[0])
+  const weekEnd = toDateString(weekDays[6])
+  const thisWeekLogs = TIME_LOGS.filter(t => t.employeeId === user?.id && t.date >= weekStart && t.date <= weekEnd)
   const weekMinutes = thisWeekLogs.reduce((sum, l) => sum + (l.totalMinutes || 0), 0)
 
   const myVacations = VACATION_REQUESTS.filter(v => v.employeeId === user?.id)
@@ -82,10 +85,19 @@ export default function EmployeeDashboard() {
             </div>
             <div className="flex gap-3">
               {!clockedIn ? (
-                <Button onClick={handleClockIn} size="lg" className="gap-2 whitespace-nowrap">
-                  <PlayCircle size={20} />
-                  Einstempeln
-                </Button>
+                todayShift ? (
+                  <Button onClick={handleClockIn} size="lg" className="gap-2 whitespace-nowrap">
+                    <PlayCircle size={20} />
+                    Einstempeln
+                  </Button>
+                ) : (
+                  <span title="Kein Dienst heute geplant – Einstempeln nicht möglich">
+                    <Button disabled size="lg" className="gap-2 whitespace-nowrap">
+                      <PlayCircle size={20} />
+                      Einstempeln
+                    </Button>
+                  </span>
+                )
               ) : (
                 <Button onClick={handleClockOut} variant="danger" size="lg" className="gap-2 whitespace-nowrap">
                   <StopCircle size={20} />

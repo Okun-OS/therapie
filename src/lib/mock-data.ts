@@ -1,4 +1,4 @@
-import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday } from './types'
+import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday, ShiftType, WishImportance } from './types'
 
 export const LOCATIONS: Location[] = [
   { id: 'loc1', name: 'Kita Sonnenschein', address: 'Berliner Str. 12', city: 'Berlin', employeeCount: 8, adminId: 'adm1', active: true },
@@ -188,6 +188,157 @@ export const VACATION_REQUESTS: VacationRequest[] = [
   { id: 'vr6', employeeId: 'emp6', employeeName: 'Peter Wagner', locationId: 'loc2', locationName: 'Kita Regenbogen', startDate: '2026-06-15', endDate: '2026-06-26', days: 12, reason: 'Urlaub', status: 'pending', submittedAt: '2026-04-24' },
   { id: 'vr7', employeeId: 'emp8', employeeName: 'Michael Bauer', locationId: 'loc3', locationName: 'Kita Sternchen', startDate: '2026-05-18', endDate: '2026-05-22', days: 5, reason: 'Umzug', status: 'pending', submittedAt: '2026-04-26' },
 ]
+
+// Automatically close out pending requests whose period has already ended without
+// an admin response, so they don't sit as "Ausstehend" forever.
+function autoProcessPastDueVacationRequests() {
+  const today = new Date().toISOString().split('T')[0]
+  for (const v of VACATION_REQUESTS) {
+    if (v.status === 'pending' && v.endDate < today) {
+      v.status = 'approved'
+      v.respondedAt = today
+      v.respondedBy = 'System (automatisch)'
+    }
+  }
+}
+autoProcessPastDueVacationRequests()
+
+export function setVacationRequestStatus(id: string, status: 'approved' | 'denied', respondedBy: string) {
+  const idx = VACATION_REQUESTS.findIndex(v => v.id === id)
+  if (idx === -1) return
+  VACATION_REQUESTS[idx] = {
+    ...VACATION_REQUESTS[idx],
+    status,
+    respondedAt: new Date().toISOString().split('T')[0],
+    respondedBy,
+  }
+}
+
+let vacationRequestSeq = 1000
+
+export function addVacationRequest(input: {
+  employeeId: string
+  employeeName: string
+  locationId: string
+  locationName: string
+  startDate: string
+  endDate: string
+  days: number
+  reason?: string
+}): VacationRequest {
+  const request: VacationRequest = {
+    id: `vr-new-${vacationRequestSeq++}`,
+    ...input,
+    status: 'pending',
+    submittedAt: new Date().toISOString().split('T')[0],
+  }
+  VACATION_REQUESTS.push(request)
+  return request
+}
+
+let wishSubmissionSeq = 1000
+
+export function addWishSubmission(input: {
+  employeeId: string
+  employeeName: string
+  locationId: string
+  date: string
+  preferredShiftType: ShiftType
+  reason?: string
+  importance: WishImportance
+}): WishSubmission {
+  const wish: WishSubmission = {
+    id: `wish-new-${wishSubmissionSeq++}`,
+    ...input,
+    submittedAt: new Date().toISOString(),
+    status: 'pending',
+  }
+  WISH_SUBMISSIONS.push(wish)
+  return wish
+}
+
+export function setShiftMinStaff(shiftId: string, minStaff: number) {
+  const shift = SHIFTS.find(s => s.id === shiftId)
+  if (shift) shift.minStaff = minStaff
+}
+
+export function updateLocation(id: string, updates: Partial<Location>) {
+  const idx = LOCATIONS.findIndex(l => l.id === id)
+  if (idx === -1) return
+  LOCATIONS[idx] = { ...LOCATIONS[idx], ...updates }
+}
+
+let locationSeq = 1000
+
+export function addLocation(input: { name: string; address: string; city: string }): Location {
+  const location: Location = {
+    id: `loc-new-${locationSeq++}`,
+    name: input.name,
+    address: input.address,
+    city: input.city,
+    employeeCount: 0,
+    adminId: '',
+    active: true,
+  }
+  LOCATIONS.push(location)
+  return location
+}
+
+export function updateEmployee(id: string, updates: Partial<Employee>) {
+  const idx = EMPLOYEES.findIndex(e => e.id === id)
+  if (idx === -1) return
+  EMPLOYEES[idx] = { ...EMPLOYEES[idx], ...updates }
+}
+
+let employeeSeq = 1000
+
+export function addEmployee(input: { name: string; email: string; position: string; weeklyHours: number; locationId: string }): Employee {
+  const employee: Employee = {
+    id: `emp-new-${employeeSeq++}`,
+    name: input.name,
+    email: input.email,
+    role: 'employee',
+    locationId: input.locationId,
+    weeklyHours: input.weeklyHours,
+    position: input.position,
+    hoursBalance: 0,
+    vacationDaysTotal: 30,
+    vacationDaysUsed: 0,
+    active: true,
+    joinedAt: new Date().toISOString().split('T')[0],
+  }
+  EMPLOYEES.push(employee)
+  return employee
+}
+
+let scheduleEntrySeq = 1000
+
+/** Persists an AI-generated schedule ({ employeeId: { date: shiftId } }) into the
+ *  shared SCHEDULE_ENTRIES array so all roles (employee, admin, company) see it. */
+export function saveScheduleForWeek(
+  locationId: string,
+  weekDates: string[],
+  assignments: Record<string, Record<string, string>>,
+) {
+  for (let i = SCHEDULE_ENTRIES.length - 1; i >= 0; i--) {
+    const e = SCHEDULE_ENTRIES[i]
+    if (e.locationId === locationId && weekDates.includes(e.date)) {
+      SCHEDULE_ENTRIES.splice(i, 1)
+    }
+  }
+  for (const [employeeId, byDate] of Object.entries(assignments)) {
+    for (const [date, shiftId] of Object.entries(byDate)) {
+      SCHEDULE_ENTRIES.push({
+        id: `se-gen-${scheduleEntrySeq++}`,
+        employeeId,
+        shiftId,
+        date,
+        locationId,
+        status: 'confirmed',
+      })
+    }
+  }
+}
 
 export function getEmployeeById(id: string): Employee | undefined {
   return EMPLOYEES.find(e => e.id === id)

@@ -6,14 +6,54 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { LOCATIONS, EMPLOYEES, VACATION_REQUESTS } from '@/lib/mock-data'
+import { LOCATIONS, EMPLOYEES, VACATION_REQUESTS, updateLocation, addLocation } from '@/lib/mock-data'
+import { useToast } from '@/lib/toast-context'
 import { Building2, Plus, MapPin, Users, Palmtree, Phone, Edit, MoreVertical, ChevronRight } from 'lucide-react'
 import type { Location } from '@/lib/types'
 
 export default function CompanyLocations() {
+  const { showToast } = useToast()
   const [selected, setSelected] = useState<Location | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({ name: '', address: '', city: '' })
   const [addModal, setAddModal] = useState(false)
   const [newLoc, setNewLoc] = useState({ name: '', address: '', city: '' })
+  const [addErrors, setAddErrors] = useState<string[]>([])
+
+  const startEditing = (loc: Location) => {
+    setEditForm({ name: loc.name, address: loc.address, city: loc.city })
+    setIsEditing(true)
+  }
+
+  const saveEdit = () => {
+    if (!selected) return
+    if (!editForm.name.trim() || !editForm.address.trim() || !editForm.city.trim()) {
+      showToast('Bitte alle Pflichtfelder ausfüllen', 'error')
+      return
+    }
+    updateLocation(selected.id, editForm)
+    showToast('Standort aktualisiert', 'success')
+    setIsEditing(false)
+    setSelected(null)
+  }
+
+  const handleAddLocation = () => {
+    const errors: string[] = []
+    if (!newLoc.name.trim()) errors.push('Name ist erforderlich')
+    if (!newLoc.address.trim()) errors.push('Adresse ist erforderlich')
+    if (!newLoc.city.trim()) errors.push('Stadt ist erforderlich')
+
+    if (errors.length > 0) {
+      setAddErrors(errors)
+      return
+    }
+
+    addLocation(newLoc)
+    showToast('Standort gespeichert', 'success')
+    setAddModal(false)
+    setAddErrors([])
+    setNewLoc({ name: '', address: '', city: '' })
+  }
 
   const locationStats = LOCATIONS.map(loc => {
     const emps = EMPLOYEES.filter(e => e.locationId === loc.id && e.role === 'employee')
@@ -127,8 +167,46 @@ export default function CompanyLocations() {
       </div>
 
       {/* Location Detail Modal */}
-      <Modal open={!!selected} onClose={() => setSelected(null)} title="Standort-Details" size="lg">
-        {selectedStats && (
+      <Modal
+        open={!!selected}
+        onClose={() => { setSelected(null); setIsEditing(false) }}
+        title={isEditing ? 'Standort bearbeiten' : 'Standort-Details'}
+        size="lg"
+      >
+        {selectedStats && isEditing && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">Name</label>
+              <input
+                value={editForm.name}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">Adresse</label>
+              <input
+                value={editForm.address}
+                onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
+                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">Stadt</label>
+              <input
+                value={editForm.city}
+                onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setIsEditing(false)}>Abbrechen</Button>
+              <Button className="flex-1" onClick={saveEdit}>Speichern</Button>
+            </div>
+          </div>
+        )}
+
+        {selectedStats && !isEditing && (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-navy flex items-center justify-center">
@@ -185,7 +263,7 @@ export default function CompanyLocations() {
 
             <div className="flex gap-2">
               <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setSelected(null)}>Schließen</Button>
-              <Button className="flex-1 gap-2">
+              <Button className="flex-1 gap-2" onClick={() => startEditing(selectedStats)}>
                 <Edit size={16} />
                 Bearbeiten
               </Button>
@@ -195,8 +273,15 @@ export default function CompanyLocations() {
       </Modal>
 
       {/* Add Location Modal */}
-      <Modal open={addModal} onClose={() => setAddModal(false)} title="Standort hinzufügen">
+      <Modal open={addModal} onClose={() => { setAddModal(false); setAddErrors([]) }} title="Standort hinzufügen">
         <div className="space-y-4">
+          {addErrors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <ul className="text-xs text-red-700 list-disc list-inside space-y-0.5">
+                {addErrors.map(err => <li key={err}>{err}</li>)}
+              </ul>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-semibold text-navy mb-1.5">Name</label>
             <input
@@ -225,8 +310,8 @@ export default function CompanyLocations() {
             />
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setAddModal(false)}>Abbrechen</Button>
-            <Button className="flex-1" onClick={() => { alert('Standort gespeichert!'); setAddModal(false) }}>Speichern</Button>
+            <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setAddModal(false); setAddErrors([]) }}>Abbrechen</Button>
+            <Button className="flex-1" onClick={handleAddLocation}>Speichern</Button>
           </div>
         </div>
       </Modal>
