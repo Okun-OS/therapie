@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
-import { AlertTriangle, CheckCircle, TrendingUp, Sun, Moon, Briefcase } from 'lucide-react'
+import { AlertTriangle, CheckCircle, TrendingUp, Sun, Moon, Briefcase, CalendarDays } from 'lucide-react'
 import type { ShiftFairnessData } from '@/lib/types'
 import { fairnessLabel } from '@/lib/fairness'
 
@@ -42,7 +42,7 @@ export function FairnessReport({ data }: FairnessReportProps) {
       {/* Per-employee details */}
       <Card padding="none" className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
+          <table className="w-full min-w-[820px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3 w-36">Mitarbeiter</th>
@@ -57,6 +57,10 @@ export function FairnessReport({ data }: FairnessReportProps) {
                 </th>
                 <th className="text-center text-xs font-semibold text-gray-500 px-2 py-3">Fr-Spät</th>
                 <th className="text-center text-xs font-semibold text-gray-500 px-2 py-3">Mo-Früh</th>
+                <th className="text-center text-xs font-semibold text-gray-500 px-2 py-3">Fr-Früh</th>
+                <th className="text-center text-xs font-semibold text-gray-500 px-2 py-3">
+                  <div className="flex items-center justify-center gap-1"><CalendarDays size={11} /> WE</div>
+                </th>
                 <th className="text-center text-xs font-semibold text-gray-500 px-3 py-3">Score</th>
               </tr>
             </thead>
@@ -65,6 +69,8 @@ export function FairnessReport({ data }: FairnessReportProps) {
                 const { label, color } = fairnessLabel(emp.fairnessScore)
                 const fridayLateWarning = emp.fridayLateCnt >= 2
                 const mondayEarlyWarning = emp.mondayEarlyCnt >= 3
+                const fridayEarlyWarning = emp.fridayEarlyCnt >= 3
+                const weekendWarning = emp.weekendCnt > 2
                 const hasIssues = emp.issues.length > 0
 
                 return (
@@ -116,6 +122,18 @@ export function FairnessReport({ data }: FairnessReportProps) {
                         {emp.mondayEarlyCnt}×
                       </span>
                       {mondayEarlyWarning && <AlertTriangle size={10} className="inline ml-1 text-red-400" />}
+                    </td>
+                    <td className="px-2 py-3 text-center">
+                      <span className={`text-sm font-bold ${fridayEarlyWarning ? 'text-red-600' : 'text-navy'}`}>
+                        {emp.fridayEarlyCnt}×
+                      </span>
+                      {fridayEarlyWarning && <AlertTriangle size={10} className="inline ml-1 text-red-400" />}
+                    </td>
+                    <td className="px-2 py-3 text-center">
+                      <span className={`text-sm font-bold ${weekendWarning ? 'text-red-600' : 'text-navy'}`}>
+                        {emp.weekendCnt}×
+                      </span>
+                      {weekendWarning && <AlertTriangle size={10} className="inline ml-1 text-red-400" />}
                     </td>
                     <td className="px-3 py-3 text-center">
                       <span className={`text-xs font-bold px-2 py-1 rounded-full ${color}`}>

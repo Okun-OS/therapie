@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList,
-  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart
+  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart, Scale
 } from 'lucide-react'
 
 interface NavItem {
@@ -36,6 +36,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/substitutions', label: 'Vertretungen', icon: UserPlus, badge: 'KI' },
   { href: '/admin/workforce-score', label: 'Workforce Score', icon: Trophy, badge: 'KI' },
   { href: '/admin/workforce-insights', label: 'Workforce Insights', icon: LineChart, badge: 'KI' },
+  { href: '/admin/fairness-engine', label: 'Fairness Engine', icon: Scale, badge: 'KI' },
   { href: '/admin/reports', label: 'Berichte', icon: BarChart3 },
 ]
 
@@ -44,6 +45,7 @@ const companyNav: NavItem[] = [
   { href: '/company/locations', label: 'Standorte', icon: MapPin },
   { href: '/company/workforce-score', label: 'Workforce Score', icon: Trophy, badge: 'KI' },
   { href: '/company/workforce-insights', label: 'Workforce Insights', icon: LineChart, badge: 'KI' },
+  { href: '/company/fairness-engine', label: 'Fairness Engine', icon: Scale, badge: 'KI' },
   { href: '/company/reports', label: 'Berichte', icon: BarChart3 },
 ]
 

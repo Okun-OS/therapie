@@ -20,6 +20,8 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 6. Freitag-Spätdienst max. 2× pro Monat pro Mitarbeiter.
 7. Montag-Frühdienst max. 3× pro Monat pro Mitarbeiter.
 8. Mitarbeiter mit hohem "debt" (negative earlyDebt/lateDebt) bekommen Vorrang bei dieser Schichtart.
+8a. Freitag-Frühdienst max. 3× pro Monat pro Mitarbeiter – wer das Limit in den letzten 4 Wochen schon erreicht oder überschritten hat, bekommt an diesem Freitag bevorzugt eine andere Schicht.
+8b. Berücksichtige bei der Verteilung auch die Wochenenddienste der letzten 4 Wochen (Hinweis: der aktuelle Plan selbst umfasst nur Montag bis Freitag). Mitarbeiter, die in den letzten 4 Wochen bereits überdurchschnittlich viele Wochenenddienste hatten, sollen das in der Begründung berücksichtigt finden, sofern dies für die Verteilung der aktuellen Woche relevant ist.
 
 ## Wünsche (WishSubmissions)
 9. Wünsche mit Importance "urgent" haben höchste Priorität, dann "important", dann "normal".
@@ -83,6 +85,8 @@ export async function POST(req: NextRequest) {
       mittel_unterversorgung: fd ? Math.round(fd.midDebt * 10) / 10 : 0,
       freitag_spaetdienste_letzte_4_wochen: fd?.fridayLateCnt ?? 0,
       montag_fruehdienste_letzte_4_wochen: fd?.mondayEarlyCnt ?? 0,
+      freitag_fruehdienste_letzte_4_wochen: fd?.fridayEarlyCnt ?? 0,
+      wochenenddienste_letzte_4_wochen: fd?.weekendCnt ?? 0,
       fairness_punktzahl: fd?.fairnessScore ?? 100,
     }
   })

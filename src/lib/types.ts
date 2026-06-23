@@ -144,6 +144,7 @@ export interface ShiftFairnessData {
   fridayLateCnt: number
   mondayEarlyCnt: number
   mondayLateCnt: number
+  weekendCnt: number
   totalShiftsCnt: number
   // Derived: debt per type (negative = owed more of this type)
   earlyDebt: number

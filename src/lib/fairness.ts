@@ -1,10 +1,13 @@
 import type { Employee, ScheduleEntry, Shift, ShiftFairnessData, WishSubmission } from './types'
+import { EMPLOYEES, SHIFTS, LOCATIONS, getAllEntriesForFairness } from './mock-data'
 
 // ─── Core Fairness Calculation ───────────────────────────────────────────────
 
 export interface PlanningRuleLimits {
   fridayLateMax?: number
   mondayEarlyMax?: number
+  fridayEarlyMax?: number
+  weekendMax?: number
 }
 
 export function calculateFairnessData(
@@ -19,6 +22,7 @@ export function calculateFairnessData(
     let earlyCnt = 0, lateCnt = 0, midCnt = 0
     let fridayEarlyCnt = 0, fridayLateCnt = 0
     let mondayEarlyCnt = 0, mondayLateCnt = 0
+    let weekendCnt = 0
     const dayOfWeekCounts = [0, 0, 0, 0, 0, 0, 0]
 
     for (const entry of empEntries) {
@@ -26,6 +30,7 @@ export function calculateFairnessData(
       if (!shift) continue
       const dow = new Date(entry.date + 'T00:00:00').getDay() // 0=Sun, 5=Fri, 1=Mon
       dayOfWeekCounts[dow]++
+      if (dow === 0 || dow === 6) weekendCnt++
 
       if (shift.type === 'early') {
         earlyCnt++
@@ -57,6 +62,8 @@ export function calculateFairnessData(
     // Friday/Monday special days: fair share = 1 per 4 weeks per type
     const fridayLateMax = ruleLimits?.fridayLateMax ?? 2
     const mondayEarlyMax = ruleLimits?.mondayEarlyMax ?? 2
+    const fridayEarlyMax = ruleLimits?.fridayEarlyMax ?? 3
+    const weekendMax = ruleLimits?.weekendMax ?? 2
 
     const issues: string[] = []
 
@@ -66,8 +73,11 @@ export function calculateFairnessData(
     if (mondayEarlyCnt >= mondayEarlyMax) {
       issues.push(`${mondayEarlyCnt}× Montag-Frühdienst in 4 Wochen (Limit: ${mondayEarlyMax})`)
     }
-    if (fridayEarlyCnt >= 3) {
-      issues.push(`${fridayEarlyCnt}× Freitag-Frühdienst in 4 Wochen`)
+    if (fridayEarlyCnt >= fridayEarlyMax) {
+      issues.push(`${fridayEarlyCnt}× Freitag-Frühdienst in 4 Wochen (Limit: ${fridayEarlyMax})`)
+    }
+    if (weekendCnt > weekendMax) {
+      issues.push(`${weekendCnt}× Wochenenddienst in 4 Wochen (Limit: ${weekendMax})`)
     }
     if (Math.abs(earlyDebt) > 2) {
       issues.push(earlyDebt > 0 ? 'Zu wenige Frühschichten' : 'Zu viele Frühschichten')
@@ -81,7 +91,8 @@ export function calculateFairnessData(
     const specialDayPenalty =
       Math.max(0, fridayLateCnt - fridayLateMax) * 15 +
       Math.max(0, mondayEarlyCnt - mondayEarlyMax) * 15 +
-      Math.max(0, fridayEarlyCnt - 2) * 10
+      Math.max(0, fridayEarlyCnt - fridayEarlyMax) * 10 +
+      Math.max(0, weekendCnt - weekendMax) * 10
     const fairnessScore = Math.max(0, Math.min(100, 100 - deviationPenalty - specialDayPenalty))
 
     return {
@@ -96,6 +107,7 @@ export function calculateFairnessData(
       fridayLateCnt,
       mondayEarlyCnt,
       mondayLateCnt,
+      weekendCnt,
       totalShiftsCnt: total,
       earlyDebt,
       lateDebt,
@@ -104,6 +116,16 @@ export function calculateFairnessData(
       issues,
     }
   })
+}
+
+// ─── Scoped fairness lookup for the transparency dashboard ──────────────────
+
+export function getFairnessInsights(locationId?: string, ruleLimits?: PlanningRuleLimits): ShiftFairnessData[] {
+  const locationIds = locationId ? [locationId] : LOCATIONS.map(l => l.id)
+  const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
+  const shifts = SHIFTS.filter(s => locationIds.includes(s.locationId))
+  const entries = locationIds.flatMap(id => getAllEntriesForFairness(id))
+  return calculateFairnessData(employees, entries, shifts, ruleLimits)
 }
 
 // ─── Conflict Resolution ─────────────────────────────────────────────────────

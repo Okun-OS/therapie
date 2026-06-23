@@ -28,6 +28,8 @@ interface PlanningRules {
   maxConsecutiveDays: number
   fridayLateMax: number
   mondayEarlyMax: number
+  fridayEarlyMax: number
+  weekendMax: number
   considerWishes: boolean
   balanceHoursAccount: boolean
 }
@@ -38,6 +40,8 @@ const DEFAULT_RULES: PlanningRules = {
   maxConsecutiveDays: 5,
   fridayLateMax: 2,
   mondayEarlyMax: 3,
+  fridayEarlyMax: 3,
+  weekendMax: 2,
   considerWishes: true,
   balanceHoursAccount: true,
 }
@@ -105,8 +109,10 @@ export default function AdminSchedule() {
     () => calculateFairnessData(employees, allHistoricalEntries, locationShifts, {
       fridayLateMax: planningRules.fridayLateMax,
       mondayEarlyMax: planningRules.mondayEarlyMax,
+      fridayEarlyMax: planningRules.fridayEarlyMax,
+      weekendMax: planningRules.weekendMax,
     }),
-    [employees, allHistoricalEntries, locationShifts, planningRules.fridayLateMax, planningRules.mondayEarlyMax]
+    [employees, allHistoricalEntries, locationShifts, planningRules.fridayLateMax, planningRules.mondayEarlyMax, planningRules.fridayEarlyMax, planningRules.weekendMax]
   )
 
   // Resolve wish conflicts for display
@@ -161,7 +167,7 @@ export default function AdminSchedule() {
 
     try {
       const weekDates = weekDays.slice(0, 5).map(toDateString)
-      const ruleSummary = `Zusätzliche Planungsregeln des Admins: maximal ${planningRules.maxWeeklyHours}h Wochenarbeitszeit, mindestens ${planningRules.restHours}h Ruhezeit zwischen zwei Diensten, maximal ${planningRules.maxConsecutiveDays} aufeinanderfolgende Arbeitstage, Freitag-Spätdienst max. ${planningRules.fridayLateMax}×/Monat pro Mitarbeiter, Montag-Frühdienst max. ${planningRules.mondayEarlyMax}×/Monat pro Mitarbeiter. Mitarbeiterwünsche ${planningRules.considerWishes ? 'sollen aktiv berücksichtigt werden' : 'müssen dieses Mal NICHT berücksichtigt werden'}. Stundenkonten ${planningRules.balanceHoursAccount ? 'sollen ausgeglichen werden' : 'müssen dieses Mal nicht ausgeglichen werden'}.`
+      const ruleSummary = `Zusätzliche Planungsregeln des Admins: maximal ${planningRules.maxWeeklyHours}h Wochenarbeitszeit, mindestens ${planningRules.restHours}h Ruhezeit zwischen zwei Diensten, maximal ${planningRules.maxConsecutiveDays} aufeinanderfolgende Arbeitstage, Freitag-Spätdienst max. ${planningRules.fridayLateMax}×/Monat pro Mitarbeiter, Montag-Frühdienst max. ${planningRules.mondayEarlyMax}×/Monat pro Mitarbeiter, Freitag-Frühdienst max. ${planningRules.fridayEarlyMax}×/Monat pro Mitarbeiter. Mitarbeiterwünsche ${planningRules.considerWishes ? 'sollen aktiv berücksichtigt werden' : 'müssen dieses Mal NICHT berücksichtigt werden'}. Stundenkonten ${planningRules.balanceHoursAccount ? 'sollen ausgeglichen werden' : 'müssen dieses Mal nicht ausgeglichen werden'}.`
       const combinedDescription = [facilityDescription.trim(), ruleSummary].filter(Boolean).join('\n\n')
 
       const res = await fetch('/api/ai/schedule', {
@@ -724,6 +730,8 @@ export default function AdminSchedule() {
               {([
                 ['fridayLateMax', 'Freitag-Spätdienst je MA (×/Monat)'],
                 ['mondayEarlyMax', 'Montag-Frühdienst je MA (×/Monat)'],
+                ['fridayEarlyMax', 'Freitag-Frühdienst je MA (×/Monat)'],
+                ['weekendMax', 'Wochenenddienste je MA (×/Monat)'],
               ] as const).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between py-1.5">
                   <span className="text-sm text-gray-700">{label}</span>
