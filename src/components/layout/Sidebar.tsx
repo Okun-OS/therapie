@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList,
-  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare
+  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus
 } from 'lucide-react'
 
 interface NavItem {
@@ -22,6 +22,7 @@ const employeeNav: NavItem[] = [
   { href: '/employee/schedule?tab=wishes', label: 'Wunschdienste', icon: MessageSquare },
   { href: '/employee/time-tracking', label: 'Zeiterfassung', icon: Clock },
   { href: '/employee/vacation', label: 'Urlaub', icon: Palmtree },
+  { href: '/employee/substitutions', label: 'Vertretungen', icon: UserPlus },
   { href: '/employee/profile', label: 'Profil', icon: User },
 ]
 
@@ -31,6 +32,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/schedule', label: 'Dienstplan', icon: Calendar, badge: 'KI' },
   { href: '/admin/vacation-requests', label: 'Urlaubsanträge', icon: Palmtree },
   { href: '/admin/vacation-plan', label: 'Urlaubsplan', icon: ClipboardList, badge: 'KI' },
+  { href: '/admin/substitutions', label: 'Vertretungen', icon: UserPlus, badge: 'KI' },
   { href: '/admin/reports', label: 'Berichte', icon: BarChart3 },
 ]
 

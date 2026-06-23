@@ -1,0 +1,16 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(req: NextRequest) {
+  const employeeId = req.nextUrl.searchParams.get('employeeId')
+  if (!employeeId) return NextResponse.json({ error: 'employeeId ist erforderlich' }, { status: 400 })
+
+  const candidates = await prisma.substitutionCandidate.findMany({
+    where: { employeeId, responseStatus: 'pending' },
+    include: { request: true },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const incoming = candidates.filter(c => c.request.status === 'open')
+  return NextResponse.json({ incoming })
+}

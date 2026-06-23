@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList, BarChart3, MapPin } from 'lucide-react'
+import { LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList, BarChart3, MapPin, UserPlus } from 'lucide-react'
 
 const employeeNav = [
   { href: '/employee', label: 'Home', icon: LayoutDashboard },
   { href: '/employee/schedule', label: 'Plan', icon: Calendar },
   { href: '/employee/time-tracking', label: 'Zeit', icon: Clock },
   { href: '/employee/vacation', label: 'Urlaub', icon: Palmtree },
+  { href: '/employee/substitutions', label: 'Vertretung', icon: UserPlus },
   { href: '/employee/profile', label: 'Profil', icon: User },
 ]
 
@@ -19,6 +20,7 @@ const adminNav = [
   { href: '/admin/employees', label: 'Team', icon: Users },
   { href: '/admin/schedule', label: 'Plan', icon: Calendar },
   { href: '/admin/vacation-requests', label: 'Urlaub', icon: Palmtree },
+  { href: '/admin/substitutions', label: 'Vertretung', icon: UserPlus },
   { href: '/admin/reports', label: 'Berichte', icon: BarChart3 },
 ]
 

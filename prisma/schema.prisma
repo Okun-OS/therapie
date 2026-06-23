@@ -1,0 +1,108 @@
+// Prisma schema for the new Vertretungsmanagement (substitution management) module.
+// Existing app data stays in src/lib/mock-data.ts on purpose – this schema only
+// covers the new, persisted module so existing functionality is untouched.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SubstitutionStatus {
+  open
+  filled
+  cancelled
+  expired
+}
+
+enum SubstitutionPriority {
+  low
+  normal
+  high
+  urgent
+}
+
+enum EscalationStage {
+  group
+  location
+  organization
+  springerpool
+}
+
+enum CandidateResponseStatus {
+  pending
+  accepted
+  declined
+  expired
+}
+
+// Additive metadata for an existing mock-data Employee (kept separate from
+// mock-data.ts so the existing employee directory is never modified).
+model EmployeeProfile {
+  employeeId     String   @id
+  isSpringer     Boolean  @default(false)
+  qualifications String[] @default([])
+  groupId        String?
+  updatedAt      DateTime @updatedAt
+}
+
+model SubstitutionRequest {
+  id                 String                   @id @default(cuid())
+  locationId         String
+  groupId            String?
+  date               String
+  startTime          String
+  endTime            String
+  qualification      String?
+  priority           SubstitutionPriority     @default(normal)
+  status             SubstitutionStatus       @default(open)
+  escalationStage    EscalationStage          @default(group)
+  note               String?
+  createdBy          String
+  createdAt          DateTime                 @default(now())
+  filledByEmployeeId String?
+  filledAt           DateTime?
+  candidates         SubstitutionCandidate[]
+  notifications      Notification[]
+}
+
+model SubstitutionCandidate {
+  id              String                   @id @default(cuid())
+  requestId       String
+  request         SubstitutionRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employeeName    String
+  matchScore      Int
+  matchReasons    String[]                 @default([])
+  escalationStage EscalationStage
+  responseStatus  CandidateResponseStatus  @default(pending)
+  notifiedAt      DateTime?
+  respondedAt     DateTime?
+  createdAt       DateTime                 @default(now())
+
+  @@unique([requestId, employeeId])
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  employeeId String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id         String                @id @default(cuid())
+  employeeId String
+  type       String
+  title      String
+  body       String
+  requestId  String?
+  request    SubstitutionRequest?  @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  read       Boolean               @default(false)
+  createdAt  DateTime              @default(now())
+}
