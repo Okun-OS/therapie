@@ -106,7 +106,6 @@ export default function EmployeeSchedule() {
       locationId: employee?.locationId ?? 'loc1',
     }
     setSwaps(prev => [newSwap, ...prev])
-    setSwapEntry(null)
   }
 
   const handleWishSubmit = () => {
