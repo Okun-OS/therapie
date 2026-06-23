@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList,
-  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus
+  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy
 } from 'lucide-react'
 
 interface NavItem {
@@ -23,6 +23,7 @@ const employeeNav: NavItem[] = [
   { href: '/employee/time-tracking', label: 'Zeiterfassung', icon: Clock },
   { href: '/employee/vacation', label: 'Urlaub', icon: Palmtree },
   { href: '/employee/substitutions', label: 'Vertretungen', icon: UserPlus },
+  { href: '/employee/workforce-score', label: 'Mein Level', icon: Trophy },
   { href: '/employee/profile', label: 'Profil', icon: User },
 ]
 
@@ -33,12 +34,14 @@ const adminNav: NavItem[] = [
   { href: '/admin/vacation-requests', label: 'Urlaubsanträge', icon: Palmtree },
   { href: '/admin/vacation-plan', label: 'Urlaubsplan', icon: ClipboardList, badge: 'KI' },
   { href: '/admin/substitutions', label: 'Vertretungen', icon: UserPlus, badge: 'KI' },
+  { href: '/admin/workforce-score', label: 'Workforce Score', icon: Trophy, badge: 'KI' },
   { href: '/admin/reports', label: 'Berichte', icon: BarChart3 },
 ]
 
 const companyNav: NavItem[] = [
   { href: '/company', label: 'Übersicht', icon: LayoutDashboard },
   { href: '/company/locations', label: 'Standorte', icon: MapPin },
+  { href: '/company/workforce-score', label: 'Workforce Score', icon: Trophy, badge: 'KI' },
   { href: '/company/reports', label: 'Berichte', icon: BarChart3 },
 ]
 

@@ -3,6 +3,7 @@ import { findCandidates, type MatchCandidate } from './substitution-matching'
 import { ESCALATION_ORDER, type EscalationStage } from './substitution-constants'
 import { notifyEmployee } from './notify'
 import { LOCATIONS } from './mock-data'
+import { awardSubstitutionAcceptance } from './workforce-score-service'
 import type { SubstitutionRequest } from '@prisma/client'
 
 function nextStage(stage: EscalationStage): EscalationStage | null {
@@ -109,6 +110,7 @@ export async function respondToCandidate(requestId: string, employeeId: string, 
 
     const request = await prisma.substitutionRequest.findUnique({ where: { id: requestId } })
     if (request) {
+      await awardSubstitutionAcceptance(request, candidate)
       await notifyEmployee(request.createdBy, {
         type: 'substitution_filled',
         title: 'Vertretung gefunden',

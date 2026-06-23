@@ -106,3 +106,44 @@ model Notification {
   read       Boolean               @default(false)
   createdAt  DateTime              @default(now())
 }
+
+// ─── Workforce Score (Modul 3: Gamification) ────────────────────────────────
+// Additive module. The existing mock-data TimeLog (src/lib/mock-data.ts) stays
+// untouched as seed/history data; this model is the new, real persistence
+// layer for the clock-in/out action so punctuality can actually be scored.
+
+enum WorkforceLevel {
+  bronze
+  silber
+  gold
+  platin
+  diamant
+}
+
+model TimeClockEntry {
+  id         String    @id @default(cuid())
+  employeeId String
+  date       String
+  locationId String
+  clockIn    DateTime
+  clockOut   DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model ScoreEvent {
+  id         String   @id @default(cuid())
+  employeeId String
+  points     Int
+  reason     String
+  type       String
+  relatedId  String?
+  createdAt  DateTime @default(now())
+
+  @@unique([type, relatedId])
+}
+
+model LevelBonusConfig {
+  level     WorkforceLevel @id
+  bonusText String?
+  updatedAt DateTime       @updatedAt
+}

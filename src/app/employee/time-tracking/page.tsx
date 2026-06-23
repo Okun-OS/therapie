@@ -16,6 +16,7 @@ export default function TimeTracking() {
   const [clockInTime, setClockInTime] = useState<Date | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -62,12 +63,32 @@ export default function TimeTracking() {
     setClockedIn(true)
     setClockInTime(new Date())
     setElapsed(0)
+
+    if (user) {
+      fetch('/api/time-tracking/clock-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: user.id, date: todayStr, locationId: user.locationId }),
+      })
+        .then(res => res.json())
+        .then(data => setActiveEntryId(data.entry?.id ?? null))
+        .catch(() => {})
+    }
   }
 
   const handleClockOut = () => {
     setClockedIn(false)
     setClockInTime(null)
     setElapsed(0)
+
+    if (activeEntryId) {
+      fetch('/api/time-tracking/clock-out', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeClockEntryId: activeEntryId }),
+      }).catch(() => {})
+      setActiveEntryId(null)
+    }
   }
 
   return (

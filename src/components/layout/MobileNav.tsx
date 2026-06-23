@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList, BarChart3, MapPin, UserPlus } from 'lucide-react'
+import { LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList, BarChart3, MapPin, UserPlus, Trophy } from 'lucide-react'
 
 const employeeNav = [
   { href: '/employee', label: 'Home', icon: LayoutDashboard },
@@ -12,6 +12,7 @@ const employeeNav = [
   { href: '/employee/time-tracking', label: 'Zeit', icon: Clock },
   { href: '/employee/vacation', label: 'Urlaub', icon: Palmtree },
   { href: '/employee/substitutions', label: 'Vertretung', icon: UserPlus },
+  { href: '/employee/workforce-score', label: 'Level', icon: Trophy },
   { href: '/employee/profile', label: 'Profil', icon: User },
 ]
 
@@ -21,12 +22,14 @@ const adminNav = [
   { href: '/admin/schedule', label: 'Plan', icon: Calendar },
   { href: '/admin/vacation-requests', label: 'Urlaub', icon: Palmtree },
   { href: '/admin/substitutions', label: 'Vertretung', icon: UserPlus },
+  { href: '/admin/workforce-score', label: 'Score', icon: Trophy },
   { href: '/admin/reports', label: 'Berichte', icon: BarChart3 },
 ]
 
 const companyNav = [
   { href: '/company', label: 'Home', icon: LayoutDashboard },
   { href: '/company/locations', label: 'Standorte', icon: MapPin },
+  { href: '/company/workforce-score', label: 'Score', icon: Trophy },
   { href: '/company/reports', label: 'Berichte', icon: BarChart3 },
 ]
 
