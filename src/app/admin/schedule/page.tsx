@@ -349,11 +349,25 @@ export default function AdminSchedule() {
     showToast('Planungsregeln gespeichert')
   }
 
-  const handleSaveSchedule = () => {
+  const handleSaveSchedule = async () => {
     if (!generatedSchedule) return
     saveScheduleForWeek(locationId, periodWeekdayDates, generatedSchedule)
     setSaved(true)
     showToast('Dienstplan gespeichert – für alle Mitarbeiter sichtbar')
+
+    try {
+      await fetch('/api/schedules/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          locationName: location?.name ?? 'deiner Einrichtung',
+          periodLabel: `${formatDateShort(periodWeekdayDates[0])} – ${formatDateShort(periodWeekdayDates[periodWeekdayDates.length - 1])}`,
+          assignments: generatedSchedule,
+        }),
+      })
+    } catch {
+      // Benachrichtigungen sind ein Zusatznutzen – ein Fehler hier darf das Speichern nicht blockieren.
+    }
   }
 
   const handleExport = () => {
