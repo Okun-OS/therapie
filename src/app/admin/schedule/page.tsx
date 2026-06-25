@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { FairnessReport } from '@/components/schedule/FairnessReport'
 import { ShiftEditor } from '@/components/schedule/ShiftEditor'
+import { SchedulePlanningChat } from '@/components/schedule/SchedulePlanningChat'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import {
@@ -19,7 +20,7 @@ import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
-  CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff, Plus, X, CalendarRange,
+  CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff, X, CalendarRange, MessageCircle,
 } from 'lucide-react'
 
 type PeriodMode = 'week' | 'twoWeeks' | 'month' | 'custom'
@@ -88,7 +89,7 @@ export default function AdminSchedule() {
   const [saved, setSaved] = useState(false)
   const [facilityDescription, setFacilityDescription] = useState('')
   const [periodNotes, setPeriodNotes] = useState<{ id: string; note: string }[]>([])
-  const [periodNoteInput, setPeriodNoteInput] = useState('')
+  const [planningChatOpen, setPlanningChatOpen] = useState(false)
   const [shiftTimeOverrides, setShiftTimeOverrides] = useState<Record<string, { startTime: string; endTime: string }>>({})
   const [planningRules, setPlanningRules] = useState<PlanningRules>(DEFAULT_RULES)
   const [rulesDraft, setRulesDraft] = useState<PlanningRules>(DEFAULT_RULES)
@@ -169,17 +170,17 @@ export default function AdminSchedule() {
     ).then(results => setPeriodNotes(results.flat()))
   }, [locationId, periodWeeks])
 
-  async function addPeriodNote() {
-    const note = periodNoteInput.trim()
-    if (!note) return
-    const res = await fetch('/api/scheduling-period-notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ locationId, weekStart, note }),
-    })
-    const json = await res.json()
-    if (json.note) setPeriodNotes(prev => [...prev, json.note])
-    setPeriodNoteInput('')
+  async function savePlanningChatNotes(notes: string[]) {
+    for (const note of notes) {
+      const res = await fetch('/api/scheduling-period-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId, weekStart, note }),
+      })
+      const json = await res.json()
+      if (json.note) setPeriodNotes(prev => [...prev, json.note])
+    }
+    showToast(notes.length > 0 ? 'Besonderheiten übernommen' : 'Danke, notiert')
   }
 
   async function removePeriodNote(id: string) {
@@ -465,12 +466,17 @@ export default function AdminSchedule() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-600 block mb-1">
-                      Besonderheiten nur für diese Woche (optional)
-                    </label>
-                    <p className="text-[11px] text-gray-400 mb-1.5">Gilt ausschließlich für {formatDateShort(weekStart)} – {formatDateShort(weekEnd)}, z.B. &quot;Diese Woche findet ein Sommerfest statt&quot;. Wird nicht in künftige Wochen übernommen.</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-gray-600">
+                        Besonderheiten für diesen Zeitraum (optional)
+                      </label>
+                      <button onClick={() => setPlanningChatOpen(true)} className="text-xs font-semibold text-purple-700 hover:text-purple-900 flex items-center gap-1">
+                        <MessageCircle size={12} /> Per KI-Chat erfassen
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mb-1.5">Gilt ausschließlich für {formatDateShort(weekStart)} – {formatDateShort(weekEnd)}, z.B. Ereignisse, zusätzliche Aufgaben oder Mitarbeiterbesonderheiten. Wird nicht in künftige Zeiträume übernommen.</p>
                     {periodNotes.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-2">
+                      <div className="flex flex-wrap gap-1.5">
                         {periodNotes.map(n => (
                           <span key={n.id} className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded-full">
                             {n.note}
@@ -481,18 +487,6 @@ export default function AdminSchedule() {
                         ))}
                       </div>
                     )}
-                    <div className="flex gap-2">
-                      <input
-                        value={periodNoteInput}
-                        onChange={e => setPeriodNoteInput(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && addPeriodNote()}
-                        placeholder="z.B. Am Donnerstag fehlen zwei Mitarbeiter wegen Fortbildung"
-                        className="flex-1 px-3 py-2 text-sm border border-purple-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-300 placeholder:text-gray-400"
-                      />
-                      <Button variant="ghost" size="sm" onClick={addPeriodNote} className="gap-1 border border-purple-200 text-purple-700 hover:bg-purple-50">
-                        <Plus size={14} />
-                      </Button>
-                    </div>
                   </div>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -821,6 +815,15 @@ export default function AdminSchedule() {
           </div>
         )}
       </div>
+
+      {/* Planungschat Modal */}
+      <SchedulePlanningChat
+        key={`${weekStart}_${weekEnd}`}
+        open={planningChatOpen}
+        onClose={() => setPlanningChatOpen(false)}
+        onSave={savePlanningChatNotes}
+        periodLabel={`${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`}
+      />
 
       {/* Shift Editor Modal */}
       <ShiftEditor
