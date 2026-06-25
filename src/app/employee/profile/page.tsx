@@ -12,16 +12,58 @@ import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCir
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 
-const STRENGTH_OPTIONS = [
-  'Elternkommunikation', 'Dokumentation', 'U3-Erfahrung', 'Vorschularbeit',
-  'Krisensituationen', 'Organisation', 'Einarbeitung neuer Kollegen', 'Verwaltung', 'Leitungsaufgaben',
-]
-
-const LIFE_OPTIONS = [
-  'Alleinerziehend', 'Kinder', 'Pflege Angehöriger', 'Studium',
-  'Lange Anfahrt', 'Gesundheitliche Einschränkungen', 'Sonstige Besonderheiten',
-  'Regelmäßige Arzttermine', 'Besondere familiäre Situationen',
-]
+function TagInputSection({
+  label,
+  items,
+  onAdd,
+  onRemove,
+  placeholder,
+}: {
+  label: string
+  items: string[]
+  onAdd: (value: string) => void
+  onRemove: (value: string) => void
+  placeholder: string
+}) {
+  const [value, setValue] = useState('')
+  const handleAdd = () => {
+    const v = value.trim()
+    if (!v) return
+    onAdd(v)
+    setValue('')
+  }
+  return (
+    <div>
+      <p className="text-sm font-semibold text-navy mb-2">{label}</p>
+      <div className="flex gap-2 flex-wrap mb-2">
+        {items.map(item => (
+          <span
+            key={item}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border-2 bg-purple-50 border-purple-300 text-purple-700"
+          >
+            {item}
+            <button onClick={() => onRemove(item)} aria-label={`${item} entfernen`}>
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+        {items.length === 0 && (
+          <span className="text-xs text-gray-400">Noch keine Angabe – am einfachsten über den KI-Assistenten</span>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
+          placeholder={placeholder}
+          className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+        />
+        <Button onClick={handleAdd} size="md" variant="secondary">Hinzufügen</Button>
+      </div>
+    </div>
+  )
+}
 
 export default function EmployeeProfile() {
   const { user } = useAuth()
@@ -49,7 +91,6 @@ export default function EmployeeProfile() {
   const [savedHumanContext, setSavedHumanContext] = useState(initialHumanContext)
   const [humanContextSaved, setHumanContextSaved] = useState(false)
   const [humanContextLoaded, setHumanContextLoaded] = useState(false)
-  const [groupInput, setGroupInput] = useState('')
   const [chatOpen, setChatOpen] = useState(false)
 
   const isHumanContextDirty = JSON.stringify(humanContext) !== JSON.stringify(savedHumanContext)
@@ -73,32 +114,12 @@ export default function EmployeeProfile() {
       .catch(() => setHumanContextLoaded(true))
   }, [employee?.id])
 
-  const toggleStrength = (item: string) => {
-    setHumanContext(p => ({
-      ...p,
-      strengths: p.strengths.includes(item) ? p.strengths.filter(s => s !== item) : [...p.strengths, item],
-    }))
+  const addTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups', value: string) => {
+    setHumanContext(p => (p[field].includes(value) ? p : { ...p, [field]: [...p[field], value] }))
   }
 
-  const toggleLifeCircumstance = (item: string) => {
-    setHumanContext(p => ({
-      ...p,
-      lifeCircumstances: p.lifeCircumstances.includes(item) ? p.lifeCircumstances.filter(s => s !== item) : [...p.lifeCircumstances, item],
-    }))
-  }
-
-  const addGroup = () => {
-    const value = groupInput.trim()
-    if (!value || humanContext.preferredGroups.includes(value)) {
-      setGroupInput('')
-      return
-    }
-    setHumanContext(p => ({ ...p, preferredGroups: [...p.preferredGroups, value] }))
-    setGroupInput('')
-  }
-
-  const removeGroup = (item: string) => {
-    setHumanContext(p => ({ ...p, preferredGroups: p.preferredGroups.filter(g => g !== item) }))
+  const removeTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups', value: string) => {
+    setHumanContext(p => ({ ...p, [field]: p[field].filter(v => v !== value) }))
   }
 
   const handleSaveHumanContext = async () => {
@@ -322,73 +343,41 @@ export default function EmployeeProfile() {
 
             <Button
               onClick={() => setChatOpen(true)}
-              size="md"
-              variant="secondary"
+              size="lg"
               className="w-full gap-2"
             >
-              <Sparkles size={16} />
-              Mit KI-Assistent ausfüllen
+              <Sparkles size={18} />
+              Im Gespräch mit der KI erzählen
             </Button>
+            <p className="text-xs text-gray-400 -mt-2">
+              Am einfachsten erzählst du der KI im Chat frei, was sie wissen soll. Sie versteht deine Antworten
+              und trägt sie automatisch ein. Hier siehst du, was bereits erfasst ist, und kannst es bei Bedarf
+              direkt korrigieren.
+            </p>
 
-            <div>
-              <p className="text-sm font-semibold text-navy mb-2">Stärken</p>
-              <div className="flex gap-2 flex-wrap">
-                {STRENGTH_OPTIONS.map(item => (
-                  <button
-                    key={item}
-                    onClick={() => toggleStrength(item)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${humanContext.strengths.includes(item) ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'}`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <TagInputSection
+              label="Stärken"
+              items={humanContext.strengths}
+              onAdd={v => addTag('strengths', v)}
+              onRemove={v => removeTag('strengths', v)}
+              placeholder="z.B. Elternkommunikation, Dokumentation…"
+            />
 
-            <div>
-              <p className="text-sm font-semibold text-navy mb-2">Lebenssituation</p>
-              <div className="flex gap-2 flex-wrap">
-                {LIFE_OPTIONS.map(item => (
-                  <button
-                    key={item}
-                    onClick={() => toggleLifeCircumstance(item)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${humanContext.lifeCircumstances.includes(item) ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'}`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <TagInputSection
+              label="Lebenssituation"
+              items={humanContext.lifeCircumstances}
+              onAdd={v => addTag('lifeCircumstances', v)}
+              onRemove={v => removeTag('lifeCircumstances', v)}
+              placeholder="z.B. Alleinerziehend, lange Anfahrt…"
+            />
 
-            <div>
-              <p className="text-sm font-semibold text-navy mb-2">Bevorzugte Gruppen / Bereiche</p>
-              <div className="flex gap-2 flex-wrap mb-2">
-                {humanContext.preferredGroups.map(item => (
-                  <span
-                    key={item}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border-2 bg-purple-50 border-purple-300 text-purple-700"
-                  >
-                    {item}
-                    <button onClick={() => removeGroup(item)} aria-label={`${item} entfernen`}>
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-                {humanContext.preferredGroups.length === 0 && (
-                  <span className="text-xs text-gray-400">Noch keine Angabe</span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  value={groupInput}
-                  onChange={e => setGroupInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addGroup() } }}
-                  placeholder="z.B. Krippe, Gruppe Sonnenblume…"
-                  className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                />
-                <Button onClick={addGroup} size="md" variant="secondary">Hinzufügen</Button>
-              </div>
-            </div>
+            <TagInputSection
+              label="Bevorzugte Gruppen / Bereiche"
+              items={humanContext.preferredGroups}
+              onAdd={v => addTag('preferredGroups', v)}
+              onRemove={v => removeTag('preferredGroups', v)}
+              placeholder="z.B. Krippe, Gruppe Sonnenblume…"
+            />
 
             <div>
               <label className="block text-sm font-semibold text-navy mb-1.5">Besondere Absprachen</label>
