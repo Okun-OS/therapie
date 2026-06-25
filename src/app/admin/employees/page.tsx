@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -11,6 +11,12 @@ import { useToast } from '@/lib/toast-context'
 import { EMPLOYEES, updateEmployee, addEmployee } from '@/lib/mock-data'
 import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Mail, Edit, ChevronRight } from 'lucide-react'
 import type { Employee } from '@/lib/types'
+
+interface EmployeeHumanContext {
+  strengths: string[]
+  lifeCircumstances: string[]
+  agreements: string | null
+}
 
 export default function AdminEmployees() {
   const { user } = useAuth()
@@ -24,6 +30,18 @@ export default function AdminEmployees() {
   const [addModal, setAddModal] = useState(false)
   const [newEmployee, setNewEmployee] = useState({ name: '', email: '', position: '', weeklyHours: 38 })
   const [addErrors, setAddErrors] = useState<string[]>([])
+  const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
+
+  useEffect(() => {
+    if (!selectedEmployee) {
+      setHumanContext(null)
+      return
+    }
+    fetch(`/api/employee-human-context?employeeId=${selectedEmployee.id}`)
+      .then(res => res.json())
+      .then(data => setHumanContext(data.contexts?.[0] ?? null))
+      .catch(() => setHumanContext(null))
+  }, [selectedEmployee])
 
   const startEditing = (emp: Employee) => {
     setEditForm({ name: emp.name, email: emp.email, position: emp.position, weeklyHours: emp.weeklyHours })
@@ -200,6 +218,21 @@ export default function AdminEmployees() {
                 </p>
                 {selectedEmployee.preferences.notes && (
                   <p className="text-xs text-blue-600 mt-1 italic">{selectedEmployee.preferences.notes}</p>
+                )}
+              </div>
+            )}
+
+            {humanContext && (humanContext.strengths.length > 0 || humanContext.lifeCircumstances.length > 0 || humanContext.agreements) && (
+              <div className="bg-purple-50 rounded-xl p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-purple-700">Persönliches (freiwillig angegeben)</p>
+                {humanContext.strengths.length > 0 && (
+                  <p className="text-sm text-purple-700"><span className="font-medium">Stärken:</span> {humanContext.strengths.join(', ')}</p>
+                )}
+                {humanContext.lifeCircumstances.length > 0 && (
+                  <p className="text-sm text-purple-700"><span className="font-medium">Lebenssituation:</span> {humanContext.lifeCircumstances.join(', ')}</p>
+                )}
+                {humanContext.agreements && (
+                  <p className="text-xs text-purple-600 italic">{humanContext.agreements}</p>
                 )}
               </div>
             )}

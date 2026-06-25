@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import type { Employee, Shift, ShiftFairnessData, WishSubmission } from '@/lib/types'
 
 const client = new Anthropic()
@@ -22,11 +23,14 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 8. Mitarbeiter mit hohem "debt" (negative earlyDebt/lateDebt) bekommen Vorrang bei dieser Schichtart.
 8a. Freitag-Frühdienst max. 3× pro Monat pro Mitarbeiter – wer das Limit in den letzten 4 Wochen schon erreicht oder überschritten hat, bekommt an diesem Freitag bevorzugt eine andere Schicht.
 8b. Berücksichtige bei der Verteilung auch die Wochenenddienste der letzten 4 Wochen (Hinweis: der aktuelle Plan selbst umfasst nur Montag bis Freitag). Mitarbeiter, die in den letzten 4 Wochen bereits überdurchschnittlich viele Wochenenddienste hatten, sollen das in der Begründung berücksichtigt finden, sofern dies für die Verteilung der aktuellen Woche relevant ist.
+8c. Berücksichtige die persönlichen Dienstpräferenzen jedes Mitarbeiters ("praeferenzen" in den Mitarbeiterdaten), sofern angegeben: bevorzugte Schichtarten, nicht verfügbare Wochentage (hart einzuhalten), Vermeidung von Frühdienst nach Spätdienst und maximale Anzahl an Folgetagen. Nicht verfügbare Wochentage und "kein Frühdienst nach Spätdienst" sind verbindlich einzuhalten; bevorzugte Schichtarten sind ein weiches Signal wie ein Wunsch.
 
 ## Wünsche (WishSubmissions)
 9. Wünsche mit Importance "urgent" haben höchste Priorität, dann "important", dann "normal".
 10. Bei Konflikt (gleicher Tag, gleiche Schicht, mehrere Wünsche): Wichtigkeit > historische Fairness > Einreichzeitpunkt (früher = besser).
 11. Begründe bei Konflikten, wer den Vorzug erhält und warum.
+11a. Manche Mitarbeiter haben zusätzlich freiwillige, persönliche Angaben hinterlegt ("staerken", "lebenssituation", "besondere_absprachen" in den Mitarbeiterdaten). Berücksichtige diese als weiche Signale bei der Verteilung – z.B. besondere Absprachen einhalten, Rücksicht auf die angegebene Lebenssituation nehmen, Stärken in passenden Situationen einsetzen – sofern dies nicht im Widerspruch zu Pflicht- oder Fairness-Regeln steht.
+11b. Diese persönlichen Angaben sind freiwillig und liegen nicht für jeden Mitarbeiter vor. Das Fehlen solcher Angaben darf niemals als Nachteil gewertet werden.
 
 ## Sprache & Ton der Texte (reasoning, decisions[].message, warnings)
 12. Diese Texte werden der EINRICHTUNGSLEITUNG (Admin) angezeigt, NICHT den Mitarbeitern. Schreibe daher konsequent in der dritten Person über Mitarbeiter (z.B. "Maria Schmidt bekommt den Frühdienst, da..."), niemals in der zweiten Person ("du", "dein", "dich").
@@ -74,8 +78,15 @@ export async function POST(req: NextRequest) {
 
   const activeEmployees = employees.filter(e => e.role === 'employee' && e.active)
 
+  const humanContexts = activeEmployees.length > 0
+    ? await prisma.employeeHumanContext.findMany({
+        where: { employeeId: { in: activeEmployees.map(e => e.id) } },
+      })
+    : []
+
   const employeeSummary = activeEmployees.map(emp => {
     const fd = fairnessData.find(f => f.employeeId === emp.id)
+    const hc = humanContexts.find(h => h.employeeId === emp.id)
     return {
       id: emp.id,
       name: emp.name,
@@ -88,6 +99,18 @@ export async function POST(req: NextRequest) {
       freitag_fruehdienste_letzte_4_wochen: fd?.fridayEarlyCnt ?? 0,
       wochenenddienste_letzte_4_wochen: fd?.weekendCnt ?? 0,
       fairness_punktzahl: fd?.fairnessScore ?? 100,
+      ...(emp.preferences && {
+        praeferenzen: {
+          bevorzugte_schichten: emp.preferences.preferredShifts,
+          nicht_verfuegbare_wochentage: emp.preferences.unavailableDays,
+          kein_frueh_nach_spaet: emp.preferences.noEarlyAfterLate ?? false,
+          ...(emp.preferences.maxConsecutiveDays !== undefined && { maximale_folgetage: emp.preferences.maxConsecutiveDays }),
+          ...(emp.preferences.notes && { notizen: emp.preferences.notes }),
+        },
+      }),
+      ...(hc?.strengths.length && { staerken: hc.strengths }),
+      ...(hc?.lifeCircumstances.length && { lebenssituation: hc.lifeCircumstances }),
+      ...(hc?.agreements && { besondere_absprachen: hc.agreements }),
     }
   })
 

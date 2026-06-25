@@ -1,15 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
 import { EMPLOYEES, LOCATIONS, updateEmployee } from '@/lib/mock-data'
-import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle } from 'lucide-react'
+import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock } from 'lucide-react'
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+
+const STRENGTH_OPTIONS = [
+  'Elternkommunikation', 'Dokumentation', 'U3-Erfahrung', 'Vorschularbeit',
+  'Krisensituationen', 'Organisation', 'Einarbeitung neuer Kollegen', 'Verwaltung', 'Leitungsaufgaben',
+]
+
+const LIFE_OPTIONS = [
+  'Alleinerziehend', 'Kinder', 'Pflege Angehöriger', 'Studium',
+  'Lange Anfahrt', 'Gesundheitliche Einschränkungen', 'Sonstige Besonderheiten',
+]
 
 export default function EmployeeProfile() {
   const { user } = useAuth()
@@ -31,6 +41,58 @@ export default function EmployeeProfile() {
   const [saved, setSaved] = useState(false)
 
   const isDirty = JSON.stringify(prefs) !== JSON.stringify(savedPrefs)
+
+  const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], agreements: '' }
+  const [humanContext, setHumanContext] = useState(initialHumanContext)
+  const [savedHumanContext, setSavedHumanContext] = useState(initialHumanContext)
+  const [humanContextSaved, setHumanContextSaved] = useState(false)
+  const [humanContextLoaded, setHumanContextLoaded] = useState(false)
+
+  const isHumanContextDirty = JSON.stringify(humanContext) !== JSON.stringify(savedHumanContext)
+
+  useEffect(() => {
+    if (!employee) return
+    fetch(`/api/employee-human-context?employeeId=${employee.id}`)
+      .then(res => res.json())
+      .then(data => {
+        const ctx = data.contexts?.[0]
+        const loaded = {
+          strengths: ctx?.strengths ?? [],
+          lifeCircumstances: ctx?.lifeCircumstances ?? [],
+          agreements: ctx?.agreements ?? '',
+        }
+        setHumanContext(loaded)
+        setSavedHumanContext(loaded)
+        setHumanContextLoaded(true)
+      })
+      .catch(() => setHumanContextLoaded(true))
+  }, [employee?.id])
+
+  const toggleStrength = (item: string) => {
+    setHumanContext(p => ({
+      ...p,
+      strengths: p.strengths.includes(item) ? p.strengths.filter(s => s !== item) : [...p.strengths, item],
+    }))
+  }
+
+  const toggleLifeCircumstance = (item: string) => {
+    setHumanContext(p => ({
+      ...p,
+      lifeCircumstances: p.lifeCircumstances.includes(item) ? p.lifeCircumstances.filter(s => s !== item) : [...p.lifeCircumstances, item],
+    }))
+  }
+
+  const handleSaveHumanContext = async () => {
+    if (!employee) return
+    await fetch('/api/employee-human-context', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: employee.id, ...humanContext }),
+    })
+    setSavedHumanContext(humanContext)
+    setHumanContextSaved(true)
+    setTimeout(() => setHumanContextSaved(false), 2000)
+  }
 
   const toggleDay = (day: number) => {
     setPrefs(p => ({
@@ -207,6 +269,82 @@ export default function EmployeeProfile() {
             <Button onClick={handleSave} size="lg" className={`w-full gap-2 transition-all ${saved ? 'bg-green-500 hover:bg-green-600' : ''}`}>
               <Save size={18} />
               {saved ? 'Gespeichert!' : 'Präferenzen speichern'}
+            </Button>
+          </div>
+        </Card>
+
+        {/* Human Context (Module 8: Menschliche Dienstplanung) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Persönliches</CardTitle>
+            <Badge variant="purple">freiwillig</Badge>
+          </CardHeader>
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
+              <Lock size={14} className="flex-shrink-0 mt-0.5 text-gray-400" />
+              <span>
+                Diese Angaben sind freiwillig, jederzeit änderbar oder löschbar und nur für die Leitung sichtbar.
+                Sie helfen der KI, faire und menschlichere Dienstpläne zu erstellen.
+              </span>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-navy mb-2">Stärken</p>
+              <div className="flex gap-2 flex-wrap">
+                {STRENGTH_OPTIONS.map(item => (
+                  <button
+                    key={item}
+                    onClick={() => toggleStrength(item)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${humanContext.strengths.includes(item) ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'}`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-navy mb-2">Lebenssituation</p>
+              <div className="flex gap-2 flex-wrap">
+                {LIFE_OPTIONS.map(item => (
+                  <button
+                    key={item}
+                    onClick={() => toggleLifeCircumstance(item)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${humanContext.lifeCircumstances.includes(item) ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'}`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">Besondere Absprachen</label>
+              <textarea
+                value={humanContext.agreements}
+                onChange={e => setHumanContext(p => ({ ...p, agreements: e.target.value }))}
+                rows={3}
+                placeholder="z.B. individuelle Absprachen mit der Leitung..."
+                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+              />
+            </div>
+
+            {isHumanContextDirty && !humanContextSaved && (
+              <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                <AlertCircle size={14} />
+                Ungespeicherte Änderungen
+              </div>
+            )}
+
+            <Button
+              onClick={handleSaveHumanContext}
+              size="lg"
+              variant="secondary"
+              disabled={!humanContextLoaded}
+              className={`w-full gap-2 transition-all ${humanContextSaved ? 'bg-green-500 hover:bg-green-600 text-white' : ''}`}
+            >
+              <Heart size={18} />
+              {humanContextSaved ? 'Gespeichert!' : 'Persönliches speichern'}
             </Button>
           </div>
         </Card>

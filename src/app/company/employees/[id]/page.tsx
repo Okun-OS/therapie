@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -20,6 +20,12 @@ type Tab = 'overview' | 'timelogs' | 'shifts' | 'vacation'
 
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 
+interface EmployeeHumanContext {
+  strengths: string[]
+  lifeCircumstances: string[]
+  agreements: string | null
+}
+
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -32,6 +38,15 @@ export default function EmployeeDetailPage() {
   const [tab, setTab] = useState<Tab>('overview')
   const [logYear, setLogYear] = useState(today.getFullYear())
   const [logMonth, setLogMonth] = useState(today.getMonth() + 1)
+  const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
+
+  useEffect(() => {
+    if (!employee) return
+    fetch(`/api/employee-human-context?employeeId=${employee.id}`)
+      .then(res => res.json())
+      .then(data => setHumanContext(data.contexts?.[0] ?? null))
+      .catch(() => setHumanContext(null))
+  }, [employee?.id])
 
   const monthLogs = useMemo(
     () => employee ? getTimeLogsByMonth(employee.id, logYear, logMonth) : [],
@@ -229,6 +244,27 @@ export default function EmployeeDetailPage() {
                 <span className="text-sm font-bold text-navy whitespace-nowrap">{employee.vacationDaysUsed} / {employee.vacationDaysTotal}d</span>
               </div>
             </Card>
+
+            {/* Persönliches (Modul 8: Menschliche Dienstplanung) */}
+            {humanContext && (humanContext.strengths.length > 0 || humanContext.lifeCircumstances.length > 0 || humanContext.agreements) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Persönliches</CardTitle>
+                  <Badge variant="purple">freiwillig angegeben</Badge>
+                </CardHeader>
+                <div className="space-y-2">
+                  {humanContext.strengths.length > 0 && (
+                    <p className="text-sm text-gray-600"><span className="font-semibold text-navy">Stärken:</span> {humanContext.strengths.join(', ')}</p>
+                  )}
+                  {humanContext.lifeCircumstances.length > 0 && (
+                    <p className="text-sm text-gray-600"><span className="font-semibold text-navy">Lebenssituation:</span> {humanContext.lifeCircumstances.join(', ')}</p>
+                  )}
+                  {humanContext.agreements && (
+                    <p className="text-sm text-gray-500 italic">{humanContext.agreements}</p>
+                  )}
+                </div>
+              </Card>
+            )}
 
             {/* Letzte 5 Zeiterfassungen */}
             <Card>

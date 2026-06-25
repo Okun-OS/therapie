@@ -49,20 +49,33 @@ model EmployeeProfile {
   updatedAt      DateTime @updatedAt
 }
 
+// ─── Menschliche Dienstplanung (Modul 8) ────────────────────────────────────
+// Voluntary, employee-controlled soft signals for fairer/more human scheduling.
+// Kept separate from EmployeeProfile (which serves substitution matching) so
+// the two audiences/purposes never get entangled.
+model EmployeeHumanContext {
+  employeeId        String   @id
+  strengths         String[] @default([])
+  lifeCircumstances String[] @default([])
+  preferredGroups   String[] @default([])
+  agreements        String?
+  updatedAt         DateTime @updatedAt
+}
+
 model SubstitutionRequest {
-  id                 String                   @id @default(cuid())
+  id                 String                  @id @default(cuid())
   locationId         String
   groupId            String?
   date               String
   startTime          String
   endTime            String
   qualification      String?
-  priority           SubstitutionPriority     @default(normal)
-  status             SubstitutionStatus       @default(open)
-  escalationStage    EscalationStage          @default(group)
+  priority           SubstitutionPriority    @default(normal)
+  status             SubstitutionStatus      @default(open)
+  escalationStage    EscalationStage         @default(group)
   note               String?
   createdBy          String
-  createdAt          DateTime                 @default(now())
+  createdAt          DateTime                @default(now())
   filledByEmployeeId String?
   filledAt           DateTime?
   candidates         SubstitutionCandidate[]
@@ -70,18 +83,18 @@ model SubstitutionRequest {
 }
 
 model SubstitutionCandidate {
-  id              String                   @id @default(cuid())
+  id              String                  @id @default(cuid())
   requestId       String
-  request         SubstitutionRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  request         SubstitutionRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
   employeeId      String
   employeeName    String
   matchScore      Int
-  matchReasons    String[]                 @default([])
+  matchReasons    String[]                @default([])
   escalationStage EscalationStage
-  responseStatus  CandidateResponseStatus  @default(pending)
+  responseStatus  CandidateResponseStatus @default(pending)
   notifiedAt      DateTime?
   respondedAt     DateTime?
-  createdAt       DateTime                 @default(now())
+  createdAt       DateTime                @default(now())
 
   @@unique([requestId, employeeId])
 }
@@ -96,15 +109,15 @@ model PushSubscription {
 }
 
 model Notification {
-  id         String                @id @default(cuid())
+  id         String               @id @default(cuid())
   employeeId String
   type       String
   title      String
   body       String
   requestId  String?
-  request    SubstitutionRequest?  @relation(fields: [requestId], references: [id], onDelete: SetNull)
-  read       Boolean               @default(false)
-  createdAt  DateTime              @default(now())
+  request    SubstitutionRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  read       Boolean              @default(false)
+  createdAt  DateTime             @default(now())
 }
 
 // ─── Workforce Score (Modul 3: Gamification) ────────────────────────────────
