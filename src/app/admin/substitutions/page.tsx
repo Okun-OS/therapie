@@ -5,13 +5,14 @@ import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
+import { SubstitutionChat } from '@/components/substitutions/SubstitutionChat'
+import type { SubstitutionDraft } from '@/lib/substitution-draft'
 import { ESCALATION_LABEL, PRIORITY_LABEL, type SubstitutionPriority } from '@/lib/substitution-constants'
 import { formatDate } from '@/lib/utils'
-import { UserPlus, Plus, Calendar, Clock, TrendingUp, ChevronUp, CheckCircle2, XCircle, Hourglass } from 'lucide-react'
+import { UserPlus, MessageCircle, Calendar, Clock, TrendingUp, ChevronUp, CheckCircle2, XCircle, Hourglass } from 'lucide-react'
 
 interface Candidate {
   id: string
@@ -74,18 +75,8 @@ export default function AdminSubstitutions() {
 
   const [requests, setRequests] = useState<SubRequest[]>([])
   const [loading, setLoading] = useState(true)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
   const [escalatingId, setEscalatingId] = useState<string | null>(null)
-
-  const [form, setForm] = useState({
-    date: '',
-    startTime: '08:00',
-    endTime: '16:00',
-    qualification: '',
-    priority: 'normal' as SubstitutionPriority,
-    note: '',
-  })
 
   const loadRequests = async () => {
     setLoading(true)
@@ -105,36 +96,31 @@ export default function AdminSubstitutions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationId])
 
-  const handleCreate = async () => {
-    if (!form.date || !form.startTime || !form.endTime) {
-      showToast('Bitte Datum und Uhrzeiten angeben', 'error')
+  const handleCreateFromChat = async (draft: SubstitutionDraft) => {
+    if (!draft.date || !draft.startTime || !draft.endTime) {
+      showToast('Anfrage konnte nicht erstellt werden', 'error')
       return
     }
-    setSubmitting(true)
     try {
       const res = await fetch('/api/substitutions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           locationId,
-          date: form.date,
-          startTime: form.startTime,
-          endTime: form.endTime,
-          qualification: form.qualification || undefined,
-          priority: form.priority,
-          note: form.note || undefined,
+          date: draft.date,
+          startTime: draft.startTime,
+          endTime: draft.endTime,
+          qualification: draft.qualification || undefined,
+          priority: (draft.priority ?? 'normal') as SubstitutionPriority,
+          note: draft.note || undefined,
           createdBy: user?.id ?? 'adm1',
         }),
       })
       if (!res.ok) throw new Error()
       showToast('Vertretungsanfrage erstellt und Kandidaten benachrichtigt', 'success')
-      setCreateOpen(false)
-      setForm({ date: '', startTime: '08:00', endTime: '16:00', qualification: '', priority: 'normal', note: '' })
       loadRequests()
     } catch {
       showToast('Anfrage konnte nicht erstellt werden', 'error')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -176,9 +162,9 @@ export default function AdminSubstitutions() {
               <p className="text-xs text-green-700 font-medium">Besetzt</p>
             </div>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="gap-2 self-stretch">
-            <Plus size={16} />
-            Neue Anfrage
+          <Button onClick={() => setChatOpen(true)} className="gap-2 self-stretch">
+            <MessageCircle size={16} />
+            Ausfall melden
           </Button>
         </div>
 
@@ -250,80 +236,11 @@ export default function AdminSubstitutions() {
         </div>
       </div>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Neue Vertretungsanfrage">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className="block text-sm font-semibold text-navy mb-1.5">Datum</label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={e => setForm({ ...form, date: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Von</label>
-              <input
-                type="time"
-                value={form.startTime}
-                onChange={e => setForm({ ...form, startTime: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Bis</label>
-              <input
-                type="time"
-                value={form.endTime}
-                onChange={e => setForm({ ...form, endTime: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Qualifikation (optional)</label>
-            <input
-              type="text"
-              value={form.qualification}
-              onChange={e => setForm({ ...form, qualification: e.target.value })}
-              placeholder="z.B. Erzieherin"
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Priorität</label>
-            <div className="flex gap-2">
-              {(['low', 'normal', 'high', 'urgent'] as SubstitutionPriority[]).map(p => (
-                <button
-                  key={p}
-                  onClick={() => setForm({ ...form, priority: p })}
-                  className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${form.priority === p ? 'bg-navy text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
-                >
-                  {PRIORITY_LABEL[p]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Notiz (optional)</label>
-            <textarea
-              value={form.note}
-              onChange={e => setForm({ ...form, note: e.target.value })}
-              rows={2}
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-            />
-          </div>
-
-          <Button className="w-full gap-2" loading={submitting} onClick={handleCreate}>
-            <UserPlus size={16} />
-            Anfrage erstellen
-          </Button>
-        </div>
-      </Modal>
+      <SubstitutionChat
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        onSave={handleCreateFromChat}
+      />
     </>
   )
 }
