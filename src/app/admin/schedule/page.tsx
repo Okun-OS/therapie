@@ -16,11 +16,20 @@ import {
   setShiftMinStaff, saveScheduleForWeek,
 } from '@/lib/mock-data'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
-import { getWeekDays, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
+import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
-  CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff, Plus, X,
+  CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff, Plus, X, CalendarRange,
 } from 'lucide-react'
+
+type PeriodMode = 'week' | 'twoWeeks' | 'month' | 'custom'
+
+const PERIOD_OPTIONS: { key: PeriodMode; label: string }[] = [
+  { key: 'week', label: 'Diese Woche' },
+  { key: 'twoWeeks', label: 'Zwei Wochen' },
+  { key: 'month', label: 'Ganzer Monat' },
+  { key: 'custom', label: 'Individuell' },
+]
 
 interface PlanningRules {
   maxWeeklyHours: number
@@ -84,6 +93,8 @@ export default function AdminSchedule() {
   const [planningRules, setPlanningRules] = useState<PlanningRules>(DEFAULT_RULES)
   const [rulesDraft, setRulesDraft] = useState<PlanningRules>(DEFAULT_RULES)
   const [minStaffDraft, setMinStaffDraft] = useState<Record<string, number>>({})
+  const [periodMode, setPeriodMode] = useState<PeriodMode>('week')
+  const [customRange, setCustomRange] = useState<{ start: string; end: string }>({ start: '', end: '' })
 
   useEffect(() => {
     const saved = localStorage.getItem('facilityDescription')
@@ -99,16 +110,64 @@ export default function AdminSchedule() {
   }, [])
 
 
-  const weekDays = getWeekDays(currentDate)
-  const weekStart = toDateString(weekDays[0])
-  const weekEnd = toDateString(weekDays[6])
+  const periodWeeks = useMemo<Date[][]>(() => {
+    if (periodMode === 'custom') {
+      if (!customRange.start || !customRange.end) return [getWeekDays(currentDate)]
+      const start = new Date(customRange.start + 'T00:00:00')
+      const end = new Date(customRange.end + 'T00:00:00')
+      return getWeeksInRange(start, end)
+    }
+    if (periodMode === 'month') {
+      const first = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+      const last = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+      return getWeeksInRange(first, last)
+    }
+    const weeksCount = periodMode === 'twoWeeks' ? 2 : 1
+    const baseWeek = getWeekDays(currentDate)
+    return Array.from({ length: weeksCount }, (_, w) =>
+      baseWeek.map(d => { const nd = new Date(d); nd.setDate(d.getDate() + w * 7); return nd })
+    )
+  }, [periodMode, currentDate, customRange])
+
+  const weekDays = periodWeeks[0]
+  const weekStart = toDateString(periodWeeks[0][0])
+  const weekEnd = toDateString(periodWeeks[periodWeeks.length - 1][6])
+  const periodWeekdayDates = useMemo(
+    () => periodWeeks.flatMap(week => week.slice(0, 5).map(toDateString)),
+    [periodWeeks]
+  )
+
+  const shiftPeriod = (direction: 1 | -1) => {
+    const d = new Date(currentDate)
+    if (periodMode === 'month') {
+      d.setMonth(d.getMonth() + direction)
+    } else if (periodMode === 'twoWeeks') {
+      d.setDate(d.getDate() + direction * 14)
+    } else if (periodMode === 'custom' && customRange.start && customRange.end) {
+      const start = new Date(customRange.start + 'T00:00:00')
+      const end = new Date(customRange.end + 'T00:00:00')
+      const rangeDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1)
+      const newStart = new Date(start); newStart.setDate(newStart.getDate() + direction * rangeDays)
+      const newEnd = new Date(end); newEnd.setDate(newEnd.getDate() + direction * rangeDays)
+      setCustomRange({ start: toDateString(newStart), end: toDateString(newEnd) })
+      d.setDate(d.getDate() + direction * rangeDays)
+    } else {
+      d.setDate(d.getDate() + direction * 7)
+    }
+    setCurrentDate(d)
+    setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setSaved(false)
+  }
 
   useEffect(() => {
-    fetch(`/api/scheduling-period-notes?locationId=${locationId}&weekStart=${weekStart}`)
-      .then(r => r.json())
-      .then(json => setPeriodNotes(json.notes ?? []))
-      .catch(() => setPeriodNotes([]))
-  }, [locationId, weekStart])
+    Promise.all(
+      periodWeeks.map(week =>
+        fetch(`/api/scheduling-period-notes?locationId=${locationId}&weekStart=${toDateString(week[0])}`)
+          .then(r => r.json())
+          .then(json => (json.notes ?? []) as { id: string; note: string }[])
+          .catch(() => [])
+      )
+    ).then(results => setPeriodNotes(results.flat()))
+  }, [locationId, periodWeeks])
 
   async function addPeriodNote() {
     const note = periodNoteInput.trim()
@@ -165,7 +224,7 @@ export default function AdminSchedule() {
 
   const existingEntries = SCHEDULE_ENTRIES.filter(e => {
     const d = new Date(e.date + 'T00:00:00')
-    return e.locationId === locationId && d >= weekDays[0] && d <= weekDays[6]
+    return e.locationId === locationId && d >= periodWeeks[0][0] && d <= periodWeeks[periodWeeks.length - 1][6]
   })
 
   const getDisplayShift = (empId: string, dateStr: string) => {
@@ -194,7 +253,7 @@ export default function AdminSchedule() {
     }, 900)
 
     try {
-      const weekDates = weekDays.slice(0, 5).map(toDateString)
+      const weekDates = periodWeekdayDates
       const ruleSummary = `Zusätzliche Planungsregeln des Admins: maximal ${planningRules.maxWeeklyHours}h Wochenarbeitszeit, mindestens ${planningRules.restHours}h Ruhezeit zwischen zwei Diensten, maximal ${planningRules.maxConsecutiveDays} aufeinanderfolgende Arbeitstage, Freitag-Spätdienst max. ${planningRules.fridayLateMax}×/Monat pro Mitarbeiter, Montag-Frühdienst max. ${planningRules.mondayEarlyMax}×/Monat pro Mitarbeiter, Freitag-Frühdienst max. ${planningRules.fridayEarlyMax}×/Monat pro Mitarbeiter. Mitarbeiterwünsche ${planningRules.considerWishes ? 'sollen aktiv berücksichtigt werden' : 'müssen dieses Mal NICHT berücksichtigt werden'}. Stundenkonten ${planningRules.balanceHoursAccount ? 'sollen ausgeglichen werden' : 'müssen dieses Mal nicht ausgeglichen werden'}.`
       const combinedDescription = [facilityDescription.trim(), ruleSummary].filter(Boolean).join('\n\n')
 
@@ -270,8 +329,7 @@ export default function AdminSchedule() {
 
   const handleSaveSchedule = () => {
     if (!generatedSchedule) return
-    const weekDates = weekDays.slice(0, 5).map(toDateString)
-    saveScheduleForWeek(locationId, weekDates, generatedSchedule)
+    saveScheduleForWeek(locationId, periodWeekdayDates, generatedSchedule)
     setSaved(true)
     showToast('Dienstplan gespeichert – für alle Mitarbeiter sichtbar')
   }
@@ -279,9 +337,7 @@ export default function AdminSchedule() {
   const handleExport = () => {
     const rows = [['Mitarbeiter', 'Datum', 'Wochentag', 'Dienst', 'Start', 'Ende']]
     employees.forEach(emp => {
-      weekDays.forEach((day, i) => {
-        if (i >= 5) return
-        const dateStr = toDateString(day)
+      periodWeekdayDates.forEach(dateStr => {
         const shift = getDisplayShift(emp.id, dateStr)
         if (!shift) return
         rows.push([emp.name, dateStr, getDayName(dateStr), shift.name, shift.startTime, shift.endTime])
@@ -328,18 +384,49 @@ export default function AdminSchedule() {
         {/* ── PLAN TAB ─────────────────────────────────────────── */}
         {tab === 'plan' && (
           <>
+            {/* Zeitraum-Auswahl */}
+            <div className="flex flex-wrap items-center gap-2">
+              <CalendarRange size={14} className="text-gray-400" />
+              {PERIOD_OPTIONS.map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => { setPeriodMode(opt.key); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setSaved(false) }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${periodMode === opt.key ? 'bg-navy text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              {periodMode === 'custom' && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={customRange.start}
+                    onChange={e => setCustomRange(r => ({ ...r, start: e.target.value }))}
+                    className="px-2 py-1.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                  <span className="text-xs text-gray-400">bis</span>
+                  <input
+                    type="date"
+                    value={customRange.end}
+                    onChange={e => setCustomRange(r => ({ ...r, end: e.target.value }))}
+                    className="px-2 py-1.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-3 justify-between">
               <div className="flex items-center gap-1">
-                <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setSaved(false) }}
-                  className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all">
+                <button onClick={() => shiftPeriod(-1)} disabled={periodMode === 'custom' && (!customRange.start || !customRange.end)}
+                  className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all disabled:opacity-40">
                   <ChevronLeft size={18} className="text-gray-600" />
                 </button>
                 <span className="px-4 py-2 text-sm font-semibold text-navy min-w-[200px] text-center">
                   {formatDateShort(weekStart)} – {formatDateShort(weekEnd)} {weekDays[0].getFullYear()}
                 </span>
-                <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setSaved(false) }}
-                  className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all">
+                <button onClick={() => shiftPeriod(1)} disabled={periodMode === 'custom' && (!customRange.start || !customRange.end)}
+                  className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all disabled:opacity-40">
                   <ChevronRight size={18} className="text-gray-600" />
                 </button>
               </div>
@@ -482,91 +569,102 @@ export default function AdminSchedule() {
                 </p>
               </div>
             ) : (
-            <Card padding="none" className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px]">
-                  <thead>
-                    <tr className="bg-navy">
-                      <th className="text-left p-3 pl-4 text-white text-xs font-semibold w-36">Mitarbeiter</th>
-                      {weekDays.map((day, i) => {
-                        const dateStr = toDateString(day)
-                        const isWeekend = i >= 5
-                        const isTodayDay = dateStr === toDateString(new Date())
-                        const isFriday = i === 4
-                        const isMonday = i === 0
-                        return (
-                          <th key={dateStr} className={`text-center p-3 text-xs font-semibold min-w-[90px] ${isWeekend ? 'text-gray-500' : isTodayDay ? 'text-brand' : (isFriday || isMonday) ? 'text-yellow-300' : 'text-white'}`}>
-                            <div className="flex flex-col items-center">
-                              <span>{getDayName(dateStr, true)}</span>
-                              <span className={`text-lg font-bold ${isTodayDay ? 'text-brand' : isWeekend ? 'text-gray-500' : 'text-white'}`}>{day.getDate()}</span>
-                              {(isFriday || isMonday) && !isWeekend && (
-                                <span className="text-[8px] text-yellow-300 font-bold uppercase tracking-wide">
-                                  {isFriday ? 'Freitag' : 'Montag'}
-                                </span>
-                              )}
-                            </div>
-                          </th>
-                        )
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {employees.map((emp, empIdx) => {
-                      const fd = fairnessData.find(f => f.employeeId === emp.id)
-                      const hasIssues = fd && fd.issues.length > 0
-                      return (
-                        <tr key={emp.id} className={empIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                          <td className="p-3 pl-4">
-                            <div className="flex items-center gap-2">
-                              {hasIssues && (
-                                <span
-                                  className="flex-shrink-0 cursor-help"
-                                  title={`Fairness-Hinweis: ${fd!.issues.join(' · ')}`}
-                                >
-                                  <AlertTriangle size={10} className="text-red-400" />
-                                </span>
-                              )}
-                              <div className="w-7 h-7 rounded-lg bg-navy flex items-center justify-center text-brand text-[10px] font-bold flex-shrink-0">
-                                {emp.name.split(' ').map(n => n[0]).join('')}
-                              </div>
-                              <div>
-                                <p className="text-xs font-semibold text-navy leading-tight">{emp.name.split(' ')[0]}</p>
-                                <p
-                                  className="text-[10px] text-gray-400 underline decoration-dotted cursor-help"
-                                  title={fd ? `Fairness-Punktzahl ${fd.fairnessScore}/100 – misst wie gleichmäßig Früh-, Spät- und Mitteldienste sowie Montag/Freitag-Sonderdienste in den letzten 4 Wochen verteilt wurden. Unter 60 = Handlungsbedarf.` : `Vertraglich ${emp.weeklyHours}h/Woche`}
-                                >
-                                  {fd ? `Score ${fd.fairnessScore}` : `${emp.weeklyHours}h`}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          {weekDays.map((day, i) => {
+            <div className="space-y-3">
+              {periodWeeks.map((week, weekIdx) => (
+              <div key={weekIdx}>
+                {periodWeeks.length > 1 && (
+                  <p className="text-xs font-semibold text-gray-400 mb-1.5 pl-1">
+                    Woche {weekIdx + 1} · {formatDateShort(toDateString(week[0]))} – {formatDateShort(toDateString(week[6]))}
+                  </p>
+                )}
+                <Card padding="none" className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[700px]">
+                      <thead>
+                        <tr className="bg-navy">
+                          <th className="text-left p-3 pl-4 text-white text-xs font-semibold w-36">Mitarbeiter</th>
+                          {week.map((day, i) => {
                             const dateStr = toDateString(day)
-                            const shift = getDisplayShift(emp.id, dateStr)
                             const isWeekend = i >= 5
-                            const Icon = shift ? SHIFT_ICONS[shift.type] : null
+                            const isTodayDay = dateStr === toDateString(new Date())
+                            const isFriday = i === 4
+                            const isMonday = i === 0
                             return (
-                              <td key={dateStr} className="p-1.5 text-center">
-                                {isWeekend ? (
-                                  <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-300">—</span></div>
-                                ) : shift && Icon ? (
-                                  <div className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity" style={{ backgroundColor: shift.bgColor }}>
-                                    <Icon size={12} style={{ color: shift.color }} />
-                                    <span className="text-[10px] font-semibold" style={{ color: shift.color }}>{shift.startTime}</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-200">—</span></div>
-                                )}
-                              </td>
+                              <th key={dateStr} className={`text-center p-3 text-xs font-semibold min-w-[90px] ${isWeekend ? 'text-gray-500' : isTodayDay ? 'text-brand' : (isFriday || isMonday) ? 'text-yellow-300' : 'text-white'}`}>
+                                <div className="flex flex-col items-center">
+                                  <span>{getDayName(dateStr, true)}</span>
+                                  <span className={`text-lg font-bold ${isTodayDay ? 'text-brand' : isWeekend ? 'text-gray-500' : 'text-white'}`}>{day.getDate()}</span>
+                                  {(isFriday || isMonday) && !isWeekend && (
+                                    <span className="text-[8px] text-yellow-300 font-bold uppercase tracking-wide">
+                                      {isFriday ? 'Freitag' : 'Montag'}
+                                    </span>
+                                  )}
+                                </div>
+                              </th>
                             )
                           })}
                         </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {employees.map((emp, empIdx) => {
+                          const fd = fairnessData.find(f => f.employeeId === emp.id)
+                          const hasIssues = fd && fd.issues.length > 0
+                          return (
+                            <tr key={emp.id} className={empIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                              <td className="p-3 pl-4">
+                                <div className="flex items-center gap-2">
+                                  {hasIssues && (
+                                    <span
+                                      className="flex-shrink-0 cursor-help"
+                                      title={`Fairness-Hinweis: ${fd!.issues.join(' · ')}`}
+                                    >
+                                      <AlertTriangle size={10} className="text-red-400" />
+                                    </span>
+                                  )}
+                                  <div className="w-7 h-7 rounded-lg bg-navy flex items-center justify-center text-brand text-[10px] font-bold flex-shrink-0">
+                                    {emp.name.split(' ').map(n => n[0]).join('')}
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold text-navy leading-tight">{emp.name.split(' ')[0]}</p>
+                                    <p
+                                      className="text-[10px] text-gray-400 underline decoration-dotted cursor-help"
+                                      title={fd ? `Fairness-Punktzahl ${fd.fairnessScore}/100 – misst wie gleichmäßig Früh-, Spät- und Mitteldienste sowie Montag/Freitag-Sonderdienste in den letzten 4 Wochen verteilt wurden. Unter 60 = Handlungsbedarf.` : `Vertraglich ${emp.weeklyHours}h/Woche`}
+                                    >
+                                      {fd ? `Score ${fd.fairnessScore}` : `${emp.weeklyHours}h`}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              {week.map((day, i) => {
+                                const dateStr = toDateString(day)
+                                const shift = getDisplayShift(emp.id, dateStr)
+                                const isWeekend = i >= 5
+                                const Icon = shift ? SHIFT_ICONS[shift.type] : null
+                                return (
+                                  <td key={dateStr} className="p-1.5 text-center">
+                                    {isWeekend ? (
+                                      <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-300">—</span></div>
+                                    ) : shift && Icon ? (
+                                      <div className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity" style={{ backgroundColor: shift.bgColor }}>
+                                        <Icon size={12} style={{ color: shift.color }} />
+                                        <span className="text-[10px] font-semibold" style={{ color: shift.color }}>{shift.startTime}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-200">—</span></div>
+                                    )}
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
               </div>
-            </Card>
+              ))}
+            </div>
             )}
 
             {/* AI Reasoning Panel */}

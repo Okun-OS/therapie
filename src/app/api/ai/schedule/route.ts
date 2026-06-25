@@ -81,10 +81,13 @@ export async function POST(req: NextRequest) {
 
   const activeEmployees = employees.filter(e => e.role === 'employee' && e.active)
 
+  // weekDates is a flat Mon–Fri list across one or more weeks; each week contributes exactly 5 entries.
+  const weekStarts = weekDates.filter((_, idx) => idx % 5 === 0)
+
   const [locationOnboarding, periodNotes] = locationId
     ? await Promise.all([
         prisma.locationOnboarding.findUnique({ where: { locationId } }),
-        prisma.schedulingPeriodNote.findMany({ where: { locationId, weekStart: weekDates[0] } }),
+        prisma.schedulingPeriodNote.findMany({ where: { locationId, weekStart: { in: weekStarts } } }),
       ])
     : [null, []]
 
@@ -150,7 +153,7 @@ Beachte diese Konfiguration verbindlich bei der Planung.` : ''
 ## Besonderheiten ausschließlich für diese eine Planungsperiode
 ${periodNotes.map(n => `- ${n.note}`).join('\n')}
 
-Diese Hinweise gelten NUR für die aktuelle Woche und überschreiben bei Bedarf temporär die Standardregeln. Sie gelten nicht für künftige Wochen.` : ''
+Diese Hinweise gelten NUR für die aktuelle Planungsperiode und überschreiben bei Bedarf temporär die Standardregeln. Sie gelten nicht für künftige Perioden.` : ''
 
   const wishSummary = wishSubmissions.map(w => ({
     employeeId: w.employeeId,
@@ -162,7 +165,7 @@ Diese Hinweise gelten NUR für die aktuelle Woche und überschreiben bei Bedarf 
     submittedAt: w.submittedAt,
   }))
 
-  const userPrompt = `Erstelle einen Dienstplan für die Woche ${weekDates[0]} bis ${weekDates[weekDates.length - 1]} für den Standort "${locationName}".
+  const userPrompt = `Erstelle einen Dienstplan für den Zeitraum ${weekDates[0]} bis ${weekDates[weekDates.length - 1]} (${weekStarts.length} ${weekStarts.length === 1 ? 'Woche' : 'Wochen'}) für den Standort "${locationName}".
 
 ## Mitarbeiter (mit Fairness-Daten aus den letzten 4 Wochen)
 ${JSON.stringify(employeeSummary, null, 2)}

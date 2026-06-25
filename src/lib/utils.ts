@@ -31,6 +31,16 @@ export function toDateString(date: Date): string {
   return date.toISOString().split('T')[0]
 }
 
+export function getWeeksInRange(start: Date, end: Date): Date[][] {
+  const weeks: Date[][] = []
+  let cursor = new Date(start)
+  while (cursor <= end) {
+    weeks.push(getWeekDays(cursor))
+    cursor.setDate(cursor.getDate() + 7)
+  }
+  return weeks
+}
+
 export function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
