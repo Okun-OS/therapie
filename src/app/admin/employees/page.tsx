@@ -15,6 +15,7 @@ import type { Employee } from '@/lib/types'
 interface EmployeeHumanContext {
   strengths: string[]
   lifeCircumstances: string[]
+  preferredGroups: string[]
   agreements: string | null
 }
 
@@ -222,7 +223,7 @@ export default function AdminEmployees() {
               </div>
             )}
 
-            {humanContext && (humanContext.strengths.length > 0 || humanContext.lifeCircumstances.length > 0 || humanContext.agreements) && (
+            {humanContext && (humanContext.strengths.length > 0 || humanContext.lifeCircumstances.length > 0 || humanContext.preferredGroups.length > 0 || humanContext.agreements) && (
               <div className="bg-purple-50 rounded-xl p-3 space-y-1.5">
                 <p className="text-xs font-semibold text-purple-700">Persönliches (freiwillig angegeben)</p>
                 {humanContext.strengths.length > 0 && (
@@ -230,6 +231,9 @@ export default function AdminEmployees() {
                 )}
                 {humanContext.lifeCircumstances.length > 0 && (
                   <p className="text-sm text-purple-700"><span className="font-medium">Lebenssituation:</span> {humanContext.lifeCircumstances.join(', ')}</p>
+                )}
+                {humanContext.preferredGroups.length > 0 && (
+                  <p className="text-sm text-purple-700"><span className="font-medium">Bevorzugte Gruppen:</span> {humanContext.preferredGroups.join(', ')}</p>
                 )}
                 {humanContext.agreements && (
                   <p className="text-xs text-purple-600 italic">{humanContext.agreements}</p>

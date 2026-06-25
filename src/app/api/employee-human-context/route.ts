@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { upsertHumanContext } from '@/lib/human-context-service'
 
 export async function GET(req: NextRequest) {
   const employeeId = req.nextUrl.searchParams.get('employeeId')
@@ -15,21 +16,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'employeeId ist erforderlich' }, { status: 400 })
   }
 
-  const context = await prisma.employeeHumanContext.upsert({
-    where: { employeeId },
-    update: {
-      ...(strengths !== undefined && { strengths }),
-      ...(lifeCircumstances !== undefined && { lifeCircumstances }),
-      ...(preferredGroups !== undefined && { preferredGroups }),
-      ...(agreements !== undefined && { agreements }),
-    },
-    create: {
-      employeeId,
-      strengths: strengths ?? [],
-      lifeCircumstances: lifeCircumstances ?? [],
-      preferredGroups: preferredGroups ?? [],
-      agreements: agreements ?? null,
-    },
-  })
+  const context = await upsertHumanContext(employeeId, { strengths, lifeCircumstances, preferredGroups, agreements })
   return NextResponse.json({ context })
 }

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
 import { EMPLOYEES, LOCATIONS, updateEmployee } from '@/lib/mock-data'
-import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock } from 'lucide-react'
+import { HumanContextChat } from '@/components/profile/HumanContextChat'
+import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2 } from 'lucide-react'
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 
@@ -19,6 +20,7 @@ const STRENGTH_OPTIONS = [
 const LIFE_OPTIONS = [
   'Alleinerziehend', 'Kinder', 'Pflege Angehöriger', 'Studium',
   'Lange Anfahrt', 'Gesundheitliche Einschränkungen', 'Sonstige Besonderheiten',
+  'Regelmäßige Arzttermine', 'Besondere familiäre Situationen',
 ]
 
 export default function EmployeeProfile() {
@@ -42,11 +44,13 @@ export default function EmployeeProfile() {
 
   const isDirty = JSON.stringify(prefs) !== JSON.stringify(savedPrefs)
 
-  const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], agreements: '' }
+  const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], preferredGroups: [] as string[], agreements: '' }
   const [humanContext, setHumanContext] = useState(initialHumanContext)
   const [savedHumanContext, setSavedHumanContext] = useState(initialHumanContext)
   const [humanContextSaved, setHumanContextSaved] = useState(false)
   const [humanContextLoaded, setHumanContextLoaded] = useState(false)
+  const [groupInput, setGroupInput] = useState('')
+  const [chatOpen, setChatOpen] = useState(false)
 
   const isHumanContextDirty = JSON.stringify(humanContext) !== JSON.stringify(savedHumanContext)
 
@@ -59,6 +63,7 @@ export default function EmployeeProfile() {
         const loaded = {
           strengths: ctx?.strengths ?? [],
           lifeCircumstances: ctx?.lifeCircumstances ?? [],
+          preferredGroups: ctx?.preferredGroups ?? [],
           agreements: ctx?.agreements ?? '',
         }
         setHumanContext(loaded)
@@ -82,6 +87,20 @@ export default function EmployeeProfile() {
     }))
   }
 
+  const addGroup = () => {
+    const value = groupInput.trim()
+    if (!value || humanContext.preferredGroups.includes(value)) {
+      setGroupInput('')
+      return
+    }
+    setHumanContext(p => ({ ...p, preferredGroups: [...p.preferredGroups, value] }))
+    setGroupInput('')
+  }
+
+  const removeGroup = (item: string) => {
+    setHumanContext(p => ({ ...p, preferredGroups: p.preferredGroups.filter(g => g !== item) }))
+  }
+
   const handleSaveHumanContext = async () => {
     if (!employee) return
     await fetch('/api/employee-human-context', {
@@ -92,6 +111,18 @@ export default function EmployeeProfile() {
     setSavedHumanContext(humanContext)
     setHumanContextSaved(true)
     setTimeout(() => setHumanContextSaved(false), 2000)
+  }
+
+  const handleClearHumanContext = async () => {
+    if (!employee) return
+    const cleared = { strengths: [], lifeCircumstances: [], preferredGroups: [], agreements: '' }
+    await fetch('/api/employee-human-context', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: employee.id, ...cleared, agreements: null }),
+    })
+    setHumanContext(cleared)
+    setSavedHumanContext(cleared)
   }
 
   const toggleDay = (day: number) => {
@@ -284,9 +315,20 @@ export default function EmployeeProfile() {
               <Lock size={14} className="flex-shrink-0 mt-0.5 text-gray-400" />
               <span>
                 Diese Angaben sind freiwillig, jederzeit änderbar oder löschbar und nur für die Leitung sichtbar.
-                Sie helfen der KI, faire und menschlichere Dienstpläne zu erstellen.
+                Sie helfen der KI, faire und menschlichere Dienstpläne zu erstellen – die KI entscheidet aber
+                niemals ausschließlich aufgrund dieser persönlichen Informationen.
               </span>
             </div>
+
+            <Button
+              onClick={() => setChatOpen(true)}
+              size="md"
+              variant="secondary"
+              className="w-full gap-2"
+            >
+              <Sparkles size={16} />
+              Mit KI-Assistent ausfüllen
+            </Button>
 
             <div>
               <p className="text-sm font-semibold text-navy mb-2">Stärken</p>
@@ -319,6 +361,36 @@ export default function EmployeeProfile() {
             </div>
 
             <div>
+              <p className="text-sm font-semibold text-navy mb-2">Bevorzugte Gruppen / Bereiche</p>
+              <div className="flex gap-2 flex-wrap mb-2">
+                {humanContext.preferredGroups.map(item => (
+                  <span
+                    key={item}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border-2 bg-purple-50 border-purple-300 text-purple-700"
+                  >
+                    {item}
+                    <button onClick={() => removeGroup(item)} aria-label={`${item} entfernen`}>
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+                {humanContext.preferredGroups.length === 0 && (
+                  <span className="text-xs text-gray-400">Noch keine Angabe</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={groupInput}
+                  onChange={e => setGroupInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addGroup() } }}
+                  placeholder="z.B. Krippe, Gruppe Sonnenblume…"
+                  className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                />
+                <Button onClick={addGroup} size="md" variant="secondary">Hinzufügen</Button>
+              </div>
+            </div>
+
+            <div>
               <label className="block text-sm font-semibold text-navy mb-1.5">Besondere Absprachen</label>
               <textarea
                 value={humanContext.agreements}
@@ -336,18 +408,46 @@ export default function EmployeeProfile() {
               </div>
             )}
 
-            <Button
-              onClick={handleSaveHumanContext}
-              size="lg"
-              variant="secondary"
-              disabled={!humanContextLoaded}
-              className={`w-full gap-2 transition-all ${humanContextSaved ? 'bg-green-500 hover:bg-green-600 text-white' : ''}`}
-            >
-              <Heart size={18} />
-              {humanContextSaved ? 'Gespeichert!' : 'Persönliches speichern'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSaveHumanContext}
+                size="lg"
+                variant="secondary"
+                disabled={!humanContextLoaded}
+                className={`flex-1 gap-2 transition-all ${humanContextSaved ? 'bg-green-500 hover:bg-green-600 text-white' : ''}`}
+              >
+                <Heart size={18} />
+                {humanContextSaved ? 'Gespeichert!' : 'Persönliches speichern'}
+              </Button>
+              <Button
+                onClick={handleClearHumanContext}
+                size="lg"
+                variant="ghost"
+                disabled={!humanContextLoaded}
+                className="gap-2 text-gray-400 hover:text-red-500"
+              >
+                <Trash2 size={18} />
+                Alle löschen
+              </Button>
+            </div>
           </div>
         </Card>
+
+        <HumanContextChat
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+          employeeId={employee.id}
+          onContextUpdate={ctx => {
+            const next = {
+              strengths: ctx.strengths,
+              lifeCircumstances: ctx.lifeCircumstances,
+              preferredGroups: ctx.preferredGroups,
+              agreements: ctx.agreements ?? '',
+            }
+            setHumanContext(next)
+            setSavedHumanContext(next)
+          }}
+        />
 
         {/* Security */}
         <Card>

@@ -29,7 +29,7 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 9. Wünsche mit Importance "urgent" haben höchste Priorität, dann "important", dann "normal".
 10. Bei Konflikt (gleicher Tag, gleiche Schicht, mehrere Wünsche): Wichtigkeit > historische Fairness > Einreichzeitpunkt (früher = besser).
 11. Begründe bei Konflikten, wer den Vorzug erhält und warum.
-11a. Manche Mitarbeiter haben zusätzlich freiwillige, persönliche Angaben hinterlegt ("staerken", "lebenssituation", "besondere_absprachen" in den Mitarbeiterdaten). Berücksichtige diese als weiche Signale bei der Verteilung – z.B. besondere Absprachen einhalten, Rücksicht auf die angegebene Lebenssituation nehmen, Stärken in passenden Situationen einsetzen – sofern dies nicht im Widerspruch zu Pflicht- oder Fairness-Regeln steht.
+11a. Manche Mitarbeiter haben zusätzlich freiwillige, persönliche Angaben hinterlegt ("staerken", "lebenssituation", "bevorzugte_gruppen", "besondere_absprachen" in den Mitarbeiterdaten). Berücksichtige diese als weiche Signale bei der Verteilung – z.B. besondere Absprachen einhalten, Rücksicht auf die angegebene Lebenssituation nehmen, Stärken in passenden Situationen einsetzen, bevorzugte Gruppen/Bereiche nach Möglichkeit berücksichtigen – sofern dies nicht im Widerspruch zu Pflicht- oder Fairness-Regeln steht.
 11b. Diese persönlichen Angaben sind freiwillig und liegen nicht für jeden Mitarbeiter vor. Das Fehlen solcher Angaben darf niemals als Nachteil gewertet werden.
 
 ## Sprache & Ton der Texte (reasoning, decisions[].message, warnings)
@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
       }),
       ...(hc?.strengths.length && { staerken: hc.strengths }),
       ...(hc?.lifeCircumstances.length && { lebenssituation: hc.lifeCircumstances }),
+      ...(hc?.preferredGroups.length && { bevorzugte_gruppen: hc.preferredGroups }),
       ...(hc?.agreements && { besondere_absprachen: hc.agreements }),
     }
   })
