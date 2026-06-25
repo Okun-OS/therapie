@@ -83,6 +83,8 @@ export default function AdminSchedule() {
   const [aiReasoning, setAiReasoning] = useState<string | null>(null)
   const [aiDecisions, setAiDecisions] = useState<{ type: string; message: string }[]>([])
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
+  const [aiDecisionQuestion, setAiDecisionQuestion] = useState<string | null>(null)
+  const [decisionLoading, setDecisionLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [shiftEditorOpen, setShiftEditorOpen] = useState(false)
@@ -156,7 +158,7 @@ export default function AdminSchedule() {
       d.setDate(d.getDate() + direction * 7)
     }
     setCurrentDate(d)
-    setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setSaved(false)
+    setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setSaved(false)
   }
 
   useEffect(() => {
@@ -237,7 +239,7 @@ export default function AdminSchedule() {
     return entry ? effectiveShifts.find(s => s.id === entry.shiftId) : null
   }
 
-  const runAI = async () => {
+  const runAI = async (confirmedDecisionQuestion?: string) => {
     setAiRunning(true)
     setAiDone(false)
     setAiStep(0)
@@ -245,6 +247,7 @@ export default function AdminSchedule() {
     setAiReasoning(null)
     setAiDecisions([])
     setAiWarnings([])
+    setAiDecisionQuestion(null)
 
     // Animate progress steps while waiting for the real API
     let step = 0
@@ -270,6 +273,7 @@ export default function AdminSchedule() {
           locationId,
           locationName: location?.name ?? 'Standort',
           facilityDescription: combinedDescription || undefined,
+          confirmedDecisionQuestion,
         }),
       })
 
@@ -298,6 +302,7 @@ export default function AdminSchedule() {
       setAiReasoning(data.reasoning ? sanitizeAiText(data.reasoning) : null)
       setAiDecisions((data.decisions ?? []).map((d: { type: string; message: string }) => ({ ...d, message: sanitizeAiText(d.message) })))
       setAiWarnings((data.warnings ?? []).map((w: string) => sanitizeAiText(w)))
+      setAiDecisionQuestion(confirmedDecisionQuestion ? null : (data.decisionQuestion ? sanitizeAiText(data.decisionQuestion) : null))
       setAiDone(true)
     } catch (err: unknown) {
       clearInterval(interval)
@@ -307,6 +312,22 @@ export default function AdminSchedule() {
     } finally {
       setAiRunning(false)
     }
+  }
+
+  const handleDecisionYes = async () => {
+    if (!aiDecisionQuestion) return
+    setDecisionLoading(true)
+    try {
+      await runAI(aiDecisionQuestion)
+      showToast('Optimierte Version erstellt')
+    } finally {
+      setDecisionLoading(false)
+    }
+  }
+
+  const handleDecisionNo = () => {
+    setAiDecisionQuestion(null)
+    showToast('Planung bleibt unverändert')
   }
 
   const unfairCount = fairnessData.filter(d => d.fairnessScore < 60).length
@@ -391,7 +412,7 @@ export default function AdminSchedule() {
               {PERIOD_OPTIONS.map(opt => (
                 <button
                   key={opt.key}
-                  onClick={() => { setPeriodMode(opt.key); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setSaved(false) }}
+                  onClick={() => { setPeriodMode(opt.key); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setSaved(false) }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${periodMode === opt.key ? 'bg-navy text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                 >
                   {opt.label}
@@ -506,7 +527,7 @@ export default function AdminSchedule() {
                         <Clock size={13} />
                         Dienstzeiten
                       </Button>
-                      <Button onClick={runAI} size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
+                      <Button onClick={() => runAI()} size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
                         <Sparkles size={14} />
                         Plan erstellen
                       </Button>
@@ -544,7 +565,7 @@ export default function AdminSchedule() {
                       Fairness-optimiert · Wünsche berücksichtigt · Schulden ausgeglichen.
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setSaved(false) }} className="text-gray-500">
+                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setSaved(false) }} className="text-gray-500">
                     Zurück
                   </Button>
                 </div>
@@ -692,6 +713,26 @@ export default function AdminSchedule() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {aiDone && aiDecisionQuestion && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                  <Info size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm font-semibold text-amber-800">{aiDecisionQuestion}</p>
+                </div>
+                <p className="text-xs text-amber-700">
+                  Falls Ja: Die KI erstellt automatisch eine optimierte Version. Falls Nein: Die Planung bleibt unverändert. Weitere Rückfragen erfolgen danach nicht.
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" loading={decisionLoading} onClick={handleDecisionYes} className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500">
+                    Ja, optimieren
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleDecisionNo} className="border border-amber-200 text-amber-700 hover:bg-amber-100">
+                    Nein, danke
+                  </Button>
+                </div>
               </div>
             )}
 

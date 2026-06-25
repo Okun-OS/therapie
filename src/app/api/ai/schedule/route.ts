@@ -39,6 +39,11 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 13. Verwende AUSSCHLIESSLICH natürliches, allgemeinverständliches Deutsch. Interne Feldnamen/Variablen wie "earlyDebt", "lateDebt", "midDebt", "fridayLateCnt", "mondayEarlyCnt", "fairnessScore", "debt" oder Mitarbeiter-IDs wie "emp1"/"emp2" dürfen NIEMALS im Text vorkommen – verwende stattdessen den echten Namen des Mitarbeiters und beschreibe den Sachverhalt in Worten (z.B. statt "earlyDebt: 2.5" schreibe "hatte zuletzt unterdurchschnittlich viele Frühdienste").
 14. Mische niemals Deutsch und Englisch in einem Satz.
 
+## Rückfrage nach Qualitätsprüfung (Schritt 8)
+15. Prüfe nach der Erstellung deinen eigenen Plan auf sinnvolle Optimierungen, die eine echte Abwägung der Leitung erfordern (z.B. spürbare Reduzierung von Überstunden eines Mitarbeiters durch Tausch zweier Dienste, auf Kosten eines weicheren Signals wie einer Präferenz). Falls eine solche Verbesserung existiert, formuliere GENAU EINE kurze Ja/Nein-Frage dazu im Feld "decisionQuestion" (z.B. "Soll ich die Überstunden von Maria Schmidt reduzieren, indem ihr Frühdienst am Mittwoch mit dem Spätdienst von Klaus Becker getauscht wird?").
+16. Falls keine derartige Entscheidung notwendig ist, setze "decisionQuestion" auf null. Stelle NIEMALS mehr als eine Rückfrage pro Antwort.
+17. Falls dir im Abschnitt "Bestätigte Optimierung" mitgeteilt wird, dass die Leitung eine vorherige Rückfrage bereits mit JA beantwortet hat, wende diese Verbesserung im Plan an und setze "decisionQuestion" in dieser Antwort IMMER auf null – es erfolgen keine weiteren Rückfragen zu derselben Planung.
+
 ## Output-Format (JSON, kein Markdown drumherum)
 Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
 {
@@ -51,7 +56,8 @@ Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
   "decisions": [
     { "type": "assignment" | "conflict" | "warning", "message": "Erklärung auf Deutsch" }
   ],
-  "warnings": ["Warnung 1", "Warnung 2"]
+  "warnings": ["Warnung 1", "Warnung 2"],
+  "decisionQuestion": "Ja/Nein-Frage auf Deutsch, oder null"
 }`
 
 interface ScheduleRequest {
@@ -63,6 +69,7 @@ interface ScheduleRequest {
   locationId?: string
   locationName: string
   facilityDescription?: string
+  confirmedDecisionQuestion?: string
 }
 
 export async function POST(req: NextRequest) {
@@ -77,7 +84,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
 
-  const { employees, shifts, fairnessData, wishSubmissions, weekDates, locationId, locationName, facilityDescription } = body
+  const { employees, shifts, fairnessData, wishSubmissions, weekDates, locationId, locationName, facilityDescription, confirmedDecisionQuestion } = body
 
   const activeEmployees = employees.filter(e => e.role === 'employee' && e.active)
 
@@ -187,6 +194,10 @@ ${facilityDescription ? `
 ${facilityDescription}
 
 Beachte diese Einrichtungsbeschreibung besonders beim Erstellen des Plans. Leite daraus zusätzliche Planungsregeln ab und wende sie an.` : ''}
+${confirmedDecisionQuestion ? `
+## Bestätigte Optimierung
+Die Leitung hat folgende Rückfrage aus einer vorherigen Planung mit JA beantwortet: "${confirmedDecisionQuestion}"
+Erstelle den Plan so, dass diese Verbesserung umgesetzt wird. Setze "decisionQuestion" in dieser Antwort auf null.` : ''}
 Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor oder danach.`
 
   try {
