@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
+import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { ESCALATION_LABEL, PRIORITY_LABEL, type SubstitutionPriority } from '@/lib/substitution-constants'
 import { formatDate } from '@/lib/utils'
 import { UserPlus, Plus, Calendar, Clock, TrendingUp, ChevronUp, CheckCircle2, XCircle, Hourglass } from 'lucide-react'
@@ -159,6 +160,10 @@ export default function AdminSubstitutions() {
     <>
       <Header title="Vertretungsmanagement" subtitle={`${open.length} offene Anfragen`} />
       <div className="p-4 sm:p-6 space-y-4">
+        <FeatureIntro
+          featureKey="admin-substitutions"
+          text="Hier können Sie kurzfristig offene Dienste veröffentlichen. Alle geeigneten Mitarbeiter erhalten automatisch eine Push-Nachricht und können den Dienst übernehmen."
+        />
 
         <div className="flex gap-3">
           <div className="flex-1 grid grid-cols-2 gap-3">

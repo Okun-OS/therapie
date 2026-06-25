@@ -19,7 +19,7 @@ import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
-  CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff,
+  CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff, Plus, X,
 } from 'lucide-react'
 
 interface PlanningRules {
@@ -78,6 +78,8 @@ export default function AdminSchedule() {
   const [shiftEditorOpen, setShiftEditorOpen] = useState(false)
   const [saved, setSaved] = useState(false)
   const [facilityDescription, setFacilityDescription] = useState('')
+  const [periodNotes, setPeriodNotes] = useState<{ id: string; note: string }[]>([])
+  const [periodNoteInput, setPeriodNoteInput] = useState('')
   const [shiftTimeOverrides, setShiftTimeOverrides] = useState<Record<string, { startTime: string; endTime: string }>>({})
   const [planningRules, setPlanningRules] = useState<PlanningRules>(DEFAULT_RULES)
   const [rulesDraft, setRulesDraft] = useState<PlanningRules>(DEFAULT_RULES)
@@ -96,9 +98,35 @@ export default function AdminSchedule() {
     }
   }, [])
 
+
   const weekDays = getWeekDays(currentDate)
   const weekStart = toDateString(weekDays[0])
   const weekEnd = toDateString(weekDays[6])
+
+  useEffect(() => {
+    fetch(`/api/scheduling-period-notes?locationId=${locationId}&weekStart=${weekStart}`)
+      .then(r => r.json())
+      .then(json => setPeriodNotes(json.notes ?? []))
+      .catch(() => setPeriodNotes([]))
+  }, [locationId, weekStart])
+
+  async function addPeriodNote() {
+    const note = periodNoteInput.trim()
+    if (!note) return
+    const res = await fetch('/api/scheduling-period-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locationId, weekStart, note }),
+    })
+    const json = await res.json()
+    if (json.note) setPeriodNotes(prev => [...prev, json.note])
+    setPeriodNoteInput('')
+  }
+
+  async function removePeriodNote(id: string) {
+    setPeriodNotes(prev => prev.filter(n => n.id !== id))
+    await fetch(`/api/scheduling-period-notes?id=${id}`, { method: 'DELETE' })
+  }
 
   const employees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee')
   const locationShifts = SHIFTS.filter(s => s.locationId === locationId)
@@ -179,6 +207,7 @@ export default function AdminSchedule() {
           fairnessData,
           wishSubmissions: planningRules.considerWishes ? wishSubmissions : [],
           weekDates,
+          locationId,
           locationName: location?.name ?? 'Standort',
           facilityDescription: combinedDescription || undefined,
         }),
@@ -347,6 +376,36 @@ export default function AdminSchedule() {
                       rows={3}
                       className="w-full px-3 py-2 text-sm border border-purple-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none placeholder:text-gray-400"
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 block mb-1">
+                      Besonderheiten nur für diese Woche (optional)
+                    </label>
+                    <p className="text-[11px] text-gray-400 mb-1.5">Gilt ausschließlich für {formatDateShort(weekStart)} – {formatDateShort(weekEnd)}, z.B. &quot;Diese Woche findet ein Sommerfest statt&quot;. Wird nicht in künftige Wochen übernommen.</p>
+                    {periodNotes.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {periodNotes.map(n => (
+                          <span key={n.id} className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                            {n.note}
+                            <button onClick={() => removePeriodNote(n.id)} className="hover:text-purple-900">
+                              <X size={12} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        value={periodNoteInput}
+                        onChange={e => setPeriodNoteInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && addPeriodNote()}
+                        placeholder="z.B. Am Donnerstag fehlen zwei Mitarbeiter wegen Fortbildung"
+                        className="flex-1 px-3 py-2 text-sm border border-purple-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-300 placeholder:text-gray-400"
+                      />
+                      <Button variant="ghost" size="sm" onClick={addPeriodNote} className="gap-1 border border-purple-200 text-purple-700 hover:bg-purple-50">
+                        <Plus size={14} />
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <label className="flex items-center gap-2 cursor-pointer">

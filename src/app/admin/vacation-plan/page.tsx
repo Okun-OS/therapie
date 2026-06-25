@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/lib/auth-context'
+import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import {
   EMPLOYEES, LOCATIONS, VACATION_PREFERENCES, SCHOOL_HOLIDAYS_2026,
 } from '@/lib/mock-data'
@@ -180,6 +181,10 @@ export default function VacationPlanPage() {
     <>
       <Header title="KI-Urlaubsplan" subtitle={`${location?.name} · KI-gestützte Planung`} />
       <div className="p-4 sm:p-6 space-y-4">
+        <FeatureIntro
+          featureKey="admin-vacation-plan"
+          text="Hier erstellen Sie zunächst die Jahresurlaubsplanung. Einzelne Urlaubsanträge während des Jahres werden später separat bearbeitet."
+        />
 
         {/* Intro */}
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3">

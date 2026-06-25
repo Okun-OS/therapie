@@ -31,6 +31,8 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 11. Begründe bei Konflikten, wer den Vorzug erhält und warum.
 11a. Manche Mitarbeiter haben zusätzlich freiwillige, persönliche Angaben hinterlegt ("staerken", "lebenssituation", "bevorzugte_gruppen", "besondere_absprachen" in den Mitarbeiterdaten). Berücksichtige diese als weiche Signale bei der Verteilung – z.B. besondere Absprachen einhalten, Rücksicht auf die angegebene Lebenssituation nehmen, Stärken in passenden Situationen einsetzen, bevorzugte Gruppen/Bereiche nach Möglichkeit berücksichtigen – sofern dies nicht im Widerspruch zu Pflicht- oder Fairness-Regeln steht.
 11b. Diese persönlichen Angaben sind freiwillig und liegen nicht für jeden Mitarbeiter vor. Das Fehlen solcher Angaben darf niemals als Nachteil gewertet werden.
+11c. Falls eine "Konfiguration der Einrichtung (aus dem KI-Onboarding)" angegeben ist, sind diese Regeln verbindlich und dauerhaft gültig.
+11d. Falls "Besonderheiten ausschließlich für diese eine Planungsperiode" angegeben sind, gelten diese mit hoher Priorität NUR für die aktuelle Woche und können dauerhafte Regeln für diese eine Planung temporär überschreiben.
 
 ## Sprache & Ton der Texte (reasoning, decisions[].message, warnings)
 12. Diese Texte werden der EINRICHTUNGSLEITUNG (Admin) angezeigt, NICHT den Mitarbeitern. Schreibe daher konsequent in der dritten Person über Mitarbeiter (z.B. "Maria Schmidt bekommt den Frühdienst, da..."), niemals in der zweiten Person ("du", "dein", "dich").
@@ -58,6 +60,7 @@ interface ScheduleRequest {
   fairnessData: ShiftFairnessData[]
   wishSubmissions: WishSubmission[]
   weekDates: string[]
+  locationId?: string
   locationName: string
   facilityDescription?: string
 }
@@ -74,9 +77,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
 
-  const { employees, shifts, fairnessData, wishSubmissions, weekDates, locationName, facilityDescription } = body
+  const { employees, shifts, fairnessData, wishSubmissions, weekDates, locationId, locationName, facilityDescription } = body
 
   const activeEmployees = employees.filter(e => e.role === 'employee' && e.active)
+
+  const [locationOnboarding, periodNotes] = locationId
+    ? await Promise.all([
+        prisma.locationOnboarding.findUnique({ where: { locationId } }),
+        prisma.schedulingPeriodNote.findMany({ where: { locationId, weekStart: weekDates[0] } }),
+      ])
+    : [null, []]
 
   const humanContexts = activeEmployees.length > 0
     ? await prisma.employeeHumanContext.findMany({
@@ -123,6 +133,25 @@ export async function POST(req: NextRequest) {
     minStaff: s.minStaff,
   }))
 
+  const onboardingSection = locationOnboarding ? `
+## Konfiguration der Einrichtung (aus dem KI-Onboarding, gilt dauerhaft)
+${[
+    locationOnboarding.dienstplanlogik && `Dienstplanlogik: ${locationOnboarding.dienstplanlogik}`,
+    locationOnboarding.pausenlogik && `Pausenlogik: ${locationOnboarding.pausenlogik}`,
+    locationOnboarding.wiederkehrendeAufgaben && `Wiederkehrende Aufgaben: ${locationOnboarding.wiederkehrendeAufgaben}`,
+    locationOnboarding.vertretungsregeln && `Vertretungsregeln: ${locationOnboarding.vertretungsregeln}`,
+    locationOnboarding.individuelleRegeln.length > 0 && `Individuelle Regeln:\n${locationOnboarding.individuelleRegeln.map(r => `- ${r}`).join('\n')}`,
+    locationOnboarding.besonderheiten && `Sonstige Besonderheiten: ${locationOnboarding.besonderheiten}`,
+  ].filter(Boolean).join('\n')}
+
+Beachte diese Konfiguration verbindlich bei der Planung.` : ''
+
+  const periodNotesSection = periodNotes.length > 0 ? `
+## Besonderheiten ausschließlich für diese eine Planungsperiode
+${periodNotes.map(n => `- ${n.note}`).join('\n')}
+
+Diese Hinweise gelten NUR für die aktuelle Woche und überschreiben bei Bedarf temporär die Standardregeln. Sie gelten nicht für künftige Wochen.` : ''
+
   const wishSummary = wishSubmissions.map(w => ({
     employeeId: w.employeeId,
     employeeName: w.employeeName,
@@ -148,6 +177,8 @@ ${JSON.stringify(weekDates)}
 
 ## Dienstwünsche der Mitarbeiter
 ${wishSummary.length > 0 ? JSON.stringify(wishSummary, null, 2) : 'Keine Wünsche eingereicht.'}
+${onboardingSection}
+${periodNotesSection}
 ${facilityDescription ? `
 ## Besondere Einrichtungsbeschreibung vom Teamleiter
 ${facilityDescription}

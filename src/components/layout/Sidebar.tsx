@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList,
-  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart, Scale, ShieldAlert, Brain
+  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart, Scale, ShieldAlert, Brain, MessageCircle
 } from 'lucide-react'
 
 interface NavItem {
@@ -44,6 +44,7 @@ const adminNav: NavItem[] = [
 
 const companyNav: NavItem[] = [
   { href: '/company', label: 'Übersicht', icon: LayoutDashboard },
+  { href: '/company/onboarding', label: 'KI-Onboarding', icon: MessageCircle, badge: 'KI' },
   { href: '/company/locations', label: 'Standorte', icon: MapPin },
   { href: '/company/workforce-score', label: 'Workforce Score', icon: Trophy, badge: 'KI' },
   { href: '/company/workforce-insights', label: 'Workforce Insights', icon: LineChart, badge: 'KI' },

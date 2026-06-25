@@ -160,3 +160,48 @@ model LevelBonusConfig {
   bonusText String?
   updatedAt DateTime       @updatedAt
 }
+
+// ─── KI-Onboarding (Modul 02) ────────────────────────────────────────────────
+// Zweistufiges Onboarding per KI-Chat statt klassischem Formular.
+// Ebene 1 (Träger): trägerweite Angaben, einmalig, ein Datensatz pro Mandant.
+// Ebene 2 (Einrichtung): pro Standort (mock-data Location) eigene Konfiguration –
+// "Das System darf niemals einfach die Regeln einer anderen Einrichtung kopieren."
+model OrganizationOnboarding {
+  id                      String   @id @default("singleton")
+  traegerName             String?
+  rollenmodell            String?
+  unternehmensweiteRegeln String?
+  completed               Boolean  @default(false)
+  updatedAt               DateTime @updatedAt
+}
+
+model LocationOnboarding {
+  locationId             String   @id
+  einrichtungsart        String?
+  organisationsstruktur  String?
+  personalstruktur       String?
+  arbeitszeiten          String?
+  dienstplanlogik        String?
+  pausenlogik            String?
+  wiederkehrendeAufgaben String?
+  individuelleRegeln     String[] @default([])
+  vertretungsregeln      String?
+  urlaubslogik           String?
+  zeiterfassung          String?
+  besonderheiten         String?
+  completedPhases        String[] @default([])
+  completed              Boolean  @default(false)
+  updatedAt              DateTime @updatedAt
+}
+
+// Ergänzung 4 zu 02_ONBOARDING_CHAT.md: kurzfristige, nur für die jeweils
+// aktuelle Planungsperiode gültige Besonderheiten (z.B. "Diese Woche findet
+// ein Sommerfest statt"). Bewusst getrennt von LocationOnboarding, da diese
+// Hinweise gerade NICHT dauerhaft gelten sollen.
+model SchedulingPeriodNote {
+  id         String   @id @default(cuid())
+  locationId String
+  weekStart  String
+  note       String
+  createdAt  DateTime @default(now())
+}

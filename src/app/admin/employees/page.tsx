@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
+import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EMPLOYEES, updateEmployee, addEmployee } from '@/lib/mock-data'
 import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Mail, Edit, ChevronRight } from 'lucide-react'
 import type { Employee } from '@/lib/types'
@@ -93,6 +94,10 @@ export default function AdminEmployees() {
     <>
       <Header title="Mitarbeiter" subtitle={`${employees.length} aktive Mitarbeiter`} />
       <div className="p-4 sm:p-6 space-y-4">
+        <FeatureIntro
+          featureKey="admin-employees-time-tracking"
+          text="Hier sehen Sie alle Arbeitszeiten Ihrer Mitarbeiter. Am Monatsende können Sie die Zeiterfassung prüfen und freigeben."
+        />
 
         {/* Search + Add */}
         <div className="flex gap-3">
