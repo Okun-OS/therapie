@@ -12,27 +12,35 @@ interface ChatMessage {
   content: string
 }
 
-const OPENING_MESSAGE = 'Super, dann legen wir jetzt gemeinsam einen neuen Mitarbeiter an. Ich stelle dir ein paar kurze Fragen, du kannst einfach ganz normal antworten. Wie heißt die Person, und wie lautet die E-Mail-Adresse?'
+const CREATE_OPENING = 'Super, dann legen wir jetzt gemeinsam einen neuen Mitarbeiter an. Ich stelle dir ein paar kurze Fragen, du kannst einfach ganz normal antworten. Wie heißt die Person, und wie lautet die E-Mail-Adresse?'
+const editOpening = (name: string) => `Klar, was möchtest du an ${name}s Profil ändern oder ergänzen? Du kannst mir einfach frei erzählen, was sich geändert hat.`
 
 export function EmployeeCreationChat({
   open,
   onClose,
   onSave,
+  initialDraft,
+  employeeName,
 }: {
   open: boolean
   onClose: () => void
   onSave: (draft: EmployeeDraft) => Promise<void>
+  initialDraft?: EmployeeDraft
+  employeeName?: string
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', content: OPENING_MESSAGE }])
+  const isEditMode = !!initialDraft
+  const openingMessage = isEditMode ? editOpening(employeeName ?? 'des Mitarbeiters') : CREATE_OPENING
+
+  const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', content: openingMessage }])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft] = useState<EmployeeDraft>({})
+  const [draft, setDraft] = useState<EmployeeDraft>(initialDraft ?? {})
 
   function reset() {
-    setMessages([{ role: 'assistant', content: OPENING_MESSAGE }])
+    setMessages([{ role: 'assistant', content: openingMessage }])
     setInput('')
-    setDraft({})
+    setDraft(initialDraft ?? {})
   }
 
   async function handleSend() {
@@ -73,8 +81,10 @@ export function EmployeeCreationChat({
     }
   }
 
+  const showSaveButton = isEditMode ? Object.keys(draft).length > 0 : draft.readyToSave
+
   return (
-    <Modal open={open} onClose={() => { reset(); onClose() }} title="Mitarbeiter per KI-Chat anlegen" size="lg">
+    <Modal open={open} onClose={() => { reset(); onClose() }} title={isEditMode ? 'Profil per KI-Chat aktualisieren' : 'Mitarbeiter per KI-Chat anlegen'} size="lg">
       <div className="space-y-2 mb-3 max-h-96 overflow-y-auto">
         {messages.map((m, i) => (
           <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
@@ -90,11 +100,11 @@ export function EmployeeCreationChat({
         {sending && <div className="text-xs text-gray-400 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> KI denkt nach…</div>}
       </div>
 
-      {draft.readyToSave && (
+      {showSaveButton && (
         <div className="mb-3">
           <Button className="w-full gap-2" loading={saving} onClick={handleSave}>
             <UserPlus size={16} />
-            Mitarbeiter jetzt anlegen
+            {isEditMode ? 'Änderungen speichern' : 'Mitarbeiter jetzt anlegen'}
           </Button>
         </div>
       )}

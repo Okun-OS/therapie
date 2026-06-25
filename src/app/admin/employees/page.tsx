@@ -11,7 +11,7 @@ import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
 import { EMPLOYEES, updateEmployee, addEmployee } from '@/lib/mock-data'
-import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight } from 'lucide-react'
+import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight, MessageCircle } from 'lucide-react'
 import type { Employee } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 
@@ -32,7 +32,29 @@ export default function AdminEmployees() {
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', email: '', position: '', weeklyHours: 38 })
   const [chatOpen, setChatOpen] = useState(false)
+  const [editChatEmployee, setEditChatEmployee] = useState<Employee | null>(null)
+  const [editChatDraft, setEditChatDraft] = useState<EmployeeDraft | null>(null)
   const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
+
+  function employeeToDraft(emp: Employee, ctx: EmployeeHumanContext | null): EmployeeDraft {
+    return {
+      name: emp.name,
+      email: emp.email,
+      phone: emp.phone,
+      birthDate: emp.birthDate,
+      roleType: emp.roleType,
+      employmentType: emp.employmentType,
+      weeklyHours: emp.weeklyHours,
+      gruppe: emp.gruppe,
+      bereich: emp.bereich,
+      multiGroupCapable: emp.multiGroupCapable,
+      fixedLocations: emp.fixedLocations,
+      qualifications: emp.qualifications,
+      allowedTasks: emp.allowedTasks,
+      besonderheiten: ctx?.lifeCircumstances,
+      absprachen: ctx?.agreements ?? undefined,
+    }
+  }
 
   useEffect(() => {
     if (!selectedEmployee) {
@@ -100,6 +122,43 @@ export default function AdminEmployees() {
       }
     }
     showToast('Mitarbeiter gespeichert', 'success')
+  }
+
+  const handleUpdateFromChat = async (draft: EmployeeDraft) => {
+    if (!editChatEmployee) return
+    updateEmployee(editChatEmployee.id, {
+      ...(draft.name && { name: draft.name }),
+      ...(draft.email && { email: draft.email }),
+      ...(draft.phone !== undefined && { phone: draft.phone }),
+      ...(draft.birthDate !== undefined && { birthDate: draft.birthDate }),
+      ...(draft.roleType !== undefined && { roleType: draft.roleType, position: draft.roleType }),
+      ...(draft.employmentType !== undefined && { employmentType: draft.employmentType }),
+      ...(draft.weeklyHours !== undefined && { weeklyHours: draft.weeklyHours }),
+      ...(draft.gruppe !== undefined && { gruppe: draft.gruppe }),
+      ...(draft.bereich !== undefined && { bereich: draft.bereich }),
+      ...(draft.multiGroupCapable !== undefined && { multiGroupCapable: draft.multiGroupCapable }),
+      ...(draft.fixedLocations !== undefined && { fixedLocations: draft.fixedLocations }),
+      ...(draft.qualifications !== undefined && { qualifications: draft.qualifications }),
+      ...(draft.allowedTasks !== undefined && { allowedTasks: draft.allowedTasks }),
+    })
+    if ((draft.besonderheiten && draft.besonderheiten.length > 0) || draft.absprachen) {
+      try {
+        await fetch('/api/employee-human-context', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            employeeId: editChatEmployee.id,
+            lifeCircumstances: draft.besonderheiten,
+            agreements: draft.absprachen,
+          }),
+        })
+      } catch {
+        // Profil ist bereits aktualisiert; die Besonderheiten können später erneut ergänzt werden.
+      }
+    }
+    showToast('Profil aktualisiert', 'success')
+    setEditChatEmployee(null)
+    setSelectedEmployee(prev => prev && prev.id === editChatEmployee.id ? { ...prev, ...draft } as Employee : prev)
   }
 
   const employees = EMPLOYEES.filter(
@@ -285,6 +344,15 @@ export default function AdminEmployees() {
               </div>
             )}
 
+            <Button
+              variant="ghost"
+              className="w-full gap-2 border border-gray-200"
+              onClick={() => { setEditChatDraft(employeeToDraft(selectedEmployee, humanContext)); setEditChatEmployee(selectedEmployee); setSelectedEmployee(null) }}
+            >
+              <MessageCircle size={16} />
+              Per KI-Chat aktualisieren
+            </Button>
+
             <div className="flex gap-2">
               <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setSelectedEmployee(null)}>
                 Schließen
@@ -350,6 +418,15 @@ export default function AdminEmployees() {
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         onSave={handleSaveFromChat}
+      />
+
+      <EmployeeCreationChat
+        key={editChatEmployee?.id ?? 'none'}
+        open={!!editChatEmployee}
+        onClose={() => { setEditChatEmployee(null); setEditChatDraft(null) }}
+        onSave={handleUpdateFromChat}
+        initialDraft={editChatDraft ?? undefined}
+        employeeName={editChatEmployee?.name}
       />
     </>
   )
