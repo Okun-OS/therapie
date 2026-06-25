@@ -30,6 +30,16 @@ export interface Employee {
   active: boolean
   joinedAt: string
   hasChildren?: boolean
+  phone?: string
+  birthDate?: string
+  roleType?: string
+  employmentType?: string
+  gruppe?: string
+  bereich?: string
+  multiGroupCapable?: boolean
+  fixedLocations?: string
+  qualifications?: string[]
+  allowedTasks?: string[]
 }
 
 export interface EmployeePreferences {

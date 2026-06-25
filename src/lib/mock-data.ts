@@ -292,7 +292,23 @@ export function updateEmployee(id: string, updates: Partial<Employee>) {
 
 let employeeSeq = 1000
 
-export function addEmployee(input: { name: string; email: string; position: string; weeklyHours: number; locationId: string }): Employee {
+export function addEmployee(input: {
+  name: string
+  email: string
+  position: string
+  weeklyHours: number
+  locationId: string
+  phone?: string
+  birthDate?: string
+  roleType?: string
+  employmentType?: string
+  gruppe?: string
+  bereich?: string
+  multiGroupCapable?: boolean
+  fixedLocations?: string
+  qualifications?: string[]
+  allowedTasks?: string[]
+}): Employee {
   const employee: Employee = {
     id: `emp-new-${employeeSeq++}`,
     name: input.name,
@@ -306,6 +322,16 @@ export function addEmployee(input: { name: string; email: string; position: stri
     vacationDaysUsed: 0,
     active: true,
     joinedAt: new Date().toISOString().split('T')[0],
+    phone: input.phone,
+    birthDate: input.birthDate,
+    roleType: input.roleType,
+    employmentType: input.employmentType,
+    gruppe: input.gruppe,
+    bereich: input.bereich,
+    multiGroupCapable: input.multiGroupCapable,
+    fixedLocations: input.fixedLocations,
+    qualifications: input.qualifications,
+    allowedTasks: input.allowedTasks,
   }
   EMPLOYEES.push(employee)
   return employee

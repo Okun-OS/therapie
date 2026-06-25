@@ -9,9 +9,11 @@ import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
+import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
 import { EMPLOYEES, updateEmployee, addEmployee } from '@/lib/mock-data'
-import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Mail, Edit, ChevronRight } from 'lucide-react'
+import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight } from 'lucide-react'
 import type { Employee } from '@/lib/types'
+import type { EmployeeDraft } from '@/lib/employee-draft'
 
 interface EmployeeHumanContext {
   strengths: string[]
@@ -29,9 +31,7 @@ export default function AdminEmployees() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', email: '', position: '', weeklyHours: 38 })
-  const [addModal, setAddModal] = useState(false)
-  const [newEmployee, setNewEmployee] = useState({ name: '', email: '', position: '', weeklyHours: 38 })
-  const [addErrors, setAddErrors] = useState<string[]>([])
+  const [chatOpen, setChatOpen] = useState(false)
   const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
 
   useEffect(() => {
@@ -62,23 +62,44 @@ export default function AdminEmployees() {
     setSelectedEmployee(null)
   }
 
-  const handleAddEmployee = () => {
-    const errors: string[] = []
-    if (!newEmployee.name.trim()) errors.push('Name ist erforderlich')
-    if (!newEmployee.email.trim()) errors.push('E-Mail ist erforderlich')
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmployee.email.trim())) errors.push('E-Mail-Adresse ist ungültig')
-    if (!newEmployee.position.trim()) errors.push('Position ist erforderlich')
-
-    if (errors.length > 0) {
-      setAddErrors(errors)
+  const handleSaveFromChat = async (draft: EmployeeDraft) => {
+    if (!draft.name?.trim() || !draft.email?.trim()) {
+      showToast('Name und E-Mail werden benötigt, um den Mitarbeiter zu speichern', 'error')
       return
     }
-
-    addEmployee({ ...newEmployee, locationId })
+    const employee = addEmployee({
+      name: draft.name,
+      email: draft.email,
+      position: draft.roleType || 'Mitarbeiter',
+      weeklyHours: draft.weeklyHours || 38,
+      locationId,
+      phone: draft.phone,
+      birthDate: draft.birthDate,
+      roleType: draft.roleType,
+      employmentType: draft.employmentType,
+      gruppe: draft.gruppe,
+      bereich: draft.bereich,
+      multiGroupCapable: draft.multiGroupCapable,
+      fixedLocations: draft.fixedLocations,
+      qualifications: draft.qualifications,
+      allowedTasks: draft.allowedTasks,
+    })
+    if ((draft.besonderheiten && draft.besonderheiten.length > 0) || draft.absprachen) {
+      try {
+        await fetch('/api/employee-human-context', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            employeeId: employee.id,
+            lifeCircumstances: draft.besonderheiten,
+            agreements: draft.absprachen,
+          }),
+        })
+      } catch {
+        // Mitarbeiter ist bereits angelegt; die Besonderheiten können später im Profil ergänzt werden.
+      }
+    }
     showToast('Mitarbeiter gespeichert', 'success')
-    setAddModal(false)
-    setAddErrors([])
-    setNewEmployee({ name: '', email: '', position: '', weeklyHours: 38 })
   }
 
   const employees = EMPLOYEES.filter(
@@ -110,7 +131,7 @@ export default function AdminEmployees() {
               className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-white"
             />
           </div>
-          <Button size="md" onClick={() => setAddModal(true)} className="gap-2 whitespace-nowrap">
+          <Button size="md" onClick={() => setChatOpen(true)} className="gap-2 whitespace-nowrap">
             <Plus size={16} />
             <span className="hidden sm:inline">Mitarbeiter</span>
           </Button>
@@ -228,6 +249,24 @@ export default function AdminEmployees() {
               </div>
             )}
 
+            {(selectedEmployee.gruppe || selectedEmployee.bereich || selectedEmployee.roleType || (selectedEmployee.qualifications?.length ?? 0) > 0) && (
+              <div className="bg-amber-50 rounded-xl p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-amber-700">Arbeitsbereich &amp; Qualifikation</p>
+                {(selectedEmployee.gruppe || selectedEmployee.bereich) && (
+                  <p className="text-sm text-amber-700">
+                    {selectedEmployee.gruppe && <><span className="font-medium">Gruppe:</span> {selectedEmployee.gruppe} · </>}
+                    {selectedEmployee.bereich && <><span className="font-medium">Bereich:</span> {selectedEmployee.bereich}</>}
+                  </p>
+                )}
+                {selectedEmployee.roleType && (
+                  <p className="text-sm text-amber-700"><span className="font-medium">Rolle:</span> {selectedEmployee.roleType}</p>
+                )}
+                {(selectedEmployee.qualifications?.length ?? 0) > 0 && (
+                  <p className="text-sm text-amber-700"><span className="font-medium">Qualifikationen:</span> {selectedEmployee.qualifications!.join(', ')}</p>
+                )}
+              </div>
+            )}
+
             {humanContext && (humanContext.strengths.length > 0 || humanContext.lifeCircumstances.length > 0 || humanContext.preferredGroups.length > 0 || humanContext.agreements) && (
               <div className="bg-purple-50 rounded-xl p-3 space-y-1.5">
                 <p className="text-xs font-semibold text-purple-700">Persönliches (freiwillig angegeben)</p>
@@ -289,7 +328,7 @@ export default function AdminEmployees() {
               <label className="block text-sm font-semibold text-navy mb-1.5">Wochenstunden</label>
               <div className="flex items-center gap-3">
                 <input
-                  type="range" min={10} max={40} step={2}
+                  type="range" min={10} max={60} step={2}
                   value={editForm.weeklyHours}
                   onChange={e => setEditForm(f => ({ ...f, weeklyHours: Number(e.target.value) }))}
                   className="flex-1 accent-brand"
@@ -307,71 +346,11 @@ export default function AdminEmployees() {
         )}
       </Modal>
 
-      {/* Add Employee Modal */}
-      <Modal open={addModal} onClose={() => { setAddModal(false); setAddErrors([]) }} title="Mitarbeiter hinzufügen">
-        <div className="space-y-4">
-          {addErrors.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-              <ul className="text-xs text-red-700 list-disc list-inside space-y-0.5">
-                {addErrors.map(err => <li key={err}>{err}</li>)}
-              </ul>
-            </div>
-          )}
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Name</label>
-            <input
-              value={newEmployee.name}
-              onChange={e => setNewEmployee(n => ({ ...n, name: e.target.value }))}
-              placeholder="Vorname Nachname"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
-            <div className="relative">
-              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="email"
-                value={newEmployee.email}
-                onChange={e => setNewEmployee(n => ({ ...n, email: e.target.value }))}
-                placeholder="name@firma.de"
-                className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Position</label>
-            <select
-              value={newEmployee.position}
-              onChange={e => setNewEmployee(n => ({ ...n, position: e.target.value }))}
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            >
-              <option value="">Bitte wählen...</option>
-              <option>Erzieherin</option>
-              <option>Erzieher</option>
-              <option>Kinderpflegerin</option>
-              <option>Kinderpfleger</option>
-              <option>Springkraft</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Wochenstunden</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="range" min={10} max={40} step={2}
-                value={newEmployee.weeklyHours}
-                onChange={e => setNewEmployee(n => ({ ...n, weeklyHours: Number(e.target.value) }))}
-                className="flex-1 accent-brand"
-              />
-              <span className="font-bold text-navy w-12 text-center">{newEmployee.weeklyHours}h</span>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setAddModal(false); setAddErrors([]) }}>Abbrechen</Button>
-            <Button className="flex-1" onClick={handleAddEmployee}>Speichern</Button>
-          </div>
-        </div>
-      </Modal>
+      <EmployeeCreationChat
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        onSave={handleSaveFromChat}
+      />
     </>
   )
 }
