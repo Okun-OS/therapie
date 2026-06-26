@@ -42,7 +42,7 @@ export function FairnessReport({ data }: FairnessReportProps) {
       {/* Per-employee details */}
       <Card padding="none" className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px]">
+          <table className="w-full min-w-[980px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3 w-36">Mitarbeiter</th>
@@ -61,6 +61,8 @@ export function FairnessReport({ data }: FairnessReportProps) {
                 <th className="text-center text-xs font-semibold text-gray-500 px-2 py-3">
                   <div className="flex items-center justify-center gap-1"><CalendarDays size={11} /> WE</div>
                 </th>
+                <th className="text-center text-xs font-semibold text-gray-500 px-2 py-3">Folgetage</th>
+                <th className="text-center text-xs font-semibold text-gray-500 px-2 py-3">Vertretungen</th>
                 <th className="text-center text-xs font-semibold text-gray-500 px-3 py-3">Score</th>
               </tr>
             </thead>
@@ -71,6 +73,7 @@ export function FairnessReport({ data }: FairnessReportProps) {
                 const mondayEarlyWarning = emp.mondayEarlyCnt >= 3
                 const fridayEarlyWarning = emp.fridayEarlyCnt >= 3
                 const weekendWarning = emp.weekendCnt > 2
+                const consecutiveWarning = emp.maxConsecutiveDays > 5
                 const hasIssues = emp.issues.length > 0
 
                 return (
@@ -134,6 +137,15 @@ export function FairnessReport({ data }: FairnessReportProps) {
                         {emp.weekendCnt}×
                       </span>
                       {weekendWarning && <AlertTriangle size={10} className="inline ml-1 text-red-400" />}
+                    </td>
+                    <td className="px-2 py-3 text-center">
+                      <span className={`text-sm font-bold ${consecutiveWarning ? 'text-red-600' : 'text-navy'}`}>
+                        {emp.maxConsecutiveDays}
+                      </span>
+                      {consecutiveWarning && <AlertTriangle size={10} className="inline ml-1 text-red-400" />}
+                    </td>
+                    <td className="px-2 py-3 text-center">
+                      <span className="text-sm font-bold text-navy">{emp.substitutionCoverageCnt}</span>
                     </td>
                     <td className="px-3 py-3 text-center">
                       <span className={`text-xs font-bold px-2 py-1 rounded-full ${color}`}>

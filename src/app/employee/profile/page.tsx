@@ -120,7 +120,7 @@ export default function EmployeeProfile() {
 
   const isDirty = JSON.stringify(prefs) !== JSON.stringify(savedPrefs)
 
-  const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], preferredGroups: [] as string[], agreements: '' }
+  const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], preferredGroups: [] as string[], preferredActivities: [] as string[], agreements: '' }
   const [humanContext, setHumanContext] = useState(initialHumanContext)
   const [savedHumanContext, setSavedHumanContext] = useState(initialHumanContext)
   const [humanContextSaved, setHumanContextSaved] = useState(false)
@@ -139,6 +139,7 @@ export default function EmployeeProfile() {
           strengths: ctx?.strengths ?? [],
           lifeCircumstances: ctx?.lifeCircumstances ?? [],
           preferredGroups: ctx?.preferredGroups ?? [],
+          preferredActivities: ctx?.preferredActivities ?? [],
           agreements: ctx?.agreements ?? '',
         }
         setHumanContext(loaded)
@@ -148,11 +149,11 @@ export default function EmployeeProfile() {
       .catch(() => setHumanContextLoaded(true))
   }, [employee?.id])
 
-  const addTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups', value: string) => {
+  const addTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups' | 'preferredActivities', value: string) => {
     setHumanContext(p => (p[field].includes(value) ? p : { ...p, [field]: [...p[field], value] }))
   }
 
-  const removeTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups', value: string) => {
+  const removeTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups' | 'preferredActivities', value: string) => {
     setHumanContext(p => ({ ...p, [field]: p[field].filter(v => v !== value) }))
   }
 
@@ -170,7 +171,7 @@ export default function EmployeeProfile() {
 
   const handleClearHumanContext = async () => {
     if (!employee) return
-    const cleared = { strengths: [], lifeCircumstances: [], preferredGroups: [], agreements: '' }
+    const cleared = { strengths: [], lifeCircumstances: [], preferredGroups: [], preferredActivities: [], agreements: '' }
     await fetch('/api/employee-human-context', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -496,6 +497,14 @@ export default function EmployeeProfile() {
               placeholder="z.B. Krippe, Gruppe Sonnenblume…"
             />
 
+            <TagInputSection
+              label="Bevorzugte Tätigkeiten"
+              items={humanContext.preferredActivities}
+              onAdd={v => addTag('preferredActivities', v)}
+              onRemove={v => removeTag('preferredActivities', v)}
+              placeholder="z.B. Dokumentation, Elternarbeit…"
+            />
+
             <div>
               <label className="block text-sm font-semibold text-navy mb-1.5">Besondere Absprachen</label>
               <textarea
@@ -548,6 +557,7 @@ export default function EmployeeProfile() {
               strengths: ctx.strengths,
               lifeCircumstances: ctx.lifeCircumstances,
               preferredGroups: ctx.preferredGroups,
+              preferredActivities: ctx.preferredActivities,
               agreements: ctx.agreements ?? '',
             }
             setHumanContext(next)

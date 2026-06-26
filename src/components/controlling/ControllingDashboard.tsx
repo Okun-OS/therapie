@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   Sparkles, Users, Clock4, Palmtree, UserPlus, CheckCircle2, AlertTriangle, XCircle,
-  Send, MessageCircle, Loader2, Scale,
+  Send, MessageCircle, Loader2, Scale, Thermometer, ListChecks,
 } from 'lucide-react'
 import type { ControllingSnapshot, StatusLevel } from '@/lib/controlling-service'
 
@@ -103,10 +103,58 @@ export function ControllingDashboard({ fetchUrl }: { fetchUrl: string }) {
 
       <Card>
         <CardHeader>
+          <CardTitle>Personalübersicht (heute)</CardTitle>
+        </CardHeader>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 text-sm">
+          <div><p className="text-gray-400">Anzahl Mitarbeiter</p><p className="font-semibold text-navy">{data.personnelOverview.totalEmployees}</p></div>
+          <div><p className="text-gray-400">Aktuell anwesend</p><p className="font-semibold text-navy">{data.personnelOverview.presentToday}</p></div>
+          <div><p className="text-gray-400">Krank</p><p className="font-semibold text-navy">{data.personnelOverview.sickToday}</p></div>
+          <div><p className="text-gray-400">Urlaub</p><p className="font-semibold text-navy">{data.personnelOverview.onVacationToday}</p></div>
+          <div><p className="text-gray-400">Fortbildung</p><p className="font-semibold text-navy">{data.personnelOverview.trainingToday}</p></div>
+          <div><p className="text-gray-400">Sonstige Fehlzeiten</p><p className="font-semibold text-navy">{data.personnelOverview.otherAbsenceToday}</p></div>
+          <div><p className="text-gray-400">Offene Vertretungen</p><p className="font-semibold text-navy">{data.personnelOverview.openSubstitutions}</p></div>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Thermometer size={16} className="text-brand" /> Krankheitsanalyse</CardTitle>
+        </CardHeader>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-4">
+          <div><p className="text-gray-400">Aktuell krank/abwesend</p><p className="font-semibold text-navy">{data.sickness.currentlyAbsentCount}</p></div>
+          <div><p className="text-gray-400">Krankheitstage gesamt</p><p className="font-semibold text-navy">{data.sickness.totalSickDays}</p></div>
+          <div><p className="text-gray-400">Sonstige Fehlzeiten (Tage)</p><p className="font-semibold text-navy">{data.sickness.totalOtherAbsenceDays}</p></div>
+          <div><p className="text-gray-400">Offene Verifizierungen</p><p className="font-semibold text-navy">{data.sickness.openVerifications}</p></div>
+        </div>
+        {data.sickness.topSickEmployees.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-gray-400">Höchste Krankheitstage</p>
+            {data.sickness.topSickEmployees.map(e => (
+              <div key={e.employeeId} className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">{e.employeeName}</span>
+                <span className="font-semibold text-navy">{e.sickDays} Tage</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Management-Kennzahlen</CardTitle>
         </CardHeader>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-          <div><p className="text-gray-400">Vertretungs-Erfüllungsquote</p><p className="font-semibold text-navy">{data.kpis.fillRate}%</p></div>
+          <div><p className="text-gray-400">Überstunden gesamt</p><p className="font-semibold text-navy">{data.kpis.overtimeHours}h</p></div>
+          <div><p className="text-gray-400">Minusstunden gesamt</p><p className="font-semibold text-navy">{data.kpis.undertimeHours}h</p></div>
+          <div><p className="text-gray-400">Krankheitsquote</p><p className="font-semibold text-navy">{data.kpis.sicknessRate}%</p></div>
+          <div><p className="text-gray-400">Urlaubsquote</p><p className="font-semibold text-navy">{data.kpis.vacationRate}%</p></div>
+          <div><p className="text-gray-400">Mitarbeiteranzahl</p><p className="font-semibold text-navy">{data.employeeCount}</p></div>
+          <div><p className="text-gray-400">Ø Auslastung</p><p className="font-semibold text-navy">{data.kpis.avgUtilizationRate}%</p></div>
+          <div><p className="text-gray-400">Vertretungsquote</p><p className="font-semibold text-navy">{data.kpis.fillRate}%</p></div>
+          <div><p className="text-gray-400">Dienstplanstabilität</p><p className="font-semibold text-navy">{data.kpis.scheduleStabilityRate}%</p></div>
+          <div><p className="text-gray-400">Wunschdienst-Erfüllung</p><p className="font-semibold text-navy">{data.kpis.wishFulfillmentRate}%</p></div>
+          <div><p className="text-gray-400">Fairness-Score</p><p className="font-semibold text-navy">{data.kpis.avgFairnessScore}</p></div>
+          <div><p className="text-gray-400">Ø Besetzung</p><p className="font-semibold text-navy">{data.kpis.avgStaffingRate}%</p></div>
           <div><p className="text-gray-400">Ø Zeit bis Besetzung</p><p className="font-semibold text-navy">{data.kpis.avgTimeToFillHours !== null ? `${data.kpis.avgTimeToFillHours}h` : '–'}</p></div>
           <div><p className="text-gray-400">Urlaubs-Genehmigungsquote</p><p className="font-semibold text-navy">{data.kpis.approvalRate}%</p></div>
           <div><p className="text-gray-400">Pünktliche Einstempelungen</p><p className="font-semibold text-navy">{data.kpis.punctualClockInRate}%</p></div>
@@ -116,6 +164,20 @@ export function ControllingDashboard({ fetchUrl }: { fetchUrl: string }) {
       </Card>
 
       <div className="grid lg:grid-cols-2 gap-5">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ListChecks size={16} className="text-brand" /> Aufgaben der Leitung</CardTitle>
+          </CardHeader>
+          <ul className="space-y-2">
+            {data.tasks.map((t, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                <CheckCircle2 size={14} className="text-brand shrink-0 mt-0.5" />
+                {t}
+              </li>
+            ))}
+          </ul>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Empfehlungen der KI</CardTitle>
@@ -129,31 +191,31 @@ export function ControllingDashboard({ fetchUrl }: { fetchUrl: string }) {
             ))}
           </ul>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Risiken im Blick</CardTitle>
-          </CardHeader>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Mitarbeiter mit hohem Burnout-Risiko</span>
-              <span className="font-semibold text-navy">{data.highBurnoutRisks.length}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Mitarbeiter mit hohem Fluktuationsrisiko</span>
-              <span className="font-semibold text-navy">{data.highFluctuationRisks.length}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Mitarbeiter mit Fairness-Auffälligkeiten</span>
-              <span className="font-semibold text-navy">{data.fairnessIssueCount}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Kritische Mindestbesetzungstage (7 Tage)</span>
-              <span className="font-semibold text-navy">{data.criticalUnderstaffingDays.length}</span>
-            </div>
-          </div>
-        </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Risiken im Blick</CardTitle>
+        </CardHeader>
+        <div className="grid sm:grid-cols-2 gap-2 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Mitarbeiter mit hohem Burnout-Risiko</span>
+            <span className="font-semibold text-navy">{data.highBurnoutRisks.length}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Mitarbeiter mit hohem Fluktuationsrisiko</span>
+            <span className="font-semibold text-navy">{data.highFluctuationRisks.length}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Mitarbeiter mit Fairness-Auffälligkeiten</span>
+            <span className="font-semibold text-navy">{data.fairnessIssueCount}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Kritische Mindestbesetzungstage (7 Tage)</span>
+            <span className="font-semibold text-navy">{data.criticalUnderstaffingDays.length}</span>
+          </div>
+        </div>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -54,12 +54,13 @@ model EmployeeProfile {
 // Kept separate from EmployeeProfile (which serves substitution matching) so
 // the two audiences/purposes never get entangled.
 model EmployeeHumanContext {
-  employeeId        String   @id
-  strengths         String[] @default([])
-  lifeCircumstances String[] @default([])
-  preferredGroups   String[] @default([])
-  agreements        String?
-  updatedAt         DateTime @updatedAt
+  employeeId          String   @id
+  strengths           String[] @default([])
+  lifeCircumstances   String[] @default([])
+  preferredGroups     String[] @default([])
+  preferredActivities String[] @default([])
+  agreements          String?
+  updatedAt           DateTime @updatedAt
 }
 
 model SubstitutionRequest {

@@ -247,6 +247,10 @@ export interface ShiftFairnessData {
   mondayLateCnt: number
   weekendCnt: number
   totalShiftsCnt: number
+  // Belastungsmanagement: längste Folge aufeinanderfolgender Arbeitstage im Betrachtungszeitraum
+  maxConsecutiveDays: number
+  // Anzahl übernommener Vertretungen im Betrachtungszeitraum (nur über getFairnessInsights befüllt, sonst 0)
+  substitutionCoverageCnt: number
   // Derived: debt per type (negative = owed more of this type)
   earlyDebt: number
   lateDebt: number

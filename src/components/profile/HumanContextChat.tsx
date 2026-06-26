@@ -15,6 +15,7 @@ interface HumanContext {
   strengths: string[]
   lifeCircumstances: string[]
   preferredGroups: string[]
+  preferredActivities: string[]
   agreements: string | null
 }
 

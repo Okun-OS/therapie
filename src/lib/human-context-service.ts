@@ -4,6 +4,7 @@ export interface HumanContextUpdate {
   strengths?: string[]
   lifeCircumstances?: string[]
   preferredGroups?: string[]
+  preferredActivities?: string[]
   agreements?: string | null
 }
 
@@ -14,6 +15,7 @@ export async function upsertHumanContext(employeeId: string, update: HumanContex
       ...(update.strengths !== undefined && { strengths: update.strengths }),
       ...(update.lifeCircumstances !== undefined && { lifeCircumstances: update.lifeCircumstances }),
       ...(update.preferredGroups !== undefined && { preferredGroups: update.preferredGroups }),
+      ...(update.preferredActivities !== undefined && { preferredActivities: update.preferredActivities }),
       ...(update.agreements !== undefined && { agreements: update.agreements }),
     },
     create: {
@@ -21,6 +23,7 @@ export async function upsertHumanContext(employeeId: string, update: HumanContex
       strengths: update.strengths ?? [],
       lifeCircumstances: update.lifeCircumstances ?? [],
       preferredGroups: update.preferredGroups ?? [],
+      preferredActivities: update.preferredActivities ?? [],
       agreements: update.agreements ?? null,
     },
   })

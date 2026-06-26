@@ -1,5 +1,5 @@
 import { prisma } from './prisma'
-import { EMPLOYEES, LOCATIONS, SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS, VACATION_REQUESTS } from './mock-data'
+import { ABSENCES, EMPLOYEES, LOCATIONS, SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS, VACATION_REQUESTS, WISH_SUBMISSIONS } from './mock-data'
 import { getLevelForPoints, LEVEL_ORDER, type WorkforceLevel } from './workforce-score-constants'
 import { ESCALATION_ORDER, type EscalationStage } from './substitution-constants'
 
@@ -100,16 +100,19 @@ export interface AbsenceInsights {
   deniedRequests: number
   approvalRate: number
   approvedDaysTotal: number
+  vacationRate: number
 }
 
 export function getAbsenceInsights(locationId?: string): AbsenceInsights {
   const locationIds = scopeLocationIds(locationId)
   const requests = VACATION_REQUESTS.filter(v => locationIds.includes(v.locationId))
+  const employeeCount = EMPLOYEES.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId)).length
 
   const pending = requests.filter(v => v.status === 'pending')
   const approved = requests.filter(v => v.status === 'approved')
   const denied = requests.filter(v => v.status === 'denied')
   const decided = approved.length + denied.length
+  const approvedDaysTotal = approved.reduce((s, v) => s + v.days, 0)
 
   return {
     totalRequests: requests.length,
@@ -117,7 +120,122 @@ export function getAbsenceInsights(locationId?: string): AbsenceInsights {
     approvedRequests: approved.length,
     deniedRequests: denied.length,
     approvalRate: decided > 0 ? Math.round((approved.length / decided) * 100) : 0,
-    approvedDaysTotal: approved.reduce((s, v) => s + v.days, 0),
+    approvedDaysTotal,
+    vacationRate: employeeCount > 0 ? Math.round((approvedDaysTotal / (employeeCount * 20)) * 1000) / 10 : 0,
+  }
+}
+
+// ─── Krankheit & Fehlzeiten ──────────────────────────────────────────────────
+
+export interface SicknessInsights {
+  employeeCount: number
+  currentlyAbsentCount: number
+  totalSickDays: number
+  totalOtherAbsenceDays: number
+  sicknessRate: number
+  openVerifications: number
+  topSickEmployees: Array<{ employeeId: string; employeeName: string; sickDays: number }>
+}
+
+export function getSicknessInsights(locationId?: string): SicknessInsights {
+  const locationIds = scopeLocationIds(locationId)
+  const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
+  const absences = ABSENCES.filter(a => locationIds.includes(a.locationId))
+
+  const todayStr = new Date().toISOString().split('T')[0]
+  const currentlyAbsentCount = absences.filter(a => a.startDate <= todayStr && todayStr <= a.endDate).length
+
+  const sickByEmployee = new Map<string, number>()
+  let totalSickDays = 0
+  let totalOtherAbsenceDays = 0
+  for (const a of absences) {
+    if (a.type === 'krankheit') {
+      totalSickDays += a.days
+      sickByEmployee.set(a.employeeId, (sickByEmployee.get(a.employeeId) ?? 0) + a.days)
+    } else {
+      totalOtherAbsenceDays += a.days
+    }
+  }
+
+  const topSickEmployees = Array.from(sickByEmployee.entries())
+    .map(([employeeId, sickDays]) => ({
+      employeeId,
+      employeeName: employees.find(e => e.id === employeeId)?.name ?? employeeId,
+      sickDays,
+    }))
+    .sort((a, b) => b.sickDays - a.sickDays)
+    .slice(0, 5)
+
+  return {
+    employeeCount: employees.length,
+    currentlyAbsentCount,
+    totalSickDays,
+    totalOtherAbsenceDays,
+    sicknessRate: employees.length > 0 ? Math.round((totalSickDays / (employees.length * 20)) * 1000) / 10 : 0,
+    openVerifications: absences.filter(a => a.verificationStatus === 'offen').length,
+    topSickEmployees,
+  }
+}
+
+// ─── Personalübersicht (heute) ───────────────────────────────────────────────
+
+export interface PersonnelOverview {
+  totalEmployees: number
+  presentToday: number
+  sickToday: number
+  trainingToday: number
+  otherAbsenceToday: number
+  onVacationToday: number
+}
+
+export function getPersonnelOverview(locationId?: string): PersonnelOverview {
+  const locationIds = scopeLocationIds(locationId)
+  const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
+  const absences = ABSENCES.filter(a => locationIds.includes(a.locationId))
+  const vacations = VACATION_REQUESTS.filter(v => locationIds.includes(v.locationId) && v.status === 'approved')
+
+  const todayStr = new Date().toISOString().split('T')[0]
+  const activeToday = absences.filter(a => a.startDate <= todayStr && todayStr <= a.endDate)
+  const sickToday = activeToday.filter(a => a.type === 'krankheit').length
+  const trainingToday = activeToday.filter(a => a.type === 'fortbildung').length
+  const otherAbsenceToday = activeToday.filter(a => a.type !== 'krankheit' && a.type !== 'fortbildung').length
+  const onVacationToday = vacations.filter(v => v.startDate <= todayStr && todayStr <= v.endDate).length
+
+  return {
+    totalEmployees: employees.length,
+    presentToday: Math.max(0, employees.length - sickToday - trainingToday - otherAbsenceToday - onVacationToday),
+    sickToday,
+    trainingToday,
+    otherAbsenceToday,
+    onVacationToday,
+  }
+}
+
+// ─── Wunschdienst-Erfüllung ──────────────────────────────────────────────────
+
+export interface WishFulfillmentInsights {
+  totalWishes: number
+  fulfilledWishes: number
+  notFulfilledWishes: number
+  pendingWishes: number
+  fulfillmentRate: number
+}
+
+export function getWishFulfillmentInsights(locationId?: string): WishFulfillmentInsights {
+  const locationIds = scopeLocationIds(locationId)
+  const wishes = WISH_SUBMISSIONS.filter(w => locationIds.includes(w.locationId))
+
+  const fulfilled = wishes.filter(w => w.status === 'fulfilled')
+  const notFulfilled = wishes.filter(w => w.status === 'not_fulfilled')
+  const pending = wishes.filter(w => w.status === 'pending')
+  const decided = fulfilled.length + notFulfilled.length
+
+  return {
+    totalWishes: wishes.length,
+    fulfilledWishes: fulfilled.length,
+    notFulfilledWishes: notFulfilled.length,
+    pendingWishes: pending.length,
+    fulfillmentRate: decided > 0 ? Math.round((fulfilled.length / decided) * 100) : 0,
   }
 }
 
@@ -133,8 +251,10 @@ export interface WorkloadInsights {
   avgWeeklyHoursTarget: number
   avgLoggedHoursTotal: number
   overtimeHotspots: OvertimeHotspot[]
+  totalOvertimeHours: number
   understaffedShiftSlots: number
   totalShiftSlots: number
+  avgStaffingRate: number
 }
 
 const DAILY_TARGET_MINUTES = 480 // 8h reference shift, consistent with existing time-tracking "isOver" logic
@@ -181,25 +301,35 @@ export async function getWorkloadInsights(locationId?: string): Promise<Workload
     .sort((a, b) => b.overtimeMinutes - a.overtimeMinutes)
     .slice(0, 5)
 
+  const totalOvertimeMinutes = Array.from(overtimeByEmployee.values()).reduce((s, m) => s + m, 0)
+
   const locationShifts = SHIFTS.filter(s => locationIds.includes(s.locationId))
   const relevantEntries = SCHEDULE_ENTRIES.filter(e => locationIds.includes(e.locationId))
   const slotKeys = new Set(relevantEntries.map(e => `${e.date}|${e.shiftId}`))
 
   let understaffedShiftSlots = 0
+  let staffingRatioSum = 0
+  let staffingRatioCount = 0
   for (const key of Array.from(slotKeys)) {
     const [date, shiftId] = key.split('|')
     const shift = locationShifts.find(s => s.id === shiftId)
     if (!shift) continue
     const assigned = relevantEntries.filter(e => e.date === date && e.shiftId === shiftId).length
     if (assigned < shift.minStaff) understaffedShiftSlots++
+    if (shift.minStaff > 0) {
+      staffingRatioSum += assigned / shift.minStaff
+      staffingRatioCount++
+    }
   }
 
   return {
     avgWeeklyHoursTarget,
     avgLoggedHoursTotal: employees.length > 0 ? Math.round(totalLoggedMinutes / 60 / employees.length) : 0,
     overtimeHotspots,
+    totalOvertimeHours: Math.round((totalOvertimeMinutes / 60) * 10) / 10,
     understaffedShiftSlots,
     totalShiftSlots: slotKeys.size,
+    avgStaffingRate: staffingRatioCount > 0 ? Math.round((staffingRatioSum / staffingRatioCount) * 100) : 0,
   }
 }
 

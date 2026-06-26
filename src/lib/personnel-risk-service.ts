@@ -46,7 +46,7 @@ async function getOvertimeHoursByEmployee(employeeIds: string[]): Promise<Map<st
 export async function getBurnoutRisks(locationId?: string): Promise<EmployeeRisk[]> {
   const locationIds = scopeLocationIds(locationId)
   const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
-  const fairnessData = getFairnessInsights(locationId)
+  const fairnessData = await getFairnessInsights(locationId)
   const overtimeHours = await getOvertimeHoursByEmployee(employees.map(e => e.id))
 
   return employees.map(emp => {
@@ -75,7 +75,7 @@ export async function getBurnoutRisks(locationId?: string): Promise<EmployeeRisk
 export async function getFluctuationRisks(locationId?: string): Promise<EmployeeRisk[]> {
   const locationIds = scopeLocationIds(locationId)
   const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
-  const fairnessData = getFairnessInsights(locationId)
+  const fairnessData = await getFairnessInsights(locationId)
   const employeeIds = employees.map(e => e.id)
 
   const candidateGroups = employeeIds.length > 0

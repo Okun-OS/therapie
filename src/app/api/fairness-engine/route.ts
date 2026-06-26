@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   const scope = req.nextUrl.searchParams.get('scope')
   const locationId = scope === 'organization' ? undefined : req.nextUrl.searchParams.get('locationId') ?? undefined
 
-  const data = getFairnessInsights(locationId)
+  const data = await getFairnessInsights(locationId)
 
   return NextResponse.json({ data })
 }

@@ -1,5 +1,6 @@
 import type { Employee, ScheduleEntry, Shift, ShiftFairnessData, WishSubmission } from './types'
 import { EMPLOYEES, SHIFTS, LOCATIONS, getAllEntriesForFairness } from './mock-data'
+import { prisma } from './prisma'
 
 // ─── Core Fairness Calculation ───────────────────────────────────────────────
 
@@ -46,6 +47,18 @@ export function calculateFairnessData(
     }
 
     const total = earlyCnt + lateCnt + midCnt
+
+    const workDates = Array.from(new Set(empEntries.map(e => e.date))).sort()
+    let maxConsecutiveDays = workDates.length > 0 ? 1 : 0
+    let streak = 1
+    for (let i = 1; i < workDates.length; i++) {
+      const prev = new Date(workDates[i - 1] + 'T00:00:00')
+      const curr = new Date(workDates[i] + 'T00:00:00')
+      const dayDiff = Math.round((curr.getTime() - prev.getTime()) / 86_400_000)
+      streak = dayDiff === 1 ? streak + 1 : 1
+      maxConsecutiveDays = Math.max(maxConsecutiveDays, streak)
+    }
+
     const weeks = 4
     const shiftsPerWeek = emp.weeklyHours / 8
     const expectedPerWeek = shiftsPerWeek * weeks
@@ -85,6 +98,9 @@ export function calculateFairnessData(
     if (Math.abs(lateDebt) > 2) {
       issues.push(lateDebt > 0 ? 'Zu wenige Spätschichten' : 'Zu viele Spätschichten')
     }
+    if (maxConsecutiveDays > 5) {
+      issues.push(`${maxConsecutiveDays}× in Folge gearbeitet (Limit: 5 Tage)`)
+    }
 
     // Fairness score: penalise for each issue and deviation from target
     const deviationPenalty = (Math.abs(earlyDebt) + Math.abs(lateDebt) + Math.abs(midDebt)) * 5
@@ -92,7 +108,8 @@ export function calculateFairnessData(
       Math.max(0, fridayLateCnt - fridayLateMax) * 15 +
       Math.max(0, mondayEarlyCnt - mondayEarlyMax) * 15 +
       Math.max(0, fridayEarlyCnt - fridayEarlyMax) * 10 +
-      Math.max(0, weekendCnt - weekendMax) * 10
+      Math.max(0, weekendCnt - weekendMax) * 10 +
+      Math.max(0, maxConsecutiveDays - 5) * 15
     const fairnessScore = Math.max(0, Math.min(100, 100 - deviationPenalty - specialDayPenalty))
 
     return {
@@ -109,6 +126,8 @@ export function calculateFairnessData(
       mondayLateCnt,
       weekendCnt,
       totalShiftsCnt: total,
+      maxConsecutiveDays,
+      substitutionCoverageCnt: 0,
       earlyDebt,
       lateDebt,
       midDebt,
@@ -120,12 +139,24 @@ export function calculateFairnessData(
 
 // ─── Scoped fairness lookup for the transparency dashboard ──────────────────
 
-export function getFairnessInsights(locationId?: string, ruleLimits?: PlanningRuleLimits): ShiftFairnessData[] {
+export async function getFairnessInsights(locationId?: string, ruleLimits?: PlanningRuleLimits): Promise<ShiftFairnessData[]> {
   const locationIds = locationId ? [locationId] : LOCATIONS.map(l => l.id)
   const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
   const shifts = SHIFTS.filter(s => locationIds.includes(s.locationId))
   const entries = locationIds.flatMap(id => getAllEntriesForFairness(id))
-  return calculateFairnessData(employees, entries, shifts, ruleLimits)
+  const fairnessData = calculateFairnessData(employees, entries, shifts, ruleLimits)
+
+  const employeeIds = employees.map(e => e.id)
+  const coverageGroups = employeeIds.length > 0
+    ? await prisma.substitutionCandidate.groupBy({
+        by: ['employeeId'],
+        where: { employeeId: { in: employeeIds }, responseStatus: 'accepted' },
+        _count: { _all: true },
+      })
+    : []
+  const coverageByEmployee = new Map(coverageGroups.map(g => [g.employeeId, g._count._all]))
+
+  return fairnessData.map(fd => ({ ...fd, substitutionCoverageCnt: coverageByEmployee.get(fd.employeeId) ?? 0 }))
 }
 
 // ─── Conflict Resolution ─────────────────────────────────────────────────────

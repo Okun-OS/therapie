@@ -1,5 +1,9 @@
-import { EMPLOYEES, LOCATIONS } from './mock-data'
-import { getAbsenceInsights, getSubstitutionInsights, getPunctualityInsights, getWorkloadInsights } from './workforce-insights-service'
+import { EMPLOYEES, LOCATIONS, OVERTIME_REQUESTS, getHoursAccountSummary } from './mock-data'
+import {
+  getAbsenceInsights, getSubstitutionInsights, getPunctualityInsights, getWorkloadInsights,
+  getSicknessInsights, getPersonnelOverview, getWishFulfillmentInsights,
+  type SicknessInsights, type PersonnelOverview,
+} from './workforce-insights-service'
 import { getBurnoutRisks, getFluctuationRisks, getUnderstaffingRisk, type EmployeeRisk, type UnderstaffingRiskDay } from './personnel-risk-service'
 import { getFairnessInsights } from './fairness'
 
@@ -29,6 +33,8 @@ export interface ControllingSnapshot {
   highBurnoutRisks: EmployeeRisk[]
   highFluctuationRisks: EmployeeRisk[]
   fairnessIssueCount: number
+  personnelOverview: PersonnelOverview & { openSubstitutions: number }
+  sickness: SicknessInsights
   kpis: {
     fillRate: number
     avgTimeToFillHours: number | null
@@ -38,23 +44,47 @@ export interface ControllingSnapshot {
     avgLoggedHoursTotal: number
     understaffedShiftSlots: number
     totalShiftSlots: number
+    overtimeHours: number
+    undertimeHours: number
+    sicknessRate: number
+    vacationRate: number
+    avgUtilizationRate: number
+    scheduleStabilityRate: number
+    wishFulfillmentRate: number
+    avgFairnessScore: number
+    avgStaffingRate: number
   }
   statusItems: StatusItem[]
   recommendations: string[]
+  tasks: string[]
+}
+
+function getCurrentUndertimeHours(employeeIds: string[]): number {
+  if (employeeIds.length === 0) return 0
+  const now = new Date()
+  const totalMinutes = employeeIds.reduce(
+    (s, id) => s + getHoursAccountSummary(id, now.getFullYear(), now.getMonth() + 1).undertimeMinutes,
+    0
+  )
+  return Math.round((totalMinutes / 60) * 10) / 10
 }
 
 export async function getControllingSnapshot(locationId?: string): Promise<ControllingSnapshot> {
   const locationIds = scopeLocationIds(locationId)
-  const employeeCount = EMPLOYEES.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId)).length
+  const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
+  const employeeCount = employees.length
 
-  const [absence, substitution, punctuality, workload, burnout, fluctuation, fairness] = await Promise.all([
+  const [absence, substitution, punctuality, workload, burnout, fluctuation, fairness, sickness, personnelOverview, wishFulfillment] = await Promise.all([
     Promise.resolve(getAbsenceInsights(locationId)),
     getSubstitutionInsights(locationId),
     getPunctualityInsights(locationId),
     getWorkloadInsights(locationId),
     getBurnoutRisks(locationId),
     getFluctuationRisks(locationId),
-    Promise.resolve(getFairnessInsights(locationId)),
+    getFairnessInsights(locationId),
+    Promise.resolve(getSicknessInsights(locationId)),
+    Promise.resolve(getPersonnelOverview(locationId)),
+    Promise.resolve(getWishFulfillmentInsights(locationId)),
   ])
   const understaffing = getUnderstaffingRisk(locationId, 7)
 
@@ -67,6 +97,19 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
     employeeName: h.employeeName,
     hours: Math.round((h.overtimeMinutes / 60) * 10) / 10,
   }))
+
+  const undertimeHours = getCurrentUndertimeHours(employees.map(e => e.id))
+  const avgUtilizationRate = workload.avgWeeklyHoursTarget > 0
+    ? Math.round((workload.avgLoggedHoursTotal / workload.avgWeeklyHoursTarget) * 100)
+    : 0
+  const scheduleStabilityRate = workload.totalShiftSlots > 0
+    ? Math.max(0, Math.round(100 - (substitution.totalRequests / workload.totalShiftSlots) * 100))
+    : 100
+  const avgFairnessScore = fairness.length > 0
+    ? Math.round(fairness.reduce((s, f) => s + f.fairnessScore, 0) / fairness.length)
+    : 100
+
+  const pendingOvertimeRequests = OVERTIME_REQUESTS.filter(o => locationIds.includes(o.locationId) && o.status === 'pending').length
 
   const statusItems: StatusItem[] = []
   statusItems.push(
@@ -90,6 +133,9 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
   if (highBurnoutRisks.length > 0) {
     statusItems.push({ level: 'red', message: `${highBurnoutRisks.length} Mitarbeiter mit hohem Burnout-Risiko` })
   }
+  if (sickness.currentlyAbsentCount > 0) {
+    statusItems.push({ level: 'yellow', message: `${sickness.currentlyAbsentCount} Mitarbeiter aktuell krank/abwesend` })
+  }
 
   const recommendations: string[] = []
   if (criticalUnderstaffingDays.length > 0) {
@@ -111,6 +157,29 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
     recommendations.push('Keine dringenden Maßnahmen erforderlich')
   }
 
+  const tasks: string[] = []
+  if (absence.pendingRequests > 0) {
+    tasks.push(`${absence.pendingRequests} Urlaubsantrag${absence.pendingRequests > 1 ? 'e' : ''} freigeben`)
+  }
+  if (sickness.openVerifications > 0) {
+    tasks.push(`${sickness.openVerifications} Krankmeldung${sickness.openVerifications > 1 ? 'en' : ''} verifizieren`)
+  }
+  if (pendingOvertimeRequests > 0) {
+    tasks.push(pendingOvertimeRequests > 1 ? `${pendingOvertimeRequests} Überstundenanträge genehmigen` : '1 Überstundenantrag genehmigen')
+  }
+  if (substitution.openRequests > 0) {
+    tasks.push(`${substitution.openRequests} offene Vertretungsanfrage${substitution.openRequests > 1 ? 'n' : ''} bearbeiten`)
+  }
+  if (highBurnoutRisks.length > 0) {
+    tasks.push(`Gespräch mit ${highBurnoutRisks.length} Mitarbeiter${highBurnoutRisks.length > 1 ? 'n' : ''} mit hohem Burnout-Risiko führen`)
+  }
+  if (criticalUnderstaffingDays.length > 0) {
+    tasks.push(`Mindestbesetzung an ${criticalUnderstaffingDays.length} Tag${criticalUnderstaffingDays.length > 1 ? 'en' : ''} sicherstellen`)
+  }
+  if (tasks.length === 0) {
+    tasks.push('Keine offenen Aufgaben')
+  }
+
   return {
     employeeCount,
     pendingVacationRequests: absence.pendingRequests,
@@ -120,6 +189,8 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
     highBurnoutRisks,
     highFluctuationRisks,
     fairnessIssueCount,
+    personnelOverview: { ...personnelOverview, openSubstitutions: substitution.openRequests },
+    sickness,
     kpis: {
       fillRate: substitution.fillRate,
       avgTimeToFillHours: substitution.avgTimeToFillHours,
@@ -129,8 +200,18 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
       avgLoggedHoursTotal: workload.avgLoggedHoursTotal,
       understaffedShiftSlots: workload.understaffedShiftSlots,
       totalShiftSlots: workload.totalShiftSlots,
+      overtimeHours: workload.totalOvertimeHours,
+      undertimeHours,
+      sicknessRate: sickness.sicknessRate,
+      vacationRate: absence.vacationRate,
+      avgUtilizationRate,
+      scheduleStabilityRate,
+      wishFulfillmentRate: wishFulfillment.fulfillmentRate,
+      avgFairnessScore,
+      avgStaffingRate: workload.avgStaffingRate,
     },
     statusItems,
     recommendations,
+    tasks,
   }
 }

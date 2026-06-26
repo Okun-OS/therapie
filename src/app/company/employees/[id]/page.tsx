@@ -24,6 +24,7 @@ interface EmployeeHumanContext {
   strengths: string[]
   lifeCircumstances: string[]
   preferredGroups: string[]
+  preferredActivities: string[]
   agreements: string | null
 }
 
@@ -247,7 +248,7 @@ export default function EmployeeDetailPage() {
             </Card>
 
             {/* Persönliches (Modul 8: Menschliche Dienstplanung) */}
-            {humanContext && (humanContext.strengths.length > 0 || humanContext.lifeCircumstances.length > 0 || humanContext.preferredGroups.length > 0 || humanContext.agreements) && (
+            {humanContext && (humanContext.strengths.length > 0 || humanContext.lifeCircumstances.length > 0 || humanContext.preferredGroups.length > 0 || humanContext.preferredActivities.length > 0 || humanContext.agreements) && (
               <Card>
                 <CardHeader>
                   <CardTitle>Persönliches</CardTitle>
@@ -262,6 +263,9 @@ export default function EmployeeDetailPage() {
                   )}
                   {humanContext.preferredGroups.length > 0 && (
                     <p className="text-sm text-gray-600"><span className="font-semibold text-navy">Bevorzugte Gruppen:</span> {humanContext.preferredGroups.join(', ')}</p>
+                  )}
+                  {humanContext.preferredActivities.length > 0 && (
+                    <p className="text-sm text-gray-600"><span className="font-semibold text-navy">Bevorzugte Tätigkeiten:</span> {humanContext.preferredActivities.join(', ')}</p>
                   )}
                   {humanContext.agreements && (
                     <p className="text-sm text-gray-500 italic">{humanContext.agreements}</p>
