@@ -241,7 +241,7 @@ export default function VacationPlanPage() {
       await fetch('/api/vacation-plan/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requests: createdRequests }),
+        body: JSON.stringify({ requests: createdRequests, conflicts, locationId }),
       })
     } catch {
       // Benachrichtigungen sind ein Zusatznutzen – ein Fehler hier darf die Freigabe nicht blockieren.
