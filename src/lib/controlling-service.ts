@@ -1,11 +1,12 @@
-import { EMPLOYEES, LOCATIONS, OVERTIME_REQUESTS, getHoursAccountSummary } from './mock-data'
+import { EMPLOYEES, LOCATIONS, OVERTIME_REQUESTS, SCHEDULE_ENTRIES, VACATION_REQUESTS, getHoursAccountSummary } from './mock-data'
 import {
   getAbsenceInsights, getSubstitutionInsights, getPunctualityInsights, getWorkloadInsights,
   getSicknessInsights, getPersonnelOverview, getWishFulfillmentInsights,
-  type SicknessInsights, type PersonnelOverview,
+  type SicknessInsights, type PersonnelOverview, type OvertimeTrendPoint,
 } from './workforce-insights-service'
 import { getBurnoutRisks, getFluctuationRisks, getUnderstaffingRisk, type EmployeeRisk, type UnderstaffingRiskDay } from './personnel-risk-service'
 import { getFairnessInsights } from './fairness'
+import { toDateString, addDays, formatDate } from './utils'
 
 function scopeLocationIds(locationId?: string): string[] {
   return locationId ? [locationId] : LOCATIONS.map(l => l.id)
@@ -29,6 +30,7 @@ export interface ControllingSnapshot {
   pendingVacationRequests: number
   openSubstitutionRequests: number
   overtimeHotspots: OvertimeHotspotSummary[]
+  overtimeTrend: OvertimeTrendPoint[]
   criticalUnderstaffingDays: UnderstaffingRiskDay[]
   highBurnoutRisks: EmployeeRisk[]
   highFluctuationRisks: EmployeeRisk[]
@@ -136,6 +138,15 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
   if (sickness.currentlyAbsentCount > 0) {
     statusItems.push({ level: 'yellow', message: `${sickness.currentlyAbsentCount} Mitarbeiter aktuell krank/abwesend` })
   }
+  if (sickness.groupHotspots.length > 0) {
+    statusItems.push({ level: 'yellow', message: `In Gruppe ${sickness.groupHotspots[0].gruppe} häufen sich Krankmeldungen (${sickness.groupHotspots[0].rate}%)` })
+  }
+  const overtimeTrend = workload.overtimeTrend
+  const overtimeRising = overtimeTrend.length === 3 && overtimeTrend[2].overtimeHours > overtimeTrend[0].overtimeHours
+    && overtimeTrend[1].overtimeHours >= overtimeTrend[0].overtimeHours
+  if (overtimeRising) {
+    statusItems.push({ level: 'yellow', message: `Überstunden steigen seit ${overtimeTrend[0].label} kontinuierlich an` })
+  }
 
   const recommendations: string[] = []
   if (criticalUnderstaffingDays.length > 0) {
@@ -152,6 +163,12 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
   }
   if (highFluctuationRisks.length > 0) {
     recommendations.push(`Gespräch mit ${highFluctuationRisks[0].employeeName} (erhöhtes Fluktuationsrisiko) erwägen`)
+  }
+  if (sickness.groupHotspots.length > 0) {
+    recommendations.push(`Engpass in Gruppe ${sickness.groupHotspots[0].gruppe} prüfen (Krankheitsquote ${sickness.groupHotspots[0].rate}%)`)
+  }
+  if (overtimeRising) {
+    recommendations.push('Steigenden Überstundentrend der letzten Monate gegensteuern')
   }
   if (recommendations.length === 0) {
     recommendations.push('Keine dringenden Maßnahmen erforderlich')
@@ -185,6 +202,7 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
     pendingVacationRequests: absence.pendingRequests,
     openSubstitutionRequests: substitution.openRequests,
     overtimeHotspots,
+    overtimeTrend,
     criticalUnderstaffingDays,
     highBurnoutRisks,
     highFluctuationRisks,
@@ -214,4 +232,100 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
     recommendations,
     tasks,
   }
+}
+
+export interface EarlyWarning {
+  type: string
+  title: string
+  body: string
+}
+
+function hasDateOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  return aStart <= bEnd && bStart <= aEnd
+}
+
+export async function getEarlyWarnings(locationId?: string): Promise<EarlyWarning[]> {
+  const locationIds = scopeLocationIds(locationId)
+  const snapshot = await getControllingSnapshot(locationId)
+  const warnings: EarlyWarning[] = []
+
+  if (snapshot.criticalUnderstaffingDays.length > 0) {
+    const d = snapshot.criticalUnderstaffingDays[0]
+    warnings.push({
+      type: 'critical-understaffing',
+      title: 'Kritische Mindestbesetzung',
+      body: `Am ${formatDate(d.date)} droht in ${d.locationName} eine Unterbesetzung (${d.availableStaff}/${d.requiredMinStaff} Mitarbeiter verfügbar).`,
+    })
+  }
+
+  if (snapshot.kpis.sicknessRate >= 10) {
+    warnings.push({
+      type: 'high-sickness-rate',
+      title: 'Hohe Krankheitsquote',
+      body: `Die Krankheitsquote liegt aktuell bei ${snapshot.kpis.sicknessRate}%.`,
+    })
+  }
+
+  if (snapshot.overtimeHotspots.length > 0 && (snapshot.overtimeHotspots.length >= 3 || snapshot.overtimeHotspots[0].hours >= 20)) {
+    warnings.push({
+      type: 'high-overtime',
+      title: 'Viele offene Überstunden',
+      body: `${snapshot.overtimeHotspots[0].employeeName} hat aktuell ${snapshot.overtimeHotspots[0].hours}h Überstunden, insgesamt ${snapshot.overtimeHotspots.length} Mitarbeiter betroffen.`,
+    })
+  }
+
+  if (snapshot.pendingVacationRequests > 0) {
+    warnings.push({
+      type: 'open-vacation-requests',
+      title: 'Offene Urlaubsanträge',
+      body: snapshot.pendingVacationRequests > 1
+        ? `${snapshot.pendingVacationRequests} Urlaubsanträge warten auf Entscheidung.`
+        : '1 Urlaubsantrag wartet auf Entscheidung.',
+    })
+  }
+
+  if (snapshot.personnelOverview.openPositions > 0) {
+    warnings.push({
+      type: 'personnel-shortage',
+      title: 'Personalmangel',
+      body: `${snapshot.personnelOverview.openPositions} offene Stelle${snapshot.personnelOverview.openPositions > 1 ? 'n' : ''} sind aktuell unbesetzt.`,
+    })
+  }
+
+  const today = toDateString(new Date())
+  const in7Days = addDays(today, 7)
+  const locationsWithoutScheduling = LOCATIONS.filter(l => locationIds.includes(l.id)).filter(l => {
+    const hasActiveEmployees = EMPLOYEES.some(e => e.role === 'employee' && e.active && e.locationId === l.id)
+    if (!hasActiveEmployees) return false
+    return !SCHEDULE_ENTRIES.some(s => s.locationId === l.id && s.date >= today && s.date <= in7Days)
+  })
+  if (locationsWithoutScheduling.length > 0) {
+    warnings.push({
+      type: 'missing-scheduling',
+      title: 'Fehlende Dienstplanung',
+      body: `Für ${locationsWithoutScheduling[0].name} ist für die nächsten 7 Tage noch kein Dienstplan erstellt.`,
+    })
+  }
+
+  const relevantVacationRequests = VACATION_REQUESTS.filter(v => locationIds.includes(v.locationId) && v.status !== 'denied')
+  let vacationConflict: { a: typeof relevantVacationRequests[number]; b: typeof relevantVacationRequests[number] } | null = null
+  for (let i = 0; i < relevantVacationRequests.length && !vacationConflict; i++) {
+    for (let j = i + 1; j < relevantVacationRequests.length; j++) {
+      const a = relevantVacationRequests[i]
+      const b = relevantVacationRequests[j]
+      if (a.locationId === b.locationId && a.employeeId !== b.employeeId && hasDateOverlap(a.startDate, a.endDate, b.startDate, b.endDate)) {
+        vacationConflict = { a, b }
+        break
+      }
+    }
+  }
+  if (vacationConflict) {
+    warnings.push({
+      type: 'vacation-planning-conflict',
+      title: 'Konflikte in der Urlaubsplanung',
+      body: `${vacationConflict.a.employeeName} und ${vacationConflict.b.employeeName} (${vacationConflict.a.locationName}) haben überlappende Urlaubszeiträume beantragt.`,
+    })
+  }
+
+  return warnings
 }

@@ -135,7 +135,13 @@ export interface SicknessInsights {
   sicknessRate: number
   openVerifications: number
   topSickEmployees: Array<{ employeeId: string; employeeName: string; sickDays: number }>
+  groupHotspots: Array<{ gruppe: string; sickDays: number; employeeCount: number; rate: number }>
 }
+
+// Häufung von Krankmeldungen je Gruppe: Quote spürbar über dem Einrichtungs-
+// durchschnitt deutet auf ein Muster/Engpass in dieser Gruppe hin (Spec: "In
+// Gruppe Blau häufen sich Krankmeldungen").
+const GROUP_HOTSPOT_THRESHOLD_FACTOR = 1.5
 
 export function getSicknessInsights(locationId?: string): SicknessInsights {
   const locationIds = scopeLocationIds(locationId)
@@ -166,6 +172,23 @@ export function getSicknessInsights(locationId?: string): SicknessInsights {
     .sort((a, b) => b.sickDays - a.sickDays)
     .slice(0, 5)
 
+  const overallRate = employees.length > 0 ? totalSickDays / (employees.length * 20) : 0
+  const employeesByGroup = new Map<string, number>()
+  for (const e of employees) {
+    if (!e.gruppe) continue
+    employeesByGroup.set(e.gruppe, (employeesByGroup.get(e.gruppe) ?? 0) + 1)
+  }
+  const groupHotspots = Array.from(employeesByGroup.entries())
+    .map(([gruppe, employeeCount]) => {
+      const sickDays = employees
+        .filter(e => e.gruppe === gruppe)
+        .reduce((s, e) => s + (sickByEmployee.get(e.id) ?? 0), 0)
+      const rate = employeeCount > 0 ? Math.round((sickDays / (employeeCount * 20)) * 1000) / 10 : 0
+      return { gruppe, sickDays, employeeCount, rate }
+    })
+    .filter(g => g.sickDays > 0 && overallRate > 0 && g.rate / 100 >= overallRate * GROUP_HOTSPOT_THRESHOLD_FACTOR)
+    .sort((a, b) => b.rate - a.rate)
+
   return {
     employeeCount: employees.length,
     currentlyAbsentCount,
@@ -174,6 +197,7 @@ export function getSicknessInsights(locationId?: string): SicknessInsights {
     sicknessRate: employees.length > 0 ? Math.round((totalSickDays / (employees.length * 20)) * 1000) / 10 : 0,
     openVerifications: absences.filter(a => a.verificationStatus === 'offen').length,
     topSickEmployees,
+    groupHotspots,
   }
 }
 
@@ -256,14 +280,28 @@ export interface OvertimeHotspot {
   overtimeMinutes: number
 }
 
+export interface OvertimeTrendPoint {
+  month: string
+  label: string
+  overtimeHours: number
+}
+
 export interface WorkloadInsights {
   avgWeeklyHoursTarget: number
   avgLoggedHoursTotal: number
   overtimeHotspots: OvertimeHotspot[]
   totalOvertimeHours: number
+  overtimeTrend: OvertimeTrendPoint[]
   understaffedShiftSlots: number
   totalShiftSlots: number
   avgStaffingRate: number
+}
+
+const MONTH_LABELS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+const OVERTIME_TREND_MONTHS = 3
+
+function overtimeMinutesForLog(minutes: number): number {
+  return minutes > DAILY_TARGET_MINUTES ? minutes - DAILY_TARGET_MINUTES : 0
 }
 
 const DAILY_TARGET_MINUTES = 480 // 8h reference shift, consistent with existing time-tracking "isOver" logic
@@ -312,6 +350,37 @@ export async function getWorkloadInsights(locationId?: string): Promise<Workload
 
   const totalOvertimeMinutes = Array.from(overtimeByEmployee.values()).reduce((s, m) => s + m, 0)
 
+  const overtimeMinutesByMonth = new Map<string, number>()
+  const now = new Date()
+  const monthKeys: string[] = []
+  for (let i = OVERTIME_TREND_MONTHS - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    monthKeys.push(key)
+    overtimeMinutesByMonth.set(key, 0)
+  }
+  for (const log of mockLogs) {
+    const key = log.date.slice(0, 7)
+    if (overtimeMinutesByMonth.has(key)) {
+      overtimeMinutesByMonth.set(key, overtimeMinutesByMonth.get(key)! + overtimeMinutesForLog(log.totalMinutes || 0))
+    }
+  }
+  for (const entry of realEntries) {
+    const key = `${entry.clockIn.getFullYear()}-${String(entry.clockIn.getMonth() + 1).padStart(2, '0')}`
+    if (overtimeMinutesByMonth.has(key)) {
+      const minutes = Math.round((entry.clockOut!.getTime() - entry.clockIn.getTime()) / 60000)
+      overtimeMinutesByMonth.set(key, overtimeMinutesByMonth.get(key)! + overtimeMinutesForLog(minutes))
+    }
+  }
+  const overtimeTrend: OvertimeTrendPoint[] = monthKeys.map(key => {
+    const monthIndex = Number(key.slice(5, 7)) - 1
+    return {
+      month: key,
+      label: MONTH_LABELS[monthIndex],
+      overtimeHours: Math.round((overtimeMinutesByMonth.get(key)! / 60) * 10) / 10,
+    }
+  })
+
   const locationShifts = SHIFTS.filter(s => locationIds.includes(s.locationId))
   const relevantEntries = SCHEDULE_ENTRIES.filter(e => locationIds.includes(e.locationId))
   const slotKeys = new Set(relevantEntries.map(e => `${e.date}|${e.shiftId}`))
@@ -336,6 +405,7 @@ export async function getWorkloadInsights(locationId?: string): Promise<Workload
     avgLoggedHoursTotal: employees.length > 0 ? Math.round(totalLoggedMinutes / 60 / employees.length) : 0,
     overtimeHotspots,
     totalOvertimeHours: Math.round((totalOvertimeMinutes / 60) * 10) / 10,
+    overtimeTrend,
     understaffedShiftSlots,
     totalShiftSlots: slotKeys.size,
     avgStaffingRate: staffingRatioCount > 0 ? Math.round((staffingRatioSum / staffingRatioCount) * 100) : 0,

@@ -72,6 +72,18 @@ export function diffDays(start: string, end: string): number {
   return Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1
 }
 
+export function formatRelativeTime(date: Date): string {
+  const diffMin = Math.floor((Date.now() - date.getTime()) / 60000)
+  if (diffMin < 1) return 'jetzt'
+  if (diffMin < 60) return `vor ${diffMin} Min.`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24) return `vor ${diffH} Std.`
+  const diffD = Math.floor(diffH / 24)
+  if (diffD === 1) return 'gestern'
+  if (diffD < 7) return `vor ${diffD} Tagen`
+  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
 export function getStatusColor(status: string): string {
   switch (status) {
     case 'approved': return 'text-green-700 bg-green-100'

@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   Sparkles, Users, Clock4, Palmtree, UserPlus, CheckCircle2, AlertTriangle, XCircle,
-  Send, MessageCircle, Loader2, Scale, Thermometer, ListChecks,
+  Send, MessageCircle, Loader2, Scale, Thermometer, ListChecks, TrendingUp,
 } from 'lucide-react'
 import type { ControllingSnapshot, StatusLevel } from '@/lib/controlling-service'
 
@@ -128,7 +128,7 @@ export function ControllingDashboard({ fetchUrl }: { fetchUrl: string }) {
           <div><p className="text-gray-400">Offene Verifizierungen</p><p className="font-semibold text-navy">{data.sickness.openVerifications}</p></div>
         </div>
         {data.sickness.topSickEmployees.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 mb-4">
             <p className="text-xs text-gray-400">Höchste Krankheitstage</p>
             {data.sickness.topSickEmployees.map(e => (
               <div key={e.employeeId} className="flex items-center justify-between text-sm">
@@ -137,6 +137,50 @@ export function ControllingDashboard({ fetchUrl }: { fetchUrl: string }) {
               </div>
             ))}
           </div>
+        )}
+        {data.sickness.groupHotspots.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-gray-400">Auffällige Muster nach Gruppe</p>
+            {data.sickness.groupHotspots.map(g => (
+              <div key={g.gruppe} className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">In Gruppe {g.gruppe} häufen sich Krankmeldungen</span>
+                <span className="font-semibold text-amber-600">{g.rate}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><TrendingUp size={16} className="text-brand" /> Überstundenanalyse</CardTitle>
+        </CardHeader>
+        <div className="flex items-end gap-3 mb-4 h-20">
+          {data.overtimeTrend.map(point => {
+            const max = Math.max(1, ...data.overtimeTrend.map(p => p.overtimeHours))
+            return (
+              <div key={point.month} className="flex-1 flex flex-col items-center gap-1">
+                <span className="text-xs font-semibold text-navy">{point.overtimeHours}h</span>
+                <div className="w-full bg-amber-100 rounded-t-md flex items-end" style={{ height: '48px' }}>
+                  <div className="w-full bg-amber-500 rounded-t-md" style={{ height: `${(point.overtimeHours / max) * 48}px` }} />
+                </div>
+                <span className="text-xs text-gray-400">{point.label}</span>
+              </div>
+            )
+          })}
+        </div>
+        {data.overtimeHotspots.length > 0 ? (
+          <div className="space-y-1.5">
+            <p className="text-xs text-gray-400">Mitarbeiter mit vielen Überstunden</p>
+            {data.overtimeHotspots.map(h => (
+              <div key={h.employeeId} className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">{h.employeeName}</span>
+                <span className="font-semibold text-navy">{h.hours}h</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400">Aktuell keine auffälligen Überstunden.</p>
         )}
       </Card>
 
