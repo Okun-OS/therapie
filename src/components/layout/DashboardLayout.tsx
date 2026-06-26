@@ -23,7 +23,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
     if (!isLoading && user && requiredRole) {
       const allowed = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
       if (!allowed.includes(user.role)) {
-        router.replace(`/${user.role === 'company' ? 'company' : user.role === 'admin' ? 'admin' : 'employee'}`)
+        router.replace(`/${user.role}`)
       }
     }
   }, [user, isLoading, router, requiredRole])

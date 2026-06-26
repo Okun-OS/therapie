@@ -6,9 +6,9 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { LOCATIONS, EMPLOYEES, VACATION_REQUESTS, updateLocation, addLocation } from '@/lib/mock-data'
+import { LOCATIONS, EMPLOYEES, VACATION_REQUESTS, updateLocation, addLocation, reassignLocationAdmin } from '@/lib/mock-data'
 import { useToast } from '@/lib/toast-context'
-import { Building2, Plus, MapPin, Users, Palmtree, Phone, Edit, MoreVertical, ChevronRight } from 'lucide-react'
+import { Building2, Plus, MapPin, Users, Palmtree, Phone, Edit, MoreVertical, ChevronRight, UserCog, Crown } from 'lucide-react'
 import type { Location } from '@/lib/types'
 
 export default function CompanyLocations() {
@@ -19,6 +19,7 @@ export default function CompanyLocations() {
   const [addModal, setAddModal] = useState(false)
   const [newLoc, setNewLoc] = useState({ name: '', address: '', city: '' })
   const [addErrors, setAddErrors] = useState<string[]>([])
+  const [managingAdmin, setManagingAdmin] = useState(false)
 
   const startEditing = (loc: Location) => {
     setEditForm({ name: loc.name, address: loc.address, city: loc.city })
@@ -35,6 +36,13 @@ export default function CompanyLocations() {
     showToast('Standort aktualisiert', 'success')
     setIsEditing(false)
     setSelected(null)
+  }
+
+  const handleReassignAdmin = (employeeId: string) => {
+    if (!selected) return
+    reassignLocationAdmin(selected.id, employeeId)
+    showToast('Einrichtungsleitung gewechselt', 'success')
+    setManagingAdmin(false)
   }
 
   const handleAddLocation = () => {
@@ -169,7 +177,7 @@ export default function CompanyLocations() {
       {/* Location Detail Modal */}
       <Modal
         open={!!selected}
-        onClose={() => { setSelected(null); setIsEditing(false) }}
+        onClose={() => { setSelected(null); setIsEditing(false); setManagingAdmin(false) }}
         title={isEditing ? 'Standort bearbeiten' : 'Standort-Details'}
         size="lg"
       >
@@ -230,7 +238,18 @@ export default function CompanyLocations() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-navy mb-2">Team</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-navy">Team</p>
+                {selectedStats.emps.length > 0 && (
+                  <button
+                    onClick={() => setManagingAdmin(m => !m)}
+                    className="text-xs text-brand font-semibold flex items-center gap-1 hover:underline"
+                  >
+                    <UserCog size={13} />
+                    Einrichtungsleitung wechseln
+                  </button>
+                )}
+              </div>
               <div className="space-y-2">
                 {selectedStats.admin && (
                   <div className="flex items-center gap-3 p-2 rounded-xl bg-navy/5">
@@ -249,20 +268,27 @@ export default function CompanyLocations() {
                     <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-bold">
                       {emp.name.split(' ').map(n => n[0]).join('')}
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium text-navy">{emp.name}</p>
                       <p className="text-xs text-gray-400">{emp.position} · {emp.weeklyHours}h/Wo</p>
                     </div>
-                    <span className={`ml-auto text-xs font-bold ${emp.hoursBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      {emp.hoursBalance >= 0 ? '+' : ''}{emp.hoursBalance}h
-                    </span>
+                    {managingAdmin ? (
+                      <Button variant="ghost" className="border border-gray-200 gap-1.5 text-xs px-2.5 py-1.5" onClick={() => handleReassignAdmin(emp.id)}>
+                        <Crown size={12} />
+                        Ernennen
+                      </Button>
+                    ) : (
+                      <span className={`text-xs font-bold ${emp.hoursBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        {emp.hoursBalance >= 0 ? '+' : ''}{emp.hoursBalance}h
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setSelected(null)}>Schließen</Button>
+              <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setSelected(null); setManagingAdmin(false) }}>Schließen</Button>
               <Button className="flex-1 gap-2" onClick={() => startEditing(selectedStats)}>
                 <Edit size={16} />
                 Bearbeiten

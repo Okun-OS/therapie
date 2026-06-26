@@ -1,4 +1,4 @@
-export type Role = 'employee' | 'admin' | 'company'
+export type Role = 'employee' | 'admin' | 'company' | 'okun'
 export type ShiftType = 'early' | 'late' | 'mid' | 'night'
 export type RequestStatus = 'pending' | 'approved' | 'denied'
 export type SwapStatus = 'pending' | 'accepted' | 'declined' | 'cancelled'
@@ -242,4 +242,59 @@ export interface VacationPlan {
 export interface VacationRecommendation {
   stance: 'empfehlung_genehmigen' | 'empfehlung_pruefen' | 'empfehlung_ablehnen'
   reasoning: string
+}
+
+// ─── OKUN Plattformverwaltung ─────────────────────────────────────────────────
+
+export type CustomerStatus = 'trial' | 'active' | 'suspended' | 'cancelled'
+export type LicensePlan = 'starter' | 'professional' | 'enterprise'
+
+export interface Customer {
+  id: string
+  name: string
+  contactName: string
+  contactEmail: string
+  status: CustomerStatus
+  plan: LicensePlan
+  seatsLicensed: number
+  seatsUsed: number
+  locationsCount: number
+  createdAt: string
+  renewalDate?: string
+  notes?: string
+}
+
+export interface TestAccount {
+  id: string
+  customerName: string
+  contactEmail: string
+  createdAt: string
+  expiresAt: string
+  converted: boolean
+}
+
+export interface Invitation {
+  id: string
+  email: string
+  role: Role
+  customerName?: string
+  status: 'pending' | 'accepted' | 'expired'
+  sentAt: string
+}
+
+export interface SupportAccessLogEntry {
+  id: string
+  customerName: string
+  requestedBy: string
+  reason: string
+  grantedAt: string
+  revokedAt?: string
+}
+
+export interface OrgSettings {
+  organizationName: string
+  defaultWeeklyHours: number
+  defaultVacationDaysPerYear: number
+  autoApproveVacationUnderDays: number
+  notificationEmail: string
 }

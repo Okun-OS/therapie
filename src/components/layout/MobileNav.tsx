@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList, BarChart3, MapPin, UserPlus, Trophy } from 'lucide-react'
+import { LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList, BarChart3, MapPin, UserPlus, Trophy, Building2, KeyRound, LifeBuoy, Settings } from 'lucide-react'
 
 const employeeNav = [
   { href: '/employee', label: 'Home', icon: LayoutDashboard },
@@ -29,15 +29,25 @@ const adminNav = [
 const companyNav = [
   { href: '/company', label: 'Home', icon: LayoutDashboard },
   { href: '/company/locations', label: 'Standorte', icon: MapPin },
+  { href: '/company/schedule', label: 'Plan', icon: Calendar },
+  { href: '/company/vacation-plan', label: 'Urlaub', icon: Palmtree },
   { href: '/company/workforce-score', label: 'Score', icon: Trophy },
   { href: '/company/reports', label: 'Berichte', icon: BarChart3 },
+  { href: '/company/settings', label: 'Settings', icon: Settings },
+]
+
+const okunNav = [
+  { href: '/okun', label: 'Home', icon: LayoutDashboard },
+  { href: '/okun/customers', label: 'Kunden', icon: Building2 },
+  { href: '/okun/test-accounts', label: 'Test', icon: KeyRound },
+  { href: '/okun/support', label: 'Support', icon: LifeBuoy },
 ]
 
 export function MobileNav() {
   const { user } = useAuth()
   const pathname = usePathname()
 
-  const nav = user?.role === 'employee' ? employeeNav : user?.role === 'admin' ? adminNav : companyNav
+  const nav = user?.role === 'employee' ? employeeNav : user?.role === 'admin' ? adminNav : user?.role === 'okun' ? okunNav : companyNav
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 safe-area-bottom">

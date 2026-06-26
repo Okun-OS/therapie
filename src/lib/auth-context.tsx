@@ -7,6 +7,7 @@ const DEMO_USERS: User[] = [
   { id: 'emp1', name: 'Maria Schmidt', email: 'employee@demo.de', role: 'employee', locationId: 'loc1', position: 'Erzieherin' },
   { id: 'adm1', name: 'Thomas Müller', email: 'admin@demo.de', role: 'admin', locationId: 'loc1', position: 'Teamleitung' },
   { id: 'cmp1', name: 'BrightCare GmbH', email: 'company@demo.de', role: 'company', position: 'Geschäftsführung' },
+  { id: 'okun1', name: 'Lea Okun', email: 'okun@demo.de', role: 'okun', position: 'Plattform-Administration' },
 ]
 
 interface AuthContextType {

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/Button'
-import { Calendar, Mail, Lock, Users, Shield, Building2, Sparkles, ChevronRight } from 'lucide-react'
+import { Calendar, Mail, Lock, Users, Shield, Building2, Sparkles, ChevronRight, Cog } from 'lucide-react'
 import type { Role } from '@/lib/types'
 
 const DEMO_ACCOUNTS = [
@@ -35,6 +35,15 @@ const DEMO_ACCOUNTS = [
     icon: Building2,
     color: 'from-emerald-500 to-emerald-600',
   },
+  {
+    role: 'okun' as Role,
+    label: 'OKUN Administrator',
+    name: 'Lea Okun',
+    email: 'okun@demo.de',
+    desc: 'Plattform-Administration · OKUN',
+    icon: Cog,
+    color: 'from-slate-600 to-slate-800',
+  },
 ]
 
 export default function LoginPage() {
@@ -48,8 +57,7 @@ export default function LoginPage() {
 
   const handleDemoLogin = (role: Role) => {
     loginDemo(role)
-    const target = role === 'employee' ? '/employee' : role === 'admin' ? '/admin' : '/company'
-    router.push(target)
+    router.push(`/${role}`)
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -60,8 +68,7 @@ export default function LoginPage() {
     const ok = login(email, password)
     if (ok) {
       const user = JSON.parse(sessionStorage.getItem('dienstplan_user') || '{}')
-      const target = user.role === 'employee' ? '/employee' : user.role === 'admin' ? '/admin' : '/company'
-      router.push(target)
+      router.push(`/${user.role}`)
     } else {
       setError('E-Mail oder Passwort ungültig. Nutze einen Demo-Account oben.')
     }

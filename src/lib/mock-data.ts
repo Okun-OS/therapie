@@ -1,4 +1,4 @@
-import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday, ShiftType, WishImportance, VacationRules, VacationPlanEntry } from './types'
+import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday, ShiftType, WishImportance, VacationRules, VacationPlanEntry, Customer, LicensePlan, TestAccount, Invitation, SupportAccessLogEntry, Role, OrgSettings } from './types'
 
 export const LOCATIONS: Location[] = [
   { id: 'loc1', name: 'Kita Sonnenschein', address: 'Berliner Str. 12', city: 'Berlin', employeeCount: 8, adminId: 'adm1', active: true },
@@ -288,6 +288,17 @@ export function updateEmployee(id: string, updates: Partial<Employee>) {
   const idx = EMPLOYEES.findIndex(e => e.id === id)
   if (idx === -1) return
   EMPLOYEES[idx] = { ...EMPLOYEES[idx], ...updates }
+}
+
+/** Geschäftsführung: Einrichtungsleitung wechseln – die bisherige Leitung wird
+ * wieder Mitarbeiter, die neu ernannte Person wird Einrichtungsleitung. */
+export function reassignLocationAdmin(locationId: string, newAdminEmployeeId: string) {
+  const location = LOCATIONS.find(l => l.id === locationId)
+  if (!location) return
+  const previousAdmin = EMPLOYEES.find(e => e.id === location.adminId)
+  if (previousAdmin) updateEmployee(previousAdmin.id, { role: 'employee' })
+  updateEmployee(newAdminEmployeeId, { role: 'admin' })
+  updateLocation(locationId, { adminId: newAdminEmployeeId })
 }
 
 let employeeSeq = 1000
@@ -692,4 +703,125 @@ export function publishVacationPlan(locationId: string, locationName: string, en
     }
   }
   return created
+}
+
+// ─── OKUN Plattformverwaltung ─────────────────────────────────────────────────
+
+export const CUSTOMERS: Customer[] = [
+  { id: 'cust1', name: 'BrightCare GmbH', contactName: 'BrightCare GmbH', contactEmail: 'company@demo.de', status: 'active', plan: 'professional', seatsLicensed: 20, seatsUsed: 14, locationsCount: 3, createdAt: '2015-01-01', renewalDate: '2027-01-01' },
+  { id: 'cust2', name: 'Pflegeverbund Nord eG', contactName: 'Henrike Voss', contactEmail: 'h.voss@pflegeverbund-nord.de', status: 'trial', plan: 'starter', seatsLicensed: 10, seatsUsed: 6, locationsCount: 1, createdAt: '2026-05-30', renewalDate: '2026-06-30', notes: 'Testphase – Entscheidung erwartet bis Ende Juni' },
+  { id: 'cust3', name: 'Lebenshilfe Rheinland', contactName: 'Markus Engel', contactEmail: 'm.engel@lebenshilfe-rheinland.de', status: 'active', plan: 'enterprise', seatsLicensed: 80, seatsUsed: 62, locationsCount: 9, createdAt: '2023-09-12', renewalDate: '2026-09-12' },
+  { id: 'cust4', name: 'Kinderhaus Wolke 7', contactName: 'Petra Lindemann', contactEmail: 'p.lindemann@kinderhaus-wolke7.de', status: 'suspended', plan: 'starter', seatsLicensed: 8, seatsUsed: 0, locationsCount: 1, createdAt: '2024-02-20', notes: 'Zahlung überfällig seit 45 Tagen – Zugang gesperrt' },
+]
+
+let customerSeq = 1000
+
+export function addCustomer(input: { name: string; contactName: string; contactEmail: string; plan: LicensePlan; seatsLicensed: number }): Customer {
+  const customer: Customer = {
+    id: `cust-new-${customerSeq++}`,
+    name: input.name,
+    contactName: input.contactName,
+    contactEmail: input.contactEmail,
+    status: 'trial',
+    plan: input.plan,
+    seatsLicensed: input.seatsLicensed,
+    seatsUsed: 0,
+    locationsCount: 0,
+    createdAt: new Date().toISOString().split('T')[0],
+  }
+  CUSTOMERS.push(customer)
+  return customer
+}
+
+export function updateCustomer(id: string, updates: Partial<Customer>) {
+  const idx = CUSTOMERS.findIndex(c => c.id === id)
+  if (idx === -1) return
+  CUSTOMERS[idx] = { ...CUSTOMERS[idx], ...updates }
+}
+
+export const TEST_ACCOUNTS: TestAccount[] = [
+  { id: 'ta1', customerName: 'Pflegeverbund Nord eG', contactEmail: 'h.voss@pflegeverbund-nord.de', createdAt: '2026-05-30', expiresAt: '2026-06-30', converted: false },
+  { id: 'ta2', customerName: 'Tagespflege Sonnenhof', contactEmail: 'info@tagespflege-sonnenhof.de', createdAt: '2026-04-10', expiresAt: '2026-05-10', converted: false },
+]
+
+let testAccountSeq = 1000
+
+export function addTestAccount(input: { customerName: string; contactEmail: string; durationDays: number }): TestAccount {
+  const now = new Date()
+  const expires = new Date(now.getTime() + input.durationDays * 24 * 60 * 60 * 1000)
+  const account: TestAccount = {
+    id: `ta-new-${testAccountSeq++}`,
+    customerName: input.customerName,
+    contactEmail: input.contactEmail,
+    createdAt: now.toISOString().split('T')[0],
+    expiresAt: expires.toISOString().split('T')[0],
+    converted: false,
+  }
+  TEST_ACCOUNTS.push(account)
+  return account
+}
+
+export function updateTestAccount(id: string, updates: Partial<TestAccount>) {
+  const idx = TEST_ACCOUNTS.findIndex(t => t.id === id)
+  if (idx === -1) return
+  TEST_ACCOUNTS[idx] = { ...TEST_ACCOUNTS[idx], ...updates }
+}
+
+export const INVITATIONS: Invitation[] = [
+  { id: 'inv1', email: 'leitung@kinderhaus-wolke7.de', role: 'company', customerName: 'Kinderhaus Wolke 7', status: 'pending', sentAt: '2026-06-20' },
+  { id: 'inv2', email: 'm.engel@lebenshilfe-rheinland.de', role: 'company', customerName: 'Lebenshilfe Rheinland', status: 'accepted', sentAt: '2023-09-10' },
+]
+
+let invitationSeq = 1000
+
+export function addInvitation(input: { email: string; role: Role; customerName?: string }): Invitation {
+  const invitation: Invitation = {
+    id: `inv-new-${invitationSeq++}`,
+    email: input.email,
+    role: input.role,
+    customerName: input.customerName,
+    status: 'pending',
+    sentAt: new Date().toISOString().split('T')[0],
+  }
+  INVITATIONS.push(invitation)
+  return invitation
+}
+
+export const SUPPORT_LOG: SupportAccessLogEntry[] = [
+  { id: 'sup1', customerName: 'Pflegeverbund Nord eG', requestedBy: 'Lea Okun', reason: 'Hilfe bei Einrichtung der Dienstplanung während der Testphase', grantedAt: '2026-06-02', revokedAt: '2026-06-02' },
+  { id: 'sup2', customerName: 'Lebenshilfe Rheinland', requestedBy: 'Lea Okun', reason: 'Support-Ticket #4821: Urlaubsplan ließ sich nicht veröffentlichen', grantedAt: '2026-06-18' },
+]
+
+let supportLogSeq = 1000
+
+export function addSupportAccess(input: { customerName: string; requestedBy: string; reason: string }): SupportAccessLogEntry {
+  const entry: SupportAccessLogEntry = {
+    id: `sup-new-${supportLogSeq++}`,
+    customerName: input.customerName,
+    requestedBy: input.requestedBy,
+    reason: input.reason,
+    grantedAt: new Date().toISOString().split('T')[0],
+  }
+  SUPPORT_LOG.push(entry)
+  return entry
+}
+
+export function revokeSupportAccess(id: string) {
+  const idx = SUPPORT_LOG.findIndex(s => s.id === id)
+  if (idx === -1) return
+  SUPPORT_LOG[idx] = { ...SUPPORT_LOG[idx], revokedAt: new Date().toISOString().split('T')[0] }
+}
+
+// ─── Organisationsweite Einstellungen (Geschäftsführung) ──────────────────────
+
+export const ORG_SETTINGS: OrgSettings = {
+  organizationName: 'BrightCare GmbH',
+  defaultWeeklyHours: 38,
+  defaultVacationDaysPerYear: 30,
+  autoApproveVacationUnderDays: 0,
+  notificationEmail: 'company@demo.de',
+}
+
+export function updateOrgSettings(updates: Partial<OrgSettings>) {
+  Object.assign(ORG_SETTINGS, updates)
 }

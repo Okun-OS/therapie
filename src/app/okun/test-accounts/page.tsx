@@ -1,0 +1,141 @@
+'use client'
+
+import { useState } from 'react'
+import { Header } from '@/components/layout/Header'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/Modal'
+import { TEST_ACCOUNTS, addTestAccount, updateTestAccount, updateCustomer, CUSTOMERS } from '@/lib/mock-data'
+import { useToast } from '@/lib/toast-context'
+import { KeyRound, Plus, CheckCircle2, Clock } from 'lucide-react'
+
+export default function OkunTestAccounts() {
+  const { showToast } = useToast()
+  const [addModal, setAddModal] = useState(false)
+  const [form, setForm] = useState({ customerName: '', contactEmail: '', durationDays: 30 })
+  const [errors, setErrors] = useState<string[]>([])
+
+  const today = new Date().toISOString().split('T')[0]
+
+  const handleAdd = () => {
+    const errs: string[] = []
+    if (!form.customerName.trim()) errs.push('Organisation ist erforderlich')
+    if (!form.contactEmail.trim()) errs.push('E-Mail ist erforderlich')
+    if (errs.length > 0) {
+      setErrors(errs)
+      return
+    }
+    addTestAccount(form)
+    showToast('Testzugang angelegt', 'success')
+    setAddModal(false)
+    setErrors([])
+    setForm({ customerName: '', contactEmail: '', durationDays: 30 })
+  }
+
+  const convertToCustomer = (testAccountId: string, customerName: string) => {
+    const existing = CUSTOMERS.find(c => c.name === customerName)
+    if (existing) {
+      updateCustomer(existing.id, { status: 'active' })
+      updateTestAccount(testAccountId, { converted: true })
+      showToast(`${customerName} ist jetzt aktiver Kunde`, 'success')
+    } else {
+      showToast('Kunde nicht gefunden – bitte unter „Kunden“ anlegen', 'error')
+    }
+  }
+
+  return (
+    <>
+      <Header title="Testzugänge" subtitle={`${TEST_ACCOUNTS.length} Testzugänge`} />
+      <div className="p-4 sm:p-6 space-y-5">
+
+        <div className="flex justify-end">
+          <Button onClick={() => setAddModal(true)} className="gap-2">
+            <Plus size={16} />
+            Testzugang anlegen
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          {TEST_ACCOUNTS.map(ta => {
+            const expired = ta.expiresAt < today
+            return (
+              <div key={ta.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+                <div className="w-11 h-11 rounded-2xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <KeyRound size={18} className="text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-navy">{ta.customerName}</p>
+                  <p className="text-xs text-gray-500">{ta.contactEmail}</p>
+                  <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                    <Clock size={10} />
+                    {ta.createdAt} bis {ta.expiresAt}
+                  </p>
+                </div>
+                {ta.converted ? (
+                  <Badge variant="success">Übernommen</Badge>
+                ) : expired ? (
+                  <Badge variant="danger">Abgelaufen</Badge>
+                ) : (
+                  <Button variant="ghost" className="border border-gray-200 gap-1.5" onClick={() => convertToCustomer(ta.id, ta.customerName)}>
+                    <CheckCircle2 size={14} />
+                    Übernehmen
+                  </Button>
+                )}
+              </div>
+            )
+          })}
+          {TEST_ACCOUNTS.length === 0 && (
+            <div className="text-center py-12">
+              <KeyRound size={36} className="mx-auto text-gray-200 mb-3" />
+              <p className="text-sm text-gray-500">Keine Testzugänge vorhanden</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Modal open={addModal} onClose={() => { setAddModal(false); setErrors([]) }} title="Testzugang anlegen">
+        <div className="space-y-4">
+          {errors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <ul className="text-xs text-red-700 list-disc list-inside space-y-0.5">
+                {errors.map(err => <li key={err}>{err}</li>)}
+              </ul>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">Organisation</label>
+            <input
+              value={form.customerName}
+              onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
+              placeholder="z.B. Tagespflege Sonnenhof"
+              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
+            <input
+              value={form.contactEmail}
+              onChange={e => setForm(f => ({ ...f, contactEmail: e.target.value }))}
+              placeholder="kontakt@organisation.de"
+              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">Laufzeit (Tage)</label>
+            <input
+              type="number"
+              min={1}
+              value={form.durationDays}
+              onChange={e => setForm(f => ({ ...f, durationDays: Number(e.target.value) }))}
+              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setAddModal(false); setErrors([]) }}>Abbrechen</Button>
+            <Button className="flex-1" onClick={handleAdd}>Speichern</Button>
+          </div>
+        </div>
+      </Modal>
+    </>
+  )
+}

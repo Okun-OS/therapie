@@ -6,7 +6,8 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList,
-  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart, Scale, ShieldAlert, Brain, MessageCircle
+  Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart, Scale, ShieldAlert, Brain, MessageCircle,
+  KeyRound, LifeBuoy, Mail, Settings
 } from 'lucide-react'
 
 interface NavItem {
@@ -46,12 +47,23 @@ const companyNav: NavItem[] = [
   { href: '/company', label: 'Übersicht', icon: LayoutDashboard },
   { href: '/company/onboarding', label: 'KI-Onboarding', icon: MessageCircle, badge: 'KI' },
   { href: '/company/locations', label: 'Standorte', icon: MapPin },
+  { href: '/company/schedule', label: 'Dienstpläne', icon: Calendar },
+  { href: '/company/vacation-plan', label: 'Jahresurlaubsplanung', icon: Palmtree },
   { href: '/company/workforce-score', label: 'Workforce Score', icon: Trophy, badge: 'KI' },
   { href: '/company/workforce-insights', label: 'Workforce Insights', icon: LineChart, badge: 'KI' },
   { href: '/company/fairness-engine', label: 'Fairness Engine', icon: Scale, badge: 'KI' },
   { href: '/company/personnel-risk', label: 'Personalrisiko', icon: ShieldAlert, badge: 'KI' },
   { href: '/company/controlling', label: 'KI-Controlling', icon: Brain, badge: 'KI' },
   { href: '/company/reports', label: 'Berichte', icon: BarChart3 },
+  { href: '/company/settings', label: 'Einstellungen', icon: Settings },
+]
+
+const okunNav: NavItem[] = [
+  { href: '/okun', label: 'Systemübersicht', icon: LayoutDashboard },
+  { href: '/okun/customers', label: 'Kunden & Organisationen', icon: Building2 },
+  { href: '/okun/test-accounts', label: 'Testzugänge', icon: KeyRound },
+  { href: '/okun/invitations', label: 'Einladungen', icon: Mail },
+  { href: '/okun/support', label: 'Support', icon: LifeBuoy },
 ]
 
 export function Sidebar() {
@@ -61,7 +73,7 @@ export function Sidebar() {
   const router = useRouter()
   const currentUrl = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname
 
-  const nav = user?.role === 'employee' ? employeeNav : user?.role === 'admin' ? adminNav : companyNav
+  const nav = user?.role === 'employee' ? employeeNav : user?.role === 'admin' ? adminNav : user?.role === 'okun' ? okunNav : companyNav
 
   const handleLogout = () => {
     logout()
@@ -88,7 +100,7 @@ export function Sidebar() {
         <div className="bg-navy-light rounded-xl px-3 py-2.5 flex items-center gap-2">
           <Building2 size={14} className="text-brand" />
           <span className="text-xs text-navy-100 font-medium">
-            {user?.role === 'employee' ? 'Mitarbeiter' : user?.role === 'admin' ? 'Teamleitung' : 'Unternehmensebene'}
+            {user?.role === 'employee' ? 'Mitarbeiter' : user?.role === 'admin' ? 'Teamleitung' : user?.role === 'okun' ? 'OKUN Plattform' : 'Unternehmensebene'}
           </span>
         </div>
       </div>
