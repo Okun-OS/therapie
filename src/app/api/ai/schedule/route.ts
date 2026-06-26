@@ -44,6 +44,10 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 16. Falls keine derartige Entscheidung notwendig ist, setze "decisionQuestion" auf null. Stelle NIEMALS mehr als eine Rückfrage pro Antwort.
 17. Falls dir im Abschnitt "Bestätigte Optimierung" mitgeteilt wird, dass die Leitung eine vorherige Rückfrage bereits mit JA beantwortet hat, wende diese Verbesserung im Plan an und setze "decisionQuestion" in dieser Antwort IMMER auf null – es erfolgen keine weiteren Rückfragen zu derselben Planung.
 
+## Genehmigter Urlaub
+18. Mitarbeiter mit genehmigtem Urlaub (siehe "Genehmigter Urlaub im Planungszeitraum") dürfen an den betroffenen Tagen KEINEN Dienst bekommen – behandle sie an diesen Tagen als nicht verfügbar.
+19. Falls dadurch an einem Tag die Mindestbesetzung einer Schicht nicht erreicht werden kann, plane trotzdem den bestmöglichen Plan für alle anderen Tage/Schichten und formuliere GENAU EINE Rückfrage im Feld "fallback", ob für diesen Tag/diese Schicht eine Vertretungsanfrage erstellt werden soll. Gib dabei "date" (YYYY-MM-DD) und "shiftId" der unterbesetzten Schicht an. Falls keine Unterbesetzung durch Urlaub auftritt, setze "fallback" auf null.
+
 ## Output-Format (JSON, kein Markdown drumherum)
 Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
 {
@@ -57,7 +61,8 @@ Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
     { "type": "assignment" | "conflict" | "warning", "message": "Erklärung auf Deutsch" }
   ],
   "warnings": ["Warnung 1", "Warnung 2"],
-  "decisionQuestion": "Ja/Nein-Frage auf Deutsch, oder null"
+  "decisionQuestion": "Ja/Nein-Frage auf Deutsch, oder null",
+  "fallback": { "date": "YYYY-MM-DD", "shiftId": "string", "message": "Ja/Nein-Frage auf Deutsch zur Vertretungsanfrage" } | null
 }`
 
 interface ScheduleRequest {
@@ -70,6 +75,7 @@ interface ScheduleRequest {
   locationName: string
   facilityDescription?: string
   confirmedDecisionQuestion?: string
+  approvedVacations?: { employeeId: string; employeeName: string; startDate: string; endDate: string }[]
 }
 
 export async function POST(req: NextRequest) {
@@ -84,7 +90,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
 
-  const { employees, shifts, fairnessData, wishSubmissions, weekDates, locationId, locationName, facilityDescription, confirmedDecisionQuestion } = body
+  const { employees, shifts, fairnessData, wishSubmissions, weekDates, locationId, locationName, facilityDescription, confirmedDecisionQuestion, approvedVacations } = body
 
   const activeEmployees = employees.filter(e => e.role === 'employee' && e.active)
 
@@ -162,6 +168,12 @@ ${periodNotes.map(n => `- ${n.note}`).join('\n')}
 
 Diese Hinweise gelten NUR für die aktuelle Planungsperiode und überschreiben bei Bedarf temporär die Standardregeln. Sie gelten nicht für künftige Perioden.` : ''
 
+  const vacationSection = approvedVacations && approvedVacations.length > 0 ? `
+## Genehmigter Urlaub im Planungszeitraum
+${JSON.stringify(approvedVacations, null, 2)}
+
+Diese Mitarbeiter sind an den genannten Tagen (startDate bis endDate, jeweils inklusive) nicht verfügbar.` : ''
+
   const wishSummary = wishSubmissions.map(w => ({
     employeeId: w.employeeId,
     employeeName: w.employeeName,
@@ -187,6 +199,7 @@ ${JSON.stringify(weekDates)}
 
 ## Dienstwünsche der Mitarbeiter
 ${wishSummary.length > 0 ? JSON.stringify(wishSummary, null, 2) : 'Keine Wünsche eingereicht.'}
+${vacationSection}
 ${onboardingSection}
 ${periodNotesSection}
 ${facilityDescription ? `

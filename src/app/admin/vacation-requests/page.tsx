@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -8,10 +8,20 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { VACATION_REQUESTS, setVacationRequestStatus } from '@/lib/mock-data'
-import { CheckCircle, XCircle, Clock, Palmtree, Calendar, MessageSquare } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
-import type { VacationRequest, RequestStatus } from '@/lib/types'
+import { VACATION_REQUESTS, EMPLOYEES, setVacationRequestStatus, getVacationRules } from '@/lib/mock-data'
+import { CheckCircle, XCircle, Clock, Palmtree, Calendar, MessageSquare, Sparkles, Loader2 } from 'lucide-react'
+import { formatDate, sanitizeAiText } from '@/lib/utils'
+import type { VacationRequest, RequestStatus, VacationRecommendation } from '@/lib/types'
+
+const STANCE_CONFIG: Record<VacationRecommendation['stance'], { label: string; color: string; bg: string }> = {
+  empfehlung_genehmigen: { label: 'Empfehlung: Genehmigen', color: 'text-green-700', bg: 'bg-green-50 border-green-100' },
+  empfehlung_pruefen: { label: 'Empfehlung: Prüfen', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-100' },
+  empfehlung_ablehnen: { label: 'Empfehlung: Ablehnen', color: 'text-red-700', bg: 'bg-red-50 border-red-100' },
+}
+
+function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string) {
+  return aStart <= bEnd && bStart <= aEnd
+}
 
 export default function AdminVacationRequests() {
   const { user } = useAuth()
@@ -25,25 +35,85 @@ export default function AdminVacationRequests() {
   const [filter, setFilter] = useState<'all' | RequestStatus>('all')
   const [selected, setSelected] = useState<VacationRequest | null>(null)
   const [rejectNote, setRejectNote] = useState('')
+  const [recommendation, setRecommendation] = useState<VacationRecommendation | null>(null)
+  const [recommendationLoading, setRecommendationLoading] = useState(false)
 
   const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)
   const pending = requests.filter(r => r.status === 'pending')
   const approved = requests.filter(r => r.status === 'approved')
   const denied = requests.filter(r => r.status === 'denied')
 
+  useEffect(() => {
+    if (!selected || selected.status !== 'pending') {
+      setRecommendation(null)
+      return
+    }
+    const emp = EMPLOYEES.find(e => e.id === selected.employeeId)
+    const rules = getVacationRules(locationId)
+    const overlapping = requests
+      .filter(r => r.id !== selected.id && r.status === 'approved' && r.locationId === selected.locationId)
+      .filter(r => rangesOverlap(selected.startDate, selected.endDate, r.startDate, r.endDate))
+      .map(r => ({ employeeName: r.employeeName, startDate: r.startDate, endDate: r.endDate }))
+
+    setRecommendationLoading(true)
+    setRecommendation(null)
+    fetch('/api/ai/vacation-recommendation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        facilityDescription: rules?.facilityDescription,
+        customRules: rules?.customRules,
+        maxConcurrent: rules?.maxConcurrent,
+        request: {
+          employeeName: selected.employeeName,
+          startDate: selected.startDate,
+          endDate: selected.endDate,
+          days: selected.days,
+          reason: selected.reason,
+          remainingDays: emp ? emp.vacationDaysTotal - emp.vacationDaysUsed : 0,
+        },
+        overlapping,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.stance && data.reasoning) {
+          setRecommendation({ stance: data.stance, reasoning: sanitizeAiText(data.reasoning) })
+        }
+      })
+      .catch(() => {})
+      .finally(() => setRecommendationLoading(false))
+  }, [selected, locationId, requests])
+
   const handleApprove = (id: string) => {
+    const req = requests.find(r => r.id === id)
     setVacationRequestStatus(id, 'approved', user?.name || 'Admin')
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', respondedAt: new Date().toISOString().split('T')[0], respondedBy: user?.name } : r))
     setSelected(null)
     showToast('Urlaubsantrag genehmigt', 'success')
+    if (req) {
+      fetch('/api/vacation-requests/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: req.employeeId, requestId: req.id, status: 'approved', startDate: req.startDate, endDate: req.endDate }),
+      }).catch(() => {})
+    }
   }
 
   const handleDeny = (id: string) => {
+    const req = requests.find(r => r.id === id)
     setVacationRequestStatus(id, 'denied', user?.name || 'Admin')
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'denied', respondedAt: new Date().toISOString().split('T')[0], respondedBy: user?.name } : r))
     setSelected(null)
     setRejectNote('')
     showToast('Urlaubsantrag abgelehnt', 'info')
+    if (req) {
+      fetch('/api/vacation-requests/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: req.employeeId, requestId: req.id, status: 'denied', startDate: req.startDate, endDate: req.endDate, reason: rejectNote || undefined }),
+      }).catch(() => {})
+    }
   }
 
   const statusConfig = {
@@ -171,6 +241,19 @@ export default function AdminVacationRequests() {
 
             {selected.status === 'pending' && (
               <>
+                {recommendationLoading ? (
+                  <div className="text-xs text-gray-400 flex items-center gap-1.5">
+                    <Loader2 size={12} className="animate-spin" /> KI prüft den Antrag…
+                  </div>
+                ) : recommendation ? (
+                  <div className={`rounded-xl border p-3 ${STANCE_CONFIG[recommendation.stance].bg}`}>
+                    <p className={`text-xs font-bold flex items-center gap-1.5 ${STANCE_CONFIG[recommendation.stance].color}`}>
+                      <Sparkles size={12} />{STANCE_CONFIG[recommendation.stance].label}
+                    </p>
+                    <p className={`text-sm mt-1 ${STANCE_CONFIG[recommendation.stance].color}`}>{recommendation.reasoning}</p>
+                  </div>
+                ) : null}
+
                 <div>
                   <label className="block text-sm font-semibold text-navy mb-1.5">Ablehnungsgrund (optional)</label>
                   <div className="relative">

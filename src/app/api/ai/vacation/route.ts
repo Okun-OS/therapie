@@ -15,13 +15,18 @@ Du erstellst faire, regelkonforme Urlaubspläne für Teams unter Berücksichtigu
 
 ## Fairness
 5. Präferenzen (bevorzugte Monate) werden so weit wie möglich erfüllt.
-6. Bei Konflikten: hohe Priorität vor mittlerer vor niedriger Priorität, danach Mitarbeiter mit schulpflichtigen Kindern in Schulferienzeiten.
+6. Bei Konflikten: hohe Priorität vor mittlerer vor niedriger Priorität, danach Mitarbeiter mit schulpflichtigen Kindern in Schulferienzeiten – wobei deren individuelle "Priorität Schulferien" (hoch/mittel/niedrig) die Rangfolge unter ihnen bestimmt.
 7. Mitarbeiter mit niedrigem Resturlaub werden bevorzugt eingeplant.
+8. Zusätzliche, von der Einrichtung festgelegte Regeln (siehe "Zusatzregeln") sind verbindlich und müssen im Plan eingehalten werden.
 
-## Sprache & Ton der Texte (reasoning, note, warnings)
-8. Diese Texte werden der EINRICHTUNGSLEITUNG (Admin) angezeigt. Schreibe in der dritten Person über Mitarbeiter, niemals in der zweiten Person ("du", "dein").
-9. Verwende AUSSCHLIESSLICH natürliches, allgemeinverständliches Deutsch. Interne Feldnamen/Werte wie "hasChildren", "priority", "priority-high", "remainingDays" dürfen NIEMALS wörtlich im Text vorkommen – beschreibe den Sachverhalt stattdessen in Worten (z.B. statt "priority=high" schreibe "hat hohe Priorität", statt "hasChildren=true" schreibe "hat schulpflichtige Kinder").
-10. Mische niemals Deutsch und Englisch in einem Satz.
+## Qualitätsprüfung (vor der Ausgabe)
+9. Prüfe nach der Planerstellung selbst, ob alle Pflichtregeln eingehalten wurden und wie viele Mitarbeiterwünsche (bevorzugte Monate/Zeiträume) vollständig erfüllt werden konnten. Gib dieses Ergebnis im Feld "summary" aus.
+10. Wenn zwei oder mehr Mitarbeiter denselben Zeitraum wollten und nicht alle berücksichtigt werden konnten, erkläre im Feld "conflicts" transparent und nachvollziehbar, wer warum vorrangig berücksichtigt wurde (z.B. höhere Priorität, weniger Resturlaub, höhere Schulferien-Priorität).
+
+## Sprache & Ton der Texte (reasoning, note, warnings, conflicts)
+11. Diese Texte werden der EINRICHTUNGSLEITUNG (Admin) angezeigt. Schreibe in der dritten Person über Mitarbeiter, niemals in der zweiten Person ("du", "dein").
+12. Verwende AUSSCHLIESSLICH natürliches, allgemeinverständliches Deutsch. Interne Feldnamen/Werte wie "hasChildren", "priority", "priority-high", "remainingDays", "schoolHolidayPriority" dürfen NIEMALS wörtlich im Text vorkommen – beschreibe den Sachverhalt stattdessen in Worten (z.B. statt "priority=high" schreibe "hat hohe Priorität", statt "hasChildren=true" schreibe "hat schulpflichtige Kinder").
+13. Mische niemals Deutsch und Englisch in einem Satz.
 
 ## Output-Format (JSON, kein Markdown)
 {
@@ -34,11 +39,16 @@ Du erstellst faire, regelkonforme Urlaubspläne für Teams unter Berücksichtigu
     }
   ],
   "reasoning": "Zusammenfassung der Planungslogik (3–5 Sätze)",
-  "warnings": ["Warnung 1", "Warnung 2"]
+  "warnings": ["Warnung 1", "Warnung 2"],
+  "summary": { "fulfillmentPercent": number, "fulfilledCount": number, "totalCount": number },
+  "conflicts": [
+    { "employeeNames": ["Name 1", "Name 2"], "reasoning": "warum wer vorrangig berücksichtigt wurde" }
+  ]
 }`
 
 interface VacationRequest {
   facilityDescription: string
+  customRules?: string[]
   planningStart: string
   planningEnd: string
   maxConcurrent: number
@@ -47,6 +57,7 @@ interface VacationRequest {
     id: string
     name: string
     hasChildren: boolean
+    schoolHolidayPriority?: string
     remainingDays: number
     preferredMonths: number[]
     preferredPeriod?: string
@@ -72,12 +83,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
 
-  const { facilityDescription, planningStart, planningEnd, maxConcurrent, state, employees, schoolHolidays } = body
+  const { facilityDescription, customRules, planningStart, planningEnd, maxConcurrent, state, employees, schoolHolidays } = body
 
   const userPrompt = `Erstelle einen Urlaubsplan für den Zeitraum ${planningStart} bis ${planningEnd}.
 
 ## Einrichtungsbeschreibung und Regeln
 ${facilityDescription || 'Keine besonderen Angaben.'}
+
+## Zusatzregeln (verbindlich)
+${customRules && customRules.length > 0 ? customRules.map(r => `- ${r}`).join('\n') : 'Keine Zusatzregeln.'}
 
 Maximale gleichzeitige Abwesenheit: ${maxConcurrent} Personen.
 Bundesland für Schulferien: ${state}.
@@ -89,7 +103,7 @@ ${JSON.stringify(schoolHolidays, null, 2)}
 ${JSON.stringify(employees, null, 2)}
 
 Hinweis: "remainingDays" = noch zu verplanende Urlaubstage im angegebenen Zeitraum. Plane möglichst viele davon ein.
-Mitarbeiter mit hasChildren=true und priority="high" haben in Schulferienzeiten Vorrang.
+Mitarbeiter mit hasChildren=true haben in Schulferienzeiten Vorrang, abgestuft nach ihrer "schoolHolidayPriority" (hoch vor mittel vor niedrig).
 
 Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor oder danach.`
 

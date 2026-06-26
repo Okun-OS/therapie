@@ -1,21 +1,31 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/lib/auth-context'
+import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
+import { VacationRulesChat } from '@/components/vacation/VacationRulesChat'
 import {
   EMPLOYEES, LOCATIONS, VACATION_PREFERENCES, SCHOOL_HOLIDAYS_2026,
+  getVacationRules, setVacationRules, publishVacationPlan,
 } from '@/lib/mock-data'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
-import type { VacationPlanEntry } from '@/lib/types'
+import type { VacationPlanEntry, VacationPlanSummary, VacationPlanConflict, VacationRules } from '@/lib/types'
+import type { VacationRulesDraft } from '@/lib/vacation-rules-draft'
 import {
   Sparkles, Loader, CheckCircle, AlertTriangle, Baby, Palmtree,
-  Calendar, Info, Download, Clock,
+  Calendar, Info, Download, Clock, MessageCircle, Send, PartyPopper,
 } from 'lucide-react'
+
+const DEFAULT_RULES = (employeeCount: number): VacationRules => ({
+  facilityDescription: `Wir sind eine Kita mit 6 Gruppen. Jede Gruppe muss immer mit mindestens 1 Fachkraft besetzt sein. Wir haben 2 Etagen mit je 3 Gruppen, maximal 2 Mitarbeiter pro Etage dürfen gleichzeitig Urlaub haben. Gesamtteam: ${employeeCount} Mitarbeiter.`,
+  maxConcurrent: 2,
+  customRules: [],
+})
 
 const GERMAN_STATES = ['Berlin', 'Bayern', 'Hamburg', 'Baden-Württemberg', 'Nordrhein-Westfalen', 'Hessen', 'Niedersachsen', 'Sachsen']
 const MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
@@ -25,6 +35,7 @@ const PRIORITY_COLOR: Record<string, string> = { high: 'bg-red-100 text-red-700'
 interface PrefRow {
   employeeId: string
   hasChildren: boolean
+  schoolHolidayPriority: 'low' | 'medium' | 'high'
   preferredMonths: number[]
   preferredPeriod: string
   notes: string
@@ -42,17 +53,33 @@ const AI_STEPS = [
 
 export default function VacationPlanPage() {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const locationId = user?.locationId ?? 'loc1'
   const location = LOCATIONS.find(l => l.id === locationId)
 
   const employees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee')
 
-  const [facilityDescription, setFacilityDescription] = useState(
-    `Wir sind eine Kita mit 6 Gruppen. Jede Gruppe muss immer mit mindestens 1 Fachkraft besetzt sein. Wir haben 2 Etagen mit je 3 Gruppen, maximal 2 Mitarbeiter pro Etage dürfen gleichzeitig Urlaub haben. Gesamtteam: ${employees.length} Mitarbeiter.`
-  )
+  const [rules, setRules] = useState<VacationRules>(() => getVacationRules(locationId) ?? DEFAULT_RULES(employees.length))
+  const [rulesChatOpen, setRulesChatOpen] = useState(false)
+
+  useEffect(() => {
+    setRules(getVacationRules(locationId) ?? DEFAULT_RULES(employees.length))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationId])
+
+  const handleSaveRules = async (draft: VacationRulesDraft) => {
+    const next: VacationRules = {
+      facilityDescription: draft.facilityDescription || rules.facilityDescription,
+      maxConcurrent: draft.maxConcurrent ?? rules.maxConcurrent,
+      customRules: draft.customRules ?? rules.customRules,
+    }
+    setRules(next)
+    setVacationRules(locationId, next)
+    showToast('Urlaubsregeln gespeichert – gelten für alle künftigen Planungen')
+  }
+
   const [planningStart, setPlanningStart] = useState('2026-06-01')
   const [planningEnd, setPlanningEnd] = useState('2026-09-30')
-  const [maxConcurrent, setMaxConcurrent] = useState(2)
   const [selectedState, setSelectedState] = useState('Berlin')
 
   const [prefs, setPrefs] = useState<PrefRow[]>(() =>
@@ -61,6 +88,7 @@ export default function VacationPlanPage() {
       return {
         employeeId: emp.id,
         hasChildren: emp.hasChildren ?? false,
+        schoolHolidayPriority: pref?.schoolHolidayPriority ?? 'medium',
         preferredMonths: pref?.preferredMonths ?? [7, 8],
         preferredPeriod: pref?.preferredPeriod ?? '',
         notes: pref?.notes ?? '',
@@ -74,7 +102,11 @@ export default function VacationPlanPage() {
   const [generatedPlan, setGeneratedPlan] = useState<VacationPlanEntry[] | null>(null)
   const [reasoning, setReasoning] = useState<string | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
+  const [summary, setSummary] = useState<VacationPlanSummary | null>(null)
+  const [conflicts, setConflicts] = useState<VacationPlanConflict[]>([])
   const [aiError, setAiError] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState(false)
+  const [published, setPublished] = useState(false)
 
   const schoolHolidays = useMemo(
     () => SCHOOL_HOLIDAYS_2026.filter(h => h.state === selectedState),
@@ -102,6 +134,9 @@ export default function VacationPlanPage() {
     setGeneratedPlan(null)
     setReasoning(null)
     setWarnings([])
+    setSummary(null)
+    setConflicts([])
+    setPublished(false)
 
     let step = 0
     const interval = setInterval(() => {
@@ -111,10 +146,11 @@ export default function VacationPlanPage() {
 
     try {
       const payload = {
-        facilityDescription,
+        facilityDescription: rules.facilityDescription,
+        customRules: rules.customRules,
         planningStart,
         planningEnd,
-        maxConcurrent,
+        maxConcurrent: rules.maxConcurrent,
         state: selectedState,
         employees: prefs.map(p => {
           const emp = employees.find(e => e.id === p.employeeId)!
@@ -122,6 +158,7 @@ export default function VacationPlanPage() {
             id: emp.id,
             name: emp.name,
             hasChildren: p.hasChildren,
+            schoolHolidayPriority: p.hasChildren ? p.schoolHolidayPriority : undefined,
             remainingDays: emp.vacationDaysTotal - emp.vacationDaysUsed,
             preferredMonths: p.preferredMonths,
             preferredPeriod: p.preferredPeriod,
@@ -150,11 +187,32 @@ export default function VacationPlanPage() {
       setGeneratedPlan(data.plan ?? [])
       setReasoning(data.reasoning ? sanitizeAiText(data.reasoning) : null)
       setWarnings((data.warnings ?? []).map((w: string) => sanitizeAiText(w)))
+      setSummary(data.summary ?? null)
+      setConflicts((data.conflicts ?? []).map((c: VacationPlanConflict) => ({ ...c, reasoning: sanitizeAiText(c.reasoning) })))
     } catch (err: unknown) {
       clearInterval(interval)
       setAiError(err instanceof Error ? err.message : 'Unbekannter Fehler')
     } finally {
       setAiRunning(false)
+    }
+  }
+
+  const handlePublish = async () => {
+    if (!generatedPlan) return
+    setPublishing(true)
+    try {
+      const createdRequests = publishVacationPlan(locationId, location?.name ?? 'Standort', generatedPlan)
+      setPublished(true)
+      showToast('Urlaubsplan freigegeben – Mitarbeiter werden benachrichtigt')
+      await fetch('/api/vacation-plan/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests: createdRequests }),
+      })
+    } catch {
+      // Benachrichtigungen sind ein Zusatznutzen – ein Fehler hier darf die Freigabe nicht blockieren.
+    } finally {
+      setPublishing(false)
     }
   }
 
@@ -196,24 +254,31 @@ export default function VacationPlanPage() {
 
         {/* ── REGELWERK ─────────────────────────────────────────────── */}
         <Card>
-          <p className="text-sm font-bold text-navy mb-3 flex items-center gap-2">
-            <Calendar size={15} className="text-purple-500" />
-            Planungsregeln
-          </p>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <p className="text-sm font-bold text-navy flex items-center gap-2">
+              <Calendar size={15} className="text-purple-500" />
+              Planungsregeln
+            </p>
+            <Button variant="ghost" size="sm" onClick={() => setRulesChatOpen(true)} className="gap-1.5 text-purple-700">
+              <MessageCircle size={14} />Regeln per KI-Chat bearbeiten
+            </Button>
+          </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-600 block mb-1.5">Einrichtungsbeschreibung & besondere Regeln</label>
-              <textarea
-                value={facilityDescription}
-                onChange={e => setFacilityDescription(e.target.value)}
-                rows={4}
-                placeholder="Beschreibe deine Einrichtung, Gruppenstruktur, Besetzungsregeln, Besonderheiten..."
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
-              />
+            <div className="bg-purple-50 border border-purple-100 rounded-xl p-3">
+              <p className="text-xs font-semibold text-purple-700 mb-1">Einrichtungsbeschreibung & Besetzungsregeln</p>
+              <p className="text-sm text-purple-900">{rules.facilityDescription}</p>
+              <p className="text-xs text-purple-700 mt-2">Maximal <span className="font-bold">{rules.maxConcurrent}</span> Mitarbeiter gleichzeitig im Urlaub.</p>
+              {rules.customRules.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {rules.customRules.map((r, i) => (
+                    <span key={i} className="text-xs bg-white text-purple-800 px-2 py-1 rounded-lg border border-purple-200">{r}</span>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">Planung von</label>
                 <input type="date" value={planningStart} onChange={e => setPlanningStart(e.target.value)}
@@ -223,15 +288,6 @@ export default function VacationPlanPage() {
                 <label className="text-xs font-semibold text-gray-500 block mb-1">Planung bis</label>
                 <input type="date" value={planningEnd} onChange={e => setPlanningEnd(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Max. gleichzeitig</label>
-                <div className="flex items-center gap-2">
-                  <input type="range" min={1} max={Math.max(1, employees.length - 1)} value={maxConcurrent}
-                    onChange={e => setMaxConcurrent(Number(e.target.value))}
-                    className="flex-1 accent-brand" />
-                  <span className="text-sm font-bold text-navy w-6 text-center">{maxConcurrent}</span>
-                </div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">Bundesland (Ferien)</label>
@@ -304,6 +360,21 @@ export default function VacationPlanPage() {
                     </div>
                   </div>
 
+                  {pref.hasChildren && (
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1.5">Priorität Schulferien:</label>
+                      <select
+                        value={pref.schoolHolidayPriority}
+                        onChange={e => updatePref(pref.employeeId, 'schoolHolidayPriority', e.target.value)}
+                        className="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand"
+                      >
+                        <option value="high">Hoch</option>
+                        <option value="medium">Mittel</option>
+                        <option value="low">Niedrig</option>
+                      </select>
+                    </div>
+                  )}
+
                   {/* Month preference */}
                   <div>
                     <p className="text-xs text-gray-500 mb-1.5">Bevorzugte Monate:</p>
@@ -371,18 +442,32 @@ export default function VacationPlanPage() {
               </div>
               <Button variant="ghost" size="sm" onClick={() => setAiError(null)}>Erneut</Button>
             </div>
-          ) : (
+          ) : published ? (
             <div className="flex items-center gap-3">
+              <PartyPopper size={24} className="text-green-600 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-bold text-green-700">Urlaubsplan freigegeben!</p>
+                <p className="text-sm text-green-600">Alle Mitarbeiter wurden über ihren genehmigten Urlaub benachrichtigt.</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={exportPlan} className="gap-1.5 border border-green-300">
+                <Download size={14} />Exportieren
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 flex-wrap">
               <CheckCircle size={24} className="text-green-600 flex-shrink-0" />
               <div className="flex-1">
                 <p className="font-bold text-green-700">KI-Urlaubsplan erstellt!</p>
                 <p className="text-sm text-green-600">Alle Regeln eingehalten · Schulferien berücksichtigt · Fairness optimiert.</p>
               </div>
               <div className="flex gap-2">
+                <Button size="sm" loading={publishing} onClick={handlePublish} className="gap-1.5">
+                  <Send size={14} />Freigeben
+                </Button>
                 <Button variant="ghost" size="sm" onClick={exportPlan} className="gap-1.5 border border-green-300">
                   <Download size={14} />Exportieren
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => { setGeneratedPlan(null); setReasoning(null); setWarnings([]) }} className="text-gray-500">
+                <Button variant="ghost" size="sm" onClick={() => { setGeneratedPlan(null); setReasoning(null); setWarnings([]); setSummary(null); setConflicts([]); setPublished(false) }} className="text-gray-500">
                   Neu planen
                 </Button>
               </div>
@@ -393,6 +478,34 @@ export default function VacationPlanPage() {
         {/* ── GENERATED PLAN ────────────────────────────────────────── */}
         {generatedPlan && (
           <div className="space-y-3">
+            {summary && (
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-green-700 font-bold text-sm">{summary.fulfillmentPercent}%</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-navy">Qualitätsprüfung</p>
+                  <p className="text-xs text-gray-500">{summary.fulfilledCount} von {summary.totalCount} Wünschen vollständig erfüllt.</p>
+                </div>
+              </div>
+            )}
+
+            {conflicts.length > 0 && (
+              <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle size={15} className="text-orange-600" />
+                  <p className="text-sm font-bold text-orange-800">Konflikte & Priorisierung</p>
+                </div>
+                <div className="space-y-2">
+                  {conflicts.map((c, i) => (
+                    <div key={i} className="text-sm text-orange-700">
+                      <span className="font-semibold">{c.employeeNames.join(', ')}: </span>{c.reasoning}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {reasoning && (
               <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -469,6 +582,13 @@ export default function VacationPlanPage() {
           </div>
         )}
       </div>
+
+      <VacationRulesChat
+        open={rulesChatOpen}
+        onClose={() => setRulesChatOpen(false)}
+        initialDraft={{ ...rules, readyToSave: true, confirmed: true }}
+        onSave={handleSaveRules}
+      />
     </>
   )
 }

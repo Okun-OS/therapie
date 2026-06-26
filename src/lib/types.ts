@@ -187,10 +187,17 @@ export interface DashboardStats {
 export interface VacationPlanPreference {
   employeeId: string
   hasChildren: boolean
+  schoolHolidayPriority?: 'low' | 'medium' | 'high'  // only meaningful when hasChildren is true
   preferredMonths: number[]  // 1–12
   preferredPeriod?: string   // free text
   notes?: string
   priority: 'low' | 'medium' | 'high'
+}
+
+export interface VacationRules {
+  facilityDescription: string
+  maxConcurrent: number
+  customRules: string[]
 }
 
 export interface SchoolHoliday {
@@ -213,8 +220,26 @@ export interface VacationPlanEntry {
   note?: string
 }
 
+export interface VacationPlanConflict {
+  employeeNames: string[]
+  reasoning: string
+}
+
+export interface VacationPlanSummary {
+  fulfillmentPercent: number
+  fulfilledCount: number
+  totalCount: number
+}
+
 export interface VacationPlan {
   plan: VacationPlanEntry[]
   reasoning: string
   warnings: string[]
+  summary?: VacationPlanSummary
+  conflicts?: VacationPlanConflict[]
+}
+
+export interface VacationRecommendation {
+  stance: 'empfehlung_genehmigen' | 'empfehlung_pruefen' | 'empfehlung_ablehnen'
+  reasoning: string
 }

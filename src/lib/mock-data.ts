@@ -1,4 +1,4 @@
-import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday, ShiftType, WishImportance } from './types'
+import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday, ShiftType, WishImportance, VacationRules, VacationPlanEntry } from './types'
 
 export const LOCATIONS: Location[] = [
   { id: 'loc1', name: 'Kita Sonnenschein', address: 'Berliner Str. 12', city: 'Berlin', employeeCount: 8, adminId: 'adm1', active: true },
@@ -653,3 +653,43 @@ export const SCHOOL_HOLIDAYS_2026: SchoolHoliday[] = [
   { name: 'Herbstferien', startDate: '2026-10-05', endDate: '2026-10-16', state: 'Hamburg' },
   { name: 'Weihnachtsferien', startDate: '2026-12-18', endDate: '2027-01-01', state: 'Hamburg' },
 ]
+
+// Persisted across planning runs (Schritt 1 "Urlaubsregeln erfassen" + Ergänzung
+// "persistente Feiertags-/Sonderzeit-Regeln") so they don't need to be re-entered each year.
+const VACATION_RULES: Record<string, VacationRules> = {}
+
+export function getVacationRules(locationId: string): VacationRules | null {
+  return VACATION_RULES[locationId] ?? null
+}
+
+export function setVacationRules(locationId: string, rules: VacationRules) {
+  VACATION_RULES[locationId] = rules
+}
+
+// Schritt 6 "Freigabe": turns a generated annual plan into real, already-approved
+// vacation requests, so they show up for employees and are respected by future schedule generation.
+export function publishVacationPlan(locationId: string, locationName: string, entries: VacationPlanEntry[]): VacationRequest[] {
+  const created: VacationRequest[] = []
+  for (const entry of entries) {
+    for (const slot of entry.slots) {
+      const request: VacationRequest = {
+        id: `vr-plan-${vacationRequestSeq++}`,
+        employeeId: entry.employeeId,
+        employeeName: entry.employeeName,
+        locationId,
+        locationName,
+        startDate: slot.startDate,
+        endDate: slot.endDate,
+        days: slot.days,
+        reason: entry.note,
+        status: 'approved',
+        submittedAt: new Date().toISOString().split('T')[0],
+        respondedAt: new Date().toISOString().split('T')[0],
+        respondedBy: 'KI-Jahresurlaubsplanung',
+      }
+      VACATION_REQUESTS.push(request)
+      created.push(request)
+    }
+  }
+  return created
+}

@@ -12,7 +12,7 @@ import { SchedulePlanningChat } from '@/components/schedule/SchedulePlanningChat
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import {
-  EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, LOCATIONS,
+  EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, LOCATIONS, VACATION_REQUESTS,
   getAllEntriesForFairness, getWishSubmissionsByLocation,
   setShiftMinStaff, saveScheduleForWeek,
 } from '@/lib/mock-data'
@@ -85,6 +85,9 @@ export default function AdminSchedule() {
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
   const [aiDecisionQuestion, setAiDecisionQuestion] = useState<string | null>(null)
   const [decisionLoading, setDecisionLoading] = useState(false)
+  const [fallback, setFallback] = useState<{ date: string; shiftId: string; message: string } | null>(null)
+  const [fallbackLoading, setFallbackLoading] = useState(false)
+  const [fallbackHandled, setFallbackHandled] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [shiftEditorOpen, setShiftEditorOpen] = useState(false)
@@ -158,7 +161,7 @@ export default function AdminSchedule() {
       d.setDate(d.getDate() + direction * 7)
     }
     setCurrentDate(d)
-    setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setSaved(false)
+    setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setFallback(null); setFallbackHandled(false); setSaved(false)
   }
 
   useEffect(() => {
@@ -230,6 +233,12 @@ export default function AdminSchedule() {
     return e.locationId === locationId && d >= periodWeeks[0][0] && d <= periodWeeks[periodWeeks.length - 1][6]
   })
 
+  const periodStart = periodWeekdayDates[0]
+  const periodEnd = periodWeekdayDates[periodWeekdayDates.length - 1]
+  const approvedVacations = VACATION_REQUESTS
+    .filter(v => v.locationId === locationId && v.status === 'approved' && v.startDate <= periodEnd && v.endDate >= periodStart)
+    .map(v => ({ employeeId: v.employeeId, employeeName: v.employeeName, startDate: v.startDate, endDate: v.endDate }))
+
   const getDisplayShift = (empId: string, dateStr: string) => {
     if (generatedSchedule) {
       const shiftId = generatedSchedule[empId]?.[dateStr]
@@ -248,6 +257,8 @@ export default function AdminSchedule() {
     setAiDecisions([])
     setAiWarnings([])
     setAiDecisionQuestion(null)
+    setFallback(null)
+    setFallbackHandled(false)
 
     // Animate progress steps while waiting for the real API
     let step = 0
@@ -274,6 +285,7 @@ export default function AdminSchedule() {
           locationName: location?.name ?? 'Standort',
           facilityDescription: combinedDescription || undefined,
           confirmedDecisionQuestion,
+          approvedVacations,
         }),
       })
 
@@ -303,6 +315,8 @@ export default function AdminSchedule() {
       setAiDecisions((data.decisions ?? []).map((d: { type: string; message: string }) => ({ ...d, message: sanitizeAiText(d.message) })))
       setAiWarnings((data.warnings ?? []).map((w: string) => sanitizeAiText(w)))
       setAiDecisionQuestion(confirmedDecisionQuestion ? null : (data.decisionQuestion ? sanitizeAiText(data.decisionQuestion) : null))
+      setFallback(data.fallback ? { ...data.fallback, message: sanitizeAiText(data.fallback.message) } : null)
+      setFallbackHandled(false)
       setAiDone(true)
     } catch (err: unknown) {
       clearInterval(interval)
@@ -328,6 +342,38 @@ export default function AdminSchedule() {
   const handleDecisionNo = () => {
     setAiDecisionQuestion(null)
     showToast('Planung bleibt unverändert')
+  }
+
+  const handleCreateSubstitution = async () => {
+    if (!fallback) return
+    const shift = effectiveShifts.find(s => s.id === fallback.shiftId)
+    setFallbackLoading(true)
+    try {
+      await fetch('/api/substitutions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          locationId,
+          date: fallback.date,
+          startTime: shift?.startTime ?? '08:00',
+          endTime: shift?.endTime ?? '16:00',
+          priority: 'high',
+          note: `Unterbesetzung durch genehmigten Urlaub${shift ? ` (${shift.name})` : ''}.`,
+          createdBy: user?.name ?? 'Admin',
+        }),
+      })
+      setFallbackHandled(true)
+      showToast('Vertretungsanfrage erstellt')
+    } catch {
+      showToast('Vertretungsanfrage konnte nicht erstellt werden', 'error')
+    } finally {
+      setFallbackLoading(false)
+    }
+  }
+
+  const handleSkipSubstitution = () => {
+    setFallback(null)
+    showToast('Keine Vertretungsanfrage erstellt')
   }
 
   const unfairCount = fairnessData.filter(d => d.fairnessScore < 60).length
@@ -426,7 +472,7 @@ export default function AdminSchedule() {
               {PERIOD_OPTIONS.map(opt => (
                 <button
                   key={opt.key}
-                  onClick={() => { setPeriodMode(opt.key); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setSaved(false) }}
+                  onClick={() => { setPeriodMode(opt.key); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setFallback(null); setFallbackHandled(false); setSaved(false) }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${periodMode === opt.key ? 'bg-navy text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                 >
                   {opt.label}
@@ -579,7 +625,7 @@ export default function AdminSchedule() {
                       Fairness-optimiert · Wünsche berücksichtigt · Schulden ausgeglichen.
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setSaved(false) }} className="text-gray-500">
+                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setFallback(null); setFallbackHandled(false); setSaved(false) }} className="text-gray-500">
                     Zurück
                   </Button>
                 </div>
@@ -747,6 +793,29 @@ export default function AdminSchedule() {
                     Nein, danke
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {aiDone && fallback && (
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={16} className="text-orange-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm font-semibold text-orange-800">{fallback.message}</p>
+                </div>
+                {fallbackHandled ? (
+                  <p className="text-xs text-orange-700 flex items-center gap-1.5">
+                    <CheckCircle size={13} />Vertretungsanfrage wurde erstellt.
+                  </p>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button size="sm" loading={fallbackLoading} onClick={handleCreateSubstitution} className="gap-1.5 bg-orange-600 hover:bg-orange-700 text-white focus:ring-orange-500">
+                      Ja, Vertretungsanfrage erstellen
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleSkipSubstitution} className="border border-orange-200 text-orange-700 hover:bg-orange-100">
+                      Nein, danke
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
