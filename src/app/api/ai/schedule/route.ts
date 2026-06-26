@@ -52,6 +52,10 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 18a. Mitarbeiter mit gemeldeter Krankheit oder sonstiger Abwesenheit (siehe "Gemeldete Abwesenheiten im Planungszeitraum") dürfen an den betroffenen Tagen ebenfalls KEINEN Dienst bekommen – behandle sie an diesen Tagen wie bei Urlaub als nicht verfügbar.
 19a. Falls dadurch an einem Tag die Mindestbesetzung einer Schicht nicht erreicht werden kann und noch kein "fallback" für diesen Tag/diese Schicht aus Regel 19 gesetzt wurde, formuliere ebenfalls GENAU EINE Rückfrage im Feld "fallback" nach denselben Vorgaben wie in Regel 19.
 
+## Transparente Entscheidungen (Schritt "decisions")
+20. Damit die Leitung sich später für eine einzelne Schicht anzeigen lassen kann, warum genau diese Zuweisung getroffen wurde, gib bei JEDEM Eintrag mit "type": "assignment" zusätzlich "employeeId" und "date" (YYYY-MM-DD) der betroffenen Zuweisung an. Erstelle solche Einträge für die auffälligsten/wichtigsten Zuweisungen (z. B. Fairness-Ausgleich, erfüllte Wünsche, besondere Absprachen) – nicht für jede einzelne Schicht.
+21. Einträge mit "type": "conflict" oder "warning" benötigen kein "employeeId"/"date".
+
 ## Output-Format (JSON, kein Markdown drumherum)
 Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
 {
@@ -62,7 +66,8 @@ Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
   },
   "reasoning": "Kurze Zusammenfassung der Planungslogik auf Deutsch (2–4 Sätze)",
   "decisions": [
-    { "type": "assignment" | "conflict" | "warning", "message": "Erklärung auf Deutsch" }
+    { "type": "assignment", "message": "Erklärung auf Deutsch", "employeeId": "string", "date": "YYYY-MM-DD" },
+    { "type": "conflict" | "warning", "message": "Erklärung auf Deutsch" }
   ],
   "warnings": ["Warnung 1", "Warnung 2"],
   "decisionQuestion": "Ja/Nein-Frage auf Deutsch, oder null",

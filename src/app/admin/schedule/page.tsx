@@ -82,6 +82,8 @@ export default function AdminSchedule() {
   const [generatedSchedule, setGeneratedSchedule] = useState<Record<string, Record<string, string>> | null>(null)
   const [aiReasoning, setAiReasoning] = useState<string | null>(null)
   const [aiDecisions, setAiDecisions] = useState<{ type: string; message: string }[]>([])
+  const [aiAssignmentReasons, setAiAssignmentReasons] = useState<Record<string, string>>({})
+  const [explainEntry, setExplainEntry] = useState<{ employeeName: string; shiftName: string; dateStr: string; reason: string | null } | null>(null)
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
   const [aiDecisionQuestion, setAiDecisionQuestion] = useState<string | null>(null)
   const [decisionLoading, setDecisionLoading] = useState(false)
@@ -252,6 +254,12 @@ export default function AdminSchedule() {
     return entry ? effectiveShifts.find(s => s.id === entry.shiftId) : null
   }
 
+  const getDisplayReason = (empId: string, dateStr: string): string | null => {
+    if (generatedSchedule) return aiAssignmentReasons[`${empId}|${dateStr}`] ?? null
+    const entry = existingEntries.find(e => e.employeeId === empId && e.date === dateStr)
+    return entry?.reason ?? null
+  }
+
   const runAI = async (confirmedDecisionQuestion?: string) => {
     setAiRunning(true)
     setAiDone(false)
@@ -259,6 +267,7 @@ export default function AdminSchedule() {
     setAiError(null)
     setAiReasoning(null)
     setAiDecisions([])
+    setAiAssignmentReasons({})
     setAiWarnings([])
     setAiDecisionQuestion(null)
     setFallback(null)
@@ -317,7 +326,15 @@ export default function AdminSchedule() {
 
       setGeneratedSchedule(transposed)
       setAiReasoning(data.reasoning ? sanitizeAiText(data.reasoning) : null)
-      setAiDecisions((data.decisions ?? []).map((d: { type: string; message: string }) => ({ ...d, message: sanitizeAiText(d.message) })))
+      const decisions = (data.decisions ?? []) as { type: string; message: string; employeeId?: string; date?: string }[]
+      setAiDecisions(decisions.map(d => ({ ...d, message: sanitizeAiText(d.message) })))
+      const reasonsByEntry: Record<string, string> = {}
+      decisions.forEach(d => {
+        if (d.type === 'assignment' && d.employeeId && d.date) {
+          reasonsByEntry[`${d.employeeId}|${d.date}`] = sanitizeAiText(d.message)
+        }
+      })
+      setAiAssignmentReasons(reasonsByEntry)
       setAiWarnings((data.warnings ?? []).map((w: string) => sanitizeAiText(w)))
       setAiDecisionQuestion(confirmedDecisionQuestion ? null : (data.decisionQuestion ? sanitizeAiText(data.decisionQuestion) : null))
       setFallback(data.fallback ? { ...data.fallback, message: sanitizeAiText(data.fallback.message) } : null)
@@ -402,7 +419,7 @@ export default function AdminSchedule() {
 
   const handleSaveSchedule = async () => {
     if (!generatedSchedule) return
-    saveScheduleForWeek(locationId, periodWeekdayDates, generatedSchedule)
+    saveScheduleForWeek(locationId, periodWeekdayDates, generatedSchedule, aiAssignmentReasons)
     setSaved(true)
     showToast('Dienstplan gespeichert – für alle Mitarbeiter sichtbar')
 
@@ -725,7 +742,16 @@ export default function AdminSchedule() {
                                     {isWeekend ? (
                                       <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-300">—</span></div>
                                     ) : shift && Icon ? (
-                                      <div className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity" style={{ backgroundColor: shift.bgColor }}>
+                                      <div
+                                        onClick={() => setExplainEntry({
+                                          employeeName: emp.name,
+                                          shiftName: shift.name,
+                                          dateStr,
+                                          reason: getDisplayReason(emp.id, dateStr),
+                                        })}
+                                        className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity"
+                                        style={{ backgroundColor: shift.bgColor }}
+                                      >
                                         <Icon size={12} style={{ color: shift.color }} />
                                         <span className="text-[10px] font-semibold" style={{ color: shift.color }}>{shift.startTime}</span>
                                       </div>
@@ -1070,6 +1096,20 @@ export default function AdminSchedule() {
             <Button className="flex-1" onClick={handleSaveRules}>Speichern</Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Explain Assignment Modal */}
+      <Modal open={!!explainEntry} onClose={() => setExplainEntry(null)} title="Warum diese Zuweisung?" size="sm">
+        {explainEntry && (
+          <div className="space-y-3">
+            <div className="text-sm text-gray-700">
+              <span className="font-semibold">{explainEntry.employeeName}</span> · {explainEntry.shiftName} · {formatDateShort(explainEntry.dateStr)}
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {explainEntry.reason ?? 'Für diese Zuweisung liegt keine gespeicherte KI-Begründung vor (z. B. weil sie manuell erstellt oder bearbeitet wurde).'}
+            </p>
+          </div>
+        )}
       </Modal>
     </>
   )

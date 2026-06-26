@@ -70,6 +70,7 @@ export interface ScheduleEntry {
   locationId: string
   status: 'planned' | 'confirmed'
   note?: string
+  reason?: string
 }
 
 export interface TimeLog {

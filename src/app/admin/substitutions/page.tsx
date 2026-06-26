@@ -216,16 +216,27 @@ export default function AdminSubstitutions() {
                 {req.candidates.length > 0 && (
                   <div className="space-y-1.5">
                     {req.candidates.map(c => (
-                      <div key={c.id} className="flex items-center justify-between gap-2 bg-gray-50 rounded-xl px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {c.responseStatus === 'accepted' && <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />}
-                          {c.responseStatus === 'declined' && <XCircle size={14} className="text-red-400 flex-shrink-0" />}
-                          {c.responseStatus === 'pending' && <Hourglass size={14} className="text-amber-400 flex-shrink-0" />}
-                          {c.responseStatus === 'expired' && <Hourglass size={14} className="text-gray-300 flex-shrink-0" />}
-                          <span className="text-sm text-navy font-medium truncate">{c.employeeName}</span>
-                          <span className="text-xs text-gray-400">{c.matchScore}%</span>
+                      <div key={c.id} className="bg-gray-50 rounded-xl px-3 py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {c.responseStatus === 'accepted' && <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />}
+                            {c.responseStatus === 'declined' && <XCircle size={14} className="text-red-400 flex-shrink-0" />}
+                            {c.responseStatus === 'pending' && <Hourglass size={14} className="text-amber-400 flex-shrink-0" />}
+                            {c.responseStatus === 'expired' && <Hourglass size={14} className="text-gray-300 flex-shrink-0" />}
+                            <span className="text-sm text-navy font-medium truncate">{c.employeeName}</span>
+                            <span className="text-xs text-gray-400">{c.matchScore}%</span>
+                          </div>
+                          <span className="text-xs text-gray-500 flex-shrink-0">{RESPONSE_LABEL[c.responseStatus]}</span>
                         </div>
-                        <span className="text-xs text-gray-500 flex-shrink-0">{RESPONSE_LABEL[c.responseStatus]}</span>
+                        {c.matchReasons.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5 pl-5">
+                            {c.matchReasons.map((reason, i) => (
+                              <span key={i} className="text-[11px] text-gray-500 bg-white border border-gray-200 rounded-full px-2 py-0.5">
+                                {reason}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

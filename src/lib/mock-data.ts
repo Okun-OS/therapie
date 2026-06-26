@@ -372,6 +372,7 @@ export function saveScheduleForWeek(
   locationId: string,
   weekDates: string[],
   assignments: Record<string, Record<string, string>>,
+  reasons?: Record<string, string>,
 ) {
   for (let i = SCHEDULE_ENTRIES.length - 1; i >= 0; i--) {
     const e = SCHEDULE_ENTRIES[i]
@@ -388,6 +389,7 @@ export function saveScheduleForWeek(
         date,
         locationId,
         status: 'confirmed',
+        reason: reasons?.[`${employeeId}|${date}`],
       })
     }
   }
