@@ -79,8 +79,99 @@ export interface TimeLog {
   clockIn: string
   clockOut?: string
   totalMinutes?: number
+  breakMinutes?: number
+  breakStart?: string
   note?: string
   locationId: string
+}
+
+// ─── Überstunden ──────────────────────────────────────────────────────────────
+
+export type OvertimeRequestStatus = 'pending' | 'approved' | 'denied' | 'partial'
+
+export const OVERTIME_REASONS = ['Personalmangel', 'Übergabe dauerte länger', 'Dokumentation', 'Elterngespräch', 'Notfall', 'Vertretung', 'Sonstiges'] as const
+
+export interface OvertimeRequest {
+  id: string
+  employeeId: string
+  employeeName: string
+  locationId: string
+  date: string
+  timeLogId: string
+  overtimeMinutes: number
+  reason: string
+  comment?: string
+  status: OvertimeRequestStatus
+  approvedMinutes?: number
+  adminComment?: string
+  respondedAt?: string
+  respondedBy?: string
+  submittedAt: string
+}
+
+// ─── Krankheiten und Abwesenheiten ────────────────────────────────────────────
+
+export type AbsenceType = 'krankheit' | 'fortbildung' | 'sonstige' | 'unentschuldigt' | 'entschuldigt'
+export type AbsenceVerificationStatus = 'offen' | 'geprueft' | 'abgelehnt'
+
+export interface Absence {
+  id: string
+  employeeId: string
+  employeeName: string
+  locationId: string
+  type: AbsenceType
+  startDate: string
+  endDate: string
+  days: number
+  note?: string
+  proofProvided: boolean
+  verificationStatus: AbsenceVerificationStatus
+  verifiedBy?: string
+  verifiedAt?: string
+  submittedAt: string
+}
+
+// ─── Stundenkonto / Monatsabschluss ───────────────────────────────────────────
+
+export interface HoursAccountSummary {
+  employeeId: string
+  year: number
+  month: number
+  sollMinutes: number
+  istMinutes: number
+  breakMinutes: number
+  overtimeMinutes: number
+  undertimeMinutes: number
+  vacationDays: number
+  sickDays: number
+  otherAbsenceDays: number
+}
+
+export type MonthlyClosingStatus = 'offen' | 'geprueft' | 'freigegeben'
+
+export interface MonthlyClosing {
+  id: string
+  employeeId: string
+  employeeName: string
+  locationId: string
+  year: number
+  month: number
+  status: MonthlyClosingStatus
+  arbeitstage: number
+  sollMinutes: number
+  istMinutes: number
+  breakMinutes: number
+  overtimeMinutes: number
+  undertimeMinutes: number
+  vacationDays: number
+  sickDays: number
+  otherAbsenceDays: number
+  approvalsCount: number
+  comments: { author: string; text: string; at: string }[]
+  reviewedBy?: string
+  reviewedAt?: string
+  releasedBy?: string
+  releasedAt?: string
 }
 
 export interface VacationRequest {

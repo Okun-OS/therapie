@@ -35,6 +35,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/vacation-requests', label: 'Urlaubsanträge', icon: Palmtree },
   { href: '/admin/vacation-plan', label: 'Urlaubsplan', icon: ClipboardList, badge: 'KI' },
   { href: '/admin/tasks', label: 'Aufgaben', icon: ListChecks },
+  { href: '/admin/time-tracking', label: 'Zeiterfassung', icon: Clock },
   { href: '/admin/substitutions', label: 'Vertretungen', icon: UserPlus, badge: 'KI' },
   { href: '/admin/workforce-score', label: 'Workforce Score', icon: Trophy, badge: 'KI' },
   { href: '/admin/workforce-insights', label: 'Workforce Insights', icon: LineChart, badge: 'KI' },

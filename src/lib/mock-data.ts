@@ -1,4 +1,4 @@
-import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday, ShiftType, WishImportance, VacationRules, VacationPlanEntry, Customer, LicensePlan, TestAccount, Invitation, SupportAccessLogEntry, Role, OrgSettings } from './types'
+import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday, ShiftType, WishImportance, VacationRules, VacationPlanEntry, Customer, LicensePlan, TestAccount, Invitation, SupportAccessLogEntry, Role, OrgSettings, OvertimeRequest, Absence, HoursAccountSummary, MonthlyClosing } from './types'
 
 export const LOCATIONS: Location[] = [
   { id: 'loc1', name: 'Kita Sonnenschein', address: 'Berliner Str. 12', city: 'Berlin', employeeCount: 8, adminId: 'adm1', active: true },
@@ -840,4 +840,226 @@ export const ORG_SETTINGS: OrgSettings = {
 
 export function updateOrgSettings(updates: Partial<OrgSettings>) {
   Object.assign(ORG_SETTINGS, updates)
+}
+
+// ─── Zeiterfassung: Pausen, Überstunden, Abwesenheiten, Stundenkonto ──────────
+
+let timeLogSeq = 1000
+
+export function getActiveTimeLog(employeeId: string): TimeLog | undefined {
+  return TIME_LOGS.find(t => t.employeeId === employeeId && !t.clockOut)
+}
+
+export function addTimeLog(input: { employeeId: string; date: string; clockIn: string; locationId: string }): TimeLog {
+  const log: TimeLog = { id: `tl-new-${timeLogSeq++}`, ...input }
+  TIME_LOGS.push(log)
+  return log
+}
+
+export function updateTimeLog(id: string, updates: Partial<TimeLog>) {
+  const idx = TIME_LOGS.findIndex(t => t.id === id)
+  if (idx === -1) return
+  TIME_LOGS[idx] = { ...TIME_LOGS[idx], ...updates }
+}
+
+export function startBreak(employeeId: string) {
+  const log = getActiveTimeLog(employeeId)
+  if (!log) return
+  updateTimeLog(log.id, { breakStart: new Date().toTimeString().slice(0, 5) })
+}
+
+export function endBreak(employeeId: string) {
+  const log = getActiveTimeLog(employeeId)
+  if (!log || !log.breakStart) return
+  const [bh, bm] = log.breakStart.split(':').map(Number)
+  const now = new Date()
+  const minutes = Math.max(0, (now.getHours() * 60 + now.getMinutes()) - (bh * 60 + bm))
+  updateTimeLog(log.id, { breakMinutes: (log.breakMinutes ?? 0) + minutes, breakStart: undefined })
+}
+
+function standardDailyMinutes(employeeId: string): number {
+  const emp = getEmployeeById(employeeId)
+  return emp ? (emp.weeklyHours / 5) * 60 : 480
+}
+
+function workdaysInMonth(year: number, month: number): number {
+  const daysInMonth = new Date(year, month, 0).getDate()
+  let count = 0
+  for (let d = 1; d <= daysInMonth; d++) {
+    const day = new Date(year, month - 1, d).getDay()
+    if (day !== 0 && day !== 6) count++
+  }
+  return count
+}
+
+export const OVERTIME_REQUESTS: OvertimeRequest[] = []
+let overtimeRequestSeq = 1000
+
+export function addOvertimeRequest(input: {
+  employeeId: string
+  employeeName: string
+  locationId: string
+  date: string
+  timeLogId: string
+  overtimeMinutes: number
+  reason: string
+  comment?: string
+}): OvertimeRequest {
+  const request: OvertimeRequest = {
+    id: `ot-new-${overtimeRequestSeq++}`,
+    ...input,
+    status: 'pending',
+    submittedAt: new Date().toISOString(),
+  }
+  OVERTIME_REQUESTS.push(request)
+  return request
+}
+
+export function respondToOvertimeRequest(
+  id: string,
+  status: 'approved' | 'denied' | 'partial',
+  respondedBy: string,
+  approvedMinutes?: number,
+  adminComment?: string
+) {
+  const idx = OVERTIME_REQUESTS.findIndex(o => o.id === id)
+  if (idx === -1) return
+  OVERTIME_REQUESTS[idx] = {
+    ...OVERTIME_REQUESTS[idx],
+    status,
+    approvedMinutes: status === 'denied' ? 0 : (approvedMinutes ?? OVERTIME_REQUESTS[idx].overtimeMinutes),
+    adminComment,
+    respondedAt: new Date().toISOString(),
+    respondedBy,
+  }
+}
+
+export function getOvertimeRequestsByLocation(locationId: string): OvertimeRequest[] {
+  return OVERTIME_REQUESTS.filter(o => o.locationId === locationId).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+}
+
+export function getOvertimeRequestsByEmployee(employeeId: string): OvertimeRequest[] {
+  return OVERTIME_REQUESTS.filter(o => o.employeeId === employeeId).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+}
+
+export const ABSENCES: Absence[] = []
+let absenceSeq = 1000
+
+export function addAbsence(input: {
+  employeeId: string
+  employeeName: string
+  locationId: string
+  type: Absence['type']
+  startDate: string
+  endDate: string
+  days: number
+  note?: string
+  proofProvided: boolean
+}): Absence {
+  const absence: Absence = {
+    id: `abs-new-${absenceSeq++}`,
+    ...input,
+    verificationStatus: 'offen',
+    submittedAt: new Date().toISOString(),
+  }
+  ABSENCES.push(absence)
+  return absence
+}
+
+export function updateAbsence(id: string, updates: Partial<Absence>) {
+  const idx = ABSENCES.findIndex(a => a.id === id)
+  if (idx === -1) return
+  ABSENCES[idx] = { ...ABSENCES[idx], ...updates }
+}
+
+export function getAbsencesByLocation(locationId: string): Absence[] {
+  return ABSENCES.filter(a => a.locationId === locationId).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+}
+
+export function getAbsencesByEmployee(employeeId: string): Absence[] {
+  return ABSENCES.filter(a => a.employeeId === employeeId).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+}
+
+export function getHoursAccountSummary(employeeId: string, year: number, month: number): HoursAccountSummary {
+  const logs = getTimeLogsByMonth(employeeId, year, month)
+  const istMinutes = logs.reduce((s, t) => s + (t.totalMinutes ?? 0) - (t.breakMinutes ?? 0), 0)
+  const breakMinutes = logs.reduce((s, t) => s + (t.breakMinutes ?? 0), 0)
+  const sollMinutes = workdaysInMonth(year, month) * standardDailyMinutes(employeeId)
+
+  const overtimeMinutes = OVERTIME_REQUESTS
+    .filter(o => o.employeeId === employeeId && (o.status === 'approved' || o.status === 'partial') && o.date.startsWith(`${year}-${String(month).padStart(2, '0')}`))
+    .reduce((s, o) => s + (o.approvedMinutes ?? 0), 0)
+  const undertimeMinutes = Math.max(0, sollMinutes - istMinutes)
+
+  const absences = ABSENCES.filter(a => a.employeeId === employeeId && a.startDate.startsWith(`${year}-${String(month).padStart(2, '0')}`))
+  const sickDays = absences.filter(a => a.type === 'krankheit').reduce((s, a) => s + a.days, 0)
+  const otherAbsenceDays = absences.filter(a => a.type !== 'krankheit').reduce((s, a) => s + a.days, 0)
+  const vacationDays = VACATION_REQUESTS
+    .filter(v => v.employeeId === employeeId && v.status === 'approved' && v.startDate.startsWith(`${year}-${String(month).padStart(2, '0')}`))
+    .reduce((s, v) => s + v.days, 0)
+
+  return { employeeId, year, month, sollMinutes, istMinutes, breakMinutes, overtimeMinutes, undertimeMinutes, vacationDays, sickDays, otherAbsenceDays }
+}
+
+export const MONTHLY_CLOSINGS: MonthlyClosing[] = []
+let monthlyClosingSeq = 1000
+
+export function getOrCreateMonthlyClosing(employeeId: string, year: number, month: number): MonthlyClosing {
+  const existing = MONTHLY_CLOSINGS.find(m => m.employeeId === employeeId && m.year === year && m.month === month)
+  if (existing) return existing
+
+  const emp = getEmployeeById(employeeId)
+  const summary = getHoursAccountSummary(employeeId, year, month)
+  const arbeitstage = getTimeLogsByMonth(employeeId, year, month).length
+  const approvalsCount = OVERTIME_REQUESTS.filter(
+    o => o.employeeId === employeeId && o.status !== 'pending' && o.date.startsWith(`${year}-${String(month).padStart(2, '0')}`)
+  ).length
+
+  const closing: MonthlyClosing = {
+    id: `mc-new-${monthlyClosingSeq++}`,
+    employeeId,
+    employeeName: emp?.name ?? employeeId,
+    locationId: emp?.locationId ?? '',
+    year,
+    month,
+    status: 'offen',
+    arbeitstage,
+    sollMinutes: summary.sollMinutes,
+    istMinutes: summary.istMinutes,
+    breakMinutes: summary.breakMinutes,
+    overtimeMinutes: summary.overtimeMinutes,
+    undertimeMinutes: summary.undertimeMinutes,
+    vacationDays: summary.vacationDays,
+    sickDays: summary.sickDays,
+    otherAbsenceDays: summary.otherAbsenceDays,
+    approvalsCount,
+    comments: [],
+  }
+  MONTHLY_CLOSINGS.push(closing)
+  return closing
+}
+
+export function addMonthlyClosingComment(id: string, author: string, text: string) {
+  const closing = MONTHLY_CLOSINGS.find(m => m.id === id)
+  if (!closing) return
+  closing.comments.push({ author, text, at: new Date().toISOString() })
+  closing.status = closing.status === 'offen' ? 'geprueft' : closing.status
+  closing.reviewedBy = author
+  closing.reviewedAt = new Date().toISOString()
+}
+
+export function releaseMonthlyClosing(id: string, releasedBy: string) {
+  const closing = MONTHLY_CLOSINGS.find(m => m.id === id)
+  if (!closing) return
+  closing.status = 'freigegeben'
+  closing.releasedBy = releasedBy
+  closing.releasedAt = new Date().toISOString()
+}
+
+export function getMonthlyClosingsByLocation(locationId: string): MonthlyClosing[] {
+  return MONTHLY_CLOSINGS.filter(m => m.locationId === locationId).sort((a, b) => b.year - a.year || b.month - a.month)
+}
+
+export function getMonthlyClosingsByEmployee(employeeId: string): MonthlyClosing[] {
+  return MONTHLY_CLOSINGS.filter(m => m.employeeId === employeeId).sort((a, b) => b.year - a.year || b.month - a.month)
 }
