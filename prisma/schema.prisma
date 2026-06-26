@@ -251,3 +251,14 @@ model InvitationToken {
   usedAt       DateTime?
   createdAt    DateTime  @default(now())
 }
+
+// Separat von InvitationToken: zielt auf bestehende Accounts (nicht auf
+// Neuanlage) und ist bewusst kurzlebig (1 Stunde statt 7 Tage).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}

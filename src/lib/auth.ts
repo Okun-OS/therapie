@@ -9,6 +9,6 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash)
 }
 
-export function generateInvitationToken(): string {
+export function generateSecureToken(): string {
   return randomBytes(32).toString('hex')
 }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/Button'
+import Link from 'next/link'
 import { Calendar, Mail, Lock, Users, Shield, Building2, Sparkles, ChevronRight, Cog } from 'lucide-react'
 import type { Role } from '@/lib/types'
 
@@ -192,7 +193,12 @@ export default function LoginPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-navy mb-1.5">Passwort</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-semibold text-navy">Passwort</label>
+                      <Link href="/forgot-password" className="text-xs text-brand font-medium hover:underline">
+                        Passwort vergessen?
+                      </Link>
+                    </div>
                     <div className="relative">
                       <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input

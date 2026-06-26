@@ -1,6 +1,6 @@
 import { prisma } from './prisma'
 import { sendEmail } from './email'
-import { generateInvitationToken } from './auth'
+import { generateSecureToken } from './auth'
 import type { Role } from './types'
 
 const INVITATION_VALID_DAYS = 7
@@ -16,7 +16,7 @@ export async function createAndSendInvitation(
   origin: string,
   input: { email: string; role: Role; name?: string; customerName?: string; employeeId?: string; locationId?: string },
 ) {
-  const token = generateInvitationToken()
+  const token = generateSecureToken()
   const expiresAt = new Date(Date.now() + INVITATION_VALID_DAYS * 24 * 60 * 60 * 1000)
 
   const invitation = await prisma.invitationToken.create({
