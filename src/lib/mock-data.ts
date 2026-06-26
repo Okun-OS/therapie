@@ -1048,12 +1048,62 @@ export function addMonthlyClosingComment(id: string, author: string, text: strin
   closing.reviewedAt = new Date().toISOString()
 }
 
+export function correctMonthlyClosingTimeLog(
+  closingId: string,
+  timeLogId: string,
+  updates: Partial<Pick<TimeLog, 'clockIn' | 'clockOut' | 'breakMinutes' | 'note'>>,
+  correctedBy: string
+) {
+  const closing = MONTHLY_CLOSINGS.find(m => m.id === closingId)
+  const log = TIME_LOGS.find(t => t.id === timeLogId)
+  if (!closing || !log) return
+
+  if (updates.clockIn !== undefined) log.clockIn = updates.clockIn
+  if (updates.clockOut !== undefined) log.clockOut = updates.clockOut
+  if (updates.breakMinutes !== undefined) log.breakMinutes = updates.breakMinutes
+  if (updates.note !== undefined) log.note = updates.note
+  if (log.clockOut) {
+    const [inH, inM] = log.clockIn.split(':').map(Number)
+    const [outH, outM] = log.clockOut.split(':').map(Number)
+    log.totalMinutes = Math.max(0, (outH * 60 + outM) - (inH * 60 + inM))
+  }
+
+  const summary = getHoursAccountSummary(closing.employeeId, closing.year, closing.month)
+  closing.sollMinutes = summary.sollMinutes
+  closing.istMinutes = summary.istMinutes
+  closing.breakMinutes = summary.breakMinutes
+  closing.undertimeMinutes = summary.undertimeMinutes
+  closing.comments.push({ author: correctedBy, text: `Korrektur am ${formatDateGerman(log.date)}: ${formatTimeLogChange(log)}`, at: new Date().toISOString() })
+  closing.status = closing.status === 'offen' ? 'geprueft' : closing.status
+  closing.reviewedBy = correctedBy
+  closing.reviewedAt = new Date().toISOString()
+}
+
+function formatDateGerman(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-')
+  return `${d}.${m}.${y}`
+}
+
+function formatTimeLogChange(log: TimeLog): string {
+  return `${log.clockIn}–${log.clockOut ?? '?'} Uhr${log.breakMinutes ? `, ${log.breakMinutes} Min. Pause` : ''}`
+}
+
 export function releaseMonthlyClosing(id: string, releasedBy: string) {
   const closing = MONTHLY_CLOSINGS.find(m => m.id === id)
-  if (!closing) return
+  if (!closing || closing.status === 'freigegeben') return
   closing.status = 'freigegeben'
   closing.releasedBy = releasedBy
   closing.releasedAt = new Date().toISOString()
+
+  // Erst mit der Freigabe fließt der tatsächlich erfasste Saldo des Monats
+  // (Ist minus Soll, abzüglich genehmigter Überstunden) in das offizielle
+  // Stundenkonto des Mitarbeiters ein – das vereinheitlicht die Zeiterfassung
+  // (Monatsabschluss) mit dem überall sonst angezeigten hoursBalance.
+  const emp = EMPLOYEES.find(e => e.id === closing.employeeId)
+  if (emp) {
+    const netMinutes = (closing.istMinutes + closing.overtimeMinutes) - closing.sollMinutes
+    emp.hoursBalance = Math.round((emp.hoursBalance + netMinutes / 60) * 10) / 10
+  }
 }
 
 export function getMonthlyClosingsByLocation(locationId: string): MonthlyClosing[] {

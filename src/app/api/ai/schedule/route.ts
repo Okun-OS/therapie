@@ -143,6 +143,7 @@ export async function POST(req: NextRequest) {
       ...(hc?.lifeCircumstances.length && { lebenssituation: hc.lifeCircumstances }),
       ...(hc?.preferredGroups.length && { bevorzugte_gruppen: hc.preferredGroups }),
       ...(hc?.preferredActivities.length && { bevorzugte_taetigkeiten: hc.preferredActivities }),
+      ...(hc?.shiftPreferences.length && { schicht_vorlieben_freiwillig: hc.shiftPreferences }),
       ...(hc?.agreements && { besondere_absprachen: hc.agreements }),
     }
   })

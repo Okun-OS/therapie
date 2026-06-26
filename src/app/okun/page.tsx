@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Header } from '@/components/layout/Header'
+import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -29,6 +30,10 @@ export default function OkunOverview() {
     <>
       <Header title="Systemübersicht" subtitle="OKUN Plattform-Administration" />
       <div className="p-4 sm:p-6 space-y-5">
+        <FeatureIntro
+          featureKey="okun-overview"
+          text="Hier verwalten Sie alle Kunden der Plattform: Lizenzen, Testzugänge, Einladungen und Support-Zugriffe."
+        />
 
         {suspendedCustomers.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4">

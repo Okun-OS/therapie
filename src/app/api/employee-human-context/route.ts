@@ -11,11 +11,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { employeeId, strengths, lifeCircumstances, preferredGroups, preferredActivities, agreements } = await req.json()
+  const { employeeId, strengths, lifeCircumstances, preferredGroups, preferredActivities, shiftPreferences, agreements } = await req.json()
   if (!employeeId) {
     return NextResponse.json({ error: 'employeeId ist erforderlich' }, { status: 400 })
   }
 
-  const context = await upsertHumanContext(employeeId, { strengths, lifeCircumstances, preferredGroups, preferredActivities, agreements })
+  const context = await upsertHumanContext(employeeId, { strengths, lifeCircumstances, preferredGroups, preferredActivities, shiftPreferences, agreements })
   return NextResponse.json({ context })
 }

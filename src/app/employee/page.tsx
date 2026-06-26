@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Header } from '@/components/layout/Header'
+import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
 import { Badge } from '@/components/ui/Badge'
@@ -10,7 +11,7 @@ import { useAuth } from '@/lib/auth-context'
 import {
   EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS, VACATION_REQUESTS
 } from '@/lib/mock-data'
-import { Clock, Palmtree, Calendar, TrendingUp, PlayCircle, StopCircle, Sun, Moon, Briefcase, ChevronRight, AlertCircle } from 'lucide-react'
+import { Clock, Palmtree, Calendar, TrendingUp, PlayCircle, StopCircle, Sun, Moon, Briefcase, ChevronRight, AlertCircle, ListChecks } from 'lucide-react'
 import { formatDate, formatTime, toDateString, getDayName, getWeekDays } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -64,6 +65,10 @@ export default function EmployeeDashboard() {
       />
 
       <div className="p-4 sm:p-6 space-y-5">
+        <FeatureIntro
+          featureKey="employee-dashboard"
+          text="Hier siehst du deinen heutigen Dienst, dein Stundenkonto und kannst dich ein- und ausstempeln. Über die Schnellzugriffe erreichst du Dienstplan, Zeiterfassung und Urlaub."
+        />
         {/* Clock In/Out Hero */}
         <Card className="bg-gradient-to-br from-navy to-navy-light border-0 shadow-lg" padding="lg">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -107,6 +112,24 @@ export default function EmployeeDashboard() {
             </div>
           </div>
         </Card>
+
+        {/* Aufgaben innerhalb des heutigen Dienstes – wird automatisch aus dem aktuellen
+            Dienstplan und den zugewiesenen Aufgaben abgeleitet, daher immer aktuell. */}
+        {todayShift && (employee?.allowedTasks?.length ?? 0) > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Meine Aufgaben heute</CardTitle>
+            </CardHeader>
+            <div className="flex flex-wrap gap-2">
+              {employee!.allowedTasks!.map(task => (
+                <span key={task} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 text-xs font-medium text-navy">
+                  <ListChecks size={13} className="text-brand-dark" />
+                  {task}
+                </span>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

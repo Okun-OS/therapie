@@ -59,6 +59,7 @@ model EmployeeHumanContext {
   lifeCircumstances   String[] @default([])
   preferredGroups     String[] @default([])
   preferredActivities String[] @default([])
+  shiftPreferences    String[] @default([])
   agreements          String?
   updatedAt           DateTime @updatedAt
 }
@@ -193,6 +194,19 @@ model LocationOnboarding {
   completedPhases        String[] @default([])
   completed              Boolean  @default(false)
   updatedAt              DateTime @updatedAt
+}
+
+// ─── Google-Kalender-Synchronisation (Modul 04/05/06) ───────────────────────
+// Statt einer OAuth-Anbindung (erfordert Google-Cloud-Zugangsdaten, die hier
+// nicht vorliegen) nutzen wir einen klassischen, token-basierten ICS-Feed:
+// der Mitarbeiter abonniert die Feed-URL einmalig in Google/Apple Kalender,
+// danach hält der Kalender-Anbieter den Plan automatisch aktuell, da der
+// Feed bei jedem Abruf live aus dem aktuellen Dienstplan generiert wird.
+model EmployeeCalendarSync {
+  employeeId String   @id
+  enabled    Boolean  @default(false)
+  token      String   @unique @default(cuid())
+  updatedAt  DateTime @updatedAt
 }
 
 // Ergänzung 4 zu 02_ONBOARDING_CHAT.md: kurzfristige, nur für die jeweils

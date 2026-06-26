@@ -20,6 +20,7 @@ interface EmployeeHumanContext {
   lifeCircumstances: string[]
   preferredGroups: string[]
   preferredActivities: string[]
+  shiftPreferences: string[]
   agreements: string | null
 }
 
@@ -349,7 +350,7 @@ export default function AdminEmployees() {
               </div>
             )}
 
-            {humanContext && (humanContext.strengths.length > 0 || humanContext.lifeCircumstances.length > 0 || humanContext.preferredGroups.length > 0 || humanContext.preferredActivities.length > 0 || humanContext.agreements) && (
+            {humanContext && (humanContext.strengths.length > 0 || humanContext.lifeCircumstances.length > 0 || humanContext.preferredGroups.length > 0 || humanContext.preferredActivities.length > 0 || humanContext.shiftPreferences.length > 0 || humanContext.agreements) && (
               <div className="bg-purple-50 rounded-xl p-3 space-y-1.5">
                 <p className="text-xs font-semibold text-purple-700">Persönliches (freiwillig angegeben)</p>
                 {humanContext.strengths.length > 0 && (
@@ -363,6 +364,9 @@ export default function AdminEmployees() {
                 )}
                 {humanContext.preferredActivities.length > 0 && (
                   <p className="text-sm text-purple-700"><span className="font-medium">Bevorzugte Tätigkeiten:</span> {humanContext.preferredActivities.join(', ')}</p>
+                )}
+                {humanContext.shiftPreferences.length > 0 && (
+                  <p className="text-sm text-purple-700"><span className="font-medium">Schicht-Vorlieben:</span> {humanContext.shiftPreferences.join(', ')}</p>
                 )}
                 {humanContext.agreements && (
                   <p className="text-xs text-purple-600 italic">{humanContext.agreements}</p>

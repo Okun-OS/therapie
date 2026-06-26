@@ -12,11 +12,12 @@ import {
   EMPLOYEES, getOvertimeRequestsByLocation, respondToOvertimeRequest,
   getAbsencesByLocation, updateAbsence, getMonthlyClosingsByLocation,
   getOrCreateMonthlyClosing, addMonthlyClosingComment, releaseMonthlyClosing,
+  getTimeLogsByMonth, correctMonthlyClosingTimeLog,
 } from '@/lib/mock-data'
-import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing } from '@/lib/types'
+import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing, TimeLog } from '@/lib/types'
 import {
   AlertCircle, CheckCircle, XCircle, Clock, Stethoscope, FileText, ChevronDown, ChevronUp,
-  MessageSquare, ShieldCheck, ShieldX,
+  MessageSquare, ShieldCheck, ShieldX, Pencil,
 } from 'lucide-react'
 import { formatDate, formatTime } from '@/lib/utils'
 
@@ -72,6 +73,11 @@ export default function AdminTimeTracking() {
 
   const [expandedClosing, setExpandedClosing] = useState<string | null>(null)
   const [closingComment, setClosingComment] = useState('')
+  const [editingLog, setEditingLog] = useState<TimeLog | null>(null)
+  const [editingClosingId, setEditingClosingId] = useState<string | null>(null)
+  const [editClockIn, setEditClockIn] = useState('')
+  const [editClockOut, setEditClockOut] = useState('')
+  const [editBreakMinutes, setEditBreakMinutes] = useState(0)
 
   const openOvertimeModal = (req: OvertimeRequest) => {
     setSelectedOvertime(req)
@@ -120,7 +126,29 @@ export default function AdminTimeTracking() {
   const handleReleaseClosing = (closing: MonthlyClosing) => {
     if (!user) return
     releaseMonthlyClosing(closing.id, user.name)
-    showToast('Monatsabschluss freigegeben', 'success')
+    showToast('Monatsabschluss freigegeben – Stundenkonto wurde aktualisiert', 'success')
+    refresh()
+  }
+
+  const openEditLog = (log: TimeLog, closingId: string) => {
+    setEditingLog(log)
+    setEditingClosingId(closingId)
+    setEditClockIn(log.clockIn)
+    setEditClockOut(log.clockOut ?? '')
+    setEditBreakMinutes(log.breakMinutes ?? 0)
+  }
+
+  const handleSaveCorrection = () => {
+    if (!editingLog || !editingClosingId || !user) return
+    correctMonthlyClosingTimeLog(
+      editingClosingId,
+      editingLog.id,
+      { clockIn: editClockIn, clockOut: editClockOut || undefined, breakMinutes: editBreakMinutes },
+      user.name
+    )
+    setEditingLog(null)
+    setEditingClosingId(null)
+    showToast('Korrektur gespeichert', 'success')
     refresh()
   }
 
@@ -268,6 +296,19 @@ export default function AdminTimeTracking() {
                           <p>Krankheit: <span className="font-semibold text-navy">{closing.sickDays} Tage</span></p>
                           <p>Fehlzeiten: <span className="font-semibold text-navy">{closing.otherAbsenceDays} Tage</span></p>
                         </div>
+                        <div className="space-y-1 pt-1 border-t border-gray-200">
+                          <p className="text-xs font-semibold text-navy pt-2">Gebuchte Zeiten</p>
+                          {getTimeLogsByMonth(closing.employeeId, closing.year, closing.month).map(log => (
+                            <div key={log.id} className="flex items-center gap-2 text-xs text-gray-600">
+                              <span className="flex-1">{formatDate(log.date)} · {log.clockIn}–{log.clockOut ?? '–'} Uhr{log.breakMinutes ? ` · ${log.breakMinutes} Min. Pause` : ''}</span>
+                              {closing.status !== 'freigegeben' && (
+                                <button onClick={() => openEditLog(log, closing.id)} className="text-gray-400 hover:text-navy">
+                                  <Pencil size={12} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                         {closing.comments.length > 0 && (
                           <div className="space-y-1 pt-1 border-t border-gray-200">
                             {closing.comments.map((c, i) => (
@@ -388,6 +429,49 @@ export default function AdminTimeTracking() {
                 Geprüft
               </Button>
             </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Zeitkorrektur (Monatsabschluss) */}
+      <Modal open={!!editingLog} onClose={() => { setEditingLog(null); setEditingClosingId(null) }} title="Zeit korrigieren">
+        {editingLog && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">{formatDate(editingLog.date)}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-navy mb-1.5">Kommt</label>
+                <input
+                  type="time"
+                  value={editClockIn}
+                  onChange={e => setEditClockIn(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-navy mb-1.5">Geht</label>
+                <input
+                  type="time"
+                  value={editClockOut}
+                  onChange={e => setEditClockOut(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">Pause (Minuten)</label>
+              <input
+                type="number"
+                min={0}
+                value={editBreakMinutes}
+                onChange={e => setEditBreakMinutes(Number(e.target.value))}
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+            <Button variant="success" className="w-full gap-1.5" onClick={handleSaveCorrection}>
+              <CheckCircle size={15} />
+              Korrektur speichern
+            </Button>
           </div>
         )}
       </Modal>

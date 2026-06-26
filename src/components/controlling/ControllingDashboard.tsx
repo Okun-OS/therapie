@@ -112,6 +112,7 @@ export function ControllingDashboard({ fetchUrl }: { fetchUrl: string }) {
           <div><p className="text-gray-400">Urlaub</p><p className="font-semibold text-navy">{data.personnelOverview.onVacationToday}</p></div>
           <div><p className="text-gray-400">Fortbildung</p><p className="font-semibold text-navy">{data.personnelOverview.trainingToday}</p></div>
           <div><p className="text-gray-400">Sonstige Fehlzeiten</p><p className="font-semibold text-navy">{data.personnelOverview.otherAbsenceToday}</p></div>
+          <div><p className="text-gray-400">Offene Stellen</p><p className="font-semibold text-navy">{data.personnelOverview.openPositions}</p></div>
           <div><p className="text-gray-400">Offene Vertretungen</p><p className="font-semibold text-navy">{data.personnelOverview.openSubstitutions}</p></div>
         </div>
       </Card>

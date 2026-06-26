@@ -186,6 +186,7 @@ export interface PersonnelOverview {
   trainingToday: number
   otherAbsenceToday: number
   onVacationToday: number
+  openPositions: number
 }
 
 export function getPersonnelOverview(locationId?: string): PersonnelOverview {
@@ -201,6 +202,13 @@ export function getPersonnelOverview(locationId?: string): PersonnelOverview {
   const otherAbsenceToday = activeToday.filter(a => a.type !== 'krankheit' && a.type !== 'fortbildung').length
   const onVacationToday = vacations.filter(v => v.startDate <= todayStr && todayStr <= v.endDate).length
 
+  // "Offene Stellen": Soll-Personalstärke der Einrichtung (Location.employeeCount)
+  // abzüglich tatsächlich aktiver Mitarbeiter – unbesetzte Planstellen, die
+  // nachbesetzt werden müssen (nicht zu verwechseln mit "Offene Vertretungen").
+  const locations = LOCATIONS.filter(l => locationIds.includes(l.id))
+  const targetHeadcount = locations.reduce((sum, l) => sum + l.employeeCount, 0)
+  const openPositions = Math.max(0, targetHeadcount - employees.length)
+
   return {
     totalEmployees: employees.length,
     presentToday: Math.max(0, employees.length - sickToday - trainingToday - otherAbsenceToday - onVacationToday),
@@ -208,6 +216,7 @@ export function getPersonnelOverview(locationId?: string): PersonnelOverview {
     trainingToday,
     otherAbsenceToday,
     onVacationToday,
+    openPositions,
   }
 }
 

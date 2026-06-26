@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
+import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -20,6 +21,18 @@ export default function CompanyDashboard() {
   const [tab, setTab] = useState<Tab>('overview')
   const [search, setSearch] = useState('')
   const [locationFilter, setLocationFilter] = useState('all')
+
+  // Beim ersten Login eines neuen Trägers ist das KI-Onboarding (Modul 02) noch
+  // nicht abgeschlossen – dann startet es automatisch statt des Dashboards,
+  // statt sich hinter einem Sidebar-Link zu verstecken.
+  useEffect(() => {
+    fetch('/api/onboarding')
+      .then(r => r.json())
+      .then(json => {
+        if (!json.organization?.completed) router.replace('/company/onboarding')
+      })
+      .catch(() => {})
+  }, [router])
 
   const totalEmployees = EMPLOYEES.filter(e => e.role === 'employee').length
   const pendingVacations = VACATION_REQUESTS.filter(v => v.status === 'pending')
@@ -53,6 +66,10 @@ export default function CompanyDashboard() {
     <>
       <Header title="Unternehmens-Übersicht" subtitle="BrightCare GmbH · Alle Standorte" />
       <div className="p-4 sm:p-6 space-y-4">
+        <FeatureIntro
+          featureKey="company-overview"
+          text="Hier sehen Sie alle Einrichtungen Ihres Trägers im Überblick: Mitarbeiterzahlen, Stundenkonten und offene Urlaubsanträge je Standort."
+        />
 
         {/* Tab bar */}
         <div className="flex bg-white border border-gray-100 rounded-2xl p-1">

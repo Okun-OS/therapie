@@ -11,7 +11,7 @@ import {
   getOvertimeRequestsByEmployee, getAbsencesByEmployee, getMonthlyClosingsByEmployee, getOrCreateMonthlyClosing,
 } from '@/lib/mock-data'
 import { HumanContextChat } from '@/components/profile/HumanContextChat'
-import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks, FileText, History } from 'lucide-react'
+import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks, FileText, History, Calendar, Copy, Check } from 'lucide-react'
 import { formatDate, toDateString } from '@/lib/utils'
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
@@ -120,7 +120,7 @@ export default function EmployeeProfile() {
 
   const isDirty = JSON.stringify(prefs) !== JSON.stringify(savedPrefs)
 
-  const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], preferredGroups: [] as string[], preferredActivities: [] as string[], agreements: '' }
+  const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], preferredGroups: [] as string[], preferredActivities: [] as string[], shiftPreferences: [] as string[], agreements: '' }
   const [humanContext, setHumanContext] = useState(initialHumanContext)
   const [savedHumanContext, setSavedHumanContext] = useState(initialHumanContext)
   const [humanContextSaved, setHumanContextSaved] = useState(false)
@@ -128,6 +128,43 @@ export default function EmployeeProfile() {
   const [chatOpen, setChatOpen] = useState(false)
 
   const isHumanContextDirty = JSON.stringify(humanContext) !== JSON.stringify(savedHumanContext)
+
+  const [calendarSyncEnabled, setCalendarSyncEnabled] = useState(false)
+  const [calendarSyncToken, setCalendarSyncToken] = useState<string | null>(null)
+  const [calendarSyncLoading, setCalendarSyncLoading] = useState(false)
+  const [calendarLinkCopied, setCalendarLinkCopied] = useState(false)
+
+  useEffect(() => {
+    if (!employee) return
+    fetch(`/api/calendar-sync?employeeId=${employee.id}`)
+      .then(res => res.json())
+      .then(data => {
+        setCalendarSyncEnabled(data.enabled ?? false)
+        setCalendarSyncToken(data.token ?? null)
+      })
+      .catch(() => {})
+  }, [employee?.id])
+
+  const toggleCalendarSync = async () => {
+    if (!employee) return
+    setCalendarSyncLoading(true)
+    try {
+      const res = await fetch('/api/calendar-sync', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: employee.id, enabled: !calendarSyncEnabled }),
+      })
+      const data = await res.json()
+      setCalendarSyncEnabled(data.enabled ?? false)
+      setCalendarSyncToken(data.token ?? null)
+    } finally {
+      setCalendarSyncLoading(false)
+    }
+  }
+
+  const calendarFeedUrl = calendarSyncToken && typeof window !== 'undefined'
+    ? `${window.location.origin}/api/calendar-feed/${calendarSyncToken}`
+    : ''
 
   useEffect(() => {
     if (!employee) return
@@ -140,6 +177,7 @@ export default function EmployeeProfile() {
           lifeCircumstances: ctx?.lifeCircumstances ?? [],
           preferredGroups: ctx?.preferredGroups ?? [],
           preferredActivities: ctx?.preferredActivities ?? [],
+          shiftPreferences: ctx?.shiftPreferences ?? [],
           agreements: ctx?.agreements ?? '',
         }
         setHumanContext(loaded)
@@ -149,11 +187,11 @@ export default function EmployeeProfile() {
       .catch(() => setHumanContextLoaded(true))
   }, [employee?.id])
 
-  const addTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups' | 'preferredActivities', value: string) => {
+  const addTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups' | 'preferredActivities' | 'shiftPreferences', value: string) => {
     setHumanContext(p => (p[field].includes(value) ? p : { ...p, [field]: [...p[field], value] }))
   }
 
-  const removeTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups' | 'preferredActivities', value: string) => {
+  const removeTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups' | 'preferredActivities' | 'shiftPreferences', value: string) => {
     setHumanContext(p => ({ ...p, [field]: p[field].filter(v => v !== value) }))
   }
 
@@ -171,7 +209,7 @@ export default function EmployeeProfile() {
 
   const handleClearHumanContext = async () => {
     if (!employee) return
-    const cleared = { strengths: [], lifeCircumstances: [], preferredGroups: [], preferredActivities: [], agreements: '' }
+    const cleared = { strengths: [], lifeCircumstances: [], preferredGroups: [], preferredActivities: [], shiftPreferences: [], agreements: '' }
     await fetch('/api/employee-human-context', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -505,6 +543,14 @@ export default function EmployeeProfile() {
               placeholder="z.B. Dokumentation, Elternarbeit…"
             />
 
+            <TagInputSection
+              label="Schicht-Vorlieben"
+              items={humanContext.shiftPreferences}
+              onAdd={v => addTag('shiftPreferences', v)}
+              onRemove={v => removeTag('shiftPreferences', v)}
+              placeholder="z.B. Lieber Frühdienst, wenig Wochenenddienste…"
+            />
+
             <div>
               <label className="block text-sm font-semibold text-navy mb-1.5">Besondere Absprachen</label>
               <textarea
@@ -558,6 +604,7 @@ export default function EmployeeProfile() {
               lifeCircumstances: ctx.lifeCircumstances,
               preferredGroups: ctx.preferredGroups,
               preferredActivities: ctx.preferredActivities,
+              shiftPreferences: ctx.shiftPreferences,
               agreements: ctx.agreements ?? '',
             }
             setHumanContext(next)
@@ -584,6 +631,46 @@ export default function EmployeeProfile() {
               </button>
             ))}
           </div>
+        </Card>
+
+        {/* Google-Kalender-Synchronisation */}
+        <Card>
+          <div className="flex items-center justify-between mb-2">
+            <CardTitle>Google-Kalender-Synchronisation</CardTitle>
+            <button
+              onClick={toggleCalendarSync}
+              disabled={calendarSyncLoading}
+              aria-label="Google-Kalender-Synchronisation umschalten"
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${calendarSyncEnabled ? 'bg-brand' : 'bg-gray-200'} disabled:opacity-50`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${calendarSyncEnabled ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">
+            Dein Dienstplan wird automatisch mit deinem Google- oder Apple-Kalender synchronisiert, sofern aktiviert. Jede Änderung am Plan erscheint dort automatisch – ein manuelles Übernehmen ist nicht nötig.
+          </p>
+          {calendarSyncEnabled && calendarFeedUrl && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-50 border border-gray-200">
+                <Calendar size={16} className="text-gray-400 flex-shrink-0" />
+                <span className="text-xs text-gray-600 truncate flex-1">{calendarFeedUrl}</span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(calendarFeedUrl)
+                    setCalendarLinkCopied(true)
+                    setTimeout(() => setCalendarLinkCopied(false), 2000)
+                  }}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 flex-shrink-0"
+                  aria-label="Link kopieren"
+                >
+                  {calendarLinkCopied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400">
+                Diesen Link einmalig in Google Kalender unter „Über URL hinzufügen&ldquo; oder in Apple Kalender unter „Kalender abonnieren&ldquo; einfügen.
+              </p>
+            </div>
+          )}
         </Card>
       </div>
     </>

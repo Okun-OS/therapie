@@ -13,7 +13,8 @@ Dein Ziel ist es, in einem lockeren, natürlichen Gespräch herauszufinden:
 2. Persönliche Lebenssituation, falls die Person das teilen möchte (z.B. Alleinerziehend, Kinder, Pflege von Angehörigen, Studium, lange Anfahrt, gesundheitliche Einschränkungen, regelmäßige Arzttermine, besondere familiäre Situationen).
 3. Bevorzugte Gruppen oder Bereiche, in denen die Person gerne eingesetzt wird.
 4. Bevorzugte Tätigkeiten, die die Person besonders gerne übernimmt (z.B. Dokumentation, Elternarbeit, Vorbereitung von Aktivitäten, Verwaltungsaufgaben).
-5. Besondere Absprachen mit der Leitung (z.B. feste freie Tage, kein Spätdienst an bestimmten Wochentagen, fester Einsatzort).
+5. Schicht-Vorlieben, also weiche, freiwillige Wünsche zur Schichtlage (z.B. "Arbeitet lieber im Frühdienst", "Arbeitet lieber im Spätdienst", "Möchte möglichst wenig Wochenenddienste"). Das ist etwas anderes als die festen Pflichtangaben zur Arbeitszeit, die schon beim Anlegen erfasst wurden – hier geht es um zusätzliche, weiche Präferenzen.
+6. Besondere Absprachen mit der Leitung (z.B. feste freie Tage, kein Spätdienst an bestimmten Wochentagen, fester Einsatzort).
 
 Regeln:
 1. Sprich die Person direkt mit "Du" an, in einem freundlichen, lockeren, aber professionellen Ton.
@@ -22,7 +23,7 @@ Regeln:
 4. Alles ist absolut freiwillig. Wenn die Person ausweicht, ablehnt oder das Thema wechseln möchte, akzeptiere das sofort ohne nachzuhaken, und gehe zum nächsten Thema über oder beende das Gespräch freundlich.
 5. Wenn neue Informationen genannt werden, rufe das Tool "update_human_context" auf. Gib dabei IMMER die vollständige, aktuelle Liste je Feld an (bereits bekannte + neue Einträge zusammen), niemals nur die neuen Einträge.
 6. Antworte IMMER zusätzlich mit einem kurzen Text an die Person, auch wenn du das Tool aufrufst.
-7. Wenn alle vier Themen behandelt wurden oder die Person das Gespräch beenden möchte, bedanke dich kurz und weise darauf hin, dass alle Angaben jederzeit im Profil geändert oder gelöscht werden können.
+7. Wenn alle Themen behandelt wurden oder die Person das Gespräch beenden möchte, bedanke dich kurz und weise darauf hin, dass alle Angaben jederzeit im Profil geändert oder gelöscht werden können.
 8. Erfinde niemals Angaben, die die Person nicht gemacht hat.
 9. Schreibe ausschließlich auf Deutsch.`
 
@@ -56,6 +57,7 @@ ${JSON.stringify({
     lifeCircumstances: existing?.lifeCircumstances ?? [],
     preferredGroups: existing?.preferredGroups ?? [],
     preferredActivities: existing?.preferredActivities ?? [],
+    shiftPreferences: existing?.shiftPreferences ?? [],
     agreements: existing?.agreements ?? null,
   }, null, 2)}
 
@@ -80,6 +82,7 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
               lifeCircumstances: { type: 'array', items: { type: 'string' } },
               preferredGroups: { type: 'array', items: { type: 'string' } },
               preferredActivities: { type: 'array', items: { type: 'string' } },
+              shiftPreferences: { type: 'array', items: { type: 'string' } },
               agreements: { type: 'string' },
             },
           },
@@ -99,6 +102,7 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
           lifeCircumstances: Array.isArray(input.lifeCircumstances) ? input.lifeCircumstances as string[] : undefined,
           preferredGroups: Array.isArray(input.preferredGroups) ? input.preferredGroups as string[] : undefined,
           preferredActivities: Array.isArray(input.preferredActivities) ? input.preferredActivities as string[] : undefined,
+          shiftPreferences: Array.isArray(input.shiftPreferences) ? input.shiftPreferences as string[] : undefined,
           agreements: typeof input.agreements === 'string' ? input.agreements : undefined,
         })
       }
