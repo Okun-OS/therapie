@@ -64,13 +64,12 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    await new Promise(r => setTimeout(r, 600))
-    const ok = login(email, password)
+    const ok = await login(email, password)
     if (ok) {
       const user = JSON.parse(sessionStorage.getItem('dienstplan_user') || '{}')
       router.push(`/${user.role}`)
     } else {
-      setError('E-Mail oder Passwort ungültig. Nutze einen Demo-Account oben.')
+      setError('E-Mail oder Passwort ungültig. Nutze einen Demo-Account oben oder den Einladungslink aus deiner E-Mail.')
     }
     setLoading(false)
   }
@@ -217,7 +216,7 @@ export default function LoginPage() {
                   </Button>
 
                   <p className="text-center text-xs text-gray-400">
-                    Demo: Passwort beliebig eingeben · E-Mail aus Demo-Tab verwenden
+                    Noch kein Konto? Nutze den Einladungslink aus deiner E-Mail.
                   </p>
                 </form>
               )}

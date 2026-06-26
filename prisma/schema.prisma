@@ -220,3 +220,34 @@ model SchedulingPeriodNote {
   note       String
   createdAt  DateTime @default(now())
 }
+
+// ─── Echte Authentifizierung & Einladungen (Demo → Produktivsystem) ────────
+// Ersetzt die rein clientseitige Demo-Anmeldung durch echte, gehashte
+// Passwörter. employeeId/locationId/customerName verknüpfen den Account
+// optional mit den bestehenden mock-data Entitäten, ohne diese anzufassen.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String
+  employeeId   String?
+  locationId   String?
+  customerName String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model InvitationToken {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  email        String
+  role         String
+  name         String?
+  customerName String?
+  employeeId   String?
+  locationId   String?
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+}

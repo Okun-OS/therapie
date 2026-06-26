@@ -13,7 +13,7 @@ const DEMO_USERS: User[] = [
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (email: string, password: string) => boolean
+  login: (email: string, password: string) => Promise<boolean>
   loginDemo: (role: Role) => void
   logout: () => void
 }
@@ -32,14 +32,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const login = (email: string, _password: string): boolean => {
-    const found = DEMO_USERS.find(u => u.email.toLowerCase() === email.toLowerCase())
-    if (found) {
-      setUser(found)
-      sessionStorage.setItem('dienstplan_user', JSON.stringify(found))
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      if (!res.ok) return false
+      const { user: loggedInUser } = await res.json()
+      setUser(loggedInUser)
+      sessionStorage.setItem('dienstplan_user', JSON.stringify(loggedInUser))
       return true
+    } catch {
+      return false
     }
-    return false
   }
 
   const loginDemo = (role: Role) => {

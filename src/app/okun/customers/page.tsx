@@ -49,7 +49,7 @@ export default function OkunCustomers() {
     setIsEditing(false)
   }
 
-  const handleAddCustomer = () => {
+  const handleAddCustomer = async () => {
     const errors: string[] = []
     if (!newCust.name.trim()) errors.push('Name ist erforderlich')
     if (!newCust.contactName.trim()) errors.push('Ansprechpartner ist erforderlich')
@@ -62,7 +62,21 @@ export default function OkunCustomers() {
     }
 
     addCustomer(newCust)
-    showToast('Kunde angelegt', 'success')
+    try {
+      await fetch('/api/invitations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: newCust.contactEmail,
+          role: 'company',
+          name: newCust.contactName,
+          customerName: newCust.name,
+        }),
+      })
+      showToast('Kunde angelegt · Einladung versendet', 'success')
+    } catch {
+      showToast('Kunde angelegt, Einladung konnte aber nicht versendet werden', 'error')
+    }
     setAddModal(false)
     setAddErrors([])
     setNewCust({ name: '', contactName: '', contactEmail: '', plan: 'starter', seatsLicensed: 10 })

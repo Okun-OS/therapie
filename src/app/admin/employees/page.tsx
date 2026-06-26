@@ -123,7 +123,22 @@ export default function AdminEmployees() {
         // Mitarbeiter ist bereits angelegt; die Besonderheiten können später im Profil ergänzt werden.
       }
     }
-    showToast('Mitarbeiter gespeichert', 'success')
+    try {
+      await fetch('/api/invitations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: employee.email,
+          role: 'employee',
+          name: employee.name,
+          employeeId: employee.id,
+          locationId: employee.locationId,
+        }),
+      })
+      showToast('Mitarbeiter gespeichert · Einladung versendet', 'success')
+    } catch {
+      showToast('Mitarbeiter gespeichert, Einladung konnte aber nicht versendet werden', 'error')
+    }
   }
 
   const handleUpdateFromChat = async (draft: EmployeeDraft) => {
