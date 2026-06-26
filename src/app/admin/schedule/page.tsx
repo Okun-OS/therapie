@@ -12,7 +12,7 @@ import { SchedulePlanningChat } from '@/components/schedule/SchedulePlanningChat
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import {
-  EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, LOCATIONS, VACATION_REQUESTS,
+  EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, LOCATIONS, VACATION_REQUESTS, ABSENCES,
   getAllEntriesForFairness, getWishSubmissionsByLocation,
   setShiftMinStaff, saveScheduleForWeek,
 } from '@/lib/mock-data'
@@ -239,6 +239,10 @@ export default function AdminSchedule() {
     .filter(v => v.locationId === locationId && v.status === 'approved' && v.startDate <= periodEnd && v.endDate >= periodStart)
     .map(v => ({ employeeId: v.employeeId, employeeName: v.employeeName, startDate: v.startDate, endDate: v.endDate }))
 
+  const reportedAbsences = ABSENCES
+    .filter(a => a.locationId === locationId && a.verificationStatus !== 'abgelehnt' && a.startDate <= periodEnd && a.endDate >= periodStart)
+    .map(a => ({ employeeId: a.employeeId, employeeName: a.employeeName, startDate: a.startDate, endDate: a.endDate, type: a.type }))
+
   const getDisplayShift = (empId: string, dateStr: string) => {
     if (generatedSchedule) {
       const shiftId = generatedSchedule[empId]?.[dateStr]
@@ -286,6 +290,7 @@ export default function AdminSchedule() {
           facilityDescription: combinedDescription || undefined,
           confirmedDecisionQuestion,
           approvedVacations,
+          reportedAbsences,
         }),
       })
 

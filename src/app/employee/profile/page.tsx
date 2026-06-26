@@ -6,11 +6,17 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
-import { EMPLOYEES, LOCATIONS, updateEmployee } from '@/lib/mock-data'
+import {
+  EMPLOYEES, LOCATIONS, SCHEDULE_ENTRIES, updateEmployee, getShiftById,
+  getOvertimeRequestsByEmployee, getAbsencesByEmployee, getMonthlyClosingsByEmployee, getOrCreateMonthlyClosing,
+} from '@/lib/mock-data'
 import { HumanContextChat } from '@/components/profile/HumanContextChat'
-import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks } from 'lucide-react'
+import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks, FileText, History } from 'lucide-react'
+import { formatDate, toDateString } from '@/lib/utils'
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+const CLOSING_STATUS_LABEL: Record<string, string> = { offen: 'Offen', geprueft: 'Geprüft', freigegeben: 'Freigegeben' }
 
 function TagInputSection({
   label,
@@ -69,6 +75,34 @@ export default function EmployeeProfile() {
   const { user } = useAuth()
   const employee = EMPLOYEES.find(e => e.id === user?.id)
   const location = LOCATIONS.find(l => l.id === employee?.locationId)
+
+  const currentYear = new Date().getFullYear()
+  const todayStr = toDateString(new Date())
+
+  useEffect(() => {
+    if (!employee) return
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(currentYear, new Date().getMonth() - i, 1)
+      getOrCreateMonthlyClosing(employee.id, d.getFullYear(), d.getMonth() + 1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee?.id])
+
+  const overtimeMinutesThisYear = employee
+    ? getOvertimeRequestsByEmployee(employee.id)
+        .filter(o => (o.status === 'approved' || o.status === 'partial') && o.date.startsWith(`${currentYear}`))
+        .reduce((sum, o) => sum + (o.approvedMinutes ?? 0), 0)
+    : 0
+  const absencesThisYear = employee ? getAbsencesByEmployee(employee.id).filter(a => a.startDate.startsWith(`${currentYear}`)) : []
+  const sickDaysThisYear = absencesThisYear.filter(a => a.type === 'krankheit').reduce((s, a) => s + a.days, 0)
+  const otherAbsenceDaysThisYear = absencesThisYear.filter(a => a.type !== 'krankheit').reduce((s, a) => s + a.days, 0)
+  const monthlyClosings = employee ? getMonthlyClosingsByEmployee(employee.id).slice(0, 3) : []
+  const shiftHistory = employee
+    ? SCHEDULE_ENTRIES
+        .filter(e => e.employeeId === employee.id && e.date <= todayStr)
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 6)
+    : []
 
   const initialPrefs = {
     preferEarly: employee?.preferences?.preferredShifts?.includes('early') ?? true,
@@ -219,6 +253,70 @@ export default function EmployeeProfile() {
               <p className="text-lg font-bold text-navy">{employee.weeklyHours}h</p>
               <p className="text-xs text-gray-500">Wochenstunden</p>
             </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-3 gap-3">
+            <div className="text-center">
+              <p className="text-lg font-bold text-navy">{Math.round(overtimeMinutesThisYear / 6) / 10}h</p>
+              <p className="text-xs text-gray-500">Überstunden {currentYear}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-navy">{sickDaysThisYear}</p>
+              <p className="text-xs text-gray-500">Krankheitstage {currentYear}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-navy">{otherAbsenceDaysThisYear}</p>
+              <p className="text-xs text-gray-500">Fehlzeiten {currentYear}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Monatsübersichten */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <FileText size={16} className="text-navy" />
+              <CardTitle>Monatsübersichten</CardTitle>
+            </div>
+          </CardHeader>
+          <div className="space-y-2">
+            {monthlyClosings.map(closing => (
+              <div key={closing.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                <div>
+                  <p className="text-sm font-semibold text-navy">{MONTH_NAMES[closing.month - 1]} {closing.year}</p>
+                  <p className="text-xs text-gray-500">{closing.arbeitstage} Arbeitstage</p>
+                </div>
+                <Badge variant={closing.status === 'freigegeben' ? 'success' : closing.status === 'geprueft' ? 'info' : 'warning'}>
+                  {CLOSING_STATUS_LABEL[closing.status]}
+                </Badge>
+              </div>
+            ))}
+            {monthlyClosings.length === 0 && <p className="text-sm text-gray-400 text-center py-2">Noch keine Monatsübersichten vorhanden</p>}
+          </div>
+        </Card>
+
+        {/* Diensthistorie */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <History size={16} className="text-navy" />
+              <CardTitle>Diensthistorie</CardTitle>
+            </div>
+          </CardHeader>
+          <div className="space-y-2">
+            {shiftHistory.map(entry => {
+              const shift = getShiftById(entry.shiftId)
+              return (
+                <div key={entry.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                  <p className="text-sm text-navy">{formatDate(entry.date)}</p>
+                  {shift && (
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-medium" style={{ color: shift.color, backgroundColor: shift.bgColor }}>
+                      {shift.name}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+            {shiftHistory.length === 0 && <p className="text-sm text-gray-400 text-center py-2">Noch keine vergangenen Dienste</p>}
           </div>
         </Card>
 

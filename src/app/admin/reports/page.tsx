@@ -5,8 +5,8 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
-import { EMPLOYEES, TIME_LOGS } from '@/lib/mock-data'
-import { Download, BarChart3, TrendingUp, Clock, Users, Calendar } from 'lucide-react'
+import { EMPLOYEES, TIME_LOGS, getAbsencesByEmployee, getOvertimeRequestsByEmployee } from '@/lib/mock-data'
+import { Download, BarChart3, TrendingUp, Clock, Users, Calendar, Stethoscope } from 'lucide-react'
 
 export default function AdminReports() {
   const { user } = useAuth()
@@ -30,6 +30,19 @@ export default function AdminReports() {
 
   const totalMonthlyHours = monthlyHours[3] // April
   const avgPerEmployee = employees.length > 0 ? Math.round(totalMonthlyHours / employees.length) : 0
+
+  const currentYear = new Date().getFullYear()
+  const absenceStats = employees.map(emp => {
+    const absences = getAbsencesByEmployee(emp.id).filter(a => a.startDate.startsWith(`${currentYear}`))
+    const sickDays = absences.filter(a => a.type === 'krankheit').reduce((s, a) => s + a.days, 0)
+    const otherDays = absences.filter(a => a.type !== 'krankheit').reduce((s, a) => s + a.days, 0)
+    const overtimeMinutes = getOvertimeRequestsByEmployee(emp.id)
+      .filter(o => (o.status === 'approved' || o.status === 'partial') && o.date.startsWith(`${currentYear}`))
+      .reduce((s, o) => s + (o.approvedMinutes ?? 0), 0)
+    return { ...emp, sickDays, otherDays, overtimeHours: Math.round(overtimeMinutes / 6) / 10 }
+  })
+  const totalSickDays = absenceStats.reduce((s, e) => s + e.sickDays, 0)
+  const totalOtherDays = absenceStats.reduce((s, e) => s + e.otherDays, 0)
 
   return (
     <>
@@ -171,6 +184,38 @@ export default function AdminReports() {
                         {emp.hoursBalance >= 0 ? '+' : ''}{emp.hoursBalance}h
                       </Badge>
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+        {/* Krankheitstage & Fehlzeiten */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Stethoscope size={16} className="text-navy" />
+              <CardTitle>Krankheitstage & Fehlzeiten ({currentYear})</CardTitle>
+            </div>
+            <Badge variant="info">{totalSickDays + totalOtherDays} Tage gesamt</Badge>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px]">
+              <thead>
+                <tr>
+                  <th className="text-left text-xs font-semibold text-gray-500 py-2">Mitarbeiter</th>
+                  <th className="text-center text-xs font-semibold text-gray-500 py-2">Krankheitstage</th>
+                  <th className="text-center text-xs font-semibold text-gray-500 py-2">Fehlzeiten</th>
+                  <th className="text-center text-xs font-semibold text-gray-500 py-2">Überstunden</th>
+                </tr>
+              </thead>
+              <tbody>
+                {absenceStats.map(emp => (
+                  <tr key={emp.id} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="py-3 text-sm font-medium text-navy">{emp.name}</td>
+                    <td className="py-3 text-center text-sm text-gray-600">{emp.sickDays}</td>
+                    <td className="py-3 text-center text-sm text-gray-600">{emp.otherDays}</td>
+                    <td className="py-3 text-center text-sm text-gray-600">{emp.overtimeHours}h</td>
                   </tr>
                 ))}
               </tbody>

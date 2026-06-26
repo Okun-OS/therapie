@@ -221,6 +221,11 @@ export default function TimeTracking() {
       reason: overtimeReason,
       comment: overtimeComment.trim() || undefined,
     })
+    fetch('/api/time-tracking/notify-admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeName: user.name, locationId: user.locationId || 'loc1', kind: 'overtime', date: pendingOvertime.date }),
+    }).catch(() => {})
     setOvertimeModalOpen(false)
     setPendingOvertime(null)
     showToast('Überstundenantrag wurde erstellt', 'success')
@@ -242,6 +247,11 @@ export default function TimeTracking() {
       note: absenceNote.trim() || undefined,
       proofProvided: absenceProof,
     })
+    fetch('/api/time-tracking/notify-admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeName: user.name, locationId: user.locationId || 'loc1', kind: 'absence', startDate: absenceStart, endDate: absenceEnd }),
+    }).catch(() => {})
     setAbsenceModalOpen(false)
     setAbsenceStart('')
     setAbsenceEnd('')

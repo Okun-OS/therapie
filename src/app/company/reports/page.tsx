@@ -5,8 +5,8 @@ import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { LOCATIONS, EMPLOYEES, TIME_LOGS, VACATION_REQUESTS } from '@/lib/mock-data'
-import { Download, BarChart3, TrendingUp, Users, Clock, Palmtree, Building2, Filter } from 'lucide-react'
+import { LOCATIONS, EMPLOYEES, TIME_LOGS, VACATION_REQUESTS, getAbsencesByEmployee } from '@/lib/mock-data'
+import { Download, BarChart3, TrendingUp, Users, Clock, Palmtree, Building2, Filter, Stethoscope } from 'lucide-react'
 
 export default function CompanyReports() {
   const [locationFilter, setLocationFilter] = useState('all')
@@ -22,6 +22,15 @@ export default function CompanyReports() {
   const totalVacationDays = employees.reduce((s, e) => s + e.vacationDaysUsed, 0)
   const totalVacationRemaining = employees.reduce((s, e) => s + (e.vacationDaysTotal - e.vacationDaysUsed), 0)
 
+  const currentYear = new Date().getFullYear()
+  const employeeAbsences = employees.map(e => ({
+    employeeId: e.id,
+    locationId: e.locationId,
+    absences: getAbsencesByEmployee(e.id).filter(a => a.startDate.startsWith(`${currentYear}`)),
+  }))
+  const totalSickDays = employeeAbsences.reduce((s, e) => s + e.absences.filter(a => a.type === 'krankheit').reduce((s2, a) => s2 + a.days, 0), 0)
+  const totalOtherAbsenceDays = employeeAbsences.reduce((s, e) => s + e.absences.filter(a => a.type !== 'krankheit').reduce((s2, a) => s2 + a.days, 0), 0)
+
   const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 
   const locationData = locations.map(loc => {
@@ -32,7 +41,9 @@ export default function CompanyReports() {
     const approved = vacReqs.filter(v => v.status === 'approved').reduce((s, v) => s + v.days, 0)
     const pending = vacReqs.filter(v => v.status === 'pending').length
     const avgBalance = emps.length > 0 ? (emps.reduce((s, e) => s + e.hoursBalance, 0) / emps.length).toFixed(1) : '0'
-    return { ...loc, emps: emps.length, hours, vacApproved: approved, vacPending: pending, avgBalance: Number(avgBalance) }
+    const locAbsences = employeeAbsences.filter(a => a.locationId === loc.id)
+    const sickDays = locAbsences.reduce((s, a) => s + a.absences.filter(x => x.type === 'krankheit').reduce((s2, x) => s2 + x.days, 0), 0)
+    return { ...loc, emps: emps.length, hours, vacApproved: approved, vacPending: pending, avgBalance: Number(avgBalance), sickDays }
   })
 
   return (
@@ -72,6 +83,8 @@ export default function CompanyReports() {
             { label: 'Ø Stunden / MA', value: `${avgHoursPerEmp}h`, icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-100' },
             { label: 'Urlaub verbraucht', value: `${totalVacationDays}T`, icon: Palmtree, color: 'text-amber-600', bg: 'bg-amber-100' },
             { label: 'Resturlaub gesamt', value: `${totalVacationRemaining}T`, icon: Palmtree, color: 'text-purple-600', bg: 'bg-purple-100' },
+            { label: `Krankheitstage (${currentYear})`, value: `${totalSickDays}T`, icon: Stethoscope, color: 'text-red-600', bg: 'bg-red-100' },
+            { label: `Fehlzeiten (${currentYear})`, value: `${totalOtherAbsenceDays}T`, icon: Stethoscope, color: 'text-orange-600', bg: 'bg-orange-100' },
           ].map(({ label, value, icon: Icon, color, bg }) => (
             <div key={label} className="bg-white rounded-2xl border border-gray-100 p-4">
               <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
@@ -96,6 +109,7 @@ export default function CompanyReports() {
                   <th className="text-center text-xs font-semibold text-gray-500 pb-3">MA</th>
                   <th className="text-center text-xs font-semibold text-gray-500 pb-3">Stunden</th>
                   <th className="text-center text-xs font-semibold text-gray-500 pb-3">Urlaub genehmigt</th>
+                  <th className="text-center text-xs font-semibold text-gray-500 pb-3">Krankheitstage</th>
                   <th className="text-center text-xs font-semibold text-gray-500 pb-3">Ø Stundenkonto</th>
                 </tr>
               </thead>
@@ -121,6 +135,7 @@ export default function CompanyReports() {
                         <Badge variant="warning" className="ml-2">{loc.vacPending} offen</Badge>
                       )}
                     </td>
+                    <td className="py-3 text-center text-sm text-gray-600">{loc.sickDays}T</td>
                     <td className="py-3 text-center">
                       <span className={`text-sm font-bold ${loc.avgBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                         {loc.avgBalance >= 0 ? '+' : ''}{loc.avgBalance}h
@@ -133,6 +148,7 @@ export default function CompanyReports() {
                   <td className="py-3 text-center text-sm font-bold text-navy">{filteredEmployees.length}</td>
                   <td className="py-3 text-center text-sm font-bold text-navy">{Math.round(totalHours / 60)}h</td>
                   <td className="py-3 text-center text-sm font-bold text-navy">{totalVacationDays}T</td>
+                  <td className="py-3 text-center text-sm font-bold text-navy">{totalSickDays}T</td>
                   <td className="py-3 text-center text-sm font-bold text-navy">
                     {(employees.reduce((s, e) => s + e.hoursBalance, 0) / employees.length).toFixed(1)}h
                   </td>

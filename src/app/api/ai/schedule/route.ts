@@ -48,6 +48,10 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 18. Mitarbeiter mit genehmigtem Urlaub (siehe "Genehmigter Urlaub im Planungszeitraum") dürfen an den betroffenen Tagen KEINEN Dienst bekommen – behandle sie an diesen Tagen als nicht verfügbar.
 19. Falls dadurch an einem Tag die Mindestbesetzung einer Schicht nicht erreicht werden kann, plane trotzdem den bestmöglichen Plan für alle anderen Tage/Schichten und formuliere GENAU EINE Rückfrage im Feld "fallback", ob für diesen Tag/diese Schicht eine Vertretungsanfrage erstellt werden soll. Gib dabei "date" (YYYY-MM-DD) und "shiftId" der unterbesetzten Schicht an. Falls keine Unterbesetzung durch Urlaub auftritt, setze "fallback" auf null.
 
+## Krankheiten und gemeldete Abwesenheiten
+18a. Mitarbeiter mit gemeldeter Krankheit oder sonstiger Abwesenheit (siehe "Gemeldete Abwesenheiten im Planungszeitraum") dürfen an den betroffenen Tagen ebenfalls KEINEN Dienst bekommen – behandle sie an diesen Tagen wie bei Urlaub als nicht verfügbar.
+19a. Falls dadurch an einem Tag die Mindestbesetzung einer Schicht nicht erreicht werden kann und noch kein "fallback" für diesen Tag/diese Schicht aus Regel 19 gesetzt wurde, formuliere ebenfalls GENAU EINE Rückfrage im Feld "fallback" nach denselben Vorgaben wie in Regel 19.
+
 ## Output-Format (JSON, kein Markdown drumherum)
 Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
 {
@@ -76,6 +80,7 @@ interface ScheduleRequest {
   facilityDescription?: string
   confirmedDecisionQuestion?: string
   approvedVacations?: { employeeId: string; employeeName: string; startDate: string; endDate: string }[]
+  reportedAbsences?: { employeeId: string; employeeName: string; startDate: string; endDate: string; type: string }[]
 }
 
 export async function POST(req: NextRequest) {
@@ -90,7 +95,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
 
-  const { employees, shifts, fairnessData, wishSubmissions, weekDates, locationId, locationName, facilityDescription, confirmedDecisionQuestion, approvedVacations } = body
+  const { employees, shifts, fairnessData, wishSubmissions, weekDates, locationId, locationName, facilityDescription, confirmedDecisionQuestion, approvedVacations, reportedAbsences } = body
 
   const activeEmployees = employees.filter(e => e.role === 'employee' && e.active)
 
@@ -174,6 +179,12 @@ ${JSON.stringify(approvedVacations, null, 2)}
 
 Diese Mitarbeiter sind an den genannten Tagen (startDate bis endDate, jeweils inklusive) nicht verfügbar.` : ''
 
+  const absenceSection = reportedAbsences && reportedAbsences.length > 0 ? `
+## Gemeldete Abwesenheiten im Planungszeitraum
+${JSON.stringify(reportedAbsences, null, 2)}
+
+Diese Mitarbeiter sind an den genannten Tagen (startDate bis endDate, jeweils inklusive) krankheitsbedingt oder anderweitig abwesend und nicht verfügbar.` : ''
+
   const wishSummary = wishSubmissions.map(w => ({
     employeeId: w.employeeId,
     employeeName: w.employeeName,
@@ -200,6 +211,7 @@ ${JSON.stringify(weekDates)}
 ## Dienstwünsche der Mitarbeiter
 ${wishSummary.length > 0 ? JSON.stringify(wishSummary, null, 2) : 'Keine Wünsche eingereicht.'}
 ${vacationSection}
+${absenceSection}
 ${onboardingSection}
 ${periodNotesSection}
 ${facilityDescription ? `

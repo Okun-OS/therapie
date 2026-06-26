@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
-import { EMPLOYEES, updateEmployee, addEmployee } from '@/lib/mock-data'
+import { EMPLOYEES, updateEmployee, addEmployee, getOvertimeRequestsByEmployee, getAbsencesByEmployee } from '@/lib/mock-data'
 import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight, MessageCircle } from 'lucide-react'
 import type { Employee } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
@@ -293,6 +293,28 @@ export default function AdminEmployees() {
                   <p className={`text-base font-bold ${color} mt-0.5`}>{value}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {(() => {
+                const year = new Date().getFullYear()
+                const overtimeMinutes = getOvertimeRequestsByEmployee(selectedEmployee.id)
+                  .filter(o => (o.status === 'approved' || o.status === 'partial') && o.date.startsWith(`${year}`))
+                  .reduce((s, o) => s + (o.approvedMinutes ?? 0), 0)
+                const absences = getAbsencesByEmployee(selectedEmployee.id).filter(a => a.startDate.startsWith(`${year}`))
+                const sickDays = absences.filter(a => a.type === 'krankheit').reduce((s, a) => s + a.days, 0)
+                const otherDays = absences.filter(a => a.type !== 'krankheit').reduce((s, a) => s + a.days, 0)
+                return [
+                  { label: 'Überstunden', value: `${Math.round(overtimeMinutes / 6) / 10}h` },
+                  { label: 'Krankheitstage', value: `${sickDays}` },
+                  { label: 'Fehlzeiten', value: `${otherDays}` },
+                ].map(({ label, value }) => (
+                  <div key={label} className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-500">{label}</p>
+                    <p className="text-base font-bold text-navy mt-0.5">{value}</p>
+                  </div>
+                ))
+              })()}
             </div>
 
             {selectedEmployee.preferences && (
