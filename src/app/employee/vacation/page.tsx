@@ -8,9 +8,12 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { EMPLOYEES, VACATION_REQUESTS, addVacationRequest, getLocationById } from '@/lib/mock-data'
-import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { EMPLOYEES, VACATION_REQUESTS, addVacationRequest, getLocationById, getVacationPreference, setVacationPreference } from '@/lib/mock-data'
+import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, Send, Baby } from 'lucide-react'
 import { formatDate, diffDays } from '@/lib/utils'
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+const PRIORITY_LABEL: Record<string, string> = { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' }
 
 export default function EmployeeVacation() {
   const { user } = useAuth()
@@ -23,6 +26,34 @@ export default function EmployeeVacation() {
   const employee = EMPLOYEES.find(e => e.id === user?.id)
   const myRequests = VACATION_REQUESTS.filter(v => v.employeeId === user?.id)
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+
+  const existingPref = user ? getVacationPreference(user.id) : null
+  const [wishMonths, setWishMonths] = useState<number[]>(existingPref?.preferredMonths ?? [])
+  const [wishPeriod, setWishPeriod] = useState(existingPref?.preferredPeriod ?? '')
+  const [wishNotes, setWishNotes] = useState(existingPref?.notes ?? '')
+  const [wishPriority, setWishPriority] = useState<'low' | 'medium' | 'high'>(existingPref?.priority ?? 'medium')
+  const [wishSchoolPriority, setWishSchoolPriority] = useState<'low' | 'medium' | 'high'>(existingPref?.schoolHolidayPriority ?? 'medium')
+  const [wishSaved, setWishSaved] = useState(false)
+
+  const toggleWishMonth = (month: number) => {
+    setWishMonths(prev => prev.includes(month) ? prev.filter(m => m !== month) : [...prev, month])
+  }
+
+  const handleSaveWishes = () => {
+    if (!employee) return
+    setVacationPreference({
+      employeeId: employee.id,
+      hasChildren: employee.hasChildren ?? false,
+      schoolHolidayPriority: employee.hasChildren ? wishSchoolPriority : undefined,
+      preferredMonths: wishMonths,
+      preferredPeriod: wishPeriod,
+      notes: wishNotes,
+      priority: wishPriority,
+    })
+    setWishSaved(true)
+    showToast('Urlaubswünsche gespeichert')
+    setTimeout(() => setWishSaved(false), 3000)
+  }
 
   const vacationTotal = employee?.vacationDaysTotal || 30
   const vacationUsed = employee?.vacationDaysUsed || 0
@@ -136,6 +167,97 @@ export default function EmployeeVacation() {
             <p className="text-xs text-gray-500">Verbleibend</p>
           </div>
         </div>
+
+        {/* Vacation wishes for annual planning */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Meine Urlaubswünsche</CardTitle>
+          </CardHeader>
+          <p className="text-xs text-gray-500 mb-4">
+            Trage hier deine Wünsche für die nächste Jahresurlaubsplanung ein – z.B. Sommerurlaub oder Schulferien. Die Teamleitung berücksichtigt sie automatisch bei der Planung.
+          </p>
+
+          {wishSaved && (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl p-3 mb-4">
+              <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
+              <p className="text-sm text-green-700">Wünsche gespeichert</p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1.5">Bevorzugte Monate</p>
+              <div className="flex flex-wrap gap-1.5">
+                {MONTH_NAMES.map((name, i) => {
+                  const month = i + 1
+                  const selected = wishMonths.includes(month)
+                  return (
+                    <button
+                      key={month}
+                      type="button"
+                      onClick={() => toggleWishMonth(month)}
+                      className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-all ${selected ? 'bg-navy text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                    >
+                      {name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1.5">Konkreter Wunschzeitraum (optional)</label>
+              <input
+                value={wishPeriod}
+                onChange={e => setWishPeriod(e.target.value)}
+                placeholder="z.B. Sommerferien Juli/August"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1.5">Priorität</label>
+                <select
+                  value={wishPriority}
+                  onChange={e => setWishPriority(e.target.value as 'low' | 'medium' | 'high')}
+                  className="text-sm px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand"
+                >
+                  {Object.entries(PRIORITY_LABEL).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+                </select>
+              </div>
+              {employee?.hasChildren && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 block mb-1.5 flex items-center gap-1">
+                    <Baby size={12} className="text-blue-400" />Priorität Schulferien
+                  </label>
+                  <select
+                    value={wishSchoolPriority}
+                    onChange={e => setWishSchoolPriority(e.target.value as 'low' | 'medium' | 'high')}
+                    className="text-sm px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand"
+                  >
+                    {Object.entries(PRIORITY_LABEL).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-500 block mb-1.5">Notiz (optional)</label>
+              <textarea
+                value={wishNotes}
+                onChange={e => setWishNotes(e.target.value)}
+                rows={2}
+                placeholder="z.B. besondere Gründe für deinen Wunschzeitraum"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+              />
+            </div>
+
+            <Button onClick={handleSaveWishes} className="gap-2">
+              <Send size={14} />Wünsche speichern
+            </Button>
+          </div>
+        </Card>
 
         {/* Request List */}
         <Card>

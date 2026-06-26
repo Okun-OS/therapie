@@ -78,6 +78,25 @@ export default function VacationPlanPage() {
     showToast('Urlaubsregeln gespeichert – gelten für alle künftigen Planungen')
   }
 
+  const [collectingWishes, setCollectingWishes] = useState(false)
+
+  const handleCollectWishes = async () => {
+    setCollectingWishes(true)
+    try {
+      const res = await fetch('/api/vacation-plan/collect-wishes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId }),
+      })
+      const data = await res.json()
+      showToast(`${data.notified ?? employees.length} Mitarbeiter wurden benachrichtigt, ihre Urlaubswünsche einzutragen`)
+    } catch {
+      showToast('Benachrichtigung konnte nicht versendet werden', 'error')
+    } finally {
+      setCollectingWishes(false)
+    }
+  }
+
   const [planningStart, setPlanningStart] = useState('2026-06-01')
   const [planningEnd, setPlanningEnd] = useState('2026-09-30')
   const [selectedState, setSelectedState] = useState('Berlin')
@@ -316,9 +335,17 @@ export default function VacationPlanPage() {
 
         {/* ── MITARBEITER-WÜNSCHE ────────────────────────────────────── */}
         <Card>
-          <p className="text-sm font-bold text-navy mb-3 flex items-center gap-2">
-            <Palmtree size={15} className="text-green-500" />
-            Wünsche der Mitarbeiter
+          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+            <p className="text-sm font-bold text-navy flex items-center gap-2">
+              <Palmtree size={15} className="text-green-500" />
+              Wünsche der Mitarbeiter
+            </p>
+            <Button variant="ghost" size="sm" loading={collectingWishes} onClick={handleCollectWishes} className="gap-1.5 text-green-700 border border-gray-200">
+              <Send size={14} />Wünsche einsammeln
+            </Button>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">
+            Mitarbeiter werden benachrichtigt und tragen ihre Wünsche selbst im Mitarbeiterportal ein. Du kannst die Angaben hier bei Bedarf anpassen.
           </p>
           <div className="space-y-4">
             {prefs.map(pref => {

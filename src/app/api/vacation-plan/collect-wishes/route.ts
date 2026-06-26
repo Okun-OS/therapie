@@ -1,0 +1,32 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { EMPLOYEES } from '@/lib/mock-data'
+import { notifyEmployee } from '@/lib/notify'
+
+export async function POST(req: NextRequest) {
+  let body: { locationId?: string }
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
+  }
+
+  const { locationId } = body
+  if (!locationId) {
+    return NextResponse.json({ error: 'locationId ist erforderlich' }, { status: 400 })
+  }
+
+  const employees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee' && e.active)
+
+  await Promise.all(
+    employees.map(emp =>
+      notifyEmployee(emp.id, {
+        type: 'vacation-wishes-campaign',
+        title: 'Urlaubswünsche eintragen',
+        body: 'Die Jahresurlaubsplanung startet. Bitte trage deine Urlaubswünsche im Mitarbeiterportal ein.',
+        url: '/employee/vacation',
+      }),
+    ),
+  )
+
+  return NextResponse.json({ notified: employees.length })
+}

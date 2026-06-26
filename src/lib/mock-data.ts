@@ -695,6 +695,18 @@ export function setVacationRules(locationId: string, rules: VacationRules) {
   VACATION_RULES[locationId] = rules
 }
 
+// Schritt 2 "Urlaubswünsche sammeln": Mitarbeiter tragen ihre Wünsche selbst im
+// Mitarbeiterportal ein, statt dass die Leitung sie einsammeln muss.
+export function getVacationPreference(employeeId: string): VacationPlanPreference | null {
+  return VACATION_PREFERENCES.find(p => p.employeeId === employeeId) ?? null
+}
+
+export function setVacationPreference(pref: VacationPlanPreference) {
+  const idx = VACATION_PREFERENCES.findIndex(p => p.employeeId === pref.employeeId)
+  if (idx >= 0) VACATION_PREFERENCES[idx] = pref
+  else VACATION_PREFERENCES.push(pref)
+}
+
 // Schritt 6 "Freigabe": turns a generated annual plan into real, already-approved
 // vacation requests, so they show up for employees and are respected by future schedule generation.
 export function publishVacationPlan(locationId: string, locationName: string, entries: VacationPlanEntry[]): VacationRequest[] {
