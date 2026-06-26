@@ -1,19 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { TEST_ACCOUNTS, addTestAccount, updateTestAccount, updateCustomer, CUSTOMERS } from '@/lib/mock-data'
+import { TEST_ACCOUNTS, addTestAccount, updateTestAccount } from '@/lib/mock-data'
 import { useToast } from '@/lib/toast-context'
 import { KeyRound, Plus, CheckCircle2, Clock } from 'lucide-react'
+import type { Customer } from '@/lib/types'
 
 export default function OkunTestAccounts() {
   const { showToast } = useToast()
+  const [CUSTOMERS, setCUSTOMERS] = useState<Customer[]>([])
   const [addModal, setAddModal] = useState(false)
   const [form, setForm] = useState({ customerName: '', contactEmail: '', durationDays: 30 })
   const [errors, setErrors] = useState<string[]>([])
+
+  useEffect(() => {
+    fetch('/api/customers').then(r => r.json()).then(d => setCUSTOMERS(d.customers))
+  }, [])
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -32,10 +38,15 @@ export default function OkunTestAccounts() {
     setForm({ customerName: '', contactEmail: '', durationDays: 30 })
   }
 
-  const convertToCustomer = (testAccountId: string, customerName: string) => {
+  const convertToCustomer = async (testAccountId: string, customerName: string) => {
     const existing = CUSTOMERS.find(c => c.name === customerName)
     if (existing) {
-      updateCustomer(existing.id, { status: 'active' })
+      const updated = await fetch(`/api/customers/${existing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active' }),
+      }).then(r => r.json()).then(d => d.customer)
+      setCUSTOMERS(prev => prev.map(c => c.id === updated.id ? updated : c))
       updateTestAccount(testAccountId, { converted: true })
       showToast(`${customerName} ist jetzt aktiver Kunde`, 'success')
     } else {

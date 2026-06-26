@@ -1,0 +1,217 @@
+// Echte Postgres-Persistenz für Mitarbeiter/Kunden/Standorte (ersetzt die
+// EMPLOYEES/LOCATIONS/CUSTOMERS Arrays aus mock-data.ts). Server-only: importiert
+// Prisma und darf daher NIE von einer 'use client' Komponente importiert werden –
+// Client-Seiten laden diese Daten ausschließlich über die /api/* Routen.
+import { prisma } from './prisma'
+import type { Employee, Location, Customer, EmployeePreferences } from './types'
+
+function toEmployee(row: any): Employee {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    locationId: row.locationId ?? undefined,
+    weeklyHours: row.weeklyHours,
+    position: row.position,
+    hoursBalance: row.hoursBalance,
+    vacationDaysTotal: row.vacationDaysTotal,
+    vacationDaysUsed: row.vacationDaysUsed,
+    preferences: (row.preferences as EmployeePreferences | null) ?? undefined,
+    active: row.active,
+    joinedAt: row.joinedAt,
+    hasChildren: row.hasChildren ?? undefined,
+    phone: row.phone ?? undefined,
+    birthDate: row.birthDate ?? undefined,
+    roleType: row.roleType ?? undefined,
+    employmentType: row.employmentType ?? undefined,
+    gruppe: row.gruppe ?? undefined,
+    bereich: row.bereich ?? undefined,
+    multiGroupCapable: row.multiGroupCapable ?? undefined,
+    fixedLocations: row.fixedLocations ?? undefined,
+    qualifications: row.qualifications,
+    allowedTasks: row.allowedTasks,
+  }
+}
+
+function toLocation(row: any): Location {
+  return {
+    id: row.id,
+    name: row.name,
+    address: row.address,
+    city: row.city,
+    state: row.state,
+    employeeCount: row.employeeCount,
+    adminId: row.adminId,
+    active: row.active,
+  }
+}
+
+function toCustomer(row: any): Customer {
+  return {
+    id: row.id,
+    name: row.name,
+    contactName: row.contactName,
+    contactEmail: row.contactEmail,
+    status: row.status,
+    plan: row.plan,
+    seatsLicensed: row.seatsLicensed,
+    seatsUsed: row.seatsUsed,
+    locationsCount: row.locationsCount,
+    createdAt: row.createdAt,
+    renewalDate: row.renewalDate ?? undefined,
+    notes: row.notes ?? undefined,
+  }
+}
+
+export async function listEmployees(): Promise<Employee[]> {
+  const rows = await prisma.employee.findMany()
+  return rows.map(toEmployee)
+}
+
+export async function listLocations(): Promise<Location[]> {
+  const rows = await prisma.location.findMany()
+  return rows.map(toLocation)
+}
+
+export async function listCustomers(): Promise<Customer[]> {
+  const rows = await prisma.customer.findMany()
+  return rows.map(toCustomer)
+}
+
+export async function getEmployeeById(id: string): Promise<Employee | undefined> {
+  const row = await prisma.employee.findUnique({ where: { id } })
+  return row ? toEmployee(row) : undefined
+}
+
+export async function getLocationById(id: string): Promise<Location | undefined> {
+  const row = await prisma.location.findUnique({ where: { id } })
+  return row ? toLocation(row) : undefined
+}
+
+export async function getEmployeesByLocation(locationId: string): Promise<Employee[]> {
+  const rows = await prisma.employee.findMany({ where: { locationId, active: true } })
+  return rows.map(toEmployee)
+}
+
+export async function addEmployee(input: {
+  name: string
+  email: string
+  position: string
+  weeklyHours: number
+  locationId: string
+  phone?: string
+  birthDate?: string
+  roleType?: string
+  employmentType?: string
+  gruppe?: string
+  bereich?: string
+  multiGroupCapable?: boolean
+  fixedLocations?: string
+  qualifications?: string[]
+  allowedTasks?: string[]
+}): Promise<Employee> {
+  const row = await prisma.employee.create({
+    data: {
+      name: input.name,
+      email: input.email,
+      role: 'employee',
+      locationId: input.locationId,
+      weeklyHours: input.weeklyHours,
+      position: input.position,
+      hoursBalance: 0,
+      vacationDaysTotal: 30,
+      vacationDaysUsed: 0,
+      active: true,
+      joinedAt: new Date().toISOString().split('T')[0],
+      phone: input.phone,
+      birthDate: input.birthDate,
+      roleType: input.roleType,
+      employmentType: input.employmentType,
+      gruppe: input.gruppe,
+      bereich: input.bereich,
+      multiGroupCapable: input.multiGroupCapable,
+      fixedLocations: input.fixedLocations,
+      qualifications: input.qualifications ?? [],
+      allowedTasks: input.allowedTasks ?? [],
+    },
+  })
+  return toEmployee(row)
+}
+
+export async function updateEmployee(id: string, updates: Partial<Employee>): Promise<Employee | undefined> {
+  const { id: _ignored, ...data } = updates as any
+  const row = await prisma.employee.update({ where: { id }, data }).catch(() => null)
+  return row ? toEmployee(row) : undefined
+}
+
+export async function addLocation(input: { name: string; address: string; city: string; state?: string }): Promise<Location> {
+  const row = await prisma.location.create({
+    data: {
+      name: input.name,
+      address: input.address,
+      city: input.city,
+      state: input.state || 'Berlin',
+      employeeCount: 0,
+      adminId: '',
+      active: true,
+    },
+  })
+  return toLocation(row)
+}
+
+export async function updateLocation(id: string, updates: Partial<Location>): Promise<Location | undefined> {
+  const { id: _ignored, ...data } = updates as any
+  const row = await prisma.location.update({ where: { id }, data }).catch(() => null)
+  return row ? toLocation(row) : undefined
+}
+
+/** Geschäftsführung: Einrichtungsleitung wechseln – die bisherige Leitung wird
+ * wieder Mitarbeiter, die neu ernannte Person wird Einrichtungsleitung. */
+export async function reassignLocationAdmin(locationId: string, newAdminEmployeeId: string): Promise<void> {
+  const location = await prisma.location.findUnique({ where: { id: locationId } })
+  if (!location) return
+  await prisma.$transaction(async tx => {
+    if (location.adminId) {
+      await tx.employee.update({ where: { id: location.adminId }, data: { role: 'employee' } }).catch(() => null)
+    }
+    await tx.employee.update({ where: { id: newAdminEmployeeId }, data: { role: 'admin' } })
+    await tx.location.update({ where: { id: locationId }, data: { adminId: newAdminEmployeeId } })
+  })
+}
+
+export async function addCustomer(input: { name: string; contactName: string; contactEmail: string; plan: string; seatsLicensed: number }): Promise<Customer> {
+  const row = await prisma.customer.create({
+    data: {
+      name: input.name,
+      contactName: input.contactName,
+      contactEmail: input.contactEmail,
+      status: 'trial',
+      plan: input.plan,
+      seatsLicensed: input.seatsLicensed,
+      seatsUsed: 0,
+      locationsCount: 0,
+      createdAt: new Date().toISOString().split('T')[0],
+    },
+  })
+  return toCustomer(row)
+}
+
+export async function updateCustomer(id: string, updates: Partial<Customer>): Promise<Customer | undefined> {
+  const { id: _ignored, ...data } = updates as any
+  const row = await prisma.customer.update({ where: { id }, data }).catch(() => null)
+  return row ? toCustomer(row) : undefined
+}
+
+/** Entfernt einen entfallenen Aufgabentyp aus allowedTasks aller Mitarbeiter. */
+export async function removeAllowedTaskFromEmployees(name: string): Promise<void> {
+  await prisma.$executeRaw`UPDATE "Employee" SET "allowedTasks" = array_remove("allowedTasks", ${name}) WHERE ${name} = ANY("allowedTasks")`
+}
+
+/** Wendet das Saldo eines freigegebenen Monatsabschlusses auf das Stundenkonto an. */
+export async function applyHoursBalanceDelta(employeeId: string, deltaHours: number): Promise<void> {
+  const row = await prisma.employee.findUnique({ where: { id: employeeId } })
+  if (!row) return
+  const hoursBalance = Math.round((row.hoursBalance + deltaHours) * 10) / 10
+  await prisma.employee.update({ where: { id: employeeId }, data: { hoursBalance } })
+}

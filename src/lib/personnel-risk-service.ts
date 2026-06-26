@@ -1,10 +1,11 @@
 import { prisma } from './prisma'
-import { EMPLOYEES, LOCATIONS, SHIFTS, TIME_LOGS, VACATION_REQUESTS } from './mock-data'
+import { SHIFTS, TIME_LOGS, VACATION_REQUESTS } from './mock-data'
+import { listEmployees, listLocations } from './entities'
 import { getFairnessInsights } from './fairness'
 import { getRiskLevel, type RiskLevel } from './risk-constants'
 
-function scopeLocationIds(locationId?: string): string[] {
-  return locationId ? [locationId] : LOCATIONS.map(l => l.id)
+async function scopeLocationIds(locationId?: string): Promise<string[]> {
+  return locationId ? [locationId] : (await listLocations()).map(l => l.id)
 }
 
 export interface EmployeeRisk {
@@ -44,8 +45,9 @@ async function getOvertimeHoursByEmployee(employeeIds: string[]): Promise<Map<st
 // ─── Burnout-Risiko ──────────────────────────────────────────────────────────
 
 export async function getBurnoutRisks(locationId?: string): Promise<EmployeeRisk[]> {
-  const locationIds = scopeLocationIds(locationId)
-  const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
+  const locationIds = await scopeLocationIds(locationId)
+  const allEmployees = await listEmployees()
+  const employees = allEmployees.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
   const fairnessData = await getFairnessInsights(locationId)
   const overtimeHours = await getOvertimeHoursByEmployee(employees.map(e => e.id))
 
@@ -73,8 +75,9 @@ export async function getBurnoutRisks(locationId?: string): Promise<EmployeeRisk
 // ─── Kündigungs-/Fluktuationsrisiko ─────────────────────────────────────────
 
 export async function getFluctuationRisks(locationId?: string): Promise<EmployeeRisk[]> {
-  const locationIds = scopeLocationIds(locationId)
-  const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
+  const locationIds = await scopeLocationIds(locationId)
+  const allEmployees = await listEmployees()
+  const employees = allEmployees.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
   const fairnessData = await getFairnessInsights(locationId)
   const employeeIds = employees.map(e => e.id)
 
@@ -129,15 +132,16 @@ export interface UnderstaffingInsights {
   riskDays: UnderstaffingRiskDay[]
 }
 
-export function getUnderstaffingRisk(locationId?: string, windowDays = 21): UnderstaffingInsights {
-  const locationIds = scopeLocationIds(locationId)
+export async function getUnderstaffingRisk(locationId?: string, windowDays = 21): Promise<UnderstaffingInsights> {
+  const locationIds = await scopeLocationIds(locationId)
+  const [allLocations, allEmployees] = await Promise.all([listLocations(), listEmployees()])
   const riskDays: UnderstaffingRiskDay[] = []
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
   for (const locId of locationIds) {
-    const location = LOCATIONS.find(l => l.id === locId)
-    const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.active && e.locationId === locId)
+    const location = allLocations.find(l => l.id === locId)
+    const employees = allEmployees.filter(e => e.role === 'employee' && e.active && e.locationId === locId)
     const requiredMinStaff = SHIFTS.filter(s => s.locationId === locId).reduce((s, sh) => s + sh.minStaff, 0)
     const relevantVacations = VACATION_REQUESTS.filter(v => v.locationId === locId && (v.status === 'approved' || v.status === 'pending'))
 

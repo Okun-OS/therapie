@@ -1,16 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { LOCATIONS, SHIFTS, SCHEDULE_ENTRIES, EMPLOYEES } from '@/lib/mock-data'
+import { SHIFTS, SCHEDULE_ENTRIES } from '@/lib/mock-data'
 import { getWeekDays, toDateString, formatDateShort, getDayName } from '@/lib/utils'
 import { Calendar, ChevronLeft, ChevronRight, AlertTriangle, Building2 } from 'lucide-react'
+import type { Employee, Location } from '@/lib/types'
 
 export default function CompanySchedule() {
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
   const weekDates = getWeekDays(currentDate).map(toDateString)
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+    fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+  }, [])
 
   const navigate = (dir: -1 | 1) => {
     const d = new Date(currentDate)

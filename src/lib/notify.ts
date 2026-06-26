@@ -1,7 +1,7 @@
 import { prisma } from './prisma'
 import { sendEmail } from './email'
 import { sendPushToEmployee } from './push'
-import { EMPLOYEES } from './mock-data'
+import { getEmployeeById } from './entities'
 
 export async function notifyEmployee(
   employeeId: string,
@@ -17,7 +17,7 @@ export async function notifyEmployee(
     },
   })
 
-  const employee = EMPLOYEES.find(e => e.id === employeeId)
+  const employee = await getEmployeeById(employeeId)
 
   await Promise.all([
     sendPushToEmployee(employeeId, { title: opts.title, body: opts.body, url: opts.url }),

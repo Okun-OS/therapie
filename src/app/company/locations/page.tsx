@@ -1,18 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { LOCATIONS, EMPLOYEES, VACATION_REQUESTS, updateLocation, addLocation, reassignLocationAdmin } from '@/lib/mock-data'
+import { VACATION_REQUESTS } from '@/lib/mock-data'
 import { useToast } from '@/lib/toast-context'
 import { Building2, Plus, MapPin, Users, Palmtree, Phone, Edit, MoreVertical, ChevronRight, UserCog, Crown } from 'lucide-react'
-import type { Location } from '@/lib/types'
+import type { Location, Employee } from '@/lib/types'
 
 export default function CompanyLocations() {
   const { showToast } = useToast()
+  const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+
+  useEffect(() => {
+    fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+  }, [])
+
   const [selected, setSelected] = useState<Location | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', address: '', city: '' })
@@ -26,26 +34,37 @@ export default function CompanyLocations() {
     setIsEditing(true)
   }
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!selected) return
     if (!editForm.name.trim() || !editForm.address.trim() || !editForm.city.trim()) {
       showToast('Bitte alle Pflichtfelder ausfüllen', 'error')
       return
     }
-    updateLocation(selected.id, editForm)
+    const updated = await fetch(`/api/locations/${selected.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    }).then(r => r.json()).then(d => d.location)
+    setLOCATIONS(prev => prev.map(l => l.id === updated.id ? updated : l))
     showToast('Standort aktualisiert', 'success')
     setIsEditing(false)
     setSelected(null)
   }
 
-  const handleReassignAdmin = (employeeId: string) => {
+  const handleReassignAdmin = async (employeeId: string) => {
     if (!selected) return
-    reassignLocationAdmin(selected.id, employeeId)
+    await fetch(`/api/locations/${selected.id}/reassign-admin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newAdminEmployeeId: employeeId }),
+    })
+    const refreshed = await fetch('/api/employees').then(r => r.json()).then(d => d.employees)
+    setEMPLOYEES(refreshed)
     showToast('Einrichtungsleitung gewechselt', 'success')
     setManagingAdmin(false)
   }
 
-  const handleAddLocation = () => {
+  const handleAddLocation = async () => {
     const errors: string[] = []
     if (!newLoc.name.trim()) errors.push('Name ist erforderlich')
     if (!newLoc.address.trim()) errors.push('Adresse ist erforderlich')
@@ -56,7 +75,12 @@ export default function CompanyLocations() {
       return
     }
 
-    addLocation(newLoc)
+    const location = await fetch('/api/locations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newLoc),
+    }).then(r => r.json()).then(d => d.location)
+    setLOCATIONS(prev => [...prev, location])
     showToast('Standort gespeichert', 'success')
     setAddModal(false)
     setAddErrors([])

@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
-import { EMPLOYEES, updateEmployee, addEmployee, getOvertimeRequestsByEmployee, getAbsencesByEmployee } from '@/lib/mock-data'
+import { getOvertimeRequestsByEmployee, getAbsencesByEmployee } from '@/lib/mock-data'
 import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight, MessageCircle } from 'lucide-react'
 import type { Employee } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
@@ -37,6 +37,11 @@ export default function AdminEmployees() {
   const [editChatEmployee, setEditChatEmployee] = useState<Employee | null>(null)
   const [editChatDraft, setEditChatDraft] = useState<EmployeeDraft | null>(null)
   const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([])
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
+  }, [])
 
   function employeeToDraft(emp: Employee, ctx: EmployeeHumanContext | null): EmployeeDraft {
     return {
@@ -74,13 +79,18 @@ export default function AdminEmployees() {
     setIsEditing(true)
   }
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!selectedEmployee) return
     if (!editForm.name.trim() || !editForm.email.trim() || !editForm.position.trim()) {
       showToast('Bitte alle Pflichtfelder ausfüllen', 'error')
       return
     }
-    updateEmployee(selectedEmployee.id, editForm)
+    const updated = await fetch(`/api/employees/${selectedEmployee.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    }).then(r => r.json()).then(d => d.employee)
+    setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
     showToast('Mitarbeiter aktualisiert', 'success')
     setIsEditing(false)
     setSelectedEmployee(null)
@@ -91,23 +101,28 @@ export default function AdminEmployees() {
       showToast('Name und E-Mail werden benötigt, um den Mitarbeiter zu speichern', 'error')
       return
     }
-    const employee = addEmployee({
-      name: draft.name,
-      email: draft.email,
-      position: draft.roleType || 'Mitarbeiter',
-      weeklyHours: draft.weeklyHours || 38,
-      locationId,
-      phone: draft.phone,
-      birthDate: draft.birthDate,
-      roleType: draft.roleType,
-      employmentType: draft.employmentType,
-      gruppe: draft.gruppe,
-      bereich: draft.bereich,
-      multiGroupCapable: draft.multiGroupCapable,
-      fixedLocations: draft.fixedLocations,
-      qualifications: draft.qualifications,
-      allowedTasks: draft.allowedTasks,
-    })
+    const employee = await fetch('/api/employees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: draft.name,
+        email: draft.email,
+        position: draft.roleType || 'Mitarbeiter',
+        weeklyHours: draft.weeklyHours || 38,
+        locationId,
+        phone: draft.phone,
+        birthDate: draft.birthDate,
+        roleType: draft.roleType,
+        employmentType: draft.employmentType,
+        gruppe: draft.gruppe,
+        bereich: draft.bereich,
+        multiGroupCapable: draft.multiGroupCapable,
+        fixedLocations: draft.fixedLocations,
+        qualifications: draft.qualifications,
+        allowedTasks: draft.allowedTasks,
+      }),
+    }).then(r => r.json()).then(d => d.employee)
+    setAllEmployees(prev => [...prev, employee])
     if ((draft.besonderheiten && draft.besonderheiten.length > 0) || draft.absprachen) {
       try {
         await fetch('/api/employee-human-context', {
@@ -143,21 +158,26 @@ export default function AdminEmployees() {
 
   const handleUpdateFromChat = async (draft: EmployeeDraft) => {
     if (!editChatEmployee) return
-    updateEmployee(editChatEmployee.id, {
-      ...(draft.name && { name: draft.name }),
-      ...(draft.email && { email: draft.email }),
-      ...(draft.phone !== undefined && { phone: draft.phone }),
-      ...(draft.birthDate !== undefined && { birthDate: draft.birthDate }),
-      ...(draft.roleType !== undefined && { roleType: draft.roleType, position: draft.roleType }),
-      ...(draft.employmentType !== undefined && { employmentType: draft.employmentType }),
-      ...(draft.weeklyHours !== undefined && { weeklyHours: draft.weeklyHours }),
-      ...(draft.gruppe !== undefined && { gruppe: draft.gruppe }),
-      ...(draft.bereich !== undefined && { bereich: draft.bereich }),
-      ...(draft.multiGroupCapable !== undefined && { multiGroupCapable: draft.multiGroupCapable }),
-      ...(draft.fixedLocations !== undefined && { fixedLocations: draft.fixedLocations }),
-      ...(draft.qualifications !== undefined && { qualifications: draft.qualifications }),
-      ...(draft.allowedTasks !== undefined && { allowedTasks: draft.allowedTasks }),
-    })
+    const updated = await fetch(`/api/employees/${editChatEmployee.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...(draft.name && { name: draft.name }),
+        ...(draft.email && { email: draft.email }),
+        ...(draft.phone !== undefined && { phone: draft.phone }),
+        ...(draft.birthDate !== undefined && { birthDate: draft.birthDate }),
+        ...(draft.roleType !== undefined && { roleType: draft.roleType, position: draft.roleType }),
+        ...(draft.employmentType !== undefined && { employmentType: draft.employmentType }),
+        ...(draft.weeklyHours !== undefined && { weeklyHours: draft.weeklyHours }),
+        ...(draft.gruppe !== undefined && { gruppe: draft.gruppe }),
+        ...(draft.bereich !== undefined && { bereich: draft.bereich }),
+        ...(draft.multiGroupCapable !== undefined && { multiGroupCapable: draft.multiGroupCapable }),
+        ...(draft.fixedLocations !== undefined && { fixedLocations: draft.fixedLocations }),
+        ...(draft.qualifications !== undefined && { qualifications: draft.qualifications }),
+        ...(draft.allowedTasks !== undefined && { allowedTasks: draft.allowedTasks }),
+      }),
+    }).then(r => r.json()).then(d => d.employee)
+    setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
     if ((draft.besonderheiten && draft.besonderheiten.length > 0) || draft.absprachen) {
       try {
         await fetch('/api/employee-human-context', {
@@ -178,7 +198,7 @@ export default function AdminEmployees() {
     setSelectedEmployee(prev => prev && prev.id === editChatEmployee.id ? { ...prev, ...draft } as Employee : prev)
   }
 
-  const employees = EMPLOYEES.filter(
+  const employees = allEmployees.filter(
     e => e.locationId === locationId && e.role === 'employee'
   ).filter(e =>
     e.name.toLowerCase().includes(search.toLowerCase()) ||

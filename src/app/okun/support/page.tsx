@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { SUPPORT_LOG, addSupportAccess, revokeSupportAccess, CUSTOMERS } from '@/lib/mock-data'
+import { SUPPORT_LOG, addSupportAccess, revokeSupportAccess } from '@/lib/mock-data'
+import { Customer } from '@/lib/types'
 import { useToast } from '@/lib/toast-context'
 import { LifeBuoy, Plus, ShieldOff } from 'lucide-react'
 
@@ -14,6 +15,11 @@ export default function OkunSupport() {
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ customerName: '', requestedBy: 'Lea Okun', reason: '' })
   const [errors, setErrors] = useState<string[]>([])
+  const [CUSTOMERS, setCUSTOMERS] = useState<Customer[]>([])
+
+  useEffect(() => {
+    fetch('/api/customers').then(r => r.json()).then(d => setCUSTOMERS(d.customers))
+  }, [])
 
   const handleGrant = () => {
     const errs: string[] = []

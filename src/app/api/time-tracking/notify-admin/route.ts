@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { notifyEmployee } from '@/lib/notify'
-import { EMPLOYEES } from '@/lib/mock-data'
+import { listEmployees } from '@/lib/entities'
 import { formatDate } from '@/lib/utils'
 
 interface NotifyAdminRequest {
@@ -25,7 +25,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'employeeName, locationId und kind sind erforderlich' }, { status: 400 })
   }
 
-  const admin = EMPLOYEES.find(e => e.locationId === locationId && e.role === 'admin')
+  const allEmployees = await listEmployees()
+  const admin = allEmployees.find(e => e.locationId === locationId && e.role === 'admin')
   if (!admin) {
     return NextResponse.json({ notified: false })
   }

@@ -7,9 +7,10 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import {
-  EMPLOYEES, LOCATIONS, SHIFTS, SCHEDULE_ENTRIES, VACATION_REQUESTS, TIME_LOGS,
+  SHIFTS, SCHEDULE_ENTRIES, VACATION_REQUESTS, TIME_LOGS,
   getTimeLogsByMonth,
 } from '@/lib/mock-data'
+import type { Employee, Location } from '@/lib/types'
 import { formatDate, formatHours } from '@/lib/utils'
 import {
   ArrowLeft, Clock, TrendingUp, Palmtree, Calendar, Baby, Download,
@@ -33,6 +34,9 @@ export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
 
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+
   const employee = EMPLOYEES.find(e => e.id === id)
   const location = LOCATIONS.find(l => l.id === employee?.locationId)
   const locationShifts = SHIFTS.filter(s => s.locationId === employee?.locationId)
@@ -42,6 +46,11 @@ export default function EmployeeDetailPage() {
   const [logYear, setLogYear] = useState(today.getFullYear())
   const [logMonth, setLogMonth] = useState(today.getMonth() + 1)
   const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+    fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+  }, [])
 
   useEffect(() => {
     if (!employee) return

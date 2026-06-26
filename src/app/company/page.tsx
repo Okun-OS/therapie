@@ -7,12 +7,13 @@ import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { EMPLOYEES, LOCATIONS, VACATION_REQUESTS, TIME_LOGS } from '@/lib/mock-data'
+import { VACATION_REQUESTS, TIME_LOGS } from '@/lib/mock-data'
 import {
   Users, Palmtree, TrendingUp, MapPin, AlertTriangle, Building2,
   ChevronRight, Clock, Search, Filter, Baby,
 } from 'lucide-react'
 import Link from 'next/link'
+import type { Employee, Location } from '@/lib/types'
 
 type Tab = 'overview' | 'employees' | 'locations'
 
@@ -21,6 +22,8 @@ export default function CompanyDashboard() {
   const [tab, setTab] = useState<Tab>('overview')
   const [search, setSearch] = useState('')
   const [locationFilter, setLocationFilter] = useState('all')
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
 
   // Beim ersten Login eines neuen Trägers ist das KI-Onboarding (Modul 02) noch
   // nicht abgeschlossen – dann startet es automatisch statt des Dashboards,
@@ -33,6 +36,11 @@ export default function CompanyDashboard() {
       })
       .catch(() => {})
   }, [router])
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+    fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+  }, [])
 
   const totalEmployees = EMPLOYEES.filter(e => e.role === 'employee').length
   const pendingVacations = VACATION_REQUESTS.filter(v => v.status === 'pending')

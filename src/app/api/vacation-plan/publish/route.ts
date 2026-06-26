@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { notifyEmployee } from '@/lib/notify'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
-import { EMPLOYEES } from '@/lib/mock-data'
+import { listEmployees } from '@/lib/entities'
 import type { VacationRequest, VacationPlanConflict } from '@/lib/types'
 
 interface PublishRequest {
@@ -39,11 +39,12 @@ export async function POST(req: NextRequest) {
   // kollidierte, erfahren nachvollziehbar, wie die KI den Konflikt aufgelöst hat –
   // statt dass die Entscheidung intransparent nur im Admin-Bereich sichtbar bleibt.
   if (Array.isArray(conflicts) && conflicts.length > 0) {
+    const allEmployees = await listEmployees()
     await Promise.all(
       conflicts.flatMap(c => {
         const reasoning = sanitizeAiText(c.reasoning)
         return c.employeeNames
-          .map(name => EMPLOYEES.find(e => e.name === name && (!locationId || e.locationId === locationId)))
+          .map(name => allEmployees.find(e => e.name === name && (!locationId || e.locationId === locationId)))
           .filter((e): e is NonNullable<typeof e> => !!e)
           .map(e =>
             notifyEmployee(e.id, {

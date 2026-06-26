@@ -6,14 +6,21 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/lib/auth-context'
-import { EMPLOYEES, VACATION_REQUESTS, SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS } from '@/lib/mock-data'
+import { VACATION_REQUESTS, SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS } from '@/lib/mock-data'
 import { Users, Clock, Palmtree, AlertTriangle, Calendar, CheckCircle, TrendingUp, ChevronRight, UserCheck } from 'lucide-react'
 import { formatDate, toDateString } from '@/lib/utils'
+import { Employee } from '@/lib/types'
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
   const locationId = user?.locationId || 'loc1'
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+  }, [])
 
   const locationEmployees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee')
   const pendingVacations = VACATION_REQUESTS.filter(v => v.locationId === locationId && v.status === 'pending')

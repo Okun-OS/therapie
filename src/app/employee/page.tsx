@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -9,16 +9,22 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/lib/auth-context'
 import {
-  EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS, VACATION_REQUESTS
+  SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS, VACATION_REQUESTS
 } from '@/lib/mock-data'
 import { Clock, Palmtree, Calendar, TrendingUp, PlayCircle, StopCircle, Sun, Moon, Briefcase, ChevronRight, AlertCircle, ListChecks } from 'lucide-react'
 import { formatDate, formatTime, toDateString, getDayName, getWeekDays } from '@/lib/utils'
 import Link from 'next/link'
+import type { Employee } from '@/lib/types'
 
 export default function EmployeeDashboard() {
   const { user } = useAuth()
   const [clockedIn, setClockedIn] = useState(false)
   const [clockInTime, setClockInTime] = useState<Date | null>(null)
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+  }, [])
 
   const employee = EMPLOYEES.find(e => e.id === user?.id)
   const today = toDateString(new Date())

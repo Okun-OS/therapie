@@ -12,12 +12,13 @@ import { SchedulePlanningChat } from '@/components/schedule/SchedulePlanningChat
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import {
-  EMPLOYEES, SCHEDULE_ENTRIES, SHIFTS, LOCATIONS, VACATION_REQUESTS, ABSENCES,
+  SCHEDULE_ENTRIES, SHIFTS, VACATION_REQUESTS, ABSENCES,
   getAllEntriesForFairness, getWishSubmissionsByLocation,
   setShiftMinStaff, saveScheduleForWeek,
 } from '@/lib/mock-data'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
+import type { Employee, Location } from '@/lib/types'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
   CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff, X, CalendarRange, MessageCircle,
@@ -71,6 +72,8 @@ type Tab = 'plan' | 'fairness' | 'wishes'
 export default function AdminSchedule() {
   const { user } = useAuth()
   const { showToast } = useToast()
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
   const locationId = user?.locationId ?? 'loc1'
   const location = LOCATIONS.find(l => l.id === locationId)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -103,6 +106,11 @@ export default function AdminSchedule() {
   const [minStaffDraft, setMinStaffDraft] = useState<Record<string, number>>({})
   const [periodMode, setPeriodMode] = useState<PeriodMode>('week')
   const [customRange, setCustomRange] = useState<{ start: string; end: string }>({ start: '', end: '' })
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+    fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+  }, [])
 
   useEffect(() => {
     const saved = localStorage.getItem('facilityDescription')

@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     getBurnoutRisks(locationId),
     getFluctuationRisks(locationId),
   ])
-  const understaffing = getUnderstaffingRisk(locationId)
+  const understaffing = await getUnderstaffingRisk(locationId)
 
   return NextResponse.json({ burnout, fluctuation, understaffing })
 }

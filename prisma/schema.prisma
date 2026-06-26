@@ -262,3 +262,66 @@ model PasswordResetToken {
   usedAt    DateTime?
   createdAt DateTime  @default(now())
 }
+
+// ─── Echte Datenpersistenz: Mitarbeiter/Kunden/Standorte ───────────────────
+// Ersetzt die bisherigen EMPLOYEES/LOCATIONS/CUSTOMERS Arrays in
+// mock-data.ts. Bewusst ohne @relation (wie der Rest des Schemas) – alle
+// Querverweise (locationId, adminId, employeeId, ...) bleiben lose Strings,
+// damit bestehende Tabellen (EmployeeProfile, User, ...) unverändert bleiben.
+model Location {
+  id            String   @id @default(cuid())
+  name          String
+  address       String
+  city          String
+  state         String
+  employeeCount Int      @default(0)
+  adminId       String
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Employee {
+  id                String   @id @default(cuid())
+  name              String
+  email             String   @unique
+  role              String
+  locationId        String?
+  weeklyHours       Float
+  position          String
+  hoursBalance      Float    @default(0)
+  vacationDaysTotal Int      @default(30)
+  vacationDaysUsed  Int      @default(0)
+  preferences       Json?
+  active            Boolean  @default(true)
+  joinedAt          String
+  hasChildren       Boolean?
+  phone             String?
+  birthDate         String?
+  roleType          String?
+  employmentType    String?
+  gruppe            String?
+  bereich           String?
+  multiGroupCapable Boolean?
+  fixedLocations    String?
+  qualifications    String[] @default([])
+  allowedTasks      String[] @default([])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  name           String
+  contactName    String
+  contactEmail   String
+  status         String
+  plan           String
+  seatsLicensed  Int
+  seatsUsed      Int      @default(0)
+  locationsCount Int      @default(0)
+  createdAt      String
+  renewalDate    String?
+  notes          String?
+  updatedAt      DateTime @updatedAt
+}

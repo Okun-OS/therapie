@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { EMPLOYEES, VACATION_REQUESTS, addVacationRequest, getLocationById, getVacationPreference, setVacationPreference } from '@/lib/mock-data'
+import { VACATION_REQUESTS, addVacationRequest, getVacationPreference, setVacationPreference } from '@/lib/mock-data'
 import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, Send, Baby } from 'lucide-react'
 import { formatDate, diffDays } from '@/lib/utils'
+import type { Employee, Location } from '@/lib/types'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 const PRIORITY_LABEL: Record<string, string> = { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' }
@@ -22,6 +23,13 @@ export default function EmployeeVacation() {
   const [form, setForm] = useState({ startDate: '', endDate: '', reason: '' })
   const [submitted, setSubmitted] = useState(false)
   const [, forceRefresh] = useState(0)
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+    fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+  }, [])
 
   const employee = EMPLOYEES.find(e => e.id === user?.id)
   const myRequests = VACATION_REQUESTS.filter(v => v.employeeId === user?.id)
@@ -91,7 +99,7 @@ export default function EmployeeVacation() {
       employeeId: employee.id,
       employeeName: employee.name,
       locationId: employee.locationId || 'loc1',
-      locationName: getLocationById(employee.locationId || 'loc1')?.name || '',
+      locationName: LOCATIONS.find(l => l.id === (employee.locationId || 'loc1'))?.name || '',
       startDate: form.startDate,
       endDate: form.endDate,
       days: requestDays,

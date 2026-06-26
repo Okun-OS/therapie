@@ -1,5 +1,6 @@
 import { prisma } from './prisma'
-import { getEmployeeById, getEmployeesByLocation, getScheduleByEmployee, getShiftById, EMPLOYEES } from './mock-data'
+import { getScheduleByEmployee, getShiftById } from './mock-data'
+import { listEmployees, getEmployeesByLocation } from './entities'
 import {
   getLevelForPoints,
   getNextLevel,
@@ -121,19 +122,23 @@ export interface LeaderboardEntry {
 async function buildLeaderboard(employeeIds: string[]): Promise<LeaderboardEntry[]> {
   if (employeeIds.length === 0) return []
 
-  const grouped = await prisma.scoreEvent.groupBy({
-    by: ['employeeId'],
-    where: { employeeId: { in: employeeIds } },
-    _sum: { points: true },
-  })
+  const [grouped, allEmployees] = await Promise.all([
+    prisma.scoreEvent.groupBy({
+      by: ['employeeId'],
+      where: { employeeId: { in: employeeIds } },
+      _sum: { points: true },
+    }),
+    listEmployees(),
+  ])
   const pointsByEmployee = new Map(grouped.map(g => [g.employeeId, g._sum.points ?? 0]))
+  const nameByEmployee = new Map(allEmployees.map(e => [e.id, e.name]))
 
   return employeeIds
     .map(id => {
       const points = pointsByEmployee.get(id) ?? 0
       return {
         employeeId: id,
-        employeeName: getEmployeeById(id)?.name ?? id,
+        employeeName: nameByEmployee.get(id) ?? id,
         points,
         level: getLevelForPoints(points),
       }
@@ -142,11 +147,13 @@ async function buildLeaderboard(employeeIds: string[]): Promise<LeaderboardEntry
 }
 
 export async function getLeaderboardByLocation(locationId: string): Promise<LeaderboardEntry[]> {
-  return buildLeaderboard(getEmployeesByLocation(locationId).map(e => e.id))
+  const employees = await getEmployeesByLocation(locationId)
+  return buildLeaderboard(employees.map(e => e.id))
 }
 
 export async function getOrganizationLeaderboard(): Promise<LeaderboardEntry[]> {
-  return buildLeaderboard(EMPLOYEES.filter(e => e.active).map(e => e.id))
+  const allEmployees = await listEmployees()
+  return buildLeaderboard(allEmployees.filter(e => e.active).map(e => e.id))
 }
 
 export async function getAllLevelBonusConfigs() {

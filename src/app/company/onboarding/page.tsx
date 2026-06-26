@@ -6,8 +6,8 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { OnboardingChat } from '@/components/onboarding/OnboardingChat'
-import { LOCATIONS } from '@/lib/mock-data'
 import { ONBOARDING_PHASES } from '@/lib/onboarding-service'
+import type { Location } from '@/lib/types'
 import { Building2, MapPin, MessageCircle, CheckCircle2, Sparkles } from 'lucide-react'
 
 interface OrgState {
@@ -40,6 +40,11 @@ export default function CompanyOnboarding() {
   const [locs, setLocs] = useState<Record<string, LocState>>({})
   const [loading, setLoading] = useState(true)
   const [chatScope, setChatScope] = useState<string | null>(null)
+  const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+
+  useEffect(() => {
+    fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+  }, [])
 
   useEffect(() => {
     fetch('/api/onboarding')

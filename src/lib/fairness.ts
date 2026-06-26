@@ -1,5 +1,6 @@
 import type { Employee, ScheduleEntry, Shift, ShiftFairnessData, WishSubmission } from './types'
-import { EMPLOYEES, SHIFTS, LOCATIONS, getAllEntriesForFairness } from './mock-data'
+import { SHIFTS, getAllEntriesForFairness } from './mock-data'
+import { listEmployees, listLocations } from './entities'
 import { prisma } from './prisma'
 
 // ─── Core Fairness Calculation ───────────────────────────────────────────────
@@ -140,8 +141,9 @@ export function calculateFairnessData(
 // ─── Scoped fairness lookup for the transparency dashboard ──────────────────
 
 export async function getFairnessInsights(locationId?: string, ruleLimits?: PlanningRuleLimits): Promise<ShiftFairnessData[]> {
-  const locationIds = locationId ? [locationId] : LOCATIONS.map(l => l.id)
-  const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
+  const locationIds = locationId ? [locationId] : (await listLocations()).map(l => l.id)
+  const allEmployees = await listEmployees()
+  const employees = allEmployees.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
   const shifts = SHIFTS.filter(s => locationIds.includes(s.locationId))
   const entries = locationIds.flatMap(id => getAllEntriesForFairness(id))
   const fairnessData = calculateFairnessData(employees, entries, shifts, ruleLimits)

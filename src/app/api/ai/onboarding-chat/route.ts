@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { upsertOrganizationOnboarding, upsertLocationOnboarding, ONBOARDING_PHASES } from '@/lib/onboarding-service'
-import { LOCATIONS } from '@/lib/mock-data'
+import { listLocations } from '@/lib/entities'
 
 const client = new Anthropic()
 
@@ -135,7 +135,8 @@ export async function POST(req: NextRequest) {
       systemPrompt = ORGANIZATION_SYSTEM_PROMPT
       tool = ORG_TOOL
     } else {
-      const location = LOCATIONS.find(l => l.id === scope)
+      const allLocations = await listLocations()
+      const location = allLocations.find(l => l.id === scope)
       if (!location) {
         return NextResponse.json({ error: 'Unbekannte Einrichtung' }, { status: 404 })
       }

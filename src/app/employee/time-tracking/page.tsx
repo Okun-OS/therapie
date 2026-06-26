@@ -13,7 +13,7 @@ import {
   startBreak, endBreak, addOvertimeRequest, getOvertimeRequestsByEmployee, getHoursAccountSummary,
   getMonthlyClosingsByEmployee, getOrCreateMonthlyClosing, addAbsence,
 } from '@/lib/mock-data'
-import { OVERTIME_REASONS, type AbsenceType } from '@/lib/types'
+import { OVERTIME_REASONS, type AbsenceType, type Employee } from '@/lib/types'
 import { OVERTIME_MIN_MINUTES } from '@/lib/workforce-score-constants'
 import { PlayCircle, StopCircle, Clock, Timer, TrendingUp, Calendar, Coffee, AlertCircle, FileText, ChevronDown, ChevronUp, Stethoscope } from 'lucide-react'
 import { formatDate, formatTime, getWeekDays, toDateString } from '@/lib/utils'
@@ -67,6 +67,12 @@ export default function TimeTracking() {
   const [absenceProof, setAbsenceProof] = useState(false)
 
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null)
+  const [myEmployee, setMyEmployee] = useState<Employee | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    fetch(`/api/employees/${user.id}`).then(r => r.json()).then(d => setMyEmployee(d.employee ?? null))
+  }, [user?.id])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -108,19 +114,19 @@ export default function TimeTracking() {
   const activeLog = user ? getActiveTimeLog(user.id) : undefined
   const onBreak = !!activeLog?.breakStart
 
-  const account = user ? getHoursAccountSummary(user.id, currentYear, currentMonth) : null
+  const account = user ? getHoursAccountSummary(user.id, currentYear, currentMonth, myEmployee?.weeklyHours) : null
   const myOvertimeRequests = user ? getOvertimeRequestsByEmployee(user.id) : []
 
   // Ensure the current and previous two months have a (lazily generated) Monatsübersicht to view
   useEffect(() => {
-    if (!user) return
+    if (!user || !myEmployee) return
     for (let i = 0; i < 3; i++) {
       const d = new Date(currentYear, currentMonth - 1 - i, 1)
-      getOrCreateMonthlyClosing(user.id, d.getFullYear(), d.getMonth() + 1)
+      getOrCreateMonthlyClosing(user.id, d.getFullYear(), d.getMonth() + 1, myEmployee)
     }
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id])
+  }, [user?.id, myEmployee?.id])
   const visibleClosings = user ? getMonthlyClosingsByEmployee(user.id) : []
 
   const formatElapsed = (seconds: number) => {

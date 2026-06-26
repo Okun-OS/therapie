@@ -1,16 +1,23 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
-import { EMPLOYEES, TIME_LOGS, getAbsencesByEmployee, getOvertimeRequestsByEmployee } from '@/lib/mock-data'
+import { TIME_LOGS, getAbsencesByEmployee, getOvertimeRequestsByEmployee } from '@/lib/mock-data'
+import { Employee } from '@/lib/types'
 import { Download, BarChart3, TrendingUp, Clock, Users, Calendar, Stethoscope } from 'lucide-react'
 
 export default function AdminReports() {
   const { user } = useAuth()
   const locationId = user?.locationId || 'loc1'
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+  }, [])
 
   const employees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee')
   const logs = TIME_LOGS.filter(t => t.locationId === locationId)

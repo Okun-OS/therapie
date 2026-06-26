@@ -1,20 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { EMPLOYEES, TASK_CATALOG, addTaskType, removeTaskType, updateEmployee } from '@/lib/mock-data'
+import { TASK_CATALOG, addTaskType } from '@/lib/mock-data'
+import type { Employee } from '@/lib/types'
 import { ListChecks, Plus, Trash2, ChevronDown, ChevronUp, Check } from 'lucide-react'
 
 export default function AdminTasks() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const locationId = user?.locationId || 'loc1'
-  const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.locationId === locationId)
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([])
+  const employees = allEmployees.filter(e => e.role === 'employee' && e.locationId === locationId)
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
+  }, [])
 
   const [, forceRender] = useState(0)
   const refresh = () => forceRender(n => n + 1)
@@ -23,13 +29,17 @@ export default function AdminTasks() {
   const [addOpen, setAddOpen] = useState(false)
   const [newTask, setNewTask] = useState('')
 
-  const toggleAssignment = (employeeId: string, taskName: string) => {
+  const toggleAssignment = async (employeeId: string, taskName: string) => {
     const emp = employees.find(e => e.id === employeeId)
     if (!emp) return
     const current = emp.allowedTasks ?? []
     const next = current.includes(taskName) ? current.filter(t => t !== taskName) : [...current, taskName]
-    updateEmployee(employeeId, { allowedTasks: next })
-    refresh()
+    const updated = await fetch(`/api/employees/${employeeId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ allowedTasks: next }),
+    }).then(r => r.json()).then(d => d.employee)
+    setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
   }
 
   const handleAddTask = () => {
@@ -43,8 +53,9 @@ export default function AdminTasks() {
     refresh()
   }
 
-  const handleRemoveTask = (name: string) => {
-    removeTaskType(name)
+  const handleRemoveTask = async (name: string) => {
+    await fetch(`/api/tasks/${encodeURIComponent(name)}`, { method: 'DELETE' })
+    setAllEmployees(prev => prev.map(e => ({ ...e, allowedTasks: e.allowedTasks?.filter(t => t !== name) })))
     if (expanded === name) setExpanded(null)
     showToast('Aufgabe entfernt', 'success')
     refresh()

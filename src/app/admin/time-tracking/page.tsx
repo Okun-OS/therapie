@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -9,12 +9,12 @@ import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import {
-  EMPLOYEES, getOvertimeRequestsByLocation, respondToOvertimeRequest,
+  getOvertimeRequestsByLocation, respondToOvertimeRequest,
   getAbsencesByLocation, updateAbsence, getMonthlyClosingsByLocation,
-  getOrCreateMonthlyClosing, addMonthlyClosingComment, releaseMonthlyClosing,
+  getOrCreateMonthlyClosing, addMonthlyClosingComment,
   getTimeLogsByMonth, correctMonthlyClosingTimeLog,
 } from '@/lib/mock-data'
-import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing, TimeLog } from '@/lib/types'
+import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing, TimeLog, Employee } from '@/lib/types'
 import {
   AlertCircle, CheckCircle, XCircle, Clock, Stethoscope, FileText, ChevronDown, ChevronUp,
   MessageSquare, ShieldCheck, ShieldX, Pencil,
@@ -55,12 +55,16 @@ export default function AdminTimeTracking() {
   const absences = getAbsencesByLocation(locationId)
   const openAbsenceCount = absences.filter(a => a.verificationStatus === 'offen').length
 
-  const employees = EMPLOYEES.filter(e => e.locationId === locationId && (e.role === 'employee' || e.role === 'admin'))
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([])
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
+  }, [])
+  const employees = allEmployees.filter(e => e.locationId === locationId && (e.role === 'employee' || e.role === 'admin'))
   const now = new Date()
   for (const emp of employees) {
     for (let i = 0; i < 3; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      getOrCreateMonthlyClosing(emp.id, d.getFullYear(), d.getMonth() + 1)
+      getOrCreateMonthlyClosing(emp.id, d.getFullYear(), d.getMonth() + 1, emp)
     }
   }
   const closings = getMonthlyClosingsByLocation(locationId)
@@ -123,9 +127,13 @@ export default function AdminTimeTracking() {
     refresh()
   }
 
-  const handleReleaseClosing = (closing: MonthlyClosing) => {
+  const handleReleaseClosing = async (closing: MonthlyClosing) => {
     if (!user) return
-    releaseMonthlyClosing(closing.id, user.name)
+    await fetch('/api/time-tracking/release-closing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ closingId: closing.id, releasedBy: user.name }),
+    })
     showToast('Monatsabschluss freigegeben – Stundenkonto wurde aktualisiert', 'success')
     refresh()
   }

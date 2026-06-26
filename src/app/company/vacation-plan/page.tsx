@@ -1,14 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { LOCATIONS, EMPLOYEES, VACATION_REQUESTS, VACATION_PREFERENCES, SCHOOL_HOLIDAYS_2026 } from '@/lib/mock-data'
+import { VACATION_REQUESTS, VACATION_PREFERENCES, SCHOOL_HOLIDAYS_2026 } from '@/lib/mock-data'
+import { Employee, Location } from '@/lib/types'
 import { Palmtree, Building2, Filter, CalendarDays } from 'lucide-react'
 
 export default function CompanyVacationPlan() {
   const [locationFilter, setLocationFilter] = useState('all')
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+    fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+  }, [])
 
   const employees = EMPLOYEES.filter(e => e.role === 'employee' && (locationFilter === 'all' || e.locationId === locationFilter))
   const requests = VACATION_REQUESTS.filter(v => locationFilter === 'all' || v.locationId === locationFilter)

@@ -2,7 +2,7 @@ import { prisma } from './prisma'
 import { findCandidates, type MatchCandidate } from './substitution-matching'
 import { ESCALATION_ORDER, type EscalationStage } from './substitution-constants'
 import { notifyEmployee } from './notify'
-import { LOCATIONS } from './mock-data'
+import { getLocationById } from './entities'
 import { awardSubstitutionAcceptance } from './workforce-score-service'
 import type { SubstitutionRequest } from '@prisma/client'
 
@@ -12,7 +12,7 @@ function nextStage(stage: EscalationStage): EscalationStage | null {
 }
 
 async function notifyCandidates(request: SubstitutionRequest, candidates: MatchCandidate[]): Promise<void> {
-  const location = LOCATIONS.find(l => l.id === request.locationId)
+  const location = await getLocationById(request.locationId)
   const title = 'Vertretung gesucht'
   const body = `${location?.name ?? 'Eine Einrichtung'} benötigt am ${request.date} von ${request.startTime} bis ${request.endTime} Uhr Vertretung.`
 

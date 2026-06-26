@@ -1,4 +1,5 @@
-import { EMPLOYEES, LOCATIONS, OVERTIME_REQUESTS, SCHEDULE_ENTRIES, VACATION_REQUESTS, getHoursAccountSummary } from './mock-data'
+import { OVERTIME_REQUESTS, SCHEDULE_ENTRIES, VACATION_REQUESTS, getHoursAccountSummary } from './mock-data'
+import { listEmployees, listLocations } from './entities'
 import {
   getAbsenceInsights, getSubstitutionInsights, getPunctualityInsights, getWorkloadInsights,
   getSicknessInsights, getPersonnelOverview, getWishFulfillmentInsights,
@@ -8,8 +9,8 @@ import { getBurnoutRisks, getFluctuationRisks, getUnderstaffingRisk, type Employ
 import { getFairnessInsights } from './fairness'
 import { toDateString, addDays, formatDate } from './utils'
 
-function scopeLocationIds(locationId?: string): string[] {
-  return locationId ? [locationId] : LOCATIONS.map(l => l.id)
+async function scopeLocationIds(locationId?: string): Promise<string[]> {
+  return locationId ? [locationId] : (await listLocations()).map(l => l.id)
 }
 
 export type StatusLevel = 'green' | 'yellow' | 'red'
@@ -61,19 +62,20 @@ export interface ControllingSnapshot {
   tasks: string[]
 }
 
-function getCurrentUndertimeHours(employeeIds: string[]): number {
-  if (employeeIds.length === 0) return 0
+function getCurrentUndertimeHours(employees: { id: string; weeklyHours: number }[]): number {
+  if (employees.length === 0) return 0
   const now = new Date()
-  const totalMinutes = employeeIds.reduce(
-    (s, id) => s + getHoursAccountSummary(id, now.getFullYear(), now.getMonth() + 1).undertimeMinutes,
+  const totalMinutes = employees.reduce(
+    (s, e) => s + getHoursAccountSummary(e.id, now.getFullYear(), now.getMonth() + 1, e.weeklyHours).undertimeMinutes,
     0
   )
   return Math.round((totalMinutes / 60) * 10) / 10
 }
 
 export async function getControllingSnapshot(locationId?: string): Promise<ControllingSnapshot> {
-  const locationIds = scopeLocationIds(locationId)
-  const employees = EMPLOYEES.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
+  const locationIds = await scopeLocationIds(locationId)
+  const allEmployees = await listEmployees()
+  const employees = allEmployees.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
   const employeeCount = employees.length
 
   const [absence, substitution, punctuality, workload, burnout, fluctuation, fairness, sickness, personnelOverview, wishFulfillment] = await Promise.all([
@@ -88,7 +90,7 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
     Promise.resolve(getPersonnelOverview(locationId)),
     Promise.resolve(getWishFulfillmentInsights(locationId)),
   ])
-  const understaffing = getUnderstaffingRisk(locationId, 7)
+  const understaffing = await getUnderstaffingRisk(locationId, 7)
 
   const highBurnoutRisks = burnout.filter(r => r.level === 'hoch')
   const highFluctuationRisks = fluctuation.filter(r => r.level === 'hoch')
@@ -100,7 +102,7 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
     hours: Math.round((h.overtimeMinutes / 60) * 10) / 10,
   }))
 
-  const undertimeHours = getCurrentUndertimeHours(employees.map(e => e.id))
+  const undertimeHours = getCurrentUndertimeHours(employees)
   const avgUtilizationRate = workload.avgWeeklyHoursTarget > 0
     ? Math.round((workload.avgLoggedHoursTotal / workload.avgWeeklyHoursTarget) * 100)
     : 0
@@ -245,7 +247,7 @@ function hasDateOverlap(aStart: string, aEnd: string, bStart: string, bEnd: stri
 }
 
 export async function getEarlyWarnings(locationId?: string): Promise<EarlyWarning[]> {
-  const locationIds = scopeLocationIds(locationId)
+  const locationIds = await scopeLocationIds(locationId)
   const snapshot = await getControllingSnapshot(locationId)
   const warnings: EarlyWarning[] = []
 
@@ -294,8 +296,9 @@ export async function getEarlyWarnings(locationId?: string): Promise<EarlyWarnin
 
   const today = toDateString(new Date())
   const in7Days = addDays(today, 7)
-  const locationsWithoutScheduling = LOCATIONS.filter(l => locationIds.includes(l.id)).filter(l => {
-    const hasActiveEmployees = EMPLOYEES.some(e => e.role === 'employee' && e.active && e.locationId === l.id)
+  const [allLocations, allEmployeesForWarnings] = await Promise.all([listLocations(), listEmployees()])
+  const locationsWithoutScheduling = allLocations.filter(l => locationIds.includes(l.id)).filter(l => {
+    const hasActiveEmployees = allEmployeesForWarnings.some(e => e.role === 'employee' && e.active && e.locationId === l.id)
     if (!hasActiveEmployees) return false
     return !SCHEDULE_ENTRIES.some(s => s.locationId === l.id && s.date >= today && s.date <= in7Days)
   })

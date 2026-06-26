@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { CUSTOMERS, updateCustomer, addCustomer } from '@/lib/mock-data'
 import { useToast } from '@/lib/toast-context'
 import { Building2, Plus, Mail, ChevronRight, Edit, Users, KeyRound } from 'lucide-react'
 import type { Customer, CustomerStatus, LicensePlan } from '@/lib/types'
@@ -25,6 +24,12 @@ const PLAN_LABEL: Record<LicensePlan, string> = {
 
 export default function OkunCustomers() {
   const { showToast } = useToast()
+  const [CUSTOMERS, setCUSTOMERS] = useState<Customer[]>([])
+
+  useEffect(() => {
+    fetch('/api/customers').then(r => r.json()).then(d => setCUSTOMERS(d.customers))
+  }, [])
+
   const [selected, setSelected] = useState<Customer | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', contactName: '', contactEmail: '', status: 'trial' as CustomerStatus, plan: 'starter' as LicensePlan, seatsLicensed: 0 })
@@ -37,14 +42,19 @@ export default function OkunCustomers() {
     setIsEditing(true)
   }
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!selected) return
     if (!editForm.name.trim() || !editForm.contactEmail.trim()) {
       showToast('Bitte alle Pflichtfelder ausfüllen', 'error')
       return
     }
-    updateCustomer(selected.id, editForm)
-    setSelected({ ...selected, ...editForm })
+    const updated = await fetch(`/api/customers/${selected.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    }).then(r => r.json()).then(d => d.customer)
+    setCUSTOMERS(prev => prev.map(c => c.id === updated.id ? updated : c))
+    setSelected(updated)
     showToast('Kunde aktualisiert', 'success')
     setIsEditing(false)
   }
@@ -61,7 +71,12 @@ export default function OkunCustomers() {
       return
     }
 
-    addCustomer(newCust)
+    const customer = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCust),
+    }).then(r => r.json()).then(d => d.customer)
+    setCUSTOMERS(prev => [...prev, customer])
     try {
       await fetch('/api/invitations', {
         method: 'POST',

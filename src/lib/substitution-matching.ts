@@ -1,6 +1,7 @@
-import { EMPLOYEES, SCHEDULE_ENTRIES, VACATION_REQUESTS } from './mock-data'
+import { SCHEDULE_ENTRIES, VACATION_REQUESTS } from './mock-data'
 import { calculateFairnessData } from './fairness'
 import { SHIFTS } from './mock-data'
+import { listEmployees } from './entities'
 import { prisma } from './prisma'
 import type { Employee } from './types'
 import type { EscalationStage } from './substitution-constants'
@@ -33,7 +34,8 @@ function isAvailable(employeeId: string, date: string): boolean {
 }
 
 async function candidatePool(stage: EscalationStage, ctx: RequestContext): Promise<Employee[]> {
-  const active = EMPLOYEES.filter(e => e.role === 'employee' && e.active)
+  const allEmployees = await listEmployees()
+  const active = allEmployees.filter(e => e.role === 'employee' && e.active)
   const profiles = await prisma.employeeProfile.findMany()
   const profileMap = new Map(profiles.map(p => [p.employeeId, p]))
 

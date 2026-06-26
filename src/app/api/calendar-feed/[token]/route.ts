@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { SCHEDULE_ENTRIES, SHIFTS, getEmployeeById, getLocationById } from '@/lib/mock-data'
+import { SCHEDULE_ENTRIES, SHIFTS } from '@/lib/mock-data'
+import { getEmployeeById, getLocationById } from '@/lib/entities'
 import { generateICSContent } from '@/lib/calendar-export'
 
 // Öffentlicher, token-basierter ICS-Feed: der Mitarbeiter abonniert diese URL
@@ -13,8 +14,8 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: 'Feed nicht gefunden oder deaktiviert' }, { status: 404 })
   }
 
-  const employee = getEmployeeById(sync.employeeId)
-  const location = employee?.locationId ? getLocationById(employee.locationId) : undefined
+  const employee = await getEmployeeById(sync.employeeId)
+  const location = employee?.locationId ? await getLocationById(employee.locationId) : undefined
   if (!employee || !location) {
     return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
   }

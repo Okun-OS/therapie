@@ -1,10 +1,8 @@
-import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday, ShiftType, WishImportance, VacationRules, VacationPlanEntry, Customer, LicensePlan, TestAccount, Invitation, SupportAccessLogEntry, Role, OrgSettings, OvertimeRequest, Absence, HoursAccountSummary, MonthlyClosing } from './types'
+import type { Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday, ShiftType, WishImportance, VacationRules, VacationPlanEntry, TestAccount, Invitation, SupportAccessLogEntry, Role, OrgSettings, OvertimeRequest, Absence, HoursAccountSummary, MonthlyClosing } from './types'
 
-export const LOCATIONS: Location[] = [
-  { id: 'loc1', name: 'Kita Sonnenschein', address: 'Berliner Str. 12', city: 'Berlin', state: 'Berlin', employeeCount: 8, adminId: 'adm1', active: true },
-  { id: 'loc2', name: 'Kita Regenbogen', address: 'Münchener Str. 45', city: 'München', state: 'Bayern', employeeCount: 7, adminId: 'adm2', active: true },
-  { id: 'loc3', name: 'Kita Sternchen', address: 'Hamburger Allee 8', city: 'Hamburg', state: 'Hamburg', employeeCount: 6, adminId: 'adm3', active: true },
-]
+// Employee/Location/Customer leben jetzt als echte Postgres-Tabellen in
+// src/lib/entities.ts (server-only). Diese Datei bleibt für die übrigen,
+// weiterhin simulierten Entitäten (Dienstpläne, Zeiterfassung, Urlaub, ...).
 
 export const SHIFTS: Shift[] = [
   { id: 's1', name: 'Frühdienst', type: 'early', startTime: '06:00', endTime: '14:00', color: '#1D4ED8', bgColor: '#DBEAFE', minStaff: 2, locationId: 'loc1' },
@@ -15,28 +13,6 @@ export const SHIFTS: Shift[] = [
   { id: 's6', name: 'Mitteldienst', type: 'mid', startTime: '09:00', endTime: '17:00', color: '#15803D', bgColor: '#DCFCE7', minStaff: 1, locationId: 'loc2' },
   { id: 's7', name: 'Frühdienst', type: 'early', startTime: '06:00', endTime: '14:00', color: '#1D4ED8', bgColor: '#DBEAFE', minStaff: 2, locationId: 'loc3' },
   { id: 's8', name: 'Spätdienst', type: 'late', startTime: '14:00', endTime: '22:00', color: '#C2410C', bgColor: '#FFEDD5', minStaff: 2, locationId: 'loc3' },
-]
-
-export const EMPLOYEES: Employee[] = [
-  // Kita Sonnenschein (loc1)
-  { id: 'emp1', name: 'Maria Schmidt', email: 'employee@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 38, position: 'Erzieherin', hoursBalance: 4.5, vacationDaysTotal: 30, vacationDaysUsed: 8, active: true, joinedAt: '2021-03-01', hasChildren: true, preferences: { preferredShifts: ['early', 'mid'], unavailableDays: [0, 6], noEarlyAfterLate: true, notes: 'Bevorzugt Frühschichten' } },
-  { id: 'emp2', name: 'Klaus Becker', email: 'k.becker@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 32, position: 'Erzieher', hoursBalance: -2.0, vacationDaysTotal: 30, vacationDaysUsed: 12, active: true, joinedAt: '2019-09-15', hasChildren: false, preferences: { preferredShifts: ['late'], unavailableDays: [1], noEarlyAfterLate: true } },
-  { id: 'emp3', name: 'Sarah Hofmann', email: 's.hofmann@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 20, position: 'Kinderpflegerin', hoursBalance: 1.0, vacationDaysTotal: 24, vacationDaysUsed: 5, active: true, joinedAt: '2022-01-10', hasChildren: false },
-  { id: 'emp4', name: 'Jan Peters', email: 'j.peters@demo.de', role: 'employee', locationId: 'loc1', weeklyHours: 38, position: 'Erzieher', hoursBalance: 0.0, vacationDaysTotal: 30, vacationDaysUsed: 15, active: true, joinedAt: '2018-06-20', hasChildren: true },
-  // Admin of loc1
-  { id: 'adm1', name: 'Thomas Müller', email: 'admin@demo.de', role: 'admin', locationId: 'loc1', weeklyHours: 40, position: 'Teamleitung', hoursBalance: 2.0, vacationDaysTotal: 30, vacationDaysUsed: 10, active: true, joinedAt: '2017-01-01', hasChildren: false },
-  // Kita Regenbogen (loc2)
-  { id: 'emp5', name: 'Anna Weber', email: 'a.weber@demo.de', role: 'employee', locationId: 'loc2', weeklyHours: 38, position: 'Erzieherin', hoursBalance: 3.0, vacationDaysTotal: 30, vacationDaysUsed: 7, active: true, joinedAt: '2020-08-01', hasChildren: true },
-  { id: 'emp6', name: 'Peter Wagner', email: 'p.wagner@demo.de', role: 'employee', locationId: 'loc2', weeklyHours: 32, position: 'Erzieher', hoursBalance: -1.5, vacationDaysTotal: 30, vacationDaysUsed: 20, active: true, joinedAt: '2016-04-01', hasChildren: false },
-  { id: 'emp7', name: 'Lisa Fischer', email: 'l.fischer@demo.de', role: 'employee', locationId: 'loc2', weeklyHours: 25, position: 'Kinderpflegerin', hoursBalance: 0.5, vacationDaysTotal: 24, vacationDaysUsed: 3, active: true, joinedAt: '2023-02-15', hasChildren: false },
-  { id: 'adm2', name: 'Sandra Wolf', email: 's.wolf@demo.de', role: 'admin', locationId: 'loc2', weeklyHours: 40, position: 'Teamleitung', hoursBalance: 1.0, vacationDaysTotal: 30, vacationDaysUsed: 9, active: true, joinedAt: '2018-03-01', hasChildren: false },
-  // Kita Sternchen (loc3)
-  { id: 'emp8', name: 'Michael Bauer', email: 'm.bauer@demo.de', role: 'employee', locationId: 'loc3', weeklyHours: 38, position: 'Erzieher', hoursBalance: 2.5, vacationDaysTotal: 30, vacationDaysUsed: 11, active: true, joinedAt: '2019-11-01', hasChildren: true },
-  { id: 'emp9', name: 'Julia Koch', email: 'j.koch@demo.de', role: 'employee', locationId: 'loc3', weeklyHours: 38, position: 'Erzieherin', hoursBalance: -0.5, vacationDaysTotal: 30, vacationDaysUsed: 14, active: true, joinedAt: '2020-02-01', hasChildren: false },
-  { id: 'emp10', name: 'Stefan Schäfer', email: 's.schaefer@demo.de', role: 'employee', locationId: 'loc3', weeklyHours: 20, position: 'Kinderpfleger', hoursBalance: 0.0, vacationDaysTotal: 24, vacationDaysUsed: 2, active: true, joinedAt: '2023-09-01', hasChildren: false },
-  { id: 'adm3', name: 'Nina Braun', email: 'n.braun@demo.de', role: 'admin', locationId: 'loc3', weeklyHours: 40, position: 'Teamleitung', hoursBalance: 0.5, vacationDaysTotal: 30, vacationDaysUsed: 6, active: true, joinedAt: '2019-06-01', hasChildren: false },
-  // Company user
-  { id: 'cmp1', name: 'BrightCare GmbH', email: 'company@demo.de', role: 'company', locationId: undefined, weeklyHours: 40, position: 'Geschäftsführung', hoursBalance: 0, vacationDaysTotal: 30, vacationDaysUsed: 0, active: true, joinedAt: '2015-01-01' },
 ]
 
 // Current week: Apr 28 - May 4, 2026 (Mon-Sun)
@@ -262,35 +238,6 @@ export function setShiftMinStaff(shiftId: string, minStaff: number) {
   if (shift) shift.minStaff = minStaff
 }
 
-export function updateLocation(id: string, updates: Partial<Location>) {
-  const idx = LOCATIONS.findIndex(l => l.id === id)
-  if (idx === -1) return
-  LOCATIONS[idx] = { ...LOCATIONS[idx], ...updates }
-}
-
-let locationSeq = 1000
-
-export function addLocation(input: { name: string; address: string; city: string; state?: string }): Location {
-  const location: Location = {
-    id: `loc-new-${locationSeq++}`,
-    name: input.name,
-    address: input.address,
-    city: input.city,
-    state: input.state || 'Berlin',
-    employeeCount: 0,
-    adminId: '',
-    active: true,
-  }
-  LOCATIONS.push(location)
-  return location
-}
-
-export function updateEmployee(id: string, updates: Partial<Employee>) {
-  const idx = EMPLOYEES.findIndex(e => e.id === id)
-  if (idx === -1) return
-  EMPLOYEES[idx] = { ...EMPLOYEES[idx], ...updates }
-}
-
 // ─── Aufgabenverwaltung (Einrichtungsleitung) ───────────────────────────────
 
 export const TASK_CATALOG: string[] = ['Medikamentenausgabe', 'Dokumentation', 'Elternkommunikation', 'Schlüsseldienst', 'Reinigungsdienst']
@@ -299,70 +246,12 @@ export function addTaskType(name: string) {
   if (!TASK_CATALOG.includes(name)) TASK_CATALOG.push(name)
 }
 
+/** Entfernt den Aufgabentyp nur aus dem Katalog. Der Aufruf, ihn auch aus
+ * allowedTasks bestehender Mitarbeiter zu entfernen (jetzt in Postgres), ist
+ * Sache des Callers – siehe entities.ts: removeAllowedTaskFromEmployees(). */
 export function removeTaskType(name: string) {
   const idx = TASK_CATALOG.indexOf(name)
   if (idx !== -1) TASK_CATALOG.splice(idx, 1)
-  EMPLOYEES.forEach(e => {
-    if (e.allowedTasks?.includes(name)) updateEmployee(e.id, { allowedTasks: e.allowedTasks.filter(t => t !== name) })
-  })
-}
-
-/** Geschäftsführung: Einrichtungsleitung wechseln – die bisherige Leitung wird
- * wieder Mitarbeiter, die neu ernannte Person wird Einrichtungsleitung. */
-export function reassignLocationAdmin(locationId: string, newAdminEmployeeId: string) {
-  const location = LOCATIONS.find(l => l.id === locationId)
-  if (!location) return
-  const previousAdmin = EMPLOYEES.find(e => e.id === location.adminId)
-  if (previousAdmin) updateEmployee(previousAdmin.id, { role: 'employee' })
-  updateEmployee(newAdminEmployeeId, { role: 'admin' })
-  updateLocation(locationId, { adminId: newAdminEmployeeId })
-}
-
-let employeeSeq = 1000
-
-export function addEmployee(input: {
-  name: string
-  email: string
-  position: string
-  weeklyHours: number
-  locationId: string
-  phone?: string
-  birthDate?: string
-  roleType?: string
-  employmentType?: string
-  gruppe?: string
-  bereich?: string
-  multiGroupCapable?: boolean
-  fixedLocations?: string
-  qualifications?: string[]
-  allowedTasks?: string[]
-}): Employee {
-  const employee: Employee = {
-    id: `emp-new-${employeeSeq++}`,
-    name: input.name,
-    email: input.email,
-    role: 'employee',
-    locationId: input.locationId,
-    weeklyHours: input.weeklyHours,
-    position: input.position,
-    hoursBalance: 0,
-    vacationDaysTotal: 30,
-    vacationDaysUsed: 0,
-    active: true,
-    joinedAt: new Date().toISOString().split('T')[0],
-    phone: input.phone,
-    birthDate: input.birthDate,
-    roleType: input.roleType,
-    employmentType: input.employmentType,
-    gruppe: input.gruppe,
-    bereich: input.bereich,
-    multiGroupCapable: input.multiGroupCapable,
-    fixedLocations: input.fixedLocations,
-    qualifications: input.qualifications,
-    allowedTasks: input.allowedTasks,
-  }
-  EMPLOYEES.push(employee)
-  return employee
 }
 
 let scheduleEntrySeq = 1000
@@ -396,20 +285,8 @@ export function saveScheduleForWeek(
   }
 }
 
-export function getEmployeeById(id: string): Employee | undefined {
-  return EMPLOYEES.find(e => e.id === id)
-}
-
-export function getLocationById(id: string): Location | undefined {
-  return LOCATIONS.find(l => l.id === id)
-}
-
 export function getShiftById(id: string): Shift | undefined {
   return SHIFTS.find(s => s.id === id)
-}
-
-export function getEmployeesByLocation(locationId: string): Employee[] {
-  return EMPLOYEES.filter(e => e.locationId === locationId && e.active)
 }
 
 export function getScheduleByEmployee(employeeId: string): ScheduleEntry[] {
@@ -738,38 +615,6 @@ export function publishVacationPlan(locationId: string, locationName: string, en
 
 // ─── OKUN Plattformverwaltung ─────────────────────────────────────────────────
 
-export const CUSTOMERS: Customer[] = [
-  { id: 'cust1', name: 'BrightCare GmbH', contactName: 'BrightCare GmbH', contactEmail: 'company@demo.de', status: 'active', plan: 'professional', seatsLicensed: 20, seatsUsed: 14, locationsCount: 3, createdAt: '2015-01-01', renewalDate: '2027-01-01' },
-  { id: 'cust2', name: 'Pflegeverbund Nord eG', contactName: 'Henrike Voss', contactEmail: 'h.voss@pflegeverbund-nord.de', status: 'trial', plan: 'starter', seatsLicensed: 10, seatsUsed: 6, locationsCount: 1, createdAt: '2026-05-30', renewalDate: '2026-06-30', notes: 'Testphase – Entscheidung erwartet bis Ende Juni' },
-  { id: 'cust3', name: 'Lebenshilfe Rheinland', contactName: 'Markus Engel', contactEmail: 'm.engel@lebenshilfe-rheinland.de', status: 'active', plan: 'enterprise', seatsLicensed: 80, seatsUsed: 62, locationsCount: 9, createdAt: '2023-09-12', renewalDate: '2026-09-12' },
-  { id: 'cust4', name: 'Kinderhaus Wolke 7', contactName: 'Petra Lindemann', contactEmail: 'p.lindemann@kinderhaus-wolke7.de', status: 'suspended', plan: 'starter', seatsLicensed: 8, seatsUsed: 0, locationsCount: 1, createdAt: '2024-02-20', notes: 'Zahlung überfällig seit 45 Tagen – Zugang gesperrt' },
-]
-
-let customerSeq = 1000
-
-export function addCustomer(input: { name: string; contactName: string; contactEmail: string; plan: LicensePlan; seatsLicensed: number }): Customer {
-  const customer: Customer = {
-    id: `cust-new-${customerSeq++}`,
-    name: input.name,
-    contactName: input.contactName,
-    contactEmail: input.contactEmail,
-    status: 'trial',
-    plan: input.plan,
-    seatsLicensed: input.seatsLicensed,
-    seatsUsed: 0,
-    locationsCount: 0,
-    createdAt: new Date().toISOString().split('T')[0],
-  }
-  CUSTOMERS.push(customer)
-  return customer
-}
-
-export function updateCustomer(id: string, updates: Partial<Customer>) {
-  const idx = CUSTOMERS.findIndex(c => c.id === id)
-  if (idx === -1) return
-  CUSTOMERS[idx] = { ...CUSTOMERS[idx], ...updates }
-}
-
 export const TEST_ACCOUNTS: TestAccount[] = [
   { id: 'ta1', customerName: 'Pflegeverbund Nord eG', contactEmail: 'h.voss@pflegeverbund-nord.de', createdAt: '2026-05-30', expiresAt: '2026-06-30', converted: false },
   { id: 'ta2', customerName: 'Tagespflege Sonnenhof', contactEmail: 'info@tagespflege-sonnenhof.de', createdAt: '2026-04-10', expiresAt: '2026-05-10', converted: false },
@@ -892,9 +737,8 @@ export function endBreak(employeeId: string) {
   updateTimeLog(log.id, { breakMinutes: (log.breakMinutes ?? 0) + minutes, breakStart: undefined })
 }
 
-function standardDailyMinutes(employeeId: string): number {
-  const emp = getEmployeeById(employeeId)
-  return emp ? (emp.weeklyHours / 5) * 60 : 480
+function standardDailyMinutes(weeklyHours: number): number {
+  return (weeklyHours / 5) * 60
 }
 
 function workdaysInMonth(year: number, month: number): number {
@@ -995,11 +839,11 @@ export function getAbsencesByEmployee(employeeId: string): Absence[] {
   return ABSENCES.filter(a => a.employeeId === employeeId).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
 }
 
-export function getHoursAccountSummary(employeeId: string, year: number, month: number): HoursAccountSummary {
+export function getHoursAccountSummary(employeeId: string, year: number, month: number, weeklyHours: number = 40): HoursAccountSummary {
   const logs = getTimeLogsByMonth(employeeId, year, month)
   const istMinutes = logs.reduce((s, t) => s + (t.totalMinutes ?? 0) - (t.breakMinutes ?? 0), 0)
   const breakMinutes = logs.reduce((s, t) => s + (t.breakMinutes ?? 0), 0)
-  const sollMinutes = workdaysInMonth(year, month) * standardDailyMinutes(employeeId)
+  const sollMinutes = workdaysInMonth(year, month) * standardDailyMinutes(weeklyHours)
 
   const overtimeMinutes = OVERTIME_REQUESTS
     .filter(o => o.employeeId === employeeId && (o.status === 'approved' || o.status === 'partial') && o.date.startsWith(`${year}-${String(month).padStart(2, '0')}`))
@@ -1019,12 +863,16 @@ export function getHoursAccountSummary(employeeId: string, year: number, month: 
 export const MONTHLY_CLOSINGS: MonthlyClosing[] = []
 let monthlyClosingSeq = 1000
 
-export function getOrCreateMonthlyClosing(employeeId: string, year: number, month: number): MonthlyClosing {
+export function getOrCreateMonthlyClosing(
+  employeeId: string,
+  year: number,
+  month: number,
+  employeeInfo?: { name: string; locationId?: string; weeklyHours: number }
+): MonthlyClosing {
   const existing = MONTHLY_CLOSINGS.find(m => m.employeeId === employeeId && m.year === year && m.month === month)
   if (existing) return existing
 
-  const emp = getEmployeeById(employeeId)
-  const summary = getHoursAccountSummary(employeeId, year, month)
+  const summary = getHoursAccountSummary(employeeId, year, month, employeeInfo?.weeklyHours)
   const arbeitstage = getTimeLogsByMonth(employeeId, year, month).length
   const approvalsCount = OVERTIME_REQUESTS.filter(
     o => o.employeeId === employeeId && o.status !== 'pending' && o.date.startsWith(`${year}-${String(month).padStart(2, '0')}`)
@@ -1033,8 +881,8 @@ export function getOrCreateMonthlyClosing(employeeId: string, year: number, mont
   const closing: MonthlyClosing = {
     id: `mc-new-${monthlyClosingSeq++}`,
     employeeId,
-    employeeName: emp?.name ?? employeeId,
-    locationId: emp?.locationId ?? '',
+    employeeName: employeeInfo?.name ?? employeeId,
+    locationId: employeeInfo?.locationId ?? '',
     year,
     month,
     status: 'offen',
@@ -1083,11 +931,10 @@ export function correctMonthlyClosingTimeLog(
     log.totalMinutes = Math.max(0, (outH * 60 + outM) - (inH * 60 + inM))
   }
 
-  const summary = getHoursAccountSummary(closing.employeeId, closing.year, closing.month)
-  closing.sollMinutes = summary.sollMinutes
-  closing.istMinutes = summary.istMinutes
-  closing.breakMinutes = summary.breakMinutes
-  closing.undertimeMinutes = summary.undertimeMinutes
+  const monthLogs = getTimeLogsByMonth(closing.employeeId, closing.year, closing.month)
+  closing.istMinutes = monthLogs.reduce((s, t) => s + (t.totalMinutes ?? 0) - (t.breakMinutes ?? 0), 0)
+  closing.breakMinutes = monthLogs.reduce((s, t) => s + (t.breakMinutes ?? 0), 0)
+  closing.undertimeMinutes = Math.max(0, closing.sollMinutes - closing.istMinutes)
   closing.comments.push({ author: correctedBy, text: `Korrektur am ${formatDateGerman(log.date)}: ${formatTimeLogChange(log)}`, at: new Date().toISOString() })
   closing.status = closing.status === 'offen' ? 'geprueft' : closing.status
   closing.reviewedBy = correctedBy
@@ -1103,9 +950,13 @@ function formatTimeLogChange(log: TimeLog): string {
   return `${log.clockIn}–${log.clockOut ?? '?'} Uhr${log.breakMinutes ? `, ${log.breakMinutes} Min. Pause` : ''}`
 }
 
-export function releaseMonthlyClosing(id: string, releasedBy: string) {
+/** Gibt den Monatsabschluss frei und liefert den Saldo-Delta (in Stunden), das
+ * der Caller über entities.ts (applyHoursBalanceDelta) auf das echte,
+ * in Postgres persistierte Stundenkonto des Mitarbeiters anwenden muss – diese
+ * Datei selbst darf Employee/Postgres nicht anfassen (siehe entities.ts). */
+export function releaseMonthlyClosing(id: string, releasedBy: string): { employeeId: string; deltaHours: number } | undefined {
   const closing = MONTHLY_CLOSINGS.find(m => m.id === id)
-  if (!closing || closing.status === 'freigegeben') return
+  if (!closing || closing.status === 'freigegeben') return undefined
   closing.status = 'freigegeben'
   closing.releasedBy = releasedBy
   closing.releasedAt = new Date().toISOString()
@@ -1114,11 +965,8 @@ export function releaseMonthlyClosing(id: string, releasedBy: string) {
   // (Ist minus Soll, abzüglich genehmigter Überstunden) in das offizielle
   // Stundenkonto des Mitarbeiters ein – das vereinheitlicht die Zeiterfassung
   // (Monatsabschluss) mit dem überall sonst angezeigten hoursBalance.
-  const emp = EMPLOYEES.find(e => e.id === closing.employeeId)
-  if (emp) {
-    const netMinutes = (closing.istMinutes + closing.overtimeMinutes) - closing.sollMinutes
-    emp.hoursBalance = Math.round((emp.hoursBalance + netMinutes / 60) * 10) / 10
-  }
+  const netMinutes = (closing.istMinutes + closing.overtimeMinutes) - closing.sollMinutes
+  return { employeeId: closing.employeeId, deltaHours: netMinutes / 60 }
 }
 
 export function getMonthlyClosingsByLocation(locationId: string): MonthlyClosing[] {

@@ -1,14 +1,15 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { Header } from '@/components/layout/Header'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { CUSTOMERS, TEST_ACCOUNTS, INVITATIONS, SUPPORT_LOG } from '@/lib/mock-data'
+import { TEST_ACCOUNTS, INVITATIONS, SUPPORT_LOG } from '@/lib/mock-data'
 import { Building2, KeyRound, Mail, LifeBuoy, ChevronRight, AlertTriangle } from 'lucide-react'
-import type { CustomerStatus } from '@/lib/types'
+import type { Customer, CustomerStatus } from '@/lib/types'
 
 const STATUS_BADGE: Record<CustomerStatus, { label: string; variant: 'success' | 'info' | 'warning' | 'danger' }> = {
   trial: { label: 'Test', variant: 'info' },
@@ -18,6 +19,12 @@ const STATUS_BADGE: Record<CustomerStatus, { label: string; variant: 'success' |
 }
 
 export default function OkunOverview() {
+  const [CUSTOMERS, setCUSTOMERS] = useState<Customer[]>([])
+
+  useEffect(() => {
+    fetch('/api/customers').then(r => r.json()).then(d => setCUSTOMERS(d.customers))
+  }, [])
+
   const activeCustomers = CUSTOMERS.filter(c => c.status === 'active').length
   const trialCustomers = CUSTOMERS.filter(c => c.status === 'trial').length
   const suspendedCustomers = CUSTOMERS.filter(c => c.status === 'suspended')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -12,10 +12,10 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { useSearchParams } from 'next/navigation'
 import {
-  SCHEDULE_ENTRIES, SHIFTS, EMPLOYEES, LOCATIONS,
+  SCHEDULE_ENTRIES, SHIFTS,
   getSwapRequestsByEmployee, getWishSubmissionsByEmployee, addWishSubmission,
 } from '@/lib/mock-data'
-import type { ShiftType } from '@/lib/types'
+import type { ShiftType, Employee, Location } from '@/lib/types'
 import { googleCalendarLink, appleCalendarDownload } from '@/lib/calendar-export'
 import {
   ChevronLeft, ChevronRight, Sun, Moon, Briefcase, MessageSquare,
@@ -46,6 +46,13 @@ export default function EmployeeSchedule() {
   const [calendarModal, setCalendarModal] = useState(false)
   const [swaps, setSwaps] = useState(() => getSwapRequestsByEmployee(user?.id ?? ''))
   const [, forceWishRefresh] = useState(0)
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+    fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+  }, [])
 
   const weekDays = getWeekDays(currentDate)
   const weekStart = toDateString(weekDays[0])

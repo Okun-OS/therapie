@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { EMPLOYEES } from '@/lib/mock-data'
+import { listEmployees } from '@/lib/entities'
 import { notifyEmployee } from '@/lib/notify'
 
 export async function POST(req: NextRequest) {
@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'locationId ist erforderlich' }, { status: 400 })
   }
 
-  const employees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee' && e.active)
+  const allEmployees = await listEmployees()
+  const employees = allEmployees.filter(e => e.locationId === locationId && e.role === 'employee' && e.active)
 
   await Promise.all(
     employees.map(emp =>

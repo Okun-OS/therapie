@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { VACATION_REQUESTS, EMPLOYEES, setVacationRequestStatus, getVacationRules } from '@/lib/mock-data'
+import { VACATION_REQUESTS, setVacationRequestStatus, getVacationRules } from '@/lib/mock-data'
 import { CheckCircle, XCircle, Clock, Palmtree, Calendar, MessageSquare, Sparkles, Loader2 } from 'lucide-react'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
-import type { VacationRequest, RequestStatus, VacationRecommendation } from '@/lib/types'
+import type { VacationRequest, RequestStatus, VacationRecommendation, Employee } from '@/lib/types'
 
 const STANCE_CONFIG: Record<VacationRecommendation['stance'], { label: string; color: string; bg: string }> = {
   empfehlung_genehmigen: { label: 'Empfehlung: Genehmigen', color: 'text-green-700', bg: 'bg-green-50 border-green-100' },
@@ -37,6 +37,11 @@ export default function AdminVacationRequests() {
   const [rejectNote, setRejectNote] = useState('')
   const [recommendation, setRecommendation] = useState<VacationRecommendation | null>(null)
   const [recommendationLoading, setRecommendationLoading] = useState(false)
+  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+  }, [])
 
   const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)
   const pending = requests.filter(r => r.status === 'pending')

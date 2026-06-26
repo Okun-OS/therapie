@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
 import {
-  EMPLOYEES, LOCATIONS, SCHEDULE_ENTRIES, updateEmployee, getShiftById,
+  SCHEDULE_ENTRIES, getShiftById,
   getOvertimeRequestsByEmployee, getAbsencesByEmployee, getMonthlyClosingsByEmployee, getOrCreateMonthlyClosing,
 } from '@/lib/mock-data'
 import { HumanContextChat } from '@/components/profile/HumanContextChat'
 import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks, FileText, History, Calendar, Copy, Check } from 'lucide-react'
 import { formatDate, toDateString } from '@/lib/utils'
+import type { Employee, Location } from '@/lib/types'
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
@@ -73,8 +74,16 @@ function TagInputSection({
 
 export default function EmployeeProfile() {
   const { user } = useAuth()
-  const employee = EMPLOYEES.find(e => e.id === user?.id)
-  const location = LOCATIONS.find(l => l.id === employee?.locationId)
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([])
+  const [allLocations, setAllLocations] = useState<Location[]>([])
+
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
+    fetch('/api/locations').then(r => r.json()).then(d => setAllLocations(d.locations))
+  }, [])
+
+  const employee = allEmployees.find(e => e.id === user?.id)
+  const location = allLocations.find(l => l.id === employee?.locationId)
 
   const currentYear = new Date().getFullYear()
   const todayStr = toDateString(new Date())
@@ -83,7 +92,7 @@ export default function EmployeeProfile() {
     if (!employee) return
     for (let i = 0; i < 3; i++) {
       const d = new Date(currentYear, new Date().getMonth() - i, 1)
-      getOrCreateMonthlyClosing(employee.id, d.getFullYear(), d.getMonth() + 1)
+      getOrCreateMonthlyClosing(employee.id, d.getFullYear(), d.getMonth() + 1, employee)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.id])
@@ -228,21 +237,26 @@ export default function EmployeeProfile() {
     }))
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (employee) {
-      updateEmployee(employee.id, {
-        preferences: {
-          preferredShifts: [
-            ...(prefs.preferEarly ? ['early' as const] : []),
-            ...(prefs.preferLate ? ['late' as const] : []),
-            ...(prefs.preferMid ? ['mid' as const] : []),
-          ],
-          unavailableDays: prefs.unavailableDays,
-          maxConsecutiveDays: prefs.maxConsecutive,
-          noEarlyAfterLate: prefs.noEarlyAfterLate,
-          notes: prefs.notes,
-        },
-      })
+      const updated = await fetch(`/api/employees/${employee.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          preferences: {
+            preferredShifts: [
+              ...(prefs.preferEarly ? ['early' as const] : []),
+              ...(prefs.preferLate ? ['late' as const] : []),
+              ...(prefs.preferMid ? ['mid' as const] : []),
+            ],
+            unavailableDays: prefs.unavailableDays,
+            maxConsecutiveDays: prefs.maxConsecutive,
+            noEarlyAfterLate: prefs.noEarlyAfterLate,
+            notes: prefs.notes,
+          },
+        }),
+      }).then(r => r.json()).then(d => d.employee)
+      setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
     }
     setSavedPrefs(prefs)
     setSaved(true)
