@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
 import { EMPLOYEES, LOCATIONS, updateEmployee } from '@/lib/mock-data'
 import { HumanContextChat } from '@/components/profile/HumanContextChat'
-import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2 } from 'lucide-react'
+import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks } from 'lucide-react'
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 
@@ -221,6 +221,25 @@ export default function EmployeeProfile() {
             </div>
           </div>
         </Card>
+
+        {/* Eigene Aufgaben */}
+        {(employee.allowedTasks?.length ?? 0) > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ListChecks size={16} className="text-navy" />
+                <CardTitle>Meine Aufgaben</CardTitle>
+              </div>
+            </CardHeader>
+            <div className="flex flex-wrap gap-2">
+              {employee.allowedTasks!.map(task => (
+                <span key={task} className="px-3 py-1.5 rounded-full text-xs font-medium bg-purple-50 border-2 border-purple-300 text-purple-700">
+                  {task}
+                </span>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Shift Preferences */}
         <Card>

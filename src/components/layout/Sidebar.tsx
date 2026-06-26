@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList,
   Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart, Scale, ShieldAlert, Brain, MessageCircle,
-  KeyRound, LifeBuoy, Mail, Settings
+  KeyRound, LifeBuoy, Mail, Settings, ListChecks
 } from 'lucide-react'
 
 interface NavItem {
@@ -34,6 +34,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/schedule', label: 'Dienstplan', icon: Calendar, badge: 'KI' },
   { href: '/admin/vacation-requests', label: 'Urlaubsanträge', icon: Palmtree },
   { href: '/admin/vacation-plan', label: 'Urlaubsplan', icon: ClipboardList, badge: 'KI' },
+  { href: '/admin/tasks', label: 'Aufgaben', icon: ListChecks },
   { href: '/admin/substitutions', label: 'Vertretungen', icon: UserPlus, badge: 'KI' },
   { href: '/admin/workforce-score', label: 'Workforce Score', icon: Trophy, badge: 'KI' },
   { href: '/admin/workforce-insights', label: 'Workforce Insights', icon: LineChart, badge: 'KI' },

@@ -290,6 +290,22 @@ export function updateEmployee(id: string, updates: Partial<Employee>) {
   EMPLOYEES[idx] = { ...EMPLOYEES[idx], ...updates }
 }
 
+// ─── Aufgabenverwaltung (Einrichtungsleitung) ───────────────────────────────
+
+export const TASK_CATALOG: string[] = ['Medikamentenausgabe', 'Dokumentation', 'Elternkommunikation', 'Schlüsseldienst', 'Reinigungsdienst']
+
+export function addTaskType(name: string) {
+  if (!TASK_CATALOG.includes(name)) TASK_CATALOG.push(name)
+}
+
+export function removeTaskType(name: string) {
+  const idx = TASK_CATALOG.indexOf(name)
+  if (idx !== -1) TASK_CATALOG.splice(idx, 1)
+  EMPLOYEES.forEach(e => {
+    if (e.allowedTasks?.includes(name)) updateEmployee(e.id, { allowedTasks: e.allowedTasks.filter(t => t !== name) })
+  })
+}
+
 /** Geschäftsführung: Einrichtungsleitung wechseln – die bisherige Leitung wird
  * wieder Mitarbeiter, die neu ernannte Person wird Einrichtungsleitung. */
 export function reassignLocationAdmin(locationId: string, newAdminEmployeeId: string) {
