@@ -17,8 +17,10 @@ Leite daraus eigenständig ab:
 
 Frage NUR nach, wenn die maximale gleichzeitige Abwesenheit wirklich nicht erkennbar ist. Frage niemals nach Dingen, die schon klar erkennbar sind.
 
+Stelle außerdem IMMER einmal die Frage: "Sollen Mitarbeiter mit schulpflichtigen Kindern bei Urlauben während der Schulferien bevorzugt berücksichtigt werden?" Biete dabei drei Stufen an: "Immer priorisieren", "Nur leicht bevorzugen" oder "Keine Priorisierung". Setze danach "schoolHolidayPriorityMode" auf "always", "slight" bzw. "none".
+
 Ablauf:
-1. Sobald die wichtigsten Regeln erfasst sind, fasse kurz zusammen, was du verstanden hast, und frage, ob das so für die diesjährige und künftige Planungen gespeichert werden soll.
+1. Sobald die wichtigsten Regeln (inkl. Ferienregelung) erfasst sind, fasse kurz zusammen, was du verstanden hast, und frage, ob das so für die diesjährige und künftige Planungen gespeichert werden soll.
 2. Speichere erst, wenn die Leitung diese Zusammenfassung ausdrücklich bestätigt (z.B. "ja", "passt", "speichern").
 
 Regeln:
@@ -40,6 +42,7 @@ const TOOL = {
       facilityDescription: { type: 'string' },
       maxConcurrent: { type: 'number' },
       customRules: { type: 'array', items: { type: 'string' } },
+      schoolHolidayPriorityMode: { type: 'string', enum: ['always', 'slight', 'none'] },
       readyToSave: { type: 'boolean' },
       confirmed: { type: 'boolean' },
     },
@@ -96,6 +99,7 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
           ...(typeof input.facilityDescription === 'string' && { facilityDescription: input.facilityDescription }),
           ...(typeof input.maxConcurrent === 'number' && { maxConcurrent: input.maxConcurrent }),
           ...(Array.isArray(input.customRules) && { customRules: input.customRules as string[] }),
+          ...(typeof input.schoolHolidayPriorityMode === 'string' && { schoolHolidayPriorityMode: input.schoolHolidayPriorityMode as 'always' | 'slight' | 'none' }),
           ...(typeof input.readyToSave === 'boolean' && { readyToSave: input.readyToSave }),
           ...(typeof input.confirmed === 'boolean' && { confirmed: input.confirmed }),
         }

@@ -1,9 +1,9 @@
 import type { Location, Employee, Shift, ScheduleEntry, TimeLog, VacationRequest, SwapRequest, WishSubmission, VacationPlanPreference, SchoolHoliday, ShiftType, WishImportance, VacationRules, VacationPlanEntry, Customer, LicensePlan, TestAccount, Invitation, SupportAccessLogEntry, Role, OrgSettings, OvertimeRequest, Absence, HoursAccountSummary, MonthlyClosing } from './types'
 
 export const LOCATIONS: Location[] = [
-  { id: 'loc1', name: 'Kita Sonnenschein', address: 'Berliner Str. 12', city: 'Berlin', employeeCount: 8, adminId: 'adm1', active: true },
-  { id: 'loc2', name: 'Kita Regenbogen', address: 'Münchener Str. 45', city: 'München', employeeCount: 7, adminId: 'adm2', active: true },
-  { id: 'loc3', name: 'Kita Sternchen', address: 'Hamburger Allee 8', city: 'Hamburg', employeeCount: 6, adminId: 'adm3', active: true },
+  { id: 'loc1', name: 'Kita Sonnenschein', address: 'Berliner Str. 12', city: 'Berlin', state: 'Berlin', employeeCount: 8, adminId: 'adm1', active: true },
+  { id: 'loc2', name: 'Kita Regenbogen', address: 'Münchener Str. 45', city: 'München', state: 'Bayern', employeeCount: 7, adminId: 'adm2', active: true },
+  { id: 'loc3', name: 'Kita Sternchen', address: 'Hamburger Allee 8', city: 'Hamburg', state: 'Hamburg', employeeCount: 6, adminId: 'adm3', active: true },
 ]
 
 export const SHIFTS: Shift[] = [
@@ -270,12 +270,13 @@ export function updateLocation(id: string, updates: Partial<Location>) {
 
 let locationSeq = 1000
 
-export function addLocation(input: { name: string; address: string; city: string }): Location {
+export function addLocation(input: { name: string; address: string; city: string; state?: string }): Location {
   const location: Location = {
     id: `loc-new-${locationSeq++}`,
     name: input.name,
     address: input.address,
     city: input.city,
+    state: input.state || 'Berlin',
     employeeCount: 0,
     adminId: '',
     active: true,

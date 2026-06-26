@@ -25,7 +25,14 @@ const DEFAULT_RULES = (employeeCount: number): VacationRules => ({
   facilityDescription: `Wir sind eine Kita mit 6 Gruppen. Jede Gruppe muss immer mit mindestens 1 Fachkraft besetzt sein. Wir haben 2 Etagen mit je 3 Gruppen, maximal 2 Mitarbeiter pro Etage dürfen gleichzeitig Urlaub haben. Gesamtteam: ${employeeCount} Mitarbeiter.`,
   maxConcurrent: 2,
   customRules: [],
+  schoolHolidayPriorityMode: 'slight',
 })
+
+const SCHOOL_HOLIDAY_MODE_LABEL: Record<VacationRules['schoolHolidayPriorityMode'], string> = {
+  always: 'Immer priorisieren',
+  slight: 'Nur leicht bevorzugen',
+  none: 'Keine Priorisierung',
+}
 
 const GERMAN_STATES = ['Berlin', 'Bayern', 'Hamburg', 'Baden-Württemberg', 'Nordrhein-Westfalen', 'Hessen', 'Niedersachsen', 'Sachsen']
 const MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
@@ -72,10 +79,17 @@ export default function VacationPlanPage() {
       facilityDescription: draft.facilityDescription || rules.facilityDescription,
       maxConcurrent: draft.maxConcurrent ?? rules.maxConcurrent,
       customRules: draft.customRules ?? rules.customRules,
+      schoolHolidayPriorityMode: draft.schoolHolidayPriorityMode ?? rules.schoolHolidayPriorityMode,
     }
     setRules(next)
     setVacationRules(locationId, next)
     showToast('Urlaubsregeln gespeichert – gelten für alle künftigen Planungen')
+  }
+
+  const handleSchoolHolidayModeChange = (mode: VacationRules['schoolHolidayPriorityMode']) => {
+    const next = { ...rules, schoolHolidayPriorityMode: mode }
+    setRules(next)
+    setVacationRules(locationId, next)
   }
 
   const [collectingWishes, setCollectingWishes] = useState(false)
@@ -99,7 +113,7 @@ export default function VacationPlanPage() {
 
   const [planningStart, setPlanningStart] = useState('2026-06-01')
   const [planningEnd, setPlanningEnd] = useState('2026-09-30')
-  const [selectedState, setSelectedState] = useState('Berlin')
+  const [selectedState, setSelectedState] = useState(location?.state ?? 'Berlin')
 
   const [prefs, setPrefs] = useState<PrefRow[]>(() =>
     employees.map(emp => {
@@ -170,6 +184,7 @@ export default function VacationPlanPage() {
         planningStart,
         planningEnd,
         maxConcurrent: rules.maxConcurrent,
+        schoolHolidayPriorityMode: rules.schoolHolidayPriorityMode,
         state: selectedState,
         employees: prefs.map(p => {
           const emp = employees.find(e => e.id === p.employeeId)!
@@ -297,6 +312,24 @@ export default function VacationPlanPage() {
               )}
             </div>
 
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+              <p className="text-xs font-semibold text-blue-700 mb-1.5 flex items-center gap-1.5">
+                <Baby size={13} />Ferienregelung für Mitarbeiter mit schulpflichtigen Kindern
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(SCHOOL_HOLIDAY_MODE_LABEL) as VacationRules['schoolHolidayPriorityMode'][]).map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => handleSchoolHolidayModeChange(mode)}
+                    className={`text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all ${rules.schoolHolidayPriorityMode === mode ? 'bg-blue-600 text-white' : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-100'}`}
+                  >
+                    {SCHOOL_HOLIDAY_MODE_LABEL[mode]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">Planung von</label>
@@ -314,6 +347,7 @@ export default function VacationPlanPage() {
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand">
                   {GERMAN_STATES.map(s => <option key={s}>{s}</option>)}
                 </select>
+                <p className="text-[11px] text-gray-400 mt-1">Automatisch aus dem Bundesland der Einrichtung übernommen.</p>
               </div>
             </div>
 

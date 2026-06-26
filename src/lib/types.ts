@@ -10,6 +10,7 @@ export interface Location {
   name: string
   address: string
   city: string
+  state: string
   employeeCount: number
   adminId: string
   active: boolean
@@ -294,6 +295,8 @@ export interface VacationRules {
   facilityDescription: string
   maxConcurrent: number
   customRules: string[]
+  // Ferienregelung für Mitarbeiter mit schulpflichtigen Kindern (facility-weit, nicht pro Mitarbeiter)
+  schoolHolidayPriorityMode: 'always' | 'slight' | 'none'
 }
 
 export interface SchoolHoliday {

@@ -9,7 +9,7 @@ Du erstellst faire, regelkonforme Urlaubspläne für Teams unter Berücksichtigu
 
 ## Pflichtregeln
 1. Die Einrichtung muss jederzeit ausreichend besetzt sein (Mindestbesetzung aus der Einrichtungsbeschreibung).
-2. Mitarbeiter mit schulpflichtigen Kindern erhalten Priorität in den Schulferienzeiten.
+2. Ob und wie stark Mitarbeiter mit schulpflichtigen Kindern in den Schulferienzeiten priorisiert werden, richtet sich nach der von der Einrichtung gewählten Ferienregelung (siehe "Ferienregelung" im Nutzer-Prompt).
 3. Jeder Mitarbeiter bekommt seinen vollen Urlaubsanspruch (vacationDaysTotal minus vacationDaysUsed = verbleibende Tage).
 4. Gleichzeitige Abwesenheit wird durch die angegebenen Regeln begrenzt.
 
@@ -52,6 +52,7 @@ interface VacationRequest {
   planningStart: string
   planningEnd: string
   maxConcurrent: number
+  schoolHolidayPriorityMode?: 'always' | 'slight' | 'none'
   state: string
   employees: {
     id: string
@@ -83,7 +84,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
 
-  const { facilityDescription, customRules, planningStart, planningEnd, maxConcurrent, state, employees, schoolHolidays } = body
+  const { facilityDescription, customRules, planningStart, planningEnd, maxConcurrent, schoolHolidayPriorityMode = 'slight', state, employees, schoolHolidays } = body
+
+  const SCHOOL_HOLIDAY_MODE_INSTRUCTION: Record<'always' | 'slight' | 'none', string> = {
+    always: 'Die Einrichtung priorisiert Mitarbeiter mit schulpflichtigen Kindern in den Schulferien IMMER vor allen anderen Fairness-Kriterien (auch vor "priority" und Resturlaub). Plane für diese Mitarbeiter zuerst die Schulferienzeiten ein.',
+    slight: 'Die Einrichtung möchte Mitarbeiter mit schulpflichtigen Kindern in den Schulferien nur LEICHT bevorzugen – das ist lediglich ein Tie-Breaker bei sonst gleichwertigen Fällen, kein hartes Kriterium.',
+    none: 'Die Einrichtung möchte KEINE Priorisierung nach Schulferien. Behandle Mitarbeiter mit schulpflichtigen Kindern in den Schulferien genauso wie alle anderen Mitarbeiter.',
+  }
 
   const userPrompt = `Erstelle einen Urlaubsplan für den Zeitraum ${planningStart} bis ${planningEnd}.
 
@@ -96,6 +103,9 @@ ${customRules && customRules.length > 0 ? customRules.map(r => `- ${r}`).join('\
 Maximale gleichzeitige Abwesenheit: ${maxConcurrent} Personen.
 Bundesland für Schulferien: ${state}.
 
+## Ferienregelung
+${SCHOOL_HOLIDAY_MODE_INSTRUCTION[schoolHolidayPriorityMode]}
+
 ## Schulferien ${state} (relevant für Mitarbeiter mit Kindern)
 ${JSON.stringify(schoolHolidays, null, 2)}
 
@@ -103,7 +113,7 @@ ${JSON.stringify(schoolHolidays, null, 2)}
 ${JSON.stringify(employees, null, 2)}
 
 Hinweis: "remainingDays" = noch zu verplanende Urlaubstage im angegebenen Zeitraum. Plane möglichst viele davon ein.
-Mitarbeiter mit hasChildren=true haben in Schulferienzeiten Vorrang, abgestuft nach ihrer "schoolHolidayPriority" (hoch vor mittel vor niedrig).
+${schoolHolidayPriorityMode !== 'none' ? 'Mitarbeiter mit hasChildren=true haben in Schulferienzeiten Vorrang (gemäß obiger Ferienregelung), abgestuft nach ihrer "schoolHolidayPriority" (hoch vor mittel vor niedrig).' : ''}
 
 Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor oder danach.`
 
