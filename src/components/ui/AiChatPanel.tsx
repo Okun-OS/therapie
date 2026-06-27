@@ -3,8 +3,19 @@
 import { useEffect, useRef } from 'react'
 import { Button } from './Button'
 import { Input } from './Input'
+import { Logo } from './Logo'
 import { cn } from '@/lib/utils'
 import { Send, Sparkles, CheckCircle2, X } from 'lucide-react'
+
+function AssistantAvatar({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  const box = size === 'md' ? 'w-9 h-9' : 'w-7 h-7'
+  const icon = size === 'md' ? 18 : 15
+  return (
+    <div className={cn(box, 'rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center flex-shrink-0 p-1.5')}>
+      <Logo variant="icon" iconSize={icon} />
+    </div>
+  )
+}
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
@@ -58,13 +69,14 @@ export function AiChatPanel({
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
-        <div className="w-8 h-8 rounded-full bg-navy flex items-center justify-center flex-shrink-0">
-          <Sparkles size={14} className="text-brand" />
-        </div>
+      <div className="flex items-center gap-2.5 mb-3 pb-3 border-b border-gray-100">
+        <AssistantAvatar />
         <div>
           <p className="text-sm font-semibold text-navy leading-tight">{assistantName}</p>
-          <p className="text-[11px] text-gray-400 leading-tight">{isDone ? 'Gespräch abgeschlossen' : sending ? 'tippt…' : 'aktiv'}</p>
+          <p className="text-[11px] text-gray-400 leading-tight flex items-center gap-1">
+            {sending && !isDone && <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />}
+            {isDone ? 'Gespräch abgeschlossen' : sending ? 'tippt…' : 'aktiv'}
+          </p>
         </div>
       </div>
 
@@ -90,15 +102,13 @@ export function AiChatPanel({
       <div className="space-y-3 mb-3 max-h-[28rem] overflow-y-auto pr-1">
         {messages.map((m, i) => (
           <div key={i} className={cn('flex gap-2 animate-fade-in', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-            {m.role === 'assistant' && (
-              <div className="w-7 h-7 rounded-full bg-navy flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Sparkles size={13} className="text-brand" />
-              </div>
-            )}
+            {m.role === 'assistant' && <AssistantAvatar size="sm" />}
             <div
               className={cn(
                 'max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap',
-                m.role === 'user' ? 'bg-brand text-navy rounded-br-md' : 'bg-gray-100 text-gray-700 rounded-bl-md',
+                m.role === 'user'
+                  ? 'bg-brand text-navy rounded-br-md shadow-sm'
+                  : 'bg-white text-gray-700 border border-gray-100 shadow-sm rounded-bl-md',
               )}
             >
               {m.content}
@@ -108,13 +118,11 @@ export function AiChatPanel({
 
         {sending && (
           <div className="flex gap-2 justify-start animate-fade-in">
-            <div className="w-7 h-7 rounded-full bg-navy flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Sparkles size={13} className="text-brand" />
-            </div>
-            <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3.5 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:-0.3s]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:-0.15s]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" />
+            <AssistantAvatar size="sm" />
+            <div className="bg-white border border-gray-100 shadow-sm rounded-2xl rounded-bl-md px-4 py-3.5 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand animate-bounce [animation-delay:-0.3s]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand animate-bounce [animation-delay:-0.15s]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand animate-bounce" />
             </div>
           </div>
         )}

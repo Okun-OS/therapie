@@ -16,12 +16,12 @@ interface StatCardProps {
 export function StatCard({ title, value, subtitle, icon: Icon, iconColor = 'text-navy', iconBg = 'bg-navy-50', trend, alert, className }: StatCardProps) {
   return (
     <div className={cn(
-      'bg-white rounded-2xl border shadow-sm p-5 flex flex-col gap-3',
+      'bg-white rounded-2xl border shadow-sm p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5',
       alert ? 'border-red-200 bg-red-50' : 'border-gray-100',
       className
     )}>
       <div className="flex items-start justify-between">
-        <div className={cn('p-2.5 rounded-xl', iconBg)}>
+        <div className={cn('p-3 rounded-2xl', iconBg)}>
           <Icon size={20} className={iconColor} />
         </div>
         {trend && (
@@ -31,8 +31,8 @@ export function StatCard({ title, value, subtitle, icon: Icon, iconColor = 'text
         )}
       </div>
       <div>
-        <p className={cn('text-2xl font-bold', alert ? 'text-red-700' : 'text-navy')}>{value}</p>
-        <p className="text-sm font-medium text-gray-500 mt-0.5">{title}</p>
+        <p className={cn('text-[1.75rem] font-bold leading-none tracking-tight', alert ? 'text-red-700' : 'text-navy')}>{value}</p>
+        <p className="text-sm font-medium text-gray-500 mt-2">{title}</p>
         {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
       </div>
     </div>

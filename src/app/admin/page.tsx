@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/lib/auth-context'
 import { Users, Clock, Palmtree, AlertTriangle, Calendar, CheckCircle, TrendingUp, ChevronRight, UserCheck } from 'lucide-react'
-import { formatDate, toDateString } from '@/lib/utils'
+import { formatDate, toDateString, addDays, getDayName } from '@/lib/utils'
 import { Employee, VacationRequest, ScheduleEntry, Shift, TimeLog } from '@/lib/types'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -43,6 +44,12 @@ export default function AdminDashboard() {
   const weekLogs = TIME_LOGS.filter(t => t.locationId === locationId)
   const weekHours = weekLogs.reduce((s, t) => s + (t.totalMinutes || 0), 0)
 
+  const last7Days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
+  const hoursChartData = last7Days.map(date => {
+    const minutes = weekLogs.filter(t => t.date === date).reduce((s, t) => s + (t.totalMinutes || 0), 0)
+    return { day: getDayName(date, true), hours: Math.round((minutes / 60) * 10) / 10 }
+  })
+
   const locationShifts = SHIFTS.filter(s => s.locationId === locationId)
 
   // Check understaffing
@@ -62,7 +69,7 @@ export default function AdminDashboard() {
         title={`Admin Dashboard`}
         subtitle={`${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`}
       />
-      <div className="p-4 sm:p-6 space-y-5">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* Alerts */}
         {alerts.length > 0 && (
@@ -88,14 +95,41 @@ export default function AdminDashboard() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard title="Mitarbeiter" value={locationEmployees.length} subtitle="aktiv" icon={Users} iconColor="text-navy" iconBg="bg-navy-50" />
           <StatCard title="Heute anwesend" value={presentToday} subtitle={`von ${locationEmployees.length}`} icon={UserCheck} iconColor="text-green-600" iconBg="bg-green-100" />
           <StatCard title="Urlaubsanträge" value={pendingVacations.length} subtitle="offen" icon={Palmtree} iconColor="text-amber-600" iconBg="bg-amber-100" alert={pendingVacations.length > 2} />
           <StatCard title="Stunden (Woche)" value={`${Math.floor(weekHours / 60)}h`} subtitle="alle MA" icon={TrendingUp} iconColor="text-blue-600" iconBg="bg-blue-100" />
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-5">
+        {/* Hours trend chart */}
+        <Card padding="lg">
+          <CardHeader>
+            <CardTitle>Stunden – letzte 7 Tage</CardTitle>
+            <span className="text-xs text-gray-400">alle Mitarbeiter</span>
+          </CardHeader>
+          {weekLogs.length === 0 ? (
+            <EmptyState icon={Clock} title="Noch keine Zeiterfassungsdaten" />
+          ) : (
+            <div className="h-56 -ml-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={hoursChartData} barCategoryGap="28%">
+                  <CartesianGrid vertical={false} stroke="#E8ECEF" />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#565D61', fontSize: 12 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#565D61', fontSize: 12 }} width={32} />
+                  <Tooltip
+                    cursor={{ fill: '#E8ECEF' }}
+                    contentStyle={{ borderRadius: 12, border: '1px solid #E8ECEF', fontSize: 13 }}
+                    formatter={value => [`${value} h`, 'Stunden']}
+                  />
+                  <Bar dataKey="hours" fill="#26C6C6" radius={[8, 8, 0, 0]} maxBarSize={36} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Card>
+
+        <div className="grid lg:grid-cols-2 gap-6">
           {/* Today's Schedule */}
           <Card>
             <CardHeader>
@@ -169,9 +203,9 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <Card>
+        <Card padding="lg">
           <CardTitle className="mb-4">Schnellzugriff</CardTitle>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { href: '/admin/employees', icon: Users, label: 'Mitarbeiter', color: 'bg-blue-50 text-blue-600' },
               { href: '/admin/schedule', icon: Calendar, label: 'Dienstplan KI', color: 'bg-purple-50 text-purple-600' },

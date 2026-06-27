@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import type { Employee, Location, VacationRequest, TimeLog } from '@/lib/types'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 type Tab = 'overview' | 'employees' | 'locations'
 
@@ -79,7 +80,7 @@ export default function CompanyDashboard() {
   return (
     <>
       <Header title="Unternehmens-Übersicht" subtitle="BrightCare GmbH · Alle Standorte" />
-      <div className="p-4 sm:p-6 space-y-4">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         <FeatureIntro
           featureKey="company-overview"
           text="Hier sehen Sie alle Standorte Ihres Unternehmens im Überblick: Mitarbeiterzahlen, Stundenkonten und offene Urlaubsanträge je Standort."
@@ -127,14 +128,38 @@ export default function CompanyDashboard() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard title="Mitarbeiter gesamt" value={totalEmployees} subtitle={`${LOCATIONS.length} Standorte`} icon={Users} iconColor="text-navy" iconBg="bg-navy-50" />
               <StatCard title="Standorte" value={LOCATIONS.length} subtitle="aktiv" icon={MapPin} iconColor="text-blue-600" iconBg="bg-blue-100" />
               <StatCard title="Offene Anträge" value={pendingVacations.length} subtitle="Urlaub" icon={Palmtree} iconColor="text-amber-600" iconBg="bg-amber-100" alert={pendingVacations.length > 2} />
               <StatCard title="Std. erfasst" value={`${Math.round(monthHours / 60)}h`} subtitle="gesamt alle MA" icon={TrendingUp} iconColor="text-green-600" iconBg="bg-green-100" />
             </div>
 
-            <Card>
+            {LOCATIONS.length > 0 && (
+              <Card padding="lg">
+                <CardHeader>
+                  <CardTitle>Standorte im Vergleich</CardTitle>
+                  <span className="text-xs text-gray-400">erfasste Stunden gesamt</span>
+                </CardHeader>
+                <div className="h-56 -ml-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={locationStats.map(l => ({ name: l.name.replace('Kita ', ''), hours: l.locHours }))} barCategoryGap="28%">
+                      <CartesianGrid vertical={false} stroke="#E8ECEF" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#565D61', fontSize: 12 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#565D61', fontSize: 12 }} width={32} />
+                      <Tooltip
+                        cursor={{ fill: '#E8ECEF' }}
+                        contentStyle={{ borderRadius: 12, border: '1px solid #E8ECEF', fontSize: 13 }}
+                        formatter={value => [`${value} h`, 'Stunden']}
+                      />
+                      <Bar dataKey="hours" fill="#0E6B6F" radius={[8, 8, 0, 0]} maxBarSize={48} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            )}
+
+            <Card padding="lg">
               <CardHeader>
                 <CardTitle>Stundenkonto – alle Standorte</CardTitle>
               </CardHeader>
@@ -162,7 +187,7 @@ export default function CompanyDashboard() {
               </div>
             </Card>
 
-            <Card>
+            <Card padding="lg">
               <CardHeader>
                 <CardTitle>Offene Urlaubsanträge</CardTitle>
                 <Badge variant="warning">{pendingVacations.length} offen</Badge>
