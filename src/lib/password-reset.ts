@@ -20,6 +20,7 @@ export async function createAndSendPasswordReset(origin: string, email: string):
   await sendEmail(
     normalizedEmail,
     'Passwort zurücksetzen – OKUN Workforce',
-    `Hallo ${user.name},\n\nSie haben angefordert, Ihr Passwort zurückzusetzen. Klicken Sie auf folgenden Link, um ein neues Passwort zu vergeben:\n${link}\n\nDer Link ist ${RESET_VALID_MINUTES} Minuten gültig. Falls Sie das nicht angefordert haben, ignorieren Sie diese E-Mail.\n\nIhr OKUN Workforce Team`,
+    `Hallo ${user.name},\n\nSie haben angefordert, Ihr Passwort zurückzusetzen. Nutzen Sie den folgenden Button, um ein neues Passwort zu vergeben.\n\nDer Link ist ${RESET_VALID_MINUTES} Minuten gültig. Falls Sie das nicht angefordert haben, ignorieren Sie diese E-Mail.\n\nIhr OKUN Workforce Team`,
+    { ctaUrl: link, ctaLabel: 'Neues Passwort vergeben' },
   )
 }

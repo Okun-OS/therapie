@@ -26,7 +26,8 @@ export async function sendInvitationEmail(
   await sendEmail(
     invitation.email,
     'Ihre Einladung zu OKUN Workforce',
-    `${greeting}\n\nSie wurden zu OKUN Workforce eingeladen (Rolle: ${roleLabel}).${orgLine}\n\nRichten Sie Ihr Konto unter folgendem Link ein:\n${link}\n\nDer Link ist ${INVITATION_VALID_DAYS} Tage gültig.\n\nIhr OKUN Workforce Team`,
+    `${greeting}\n\nSie wurden zu OKUN Workforce eingeladen (Rolle: ${roleLabel}).${orgLine}\n\nRichten Sie Ihr Konto über den folgenden Button ein. Der Link ist ${INVITATION_VALID_DAYS} Tage gültig.\n\nIhr OKUN Workforce Team`,
+    { ctaUrl: link, ctaLabel: 'Konto einrichten' },
   )
 }
 
