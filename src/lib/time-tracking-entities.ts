@@ -103,6 +103,11 @@ export async function getTimeLogsByMonth(employeeId: string, year: number, month
   return rows.map(toTimeLog)
 }
 
+export async function getTimeLogById(id: string): Promise<TimeLog | undefined> {
+  const row = await prisma.timeLog.findUnique({ where: { id } })
+  return row ? toTimeLog(row) : undefined
+}
+
 export async function getActiveTimeLog(employeeId: string): Promise<TimeLog | undefined> {
   const row = await prisma.timeLog.findFirst({ where: { employeeId, clockOut: null } })
   return row ? toTimeLog(row) : undefined
@@ -331,6 +336,9 @@ export async function correctMonthlyClosingTimeLog(
   const closing = await prisma.monthlyClosing.findUnique({ where: { id: closingId } })
   const log = await prisma.timeLog.findUnique({ where: { id: timeLogId } })
   if (!closing || !log) return
+  if (closing.status === 'freigegeben') {
+    throw new Error('Monat ist bereits freigegeben – keine Korrektur mehr möglich')
+  }
 
   const logUpdates: any = { ...updates }
   const clockIn = updates.clockIn ?? log.clockIn
@@ -363,6 +371,60 @@ export async function correctMonthlyClosingTimeLog(
       reviewedAt: new Date().toISOString(),
     },
   })
+}
+
+export async function backfillTimeLog(
+  input: { employeeId: string; date: string; clockIn: string; clockOut: string; breakMinutes?: number; note?: string; locationId: string },
+  createdBy: string
+): Promise<TimeLog> {
+  const year = Number(input.date.slice(0, 4))
+  const month = Number(input.date.slice(5, 7))
+  const closing = await prisma.monthlyClosing.findUnique({ where: { employeeId_year_month: { employeeId: input.employeeId, year, month } } })
+  if (closing?.status === 'freigegeben') {
+    throw new Error('Monat ist bereits freigegeben – keine Nacherfassung mehr möglich')
+  }
+
+  const [inH, inM] = input.clockIn.split(':').map(Number)
+  const [outH, outM] = input.clockOut.split(':').map(Number)
+  const totalMinutes = Math.max(0, (outH * 60 + outM) - (inH * 60 + inM))
+
+  const row = await prisma.timeLog.create({
+    data: {
+      employeeId: input.employeeId,
+      date: input.date,
+      clockIn: input.clockIn,
+      clockOut: input.clockOut,
+      totalMinutes,
+      breakMinutes: input.breakMinutes ?? 0,
+      note: input.note,
+      locationId: input.locationId,
+    },
+  })
+
+  if (closing) {
+    const monthLogs = await getTimeLogsByMonth(input.employeeId, year, month)
+    const istMinutes = monthLogs.reduce((s, t) => s + (t.totalMinutes ?? 0) - (t.breakMinutes ?? 0), 0)
+    const breakMinutesSum = monthLogs.reduce((s, t) => s + (t.breakMinutes ?? 0), 0)
+    const undertimeMinutes = Math.max(0, closing.sollMinutes - istMinutes)
+    const comments = [
+      ...(closing.comments as MonthlyClosing['comments']),
+      { author: createdBy, text: `Nacherfassung für ${formatDateGerman(input.date)}: ${formatTimeLogChange(toTimeLog(row))}`, at: new Date().toISOString() },
+    ]
+    await prisma.monthlyClosing.update({
+      where: { id: closing.id },
+      data: {
+        istMinutes,
+        breakMinutes: breakMinutesSum,
+        undertimeMinutes,
+        comments,
+        status: closing.status === 'offen' ? 'geprueft' : closing.status,
+        reviewedBy: createdBy,
+        reviewedAt: new Date().toISOString(),
+      },
+    })
+  }
+
+  return toTimeLog(row)
 }
 
 /** Gibt den Monatsabschluss frei und liefert das Saldo-Delta (in Stunden), das

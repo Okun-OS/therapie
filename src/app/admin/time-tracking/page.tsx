@@ -13,7 +13,7 @@ import { useToast } from '@/lib/toast-context'
 import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing, TimeLog, Employee } from '@/lib/types'
 import {
   AlertCircle, CheckCircle, XCircle, Clock, Stethoscope, FileText, ChevronDown, ChevronUp,
-  MessageSquare, ShieldCheck, ShieldX, Pencil,
+  MessageSquare, ShieldCheck, ShieldX, Pencil, CalendarPlus,
 } from 'lucide-react'
 import { formatDate, formatTime } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -110,6 +110,14 @@ export default function AdminTimeTracking() {
   const [editClockOut, setEditClockOut] = useState('')
   const [editBreakMinutes, setEditBreakMinutes] = useState(0)
 
+  const [backfillClosing, setBackfillClosing] = useState<MonthlyClosing | null>(null)
+  const [backfillDate, setBackfillDate] = useState('')
+  const [backfillClockIn, setBackfillClockIn] = useState('')
+  const [backfillClockOut, setBackfillClockOut] = useState('')
+  const [backfillBreakMinutes, setBackfillBreakMinutes] = useState(0)
+  const [backfillNote, setBackfillNote] = useState('')
+  const [backfillSaving, setBackfillSaving] = useState(false)
+
   const openOvertimeModal = (req: OvertimeRequest) => {
     setSelectedOvertime(req)
     setApprovedMinutes(req.overtimeMinutes)
@@ -198,6 +206,48 @@ export default function AdminTimeTracking() {
     setEditingLog(null)
     setEditingClosingId(null)
     showToast('Korrektur gespeichert', 'success')
+    loadClosings()
+  }
+
+  const openBackfill = (closing: MonthlyClosing) => {
+    setBackfillClosing(closing)
+    const today = new Date()
+    const isCurrentMonth = today.getFullYear() === closing.year && today.getMonth() + 1 === closing.month
+    const defaultDate = isCurrentMonth
+      ? today.toISOString().slice(0, 10)
+      : `${closing.year}-${String(closing.month).padStart(2, '0')}-01`
+    setBackfillDate(defaultDate)
+    setBackfillClockIn('')
+    setBackfillClockOut('')
+    setBackfillBreakMinutes(0)
+    setBackfillNote('')
+  }
+
+  const handleSaveBackfill = async () => {
+    if (!backfillClosing || !user || !backfillDate || !backfillClockIn || !backfillClockOut) return
+    setBackfillSaving(true)
+    const res = await fetch('/api/time-logs/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeId: backfillClosing.employeeId,
+        date: backfillDate,
+        clockIn: backfillClockIn,
+        clockOut: backfillClockOut,
+        breakMinutes: backfillBreakMinutes,
+        note: backfillNote.trim() || undefined,
+        locationId: backfillClosing.locationId,
+        createdBy: user.name,
+      }),
+    })
+    const data = await res.json()
+    setBackfillSaving(false)
+    if (!res.ok) {
+      showToast(data.error || 'Nacherfassung fehlgeschlagen', 'error')
+      return
+    }
+    setBackfillClosing(null)
+    showToast('Eintrag nacherfasst', 'success')
     loadClosings()
   }
 
@@ -357,6 +407,15 @@ export default function AdminTimeTracking() {
                               )}
                             </div>
                           ))}
+                          {closing.status !== 'freigegeben' && (
+                            <button
+                              onClick={() => openBackfill(closing)}
+                              className="flex items-center gap-1.5 text-xs font-semibold text-navy hover:text-brand-dark pt-1.5"
+                            >
+                              <CalendarPlus size={13} />
+                              Eintrag nacherfassen
+                            </button>
+                          )}
                         </div>
                         {closing.comments.length > 0 && (
                           <div className="space-y-1 pt-1 border-t border-gray-200">
@@ -514,6 +573,68 @@ export default function AdminTimeTracking() {
             <Button variant="success" className="w-full gap-1.5" onClick={handleSaveCorrection}>
               <CheckCircle size={15} />
               Korrektur speichern
+            </Button>
+          </div>
+        )}
+      </Modal>
+
+      {/* Nacherfassung (Monatsabschluss) */}
+      <Modal open={!!backfillClosing} onClose={() => setBackfillClosing(null)} title="Eintrag nacherfassen">
+        {backfillClosing && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">{backfillClosing.employeeName} · {MONTH_NAMES[backfillClosing.month - 1]} {backfillClosing.year}</p>
+            <div>
+              <Input
+                label="Datum"
+                type="date"
+                value={backfillDate}
+                onChange={e => setBackfillDate(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Input
+                  label="Kommt"
+                  type="time"
+                  value={backfillClockIn}
+                  onChange={e => setBackfillClockIn(e.target.value)}
+                />
+              </div>
+              <div>
+                <Input
+                  label="Geht"
+                  type="time"
+                  value={backfillClockOut}
+                  onChange={e => setBackfillClockOut(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Input
+                label="Pause (Minuten)"
+                type="number"
+                min={0}
+                value={backfillBreakMinutes}
+                onChange={e => setBackfillBreakMinutes(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <Textarea
+                label="Notiz (optional)"
+                value={backfillNote}
+                onChange={e => setBackfillNote(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <Button
+              variant="success"
+              className="w-full gap-1.5"
+              loading={backfillSaving}
+              disabled={!backfillDate || !backfillClockIn || !backfillClockOut}
+              onClick={handleSaveBackfill}
+            >
+              <CalendarPlus size={15} />
+              Eintrag speichern
             </Button>
           </div>
         )}

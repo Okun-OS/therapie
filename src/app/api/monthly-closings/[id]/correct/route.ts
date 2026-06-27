@@ -11,6 +11,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'timeLogId, updates und correctedBy sind erforderlich' }, { status: 400 })
   }
 
-  await correctMonthlyClosingTimeLog(params.id, timeLogId, updates, correctedBy)
-  return NextResponse.json({ success: true })
+  try {
+    await correctMonthlyClosingTimeLog(params.id, timeLogId, updates, correctedBy)
+    return NextResponse.json({ success: true })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
 }
