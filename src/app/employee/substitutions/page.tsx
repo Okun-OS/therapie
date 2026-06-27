@@ -11,6 +11,7 @@ import { usePush } from '@/lib/use-push'
 import { PRIORITY_LABEL, type SubstitutionPriority } from '@/lib/substitution-constants'
 import { formatDate } from '@/lib/utils'
 import { Bell, BellRing, Calendar, Clock, CheckCircle2, XCircle, UserPlus, Sparkles } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 interface IncomingCandidate {
   id: string
@@ -125,10 +126,7 @@ export default function EmployeeSubstitutions() {
           {loading ? (
             <div className="text-center py-12 text-sm text-gray-400">Wird geladen...</div>
           ) : incoming.length === 0 ? (
-            <div className="text-center py-12">
-              <UserPlus size={36} className="mx-auto text-gray-200 mb-3" />
-              <p className="text-sm text-gray-500">Aktuell keine offenen Vertretungsanfragen</p>
-            </div>
+            <EmptyState icon={UserPlus} title="Aktuell keine offenen Vertretungsanfragen" />
           ) : (
             incoming.map(c => (
               <Card key={c.id} padding="sm">

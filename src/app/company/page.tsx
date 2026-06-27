@@ -9,9 +9,10 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { EmptyState } from '@/components/ui/EmptyState'
 import {
   Users, Palmtree, TrendingUp, MapPin, AlertTriangle, Building2,
-  ChevronRight, Clock, Search, Baby,
+  ChevronRight, Clock, Search, Baby, CheckCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { Employee, Location, VacationRequest, TimeLog } from '@/lib/types'
@@ -168,7 +169,7 @@ export default function CompanyDashboard() {
               </CardHeader>
               <div className="space-y-2">
                 {pendingVacations.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-4">Alle Anträge bearbeitet ✓</p>
+                  <EmptyState icon={CheckCircle} title="Alle Anträge bearbeitet ✓" />
                 ) : (
                   pendingVacations.map(v => (
                     <button key={v.id} onClick={() => router.push(`/company/employees/${v.employeeId}`)}

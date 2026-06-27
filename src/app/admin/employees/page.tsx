@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight, MessageCircle } from 'lucide-react'
 import type { Employee, OvertimeRequest, Absence } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
@@ -296,10 +297,7 @@ export default function AdminEmployees() {
           ))}
 
           {employees.length === 0 && (
-            <div className="text-center py-12">
-              <Users size={36} className="mx-auto text-gray-200 mb-3" />
-              <p className="text-sm text-gray-500">Keine Mitarbeiter gefunden</p>
-            </div>
+            <EmptyState icon={Users} title="Keine Mitarbeiter gefunden" />
           )}
         </div>
       </div>

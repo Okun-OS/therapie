@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/ui/EmptyState'
 import type { Employee, Location, Shift, ScheduleEntry, VacationRequest, TimeLog } from '@/lib/types'
 import { formatDate, formatHours } from '@/lib/utils'
 import {
@@ -305,7 +306,7 @@ export default function EmployeeDetailPage() {
                 <button onClick={() => setTab('timelogs')} className="text-xs text-brand font-semibold hover:underline">Alle ansehen</button>
               </CardHeader>
               {allLogs.slice(0, 5).length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">Keine Zeiterfassungen</p>
+                <EmptyState icon={Clock} title="Keine Zeiterfassungen" />
               ) : (
                 <div className="space-y-2">
                   {allLogs.slice(0, 5).map(log => (
@@ -400,10 +401,7 @@ export default function EmployeeDetailPage() {
             {/* Time log table */}
             <Card padding="none">
               {monthLogs.length === 0 ? (
-                <div className="text-center py-12">
-                  <Clock size={32} className="mx-auto text-gray-200 mb-3" />
-                  <p className="text-sm text-gray-400">Keine Einträge für diesen Monat</p>
-                </div>
+                <EmptyState icon={Clock} title="Keine Einträge für diesen Monat" />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[420px]">
@@ -457,10 +455,7 @@ export default function EmployeeDetailPage() {
         {tab === 'shifts' && (
           <Card padding="none">
             {scheduleEntries.length === 0 ? (
-              <div className="text-center py-12 p-6">
-                <Calendar size={32} className="mx-auto text-gray-200 mb-3" />
-                <p className="text-sm text-gray-400">Keine Schichten erfasst</p>
-              </div>
+              <EmptyState icon={Calendar} title="Keine Schichten erfasst" />
             ) : (
               <div className="divide-y divide-gray-50">
                 {scheduleEntries.map(entry => {
@@ -514,10 +509,7 @@ export default function EmployeeDetailPage() {
 
             <Card padding="none">
               {vacationRequests.length === 0 ? (
-                <div className="text-center py-12 p-6">
-                  <Palmtree size={32} className="mx-auto text-gray-200 mb-3" />
-                  <p className="text-sm text-gray-400">Keine Urlaubsanträge</p>
-                </div>
+                <EmptyState icon={Palmtree} title="Keine Urlaubsanträge" />
               ) : (
                 <div className="divide-y divide-gray-50">
                   {vacationRequests.map(v => {

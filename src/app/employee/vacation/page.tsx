@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/Select'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, Send, Baby } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate, diffDays } from '@/lib/utils'
 import type { Employee, Location, VacationRequest, VacationPlanPreference } from '@/lib/types'
 
@@ -299,9 +300,8 @@ export default function EmployeeVacation() {
 
           <div className="space-y-3">
             {myRequests.length === 0 ? (
-              <div className="text-center py-10">
-                <Palmtree size={36} className="mx-auto text-gray-200 mb-3" />
-                <p className="text-sm text-gray-500">Noch keine Urlaubsanträge</p>
+              <div className="text-center">
+                <EmptyState icon={Palmtree} title="Noch keine Urlaubsanträge" />
                 <Button size="sm" className="mt-3" onClick={() => setModal(true)}>
                   Ersten Antrag stellen
                 </Button>

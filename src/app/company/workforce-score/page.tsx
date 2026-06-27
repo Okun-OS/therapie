@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/lib/toast-context'
 import { LEVEL_LABEL, LEVEL_ORDER, type WorkforceLevel } from '@/lib/workforce-score-constants'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Trophy, Medal } from 'lucide-react'
 
 interface LeaderboardEntry {
@@ -88,7 +89,7 @@ export default function CompanyWorkforceScore() {
           {loading ? (
             <div className="text-center py-8 text-sm text-gray-400">Wird geladen...</div>
           ) : leaderboard.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">Noch keine Punkte vergeben</p>
+            <EmptyState icon={Trophy} title="Noch keine Punkte vergeben" />
           ) : (
             <div className="space-y-2">
               {leaderboard.map((entry, idx) => (

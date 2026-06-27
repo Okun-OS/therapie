@@ -16,6 +16,7 @@ import {
   MessageSquare, ShieldCheck, ShieldX, Pencil,
 } from 'lucide-react'
 import { formatDate, formatTime } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 
@@ -236,7 +237,7 @@ export default function AdminTimeTracking() {
             </CardHeader>
             <div className="space-y-2">
               {overtimeRequests.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">Keine Überstundenanträge</p>
+                <EmptyState icon={Clock} title="Keine Überstundenanträge" />
               ) : (
                 overtimeRequests.map(req => {
                   const statusCfg = {
@@ -277,7 +278,7 @@ export default function AdminTimeTracking() {
             </CardHeader>
             <div className="space-y-2">
               {absences.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">Keine Meldungen</p>
+                <EmptyState icon={Stethoscope} title="Keine Meldungen" />
               ) : (
                 absences.map(absence => {
                   const statusCfg = {
