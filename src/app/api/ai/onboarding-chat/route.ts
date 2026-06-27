@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { upsertOrganizationOnboarding, upsertLocationOnboarding, ONBOARDING_PHASES } from '@/lib/onboarding-service'
 import { listLocations } from '@/lib/entities'
+import { requireRole } from '@/lib/session'
 
 const client = new Anthropic()
 
@@ -101,6 +102,9 @@ const LOCATION_TOOL = {
 }
 
 export async function POST(req: NextRequest) {
+  const session = requireRole(req, ['company', 'okun'])
+  if (session instanceof NextResponse) return session
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY nicht konfiguriert' }, { status: 500 })
   }

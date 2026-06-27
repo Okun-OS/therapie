@@ -20,10 +20,10 @@ export function generateICSContent(
   const lines: string[] = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//PlanMate//Dienstplan//DE',
+    'PRODID:-//OKUN Workforce//Dienstplan//DE',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    `X-WR-CALNAME:PlanMate – ${escapeICS(location.name)}`,
+    `X-WR-CALNAME:OKUN Workforce – ${escapeICS(location.name)}`,
     'X-WR-TIMEZONE:Europe/Berlin',
   ]
 

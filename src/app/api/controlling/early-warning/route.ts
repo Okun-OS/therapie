@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { notifyEmployee } from '@/lib/notify'
 import { getEarlyWarnings } from '@/lib/controlling-service'
+import { requireRole } from '@/lib/session'
 
 export async function POST(req: NextRequest) {
+  const session = requireRole(req, ['admin', 'company'])
+  if (session instanceof NextResponse) return session
+
   let body: { employeeId?: string; locationId?: string }
   try {
     body = await req.json()

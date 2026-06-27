@@ -5,61 +5,15 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
-import { Calendar, Mail, Lock, Users, Shield, Building2, Sparkles, ChevronRight, Cog } from 'lucide-react'
-import type { Role } from '@/lib/types'
-
-const DEMO_ACCOUNTS = [
-  {
-    role: 'employee' as Role,
-    label: 'Mitarbeiter',
-    name: 'Maria Schmidt',
-    email: 'employee@demo.de',
-    desc: 'Erzieherin · Kita Sonnenschein',
-    icon: Users,
-    color: 'from-blue-500 to-blue-600',
-  },
-  {
-    role: 'admin' as Role,
-    label: 'Teamleitung',
-    name: 'Thomas Müller',
-    email: 'admin@demo.de',
-    desc: 'Admin · Kita Sonnenschein',
-    icon: Shield,
-    color: 'from-purple-500 to-purple-600',
-  },
-  {
-    role: 'company' as Role,
-    label: 'Unternehmen',
-    name: 'BrightCare GmbH',
-    email: 'company@demo.de',
-    desc: 'Geschäftsführung · Alle Standorte',
-    icon: Building2,
-    color: 'from-emerald-500 to-emerald-600',
-  },
-  {
-    role: 'okun' as Role,
-    label: 'OKUN Administrator',
-    name: 'Lea Okun',
-    email: 'okun@demo.de',
-    desc: 'Plattform-Administration · OKUN',
-    icon: Cog,
-    color: 'from-slate-600 to-slate-800',
-  },
-]
+import { Calendar, Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
-  const { login, loginDemo } = useAuth()
+  const { login } = useAuth()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'demo' | 'login'>('demo')
-
-  const handleDemoLogin = (role: Role) => {
-    loginDemo(role)
-    router.push(`/${role}`)
-  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -87,8 +41,8 @@ export default function LoginPage() {
               <Calendar size={22} className="text-navy" />
             </div>
             <div>
-              <p className="text-white font-bold text-xl leading-tight">PlanMate</p>
-              <p className="text-navy-100 text-sm">Dienstplan Pro</p>
+              <p className="text-white font-bold text-xl leading-tight">OKUN Workforce</p>
+              <p className="text-navy-100 text-sm">Open Workforce</p>
             </div>
           </div>
 
@@ -127,110 +81,71 @@ export default function LoginPage() {
               <Calendar size={20} className="text-navy" />
             </div>
             <div>
-              <p className="text-white font-bold text-lg">PlanMate</p>
-              <p className="text-navy-100 text-xs">Dienstplan Pro</p>
+              <p className="text-white font-bold text-lg">OKUN Workforce</p>
+              <p className="text-navy-100 text-xs">Open Workforce</p>
             </div>
           </div>
 
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-            {/* Tabs */}
-            <div className="flex border-b border-gray-100">
-              <button
-                onClick={() => setActiveTab('demo')}
-                className={`flex-1 py-4 text-sm font-semibold transition-colors ${activeTab === 'demo' ? 'text-navy border-b-2 border-brand' : 'text-gray-400'}`}
-              >
-                Demo-Zugang
-              </button>
-              <button
-                onClick={() => setActiveTab('login')}
-                className={`flex-1 py-4 text-sm font-semibold transition-colors ${activeTab === 'login' ? 'text-navy border-b-2 border-brand' : 'text-gray-400'}`}
-              >
-                Anmelden
-              </button>
+            <div className="px-6 pt-6 pb-2">
+              <p className="text-lg font-semibold text-navy">Anmelden</p>
+              <p className="text-sm text-gray-500">Melde dich mit deinem OKUN Workforce Konto an.</p>
             </div>
 
-            <div className="p-6">
-              {activeTab === 'demo' ? (
+            <div className="p-6 pt-2">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-5">
-                    <Sparkles size={16} className="text-brand" />
-                    <p className="text-sm text-gray-600 font-medium">Klicke auf einen Demo-Account zum sofortigen Einloggen:</p>
-                  </div>
-                  <div className="space-y-3">
-                    {DEMO_ACCOUNTS.map((acc) => (
-                      <button
-                        key={acc.role}
-                        onClick={() => handleDemoLogin(acc.role)}
-                        className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-gray-100 hover:border-brand hover:bg-amber-50 transition-all group text-left"
-                      >
-                        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${acc.color} flex items-center justify-center flex-shrink-0`}>
-                          <acc.icon size={20} className="text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-navy text-sm">{acc.name}</p>
-                          <p className="text-xs text-gray-500">{acc.desc}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">{acc.email}</p>
-                        </div>
-                        <ChevronRight size={16} className="text-gray-300 group-hover:text-brand transition-colors" />
-                      </button>
-                    ))}
+                  <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
+                  <div className="relative">
+                    <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="name@firma.de"
+                      required
+                      className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                    />
                   </div>
                 </div>
-              ) : (
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
-                    <div className="relative">
-                      <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        placeholder="name@firma.de"
-                        required
-                        className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
-                      />
-                    </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-semibold text-navy">Passwort</label>
+                    <Link href="/forgot-password" className="text-xs text-brand font-medium hover:underline">
+                      Passwort vergessen?
+                    </Link>
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-sm font-semibold text-navy">Passwort</label>
-                      <Link href="/forgot-password" className="text-xs text-brand font-medium hover:underline">
-                        Passwort vergessen?
-                      </Link>
-                    </div>
-                    <div className="relative">
-                      <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
-                      />
-                    </div>
+                  <div className="relative">
+                    <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                    />
                   </div>
+                </div>
 
-                  {error && (
-                    <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">
-                      {error}
-                    </div>
-                  )}
+                {error && (
+                  <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">
+                    {error}
+                  </div>
+                )}
 
-                  <Button type="submit" className="w-full" size="lg" loading={loading}>
-                    Anmelden
-                  </Button>
+                <Button type="submit" className="w-full" size="lg" loading={loading}>
+                  Anmelden
+                </Button>
 
-                  <p className="text-center text-xs text-gray-400">
-                    Noch kein Konto? Nutze den Einladungslink aus deiner E-Mail.
-                  </p>
-                </form>
-              )}
+                <p className="text-center text-xs text-gray-400">
+                  Noch kein Konto? Nutze den Einladungslink aus deiner E-Mail.
+                </p>
+              </form>
             </div>
           </div>
 
           <p className="text-center text-navy-100 text-xs mt-6">
-            © 2026 PlanMate · Datenschutz · Impressum
+            © 2026 OKUN Workforce · Datenschutz · Impressum
           </p>
         </div>
       </div>

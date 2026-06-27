@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hashPassword } from '@/lib/auth'
+import { setSessionCookie, type SessionRole } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return created
   })
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     user: {
       id: user.id,
       name: user.name,
@@ -60,4 +61,12 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       locationId: user.locationId ?? undefined,
     },
   })
+  setSessionCookie(res, {
+    userId: user.id,
+    email: user.email,
+    role: user.role as SessionRole,
+    employeeId: user.employeeId ?? undefined,
+    locationId: user.locationId ?? undefined,
+  })
+  return res
 }

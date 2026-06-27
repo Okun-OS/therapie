@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { releaseMonthlyClosing } from '@/lib/mock-data'
 import { applyHoursBalanceDelta } from '@/lib/entities'
+import { requireRole } from '@/lib/session'
 
 export async function POST(req: NextRequest) {
+  const session = requireRole(req, ['admin', 'company'])
+  if (session instanceof NextResponse) return session
+
   const body = await req.json()
   const { closingId, releasedBy } = body
   if (!closingId?.trim() || !releasedBy?.trim()) {

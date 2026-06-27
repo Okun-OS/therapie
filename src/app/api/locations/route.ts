@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listLocations, addLocation } from '@/lib/entities'
+import { requireRole } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const session = requireRole(req)
+  if (session instanceof NextResponse) return session
+
   const locations = await listLocations()
   return NextResponse.json({ locations })
 }
 
 export async function POST(req: NextRequest) {
+  const session = requireRole(req, ['company', 'okun'])
+  if (session instanceof NextResponse) return session
+
   const body = await req.json()
   const { name, address, city, state } = body
 

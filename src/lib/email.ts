@@ -8,7 +8,7 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
     return
   }
   await resend.emails.send({
-    from: 'PlanMate <onboarding@resend.dev>',
+    from: 'OKUN Workforce <onboarding@resend.dev>',
     to,
     subject,
     text,

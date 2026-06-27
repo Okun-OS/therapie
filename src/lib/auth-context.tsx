@@ -1,20 +1,12 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import type { User, Role } from './types'
-
-const DEMO_USERS: User[] = [
-  { id: 'emp1', name: 'Maria Schmidt', email: 'employee@demo.de', role: 'employee', locationId: 'loc1', position: 'Erzieherin' },
-  { id: 'adm1', name: 'Thomas Müller', email: 'admin@demo.de', role: 'admin', locationId: 'loc1', position: 'Teamleitung' },
-  { id: 'cmp1', name: 'BrightCare GmbH', email: 'company@demo.de', role: 'company', position: 'Geschäftsführung' },
-  { id: 'okun1', name: 'Lea Okun', email: 'okun@demo.de', role: 'okun', position: 'Plattform-Administration' },
-]
+import type { User } from './types'
 
 interface AuthContextType {
   user: User | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<boolean>
-  loginDemo: (role: Role) => void
   logout: () => void
 }
 
@@ -25,11 +17,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    let cached: User | null = null
     try {
       const stored = sessionStorage.getItem('dienstplan_user')
-      if (stored) setUser(JSON.parse(stored))
+      if (stored) {
+        cached = JSON.parse(stored)
+        setUser(cached)
+      }
     } catch {}
-    setIsLoading(false)
+
+    fetch('/api/auth/me')
+      .then(res => (res.ok ? res.json() : { user: null }))
+      .then(({ user: serverUser }) => {
+        if (serverUser) {
+          setUser(serverUser)
+          sessionStorage.setItem('dienstplan_user', JSON.stringify(serverUser))
+        } else {
+          setUser(null)
+          sessionStorage.removeItem('dienstplan_user')
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false))
   }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -49,19 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const loginDemo = (role: Role) => {
-    const found = DEMO_USERS.find(u => u.role === role)!
-    setUser(found)
-    sessionStorage.setItem('dienstplan_user', JSON.stringify(found))
-  }
-
   const logout = () => {
     setUser(null)
     sessionStorage.removeItem('dienstplan_user')
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginDemo, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

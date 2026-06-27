@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { notifyEmployee } from '@/lib/notify'
 import { formatDate } from '@/lib/utils'
+import { requireRole } from '@/lib/session'
 
 interface NotifyRequest {
   employeeId: string
@@ -12,6 +13,9 @@ interface NotifyRequest {
 }
 
 export async function POST(req: NextRequest) {
+  const session = requireRole(req, ['admin', 'company'])
+  if (session instanceof NextResponse) return session
+
   let body: NotifyRequest
   try {
     body = await req.json()

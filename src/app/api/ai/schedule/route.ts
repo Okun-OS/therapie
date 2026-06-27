@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireRole } from '@/lib/session'
 import type { Employee, Shift, ShiftFairnessData, WishSubmission } from '@/lib/types'
 
 const client = new Anthropic()
@@ -89,6 +90,9 @@ interface ScheduleRequest {
 }
 
 export async function POST(req: NextRequest) {
+  const session = requireRole(req, ['admin', 'company'])
+  if (session instanceof NextResponse) return session
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY nicht konfiguriert' }, { status: 500 })
   }

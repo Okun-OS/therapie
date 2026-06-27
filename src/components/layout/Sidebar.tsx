@@ -91,8 +91,8 @@ export function Sidebar() {
             <Calendar size={18} className="text-navy" />
           </div>
           <div>
-            <p className="text-white font-bold text-base leading-tight">PlanMate</p>
-            <p className="text-navy-100 text-xs">Dienstplan Pro</p>
+            <p className="text-white font-bold text-base leading-tight">OKUN Workforce</p>
+            <p className="text-navy-100 text-xs">Open Workforce</p>
           </div>
         </div>
       </div>

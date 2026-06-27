@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createSubstitutionRequest } from '@/lib/substitution-service'
+import { requireRole } from '@/lib/session'
 
 export async function GET(req: NextRequest) {
+  const session = requireRole(req, ['admin', 'company'])
+  if (session instanceof NextResponse) return session
+
   const locationId = req.nextUrl.searchParams.get('locationId')
   const requests = await prisma.substitutionRequest.findMany({
     where: locationId ? { locationId } : undefined,
@@ -13,6 +17,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = requireRole(req, ['admin', 'company'])
+  if (session instanceof NextResponse) return session
+
   const body = await req.json()
   const { locationId, groupId, date, startTime, endTime, qualification, priority, note, createdBy } = body
 

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { respondToCandidate } from '@/lib/substitution-service'
+import { requireRole } from '@/lib/session'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = requireRole(req)
+  if (session instanceof NextResponse) return session
+
   const { employeeId, action } = await req.json()
 
   if (!employeeId || (action !== 'accept' && action !== 'decline')) {

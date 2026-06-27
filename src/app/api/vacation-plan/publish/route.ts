@@ -3,6 +3,7 @@ import { notifyEmployee } from '@/lib/notify'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
 import { listEmployees } from '@/lib/entities'
 import type { VacationRequest, VacationPlanConflict } from '@/lib/types'
+import { requireRole } from '@/lib/session'
 
 interface PublishRequest {
   requests: VacationRequest[]
@@ -11,6 +12,9 @@ interface PublishRequest {
 }
 
 export async function POST(req: NextRequest) {
+  const session = requireRole(req, ['admin', 'company'])
+  if (session instanceof NextResponse) return session
+
   let body: PublishRequest
   try {
     body = await req.json()

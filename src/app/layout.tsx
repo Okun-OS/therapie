@@ -4,13 +4,13 @@ import { AuthProvider } from '@/lib/auth-context'
 import { ToastProvider } from '@/lib/toast-context'
 
 export const metadata: Metadata = {
-  title: 'PlanMate – Dienstplan Pro',
+  title: 'OKUN Workforce – Open Workforce',
   description: 'Modernes Mitarbeiter- und Dienstplan-Management',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'PlanMate',
+    title: 'OKUN Workforce',
   },
 }
 

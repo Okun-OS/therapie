@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listEmployees } from '@/lib/entities'
 import { notifyEmployee } from '@/lib/notify'
+import { requireRole } from '@/lib/session'
 
 export async function POST(req: NextRequest) {
+  const session = requireRole(req, ['admin', 'company'])
+  if (session instanceof NextResponse) return session
+
   let body: { locationId?: string }
   try {
     body = await req.json()

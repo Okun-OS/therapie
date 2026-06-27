@@ -7,7 +7,7 @@ self.addEventListener('activate', event => {
 })
 
 self.addEventListener('push', event => {
-  let data = { title: 'PlanMate', body: '' }
+  let data = { title: 'OKUN Workforce', body: '' }
   try {
     data = event.data ? event.data.json() : data
   } catch {
@@ -15,7 +15,7 @@ self.addEventListener('push', event => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'PlanMate', {
+    self.registration.showNotification(data.title || 'OKUN Workforce', {
       body: data.body || '',
       icon: '/icon.svg',
       badge: '/icon.svg',
