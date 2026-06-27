@@ -71,25 +71,15 @@ export default function OkunCustomers() {
       return
     }
 
-    const customer = await fetch('/api/customers', {
+    const { customer, emailSent } = await fetch('/api/customers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newCust),
-    }).then(r => r.json()).then(d => d.customer)
+    }).then(r => r.json())
     setCUSTOMERS(prev => [...prev, customer])
-    try {
-      await fetch('/api/invitations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: newCust.contactEmail,
-          role: 'company',
-          name: newCust.contactName,
-          customerName: newCust.name,
-        }),
-      })
+    if (emailSent) {
       showToast('Kunde angelegt · Einladung versendet', 'success')
-    } catch {
+    } else {
       showToast('Kunde angelegt, Einladung konnte aber nicht versendet werden', 'error')
     }
     setAddModal(false)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { listCustomers, addCustomer } from '@/lib/entities'
+import { listCustomers } from '@/lib/entities'
+import { addCustomerWithInvitation } from '@/lib/invitations'
 import { requireRole } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'name, contactName, contactEmail, plan und seatsLicensed sind erforderlich' }, { status: 400 })
   }
 
-  const customer = await addCustomer({ name, contactName, contactEmail, plan, seatsLicensed })
-  return NextResponse.json({ customer })
+  const { customer, emailSent } = await addCustomerWithInvitation({ name, contactName, contactEmail, plan, seatsLicensed }, req.nextUrl.origin)
+  return NextResponse.json({ customer, emailSent })
 }

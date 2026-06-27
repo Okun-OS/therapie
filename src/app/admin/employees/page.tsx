@@ -116,7 +116,7 @@ export default function AdminEmployees() {
       showToast('Name und E-Mail werden benötigt, um den Mitarbeiter zu speichern', 'error')
       return
     }
-    const employee = await fetch('/api/employees', {
+    const { employee, emailSent } = await fetch('/api/employees', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -136,7 +136,7 @@ export default function AdminEmployees() {
         qualifications: draft.qualifications,
         allowedTasks: draft.allowedTasks,
       }),
-    }).then(r => r.json()).then(d => d.employee)
+    }).then(r => r.json())
     setAllEmployees(prev => [...prev, employee])
     if ((draft.besonderheiten && draft.besonderheiten.length > 0) || draft.absprachen) {
       try {
@@ -153,20 +153,9 @@ export default function AdminEmployees() {
         // Mitarbeiter ist bereits angelegt; die Besonderheiten können später im Profil ergänzt werden.
       }
     }
-    try {
-      await fetch('/api/invitations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: employee.email,
-          role: 'employee',
-          name: employee.name,
-          employeeId: employee.id,
-          locationId: employee.locationId,
-        }),
-      })
+    if (emailSent) {
       showToast('Mitarbeiter gespeichert · Einladung versendet', 'success')
-    } catch {
+    } else {
       showToast('Mitarbeiter gespeichert, Einladung konnte aber nicht versendet werden', 'error')
     }
   }

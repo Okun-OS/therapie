@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { listEmployees, addEmployee } from '@/lib/entities'
+import { listEmployees } from '@/lib/entities'
+import { addEmployeeWithInvitation } from '@/lib/invitations'
 import { requireRole } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
@@ -23,23 +24,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'name, email, position, weeklyHours und locationId sind erforderlich' }, { status: 400 })
   }
 
-  const employee = await addEmployee({
-    name,
-    email,
-    position,
-    weeklyHours,
-    locationId,
-    phone: body.phone,
-    birthDate: body.birthDate,
-    roleType: body.roleType,
-    employmentType: body.employmentType,
-    gruppe: body.gruppe,
-    bereich: body.bereich,
-    multiGroupCapable: body.multiGroupCapable,
-    fixedLocations: body.fixedLocations,
-    qualifications: body.qualifications,
-    allowedTasks: body.allowedTasks,
-  })
+  const { employee, emailSent } = await addEmployeeWithInvitation(
+    {
+      name,
+      email,
+      position,
+      weeklyHours,
+      locationId,
+      phone: body.phone,
+      birthDate: body.birthDate,
+      roleType: body.roleType,
+      employmentType: body.employmentType,
+      gruppe: body.gruppe,
+      bereich: body.bereich,
+      multiGroupCapable: body.multiGroupCapable,
+      fixedLocations: body.fixedLocations,
+      qualifications: body.qualifications,
+      allowedTasks: body.allowedTasks,
+    },
+    req.nextUrl.origin,
+  )
 
-  return NextResponse.json({ employee })
+  return NextResponse.json({ employee, emailSent })
 }

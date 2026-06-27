@@ -5,7 +5,7 @@
 import { prisma } from './prisma'
 import type { Employee, Location, Customer, EmployeePreferences } from './types'
 
-function toEmployee(row: any): Employee {
+export function toEmployee(row: any): Employee {
   return {
     id: row.id,
     name: row.name,
@@ -47,7 +47,7 @@ function toLocation(row: any): Location {
   }
 }
 
-function toCustomer(row: any): Customer {
+export function toCustomer(row: any): Customer {
   return {
     id: row.id,
     name: row.name,
@@ -94,51 +94,6 @@ export async function getEmployeesByLocation(locationId: string): Promise<Employ
   return rows.map(toEmployee)
 }
 
-export async function addEmployee(input: {
-  name: string
-  email: string
-  position: string
-  weeklyHours: number
-  locationId: string
-  phone?: string
-  birthDate?: string
-  roleType?: string
-  employmentType?: string
-  gruppe?: string
-  bereich?: string
-  multiGroupCapable?: boolean
-  fixedLocations?: string
-  qualifications?: string[]
-  allowedTasks?: string[]
-}): Promise<Employee> {
-  const row = await prisma.employee.create({
-    data: {
-      name: input.name,
-      email: input.email,
-      role: 'employee',
-      locationId: input.locationId,
-      weeklyHours: input.weeklyHours,
-      position: input.position,
-      hoursBalance: 0,
-      vacationDaysTotal: 30,
-      vacationDaysUsed: 0,
-      active: true,
-      joinedAt: new Date().toISOString().split('T')[0],
-      phone: input.phone,
-      birthDate: input.birthDate,
-      roleType: input.roleType,
-      employmentType: input.employmentType,
-      gruppe: input.gruppe,
-      bereich: input.bereich,
-      multiGroupCapable: input.multiGroupCapable,
-      fixedLocations: input.fixedLocations,
-      qualifications: input.qualifications ?? [],
-      allowedTasks: input.allowedTasks ?? [],
-    },
-  })
-  return toEmployee(row)
-}
-
 export async function updateEmployee(id: string, updates: Partial<Employee>): Promise<Employee | undefined> {
   const { id: _ignored, ...data } = updates as any
   const row = await prisma.employee.update({ where: { id }, data }).catch(() => null)
@@ -178,23 +133,6 @@ export async function reassignLocationAdmin(locationId: string, newAdminEmployee
     await tx.employee.update({ where: { id: newAdminEmployeeId }, data: { role: 'admin' } })
     await tx.location.update({ where: { id: locationId }, data: { adminId: newAdminEmployeeId } })
   })
-}
-
-export async function addCustomer(input: { name: string; contactName: string; contactEmail: string; plan: string; seatsLicensed: number }): Promise<Customer> {
-  const row = await prisma.customer.create({
-    data: {
-      name: input.name,
-      contactName: input.contactName,
-      contactEmail: input.contactEmail,
-      status: 'trial',
-      plan: input.plan,
-      seatsLicensed: input.seatsLicensed,
-      seatsUsed: 0,
-      locationsCount: 0,
-      createdAt: new Date().toISOString().split('T')[0],
-    },
-  })
-  return toCustomer(row)
 }
 
 export async function updateCustomer(id: string, updates: Partial<Customer>): Promise<Customer | undefined> {
