@@ -66,7 +66,7 @@ export async function sendEmail(to: string, subject: string, text: string, optio
     return
   }
   await resend.emails.send({
-    from: 'OKUN Workforce <onboarding@resend.dev>',
+    from: process.env.EMAIL_FROM || 'OKUN Workforce <onboarding@resend.dev>',
     to,
     subject,
     text,
