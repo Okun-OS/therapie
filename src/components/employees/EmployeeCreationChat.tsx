@@ -3,17 +3,11 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { cn } from '@/lib/utils'
-import { Send, MessageCircle, Loader2, UserPlus } from 'lucide-react'
+import { AiChatPanel, type ChatMessage, type ChatCompletion } from '@/components/ui/AiChatPanel'
+import { UserPlus } from 'lucide-react'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-const CREATE_OPENING = 'Super, dann legen wir jetzt gemeinsam einen neuen Mitarbeiter an. Ich stelle dir ein paar kurze Fragen, du kannst einfach ganz normal antworten. Wie heißt die Person, und wie lautet die E-Mail-Adresse?'
+const CREATE_OPENING = 'Super, dann legen wir jetzt gemeinsam einen neuen Mitarbeiter an. Erzähl mir einfach in einem Satz oder zwei das Wichtigste – Name, E-Mail, Position und Wochenstunden reichen mir zum Start, alles andere frage ich gezielt nach.'
 const editOpening = (name: string) => `Klar, was möchtest du an ${name}s Profil ändern oder ergänzen? Du kannst mir einfach frei erzählen, was sich geändert hat.`
 
 export function EmployeeCreationChat({
@@ -37,11 +31,13 @@ export function EmployeeCreationChat({
   const [sending, setSending] = useState(false)
   const [saving, setSaving] = useState(false)
   const [draft, setDraft] = useState<EmployeeDraft>(initialDraft ?? {})
+  const [completion, setCompletion] = useState<ChatCompletion | undefined>(undefined)
 
   function reset() {
     setMessages([{ role: 'assistant', content: openingMessage }])
     setInput('')
     setDraft(initialDraft ?? {})
+    setCompletion(undefined)
   }
 
   async function handleSend() {
@@ -75,53 +71,44 @@ export function EmployeeCreationChat({
     setSaving(true)
     try {
       await onSave(draft)
-      reset()
-      onClose()
+      setCompletion(
+        isEditMode
+          ? { title: 'Profil aktualisiert', items: ['Änderungen am Mitarbeiterprofil gespeichert'] }
+          : { title: 'Mitarbeiter angelegt', items: [`${draft.name ?? 'Mitarbeiter'} wurde im System angelegt`, 'Einladung per E-Mail wird versendet'] },
+      )
     } finally {
       setSaving(false)
     }
+  }
+
+  function handleCloseCompletion() {
+    reset()
+    onClose()
   }
 
   const showSaveButton = isEditMode ? Object.keys(draft).length > 0 : draft.readyToSave
 
   return (
     <Modal open={open} onClose={() => { reset(); onClose() }} title={isEditMode ? 'Profil per KI-Chat aktualisieren' : 'Mitarbeiter per KI-Chat anlegen'} size="lg">
-      <div className="space-y-2 mb-3 max-h-96 overflow-y-auto">
-        {messages.map((m, i) => (
-          <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-            <div className={cn(
-              'max-w-[85%] rounded-xl px-3 py-2 text-sm',
-              m.role === 'user' ? 'bg-brand text-navy' : 'bg-gray-100 text-gray-700'
-            )}>
-              {m.role === 'assistant' && <MessageCircle size={12} className="inline mr-1 -mt-0.5" />}
-              {m.content}
+      <AiChatPanel
+        messages={messages}
+        sending={sending}
+        input={input}
+        onInputChange={setInput}
+        onSend={handleSend}
+        completion={completion}
+        onCloseCompletion={handleCloseCompletion}
+        footer={
+          showSaveButton && !completion ? (
+            <div className="mb-3">
+              <Button className="w-full gap-2" loading={saving} onClick={handleSave}>
+                <UserPlus size={16} />
+                {isEditMode ? 'Änderungen speichern' : 'Mitarbeiter jetzt anlegen'}
+              </Button>
             </div>
-          </div>
-        ))}
-        {sending && <div className="text-xs text-gray-400 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> KI denkt nach…</div>}
-      </div>
-
-      {showSaveButton && (
-        <div className="mb-3">
-          <Button className="w-full gap-2" loading={saving} onClick={handleSave}>
-            <UserPlus size={16} />
-            {isEditMode ? 'Änderungen speichern' : 'Mitarbeiter jetzt anlegen'}
-          </Button>
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <Input
-          containerClassName="flex-1"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSend()}
-          placeholder="Deine Antwort…"
-        />
-        <Button onClick={handleSend} loading={sending} size="md">
-          <Send size={14} />
-        </Button>
-      </div>
+          ) : undefined
+        }
+      />
     </Modal>
   )
 }

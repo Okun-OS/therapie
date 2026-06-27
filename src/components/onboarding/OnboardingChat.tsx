@@ -2,18 +2,23 @@
 
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { cn } from '@/lib/utils'
-import { Send, MessageCircle, Loader2, Sparkles } from 'lucide-react'
+import { AiChatPanel, type ChatMessage } from '@/components/ui/AiChatPanel'
+import { ONBOARDING_PHASES } from '@/lib/onboarding-service'
 
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
+const ORGANIZATION_OPENING = 'Hallo! Ich freue mich, euer Unternehmen kennenzulernen. Gemeinsam richten wir OKUN Workforce so ein, dass später alles möglichst automatisch funktioniert. Wie heißt euer Unternehmen, welche Standorte gehören dazu, und wie ist die Führung grob aufgebaut (z.B. Geschäftsführung, Standortleitungen)?'
+const LOCATION_OPENING = (name: string) => `Hallo! Ich freue mich, „${name}” kennenzulernen. Gemeinsam richten wir OKUN Workforce so ein, dass die Dienstplanung später möglichst automatisch funktioniert. Magst du mir zunächst kurz erzählen, um welche Art von Standort es sich handelt und wie die Gruppen/Bereiche dort aufgeteilt sind?`
+
+interface OrgState {
+  traegerName: string | null
+  rollenmodell: string | null
+  unternehmensweiteRegeln: string | null
+  completed: boolean
 }
 
-const ORGANIZATION_OPENING = 'Hallo! Ich freue mich, euer Unternehmen kennenzulernen. Gemeinsam richten wir OKUN Workforce so ein, dass später alles möglichst automatisch funktioniert. Wie heißt euer Unternehmen, und welche Standorte gehören dazu?'
-const LOCATION_OPENING = (name: string) => `Hallo! Ich freue mich, „${name}” kennenzulernen. Gemeinsam richten wir OKUN Workforce so ein, dass die Dienstplanung später möglichst automatisch funktioniert. Magst du mir zunächst kurz erzählen, um welche Art von Standort es sich handelt?`
+interface LocState {
+  completedPhases: string[]
+  completed: boolean
+}
 
 export function OnboardingChat({
   open,
@@ -33,6 +38,7 @@ export function OnboardingChat({
   const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', content: opening }])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [state, setState] = useState<OrgState | LocState | null>(null)
 
   async function handleSend() {
     const text = input.trim()
@@ -52,7 +58,10 @@ export function OnboardingChat({
         setMessages(prev => [...prev, { role: 'assistant', content: 'Entschuldige, da ist etwas schiefgelaufen. Du kannst es gerne erneut versuchen.' }])
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: json.reply }])
-        if (json.state) onStateUpdate(json.state)
+        if (json.state) {
+          onStateUpdate(json.state)
+          setState(json.state)
+        }
       }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Entschuldige, da ist etwas schiefgelaufen. Du kannst es gerne erneut versuchen.' }])
@@ -61,40 +70,42 @@ export function OnboardingChat({
     }
   }
 
+  const progress = isOrganization
+    ? state
+      ? { current: [(state as OrgState).traegerName, (state as OrgState).rollenmodell, (state as OrgState).unternehmensweiteRegeln].filter(Boolean).length, total: 3 }
+      : { current: 0, total: 3 }
+    : { current: (state as LocState | null)?.completedPhases.length ?? 0, total: ONBOARDING_PHASES.length, label: ONBOARDING_PHASES[Math.min((state as LocState | null)?.completedPhases.length ?? 0, ONBOARDING_PHASES.length - 1)].label }
+
+  const completion = state?.completed
+    ? isOrganization
+      ? {
+          title: 'Unternehmens-Onboarding abgeschlossen',
+          items: [
+            'Unternehmensdaten gespeichert',
+            'Rollenmodell hinterlegt',
+            'Unternehmensweite Regeln gespeichert',
+          ],
+        }
+      : {
+          title: `Standort-Onboarding für „${locationName ?? ''}” abgeschlossen`,
+          items: ONBOARDING_PHASES.map(p => `${p.label} erfasst`),
+        }
+    : undefined
+
   return (
     <Modal open={open} onClose={onClose} title={isOrganization ? 'KI-Onboarding: Unternehmen' : `KI-Onboarding: ${locationName ?? ''}`} size="lg">
-      <div className="flex items-start gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 mb-3">
-        <Sparkles size={14} className="flex-shrink-0 mt-0.5 text-brand" />
-        <span>Erzähl mir einfach frei, wie euer Standort arbeitet. Ich frage automatisch nach, falls etwas fehlt oder unklar ist. Du kannst das Gespräch jederzeit unterbrechen und später fortsetzen.</span>
-      </div>
-
-      <div className="space-y-2 mb-3 max-h-96 overflow-y-auto">
-        {messages.map((m, i) => (
-          <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-            <div className={cn(
-              'max-w-[85%] rounded-xl px-3 py-2 text-sm',
-              m.role === 'user' ? 'bg-brand text-navy' : 'bg-gray-100 text-gray-700'
-            )}>
-              {m.role === 'assistant' && <MessageCircle size={12} className="inline mr-1 -mt-0.5" />}
-              {m.content}
-            </div>
-          </div>
-        ))}
-        {sending && <div className="text-xs text-gray-400 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> KI denkt nach…</div>}
-      </div>
-
-      <div className="flex gap-2">
-        <Input
-          containerClassName="flex-1"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSend()}
-          placeholder="Deine Antwort…"
-        />
-        <Button onClick={handleSend} loading={sending} size="md">
-          <Send size={14} />
-        </Button>
-      </div>
+      <AiChatPanel
+        messages={messages}
+        sending={sending}
+        input={input}
+        onInputChange={setInput}
+        onSend={handleSend}
+        placeholder="Deine Antwort…"
+        hint="Erzähl mir einfach frei, wie euer Standort arbeitet. Ich frage automatisch nach, falls etwas fehlt oder unklar ist. Du kannst das Gespräch jederzeit unterbrechen und später fortsetzen."
+        progress={progress}
+        completion={completion}
+        onCloseCompletion={onClose}
+      />
     </Modal>
   )
 }
