@@ -26,7 +26,7 @@ export async function sendInvitationEmail(
   await sendEmail(
     invitation.email,
     'Ihre Einladung zu OKUN Workforce',
-    `${greeting}\n\nSie wurden zu OKUN Workforce eingeladen (Rolle: ${roleLabel}).${orgLine}\n\nRichten Sie Ihr Konto über den folgenden Button ein. Der Link ist ${INVITATION_VALID_DAYS} Tage gültig.\n\nIhr OKUN Workforce Team`,
+    `${greeting}\n\nSie wurden zu OKUN Workforce eingeladen (Rolle: ${roleLabel}).${orgLine}\n\nRichten Sie Ihr Konto über den folgenden Button ein. Der Link ist ${INVITATION_VALID_DAYS} Tage gültig.\n\nTipp: Öffnen Sie den Link auf Ihrem Smartphone und wählen Sie "Zum Home-Bildschirm hinzufügen" (iPhone) bzw. "App installieren" (Android) – so nutzen Sie OKUN Workforce wie eine native App, inklusive Push-Benachrichtigungen.\n\nIhr OKUN Workforce Team`,
     { ctaUrl: link, ctaLabel: 'Konto einrichten' },
   )
 }
@@ -191,6 +191,39 @@ export async function sendPendingEmployeeInvitation(employeeId: string, origin: 
   }
 
   return { emailSent }
+}
+
+/** Erlaubt der Leitung, eine ausstehende oder abgelaufene Einladung erneut zu
+ * versenden: erzeugt einen frischen Token (alter Link wird damit ungültig)
+ * und eine neue Gültigkeitsfrist auf derselben Einladung, statt eine weitere
+ * Zeile anzulegen. */
+export async function resendInvitation(invitationId: string, origin: string): Promise<{ emailSent: boolean }> {
+  const invitation = await prisma.invitationToken.findUnique({ where: { id: invitationId } })
+  if (!invitation) throw new Error('Einladung nicht gefunden')
+  if (invitation.usedAt) throw new Error('Einladung wurde bereits angenommen')
+
+  const updated = await prisma.invitationToken.update({
+    where: { id: invitationId },
+    data: { token: generateSecureToken(), expiresAt: invitationExpiry() },
+  })
+
+  let emailSent = true
+  try {
+    await sendInvitationEmail(origin, updated)
+  } catch {
+    emailSent = false
+  }
+  return { emailSent }
+}
+
+/** Zieht eine noch nicht angenommene Einladung zurück, indem ihre Gültigkeit
+ * sofort abläuft – der bereits verschickte Link funktioniert danach nicht mehr. */
+export async function revokeInvitation(invitationId: string): Promise<void> {
+  const invitation = await prisma.invitationToken.findUnique({ where: { id: invitationId } })
+  if (!invitation) throw new Error('Einladung nicht gefunden')
+  if (invitation.usedAt) throw new Error('Einladung wurde bereits angenommen')
+
+  await prisma.invitationToken.update({ where: { id: invitationId }, data: { expiresAt: new Date(0) } })
 }
 
 /** Legt Kunde und Einladung atomar in einer Transaktion an, damit nie ein Kunde

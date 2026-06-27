@@ -94,6 +94,7 @@ export default function RegisterPage({ params }: { params: { token: string } }) 
             <div className="text-center py-6 space-y-3">
               <AlertCircle size={32} className="mx-auto text-red-400" />
               <p className="text-sm text-red-600">{loadError}</p>
+              <p className="text-xs text-gray-400">Bitten Sie Ihre Standortleitung oder Geschäftsführung um eine neue Einladung.</p>
             </div>
           )}
 

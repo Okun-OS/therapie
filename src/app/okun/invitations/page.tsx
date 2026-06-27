@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useToast } from '@/lib/toast-context'
-import { Mail, Plus, Send } from 'lucide-react'
+import { Mail, Plus, Send, RotateCw, Ban } from 'lucide-react'
 import type { Role, Invitation } from '@/lib/types'
 
 const STATUS_BADGE: Record<string, { label: string; variant: 'success' | 'info' | 'warning' }> = {
@@ -31,6 +31,7 @@ export default function OkunInvitations() {
   const [form, setForm] = useState({ email: '', role: 'company' as Role, customerName: '' })
   const [errors, setErrors] = useState<string[]>([])
   const [sending, setSending] = useState(false)
+  const [actingId, setActingId] = useState<string | null>(null)
 
   const loadInvitations = () => {
     fetch('/api/invitations')
@@ -74,6 +75,40 @@ export default function OkunInvitations() {
     setSending(false)
   }
 
+  const handleResend = async (id: string) => {
+    setActingId(id)
+    try {
+      const res = await fetch(`/api/invitations/${id}/resend`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        showToast(data.error || 'Einladung konnte nicht erneut versendet werden', 'error')
+      } else {
+        showToast(data.emailSent ? 'Einladung erneut versendet' : 'Einladung erneuert, E-Mail konnte aber nicht versendet werden', data.emailSent ? 'success' : 'error')
+        loadInvitations()
+      }
+    } catch {
+      showToast('Verbindung fehlgeschlagen. Bitte erneut versuchen.', 'error')
+    }
+    setActingId(null)
+  }
+
+  const handleRevoke = async (id: string) => {
+    setActingId(id)
+    try {
+      const res = await fetch(`/api/invitations/${id}/revoke`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        showToast(data.error || 'Einladung konnte nicht zurückgezogen werden', 'error')
+      } else {
+        showToast('Einladung zurückgezogen', 'success')
+        loadInvitations()
+      }
+    } catch {
+      showToast('Verbindung fehlgeschlagen. Bitte erneut versuchen.', 'error')
+    }
+    setActingId(null)
+  }
+
   return (
     <>
       <Header title="Einladungen" subtitle={`${invitations.length} Einladungen versendet`} />
@@ -98,6 +133,30 @@ export default function OkunInvitations() {
                 <p className="text-xs text-gray-400 mt-0.5">Versendet am {inv.sentAt}</p>
               </div>
               <Badge variant={STATUS_BADGE[inv.status].variant}>{STATUS_BADGE[inv.status].label}</Badge>
+              {inv.status !== 'accepted' && (
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="border border-gray-200 px-2.5"
+                    loading={actingId === inv.id}
+                    onClick={() => handleResend(inv.id)}
+                    title="Erneut senden"
+                  >
+                    <RotateCw size={14} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="border border-gray-200 px-2.5 text-red-600"
+                    loading={actingId === inv.id}
+                    onClick={() => handleRevoke(inv.id)}
+                    title="Zurückziehen"
+                  >
+                    <Ban size={14} />
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
           {invitations.length === 0 && (
