@@ -1,9 +1,10 @@
 'use client'
 
-import { Bell, Menu, X } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { formatRelativeTime } from '@/lib/utils'
+import { Logo } from '@/components/ui/Logo'
 
 interface HeaderProps {
   title: string
@@ -55,9 +56,12 @@ export function Header({ title, subtitle }: HeaderProps) {
 
   return (
     <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-      <div>
-        <h1 className="text-lg sm:text-xl font-bold text-navy">{title}</h1>
-        {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+      <div className="flex items-center gap-3">
+        <Logo variant="icon" iconSize={28} className="lg:hidden" />
+        <div>
+          <h1 className="text-lg sm:text-xl font-bold text-navy">{title}</h1>
+          {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

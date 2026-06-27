@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Lock, Mail, CheckCircle2, AlertCircle, Calendar } from 'lucide-react'
+import { Logo } from '@/components/ui/Logo'
+import { Lock, Mail, CheckCircle2, AlertCircle } from 'lucide-react'
 
 export default function ResetPasswordPage({ params }: { params: { token: string } }) {
   const [loading, setLoading] = useState(true)
@@ -60,14 +61,9 @@ export default function ResetPasswordPage({ params }: { params: { token: string 
   return (
     <div className="min-h-screen bg-navy flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center">
-            <Calendar size={20} className="text-navy" />
-          </div>
-          <div>
-            <p className="text-white font-bold text-lg">OKUN Workforce</p>
-            <p className="text-navy-100 text-xs">Neues Passwort vergeben</p>
-          </div>
+        <div className="flex flex-col items-center gap-2 mb-8">
+          <Logo variant="wordmark" onDark iconSize={40} />
+          <p className="text-navy-100 text-xs">Neues Passwort vergeben</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden p-6">

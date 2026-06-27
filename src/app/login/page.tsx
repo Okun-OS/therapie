@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Logo } from '@/components/ui/Logo'
 import Link from 'next/link'
-import { Calendar, Mail, Lock } from 'lucide-react'
+import { Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -34,17 +35,11 @@ export default function LoginPage() {
     <div className="min-h-screen bg-navy flex flex-col lg:flex-row">
       {/* Left Panel */}
       <div className="hidden lg:flex flex-col justify-between w-[45%] bg-navy p-12 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(circle at 20% 50%, #F5B800 0%, transparent 50%), radial-gradient(circle at 80% 20%, #1D4ED8 0%, transparent 40%)' }} />
+        <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(circle at 20% 50%, #26C6C6 0%, transparent 50%), radial-gradient(circle at 80% 20%, #C89C5B 0%, transparent 40%)' }} />
 
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-16">
-            <div className="w-11 h-11 rounded-2xl bg-brand flex items-center justify-center">
-              <Calendar size={22} className="text-navy" />
-            </div>
-            <div>
-              <p className="text-white font-bold text-xl leading-tight">OKUN Workforce</p>
-              <p className="text-navy-100 text-sm">OKUN Workforce</p>
-            </div>
+          <div className="mb-16">
+            <Logo variant="wordmark" onDark iconSize={40} />
           </div>
 
           <div>
@@ -77,14 +72,8 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-6 min-h-screen">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center">
-              <Calendar size={20} className="text-navy" />
-            </div>
-            <div>
-              <p className="text-white font-bold text-lg">OKUN Workforce</p>
-              <p className="text-navy-100 text-xs">OKUN Workforce</p>
-            </div>
+          <div className="lg:hidden flex justify-center mb-8">
+            <Logo variant="wordmark" onDark iconSize={40} />
           </div>
 
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">

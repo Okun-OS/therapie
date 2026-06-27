@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download, Share, X } from 'lucide-react'
+import { Share, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Logo } from '@/components/ui/Logo'
 
 const DISMISSED_KEY = 'okun_pwa_install_dismissed'
 
@@ -67,8 +68,8 @@ export function PwaInstallPrompt() {
   return (
     <div className="fixed bottom-20 lg:bottom-4 left-4 right-4 lg:left-auto lg:right-4 lg:w-96 z-50">
       <div className="bg-navy rounded-2xl shadow-2xl px-4 py-3.5 flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center flex-shrink-0">
-          {showIosHint ? <Share size={16} className="text-navy" /> : <Download size={16} className="text-navy" />}
+        <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <Logo variant="icon" iconSize={24} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm font-semibold">OKUN Workforce installieren</p>

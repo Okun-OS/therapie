@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/ui/Logo'
 import {
   LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList,
   Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart, Scale, ShieldAlert, Brain, MessageCircle,
@@ -86,15 +87,7 @@ export function Sidebar() {
     <div className="hidden lg:flex flex-col w-64 bg-navy min-h-screen fixed left-0 top-0 z-40">
       {/* Logo */}
       <div className="p-6 border-b border-navy-light">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center">
-            <Calendar size={18} className="text-navy" />
-          </div>
-          <div>
-            <p className="text-white font-bold text-base leading-tight">OKUN Workforce</p>
-            <p className="text-navy-100 text-xs">OKUN Workforce</p>
-          </div>
-        </div>
+        <Logo variant="wordmark" onDark iconSize={36} />
       </div>
 
       {/* Role Badge */}

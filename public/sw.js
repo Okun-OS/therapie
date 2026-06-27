@@ -19,8 +19,8 @@ self.addEventListener('push', event => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'OKUN Workforce', {
       body: data.body || '',
-      icon: '/icon.svg',
-      badge: '/icon.svg',
+      icon: '/brand/icon-192.png',
+      badge: '/brand/icon-96.png',
       data: { url: data.url || '/' },
     }),
   )
