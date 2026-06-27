@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
         allowedTasks: body.allowedTasks,
       },
       getAppOrigin(req),
+      { sendInvitation: body.sendInvitation !== false },
     )
 
     return NextResponse.json({ employee, emailSent })

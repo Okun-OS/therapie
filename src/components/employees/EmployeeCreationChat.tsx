@@ -14,12 +14,14 @@ export function EmployeeCreationChat({
   open,
   onClose,
   onSave,
+  onDraftSync,
   initialDraft,
   employeeName,
 }: {
   open: boolean
   onClose: () => void
-  onSave: (draft: EmployeeDraft) => Promise<void>
+  onSave: (draft: EmployeeDraft, employeeId: string | null) => Promise<void>
+  onDraftSync?: (draft: EmployeeDraft, employeeId: string | null) => Promise<string | null>
   initialDraft?: EmployeeDraft
   employeeName?: string
 }) {
@@ -32,12 +34,14 @@ export function EmployeeCreationChat({
   const [saving, setSaving] = useState(false)
   const [draft, setDraft] = useState<EmployeeDraft>(initialDraft ?? {})
   const [completion, setCompletion] = useState<ChatCompletion | undefined>(undefined)
+  const [employeeId, setEmployeeId] = useState<string | null>(null)
 
   function reset() {
     setMessages([{ role: 'assistant', content: openingMessage }])
     setInput('')
     setDraft(initialDraft ?? {})
     setCompletion(undefined)
+    setEmployeeId(null)
   }
 
   async function handleSend() {
@@ -58,7 +62,18 @@ export function EmployeeCreationChat({
         setMessages(prev => [...prev, { role: 'assistant', content: 'Entschuldige, da ist etwas schiefgelaufen. Du kannst es gerne erneut versuchen.' }])
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: json.reply }])
-        if (json.draft) setDraft(json.draft as EmployeeDraft)
+        if (json.draft) {
+          const nextDraft = json.draft as EmployeeDraft
+          setDraft(nextDraft)
+          if (!isEditMode && onDraftSync && nextDraft.name?.trim() && nextDraft.email?.trim()) {
+            try {
+              const id = await onDraftSync(nextDraft, employeeId)
+              if (id) setEmployeeId(id)
+            } catch {
+              // Inkrementelles Anlegen ist best-effort – die finale Bestätigung legt den Mitarbeiter notfalls vollständig an.
+            }
+          }
+        }
       }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Entschuldige, da ist etwas schiefgelaufen. Du kannst es gerne erneut versuchen.' }])
@@ -70,7 +85,7 @@ export function EmployeeCreationChat({
   async function handleSave() {
     setSaving(true)
     try {
-      await onSave(draft)
+      await onSave(draft, employeeId)
       setCompletion(
         isEditMode
           ? { title: 'Profil aktualisiert', items: ['Änderungen am Mitarbeiterprofil gespeichert'] }
@@ -96,6 +111,7 @@ export function EmployeeCreationChat({
         input={input}
         onInputChange={setInput}
         onSend={handleSend}
+        hint={!isEditMode && employeeId ? 'Der Mitarbeiter ist bereits im System angelegt und wird laufend aktualisiert.' : undefined}
         completion={completion}
         onCloseCompletion={handleCloseCompletion}
         footer={

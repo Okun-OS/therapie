@@ -113,48 +113,136 @@ export default function AdminEmployees() {
     setSelectedEmployee(null)
   }
 
-  const handleSaveFromChat = async (draft: EmployeeDraft) => {
+  function patchFieldsFromDraft(draft: EmployeeDraft) {
+    return {
+      ...(draft.name !== undefined && { name: draft.name }),
+      ...(draft.email !== undefined && { email: draft.email }),
+      ...(draft.phone !== undefined && { phone: draft.phone }),
+      ...(draft.birthDate !== undefined && { birthDate: draft.birthDate }),
+      ...(draft.roleType !== undefined && { roleType: draft.roleType, position: draft.roleType }),
+      ...(draft.employmentType !== undefined && { employmentType: draft.employmentType }),
+      ...(draft.weeklyHours !== undefined && { weeklyHours: draft.weeklyHours }),
+      ...(draft.gruppe !== undefined && { gruppe: draft.gruppe }),
+      ...(draft.bereich !== undefined && { bereich: draft.bereich }),
+      ...(draft.multiGroupCapable !== undefined && { multiGroupCapable: draft.multiGroupCapable }),
+      ...(draft.fixedLocations !== undefined && { fixedLocations: draft.fixedLocations }),
+      ...(draft.qualifications !== undefined && { qualifications: draft.qualifications }),
+      ...(draft.allowedTasks !== undefined && { allowedTasks: draft.allowedTasks }),
+    }
+  }
+
+  async function saveHumanContextFromDraft(employeeId: string, draft: EmployeeDraft) {
+    if (!((draft.besonderheiten && draft.besonderheiten.length > 0) || draft.absprachen)) return
+    try {
+      await fetch('/api/employee-human-context', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          lifeCircumstances: draft.besonderheiten,
+          agreements: draft.absprachen,
+        }),
+      })
+    } catch {
+      // Mitarbeiter ist bereits angelegt; die Besonderheiten können später im Profil ergänzt werden.
+    }
+  }
+
+  // Legt den Mitarbeiter schon während des Gesprächs an (sobald Name + E-Mail
+  // bekannt sind) statt erst beim finalen Speichern – ohne Einladung, da die
+  // E-Mail-Adresse im Gespräch noch korrigiert werden könnte.
+  const handleDraftSync = async (draft: EmployeeDraft, existingId: string | null): Promise<string | null> => {
+    if (!draft.name?.trim() || !draft.email?.trim()) return existingId
+    if (!existingId) {
+      const res = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: draft.name,
+          email: draft.email,
+          position: draft.roleType || 'Mitarbeiter',
+          weeklyHours: draft.weeklyHours || 38,
+          locationId,
+          phone: draft.phone,
+          birthDate: draft.birthDate,
+          roleType: draft.roleType,
+          employmentType: draft.employmentType,
+          gruppe: draft.gruppe,
+          bereich: draft.bereich,
+          multiGroupCapable: draft.multiGroupCapable,
+          fixedLocations: draft.fixedLocations,
+          qualifications: draft.qualifications,
+          allowedTasks: draft.allowedTasks,
+          sendInvitation: false,
+        }),
+      })
+      if (!res.ok) return null
+      const { employee } = await res.json()
+      setAllEmployees(prev => [...prev, employee])
+      return employee.id as string
+    }
+    const res = await fetch(`/api/employees/${existingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patchFieldsFromDraft(draft)),
+    })
+    if (!res.ok) return existingId
+    const { employee } = await res.json()
+    setAllEmployees(prev => prev.map(e => e.id === employee.id ? employee : e))
+    return employee.id as string
+  }
+
+  // Finalisiert den Mitarbeiter: wurde er bereits inkrementell angelegt (employeeId
+  // gesetzt), wird nur noch aktualisiert und die Einladung nachträglich versendet;
+  // ansonsten (Fallback, z.B. alles in einer einzigen Nachricht genannt) legt
+  // addEmployeeWithInvitation ihn komplett neu an.
+  const handleSaveFromChat = async (draft: EmployeeDraft, employeeId: string | null) => {
     if (!draft.name?.trim() || !draft.email?.trim()) {
       showToast('Name und E-Mail werden benötigt, um den Mitarbeiter zu speichern', 'error')
       return
     }
-    const { employee, emailSent } = await fetch('/api/employees', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: draft.name,
-        email: draft.email,
-        position: draft.roleType || 'Mitarbeiter',
-        weeklyHours: draft.weeklyHours || 38,
-        locationId,
-        phone: draft.phone,
-        birthDate: draft.birthDate,
-        roleType: draft.roleType,
-        employmentType: draft.employmentType,
-        gruppe: draft.gruppe,
-        bereich: draft.bereich,
-        multiGroupCapable: draft.multiGroupCapable,
-        fixedLocations: draft.fixedLocations,
-        qualifications: draft.qualifications,
-        allowedTasks: draft.allowedTasks,
-      }),
-    }).then(r => r.json())
-    setAllEmployees(prev => [...prev, employee])
-    if ((draft.besonderheiten && draft.besonderheiten.length > 0) || draft.absprachen) {
-      try {
-        await fetch('/api/employee-human-context', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            employeeId: employee.id,
-            lifeCircumstances: draft.besonderheiten,
-            agreements: draft.absprachen,
-          }),
-        })
-      } catch {
-        // Mitarbeiter ist bereits angelegt; die Besonderheiten können später im Profil ergänzt werden.
-      }
+
+    let employee: Employee
+    let emailSent: boolean
+
+    if (employeeId) {
+      employee = await fetch(`/api/employees/${employeeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patchFieldsFromDraft(draft)),
+      }).then(r => r.json()).then(d => d.employee)
+      setAllEmployees(prev => prev.map(e => e.id === employee.id ? employee : e))
+      const inviteResult = await fetch(`/api/employees/${employeeId}/invite`, { method: 'POST' }).then(r => r.json())
+      emailSent = !!inviteResult.emailSent
+    } else {
+      const created = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: draft.name,
+          email: draft.email,
+          position: draft.roleType || 'Mitarbeiter',
+          weeklyHours: draft.weeklyHours || 38,
+          locationId,
+          phone: draft.phone,
+          birthDate: draft.birthDate,
+          roleType: draft.roleType,
+          employmentType: draft.employmentType,
+          gruppe: draft.gruppe,
+          bereich: draft.bereich,
+          multiGroupCapable: draft.multiGroupCapable,
+          fixedLocations: draft.fixedLocations,
+          qualifications: draft.qualifications,
+          allowedTasks: draft.allowedTasks,
+        }),
+      }).then(r => r.json())
+      employee = created.employee
+      emailSent = created.emailSent
+      setAllEmployees(prev => [...prev, employee])
     }
+
+    await saveHumanContextFromDraft(employee.id, draft)
+
     if (emailSent) {
       showToast('Mitarbeiter gespeichert · Einladung versendet', 'success')
     } else {
@@ -167,38 +255,10 @@ export default function AdminEmployees() {
     const updated = await fetch(`/api/employees/${editChatEmployee.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...(draft.name && { name: draft.name }),
-        ...(draft.email && { email: draft.email }),
-        ...(draft.phone !== undefined && { phone: draft.phone }),
-        ...(draft.birthDate !== undefined && { birthDate: draft.birthDate }),
-        ...(draft.roleType !== undefined && { roleType: draft.roleType, position: draft.roleType }),
-        ...(draft.employmentType !== undefined && { employmentType: draft.employmentType }),
-        ...(draft.weeklyHours !== undefined && { weeklyHours: draft.weeklyHours }),
-        ...(draft.gruppe !== undefined && { gruppe: draft.gruppe }),
-        ...(draft.bereich !== undefined && { bereich: draft.bereich }),
-        ...(draft.multiGroupCapable !== undefined && { multiGroupCapable: draft.multiGroupCapable }),
-        ...(draft.fixedLocations !== undefined && { fixedLocations: draft.fixedLocations }),
-        ...(draft.qualifications !== undefined && { qualifications: draft.qualifications }),
-        ...(draft.allowedTasks !== undefined && { allowedTasks: draft.allowedTasks }),
-      }),
+      body: JSON.stringify(patchFieldsFromDraft(draft)),
     }).then(r => r.json()).then(d => d.employee)
     setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
-    if ((draft.besonderheiten && draft.besonderheiten.length > 0) || draft.absprachen) {
-      try {
-        await fetch('/api/employee-human-context', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            employeeId: editChatEmployee.id,
-            lifeCircumstances: draft.besonderheiten,
-            agreements: draft.absprachen,
-          }),
-        })
-      } catch {
-        // Profil ist bereits aktualisiert; die Besonderheiten können später erneut ergänzt werden.
-      }
-    }
+    await saveHumanContextFromDraft(editChatEmployee.id, draft)
     showToast('Profil aktualisiert', 'success')
     setEditChatEmployee(null)
     setSelectedEmployee(prev => prev && prev.id === editChatEmployee.id ? { ...prev, ...draft } as Employee : prev)
@@ -482,6 +542,7 @@ export default function AdminEmployees() {
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         onSave={handleSaveFromChat}
+        onDraftSync={handleDraftSync}
       />
 
       <EmployeeCreationChat

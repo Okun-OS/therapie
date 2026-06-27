@@ -91,7 +91,10 @@ export async function addEmployeeWithInvitation(
     allowedTasks?: string[]
   },
   origin: string,
+  options: { sendInvitation?: boolean } = {},
 ): Promise<{ employee: Employee; emailSent: boolean }> {
+  const sendInvitation = options.sendInvitation ?? true
+
   const { employeeRow, invitation } = await prisma.$transaction(async tx => {
     const location = await tx.location.findUnique({ where: { id: input.locationId } })
     if (!location) throw new Error('Standort nicht gefunden')
@@ -128,6 +131,7 @@ export async function addEmployeeWithInvitation(
         allowedTasks: input.allowedTasks ?? [],
       },
     })
+    if (!sendInvitation) return { employeeRow, invitation: null }
     const invitation = await tx.invitationToken.create({
       data: {
         token: generateSecureToken(),
@@ -143,6 +147,10 @@ export async function addEmployeeWithInvitation(
     return { employeeRow, invitation }
   })
 
+  if (!invitation) {
+    return { employee: toEmployee(employeeRow), emailSent: false }
+  }
+
   let emailSent = true
   try {
     await sendInvitationEmail(origin, invitation)
@@ -151,6 +159,38 @@ export async function addEmployeeWithInvitation(
   }
 
   return { employee: toEmployee(employeeRow), emailSent }
+}
+
+/** Versendet die Einladung für einen Mitarbeiter, der zuvor ohne Einladung
+ * angelegt wurde (inkrementelles Anlegen während des KI-Chats, siehe
+ * addEmployeeWithInvitation sendInvitation:false). Getrennt von der initialen
+ * Anlage, damit die Einladung erst nach der ausdrücklichen Bestätigung der
+ * Leitung an die – ggf. noch im Gespräch korrigierte – E-Mail-Adresse geht. */
+export async function sendPendingEmployeeInvitation(employeeId: string, origin: string): Promise<{ emailSent: boolean }> {
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId } })
+  if (!employee) throw new Error('Mitarbeiter nicht gefunden')
+
+  const invitation = await prisma.invitationToken.create({
+    data: {
+      token: generateSecureToken(),
+      email: employee.email.trim().toLowerCase(),
+      role: 'employee',
+      name: employee.name,
+      customerId: employee.customerId ?? undefined,
+      employeeId: employee.id,
+      locationId: employee.locationId ?? undefined,
+      expiresAt: invitationExpiry(),
+    },
+  })
+
+  let emailSent = true
+  try {
+    await sendInvitationEmail(origin, invitation)
+  } catch {
+    emailSent = false
+  }
+
+  return { emailSent }
 }
 
 /** Legt Kunde und Einladung atomar in einer Transaktion an, damit nie ein Kunde
