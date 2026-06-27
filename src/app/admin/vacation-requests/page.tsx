@@ -6,9 +6,10 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Textarea } from '@/components/ui/Textarea'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { CheckCircle, XCircle, Clock, Palmtree, Calendar, MessageSquare, Sparkles, Loader2 } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Palmtree, Calendar, Sparkles, Loader2 } from 'lucide-react'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
 import type { VacationRequest, RequestStatus, VacationRecommendation, VacationRules, Employee } from '@/lib/types'
 
@@ -278,17 +279,13 @@ export default function AdminVacationRequests() {
                 ) : null}
 
                 <div>
-                  <label className="block text-sm font-semibold text-navy mb-1.5">Ablehnungsgrund (optional)</label>
-                  <div className="relative">
-                    <MessageSquare size={14} className="absolute left-3 top-3 text-gray-400" />
-                    <textarea
-                      value={rejectNote}
-                      onChange={e => setRejectNote(e.target.value)}
-                      rows={2}
-                      placeholder="z.B. Zu viele gleichzeitige Abwesenheiten..."
-                      className="w-full pl-8 pr-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-                    />
-                  </div>
+                  <Textarea
+                    label="Ablehnungsgrund (optional)"
+                    value={rejectNote}
+                    onChange={e => setRejectNote(e.target.value)}
+                    rows={2}
+                    placeholder="z.B. Zu viele gleichzeitige Abwesenheiten..."
+                  />
                 </div>
                 <div className="flex gap-2">
                   <Button variant="danger" className="flex-1 gap-2" onClick={() => handleDeny(selected.id)}>

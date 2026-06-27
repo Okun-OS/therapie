@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Sun, Moon, Briefcase } from 'lucide-react'
 import type { Shift } from '@/lib/types'
 
@@ -70,24 +71,20 @@ export function ShiftEditor({ open, onClose, shifts, overrides, onSave }: ShiftE
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <label className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Von</label>
-                    <input
-                      type="time"
-                      value={currentStart}
-                      onChange={e => handleChange(shift.id, 'startTime', e.target.value)}
-                      className="block w-full mt-0.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-navy/20"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Bis</label>
-                    <input
-                      type="time"
-                      value={currentEnd}
-                      onChange={e => handleChange(shift.id, 'endTime', e.target.value)}
-                      className="block w-full mt-0.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-navy/20"
-                    />
-                  </div>
+                  <Input
+                    containerClassName="flex-1"
+                    label="Von"
+                    type="time"
+                    value={currentStart}
+                    onChange={e => handleChange(shift.id, 'startTime', e.target.value)}
+                  />
+                  <Input
+                    containerClassName="flex-1"
+                    label="Bis"
+                    type="time"
+                    value={currentEnd}
+                    onChange={e => handleChange(shift.id, 'endTime', e.target.value)}
+                  />
                   {isModified && (
                     <button
                       onClick={() => handleReset(shift.id)}

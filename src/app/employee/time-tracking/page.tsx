@@ -6,6 +6,8 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { OVERTIME_REASONS, type AbsenceType, type Employee, type TimeLog, type ScheduleEntry, type Shift, type OvertimeRequest, type HoursAccountSummary, type MonthlyClosing } from '@/lib/types'
@@ -626,15 +628,12 @@ export default function TimeTracking() {
               </button>
             ))}
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Kommentar (optional)</label>
-            <textarea
-              value={overtimeComment}
-              onChange={e => setOvertimeComment(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-            />
-          </div>
+          <Textarea
+            label="Kommentar (optional)"
+            value={overtimeComment}
+            onChange={e => setOvertimeComment(e.target.value)}
+            rows={2}
+          />
           <Button className="w-full" onClick={handleSubmitOvertime}>Überstundenantrag senden</Button>
         </div>
       </Modal>
@@ -657,19 +656,10 @@ export default function TimeTracking() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Von</label>
-              <input type="date" value={absenceStart} onChange={e => setAbsenceStart(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Bis</label>
-              <input type="date" value={absenceEnd} onChange={e => setAbsenceEnd(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-            </div>
+            <Input label="Von" type="date" value={absenceStart} onChange={e => setAbsenceStart(e.target.value)} />
+            <Input label="Bis" type="date" value={absenceEnd} onChange={e => setAbsenceEnd(e.target.value)} />
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Notiz (optional)</label>
-            <textarea value={absenceNote} onChange={e => setAbsenceNote(e.target.value)} rows={2} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none" />
-          </div>
+          <Textarea label="Notiz (optional)" value={absenceNote} onChange={e => setAbsenceNote(e.target.value)} rows={2} />
           <label className="flex items-center gap-2 text-sm text-navy cursor-pointer">
             <input type="checkbox" checked={absenceProof} onChange={e => setAbsenceProof(e.target.checked)} className="w-4 h-4 rounded accent-brand" />
             Nachweis liegt vor (z.B. Attest)

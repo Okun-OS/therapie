@@ -106,27 +106,21 @@ export default function OkunSupport() {
               </ul>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Organisation</label>
-            <select
-              value={form.customerName}
-              onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            >
-              <option value="">Bitte wählen...</option>
-              {CUSTOMERS.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Begründung</label>
-            <textarea
-              value={form.reason}
-              onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
-              placeholder="z.B. Support-Ticket #1234: Hilfe bei Dienstplan-Erstellung"
-              rows={3}
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-            />
-          </div>
+          <Select
+            label="Organisation"
+            value={form.customerName}
+            onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
+          >
+            <option value="">Bitte wählen...</option>
+            {CUSTOMERS.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+          </Select>
+          <Textarea
+            label="Begründung"
+            value={form.reason}
+            onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+            placeholder="z.B. Support-Ticket #1234: Hilfe bei Dienstplan-Erstellung"
+            rows={3}
+          />
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setModal(false); setErrors([]) }}>Abbrechen</Button>
             <Button className="flex-1" onClick={handleGrant}>Gewähren</Button>

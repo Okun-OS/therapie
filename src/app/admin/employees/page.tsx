@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
@@ -222,13 +223,12 @@ export default function AdminEmployees() {
 
         {/* Search + Add */}
         <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
+          <div className="flex-1">
+            <Input
+              icon={Search}
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Mitarbeiter suchen..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-white"
             />
           </div>
           <Button size="md" onClick={() => setChatOpen(true)} className="gap-2 whitespace-nowrap">
@@ -437,28 +437,25 @@ export default function AdminEmployees() {
         {selectedEmployee && isEditing && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Name</label>
-              <input
+              <Input
+                label="Name"
                 value={editForm.name}
                 onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
-              <input
+              <Input
+                label="E-Mail"
                 type="email"
                 value={editForm.email}
                 onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Position</label>
-              <input
+              <Input
+                label="Position"
                 value={editForm.position}
                 onChange={e => setEditForm(f => ({ ...f, position: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
             <div>

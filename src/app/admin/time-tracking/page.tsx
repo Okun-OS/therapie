@@ -6,6 +6,8 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing, TimeLog, Employee } from '@/lib/types'
@@ -364,13 +366,12 @@ export default function AdminTimeTracking() {
                         )}
                         {closing.status !== 'freigegeben' && (
                           <>
-                            <div className="relative">
-                              <MessageSquare size={13} className="absolute left-3 top-2.5 text-gray-400" />
-                              <input
+                            <div>
+                              <Input
+                                icon={MessageSquare}
                                 value={closingComment}
                                 onChange={e => setClosingComment(e.target.value)}
                                 placeholder="Kommentar ergänzen..."
-                                className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
                               />
                             </div>
                             <div className="flex gap-2">
@@ -403,23 +404,21 @@ export default function AdminTimeTracking() {
               {selectedOvertime.comment && <p className="text-sm text-gray-600 mt-2 italic">&bdquo;{selectedOvertime.comment}&ldquo;</p>}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Genehmigte Minuten (bei Teilgenehmigung)</label>
-              <input
+              <Input
+                label="Genehmigte Minuten (bei Teilgenehmigung)"
                 type="number"
                 min={0}
                 max={selectedOvertime.overtimeMinutes}
                 value={approvedMinutes}
                 onChange={e => setApprovedMinutes(Number(e.target.value))}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Kommentar (optional)</label>
-              <textarea
+              <Textarea
+                label="Kommentar (optional)"
                 value={adminComment}
                 onChange={e => setAdminComment(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
               />
             </div>
             <div className="flex gap-2">
@@ -486,32 +485,29 @@ export default function AdminTimeTracking() {
             <p className="text-sm text-gray-500">{formatDate(editingLog.date)}</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">Kommt</label>
-                <input
+                <Input
+                  label="Kommt"
                   type="time"
                   value={editClockIn}
                   onChange={e => setEditClockIn(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">Geht</label>
-                <input
+                <Input
+                  label="Geht"
                   type="time"
                   value={editClockOut}
                   onChange={e => setEditClockOut(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Pause (Minuten)</label>
-              <input
+              <Input
+                label="Pause (Minuten)"
                 type="number"
                 min={0}
                 value={editBreakMinutes}
                 onChange={e => setEditBreakMinutes(Number(e.target.value))}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
             <Button variant="success" className="w-full gap-1.5" onClick={handleSaveCorrection}>

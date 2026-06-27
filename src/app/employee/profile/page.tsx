@@ -491,16 +491,13 @@ export default function EmployeeProfile() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Sonstige Notizen</label>
-              <textarea
-                value={prefs.notes}
-                onChange={e => setPrefs(p => ({ ...p, notes: e.target.value }))}
-                rows={3}
-                placeholder="z.B. Nur jede zweite Woche Frühdienst, keine langen Blöcke..."
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-              />
-            </div>
+            <Textarea
+              label="Sonstige Notizen"
+              value={prefs.notes}
+              onChange={e => setPrefs(p => ({ ...p, notes: e.target.value }))}
+              rows={3}
+              placeholder="z.B. Nur jede zweite Woche Frühdienst, keine langen Blöcke..."
+            />
 
             {isDirty && !saved && (
               <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
@@ -586,16 +583,13 @@ export default function EmployeeProfile() {
               placeholder="z.B. Lieber Frühdienst, wenig Wochenenddienste…"
             />
 
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Besondere Absprachen</label>
-              <textarea
-                value={humanContext.agreements}
-                onChange={e => setHumanContext(p => ({ ...p, agreements: e.target.value }))}
-                rows={3}
-                placeholder="z.B. individuelle Absprachen mit der Leitung..."
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-              />
-            </div>
+            <Textarea
+              label="Besondere Absprachen"
+              value={humanContext.agreements}
+              onChange={e => setHumanContext(p => ({ ...p, agreements: e.target.value }))}
+              rows={3}
+              placeholder="z.B. individuelle Absprachen mit der Leitung..."
+            />
 
             {isHumanContextDirty && !humanContextSaved && (
               <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">

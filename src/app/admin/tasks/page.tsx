@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import type { Employee } from '@/lib/types'
@@ -139,13 +140,12 @@ export default function AdminTasks() {
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Neue Aufgabe anlegen">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Bezeichnung</label>
-            <input
+            <Input
+              label="Bezeichnung"
               value={newTask}
               onChange={e => setNewTask(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTask() } }}
               placeholder="z.B. Medikamentenausgabe"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
             />
           </div>
           <Button className="w-full" onClick={handleAddTask}>Anlegen</Button>

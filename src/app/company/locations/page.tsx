@@ -325,33 +325,24 @@ export default function CompanyLocations() {
               </ul>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Name</label>
-            <input
-              value={newLoc.name}
-              onChange={e => setNewLoc(l => ({ ...l, name: e.target.value }))}
-              placeholder="z.B. Kita Sonnenblume"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Adresse</label>
-            <input
-              value={newLoc.address}
-              onChange={e => setNewLoc(l => ({ ...l, address: e.target.value }))}
-              placeholder="Straße Hausnummer"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Stadt</label>
-            <input
-              value={newLoc.city}
-              onChange={e => setNewLoc(l => ({ ...l, city: e.target.value }))}
-              placeholder="z.B. Frankfurt"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
+          <Input
+            label="Name"
+            value={newLoc.name}
+            onChange={e => setNewLoc(l => ({ ...l, name: e.target.value }))}
+            placeholder="z.B. Kita Sonnenblume"
+          />
+          <Input
+            label="Adresse"
+            value={newLoc.address}
+            onChange={e => setNewLoc(l => ({ ...l, address: e.target.value }))}
+            placeholder="Straße Hausnummer"
+          />
+          <Input
+            label="Stadt"
+            value={newLoc.city}
+            onChange={e => setNewLoc(l => ({ ...l, city: e.target.value }))}
+            placeholder="z.B. Frankfurt"
+          />
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setAddModal(false); setAddErrors([]) }}>Abbrechen</Button>
             <Button className="flex-1" onClick={handleAddLocation}>Speichern</Button>

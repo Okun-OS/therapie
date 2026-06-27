@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { useToast } from '@/lib/toast-context'
 import { LEVEL_LABEL, LEVEL_ORDER, type WorkforceLevel } from '@/lib/workforce-score-constants'
 import { Trophy, Medal } from 'lucide-react'
@@ -114,12 +115,12 @@ export default function CompanyWorkforceScore() {
             {LEVEL_ORDER.map(level => (
               <div key={level} className="flex items-start gap-2">
                 <span className="text-xs font-semibold text-navy w-16 pt-2 flex-shrink-0">{LEVEL_LABEL[level]}</span>
-                <input
+                <Input
+                  containerClassName="flex-1"
                   type="text"
                   value={drafts[level] ?? ''}
                   onChange={e => setDrafts(prev => ({ ...prev, [level]: e.target.value }))}
                   placeholder="z. B. Gutschein, Tankgutschein, ..."
-                  className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-brand"
                 />
                 <Button
                   size="sm"

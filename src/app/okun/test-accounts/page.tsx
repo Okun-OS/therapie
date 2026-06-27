@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
 import { useToast } from '@/lib/toast-context'
 import { KeyRound, Plus, CheckCircle2, Clock } from 'lucide-react'
 import type { Customer, TestAccount } from '@/lib/types'
@@ -124,34 +125,25 @@ export default function OkunTestAccounts() {
               </ul>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Organisation</label>
-            <input
-              value={form.customerName}
-              onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
-              placeholder="z.B. Tagespflege Sonnenhof"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
-            <input
-              value={form.contactEmail}
-              onChange={e => setForm(f => ({ ...f, contactEmail: e.target.value }))}
-              placeholder="kontakt@organisation.de"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Laufzeit (Tage)</label>
-            <input
-              type="number"
-              min={1}
-              value={form.durationDays}
-              onChange={e => setForm(f => ({ ...f, durationDays: Number(e.target.value) }))}
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
+          <Input
+            label="Organisation"
+            value={form.customerName}
+            onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
+            placeholder="z.B. Tagespflege Sonnenhof"
+          />
+          <Input
+            label="E-Mail"
+            value={form.contactEmail}
+            onChange={e => setForm(f => ({ ...f, contactEmail: e.target.value }))}
+            placeholder="kontakt@organisation.de"
+          />
+          <Input
+            label="Laufzeit (Tage)"
+            type="number"
+            min={1}
+            value={form.durationDays}
+            onChange={e => setForm(f => ({ ...f, durationDays: Number(e.target.value) }))}
+          />
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setAddModal(false); setErrors([]) }}>Abbrechen</Button>
             <Button className="flex-1" onClick={handleAdd}>Speichern</Button>

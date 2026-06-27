@@ -1048,12 +1048,13 @@ export default function AdminSchedule() {
               {locationShifts.map(shift => (
                 <div key={shift.id} className="flex items-center justify-between py-1.5">
                   <span className="text-sm text-gray-700">{shift.name}</span>
-                  <input
+                  <Input
                     type="number"
                     min={0}
                     value={minStaffDraft[shift.id] ?? shift.minStaff}
                     onChange={e => setMinStaffDraft(d => ({ ...d, [shift.id]: Math.max(0, Number(e.target.value)) }))}
-                    className="w-20 px-2 py-1.5 text-sm text-center rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand"
+                    containerClassName="w-20"
+                    className="text-center"
                   />
                 </div>
               ))}
@@ -1070,12 +1071,13 @@ export default function AdminSchedule() {
               ] as const).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between py-1.5">
                   <span className="text-sm text-gray-700">{label}</span>
-                  <input
+                  <Input
                     type="number"
                     min={1}
                     value={rulesDraft[key]}
                     onChange={e => setRulesDraft(d => ({ ...d, [key]: Math.max(1, Number(e.target.value)) }))}
-                    className="w-20 px-2 py-1.5 text-sm text-center rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand"
+                    containerClassName="w-20"
+                    className="text-center"
                   />
                 </div>
               ))}
@@ -1093,12 +1095,13 @@ export default function AdminSchedule() {
               ] as const).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between py-1.5">
                   <span className="text-sm text-gray-700">{label}</span>
-                  <input
+                  <Input
                     type="number"
                     min={0}
                     value={rulesDraft[key]}
                     onChange={e => setRulesDraft(d => ({ ...d, [key]: Math.max(0, Number(e.target.value)) }))}
-                    className="w-20 px-2 py-1.5 text-sm text-center rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand"
+                    containerClassName="w-20"
+                    className="text-center"
                   />
                 </div>
               ))}

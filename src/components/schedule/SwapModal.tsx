@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { ArrowLeftRight, MessageSquare, Sun, Moon, Briefcase, User, Send } from 'lucide-react'
+import { Textarea } from '@/components/ui/Textarea'
+import { ArrowLeftRight, Sun, Moon, Briefcase, User, Send } from 'lucide-react'
 import type { ScheduleEntry, Shift, Employee } from '@/lib/types'
 import { getDayName, formatDate } from '@/lib/utils'
 
@@ -148,21 +149,13 @@ export function SwapModal({ open, onClose, myEntry, myShift, colleagues, colleag
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">
-                  Nachricht an {selectedColleague?.name.split(' ')[0]}
-                </label>
-                <div className="relative">
-                  <MessageSquare size={14} className="absolute left-3 top-3 text-gray-400" />
-                  <textarea
-                    value={message}
-                    onChange={e => setMessage(e.target.value)}
-                    rows={3}
-                    placeholder={`Hallo ${selectedColleague?.name.split(' ')[0]}, könntest du meinen Dienst am ${myEntry.date} tauschen? ...`}
-                    className="w-full pl-8 pr-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-                  />
-                </div>
-              </div>
+              <Textarea
+                label={`Nachricht an ${selectedColleague?.name.split(' ')[0]}`}
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+                rows={3}
+                placeholder={`Hallo ${selectedColleague?.name.split(' ')[0]}, könntest du meinen Dienst am ${myEntry.date} tauschen? ...`}
+              />
 
               <div className="flex gap-2 mt-4">
                 <Button variant="ghost" className="border border-gray-200" onClick={() => setStep('select')}>

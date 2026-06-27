@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
@@ -284,12 +285,12 @@ export function ControllingDashboard({ fetchUrl }: { fetchUrl: string }) {
           </div>
         )}
         <div className="flex gap-2">
-          <input
+          <Input
+            containerClassName="flex-1"
             value={question}
             onChange={e => setQuestion(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAsk()}
             placeholder="Frage an die KI…"
-            className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
           />
           <Button onClick={handleAsk} loading={asking} size="md">
             <Send size={14} />
