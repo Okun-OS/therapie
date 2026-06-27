@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { notifyEmployee } from '@/lib/notify'
 import { getEarlyWarnings } from '@/lib/controlling-service'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
 
 export async function POST(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company'])
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'employeeId ist erforderlich' }, { status: 400 })
   }
 
-  const warnings = await getEarlyWarnings(locationId, session.customerId)
+  const warnings = await getEarlyWarnings(locationId, await resolveCustomerId(session))
   const startOfDay = new Date()
   startOfDay.setHours(0, 0, 0, 0)
 

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { upsertOrganizationOnboarding, upsertLocationOnboarding, ONBOARDING_PHASES } from '@/lib/onboarding-service'
 import { listLocations } from '@/lib/entities'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
 
 const client = new Anthropic()
 
@@ -120,10 +120,10 @@ export async function POST(req: NextRequest) {
   if (!scope || !Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: 'scope und messages sind erforderlich' }, { status: 400 })
   }
-  if (!session.customerId) {
+  const customerId = await resolveCustomerId(session)
+  if (!customerId) {
     return NextResponse.json({ error: 'Kein Mandant für diesen Nutzer hinterlegt' }, { status: 400 })
   }
-  const customerId = session.customerId
 
   const isOrganization = scope === 'organization'
 

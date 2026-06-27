@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getControllingSnapshot } from '@/lib/controlling-service'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
 
 const client = new Anthropic()
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   const effectiveLocationId = scope === 'organization' ? undefined : locationId
-  const snapshot = await getControllingSnapshot(effectiveLocationId, session.customerId)
+  const snapshot = await getControllingSnapshot(effectiveLocationId, await resolveCustomerId(session))
 
   const userPrompt = `## Live-Daten der Personalsituation (JSON)
 ${JSON.stringify(snapshot, null, 2)}

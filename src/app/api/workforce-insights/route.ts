@@ -5,7 +5,7 @@ import {
   getSubstitutionInsights,
   getWorkloadInsights,
 } from '@/lib/workforce-insights-service'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
 
 export async function GET(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company'])
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const scope = req.nextUrl.searchParams.get('scope')
   const locationId = scope === 'organization' ? undefined : req.nextUrl.searchParams.get('locationId') ?? undefined
 
-  const customerId = session.customerId
+  const customerId = await resolveCustomerId(session)
   const [punctuality, substitutions, absence, workload] = await Promise.all([
     getPunctualityInsights(locationId, customerId),
     getSubstitutionInsights(locationId, customerId),

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getLeaderboardByLocation, getOrganizationLeaderboard } from '@/lib/workforce-score-service'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
 
 export async function GET(req: NextRequest) {
   const session = requireRole(req)
@@ -10,10 +10,11 @@ export async function GET(req: NextRequest) {
   const locationId = req.nextUrl.searchParams.get('locationId')
 
   if (scope === 'organization') {
-    if (session.role !== 'okun' && !session.customerId) {
+    const customerId = session.role === 'okun' ? undefined : await resolveCustomerId(session)
+    if (session.role !== 'okun' && !customerId) {
       return NextResponse.json({ leaderboard: [] })
     }
-    const leaderboard = await getOrganizationLeaderboard(session.role === 'okun' ? undefined : session.customerId)
+    const leaderboard = await getOrganizationLeaderboard(customerId)
     return NextResponse.json({ leaderboard })
   }
 

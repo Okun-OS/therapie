@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from './prisma'
 
 const SESSION_COOKIE = 'okun_session'
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30 // 30 days
@@ -104,4 +105,19 @@ export function requireRole(
     return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
   }
   return session
+}
+
+/**
+ * Session cookies are signed once at login and never re-validated against the
+ * database, so a field added to SessionPayload after a user's last login (or
+ * backfilled on their User row after their cookie was issued) is missing from
+ * their existing cookie until they log out and back in. Routes that need an
+ * authoritative customerId should call this instead of reading
+ * session.customerId directly, so already-logged-in users aren't locked out
+ * by a stale cookie.
+ */
+export async function resolveCustomerId(session: SessionPayload): Promise<string | undefined> {
+  if (session.customerId) return session.customerId
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { customerId: true } })
+  return user?.customerId ?? undefined
 }

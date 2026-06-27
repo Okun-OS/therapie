@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listEmployees } from '@/lib/entities'
 import { addEmployeeWithInvitation } from '@/lib/invitations'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
 import { getAppOrigin } from '@/lib/app-url'
 
 export const dynamic = 'force-dynamic'
@@ -10,10 +10,11 @@ export async function GET(req: NextRequest) {
   const session = requireRole(req)
   if (session instanceof NextResponse) return session
 
-  if (session.role !== 'okun' && !session.customerId) {
+  const customerId = session.role === 'okun' ? undefined : await resolveCustomerId(session)
+  if (session.role !== 'okun' && !customerId) {
     return NextResponse.json({ employees: [] })
   }
-  const employees = await listEmployees(session.role === 'okun' ? undefined : session.customerId)
+  const employees = await listEmployees(customerId)
   return NextResponse.json({ employees })
 }
 

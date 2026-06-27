@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listLocations, addLocation } from '@/lib/entities'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,10 +8,11 @@ export async function GET(req: NextRequest) {
   const session = requireRole(req)
   if (session instanceof NextResponse) return session
 
-  if (session.role !== 'okun' && !session.customerId) {
+  const customerId = session.role === 'okun' ? undefined : await resolveCustomerId(session)
+  if (session.role !== 'okun' && !customerId) {
     return NextResponse.json({ locations: [] })
   }
-  const locations = await listLocations(session.role === 'okun' ? undefined : session.customerId)
+  const locations = await listLocations(customerId)
   return NextResponse.json({ locations })
 }
 
@@ -26,6 +27,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'name, address und city sind erforderlich' }, { status: 400 })
   }
 
-  const location = await addLocation({ name, address, city, state, customerId: session.customerId })
+  const location = await addLocation({ name, address, city, state, customerId: await resolveCustomerId(session) })
   return NextResponse.json({ location })
 }
