@@ -8,12 +8,6 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import {
-  getOvertimeRequestsByLocation, respondToOvertimeRequest,
-  getAbsencesByLocation, updateAbsence, getMonthlyClosingsByLocation,
-  getOrCreateMonthlyClosing, addMonthlyClosingComment,
-  getTimeLogsByMonth, correctMonthlyClosingTimeLog,
-} from '@/lib/mock-data'
 import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing, TimeLog, Employee } from '@/lib/types'
 import {
   AlertCircle, CheckCircle, XCircle, Clock, Stethoscope, FileText, ChevronDown, ChevronUp,
@@ -44,30 +38,60 @@ export default function AdminTimeTracking() {
   const { showToast } = useToast()
   const locationId = user?.locationId || 'loc1'
 
-  const [, forceRender] = useState(0)
-  const refresh = () => forceRender(n => n + 1)
-
   const [tab, setTab] = useState<Tab>('overtime')
 
-  const overtimeRequests = getOvertimeRequestsByLocation(locationId)
+  const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([])
   const pendingOvertimeCount = overtimeRequests.filter(o => o.status === 'pending').length
 
-  const absences = getAbsencesByLocation(locationId)
+  const [absences, setAbsences] = useState<Absence[]>([])
   const openAbsenceCount = absences.filter(a => a.verificationStatus === 'offen').length
+
+  const loadOvertimeRequests = () => {
+    fetch(`/api/overtime-requests?locationId=${locationId}`).then(r => r.json()).then(d => setOvertimeRequests(d.requests ?? []))
+  }
+  const loadAbsences = () => {
+    fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => setAbsences(d.absences ?? []))
+  }
+  useEffect(() => { loadOvertimeRequests() }, [locationId])
+  useEffect(() => { loadAbsences() }, [locationId])
 
   const [allEmployees, setAllEmployees] = useState<Employee[]>([])
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
   }, [])
   const employees = allEmployees.filter(e => e.locationId === locationId && (e.role === 'employee' || e.role === 'admin'))
-  const now = new Date()
-  for (const emp of employees) {
-    for (let i = 0; i < 3; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      getOrCreateMonthlyClosing(emp.id, d.getFullYear(), d.getMonth() + 1, emp)
-    }
+
+  const [closings, setClosings] = useState<MonthlyClosing[]>([])
+  const loadClosings = () => {
+    fetch(`/api/monthly-closings?locationId=${locationId}`).then(r => r.json()).then(d => setClosings(d.closings ?? []))
   }
-  const closings = getMonthlyClosingsByLocation(locationId)
+
+  useEffect(() => {
+    if (employees.length === 0) return
+    const now = new Date()
+    Promise.all(
+      employees.flatMap(emp =>
+        Array.from({ length: 3 }, (_, i) => {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+          return fetch('/api/monthly-closings/get-or-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employeeId: emp.id, year: d.getFullYear(), month: d.getMonth() + 1, employeeInfo: emp }),
+          })
+        })
+      )
+    ).then(loadClosings)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees.length, locationId])
+
+  const [timeLogsByClosing, setTimeLogsByClosing] = useState<Record<string, TimeLog[]>>({})
+  useEffect(() => {
+    closings.forEach(closing => {
+      fetch(`/api/time-logs?employeeId=${closing.employeeId}&year=${closing.year}&month=${closing.month}`)
+        .then(r => r.json())
+        .then(d => setTimeLogsByClosing(prev => ({ ...prev, [closing.id]: d.logs ?? [] })))
+    })
+  }, [closings])
 
   const [selectedOvertime, setSelectedOvertime] = useState<OvertimeRequest | null>(null)
   const [approvedMinutes, setApprovedMinutes] = useState(0)
@@ -89,42 +113,53 @@ export default function AdminTimeTracking() {
     setAdminComment('')
   }
 
-  const handleRespondOvertime = (status: 'approved' | 'denied' | 'partial') => {
+  const handleRespondOvertime = async (status: 'approved' | 'denied' | 'partial') => {
     if (!selectedOvertime || !user) return
-    respondToOvertimeRequest(
-      selectedOvertime.id,
-      status,
-      user.name,
-      status === 'partial' ? approvedMinutes : undefined,
-      adminComment.trim() || undefined
-    )
+    await fetch(`/api/overtime-requests/${selectedOvertime.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status,
+        respondedBy: user.name,
+        approvedMinutes: status === 'partial' ? approvedMinutes : undefined,
+        adminComment: adminComment.trim() || undefined,
+      }),
+    })
     setSelectedOvertime(null)
     showToast(
       status === 'approved' ? 'Überstunden genehmigt' : status === 'denied' ? 'Überstunden abgelehnt' : 'Überstunden teilweise genehmigt',
       status === 'denied' ? 'info' : 'success'
     )
-    refresh()
+    loadOvertimeRequests()
   }
 
-  const handleVerifyAbsence = (status: 'geprueft' | 'abgelehnt', type?: AbsenceType) => {
+  const handleVerifyAbsence = async (status: 'geprueft' | 'abgelehnt', type?: AbsenceType) => {
     if (!selectedAbsence || !user) return
-    updateAbsence(selectedAbsence.id, {
-      verificationStatus: status,
-      type: type ?? selectedAbsence.type,
-      verifiedBy: user.name,
-      verifiedAt: new Date().toISOString(),
+    await fetch(`/api/absences/${selectedAbsence.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        verificationStatus: status,
+        type: type ?? selectedAbsence.type,
+        verifiedBy: user.name,
+        verifiedAt: new Date().toISOString(),
+      }),
     })
     setSelectedAbsence(null)
     showToast('Abwesenheit aktualisiert', 'success')
-    refresh()
+    loadAbsences()
   }
 
-  const handleAddClosingComment = (closing: MonthlyClosing) => {
+  const handleAddClosingComment = async (closing: MonthlyClosing) => {
     if (!closingComment.trim() || !user) return
-    addMonthlyClosingComment(closing.id, user.name, closingComment.trim())
+    await fetch(`/api/monthly-closings/${closing.id}/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ author: user.name, text: closingComment.trim() }),
+    })
     setClosingComment('')
     showToast('Kommentar hinzugefügt', 'success')
-    refresh()
+    loadClosings()
   }
 
   const handleReleaseClosing = async (closing: MonthlyClosing) => {
@@ -135,7 +170,7 @@ export default function AdminTimeTracking() {
       body: JSON.stringify({ closingId: closing.id, releasedBy: user.name }),
     })
     showToast('Monatsabschluss freigegeben – Stundenkonto wurde aktualisiert', 'success')
-    refresh()
+    loadClosings()
   }
 
   const openEditLog = (log: TimeLog, closingId: string) => {
@@ -146,18 +181,21 @@ export default function AdminTimeTracking() {
     setEditBreakMinutes(log.breakMinutes ?? 0)
   }
 
-  const handleSaveCorrection = () => {
+  const handleSaveCorrection = async () => {
     if (!editingLog || !editingClosingId || !user) return
-    correctMonthlyClosingTimeLog(
-      editingClosingId,
-      editingLog.id,
-      { clockIn: editClockIn, clockOut: editClockOut || undefined, breakMinutes: editBreakMinutes },
-      user.name
-    )
+    await fetch(`/api/monthly-closings/${editingClosingId}/correct`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        timeLogId: editingLog.id,
+        updates: { clockIn: editClockIn, clockOut: editClockOut || undefined, breakMinutes: editBreakMinutes },
+        correctedBy: user.name,
+      }),
+    })
     setEditingLog(null)
     setEditingClosingId(null)
     showToast('Korrektur gespeichert', 'success')
-    refresh()
+    loadClosings()
   }
 
   return (

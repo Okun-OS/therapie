@@ -4,19 +4,22 @@ import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { VACATION_REQUESTS, VACATION_PREFERENCES } from '@/lib/mock-data'
 import { SCHOOL_HOLIDAYS_2026 } from '@/lib/school-holidays'
-import { Employee, Location } from '@/lib/types'
+import { Employee, Location, VacationRequest, VacationPlanPreference } from '@/lib/types'
 import { Palmtree, Building2, Filter, CalendarDays } from 'lucide-react'
 
 export default function CompanyVacationPlan() {
   const [locationFilter, setLocationFilter] = useState('all')
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+  const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
+  const [VACATION_PREFERENCES, setVACATION_PREFERENCES] = useState<VacationPlanPreference[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+    fetch('/api/vacation-requests').then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
+    fetch('/api/vacation-preferences').then(r => r.json()).then(d => setVACATION_PREFERENCES(d.preferences))
   }, [])
 
   const employees = EMPLOYEES.filter(e => e.role === 'employee' && (locationFilter === 'all' || e.locationId === locationFilter))

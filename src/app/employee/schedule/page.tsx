@@ -11,11 +11,7 @@ import { SwapList } from '@/components/schedule/SwapList'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { useSearchParams } from 'next/navigation'
-import {
-  SCHEDULE_ENTRIES, SHIFTS,
-  getSwapRequestsByEmployee, getWishSubmissionsByEmployee, addWishSubmission,
-} from '@/lib/mock-data'
-import type { ShiftType, Employee, Location } from '@/lib/types'
+import type { ShiftType, Employee, Location, Shift, SwapRequest, WishSubmission } from '@/lib/types'
 import { googleCalendarLink, appleCalendarDownload } from '@/lib/calendar-export'
 import {
   ChevronLeft, ChevronRight, Sun, Moon, Briefcase, MessageSquare,
@@ -44,24 +40,34 @@ export default function EmployeeSchedule() {
   const [wishModal, setWishModal] = useState(false)
   const [wish, setWish] = useState({ type: '', date: '', reason: '', importance: 'normal' })
   const [calendarModal, setCalendarModal] = useState(false)
-  const [swaps, setSwaps] = useState(() => getSwapRequestsByEmployee(user?.id ?? ''))
-  const [, forceWishRefresh] = useState(0)
+  const [swaps, setSwaps] = useState<SwapRequest[]>([])
+  const [myWishes, setMyWishes] = useState<WishSubmission[]>([])
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+  const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
+  const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+    fetch('/api/shifts').then(r => r.json()).then(d => setSHIFTS(d.shifts))
   }, [])
 
-  const weekDays = getWeekDays(currentDate)
-  const weekStart = toDateString(weekDays[0])
-  const weekEnd = toDateString(weekDays[6])
+  useEffect(() => {
+    if (!user?.id) return
+    fetch(`/api/swap-requests?employeeId=${user.id}`).then(r => r.json()).then(d => setSwaps(d.requests))
+    fetch(`/api/wish-submissions?employeeId=${user.id}`).then(r => r.json()).then(d => setMyWishes(d.wishes))
+  }, [user?.id])
 
   const employee = EMPLOYEES.find(e => e.id === user?.id)
   const location = LOCATIONS.find(l => l.id === employee?.locationId)
+
+  useEffect(() => {
+    if (!employee?.locationId) return
+    fetch(`/api/schedule-entries?locationId=${employee.locationId}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries))
+  }, [employee?.locationId])
+
   const myEntries = SCHEDULE_ENTRIES.filter(s => s.employeeId === user?.id)
-  const myWishes = getWishSubmissionsByEmployee(user?.id ?? '')
 
   const weekEntries = myEntries.filter(e => {
     const d = new Date(e.date + 'T00:00:00')
@@ -95,27 +101,28 @@ export default function EmployeeSchedule() {
     return sum + (eh * 60 + em - sh * 60 - sm)
   }, 0)
 
-  const handleSwapSubmit = (targetEmpId: string, targetDate: string, targetShiftId: string, message: string) => {
+  const handleSwapSubmit = async (targetEmpId: string, targetDate: string, targetShiftId: string, message: string) => {
     if (!swapEntry || !user) return
-    const newSwap = {
-      id: `swap_new_${Date.now()}`,
-      requesterId: user.id,
-      requesterName: user.name,
-      requesterDate: swapEntry.date,
-      requesterShiftId: swapEntry.shiftId,
-      targetEmployeeId: targetEmpId,
-      targetEmployeeName: colleagues.find(c => c.id === targetEmpId)?.name ?? '',
-      targetDate,
-      targetShiftId,
-      message,
-      status: 'pending' as const,
-      submittedAt: new Date().toISOString(),
-      locationId: employee?.locationId ?? 'loc1',
-    }
+    const newSwap = await fetch('/api/swap-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requesterId: user.id,
+        requesterName: user.name,
+        requesterDate: swapEntry.date,
+        requesterShiftId: swapEntry.shiftId,
+        targetEmployeeId: targetEmpId,
+        targetEmployeeName: colleagues.find(c => c.id === targetEmpId)?.name ?? '',
+        targetDate,
+        targetShiftId,
+        message,
+        locationId: employee?.locationId ?? 'loc1',
+      }),
+    }).then(r => r.json()).then(d => d.request)
     setSwaps(prev => [newSwap, ...prev])
   }
 
-  const handleWishSubmit = () => {
+  const handleWishSubmit = async () => {
     if (!wish.type || !wish.date) {
       showToast('Bitte Diensttyp und Datum auswählen', 'error')
       return
@@ -126,24 +133,43 @@ export default function EmployeeSchedule() {
     const preferredShiftType = (validShiftTypes as string[]).includes(wish.type) ? (wish.type as ShiftType) : 'mid'
     const specialNote = wish.type === 'free' ? 'Freier Tag gewünscht. ' : wish.type === 'no_early_after_late' ? 'Kein Frühdienst nach Spätdienst gewünscht. ' : ''
 
-    addWishSubmission({
-      employeeId: user.id,
-      employeeName: user.name,
-      locationId: employee.locationId || 'loc1',
-      date: wish.date,
-      preferredShiftType,
-      reason: `${specialNote}${wish.reason}`.trim() || undefined,
-      importance: wish.importance as 'normal' | 'important' | 'urgent',
-    })
+    const submission = await fetch('/api/wish-submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeId: user.id,
+        employeeName: user.name,
+        locationId: employee.locationId || 'loc1',
+        date: wish.date,
+        preferredShiftType,
+        reason: `${specialNote}${wish.reason}`.trim() || undefined,
+        importance: wish.importance as 'normal' | 'important' | 'urgent',
+      }),
+    }).then(r => r.json()).then(d => d.wish)
 
     showToast('Wunsch gespeichert', 'success')
     setWishModal(false)
     setWish({ type: '', date: '', reason: '', importance: 'normal' })
-    forceWishRefresh(n => n + 1)
+    setMyWishes(prev => [submission, ...prev])
   }
 
-  const handleAcceptSwap = (id: string) => setSwaps(p => p.map(s => s.id === id ? { ...s, status: 'accepted' as const } : s))
-  const handleDeclineSwap = (id: string) => setSwaps(p => p.map(s => s.id === id ? { ...s, status: 'declined' as const } : s))
+  const handleAcceptSwap = async (id: string) => {
+    await fetch(`/api/swap-requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'accepted' }),
+    })
+    setSwaps(p => p.map(s => s.id === id ? { ...s, status: 'accepted' as const } : s))
+  }
+
+  const handleDeclineSwap = async (id: string) => {
+    await fetch(`/api/swap-requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'declined' }),
+    })
+    setSwaps(p => p.map(s => s.id === id ? { ...s, status: 'declined' as const } : s))
+  }
 
   const pendingSwapCount = swaps.filter(s => s.targetEmployeeId === user?.id && s.status === 'pending').length
   const unfulfilledWishes = myWishes.filter(w => w.status === 'not_fulfilled')

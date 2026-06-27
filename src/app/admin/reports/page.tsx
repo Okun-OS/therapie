@@ -62,10 +62,10 @@ export default function AdminReports() {
 
   const currentYear = new Date().getFullYear()
   const absenceStats = employees.map(emp => {
-    const absences = getAbsencesByEmployee(emp.id).filter(a => a.startDate.startsWith(`${currentYear}`))
+    const absences = (absencesByEmployee[emp.id] ?? []).filter(a => a.startDate.startsWith(`${currentYear}`))
     const sickDays = absences.filter(a => a.type === 'krankheit').reduce((s, a) => s + a.days, 0)
     const otherDays = absences.filter(a => a.type !== 'krankheit').reduce((s, a) => s + a.days, 0)
-    const overtimeMinutes = getOvertimeRequestsByEmployee(emp.id)
+    const overtimeMinutes = (overtimeByEmployee[emp.id] ?? [])
       .filter(o => (o.status === 'approved' || o.status === 'partial') && o.date.startsWith(`${currentYear}`))
       .reduce((s, o) => s + (o.approvedMinutes ?? 0), 0)
     return { ...emp, sickDays, otherDays, overtimeHours: Math.round(overtimeMinutes / 6) / 10 }

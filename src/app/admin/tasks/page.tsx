@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { TASK_CATALOG, addTaskType } from '@/lib/mock-data'
 import type { Employee } from '@/lib/types'
 import { ListChecks, Plus, Trash2, ChevronDown, ChevronUp, Check } from 'lucide-react'
 
@@ -17,13 +16,15 @@ export default function AdminTasks() {
   const locationId = user?.locationId || 'loc1'
   const [allEmployees, setAllEmployees] = useState<Employee[]>([])
   const employees = allEmployees.filter(e => e.role === 'employee' && e.locationId === locationId)
+  const [TASK_CATALOG, setTASK_CATALOG] = useState<string[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
   }, [])
 
-  const [, forceRender] = useState(0)
-  const refresh = () => forceRender(n => n + 1)
+  useEffect(() => {
+    fetch('/api/task-types').then(r => r.json()).then(d => setTASK_CATALOG(d.taskTypes ?? []))
+  }, [])
 
   const [expanded, setExpanded] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
@@ -42,23 +43,27 @@ export default function AdminTasks() {
     setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
   }
 
-  const handleAddTask = () => {
+  const handleAddTask = async () => {
     const name = newTask.trim()
     if (!name) { showToast('Bitte eine Bezeichnung angeben', 'error'); return }
     if (TASK_CATALOG.includes(name)) { showToast('Diese Aufgabe existiert bereits', 'error'); return }
-    addTaskType(name)
+    const taskTypes = await fetch('/api/task-types', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    }).then(r => r.json()).then(d => d.taskTypes)
+    setTASK_CATALOG(taskTypes)
     setNewTask('')
     setAddOpen(false)
     showToast('Aufgabe angelegt', 'success')
-    refresh()
   }
 
   const handleRemoveTask = async (name: string) => {
     await fetch(`/api/tasks/${encodeURIComponent(name)}`, { method: 'DELETE' })
+    setTASK_CATALOG(prev => prev.filter(t => t !== name))
     setAllEmployees(prev => prev.map(e => ({ ...e, allowedTasks: e.allowedTasks?.filter(t => t !== name) })))
     if (expanded === name) setExpanded(null)
     showToast('Aufgabe entfernt', 'success')
-    refresh()
   }
 
   return (

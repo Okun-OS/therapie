@@ -8,10 +8,9 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { VACATION_REQUESTS, addVacationRequest, getVacationPreference, setVacationPreference } from '@/lib/mock-data'
 import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, Send, Baby } from 'lucide-react'
 import { formatDate, diffDays } from '@/lib/utils'
-import type { Employee, Location } from '@/lib/types'
+import type { Employee, Location, VacationRequest, VacationPlanPreference } from '@/lib/types'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 const PRIORITY_LABEL: Record<string, string> = { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' }
@@ -22,41 +21,65 @@ export default function EmployeeVacation() {
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ startDate: '', endDate: '', reason: '' })
   const [submitted, setSubmitted] = useState(false)
-  const [, forceRefresh] = useState(0)
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+  const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
   }, [])
 
+  useEffect(() => {
+    if (!user?.id) return
+    fetch(`/api/vacation-requests?employeeId=${user.id}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
+  }, [user?.id])
+
   const employee = EMPLOYEES.find(e => e.id === user?.id)
   const myRequests = VACATION_REQUESTS.filter(v => v.employeeId === user?.id)
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
 
-  const existingPref = user ? getVacationPreference(user.id) : null
-  const [wishMonths, setWishMonths] = useState<number[]>(existingPref?.preferredMonths ?? [])
-  const [wishPeriod, setWishPeriod] = useState(existingPref?.preferredPeriod ?? '')
-  const [wishNotes, setWishNotes] = useState(existingPref?.notes ?? '')
-  const [wishPriority, setWishPriority] = useState<'low' | 'medium' | 'high'>(existingPref?.priority ?? 'medium')
-  const [wishSchoolPriority, setWishSchoolPriority] = useState<'low' | 'medium' | 'high'>(existingPref?.schoolHolidayPriority ?? 'medium')
+  const [existingPref, setExistingPref] = useState<VacationPlanPreference | null>(null)
+  const [wishMonths, setWishMonths] = useState<number[]>([])
+  const [wishPeriod, setWishPeriod] = useState('')
+  const [wishNotes, setWishNotes] = useState('')
+  const [wishPriority, setWishPriority] = useState<'low' | 'medium' | 'high'>('medium')
+  const [wishSchoolPriority, setWishSchoolPriority] = useState<'low' | 'medium' | 'high'>('medium')
   const [wishSaved, setWishSaved] = useState(false)
+
+  useEffect(() => {
+    if (!user?.id) return
+    fetch(`/api/vacation-preferences?employeeId=${user.id}`)
+      .then(r => r.json())
+      .then(d => {
+        const pref: VacationPlanPreference | null = d.preference ?? null
+        setExistingPref(pref)
+        setWishMonths(pref?.preferredMonths ?? [])
+        setWishPeriod(pref?.preferredPeriod ?? '')
+        setWishNotes(pref?.notes ?? '')
+        setWishPriority(pref?.priority ?? 'medium')
+        setWishSchoolPriority(pref?.schoolHolidayPriority ?? 'medium')
+      })
+  }, [user?.id])
 
   const toggleWishMonth = (month: number) => {
     setWishMonths(prev => prev.includes(month) ? prev.filter(m => m !== month) : [...prev, month])
   }
 
-  const handleSaveWishes = () => {
+  const handleSaveWishes = async () => {
     if (!employee) return
-    setVacationPreference({
-      employeeId: employee.id,
-      hasChildren: employee.hasChildren ?? false,
-      schoolHolidayPriority: employee.hasChildren ? wishSchoolPriority : undefined,
-      preferredMonths: wishMonths,
-      preferredPeriod: wishPeriod,
-      notes: wishNotes,
-      priority: wishPriority,
+    await fetch('/api/vacation-preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeId: employee.id,
+        hasChildren: employee.hasChildren ?? false,
+        schoolHolidayPriority: employee.hasChildren ? wishSchoolPriority : undefined,
+        preferredMonths: wishMonths,
+        preferredPeriod: wishPeriod,
+        notes: wishNotes,
+        priority: wishPriority,
+      }),
     })
     setWishSaved(true)
     showToast('Urlaubswünsche gespeichert')
@@ -78,7 +101,7 @@ export default function EmployeeVacation() {
     ? diffDays(form.startDate, form.endDate)
     : 0
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!form.startDate || !form.endDate) {
@@ -95,21 +118,25 @@ export default function EmployeeVacation() {
     }
     if (!employee) return
 
-    addVacationRequest({
-      employeeId: employee.id,
-      employeeName: employee.name,
-      locationId: employee.locationId || 'loc1',
-      locationName: LOCATIONS.find(l => l.id === (employee.locationId || 'loc1'))?.name || '',
-      startDate: form.startDate,
-      endDate: form.endDate,
-      days: requestDays,
-      reason: form.reason || undefined,
-    })
+    const request = await fetch('/api/vacation-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeId: employee.id,
+        employeeName: employee.name,
+        locationId: employee.locationId || 'loc1',
+        locationName: LOCATIONS.find(l => l.id === (employee.locationId || 'loc1'))?.name || '',
+        startDate: form.startDate,
+        endDate: form.endDate,
+        days: requestDays,
+        reason: form.reason || undefined,
+      }),
+    }).then(r => r.json()).then(d => d.request)
 
+    setVACATION_REQUESTS(prev => [request, ...prev])
     setSubmitted(true)
     setModal(false)
     setForm({ startDate: '', endDate: '', reason: '' })
-    forceRefresh(n => n + 1)
     setTimeout(() => setSubmitted(false), 3000)
   }
 

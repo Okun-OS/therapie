@@ -23,6 +23,8 @@ export default function CompanyDashboard() {
   const [locationFilter, setLocationFilter] = useState('all')
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+  const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
+  const [TIME_LOGS, setTIME_LOGS] = useState<TimeLog[]>([])
 
   // Beim ersten Login eines neuen Trägers ist das KI-Onboarding (Modul 02) noch
   // nicht abgeschlossen – dann startet es automatisch statt des Dashboards,
@@ -39,6 +41,8 @@ export default function CompanyDashboard() {
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+    fetch('/api/vacation-requests').then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
+    fetch('/api/time-logs').then(r => r.json()).then(d => setTIME_LOGS(d.logs))
   }, [])
 
   const totalEmployees = EMPLOYEES.filter(e => e.role === 'employee').length

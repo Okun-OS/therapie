@@ -1,19 +1,36 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { ORG_SETTINGS, updateOrgSettings } from '@/lib/mock-data'
 import { useToast } from '@/lib/toast-context'
 import { Building2, Clock, Palmtree, CheckCircle2, Mail } from 'lucide-react'
+import type { OrgSettings } from '@/lib/types'
+
+const DEFAULT_SETTINGS: OrgSettings = {
+  organizationName: '',
+  defaultWeeklyHours: 40,
+  defaultVacationDaysPerYear: 30,
+  autoApproveVacationUnderDays: 0,
+  notificationEmail: '',
+}
 
 export default function CompanySettings() {
   const { showToast } = useToast()
-  const [form, setForm] = useState(ORG_SETTINGS)
+  const [form, setForm] = useState<OrgSettings>(DEFAULT_SETTINGS)
 
-  const handleSave = () => {
-    updateOrgSettings(form)
+  useEffect(() => {
+    fetch('/api/org-settings').then(r => r.json()).then(d => setForm(d.settings))
+  }, [])
+
+  const handleSave = async () => {
+    const updated = await fetch('/api/org-settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    }).then(r => r.json()).then(d => d.settings)
+    setForm(updated)
     showToast('Einstellungen gespeichert', 'success')
   }
 

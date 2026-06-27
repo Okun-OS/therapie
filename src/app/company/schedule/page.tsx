@@ -4,20 +4,23 @@ import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { SHIFTS, SCHEDULE_ENTRIES } from '@/lib/mock-data'
 import { getWeekDays, toDateString, formatDateShort, getDayName } from '@/lib/utils'
 import { Calendar, ChevronLeft, ChevronRight, AlertTriangle, Building2 } from 'lucide-react'
-import type { Employee, Location } from '@/lib/types'
+import type { Employee, Location, Shift, ScheduleEntry } from '@/lib/types'
 
 export default function CompanySchedule() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+  const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
+  const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
   const weekDates = getWeekDays(currentDate).map(toDateString)
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+    fetch('/api/shifts').then(r => r.json()).then(d => setSHIFTS(d.shifts))
+    fetch('/api/schedule-entries').then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries))
   }, [])
 
   const navigate = (dir: -1 | 1) => {

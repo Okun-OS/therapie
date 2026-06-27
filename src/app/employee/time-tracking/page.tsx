@@ -8,12 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import {
-  TIME_LOGS, SCHEDULE_ENTRIES, getShiftById, addTimeLog, updateTimeLog, getActiveTimeLog,
-  startBreak, endBreak, addOvertimeRequest, getOvertimeRequestsByEmployee, getHoursAccountSummary,
-  getMonthlyClosingsByEmployee, getOrCreateMonthlyClosing, addAbsence,
-} from '@/lib/mock-data'
-import { OVERTIME_REASONS, type AbsenceType, type Employee } from '@/lib/types'
+import { OVERTIME_REASONS, type AbsenceType, type Employee, type TimeLog, type ScheduleEntry, type Shift, type OvertimeRequest, type HoursAccountSummary, type MonthlyClosing } from '@/lib/types'
 import { OVERTIME_MIN_MINUTES } from '@/lib/workforce-score-constants'
 import { PlayCircle, StopCircle, Clock, Timer, TrendingUp, Calendar, Coffee, AlertCircle, FileText, ChevronDown, ChevronUp, Stethoscope } from 'lucide-react'
 import { formatDate, formatTime, getWeekDays, toDateString } from '@/lib/utils'
@@ -68,10 +63,28 @@ export default function TimeTracking() {
 
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null)
   const [myEmployee, setMyEmployee] = useState<Employee | null>(null)
+  const [TIME_LOGS, setTIME_LOGS] = useState<TimeLog[]>([])
+  const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
+  const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
+  const [activeLog, setActiveLog] = useState<TimeLog | null>(null)
+  const [account, setAccount] = useState<HoursAccountSummary | null>(null)
+  const [myOvertimeRequests, setMyOvertimeRequests] = useState<OvertimeRequest[]>([])
+  const [visibleClosings, setVisibleClosings] = useState<MonthlyClosing[]>([])
 
   useEffect(() => {
     if (!user) return
     fetch(`/api/employees/${user.id}`).then(r => r.json()).then(d => setMyEmployee(d.employee ?? null))
+  }, [user?.id])
+
+  useEffect(() => {
+    fetch('/api/shifts').then(r => r.json()).then(d => setSHIFTS(d.shifts))
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    fetch(`/api/time-logs?employeeId=${user.id}`).then(r => r.json()).then(d => setTIME_LOGS(d.logs))
+    fetch(`/api/schedule-entries?employeeId=${user.id}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries))
+    fetch(`/api/overtime-requests?employeeId=${user.id}`).then(r => r.json()).then(d => setMyOvertimeRequests(d.requests))
   }, [user?.id])
 
   useEffect(() => {
@@ -83,6 +96,8 @@ export default function TimeTracking() {
     }, 1000)
     return () => clearInterval(interval)
   }, [clockedIn, clockInTime])
+
+  const getShiftById = (shiftId: string) => SHIFTS.find(s => s.id === shiftId)
 
   const myLogs = TIME_LOGS.filter(t => t.employeeId === user?.id).sort((a, b) => b.date.localeCompare(a.date))
 
@@ -111,23 +126,61 @@ export default function TimeTracking() {
     })
     .reduce((s, t) => s + (t.totalMinutes || 0), 0)
 
-  const activeLog = user ? getActiveTimeLog(user.id) : undefined
   const onBreak = !!activeLog?.breakStart
 
-  const account = user ? getHoursAccountSummary(user.id, currentYear, currentMonth, myEmployee?.weeklyHours) : null
-  const myOvertimeRequests = user ? getOvertimeRequestsByEmployee(user.id) : []
+  const fetchActiveLog = () => {
+    if (!user) return
+    fetch(`/api/time-tracking/active?employeeId=${user.id}`).then(r => r.json()).then(d => setActiveLog(d.log ?? null))
+  }
+
+  const fetchAccount = () => {
+    if (!user) return
+    const params = new URLSearchParams({ employeeId: user.id, year: String(currentYear), month: String(currentMonth) })
+    if (myEmployee?.weeklyHours) params.set('weeklyHours', String(myEmployee.weeklyHours))
+    fetch(`/api/hours-account?${params.toString()}`).then(r => r.json()).then(d => setAccount(d.summary))
+  }
+
+  const fetchOvertimeRequests = () => {
+    if (!user) return
+    fetch(`/api/overtime-requests?employeeId=${user.id}`).then(r => r.json()).then(d => setMyOvertimeRequests(d.requests))
+  }
+
+  const fetchTimeLogs = () => {
+    if (!user) return
+    fetch(`/api/time-logs?employeeId=${user.id}`).then(r => r.json()).then(d => setTIME_LOGS(d.logs))
+  }
+
+  const fetchClosings = () => {
+    if (!user) return
+    fetch(`/api/monthly-closings?employeeId=${user.id}`).then(r => r.json()).then(d => setVisibleClosings(d.closings))
+  }
+
+  useEffect(() => {
+    fetchActiveLog()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  useEffect(() => {
+    fetchAccount()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, myEmployee?.weeklyHours, currentYear, currentMonth])
 
   // Ensure the current and previous two months have a (lazily generated) Monatsübersicht to view
   useEffect(() => {
     if (!user || !myEmployee) return
-    for (let i = 0; i < 3; i++) {
-      const d = new Date(currentYear, currentMonth - 1 - i, 1)
-      getOrCreateMonthlyClosing(user.id, d.getFullYear(), d.getMonth() + 1, myEmployee)
-    }
-    refresh()
+    ;(async () => {
+      for (let i = 0; i < 3; i++) {
+        const d = new Date(currentYear, currentMonth - 1 - i, 1)
+        await fetch('/api/monthly-closings/get-or-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employeeId: user.id, year: d.getFullYear(), month: d.getMonth() + 1, employeeInfo: myEmployee }),
+        })
+      }
+      fetchClosings()
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, myEmployee?.id])
-  const visibleClosings = user ? getMonthlyClosingsByEmployee(user.id) : []
 
   const formatElapsed = (seconds: number) => {
     const h = Math.floor(seconds / 3600)
@@ -136,20 +189,25 @@ export default function TimeTracking() {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   }
 
-  const handleClockIn = () => {
+  const handleClockIn = async () => {
     const clockInDate = new Date()
     setClockedIn(true)
     setClockInTime(clockInDate)
     setElapsed(0)
 
     if (user) {
-      const log = addTimeLog({
-        employeeId: user.id,
-        date: todayStr,
-        clockIn: clockInDate.toTimeString().slice(0, 5),
-        locationId: user.locationId || 'loc1',
-      })
+      const log = await fetch('/api/time-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: user.id,
+          date: todayStr,
+          clockIn: clockInDate.toTimeString().slice(0, 5),
+          locationId: user.locationId || 'loc1',
+        }),
+      }).then(r => r.json()).then(d => d.log)
       setActiveTimeLogId(log.id)
+      setTIME_LOGS(prev => [log, ...prev])
 
       fetch('/api/time-tracking/clock-in', {
         method: 'POST',
@@ -160,16 +218,22 @@ export default function TimeTracking() {
         .then(data => setActiveEntryId(data.entry?.id ?? null))
         .catch(() => {})
     }
+    fetchActiveLog()
     refresh()
   }
 
-  const handleClockOut = () => {
+  const handleClockOut = async () => {
     const clockOutDate = new Date()
     setClockedIn(false)
 
     if (activeTimeLogId && user && clockInTime) {
       const totalMinutes = Math.max(0, Math.round((clockOutDate.getTime() - clockInTime.getTime()) / 60000))
-      updateTimeLog(activeTimeLogId, { clockOut: clockOutDate.toTimeString().slice(0, 5), totalMinutes })
+      const updated = await fetch(`/api/time-logs/${activeTimeLogId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clockOut: clockOutDate.toTimeString().slice(0, 5), totalMinutes }),
+      }).then(r => r.json()).then(d => d.log)
+      setTIME_LOGS(prev => prev.map(l => l.id === updated.id ? updated : l))
 
       const scheduleEntry = SCHEDULE_ENTRIES.find(e => e.employeeId === user.id && e.date === todayStr)
       const shift = scheduleEntry ? getShiftById(scheduleEntry.shiftId) : undefined
@@ -199,33 +263,49 @@ export default function TimeTracking() {
       }).catch(() => {})
       setActiveEntryId(null)
     }
+    fetchActiveLog()
+    fetchAccount()
     refresh()
   }
 
-  const handleStartBreak = () => {
+  const handleStartBreak = async () => {
     if (!user) return
-    startBreak(user.id)
+    await fetch('/api/time-tracking/break/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: user.id }),
+    })
+    fetchActiveLog()
     refresh()
   }
 
-  const handleEndBreak = () => {
+  const handleEndBreak = async () => {
     if (!user) return
-    endBreak(user.id)
+    await fetch('/api/time-tracking/break/end', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: user.id }),
+    })
+    fetchActiveLog()
     refresh()
   }
 
-  const handleSubmitOvertime = () => {
+  const handleSubmitOvertime = async () => {
     if (!user || !pendingOvertime) return
     if (!overtimeReason) { showToast('Bitte einen Grund auswählen', 'error'); return }
-    addOvertimeRequest({
-      employeeId: user.id,
-      employeeName: user.name,
-      locationId: user.locationId || 'loc1',
-      date: pendingOvertime.date,
-      timeLogId: pendingOvertime.timeLogId,
-      overtimeMinutes: pendingOvertime.minutes,
-      reason: overtimeReason,
-      comment: overtimeComment.trim() || undefined,
+    await fetch('/api/overtime-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeId: user.id,
+        employeeName: user.name,
+        locationId: user.locationId || 'loc1',
+        date: pendingOvertime.date,
+        timeLogId: pendingOvertime.timeLogId,
+        overtimeMinutes: pendingOvertime.minutes,
+        reason: overtimeReason,
+        comment: overtimeComment.trim() || undefined,
+      }),
     })
     fetch('/api/time-tracking/notify-admin', {
       method: 'POST',
@@ -235,29 +315,35 @@ export default function TimeTracking() {
     setOvertimeModalOpen(false)
     setPendingOvertime(null)
     showToast('Überstundenantrag wurde erstellt', 'success')
+    fetchOvertimeRequests()
     refresh()
   }
 
-  const handleSubmitAbsence = () => {
+  const handleSubmitAbsence = async () => {
     if (!user) return
     if (!absenceStart || !absenceEnd) { showToast('Bitte Zeitraum angeben', 'error'); return }
     const days = Math.max(1, Math.round((new Date(absenceEnd).getTime() - new Date(absenceStart).getTime()) / 86400000) + 1)
-    addAbsence({
-      employeeId: user.id,
-      employeeName: user.name,
-      locationId: user.locationId || 'loc1',
-      type: absenceType,
-      startDate: absenceStart,
-      endDate: absenceEnd,
-      days,
-      note: absenceNote.trim() || undefined,
-      proofProvided: absenceProof,
+    await fetch('/api/absences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeId: user.id,
+        employeeName: user.name,
+        locationId: user.locationId || 'loc1',
+        type: absenceType,
+        startDate: absenceStart,
+        endDate: absenceEnd,
+        days,
+        note: absenceNote.trim() || undefined,
+        proofProvided: absenceProof,
+      }),
     })
     fetch('/api/time-tracking/notify-admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ employeeName: user.name, locationId: user.locationId || 'loc1', kind: 'absence', startDate: absenceStart, endDate: absenceEnd }),
     }).catch(() => {})
+    fetchAccount()
     setAbsenceModalOpen(false)
     setAbsenceStart('')
     setAbsenceEnd('')

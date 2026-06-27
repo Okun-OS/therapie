@@ -9,13 +9,9 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { VacationRulesChat } from '@/components/vacation/VacationRulesChat'
-import {
-  VACATION_PREFERENCES,
-  getVacationRules, setVacationRules, publishVacationPlan,
-} from '@/lib/mock-data'
 import { SCHOOL_HOLIDAYS_2026 } from '@/lib/school-holidays'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
-import type { VacationPlanEntry, VacationPlanSummary, VacationPlanConflict, VacationRules, Employee, Location } from '@/lib/types'
+import type { VacationPlanEntry, VacationPlanSummary, VacationPlanConflict, VacationRules, VacationPlanPreference, Employee, Location } from '@/lib/types'
 import type { VacationRulesDraft } from '@/lib/vacation-rules-draft'
 import {
   Sparkles, Loader, CheckCircle, AlertTriangle, Baby, Palmtree,
@@ -75,11 +71,14 @@ export default function VacationPlanPage() {
 
   const employees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee')
 
-  const [rules, setRules] = useState<VacationRules>(() => getVacationRules(locationId) ?? DEFAULT_RULES(employees.length))
+  const [rules, setRules] = useState<VacationRules>(DEFAULT_RULES(employees.length))
   const [rulesChatOpen, setRulesChatOpen] = useState(false)
 
   useEffect(() => {
-    setRules(getVacationRules(locationId) ?? DEFAULT_RULES(employees.length))
+    fetch(`/api/vacation-rules?locationId=${locationId}`)
+      .then(r => r.json())
+      .then(d => setRules(d.rules ?? DEFAULT_RULES(employees.length)))
+      .catch(() => setRules(DEFAULT_RULES(employees.length)))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationId])
 
@@ -91,14 +90,22 @@ export default function VacationPlanPage() {
       schoolHolidayPriorityMode: draft.schoolHolidayPriorityMode ?? rules.schoolHolidayPriorityMode,
     }
     setRules(next)
-    setVacationRules(locationId, next)
+    await fetch('/api/vacation-rules', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locationId, rules: next }),
+    })
     showToast('Urlaubsregeln gespeichert – gelten für alle künftigen Planungen')
   }
 
   const handleSchoolHolidayModeChange = (mode: VacationRules['schoolHolidayPriorityMode']) => {
     const next = { ...rules, schoolHolidayPriorityMode: mode }
     setRules(next)
-    setVacationRules(locationId, next)
+    fetch('/api/vacation-rules', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locationId, rules: next }),
+    }).catch(() => {})
   }
 
   const [collectingWishes, setCollectingWishes] = useState(false)
@@ -124,9 +131,20 @@ export default function VacationPlanPage() {
   const [planningEnd, setPlanningEnd] = useState('2026-09-30')
   const [selectedState, setSelectedState] = useState(location?.state ?? 'Berlin')
 
-  const [prefs, setPrefs] = useState<PrefRow[]>(() =>
-    employees.map(emp => {
-      const pref = VACATION_PREFERENCES.find(p => p.employeeId === emp.id)
+  const [vacationPreferences, setVacationPreferences] = useState<VacationPlanPreference[]>([])
+
+  useEffect(() => {
+    fetch('/api/vacation-preferences')
+      .then(r => r.json())
+      .then(d => setVacationPreferences(d.preferences ?? []))
+      .catch(() => setVacationPreferences([]))
+  }, [])
+
+  const [prefs, setPrefs] = useState<PrefRow[]>([])
+
+  useEffect(() => {
+    setPrefs(employees.map(emp => {
+      const pref = vacationPreferences.find(p => p.employeeId === emp.id)
       return {
         employeeId: emp.id,
         hasChildren: emp.hasChildren ?? false,
@@ -136,8 +154,9 @@ export default function VacationPlanPage() {
         notes: pref?.notes ?? '',
         priority: pref?.priority ?? 'medium',
       }
-    })
-  )
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees.length, vacationPreferences])
 
   const [aiRunning, setAiRunning] = useState(false)
   const [aiStep, setAiStep] = useState(0)
@@ -244,7 +263,11 @@ export default function VacationPlanPage() {
     if (!generatedPlan) return
     setPublishing(true)
     try {
-      const createdRequests = publishVacationPlan(locationId, location?.name ?? 'Standort', generatedPlan)
+      const createdRequests = await fetch('/api/vacation-plan/publish-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId, locationName: location?.name ?? 'Standort', entries: generatedPlan }),
+      }).then(r => r.json()).then(d => d.requests)
       setPublished(true)
       showToast('Urlaubsplan freigegeben – Mitarbeiter werden benachrichtigt')
       await fetch('/api/vacation-plan/publish', {

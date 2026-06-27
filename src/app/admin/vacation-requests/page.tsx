@@ -8,10 +8,9 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { VACATION_REQUESTS, setVacationRequestStatus, getVacationRules } from '@/lib/mock-data'
 import { CheckCircle, XCircle, Clock, Palmtree, Calendar, MessageSquare, Sparkles, Loader2 } from 'lucide-react'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
-import type { VacationRequest, RequestStatus, VacationRecommendation, Employee } from '@/lib/types'
+import type { VacationRequest, RequestStatus, VacationRecommendation, VacationRules, Employee } from '@/lib/types'
 
 const STANCE_CONFIG: Record<VacationRecommendation['stance'], { label: string; color: string; bg: string }> = {
   empfehlung_genehmigen: { label: 'Empfehlung: Genehmigen', color: 'text-green-700', bg: 'bg-green-50 border-green-100' },
@@ -28,20 +27,31 @@ export default function AdminVacationRequests() {
   const { showToast } = useToast()
   const locationId = user?.locationId || 'loc1'
 
-  const [requests, setRequests] = useState(
-    VACATION_REQUESTS.filter(v => v.locationId === locationId)
-      .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
-  )
+  const [requests, setRequests] = useState<VacationRequest[]>([])
   const [filter, setFilter] = useState<'all' | RequestStatus>('all')
   const [selected, setSelected] = useState<VacationRequest | null>(null)
   const [rejectNote, setRejectNote] = useState('')
   const [recommendation, setRecommendation] = useState<VacationRecommendation | null>(null)
   const [recommendationLoading, setRecommendationLoading] = useState(false)
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [vacationRules, setVacationRulesState] = useState<VacationRules | null>(null)
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
   }, [])
+
+  useEffect(() => {
+    fetch(`/api/vacation-requests?locationId=${locationId}`)
+      .then(r => r.json())
+      .then(d => setRequests(((d.requests ?? []) as VacationRequest[]).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))))
+  }, [locationId])
+
+  useEffect(() => {
+    fetch(`/api/vacation-rules?locationId=${locationId}`)
+      .then(r => r.json())
+      .then(d => setVacationRulesState(d.rules ?? null))
+      .catch(() => setVacationRulesState(null))
+  }, [locationId])
 
   const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)
   const pending = requests.filter(r => r.status === 'pending')
@@ -54,7 +64,7 @@ export default function AdminVacationRequests() {
       return
     }
     const emp = EMPLOYEES.find(e => e.id === selected.employeeId)
-    const rules = getVacationRules(locationId)
+    const rules = vacationRules
     const overlapping = requests
       .filter(r => r.id !== selected.id && r.status === 'approved' && r.locationId === selected.locationId)
       .filter(r => rangesOverlap(selected.startDate, selected.endDate, r.startDate, r.endDate))
@@ -88,12 +98,16 @@ export default function AdminVacationRequests() {
       })
       .catch(() => {})
       .finally(() => setRecommendationLoading(false))
-  }, [selected, locationId, requests])
+  }, [selected, locationId, requests, vacationRules])
 
-  const handleApprove = (id: string) => {
+  const handleApprove = async (id: string) => {
     const req = requests.find(r => r.id === id)
-    setVacationRequestStatus(id, 'approved', user?.name || 'Admin')
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', respondedAt: new Date().toISOString().split('T')[0], respondedBy: user?.name } : r))
+    const updated = await fetch(`/api/vacation-requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'approved', respondedBy: user?.name || 'Admin' }),
+    }).then(r => r.json()).then(d => d.request)
+    setRequests(prev => prev.map(r => r.id === id ? updated : r))
     setSelected(null)
     showToast('Urlaubsantrag genehmigt', 'success')
     if (req) {
@@ -105,10 +119,14 @@ export default function AdminVacationRequests() {
     }
   }
 
-  const handleDeny = (id: string) => {
+  const handleDeny = async (id: string) => {
     const req = requests.find(r => r.id === id)
-    setVacationRequestStatus(id, 'denied', user?.name || 'Admin')
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'denied', respondedAt: new Date().toISOString().split('T')[0], respondedBy: user?.name } : r))
+    const updated = await fetch(`/api/vacation-requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'denied', respondedBy: user?.name || 'Admin' }),
+    }).then(r => r.json()).then(d => d.request)
+    setRequests(prev => prev.map(r => r.id === id ? updated : r))
     setSelected(null)
     setRejectNote('')
     showToast('Urlaubsantrag abgelehnt', 'info')

@@ -5,23 +5,31 @@ import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { TIME_LOGS, VACATION_REQUESTS, getAbsencesByEmployee } from '@/lib/mock-data'
-import { Employee, Location } from '@/lib/types'
+import { Employee, Location, TimeLog, VacationRequest, Absence } from '@/lib/types'
 import { Download, BarChart3, TrendingUp, Users, Clock, Palmtree, Building2, Filter, Stethoscope } from 'lucide-react'
 
 export default function CompanyReports() {
   const [locationFilter, setLocationFilter] = useState('all')
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+  const [TIME_LOGS, setTIME_LOGS] = useState<TimeLog[]>([])
+  const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
+  const [ABSENCES, setABSENCES] = useState<Absence[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+    fetch('/api/time-logs').then(r => r.json()).then(d => setTIME_LOGS(d.logs))
+    fetch('/api/vacation-requests').then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
+    fetch('/api/absences').then(r => r.json()).then(d => setABSENCES(d.absences))
   }, [])
 
   const locations = LOCATIONS
   const employees = EMPLOYEES.filter(e => e.role === 'employee')
   const logs = TIME_LOGS
+
+  const getAbsencesByEmployee = (employeeId: string) =>
+    ABSENCES.filter(a => a.employeeId === employeeId).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
 
   const filteredEmployees = locationFilter === 'all' ? employees : employees.filter(e => e.locationId === locationFilter)
 
