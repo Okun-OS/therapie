@@ -34,7 +34,8 @@ async function isAvailable(employeeId: string, date: string): Promise<boolean> {
 }
 
 async function candidatePool(stage: EscalationStage, ctx: RequestContext): Promise<Employee[]> {
-  const allEmployees = await listEmployees()
+  const location = await prisma.location.findUnique({ where: { id: ctx.locationId } })
+  const allEmployees = await listEmployees(location?.customerId ?? undefined)
   const active = allEmployees.filter(e => e.role === 'employee' && e.active)
   const profiles = await prisma.employeeProfile.findMany()
   const profileMap = new Map(profiles.map(p => [p.employeeId, p]))

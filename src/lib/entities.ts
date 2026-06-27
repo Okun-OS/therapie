@@ -8,6 +8,7 @@ import type { Employee, Location, Customer, EmployeePreferences } from './types'
 export function toEmployee(row: any): Employee {
   return {
     id: row.id,
+    customerId: row.customerId ?? undefined,
     name: row.name,
     email: row.email,
     role: row.role,
@@ -37,6 +38,7 @@ export function toEmployee(row: any): Employee {
 function toLocation(row: any): Location {
   return {
     id: row.id,
+    customerId: row.customerId ?? undefined,
     name: row.name,
     address: row.address,
     city: row.city,
@@ -64,13 +66,19 @@ export function toCustomer(row: any): Customer {
   }
 }
 
-export async function listEmployees(): Promise<Employee[]> {
-  const rows = await prisma.employee.findMany()
+/** customerId scopt auf den Mandanten des anfragenden Nutzers; undefined liefert
+ * plattformweit ALLE Mitarbeiter und darf daher nur von der 'okun'-Rolle verwendet
+ * werden (siehe requireRole-Aufrufer). */
+export async function listEmployees(customerId?: string): Promise<Employee[]> {
+  const rows = await prisma.employee.findMany({ where: customerId ? { customerId } : {} })
   return rows.map(toEmployee)
 }
 
-export async function listLocations(): Promise<Location[]> {
-  const rows = await prisma.location.findMany()
+/** customerId scopt auf den Mandanten des anfragenden Nutzers; undefined liefert
+ * plattformweit ALLE Einrichtungen und darf daher nur von der 'okun'-Rolle verwendet
+ * werden (siehe requireRole-Aufrufer). */
+export async function listLocations(customerId?: string): Promise<Location[]> {
+  const rows = await prisma.location.findMany({ where: customerId ? { customerId } : {} })
   return rows.map(toLocation)
 }
 
@@ -100,9 +108,10 @@ export async function updateEmployee(id: string, updates: Partial<Employee>): Pr
   return row ? toEmployee(row) : undefined
 }
 
-export async function addLocation(input: { name: string; address: string; city: string; state?: string }): Promise<Location> {
+export async function addLocation(input: { name: string; address: string; city: string; state?: string; customerId?: string }): Promise<Location> {
   const row = await prisma.location.create({
     data: {
+      customerId: input.customerId,
       name: input.name,
       address: input.address,
       city: input.city,

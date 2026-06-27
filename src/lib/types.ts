@@ -7,6 +7,7 @@ export type WishImportance = 'normal' | 'important' | 'urgent'
 
 export interface Location {
   id: string
+  customerId?: string
   name: string
   address: string
   city: string
@@ -18,6 +19,7 @@ export interface Location {
 
 export interface Employee {
   id: string
+  customerId?: string
   name: string
   email: string
   role: Role

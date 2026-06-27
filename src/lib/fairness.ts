@@ -140,9 +140,9 @@ export function calculateFairnessData(
 
 // ─── Scoped fairness lookup for the transparency dashboard ──────────────────
 
-export async function getFairnessInsights(locationId?: string, ruleLimits?: PlanningRuleLimits): Promise<ShiftFairnessData[]> {
-  const locationIds = locationId ? [locationId] : (await listLocations()).map(l => l.id)
-  const allEmployees = await listEmployees()
+export async function getFairnessInsights(locationId?: string, customerId?: string, ruleLimits?: PlanningRuleLimits): Promise<ShiftFairnessData[]> {
+  const locationIds = locationId ? [locationId] : (await listLocations(customerId)).map(l => l.id)
+  const allEmployees = await listEmployees(customerId)
   const employees = allEmployees.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
   const shifts = (await Promise.all(locationIds.map(id => listShiftsByLocation(id)))).flat()
   const entries = (await Promise.all(locationIds.map(id => getAllEntriesForLocation(id)))).flat()

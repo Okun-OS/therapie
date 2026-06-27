@@ -8,12 +8,13 @@ export async function GET(req: NextRequest) {
 
   const scope = req.nextUrl.searchParams.get('scope')
   const locationId = scope === 'organization' ? undefined : req.nextUrl.searchParams.get('locationId') ?? undefined
+  const customerId = session.customerId
 
   const [burnout, fluctuation] = await Promise.all([
-    getBurnoutRisks(locationId),
-    getFluctuationRisks(locationId),
+    getBurnoutRisks(locationId, customerId),
+    getFluctuationRisks(locationId, customerId),
   ])
-  const understaffing = await getUnderstaffingRisk(locationId)
+  const understaffing = await getUnderstaffingRisk(locationId, customerId)
 
   return NextResponse.json({ burnout, fluctuation, understaffing })
 }

@@ -10,7 +10,10 @@ export async function GET(req: NextRequest) {
   const session = requireRole(req)
   if (session instanceof NextResponse) return session
 
-  const employees = await listEmployees()
+  if (session.role !== 'okun' && !session.customerId) {
+    return NextResponse.json({ employees: [] })
+  }
+  const employees = await listEmployees(session.role === 'okun' ? undefined : session.customerId)
   return NextResponse.json({ employees })
 }
 

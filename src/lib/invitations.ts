@@ -33,7 +33,7 @@ export async function sendInvitationEmail(
 
 export async function createAndSendInvitation(
   origin: string,
-  input: { email: string; role: Role; name?: string; customerName?: string; employeeId?: string; locationId?: string },
+  input: { email: string; role: Role; name?: string; customerName?: string; customerId?: string; employeeId?: string; locationId?: string },
 ) {
   const invitation = await prisma.invitationToken.create({
     data: {
@@ -42,6 +42,7 @@ export async function createAndSendInvitation(
       role: input.role,
       name: input.name,
       customerName: input.customerName,
+      customerId: input.customerId,
       employeeId: input.employeeId,
       locationId: input.locationId,
       expiresAt: invitationExpiry(),
@@ -78,8 +79,11 @@ export async function addEmployeeWithInvitation(
   origin: string,
 ): Promise<{ employee: Employee; emailSent: boolean }> {
   const { employeeRow, invitation } = await prisma.$transaction(async tx => {
+    const location = await tx.location.findUnique({ where: { id: input.locationId } })
+    const customerId = location?.customerId ?? undefined
     const employeeRow = await tx.employee.create({
       data: {
+        customerId,
         name: input.name,
         email: input.email,
         role: 'employee',
@@ -109,6 +113,7 @@ export async function addEmployeeWithInvitation(
         email: input.email.trim().toLowerCase(),
         role: 'employee',
         name: input.name,
+        customerId,
         employeeId: employeeRow.id,
         locationId: input.locationId,
         expiresAt: invitationExpiry(),
@@ -155,6 +160,7 @@ export async function addCustomerWithInvitation(
         role: 'company',
         name: input.contactName,
         customerName: input.name,
+        customerId: customerRow.id,
         expiresAt: invitationExpiry(),
       },
     })

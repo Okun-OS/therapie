@@ -137,18 +137,18 @@ export async function revokeSupportAccess(id: string): Promise<void> {
 
 // ─── Organisationsweite Einstellungen ────────────────────────────────────────
 
-export async function getOrgSettings(): Promise<OrgSettings> {
-  const row = await prisma.orgSettings.findUnique({ where: { id: 'singleton' } })
+export async function getOrgSettings(customerId: string): Promise<OrgSettings> {
+  const row = await prisma.orgSettings.findUnique({ where: { customerId } })
   if (row) return toOrgSettings(row)
-  const created = await prisma.orgSettings.create({ data: { id: 'singleton', ...DEFAULT_ORG_SETTINGS } })
+  const created = await prisma.orgSettings.create({ data: { customerId, ...DEFAULT_ORG_SETTINGS } })
   return toOrgSettings(created)
 }
 
-export async function updateOrgSettings(updates: Partial<OrgSettings>): Promise<OrgSettings> {
-  const current = await getOrgSettings()
+export async function updateOrgSettings(customerId: string, updates: Partial<OrgSettings>): Promise<OrgSettings> {
+  const current = await getOrgSettings(customerId)
   const row = await prisma.orgSettings.upsert({
-    where: { id: 'singleton' },
-    create: { id: 'singleton', ...current, ...updates },
+    where: { customerId },
+    create: { customerId, ...current, ...updates },
     update: { ...updates },
   })
   return toOrgSettings(row)

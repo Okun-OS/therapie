@@ -12,6 +12,7 @@ export interface SessionPayload {
   role: SessionRole
   employeeId?: string
   locationId?: string
+  customerId?: string
   iat: number
 }
 

@@ -10,7 +10,10 @@ export async function GET(req: NextRequest) {
   const locationId = req.nextUrl.searchParams.get('locationId')
 
   if (scope === 'organization') {
-    const leaderboard = await getOrganizationLeaderboard()
+    if (session.role !== 'okun' && !session.customerId) {
+      return NextResponse.json({ leaderboard: [] })
+    }
+    const leaderboard = await getOrganizationLeaderboard(session.role === 'okun' ? undefined : session.customerId)
     return NextResponse.json({ leaderboard })
   }
 

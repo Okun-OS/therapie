@@ -11,8 +11,8 @@ import { getBurnoutRisks, getFluctuationRisks, getUnderstaffingRisk, type Employ
 import { getFairnessInsights } from './fairness'
 import { toDateString, addDays, formatDate } from './utils'
 
-async function scopeLocationIds(locationId?: string): Promise<string[]> {
-  return locationId ? [locationId] : (await listLocations()).map(l => l.id)
+async function scopeLocationIds(locationId?: string, customerId?: string): Promise<string[]> {
+  return locationId ? [locationId] : (await listLocations(customerId)).map(l => l.id)
 }
 
 export type StatusLevel = 'green' | 'yellow' | 'red'
@@ -74,25 +74,25 @@ async function getCurrentUndertimeHours(employees: { id: string; weeklyHours: nu
   return Math.round((totalMinutes / 60) * 10) / 10
 }
 
-export async function getControllingSnapshot(locationId?: string): Promise<ControllingSnapshot> {
-  const locationIds = await scopeLocationIds(locationId)
-  const allEmployees = await listEmployees()
+export async function getControllingSnapshot(locationId?: string, customerId?: string): Promise<ControllingSnapshot> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
+  const allEmployees = await listEmployees(customerId)
   const employees = allEmployees.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
   const employeeCount = employees.length
 
   const [absence, substitution, punctuality, workload, burnout, fluctuation, fairness, sickness, personnelOverview, wishFulfillment] = await Promise.all([
-    Promise.resolve(getAbsenceInsights(locationId)),
-    getSubstitutionInsights(locationId),
-    getPunctualityInsights(locationId),
-    getWorkloadInsights(locationId),
-    getBurnoutRisks(locationId),
-    getFluctuationRisks(locationId),
-    getFairnessInsights(locationId),
-    Promise.resolve(getSicknessInsights(locationId)),
-    Promise.resolve(getPersonnelOverview(locationId)),
-    Promise.resolve(getWishFulfillmentInsights(locationId)),
+    Promise.resolve(getAbsenceInsights(locationId, customerId)),
+    getSubstitutionInsights(locationId, customerId),
+    getPunctualityInsights(locationId, customerId),
+    getWorkloadInsights(locationId, customerId),
+    getBurnoutRisks(locationId, customerId),
+    getFluctuationRisks(locationId, customerId),
+    getFairnessInsights(locationId, customerId),
+    Promise.resolve(getSicknessInsights(locationId, customerId)),
+    Promise.resolve(getPersonnelOverview(locationId, customerId)),
+    Promise.resolve(getWishFulfillmentInsights(locationId, customerId)),
   ])
-  const understaffing = await getUnderstaffingRisk(locationId, 7)
+  const understaffing = await getUnderstaffingRisk(locationId, customerId, 7)
 
   const highBurnoutRisks = burnout.filter(r => r.level === 'hoch')
   const highFluctuationRisks = fluctuation.filter(r => r.level === 'hoch')
@@ -249,9 +249,9 @@ function hasDateOverlap(aStart: string, aEnd: string, bStart: string, bEnd: stri
   return aStart <= bEnd && bStart <= aEnd
 }
 
-export async function getEarlyWarnings(locationId?: string): Promise<EarlyWarning[]> {
-  const locationIds = await scopeLocationIds(locationId)
-  const snapshot = await getControllingSnapshot(locationId)
+export async function getEarlyWarnings(locationId?: string, customerId?: string): Promise<EarlyWarning[]> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
+  const snapshot = await getControllingSnapshot(locationId, customerId)
   const warnings: EarlyWarning[] = []
 
   if (snapshot.criticalUnderstaffingDays.length > 0) {
@@ -299,7 +299,7 @@ export async function getEarlyWarnings(locationId?: string): Promise<EarlyWarnin
 
   const today = toDateString(new Date())
   const in7Days = addDays(today, 7)
-  const [allLocations, allEmployeesForWarnings] = await Promise.all([listLocations(), listEmployees()])
+  const [allLocations, allEmployeesForWarnings] = await Promise.all([listLocations(customerId), listEmployees(customerId)])
   const scopedLocations = allLocations.filter(l => locationIds.includes(l.id))
   const entriesByLocation = await Promise.all(scopedLocations.map(l => getAllEntriesForLocation(l.id)))
   const locationsWithoutScheduling = scopedLocations.filter((l, idx) => {

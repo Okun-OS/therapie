@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   const effectiveLocationId = scope === 'organization' ? undefined : locationId
-  const snapshot = await getControllingSnapshot(effectiveLocationId)
+  const snapshot = await getControllingSnapshot(effectiveLocationId, session.customerId)
 
   const userPrompt = `## Live-Daten der Personalsituation (JSON)
 ${JSON.stringify(snapshot, null, 2)}

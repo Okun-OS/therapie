@@ -168,8 +168,10 @@ model LevelBonusConfig {
 // Ebene 1 (Träger): trägerweite Angaben, einmalig, ein Datensatz pro Mandant.
 // Ebene 2 (Einrichtung): pro Standort (mock-data Location) eigene Konfiguration –
 // "Das System darf niemals einfach die Regeln einer anderen Einrichtung kopieren."
+// customerId statt fixer 'singleton'-PK: jeder Mandant (Customer) bekommt seinen
+// eigenen Datensatz, sonst sehen alle Träger dieselben Onboarding-Daten.
 model OrganizationOnboarding {
-  id                      String   @id @default("singleton")
+  customerId              String   @id
   traegerName             String?
   rollenmodell            String?
   unternehmensweiteRegeln String?
@@ -233,6 +235,7 @@ model User {
   role         String
   employeeId   String?
   locationId   String?
+  customerId   String?
   customerName String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -244,6 +247,7 @@ model InvitationToken {
   email        String
   role         String
   name         String?
+  customerId   String?
   customerName String?
   employeeId   String?
   locationId   String?
@@ -270,6 +274,7 @@ model PasswordResetToken {
 // damit bestehende Tabellen (EmployeeProfile, User, ...) unverändert bleiben.
 model Location {
   id            String   @id @default(cuid())
+  customerId    String?
   name          String
   address       String
   city          String
@@ -283,6 +288,7 @@ model Location {
 
 model Employee {
   id                String   @id @default(cuid())
+  customerId        String?
   name              String
   email             String   @unique
   role              String
@@ -476,7 +482,7 @@ model SupportAccessLogEntry {
 }
 
 model OrgSettings {
-  id                           String   @id @default("singleton")
+  customerId                   String   @id
   organizationName             String
   defaultWeeklyHours           Int
   defaultVacationDaysPerYear   Int

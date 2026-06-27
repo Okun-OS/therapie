@@ -7,9 +7,9 @@ export interface OrganizationOnboardingUpdate {
   completed?: boolean
 }
 
-export async function upsertOrganizationOnboarding(update: OrganizationOnboardingUpdate) {
+export async function upsertOrganizationOnboarding(customerId: string, update: OrganizationOnboardingUpdate) {
   return prisma.organizationOnboarding.upsert({
-    where: { id: 'singleton' },
+    where: { customerId },
     update: {
       ...(update.traegerName !== undefined && { traegerName: update.traegerName }),
       ...(update.rollenmodell !== undefined && { rollenmodell: update.rollenmodell }),
@@ -17,7 +17,7 @@ export async function upsertOrganizationOnboarding(update: OrganizationOnboardin
       ...(update.completed !== undefined && { completed: update.completed }),
     },
     create: {
-      id: 'singleton',
+      customerId,
       traegerName: update.traegerName,
       rollenmodell: update.rollenmodell,
       unternehmensweiteRegeln: update.unternehmensweiteRegeln,

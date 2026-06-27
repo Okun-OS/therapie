@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       role: user.role,
       employeeId: user.employeeId ?? undefined,
       locationId: user.locationId ?? undefined,
+      customerId: user.customerId ?? undefined,
     },
   })
   setSessionCookie(res, {
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
     role: user.role as SessionRole,
     employeeId: user.employeeId ?? undefined,
     locationId: user.locationId ?? undefined,
+    customerId: user.customerId ?? undefined,
   })
   return res
 }

@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
       role: user.role,
       employeeId: user.employeeId ?? undefined,
       locationId: user.locationId ?? undefined,
+      customerId: user.customerId ?? undefined,
     },
   })
 }

@@ -6,8 +6,8 @@ import { listEmployees, listLocations } from './entities'
 import { getFairnessInsights } from './fairness'
 import { getRiskLevel, type RiskLevel } from './risk-constants'
 
-async function scopeLocationIds(locationId?: string): Promise<string[]> {
-  return locationId ? [locationId] : (await listLocations()).map(l => l.id)
+async function scopeLocationIds(locationId?: string, customerId?: string): Promise<string[]> {
+  return locationId ? [locationId] : (await listLocations(customerId)).map(l => l.id)
 }
 
 export interface EmployeeRisk {
@@ -47,11 +47,11 @@ async function getOvertimeHoursByEmployee(employeeIds: string[]): Promise<Map<st
 
 // ─── Burnout-Risiko ──────────────────────────────────────────────────────────
 
-export async function getBurnoutRisks(locationId?: string): Promise<EmployeeRisk[]> {
-  const locationIds = await scopeLocationIds(locationId)
-  const allEmployees = await listEmployees()
+export async function getBurnoutRisks(locationId?: string, customerId?: string): Promise<EmployeeRisk[]> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
+  const allEmployees = await listEmployees(customerId)
   const employees = allEmployees.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
-  const fairnessData = await getFairnessInsights(locationId)
+  const fairnessData = await getFairnessInsights(locationId, customerId)
   const overtimeHours = await getOvertimeHoursByEmployee(employees.map(e => e.id))
 
   return employees.map(emp => {
@@ -77,11 +77,11 @@ export async function getBurnoutRisks(locationId?: string): Promise<EmployeeRisk
 
 // ─── Kündigungs-/Fluktuationsrisiko ─────────────────────────────────────────
 
-export async function getFluctuationRisks(locationId?: string): Promise<EmployeeRisk[]> {
-  const locationIds = await scopeLocationIds(locationId)
-  const allEmployees = await listEmployees()
+export async function getFluctuationRisks(locationId?: string, customerId?: string): Promise<EmployeeRisk[]> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
+  const allEmployees = await listEmployees(customerId)
   const employees = allEmployees.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
-  const fairnessData = await getFairnessInsights(locationId)
+  const fairnessData = await getFairnessInsights(locationId, customerId)
   const employeeIds = employees.map(e => e.id)
 
   const candidateGroups = employeeIds.length > 0
@@ -139,9 +139,9 @@ export interface UnderstaffingInsights {
   riskDays: UnderstaffingRiskDay[]
 }
 
-export async function getUnderstaffingRisk(locationId?: string, windowDays = 21): Promise<UnderstaffingInsights> {
-  const locationIds = await scopeLocationIds(locationId)
-  const [allLocations, allEmployees] = await Promise.all([listLocations(), listEmployees()])
+export async function getUnderstaffingRisk(locationId?: string, customerId?: string, windowDays = 21): Promise<UnderstaffingInsights> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
+  const [allLocations, allEmployees] = await Promise.all([listLocations(customerId), listEmployees(customerId)])
   const riskDays: UnderstaffingRiskDay[] = []
   const today = new Date()
   today.setHours(0, 0, 0, 0)

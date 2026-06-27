@@ -6,8 +6,8 @@ import { listEmployees, listLocations } from './entities'
 import { getLevelForPoints, LEVEL_ORDER, type WorkforceLevel } from './workforce-score-constants'
 import { ESCALATION_ORDER, type EscalationStage } from './substitution-constants'
 
-async function scopeLocationIds(locationId?: string): Promise<string[]> {
-  return locationId ? [locationId] : (await listLocations()).map(l => l.id)
+async function scopeLocationIds(locationId?: string, customerId?: string): Promise<string[]> {
+  return locationId ? [locationId] : (await listLocations(customerId)).map(l => l.id)
 }
 
 // ─── Pünktlichkeit & Workforce Score ────────────────────────────────────────
@@ -19,9 +19,9 @@ export interface PunctualityInsights {
   levelDistribution: Record<WorkforceLevel, number>
 }
 
-export async function getPunctualityInsights(locationId?: string): Promise<PunctualityInsights> {
-  const locationIds = await scopeLocationIds(locationId)
-  const allEmployees = await listEmployees()
+export async function getPunctualityInsights(locationId?: string, customerId?: string): Promise<PunctualityInsights> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
+  const allEmployees = await listEmployees(customerId)
   const employeeIds = allEmployees.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId)).map(e => e.id)
 
   const levelDistribution: Record<WorkforceLevel, number> = { bronze: 0, silber: 0, gold: 0, platin: 0, diamant: 0 }
@@ -67,8 +67,8 @@ export interface SubstitutionInsights {
   escalationDistribution: Record<EscalationStage, number>
 }
 
-export async function getSubstitutionInsights(locationId?: string): Promise<SubstitutionInsights> {
-  const locationIds = await scopeLocationIds(locationId)
+export async function getSubstitutionInsights(locationId?: string, customerId?: string): Promise<SubstitutionInsights> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
   const requests = await prisma.substitutionRequest.findMany({ where: { locationId: { in: locationIds } } })
 
   const filled = requests.filter(r => r.status === 'filled')
@@ -107,10 +107,10 @@ export interface AbsenceInsights {
   vacationRate: number
 }
 
-export async function getAbsenceInsights(locationId?: string): Promise<AbsenceInsights> {
-  const locationIds = await scopeLocationIds(locationId)
+export async function getAbsenceInsights(locationId?: string, customerId?: string): Promise<AbsenceInsights> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
   const requests = (await Promise.all(locationIds.map(id => getVacationRequestsByLocation(id)))).flat()
-  const allEmployees = await listEmployees()
+  const allEmployees = await listEmployees(customerId)
   const employeeCount = allEmployees.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId)).length
 
   const pending = requests.filter(v => v.status === 'pending')
@@ -148,9 +148,9 @@ export interface SicknessInsights {
 // Gruppe Blau häufen sich Krankmeldungen").
 const GROUP_HOTSPOT_THRESHOLD_FACTOR = 1.5
 
-export async function getSicknessInsights(locationId?: string): Promise<SicknessInsights> {
-  const locationIds = await scopeLocationIds(locationId)
-  const allEmployees = await listEmployees()
+export async function getSicknessInsights(locationId?: string, customerId?: string): Promise<SicknessInsights> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
+  const allEmployees = await listEmployees(customerId)
   const employees = allEmployees.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
   const absences = (await Promise.all(locationIds.map(id => getAbsencesByLocation(id)))).flat()
 
@@ -219,9 +219,9 @@ export interface PersonnelOverview {
   openPositions: number
 }
 
-export async function getPersonnelOverview(locationId?: string): Promise<PersonnelOverview> {
-  const locationIds = await scopeLocationIds(locationId)
-  const allEmployees = await listEmployees()
+export async function getPersonnelOverview(locationId?: string, customerId?: string): Promise<PersonnelOverview> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
+  const allEmployees = await listEmployees(customerId)
   const employees = allEmployees.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
   const absences = (await Promise.all(locationIds.map(id => getAbsencesByLocation(id)))).flat()
   const vacations = (await Promise.all(locationIds.map(id => getVacationRequestsByLocation(id)))).flat().filter(v => v.status === 'approved')
@@ -236,7 +236,7 @@ export async function getPersonnelOverview(locationId?: string): Promise<Personn
   // "Offene Stellen": Soll-Personalstärke der Einrichtung (Location.employeeCount)
   // abzüglich tatsächlich aktiver Mitarbeiter – unbesetzte Planstellen, die
   // nachbesetzt werden müssen (nicht zu verwechseln mit "Offene Vertretungen").
-  const allLocations = await listLocations()
+  const allLocations = await listLocations(customerId)
   const locations = allLocations.filter(l => locationIds.includes(l.id))
   const targetHeadcount = locations.reduce((sum, l) => sum + l.employeeCount, 0)
   const openPositions = Math.max(0, targetHeadcount - employees.length)
@@ -262,8 +262,8 @@ export interface WishFulfillmentInsights {
   fulfillmentRate: number
 }
 
-export async function getWishFulfillmentInsights(locationId?: string): Promise<WishFulfillmentInsights> {
-  const locationIds = await scopeLocationIds(locationId)
+export async function getWishFulfillmentInsights(locationId?: string, customerId?: string): Promise<WishFulfillmentInsights> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
   const wishes = (await Promise.all(locationIds.map(id => getWishSubmissionsByLocation(id)))).flat()
 
   const fulfilled = wishes.filter(w => w.status === 'fulfilled')
@@ -314,9 +314,9 @@ function overtimeMinutesForLog(minutes: number): number {
 
 const DAILY_TARGET_MINUTES = 480 // 8h reference shift, consistent with existing time-tracking "isOver" logic
 
-export async function getWorkloadInsights(locationId?: string): Promise<WorkloadInsights> {
-  const locationIds = await scopeLocationIds(locationId)
-  const allEmployees = await listEmployees()
+export async function getWorkloadInsights(locationId?: string, customerId?: string): Promise<WorkloadInsights> {
+  const locationIds = await scopeLocationIds(locationId, customerId)
+  const allEmployees = await listEmployees(customerId)
   const employees = allEmployees.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
   const employeeIds = employees.map(e => e.id)
 

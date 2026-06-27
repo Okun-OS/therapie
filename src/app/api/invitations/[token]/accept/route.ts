@@ -37,6 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
         employeeId: invitation.employeeId,
         locationId: invitation.locationId,
         customerName: invitation.customerName,
+        customerId: invitation.customerId,
       },
       update: {
         passwordHash,
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
         employeeId: invitation.employeeId,
         locationId: invitation.locationId,
         customerName: invitation.customerName,
+        customerId: invitation.customerId,
       },
     })
     await tx.invitationToken.update({ where: { id: invitation.id }, data: { usedAt: new Date() } })
@@ -59,6 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       role: user.role,
       employeeId: user.employeeId ?? undefined,
       locationId: user.locationId ?? undefined,
+      customerId: user.customerId ?? undefined,
     },
   })
   setSessionCookie(res, {
@@ -67,6 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     role: user.role as SessionRole,
     employeeId: user.employeeId ?? undefined,
     locationId: user.locationId ?? undefined,
+    customerId: user.customerId ?? undefined,
   })
   return res
 }

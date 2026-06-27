@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'employeeId ist erforderlich' }, { status: 400 })
   }
 
-  const warnings = await getEarlyWarnings(locationId)
+  const warnings = await getEarlyWarnings(locationId, session.customerId)
   const startOfDay = new Date()
   startOfDay.setHours(0, 0, 0, 0)
 

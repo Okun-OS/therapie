@@ -8,7 +8,10 @@ export async function GET(req: NextRequest) {
   const session = requireRole(req)
   if (session instanceof NextResponse) return session
 
-  const locations = await listLocations()
+  if (session.role !== 'okun' && !session.customerId) {
+    return NextResponse.json({ locations: [] })
+  }
+  const locations = await listLocations(session.role === 'okun' ? undefined : session.customerId)
   return NextResponse.json({ locations })
 }
 
@@ -23,6 +26,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'name, address und city sind erforderlich' }, { status: 400 })
   }
 
-  const location = await addLocation({ name, address, city, state })
+  const location = await addLocation({ name, address, city, state, customerId: session.customerId })
   return NextResponse.json({ location })
 }

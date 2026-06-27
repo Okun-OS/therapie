@@ -6,7 +6,10 @@ export async function GET(req: NextRequest) {
   const session = requireRole(req)
   if (session instanceof NextResponse) return session
 
-  const settings = await getOrgSettings()
+  if (!session.customerId) {
+    return NextResponse.json({ settings: null })
+  }
+  const settings = await getOrgSettings(session.customerId)
   return NextResponse.json({ settings })
 }
 
@@ -14,7 +17,10 @@ export async function PATCH(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company'])
   if (session instanceof NextResponse) return session
 
+  if (!session.customerId) {
+    return NextResponse.json({ error: 'Kein Mandant für diesen Nutzer hinterlegt' }, { status: 400 })
+  }
   const updates = await req.json()
-  const settings = await updateOrgSettings(updates)
+  const settings = await updateOrgSettings(session.customerId, updates)
   return NextResponse.json({ settings })
 }

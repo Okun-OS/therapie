@@ -120,7 +120,7 @@ export interface LeaderboardEntry {
   level: WorkforceLevel
 }
 
-async function buildLeaderboard(employeeIds: string[]): Promise<LeaderboardEntry[]> {
+async function buildLeaderboard(employeeIds: string[], customerId?: string): Promise<LeaderboardEntry[]> {
   if (employeeIds.length === 0) return []
 
   const [grouped, allEmployees] = await Promise.all([
@@ -129,7 +129,7 @@ async function buildLeaderboard(employeeIds: string[]): Promise<LeaderboardEntry
       where: { employeeId: { in: employeeIds } },
       _sum: { points: true },
     }),
-    listEmployees(),
+    listEmployees(customerId),
   ])
   const pointsByEmployee = new Map(grouped.map(g => [g.employeeId, g._sum.points ?? 0]))
   const nameByEmployee = new Map(allEmployees.map(e => [e.id, e.name]))
@@ -152,9 +152,9 @@ export async function getLeaderboardByLocation(locationId: string): Promise<Lead
   return buildLeaderboard(employees.map(e => e.id))
 }
 
-export async function getOrganizationLeaderboard(): Promise<LeaderboardEntry[]> {
-  const allEmployees = await listEmployees()
-  return buildLeaderboard(allEmployees.filter(e => e.active).map(e => e.id))
+export async function getOrganizationLeaderboard(customerId?: string): Promise<LeaderboardEntry[]> {
+  const allEmployees = await listEmployees(customerId)
+  return buildLeaderboard(allEmployees.filter(e => e.active).map(e => e.id), customerId)
 }
 
 export async function getAllLevelBonusConfigs() {

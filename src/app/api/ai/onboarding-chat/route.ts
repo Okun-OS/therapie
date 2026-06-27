@@ -120,6 +120,10 @@ export async function POST(req: NextRequest) {
   if (!scope || !Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: 'scope und messages sind erforderlich' }, { status: 400 })
   }
+  if (!session.customerId) {
+    return NextResponse.json({ error: 'Kein Mandant für diesen Nutzer hinterlegt' }, { status: 400 })
+  }
+  const customerId = session.customerId
 
   const isOrganization = scope === 'organization'
 
@@ -129,7 +133,7 @@ export async function POST(req: NextRequest) {
     let tool: typeof ORG_TOOL | typeof LOCATION_TOOL
 
     if (isOrganization) {
-      const existing = await prisma.organizationOnboarding.findUnique({ where: { id: 'singleton' } })
+      const existing = await prisma.organizationOnboarding.findUnique({ where: { customerId } })
       stateNote = `## Bereits bekannte trägerweite Angaben\n${JSON.stringify({
         traegerName: existing?.traegerName ?? null,
         rollenmodell: existing?.rollenmodell ?? null,
@@ -139,7 +143,7 @@ export async function POST(req: NextRequest) {
       systemPrompt = ORGANIZATION_SYSTEM_PROMPT
       tool = ORG_TOOL
     } else {
-      const allLocations = await listLocations()
+      const allLocations = await listLocations(customerId)
       const location = allLocations.find(l => l.id === scope)
       if (!location) {
         return NextResponse.json({ error: 'Unbekannte Einrichtung' }, { status: 404 })
@@ -183,7 +187,7 @@ export async function POST(req: NextRequest) {
       if (block.type === 'tool_use' && (block.name === 'update_organization_onboarding' || block.name === 'update_location_onboarding')) {
         const input = block.input as Record<string, unknown>
         if (isOrganization) {
-          savedState = await upsertOrganizationOnboarding({
+          savedState = await upsertOrganizationOnboarding(customerId, {
             traegerName: typeof input.traegerName === 'string' ? input.traegerName : undefined,
             rollenmodell: typeof input.rollenmodell === 'string' ? input.rollenmodell : undefined,
             unternehmensweiteRegeln: typeof input.unternehmensweiteRegeln === 'string' ? input.unternehmensweiteRegeln : undefined,
