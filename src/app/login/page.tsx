@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import Link from 'next/link'
 import { Calendar, Mail, Lock } from 'lucide-react'
 
@@ -24,7 +25,7 @@ export default function LoginPage() {
       const user = JSON.parse(sessionStorage.getItem('dienstplan_user') || '{}')
       router.push(`/${user.role}`)
     } else {
-      setError('E-Mail oder Passwort ungültig. Nutze einen Demo-Account oben oder den Einladungslink aus deiner E-Mail.')
+      setError('E-Mail oder Passwort ungültig. Nutze den Einladungslink aus deiner E-Mail oder setze dein Passwort zurück.')
     }
     setLoading(false)
   }
@@ -94,20 +95,15 @@ export default function LoginPage() {
 
             <div className="p-6 pt-2">
               <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
-                  <div className="relative">
-                    <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="name@firma.de"
-                      required
-                      className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
-                    />
-                  </div>
-                </div>
+                <Input
+                  label="E-Mail"
+                  icon={Mail}
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="name@firma.de"
+                  required
+                />
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-sm font-semibold text-navy">Passwort</label>
@@ -115,16 +111,13 @@ export default function LoginPage() {
                       Passwort vergessen?
                     </Link>
                   </div>
-                  <div className="relative">
-                    <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
-                    />
-                  </div>
+                  <Input
+                    icon={Lock}
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
                 </div>
 
                 {error && (

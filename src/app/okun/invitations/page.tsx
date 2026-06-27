@@ -5,6 +5,8 @@ import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { useToast } from '@/lib/toast-context'
 import { Mail, Plus, Send } from 'lucide-react'
 import type { Role, Invitation } from '@/lib/types'
@@ -116,36 +118,27 @@ export default function OkunInvitations() {
               </ul>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
-            <input
-              value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              placeholder="kontakt@organisation.de"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Rolle</label>
-            <select
-              value={form.role}
-              onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            >
-              <option value="company">Geschäftsführung</option>
-              <option value="admin">Einrichtungsleitung</option>
-              <option value="employee">Mitarbeiter</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Organisation (optional)</label>
-            <input
-              value={form.customerName}
-              onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
-              placeholder="z.B. Lebenshilfe Rheinland"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
+          <Input
+            label="E-Mail"
+            value={form.email}
+            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+            placeholder="kontakt@organisation.de"
+          />
+          <Select
+            label="Rolle"
+            value={form.role}
+            onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}
+          >
+            <option value="company">Geschäftsführung</option>
+            <option value="admin">Einrichtungsleitung</option>
+            <option value="employee">Mitarbeiter</option>
+          </Select>
+          <Input
+            label="Organisation (optional)"
+            value={form.customerName}
+            onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
+            placeholder="z.B. Lebenshilfe Rheinland"
+          />
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setModal(false); setErrors([]) }}>Abbrechen</Button>
             <Button className="flex-1 gap-2" onClick={handleSend} loading={sending}>

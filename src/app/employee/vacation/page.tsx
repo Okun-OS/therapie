@@ -6,6 +6,9 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
+import { Select } from '@/components/ui/Select'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, Send, Baby } from 'lucide-react'
@@ -240,53 +243,43 @@ export default function EmployeeVacation() {
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-gray-500 block mb-1.5">Konkreter Wunschzeitraum (optional)</label>
-              <input
-                value={wishPeriod}
-                onChange={e => setWishPeriod(e.target.value)}
-                placeholder="z.B. Sommerferien Juli/August"
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
+            <Input
+              label="Konkreter Wunschzeitraum (optional)"
+              value={wishPeriod}
+              onChange={e => setWishPeriod(e.target.value)}
+              placeholder="z.B. Sommerferien Juli/August"
+            />
 
             <div className="flex items-center gap-3 flex-wrap">
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1.5">Priorität</label>
-                <select
-                  value={wishPriority}
-                  onChange={e => setWishPriority(e.target.value as 'low' | 'medium' | 'high')}
-                  className="text-sm px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand"
-                >
-                  {Object.entries(PRIORITY_LABEL).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-                </select>
-              </div>
+              <Select
+                label="Priorität"
+                value={wishPriority}
+                onChange={e => setWishPriority(e.target.value as 'low' | 'medium' | 'high')}
+              >
+                {Object.entries(PRIORITY_LABEL).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+              </Select>
               {employee?.hasChildren && (
                 <div>
                   <label className="text-xs font-semibold text-gray-500 block mb-1.5 flex items-center gap-1">
                     <Baby size={12} className="text-blue-400" />Priorität Schulferien
                   </label>
-                  <select
+                  <Select
                     value={wishSchoolPriority}
                     onChange={e => setWishSchoolPriority(e.target.value as 'low' | 'medium' | 'high')}
-                    className="text-sm px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand"
                   >
                     {Object.entries(PRIORITY_LABEL).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-                  </select>
+                  </Select>
                 </div>
               )}
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-gray-500 block mb-1.5">Notiz (optional)</label>
-              <textarea
-                value={wishNotes}
-                onChange={e => setWishNotes(e.target.value)}
-                rows={2}
-                placeholder="z.B. besondere Gründe für deinen Wunschzeitraum"
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-              />
-            </div>
+            <Textarea
+              label="Notiz (optional)"
+              value={wishNotes}
+              onChange={e => setWishNotes(e.target.value)}
+              rows={2}
+              placeholder="z.B. besondere Gründe für deinen Wunschzeitraum"
+            />
 
             <Button onClick={handleSaveWishes} className="gap-2">
               <Send size={14} />Wünsche speichern
@@ -351,27 +344,21 @@ export default function EmployeeVacation() {
       <Modal open={modal} onClose={() => setModal(false)} title="Urlaub beantragen">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Von</label>
-              <input
-                type="date"
-                required
-                value={form.startDate}
-                onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Bis</label>
-              <input
-                type="date"
-                required
-                value={form.endDate}
-                min={form.startDate}
-                onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
+            <Input
+              label="Von"
+              type="date"
+              required
+              value={form.startDate}
+              onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+            />
+            <Input
+              label="Bis"
+              type="date"
+              required
+              value={form.endDate}
+              min={form.startDate}
+              onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+            />
           </div>
 
           {requestDays > 0 && (
@@ -387,16 +374,13 @@ export default function EmployeeVacation() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Grund (optional)</label>
-            <textarea
-              value={form.reason}
-              onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
-              rows={3}
-              placeholder="z.B. Familienurlaub, Hochzeit..."
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-            />
-          </div>
+          <Textarea
+            label="Grund (optional)"
+            value={form.reason}
+            onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+            rows={3}
+            placeholder="z.B. Familienurlaub, Hochzeit..."
+          />
 
           <div className="flex gap-2">
             <Button type="button" variant="ghost" className="flex-1 border border-gray-200" onClick={() => setModal(false)}>

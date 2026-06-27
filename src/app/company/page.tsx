@@ -7,9 +7,11 @@ import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import {
   Users, Palmtree, TrendingUp, MapPin, AlertTriangle, Building2,
-  ChevronRight, Clock, Search, Filter, Baby,
+  ChevronRight, Clock, Search, Baby,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { Employee, Location, VacationRequest, TimeLog } from '@/lib/types'
@@ -191,20 +193,17 @@ export default function CompanyDashboard() {
         {tab === 'employees' && (
           <>
             <div className="flex gap-2 flex-wrap">
-              <div className="flex-1 min-w-[180px] relative">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Name, Position, Einrichtung..."
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-white" />
-              </div>
-              <div className="relative">
-                <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}
-                  className="pl-8 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand">
-                  <option value="all">Alle Einrichtungen</option>
-                  {LOCATIONS.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
-              </div>
+              <Input
+                containerClassName="flex-1 min-w-[180px]"
+                icon={Search}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Name, Position, Einrichtung..."
+              />
+              <Select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
+                <option value="all">Alle Einrichtungen</option>
+                {LOCATIONS.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </Select>
             </div>
 
             <div className="grid grid-cols-3 gap-3">

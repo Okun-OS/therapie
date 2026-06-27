@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
 import { useToast } from '@/lib/toast-context'
 import { Building2, Plus, MapPin, Users, Palmtree, Phone, Edit, MoreVertical, ChevronRight, UserCog, Crown } from 'lucide-react'
 import type { Location, Employee, VacationRequest } from '@/lib/types'
@@ -208,30 +209,21 @@ export default function CompanyLocations() {
       >
         {selectedStats && isEditing && (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Name</label>
-              <input
-                value={editForm.name}
-                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Adresse</label>
-              <input
-                value={editForm.address}
-                onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Stadt</label>
-              <input
-                value={editForm.city}
-                onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
+            <Input
+              label="Name"
+              value={editForm.name}
+              onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+            />
+            <Input
+              label="Adresse"
+              value={editForm.address}
+              onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
+            />
+            <Input
+              label="Stadt"
+              value={editForm.city}
+              onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+            />
             <div className="flex gap-2">
               <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setIsEditing(false)}>Abbrechen</Button>
               <Button className="flex-1" onClick={saveEdit}>Speichern</Button>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
 import { Send, MessageCircle, Loader2, Sparkles } from 'lucide-react'
 

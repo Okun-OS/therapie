@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Select } from '@/components/ui/Select'
 import { Employee, Location, TimeLog, VacationRequest, Absence } from '@/lib/types'
 import { Download, BarChart3, TrendingUp, Users, Clock, Palmtree, Building2, Filter, Stethoscope } from 'lucide-react'
 
@@ -71,14 +72,10 @@ export default function CompanyReports() {
         <div className="flex gap-3 flex-wrap items-center justify-between">
           <div className="flex items-center gap-2">
             <Filter size={14} className="text-gray-500" />
-            <select
-              value={locationFilter}
-              onChange={e => setLocationFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-white"
-            >
+            <Select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
               <option value="all">Alle Standorte</option>
               {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+            </Select>
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" className="gap-2 border border-gray-200">

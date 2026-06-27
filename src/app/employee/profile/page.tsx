@@ -5,6 +5,8 @@ import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
 import { useAuth } from '@/lib/auth-context'
 import { HumanContextChat } from '@/components/profile/HumanContextChat'
 import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks, FileText, History, Calendar, Copy, Check } from 'lucide-react'
@@ -55,12 +57,12 @@ function TagInputSection({
         )}
       </div>
       <div className="flex gap-2">
-        <input
+        <Input
+          containerClassName="flex-1"
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
           placeholder={placeholder}
-          className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
         />
         <Button onClick={handleAdd} size="md" variant="secondary">Hinzufügen</Button>
       </div>

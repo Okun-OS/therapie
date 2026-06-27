@@ -6,6 +6,9 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
+import { Select } from '@/components/ui/Select'
 import { SwapModal } from '@/components/schedule/SwapModal'
 import { SwapList } from '@/components/schedule/SwapList'
 import { useAuth } from '@/lib/auth-context'
@@ -572,30 +575,24 @@ export default function EmployeeSchedule() {
       {/* ── Wish Modal ────────────────────────────────────────── */}
       <Modal open={wishModal} onClose={() => setWishModal(false)} title="Dienstwunsch abgeben">
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Gewünschter Dienst</label>
-            <select
-              value={wish.type}
-              onChange={e => setWish(w => ({ ...w, type: e.target.value }))}
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            >
-              <option value="">Bitte wählen...</option>
-              <option value="early">Frühdienst</option>
-              <option value="late">Spätdienst</option>
-              <option value="mid">Mitteldienst</option>
-              <option value="free">Freier Tag</option>
-              <option value="no_early_after_late">Kein Frühdienst nach Spätdienst</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Datum</label>
-            <input
-              type="date"
-              value={wish.date}
-              onChange={e => setWish(w => ({ ...w, date: e.target.value }))}
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
+          <Select
+            label="Gewünschter Dienst"
+            value={wish.type}
+            onChange={e => setWish(w => ({ ...w, type: e.target.value }))}
+          >
+            <option value="">Bitte wählen...</option>
+            <option value="early">Frühdienst</option>
+            <option value="late">Spätdienst</option>
+            <option value="mid">Mitteldienst</option>
+            <option value="free">Freier Tag</option>
+            <option value="no_early_after_late">Kein Frühdienst nach Spätdienst</option>
+          </Select>
+          <Input
+            label="Datum"
+            type="date"
+            value={wish.date}
+            onChange={e => setWish(w => ({ ...w, date: e.target.value }))}
+          />
           <div>
             <label className="block text-sm font-semibold text-navy mb-1.5">Priorität</label>
             <div className="grid grid-cols-3 gap-2">
@@ -614,16 +611,13 @@ export default function EmployeeSchedule() {
               ))}
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Grund</label>
-            <textarea
-              value={wish.reason}
-              onChange={e => setWish(w => ({ ...w, reason: e.target.value }))}
-              rows={2}
-              placeholder="z.B. Arzttermin, Familienpflicht..."
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-            />
-          </div>
+          <Textarea
+            label="Grund"
+            value={wish.reason}
+            onChange={e => setWish(w => ({ ...w, reason: e.target.value }))}
+            rows={2}
+            placeholder="z.B. Arzttermin, Familienpflicht..."
+          />
           <div className="bg-blue-50 rounded-xl p-3 flex gap-2">
             <Info size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-blue-700">

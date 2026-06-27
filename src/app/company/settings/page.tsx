@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { useToast } from '@/lib/toast-context'
 import { Building2, Clock, Palmtree, CheckCircle2, Mail } from 'lucide-react'
 import type { OrgSettings } from '@/lib/types'
@@ -47,23 +48,17 @@ export default function CompanySettings() {
             </div>
           </CardHeader>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Name der Organisation</label>
-              <input
-                value={form.organizationName}
-                onChange={e => setForm(f => ({ ...f, organizationName: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Mail size={14} className="text-gray-400" />
-              <input
-                value={form.notificationEmail}
-                onChange={e => setForm(f => ({ ...f, notificationEmail: e.target.value }))}
-                placeholder="Benachrichtigungs-E-Mail"
-                className="flex-1 px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
+            <Input
+              label="Name der Organisation"
+              value={form.organizationName}
+              onChange={e => setForm(f => ({ ...f, organizationName: e.target.value }))}
+            />
+            <Input
+              icon={Mail}
+              value={form.notificationEmail}
+              onChange={e => setForm(f => ({ ...f, notificationEmail: e.target.value }))}
+              placeholder="Benachrichtigungs-E-Mail"
+            />
           </div>
         </Card>
 
@@ -75,26 +70,20 @@ export default function CompanySettings() {
             </div>
           </CardHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Wochenstunden (Vollzeit)</label>
-              <input
-                type="number"
-                min={1}
-                value={form.defaultWeeklyHours}
-                onChange={e => setForm(f => ({ ...f, defaultWeeklyHours: Number(e.target.value) }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Urlaubstage pro Jahr</label>
-              <input
-                type="number"
-                min={1}
-                value={form.defaultVacationDaysPerYear}
-                onChange={e => setForm(f => ({ ...f, defaultVacationDaysPerYear: Number(e.target.value) }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
+            <Input
+              label="Wochenstunden (Vollzeit)"
+              type="number"
+              min={1}
+              value={form.defaultWeeklyHours}
+              onChange={e => setForm(f => ({ ...f, defaultWeeklyHours: Number(e.target.value) }))}
+            />
+            <Input
+              label="Urlaubstage pro Jahr"
+              type="number"
+              min={1}
+              value={form.defaultVacationDaysPerYear}
+              onChange={e => setForm(f => ({ ...f, defaultVacationDaysPerYear: Number(e.target.value) }))}
+            />
           </div>
         </Card>
 
@@ -105,17 +94,14 @@ export default function CompanySettings() {
               <CardTitle>Urlaubsgenehmigung</CardTitle>
             </div>
           </CardHeader>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Automatische Genehmigung bis (Tage)</label>
-            <p className="text-xs text-gray-400 mb-2">Anträge bis zu dieser Dauer werden ohne Rückfrage an die Einrichtungsleitung genehmigt. 0 = immer manuell prüfen.</p>
-            <input
-              type="number"
-              min={0}
-              value={form.autoApproveVacationUnderDays}
-              onChange={e => setForm(f => ({ ...f, autoApproveVacationUnderDays: Number(e.target.value) }))}
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
+          <Input
+            label="Automatische Genehmigung bis (Tage)"
+            hint="Anträge bis zu dieser Dauer werden ohne Rückfrage an die Einrichtungsleitung genehmigt. 0 = immer manuell prüfen."
+            type="number"
+            min={0}
+            value={form.autoApproveVacationUnderDays}
+            onChange={e => setForm(f => ({ ...f, autoApproveVacationUnderDays: Number(e.target.value) }))}
+          />
         </Card>
 
         <div className="flex justify-end">

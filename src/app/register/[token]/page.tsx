@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Lock, Mail, CheckCircle2, AlertCircle, Calendar } from 'lucide-react'
 
 const ROLE_LABEL: Record<string, string> = {
@@ -118,43 +119,30 @@ export default function RegisterPage({ params }: { params: { token: string } }) 
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">Name</label>
-                <input
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="Vor- und Nachname"
-                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                />
-              </div>
+              <Input
+                label="Name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Vor- und Nachname"
+              />
 
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">Passwort</label>
-                <div className="relative">
-                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="Mindestens 8 Zeichen"
-                    className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                  />
-                </div>
-              </div>
+              <Input
+                label="Passwort"
+                icon={Lock}
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Mindestens 8 Zeichen"
+              />
 
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">Passwort bestätigen</label>
-                <div className="relative">
-                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder="Passwort wiederholen"
-                    className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                  />
-                </div>
-              </div>
+              <Input
+                label="Passwort bestätigen"
+                icon={Lock}
+                type="password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="Passwort wiederholen"
+              />
 
               <Button type="submit" className="w-full gap-2" size="lg" loading={submitting}>
                 <CheckCircle2 size={16} />

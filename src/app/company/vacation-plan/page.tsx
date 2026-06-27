@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { Select } from '@/components/ui/Select'
 import { SCHOOL_HOLIDAYS_2026 } from '@/lib/school-holidays'
 import { Employee, Location, VacationRequest, VacationPlanPreference } from '@/lib/types'
 import { Palmtree, Building2, Filter, CalendarDays } from 'lucide-react'
@@ -46,14 +47,10 @@ export default function CompanyVacationPlan() {
 
         <div className="flex items-center gap-2">
           <Filter size={14} className="text-gray-500" />
-          <select
-            value={locationFilter}
-            onChange={e => setLocationFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-white"
-          >
+          <Select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
             <option value="all">Alle Einrichtungen</option>
             {LOCATIONS.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          </Select>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

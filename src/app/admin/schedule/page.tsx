@@ -6,6 +6,8 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
 import { FairnessReport } from '@/components/schedule/FairnessReport'
 import { ShiftEditor } from '@/components/schedule/ShiftEditor'
 import { SchedulePlanningChat } from '@/components/schedule/SchedulePlanningChat'
@@ -548,18 +550,16 @@ export default function AdminSchedule() {
               ))}
               {periodMode === 'custom' && (
                 <div className="flex items-center gap-2">
-                  <input
+                  <Input
                     type="date"
                     value={customRange.start}
                     onChange={e => setCustomRange(r => ({ ...r, start: e.target.value }))}
-                    className="px-2 py-1.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                   <span className="text-xs text-gray-400">bis</span>
-                  <input
+                  <Input
                     type="date"
                     value={customRange.end}
                     onChange={e => setCustomRange(r => ({ ...r, end: e.target.value }))}
-                    className="px-2 py-1.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                 </div>
               )}
@@ -600,10 +600,8 @@ export default function AdminSchedule() {
                     <p className="font-bold text-navy">KI-Dienstplan erstellen</p>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-600 block mb-1">
-                      Einrichtungsbeschreibung (optional)
-                    </label>
-                    <textarea
+                    <Textarea
+                      label="Einrichtungsbeschreibung (optional)"
                       value={facilityDescription}
                       onChange={e => {
                         setFacilityDescription(e.target.value)
@@ -611,7 +609,6 @@ export default function AdminSchedule() {
                       }}
                       placeholder="Beschreibe deine Einrichtung, z.B. Öffnungszeiten, besondere Anforderungen, Gruppenstrukturen... Die KI leitet daraus automatisch Planungsregeln ab."
                       rows={3}
-                      className="w-full px-3 py-2 text-sm border border-purple-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none placeholder:text-gray-400"
                     />
                   </div>
                   <div>

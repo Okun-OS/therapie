@@ -5,6 +5,8 @@ import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
@@ -363,24 +365,26 @@ export default function VacationPlanPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Planung von</label>
-                <input type="date" value={planningStart} onChange={e => setPlanningStart(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Planung bis</label>
-                <input type="date" value={planningEnd} onChange={e => setPlanningEnd(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Bundesland (Ferien)</label>
-                <select value={selectedState} onChange={e => setSelectedState(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand">
-                  {GERMAN_STATES.map(s => <option key={s}>{s}</option>)}
-                </select>
-                <p className="text-[11px] text-gray-400 mt-1">Automatisch aus dem Bundesland der Einrichtung übernommen.</p>
-              </div>
+              <Input
+                type="date"
+                label="Planung von"
+                value={planningStart}
+                onChange={e => setPlanningStart(e.target.value)}
+              />
+              <Input
+                type="date"
+                label="Planung bis"
+                value={planningEnd}
+                onChange={e => setPlanningEnd(e.target.value)}
+              />
+              <Select
+                label="Bundesland (Ferien)"
+                value={selectedState}
+                onChange={e => setSelectedState(e.target.value)}
+                hint="Automatisch aus dem Bundesland der Einrichtung übernommen."
+              >
+                {GERMAN_STATES.map(s => <option key={s}>{s}</option>)}
+              </Select>
             </div>
 
             {/* School holidays preview */}
@@ -441,30 +445,28 @@ export default function VacationPlanPage() {
                         </div>
                         <span className="text-xs text-gray-500">Hat Kinder</span>
                       </label>
-                      <select
+                      <Select
                         value={pref.priority}
                         onChange={e => updatePref(pref.employeeId, 'priority', e.target.value)}
-                        className="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand"
                       >
                         <option value="high">Prio: Hoch</option>
                         <option value="medium">Prio: Mittel</option>
                         <option value="low">Prio: Niedrig</option>
-                      </select>
+                      </Select>
                     </div>
                   </div>
 
                   {pref.hasChildren && (
                     <div>
-                      <label className="text-xs text-gray-500 block mb-1.5">Priorität Schulferien:</label>
-                      <select
+                      <Select
+                        label="Priorität Schulferien:"
                         value={pref.schoolHolidayPriority}
                         onChange={e => updatePref(pref.employeeId, 'schoolHolidayPriority', e.target.value)}
-                        className="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand"
                       >
                         <option value="high">Hoch</option>
                         <option value="medium">Mittel</option>
                         <option value="low">Niedrig</option>
-                      </select>
+                      </Select>
                     </div>
                   )}
 
@@ -488,11 +490,10 @@ export default function VacationPlanPage() {
                     </div>
                   </div>
 
-                  <input
+                  <Input
                     value={pref.notes}
                     onChange={e => updatePref(pref.employeeId, 'notes', e.target.value)}
                     placeholder="Notiz / Begründung (optional)"
-                    className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand"
                   />
                 </div>
               )

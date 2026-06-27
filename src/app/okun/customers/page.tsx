@@ -5,6 +5,8 @@ import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { useToast } from '@/lib/toast-context'
 import { Building2, Plus, Mail, ChevronRight, Edit, Users, KeyRound } from 'lucide-react'
 import type { Customer, CustomerStatus, LicensePlan } from '@/lib/types'
@@ -170,67 +172,49 @@ export default function OkunCustomers() {
       >
         {selected && isEditing && (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Organisation</label>
-              <input
-                value={editForm.name}
-                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Ansprechpartner</label>
-              <input
-                value={editForm.contactName}
-                onChange={e => setEditForm(f => ({ ...f, contactName: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
-              <input
-                value={editForm.contactEmail}
-                onChange={e => setEditForm(f => ({ ...f, contactEmail: e.target.value }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
+            <Input
+              label="Organisation"
+              value={editForm.name}
+              onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+            />
+            <Input
+              label="Ansprechpartner"
+              value={editForm.contactName}
+              onChange={e => setEditForm(f => ({ ...f, contactName: e.target.value }))}
+            />
+            <Input
+              label="E-Mail"
+              value={editForm.contactEmail}
+              onChange={e => setEditForm(f => ({ ...f, contactEmail: e.target.value }))}
+            />
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">Status</label>
-                <select
-                  value={editForm.status}
-                  onChange={e => setEditForm(f => ({ ...f, status: e.target.value as CustomerStatus }))}
-                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                >
-                  <option value="trial">Test</option>
-                  <option value="active">Aktiv</option>
-                  <option value="suspended">Gesperrt</option>
-                  <option value="cancelled">Gekündigt</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">Lizenz-Plan</label>
-                <select
-                  value={editForm.plan}
-                  onChange={e => setEditForm(f => ({ ...f, plan: e.target.value as LicensePlan }))}
-                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                >
-                  <option value="starter">Starter</option>
-                  <option value="professional">Professional</option>
-                  <option value="enterprise">Enterprise</option>
-                </select>
-              </div>
+              <Select
+                label="Status"
+                value={editForm.status}
+                onChange={e => setEditForm(f => ({ ...f, status: e.target.value as CustomerStatus }))}
+              >
+                <option value="trial">Test</option>
+                <option value="active">Aktiv</option>
+                <option value="suspended">Gesperrt</option>
+                <option value="cancelled">Gekündigt</option>
+              </Select>
+              <Select
+                label="Lizenz-Plan"
+                value={editForm.plan}
+                onChange={e => setEditForm(f => ({ ...f, plan: e.target.value as LicensePlan }))}
+              >
+                <option value="starter">Starter</option>
+                <option value="professional">Professional</option>
+                <option value="enterprise">Enterprise</option>
+              </Select>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Lizenzplätze</label>
-              <input
-                type="number"
-                min={1}
-                value={editForm.seatsLicensed}
-                onChange={e => setEditForm(f => ({ ...f, seatsLicensed: Number(e.target.value) }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
+            <Input
+              label="Lizenzplätze"
+              type="number"
+              min={1}
+              value={editForm.seatsLicensed}
+              onChange={e => setEditForm(f => ({ ...f, seatsLicensed: Number(e.target.value) }))}
+            />
             <div className="flex gap-2">
               <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setIsEditing(false)}>Abbrechen</Button>
               <Button className="flex-1" onClick={saveEdit}>Speichern</Button>
@@ -304,56 +288,41 @@ export default function OkunCustomers() {
               </ul>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Organisation</label>
-            <input
-              value={newCust.name}
-              onChange={e => setNewCust(c => ({ ...c, name: e.target.value }))}
-              placeholder="z.B. Lebenshilfe Musterstadt"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-navy mb-1.5">Ansprechpartner</label>
-            <input
-              value={newCust.contactName}
-              onChange={e => setNewCust(c => ({ ...c, contactName: e.target.value }))}
-              placeholder="Name der Geschäftsführung"
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Mail size={14} className="text-gray-400" />
-            <input
-              value={newCust.contactEmail}
-              onChange={e => setNewCust(c => ({ ...c, contactEmail: e.target.value }))}
-              placeholder="kontakt@organisation.de"
-              className="flex-1 px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
+          <Input
+            label="Organisation"
+            value={newCust.name}
+            onChange={e => setNewCust(c => ({ ...c, name: e.target.value }))}
+            placeholder="z.B. Lebenshilfe Musterstadt"
+          />
+          <Input
+            label="Ansprechpartner"
+            value={newCust.contactName}
+            onChange={e => setNewCust(c => ({ ...c, contactName: e.target.value }))}
+            placeholder="Name der Geschäftsführung"
+          />
+          <Input
+            icon={Mail}
+            value={newCust.contactEmail}
+            onChange={e => setNewCust(c => ({ ...c, contactEmail: e.target.value }))}
+            placeholder="kontakt@organisation.de"
+          />
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Lizenz-Plan</label>
-              <select
-                value={newCust.plan}
-                onChange={e => setNewCust(c => ({ ...c, plan: e.target.value as LicensePlan }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              >
-                <option value="starter">Starter</option>
-                <option value="professional">Professional</option>
-                <option value="enterprise">Enterprise</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Lizenzplätze</label>
-              <input
-                type="number"
-                min={1}
-                value={newCust.seatsLicensed}
-                onChange={e => setNewCust(c => ({ ...c, seatsLicensed: Number(e.target.value) }))}
-                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
+            <Select
+              label="Lizenz-Plan"
+              value={newCust.plan}
+              onChange={e => setNewCust(c => ({ ...c, plan: e.target.value as LicensePlan }))}
+            >
+              <option value="starter">Starter</option>
+              <option value="professional">Professional</option>
+              <option value="enterprise">Enterprise</option>
+            </Select>
+            <Input
+              label="Lizenzplätze"
+              type="number"
+              min={1}
+              value={newCust.seatsLicensed}
+              onChange={e => setNewCust(c => ({ ...c, seatsLicensed: Number(e.target.value) }))}
+            />
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setAddModal(false); setAddErrors([]) }}>Abbrechen</Button>

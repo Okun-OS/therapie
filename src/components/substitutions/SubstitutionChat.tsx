@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
 import { Send, MessageCircle, Loader2, UserPlus } from 'lucide-react'
 import type { SubstitutionDraft } from '@/lib/substitution-draft'
@@ -102,12 +103,12 @@ export function SubstitutionChat({
       )}
 
       <div className="flex gap-2">
-        <input
+        <Input
+          containerClassName="flex-1"
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSend()}
           placeholder="Deine Antwort…"
-          className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
         />
         <Button onClick={handleSend} loading={sending} size="md">
           <Send size={14} />

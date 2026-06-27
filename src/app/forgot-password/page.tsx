@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Mail, Calendar, CheckCircle2, ArrowLeft } from 'lucide-react'
 
 export default function ForgotPasswordPage() {
@@ -59,20 +60,15 @@ export default function ForgotPasswordPage() {
                 </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-navy mb-1.5">E-Mail</label>
-                <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="name@firma.de"
-                    required
-                    className="w-full pl-9 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                  />
-                </div>
-              </div>
+              <Input
+                label="E-Mail"
+                icon={Mail}
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="name@firma.de"
+                required
+              />
 
               <Button type="submit" className="w-full" size="lg" loading={submitting}>
                 Link senden
