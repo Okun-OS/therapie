@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAndSendPasswordReset } from '@/lib/password-reset'
+import { getAppOrigin } from '@/lib/app-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
   // Bewusst kein Hinweis, ob die E-Mail existiert (verhindert Enumeration) –
   // daher immer { ok: true } zurückgeben, auch wenn der Versand intern fehlschlägt.
   try {
-    await createAndSendPasswordReset(req.nextUrl.origin, email)
+    await createAndSendPasswordReset(getAppOrigin(req), email)
   } catch {}
 
   return NextResponse.json({ ok: true })

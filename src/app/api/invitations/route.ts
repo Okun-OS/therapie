@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createAndSendInvitation } from '@/lib/invitations'
 import { requireRole } from '@/lib/session'
+import { getAppOrigin } from '@/lib/app-url'
 import type { Role } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Rolle' }, { status: 400 })
   }
 
-  const invitation = await createAndSendInvitation(req.nextUrl.origin, {
+  const invitation = await createAndSendInvitation(getAppOrigin(req), {
     email,
     role,
     name,

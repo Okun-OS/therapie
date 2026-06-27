@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { listEmployees } from '@/lib/entities'
 import { addEmployeeWithInvitation } from '@/lib/invitations'
 import { requireRole } from '@/lib/session'
+import { getAppOrigin } from '@/lib/app-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
       qualifications: body.qualifications,
       allowedTasks: body.allowedTasks,
     },
-    req.nextUrl.origin,
+    getAppOrigin(req),
   )
 
   return NextResponse.json({ employee, emailSent })
