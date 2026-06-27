@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { CheckCircle, XCircle, Clock, Palmtree, Calendar, Sparkles, Loader2 } from 'lucide-react'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/EmptyState'
 import type { VacationRequest, RequestStatus, VacationRecommendation, VacationRules, Employee } from '@/lib/types'
 
 const STANCE_CONFIG: Record<VacationRecommendation['stance'], { label: string; color: string; bg: string }> = {
@@ -189,10 +190,7 @@ export default function AdminVacationRequests() {
         {/* Request List */}
         <div className="space-y-3">
           {filtered.length === 0 ? (
-            <div className="text-center py-12">
-              <Palmtree size={36} className="mx-auto text-gray-200 mb-3" />
-              <p className="text-sm text-gray-500">Keine Anträge</p>
-            </div>
+            <EmptyState icon={Palmtree} title="Keine Anträge" />
           ) : (
             filtered.map(req => {
               const cfg = statusConfig[req.status]

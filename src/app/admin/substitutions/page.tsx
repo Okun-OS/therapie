@@ -13,6 +13,7 @@ import type { SubstitutionDraft } from '@/lib/substitution-draft'
 import { ESCALATION_LABEL, PRIORITY_LABEL, type SubstitutionPriority } from '@/lib/substitution-constants'
 import { formatDate } from '@/lib/utils'
 import { UserPlus, MessageCircle, Calendar, Clock, TrendingUp, ChevronUp, CheckCircle2, XCircle, Hourglass } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 interface Candidate {
   id: string
@@ -172,10 +173,7 @@ export default function AdminSubstitutions() {
           {loading ? (
             <div className="text-center py-12 text-sm text-gray-400">Wird geladen...</div>
           ) : requests.length === 0 ? (
-            <div className="text-center py-12">
-              <UserPlus size={36} className="mx-auto text-gray-200 mb-3" />
-              <p className="text-sm text-gray-500">Noch keine Vertretungsanfragen</p>
-            </div>
+            <EmptyState icon={UserPlus} title="Noch keine Vertretungsanfragen" />
           ) : (
             requests.map(req => (
               <Card key={req.id} padding="sm">

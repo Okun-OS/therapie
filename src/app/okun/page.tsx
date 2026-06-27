@@ -7,7 +7,8 @@ import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { Building2, KeyRound, Mail, LifeBuoy, ChevronRight, AlertTriangle } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Building2, KeyRound, Mail, LifeBuoy, ChevronRight, AlertTriangle, ShieldOff } from 'lucide-react'
 import type { Customer, CustomerStatus, TestAccount, Invitation, SupportAccessLogEntry } from '@/lib/types'
 
 const STATUS_BADGE: Record<CustomerStatus, { label: string; variant: 'success' | 'info' | 'warning' | 'danger' }> = {
@@ -103,7 +104,7 @@ export default function OkunOverview() {
           </CardHeader>
           <div className="space-y-2">
             {openSupportAccess.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">Keine aktiven Zugriffe</p>
+              <EmptyState icon={ShieldOff} title="Keine aktiven Zugriffe" />
             ) : (
               openSupportAccess.map(s => (
                 <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">

@@ -13,6 +13,7 @@ import { useToast } from '@/lib/toast-context'
 import { OVERTIME_REASONS, type AbsenceType, type Employee, type TimeLog, type ScheduleEntry, type Shift, type OvertimeRequest, type HoursAccountSummary, type MonthlyClosing } from '@/lib/types'
 import { OVERTIME_MIN_MINUTES } from '@/lib/workforce-score-constants'
 import { PlayCircle, StopCircle, Clock, Timer, TrendingUp, Calendar, Coffee, AlertCircle, FileText, ChevronDown, ChevronUp, Stethoscope } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate, formatTime, getWeekDays, toDateString } from '@/lib/utils'
 
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
@@ -569,10 +570,7 @@ export default function TimeTracking() {
           </CardHeader>
           <div className="space-y-2">
             {myLogs.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                <Calendar size={32} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Keine Zeiteinträge vorhanden</p>
-              </div>
+              <EmptyState icon={Calendar} title="Keine Zeiteinträge vorhanden" />
             ) : (
               myLogs.map(log => {
                 const mins = log.totalMinutes || 0

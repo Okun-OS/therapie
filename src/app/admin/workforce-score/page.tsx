@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { LEVEL_LABEL, LEVEL_ORDER, type WorkforceLevel } from '@/lib/workforce-score-constants'
 import { Trophy, Medal } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 interface LeaderboardEntry {
   employeeId: string
@@ -92,7 +93,7 @@ export default function AdminWorkforceScore() {
           {loading ? (
             <div className="text-center py-8 text-sm text-gray-400">Wird geladen...</div>
           ) : leaderboard.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">Noch keine Punkte vergeben</p>
+            <EmptyState icon={Trophy} title="Noch keine Punkte vergeben" />
           ) : (
             <div className="space-y-2">
               {leaderboard.map((entry, idx) => (

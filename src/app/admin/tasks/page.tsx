@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import type { Employee } from '@/lib/types'
 import { ListChecks, Plus, Trash2, ChevronDown, ChevronUp, Check } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export default function AdminTasks() {
   const { user } = useAuth()
@@ -80,7 +81,7 @@ export default function AdminTasks() {
 
         <div className="space-y-3">
           {TASK_CATALOG.length === 0 && (
-            <Card><p className="text-sm text-gray-400 text-center py-6">Noch keine Aufgaben angelegt</p></Card>
+            <Card><EmptyState icon={ListChecks} title="Noch keine Aufgaben angelegt" /></Card>
           )}
           {TASK_CATALOG.map(task => {
             const assignedCount = employees.filter(e => e.allowedTasks?.includes(task)).length

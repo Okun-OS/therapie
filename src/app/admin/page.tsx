@@ -11,6 +11,7 @@ import { formatDate, toDateString } from '@/lib/utils'
 import { Employee, VacationRequest, ScheduleEntry, Shift, TimeLog } from '@/lib/types'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -146,10 +147,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <div className="space-y-2">
               {recentVacations.length === 0 ? (
-                <div className="text-center py-6 text-gray-400">
-                  <CheckCircle size={28} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Keine Anträge</p>
-                </div>
+                <EmptyState icon={CheckCircle} title="Keine Anträge" />
               ) : (
                 recentVacations.map(v => (
                   <div key={v.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">

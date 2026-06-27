@@ -194,10 +194,7 @@ export default function EmployeeDashboard() {
             </CardHeader>
             <div className="space-y-2">
               {upcomingEntries.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <Calendar size={32} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Keine Dienste geplant</p>
-                </div>
+                <EmptyState icon={Calendar} title="Keine Dienste geplant" />
               ) : (
                 upcomingEntries.map(entry => {
                   const shift = getShiftInfo(entry.shiftId)
@@ -234,10 +231,7 @@ export default function EmployeeDashboard() {
             </CardHeader>
             <div className="space-y-2 mb-4">
               {myVacations.length === 0 ? (
-                <div className="text-center py-6 text-gray-400">
-                  <Palmtree size={28} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Keine Anträge</p>
-                </div>
+                <EmptyState icon={Palmtree} title="Keine Anträge" />
               ) : (
                 myVacations.slice(0, 3).map(v => (
                   <div key={v.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">

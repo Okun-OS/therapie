@@ -20,6 +20,7 @@ import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
   CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff, X, CalendarRange, MessageCircle,
 } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 type PeriodMode = 'week' | 'twoWeeks' | 'month' | 'custom'
 
@@ -699,14 +700,12 @@ export default function AdminSchedule() {
 
             {/* Schedule Grid */}
             {!generatedSchedule && existingEntries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center py-14 px-6 bg-white border border-gray-100 rounded-2xl">
-                <div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center mb-4">
-                  <CalendarOff size={28} className="text-purple-400" />
-                </div>
-                <p className="text-sm font-semibold text-navy">Noch kein Dienstplan für diese Woche</p>
-                <p className="text-xs text-gray-400 mt-1 max-w-sm">
-                  Erstelle oben mit einem Klick einen fairness-optimierten KI-Dienstplan, oder trage Dienste manuell ein.
-                </p>
+              <div className="bg-white border border-gray-100 rounded-2xl">
+                <EmptyState
+                  icon={CalendarOff}
+                  title="Noch kein Dienstplan für diese Woche"
+                  description="Erstelle oben mit einem Klick einen fairness-optimierten KI-Dienstplan, oder trage Dienste manuell ein."
+                />
               </div>
             ) : (
             <div className="space-y-3">
