@@ -6,11 +6,7 @@ import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import {
-  SHIFTS, SCHEDULE_ENTRIES, VACATION_REQUESTS, TIME_LOGS,
-  getTimeLogsByMonth,
-} from '@/lib/mock-data'
-import type { Employee, Location } from '@/lib/types'
+import type { Employee, Location, Shift, ScheduleEntry, VacationRequest, TimeLog } from '@/lib/types'
 import { formatDate, formatHours } from '@/lib/utils'
 import {
   ArrowLeft, Clock, TrendingUp, Palmtree, Calendar, Baby, Download,
@@ -36,6 +32,10 @@ export default function EmployeeDetailPage() {
 
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
+  const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
+  const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
+  const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
+  const [TIME_LOGS, setTIME_LOGS] = useState<TimeLog[]>([])
 
   const employee = EMPLOYEES.find(e => e.id === id)
   const location = LOCATIONS.find(l => l.id === employee?.locationId)
@@ -46,10 +46,15 @@ export default function EmployeeDetailPage() {
   const [logYear, setLogYear] = useState(today.getFullYear())
   const [logMonth, setLogMonth] = useState(today.getMonth() + 1)
   const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
+  const [monthLogs, setMonthLogs] = useState<TimeLog[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
+    fetch('/api/shifts').then(r => r.json()).then(d => setSHIFTS(d.shifts))
+    fetch('/api/schedule-entries').then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries))
+    fetch('/api/vacation-requests').then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
+    fetch('/api/time-logs').then(r => r.json()).then(d => setTIME_LOGS(d.logs))
   }, [])
 
   useEffect(() => {
@@ -60,24 +65,27 @@ export default function EmployeeDetailPage() {
       .catch(() => setHumanContext(null))
   }, [employee?.id])
 
-  const monthLogs = useMemo(
-    () => employee ? getTimeLogsByMonth(employee.id, logYear, logMonth) : [],
-    [employee, logYear, logMonth]
-  )
+  useEffect(() => {
+    if (!employee) { setMonthLogs([]); return }
+    fetch(`/api/time-logs?employeeId=${employee.id}&year=${logYear}&month=${logMonth}`)
+      .then(r => r.json())
+      .then(d => setMonthLogs(d.logs ?? []))
+      .catch(() => setMonthLogs([]))
+  }, [employee, logYear, logMonth])
 
   const allLogs = useMemo(
     () => employee ? TIME_LOGS.filter(t => t.employeeId === employee.id).sort((a, b) => b.date.localeCompare(a.date)) : [],
-    [employee]
+    [employee, TIME_LOGS]
   )
 
   const scheduleEntries = useMemo(
     () => SCHEDULE_ENTRIES.filter(e => e.employeeId === id).sort((a, b) => b.date.localeCompare(a.date)),
-    [id]
+    [id, SCHEDULE_ENTRIES]
   )
 
   const vacationRequests = useMemo(
     () => VACATION_REQUESTS.filter(v => v.employeeId === id).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)),
-    [id]
+    [id, VACATION_REQUESTS]
   )
 
   if (!employee) {
@@ -134,7 +142,10 @@ export default function EmployeeDetailPage() {
     lines.push('')
     lines.push('Monat,Tage gearbeitet,Stunden gesamt')
     for (let m = 1; m <= 12; m++) {
-      const mLogs = getTimeLogsByMonth(employee.id, today.getFullYear(), m)
+      const mLogs = allLogs.filter(l => {
+        const d = new Date(l.date + 'T00:00:00')
+        return d.getFullYear() === today.getFullYear() && d.getMonth() + 1 === m
+      })
       const mMin = mLogs.reduce((s, l) => s + (l.totalMinutes ?? 0), 0)
       lines.push(`${MONTH_NAMES[m - 1]},${mLogs.length},${(mMin / 60).toFixed(1)}h`)
     }

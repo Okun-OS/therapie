@@ -5,25 +5,26 @@ import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { TEST_ACCOUNTS, addTestAccount, updateTestAccount } from '@/lib/mock-data'
 import { useToast } from '@/lib/toast-context'
 import { KeyRound, Plus, CheckCircle2, Clock } from 'lucide-react'
-import type { Customer } from '@/lib/types'
+import type { Customer, TestAccount } from '@/lib/types'
 
 export default function OkunTestAccounts() {
   const { showToast } = useToast()
   const [CUSTOMERS, setCUSTOMERS] = useState<Customer[]>([])
+  const [TEST_ACCOUNTS, setTEST_ACCOUNTS] = useState<TestAccount[]>([])
   const [addModal, setAddModal] = useState(false)
   const [form, setForm] = useState({ customerName: '', contactEmail: '', durationDays: 30 })
   const [errors, setErrors] = useState<string[]>([])
 
   useEffect(() => {
     fetch('/api/customers').then(r => r.json()).then(d => setCUSTOMERS(d.customers))
+    fetch('/api/test-accounts').then(r => r.json()).then(d => setTEST_ACCOUNTS(d.accounts))
   }, [])
 
   const today = new Date().toISOString().split('T')[0]
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const errs: string[] = []
     if (!form.customerName.trim()) errs.push('Organisation ist erforderlich')
     if (!form.contactEmail.trim()) errs.push('E-Mail ist erforderlich')
@@ -31,7 +32,12 @@ export default function OkunTestAccounts() {
       setErrors(errs)
       return
     }
-    addTestAccount(form)
+    const account = await fetch('/api/test-accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    }).then(r => r.json()).then(d => d.account)
+    setTEST_ACCOUNTS(prev => [...prev, account])
     showToast('Testzugang angelegt', 'success')
     setAddModal(false)
     setErrors([])
@@ -47,7 +53,12 @@ export default function OkunTestAccounts() {
         body: JSON.stringify({ status: 'active' }),
       }).then(r => r.json()).then(d => d.customer)
       setCUSTOMERS(prev => prev.map(c => c.id === updated.id ? updated : c))
-      updateTestAccount(testAccountId, { converted: true })
+      const account = await fetch(`/api/test-accounts/${testAccountId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ converted: true }),
+      }).then(r => r.json()).then(d => d.account)
+      setTEST_ACCOUNTS(prev => prev.map(t => t.id === account.id ? account : t))
       showToast(`${customerName} ist jetzt aktiver Kunde`, 'success')
     } else {
       showToast('Kunde nicht gefunden – bitte unter „Kunden“ anlegen', 'error')

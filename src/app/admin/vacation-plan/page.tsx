@@ -10,9 +10,10 @@ import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { VacationRulesChat } from '@/components/vacation/VacationRulesChat'
 import {
-  VACATION_PREFERENCES, SCHOOL_HOLIDAYS_2026,
+  VACATION_PREFERENCES,
   getVacationRules, setVacationRules, publishVacationPlan,
 } from '@/lib/mock-data'
+import { SCHOOL_HOLIDAYS_2026 } from '@/lib/school-holidays'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
 import type { VacationPlanEntry, VacationPlanSummary, VacationPlanConflict, VacationRules, Employee, Location } from '@/lib/types'
 import type { VacationRulesDraft } from '@/lib/vacation-rules-draft'

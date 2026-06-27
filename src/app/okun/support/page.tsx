@@ -5,8 +5,7 @@ import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { SUPPORT_LOG, addSupportAccess, revokeSupportAccess } from '@/lib/mock-data'
-import { Customer } from '@/lib/types'
+import { Customer, SupportAccessLogEntry } from '@/lib/types'
 import { useToast } from '@/lib/toast-context'
 import { LifeBuoy, Plus, ShieldOff } from 'lucide-react'
 
@@ -16,12 +15,14 @@ export default function OkunSupport() {
   const [form, setForm] = useState({ customerName: '', requestedBy: 'Lea Okun', reason: '' })
   const [errors, setErrors] = useState<string[]>([])
   const [CUSTOMERS, setCUSTOMERS] = useState<Customer[]>([])
+  const [SUPPORT_LOG, setSUPPORT_LOG] = useState<SupportAccessLogEntry[]>([])
 
   useEffect(() => {
     fetch('/api/customers').then(r => r.json()).then(d => setCUSTOMERS(d.customers))
+    fetch('/api/support-access-log').then(r => r.json()).then(d => setSUPPORT_LOG(d.log))
   }, [])
 
-  const handleGrant = () => {
+  const handleGrant = async () => {
     const errs: string[] = []
     if (!form.customerName.trim()) errs.push('Organisation ist erforderlich')
     if (!form.reason.trim()) errs.push('Begründung ist erforderlich')
@@ -29,15 +30,23 @@ export default function OkunSupport() {
       setErrors(errs)
       return
     }
-    addSupportAccess(form)
+    const entry = await fetch('/api/support-access-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    }).then(r => r.json()).then(d => d.entry)
+    setSUPPORT_LOG(prev => [...prev, entry])
     showToast('Support-Zugriff gewährt', 'success')
     setModal(false)
     setErrors([])
     setForm({ customerName: '', requestedBy: 'Lea Okun', reason: '' })
   }
 
-  const handleRevoke = (id: string) => {
-    revokeSupportAccess(id)
+  const handleRevoke = async (id: string) => {
+    const entry = await fetch(`/api/support-access-log/${id}/revoke`, {
+      method: 'POST',
+    }).then(r => r.json()).then(d => d.entry)
+    setSUPPORT_LOG(prev => prev.map(s => s.id === entry.id ? entry : s))
     showToast('Support-Zugriff entzogen', 'success')
   }
 

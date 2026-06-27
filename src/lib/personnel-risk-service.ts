@@ -1,5 +1,7 @@
 import { prisma } from './prisma'
-import { SHIFTS, TIME_LOGS, VACATION_REQUESTS } from './mock-data'
+import { listShiftsByLocation } from './schedule-entities'
+import { getTimeLogsByEmployee } from './time-tracking-entities'
+import { getVacationRequestsByLocation, getVacationRequestsByEmployee } from './vacation-entities'
 import { listEmployees, listLocations } from './entities'
 import { getFairnessInsights } from './fairness'
 import { getRiskLevel, type RiskLevel } from './risk-constants'
@@ -22,7 +24,8 @@ async function getOvertimeHoursByEmployee(employeeIds: string[]): Promise<Map<st
   const overtimeMinutes = new Map<string, number>()
   if (employeeIds.length === 0) return overtimeMinutes
 
-  for (const log of TIME_LOGS.filter(t => employeeIds.includes(t.employeeId))) {
+  const logsByEmployee = await Promise.all(employeeIds.map(id => getTimeLogsByEmployee(id)))
+  for (const log of logsByEmployee.flat()) {
     const minutes = log.totalMinutes || 0
     if (minutes > DAILY_TARGET_MINUTES) {
       overtimeMinutes.set(log.employeeId, (overtimeMinutes.get(log.employeeId) ?? 0) + (minutes - DAILY_TARGET_MINUTES))
@@ -89,8 +92,12 @@ export async function getFluctuationRisks(locationId?: string): Promise<Employee
       })
     : []
 
+  const vacationsByEmployee = new Map(
+    await Promise.all(employees.map(async emp => [emp.id, await getVacationRequestsByEmployee(emp.id)] as const))
+  )
+
   return employees.map(emp => {
-    const vacations = VACATION_REQUESTS.filter(v => v.employeeId === emp.id)
+    const vacations = vacationsByEmployee.get(emp.id) ?? []
     const denied = vacations.filter(v => v.status === 'denied').length
     const decided = vacations.filter(v => v.status === 'approved' || v.status === 'denied').length
     const denialRate = decided > 0 ? denied / decided : 0
@@ -142,8 +149,8 @@ export async function getUnderstaffingRisk(locationId?: string, windowDays = 21)
   for (const locId of locationIds) {
     const location = allLocations.find(l => l.id === locId)
     const employees = allEmployees.filter(e => e.role === 'employee' && e.active && e.locationId === locId)
-    const requiredMinStaff = SHIFTS.filter(s => s.locationId === locId).reduce((s, sh) => s + sh.minStaff, 0)
-    const relevantVacations = VACATION_REQUESTS.filter(v => v.locationId === locId && (v.status === 'approved' || v.status === 'pending'))
+    const requiredMinStaff = (await listShiftsByLocation(locId)).reduce((s, sh) => s + sh.minStaff, 0)
+    const relevantVacations = (await getVacationRequestsByLocation(locId)).filter(v => v.status === 'approved' || v.status === 'pending')
 
     for (let i = 0; i < windowDays; i++) {
       const day = new Date(today)

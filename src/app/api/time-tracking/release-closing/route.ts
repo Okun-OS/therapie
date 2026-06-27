@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { releaseMonthlyClosing } from '@/lib/mock-data'
+import { releaseMonthlyClosing } from '@/lib/time-tracking-entities'
 import { applyHoursBalanceDelta } from '@/lib/entities'
 import { requireRole } from '@/lib/session'
 
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'closingId und releasedBy sind erforderlich' }, { status: 400 })
   }
 
-  const result = releaseMonthlyClosing(closingId, releasedBy)
+  const result = await releaseMonthlyClosing(closingId, releasedBy)
   if (!result) {
     return NextResponse.json({ error: 'Monatsabschluss nicht gefunden oder bereits freigegeben' }, { status: 404 })
   }

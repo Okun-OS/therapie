@@ -325,3 +325,224 @@ model Customer {
   notes          String?
   updatedAt      DateTime @updatedAt
 }
+
+// ─── Echte Datenpersistenz: Dienstplanung, Zeiterfassung, Urlaub, Plattform ─
+// Ersetzt die übrigen, bisher noch simulierten Arrays in src/lib/mock-data.ts
+// (Shift, ScheduleEntry, TimeLog, VacationRequest, ...). Wie der Rest des
+// Schemas ohne @relation – alle Querverweise bleiben lose Strings. Bewusst
+// ohne Seed-Daten: Produktivsysteme starten leer, echte Daten entstehen durch
+// echte Nutzung der Anwendung ("keine Demo-Daten mehr").
+
+model Shift {
+  id         String   @id @default(cuid())
+  name       String
+  type       String
+  startTime  String
+  endTime    String
+  color      String
+  bgColor    String
+  minStaff   Int      @default(1)
+  locationId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ScheduleEntry {
+  id         String   @id @default(cuid())
+  employeeId String
+  shiftId    String
+  date       String
+  locationId String
+  status     String   @default("planned")
+  note       String?
+  reason     String?
+  createdAt  DateTime @default(now())
+}
+
+model TimeLog {
+  id           String   @id @default(cuid())
+  employeeId   String
+  date         String
+  clockIn      String
+  clockOut     String?
+  totalMinutes Int?
+  breakMinutes Int?
+  breakStart   String?
+  note         String?
+  locationId   String
+  createdAt    DateTime @default(now())
+}
+
+model VacationRequest {
+  id           String   @id @default(cuid())
+  employeeId   String
+  employeeName String
+  locationId   String
+  locationName String
+  startDate    String
+  endDate      String
+  days         Int
+  reason       String?
+  status       String   @default("pending")
+  submittedAt  String
+  respondedAt  String?
+  respondedBy  String?
+  createdAt    DateTime @default(now())
+}
+
+model SwapRequest {
+  id                 String    @id @default(cuid())
+  requesterId        String
+  requesterName      String
+  requesterDate      String
+  requesterShiftId   String
+  targetEmployeeId   String
+  targetEmployeeName String
+  targetDate         String
+  targetShiftId      String
+  message            String?
+  status             String    @default("pending")
+  submittedAt        String
+  respondedAt        String?
+  locationId         String
+}
+
+model WishSubmission {
+  id                 String   @id @default(cuid())
+  employeeId         String
+  employeeName       String
+  locationId         String
+  date               String
+  preferredShiftType String
+  reason             String?
+  importance         String   @default("normal")
+  submittedAt        String
+  status             String   @default("pending")
+  conflictInfo       Json?
+}
+
+model VacationPlanPreference {
+  employeeId            String   @id
+  hasChildren           Boolean  @default(false)
+  schoolHolidayPriority String?
+  preferredMonths       Int[]    @default([])
+  preferredPeriod       String?
+  notes                 String?
+  priority              String   @default("medium")
+  updatedAt             DateTime @updatedAt
+}
+
+model VacationRules {
+  locationId                String   @id
+  facilityDescription       String
+  maxConcurrent             Int
+  customRules               String[] @default([])
+  schoolHolidayPriorityMode String   @default("none")
+  updatedAt                 DateTime @updatedAt
+}
+
+model TaskType {
+  name      String   @id
+  createdAt DateTime @default(now())
+}
+
+model TestAccount {
+  id           String  @id @default(cuid())
+  customerName String
+  contactEmail String
+  createdAt    String
+  expiresAt    String
+  converted    Boolean @default(false)
+}
+
+// Plattformweite Einladungen an potenzielle Kunden (Vertrieb) – getrennt von
+// InvitationToken, das echte Konten innerhalb eines bestehenden Mandanten anlegt.
+model PlatformInvitation {
+  id           String  @id @default(cuid())
+  email        String
+  role         String
+  customerName String?
+  status       String  @default("pending")
+  sentAt       String
+}
+
+model SupportAccessLogEntry {
+  id           String  @id @default(cuid())
+  customerName String
+  requestedBy  String
+  reason       String
+  grantedAt    String
+  revokedAt    String?
+}
+
+model OrgSettings {
+  id                           String   @id @default("singleton")
+  organizationName             String
+  defaultWeeklyHours           Int
+  defaultVacationDaysPerYear   Int
+  autoApproveVacationUnderDays Int
+  notificationEmail            String
+  updatedAt                    DateTime @updatedAt
+}
+
+model OvertimeRequest {
+  id              String   @id @default(cuid())
+  employeeId      String
+  employeeName    String
+  locationId      String
+  date            String
+  timeLogId       String
+  overtimeMinutes Int
+  reason          String
+  comment         String?
+  status          String   @default("pending")
+  approvedMinutes Int?
+  adminComment    String?
+  respondedAt     String?
+  respondedBy     String?
+  submittedAt     String
+}
+
+model Absence {
+  id                 String   @id @default(cuid())
+  employeeId         String
+  employeeName       String
+  locationId         String
+  type               String
+  startDate          String
+  endDate            String
+  days               Int
+  note               String?
+  proofProvided      Boolean  @default(false)
+  verificationStatus String   @default("offen")
+  verifiedBy         String?
+  verifiedAt         String?
+  submittedAt        String
+}
+
+model MonthlyClosing {
+  id               String  @id @default(cuid())
+  employeeId       String
+  employeeName     String
+  locationId       String
+  year             Int
+  month            Int
+  status           String  @default("offen")
+  arbeitstage      Int
+  sollMinutes      Int
+  istMinutes       Int
+  breakMinutes     Int
+  overtimeMinutes  Int
+  undertimeMinutes Int
+  vacationDays     Int
+  sickDays         Int
+  otherAbsenceDays Int
+  approvalsCount   Int
+  comments         Json    @default("[]")
+  reviewedBy       String?
+  reviewedAt       String?
+  releasedBy       String?
+  releasedAt       String?
+
+  @@unique([employeeId, year, month])
+}

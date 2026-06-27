@@ -7,9 +7,8 @@ import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { TEST_ACCOUNTS, INVITATIONS, SUPPORT_LOG } from '@/lib/mock-data'
 import { Building2, KeyRound, Mail, LifeBuoy, ChevronRight, AlertTriangle } from 'lucide-react'
-import type { Customer, CustomerStatus } from '@/lib/types'
+import type { Customer, CustomerStatus, TestAccount, Invitation, SupportAccessLogEntry } from '@/lib/types'
 
 const STATUS_BADGE: Record<CustomerStatus, { label: string; variant: 'success' | 'info' | 'warning' | 'danger' }> = {
   trial: { label: 'Test', variant: 'info' },
@@ -20,9 +19,15 @@ const STATUS_BADGE: Record<CustomerStatus, { label: string; variant: 'success' |
 
 export default function OkunOverview() {
   const [CUSTOMERS, setCUSTOMERS] = useState<Customer[]>([])
+  const [TEST_ACCOUNTS, setTEST_ACCOUNTS] = useState<TestAccount[]>([])
+  const [INVITATIONS, setINVITATIONS] = useState<Invitation[]>([])
+  const [SUPPORT_LOG, setSUPPORT_LOG] = useState<SupportAccessLogEntry[]>([])
 
   useEffect(() => {
     fetch('/api/customers').then(r => r.json()).then(d => setCUSTOMERS(d.customers))
+    fetch('/api/test-accounts').then(r => r.json()).then(d => setTEST_ACCOUNTS(d.accounts))
+    fetch('/api/platform-invitations').then(r => r.json()).then(d => setINVITATIONS(d.invitations))
+    fetch('/api/support-access-log').then(r => r.json()).then(d => setSUPPORT_LOG(d.log))
   }, [])
 
   const activeCustomers = CUSTOMERS.filter(c => c.status === 'active').length

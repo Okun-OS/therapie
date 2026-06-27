@@ -1,5 +1,5 @@
 import { prisma } from './prisma'
-import { getScheduleByEmployee, getShiftById } from './mock-data'
+import { getScheduleByEmployee, getShiftById } from './schedule-entities'
 import { listEmployees, getEmployeesByLocation } from './entities'
 import {
   getLevelForPoints,
@@ -37,10 +37,11 @@ async function awardScoreEvent(employeeId: string, type: ScoreEventType, related
   }
 }
 
-function findShiftForEntry(employeeId: string, date: string) {
-  const entry = getScheduleByEmployee(employeeId).find(e => e.date === date)
+async function findShiftForEntry(employeeId: string, date: string) {
+  const entries = await getScheduleByEmployee(employeeId)
+  const entry = entries.find(e => e.date === date)
   if (!entry) return null
-  return getShiftById(entry.shiftId) ?? null
+  return (await getShiftById(entry.shiftId)) ?? null
 }
 
 export async function recordClockIn(employeeId: string, date: string, locationId: string, clockIn: Date) {
@@ -48,7 +49,7 @@ export async function recordClockIn(employeeId: string, date: string, locationId
     data: { employeeId, date, locationId, clockIn },
   })
 
-  const shift = findShiftForEntry(employeeId, date)
+  const shift = await findShiftForEntry(employeeId, date)
   if (shift) {
     const plannedMinutes = timeStringToMinutes(shift.startTime)
     const actualMinutes = clockIn.getHours() * 60 + clockIn.getMinutes()
@@ -66,7 +67,7 @@ export async function recordClockOut(timeClockEntryId: string, clockOut: Date) {
     data: { clockOut },
   })
 
-  const shift = findShiftForEntry(updated.employeeId, updated.date)
+  const shift = await findShiftForEntry(updated.employeeId, updated.date)
   if (shift) {
     const plannedMinutes = timeStringToMinutes(shift.endTime)
     const actualMinutes = clockOut.getHours() * 60 + clockOut.getMinutes()

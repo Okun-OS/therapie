@@ -1,4 +1,6 @@
-import { OVERTIME_REQUESTS, SCHEDULE_ENTRIES, VACATION_REQUESTS, getHoursAccountSummary } from './mock-data'
+import { getOvertimeRequestsByLocation, getHoursAccountSummary } from './time-tracking-entities'
+import { getAllEntriesForLocation } from './schedule-entities'
+import { getVacationRequestsByLocation } from './vacation-entities'
 import { listEmployees, listLocations } from './entities'
 import {
   getAbsenceInsights, getSubstitutionInsights, getPunctualityInsights, getWorkloadInsights,
@@ -62,13 +64,13 @@ export interface ControllingSnapshot {
   tasks: string[]
 }
 
-function getCurrentUndertimeHours(employees: { id: string; weeklyHours: number }[]): number {
+async function getCurrentUndertimeHours(employees: { id: string; weeklyHours: number }[]): Promise<number> {
   if (employees.length === 0) return 0
   const now = new Date()
-  const totalMinutes = employees.reduce(
-    (s, e) => s + getHoursAccountSummary(e.id, now.getFullYear(), now.getMonth() + 1, e.weeklyHours).undertimeMinutes,
-    0
+  const summaries = await Promise.all(
+    employees.map(e => getHoursAccountSummary(e.id, now.getFullYear(), now.getMonth() + 1, e.weeklyHours))
   )
+  const totalMinutes = summaries.reduce((s, summary) => s + summary.undertimeMinutes, 0)
   return Math.round((totalMinutes / 60) * 10) / 10
 }
 
@@ -102,7 +104,7 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
     hours: Math.round((h.overtimeMinutes / 60) * 10) / 10,
   }))
 
-  const undertimeHours = getCurrentUndertimeHours(employees)
+  const undertimeHours = await getCurrentUndertimeHours(employees)
   const avgUtilizationRate = workload.avgWeeklyHoursTarget > 0
     ? Math.round((workload.avgLoggedHoursTotal / workload.avgWeeklyHoursTarget) * 100)
     : 0
@@ -113,7 +115,8 @@ export async function getControllingSnapshot(locationId?: string): Promise<Contr
     ? Math.round(fairness.reduce((s, f) => s + f.fairnessScore, 0) / fairness.length)
     : 100
 
-  const pendingOvertimeRequests = OVERTIME_REQUESTS.filter(o => locationIds.includes(o.locationId) && o.status === 'pending').length
+  const overtimeRequestsByLocation = await Promise.all(locationIds.map(id => getOvertimeRequestsByLocation(id)))
+  const pendingOvertimeRequests = overtimeRequestsByLocation.flat().filter(o => o.status === 'pending').length
 
   const statusItems: StatusItem[] = []
   statusItems.push(
@@ -297,10 +300,12 @@ export async function getEarlyWarnings(locationId?: string): Promise<EarlyWarnin
   const today = toDateString(new Date())
   const in7Days = addDays(today, 7)
   const [allLocations, allEmployeesForWarnings] = await Promise.all([listLocations(), listEmployees()])
-  const locationsWithoutScheduling = allLocations.filter(l => locationIds.includes(l.id)).filter(l => {
+  const scopedLocations = allLocations.filter(l => locationIds.includes(l.id))
+  const entriesByLocation = await Promise.all(scopedLocations.map(l => getAllEntriesForLocation(l.id)))
+  const locationsWithoutScheduling = scopedLocations.filter((l, idx) => {
     const hasActiveEmployees = allEmployeesForWarnings.some(e => e.role === 'employee' && e.active && e.locationId === l.id)
     if (!hasActiveEmployees) return false
-    return !SCHEDULE_ENTRIES.some(s => s.locationId === l.id && s.date >= today && s.date <= in7Days)
+    return !entriesByLocation[idx].some(s => s.date >= today && s.date <= in7Days)
   })
   if (locationsWithoutScheduling.length > 0) {
     warnings.push({
@@ -310,7 +315,9 @@ export async function getEarlyWarnings(locationId?: string): Promise<EarlyWarnin
     })
   }
 
-  const relevantVacationRequests = VACATION_REQUESTS.filter(v => locationIds.includes(v.locationId) && v.status !== 'denied')
+  const relevantVacationRequests = (await Promise.all(locationIds.map(id => getVacationRequestsByLocation(id))))
+    .flat()
+    .filter(v => v.status !== 'denied')
   let vacationConflict: { a: typeof relevantVacationRequests[number]; b: typeof relevantVacationRequests[number] } | null = null
   for (let i = 0; i < relevantVacationRequests.length && !vacationConflict; i++) {
     for (let j = i + 1; j < relevantVacationRequests.length; j++) {

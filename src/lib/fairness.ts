@@ -1,5 +1,5 @@
 import type { Employee, ScheduleEntry, Shift, ShiftFairnessData, WishSubmission } from './types'
-import { SHIFTS, getAllEntriesForFairness } from './mock-data'
+import { listShiftsByLocation, getAllEntriesForLocation } from './schedule-entities'
 import { listEmployees, listLocations } from './entities'
 import { prisma } from './prisma'
 
@@ -144,8 +144,8 @@ export async function getFairnessInsights(locationId?: string, ruleLimits?: Plan
   const locationIds = locationId ? [locationId] : (await listLocations()).map(l => l.id)
   const allEmployees = await listEmployees()
   const employees = allEmployees.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
-  const shifts = SHIFTS.filter(s => locationIds.includes(s.locationId))
-  const entries = locationIds.flatMap(id => getAllEntriesForFairness(id))
+  const shifts = (await Promise.all(locationIds.map(id => listShiftsByLocation(id)))).flat()
+  const entries = (await Promise.all(locationIds.map(id => getAllEntriesForLocation(id)))).flat()
   const fairnessData = calculateFairnessData(employees, entries, shifts, ruleLimits)
 
   const employeeIds = employees.map(e => e.id)

@@ -6,21 +6,43 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
-import { TIME_LOGS, getAbsencesByEmployee, getOvertimeRequestsByEmployee } from '@/lib/mock-data'
-import { Employee } from '@/lib/types'
+import { Employee, TimeLog, Absence, OvertimeRequest } from '@/lib/types'
 import { Download, BarChart3, TrendingUp, Clock, Users, Calendar, Stethoscope } from 'lucide-react'
 
 export default function AdminReports() {
   const { user } = useAuth()
   const locationId = user?.locationId || 'loc1'
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [logs, setLogs] = useState<TimeLog[]>([])
+  const [absencesByEmployee, setAbsencesByEmployee] = useState<Record<string, Absence[]>>({})
+  const [overtimeByEmployee, setOvertimeByEmployee] = useState<Record<string, OvertimeRequest[]>>({})
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
   }, [])
 
+  useEffect(() => {
+    fetch(`/api/time-logs`).then(r => r.json()).then(d => setLogs((d.logs ?? []).filter((l: TimeLog) => l.locationId === locationId)))
+  }, [locationId])
+
+  useEffect(() => {
+    fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => {
+      const byEmployee: Record<string, Absence[]> = {}
+      for (const a of (d.absences ?? []) as Absence[]) {
+        (byEmployee[a.employeeId] ??= []).push(a)
+      }
+      setAbsencesByEmployee(byEmployee)
+    })
+    fetch(`/api/overtime-requests?locationId=${locationId}`).then(r => r.json()).then(d => {
+      const byEmployee: Record<string, OvertimeRequest[]> = {}
+      for (const o of (d.requests ?? []) as OvertimeRequest[]) {
+        (byEmployee[o.employeeId] ??= []).push(o)
+      }
+      setOvertimeByEmployee(byEmployee)
+    })
+  }, [locationId])
+
   const employees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee')
-  const logs = TIME_LOGS.filter(t => t.locationId === locationId)
 
   const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
   const monthlyHours = months.map((_, i) => {

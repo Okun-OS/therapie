@@ -6,19 +6,20 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { VACATION_REQUESTS } from '@/lib/mock-data'
 import { useToast } from '@/lib/toast-context'
 import { Building2, Plus, MapPin, Users, Palmtree, Phone, Edit, MoreVertical, ChevronRight, UserCog, Crown } from 'lucide-react'
-import type { Location, Employee } from '@/lib/types'
+import type { Location, Employee, VacationRequest } from '@/lib/types'
 
 export default function CompanyLocations() {
   const { showToast } = useToast()
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
 
   useEffect(() => {
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+    fetch('/api/vacation-requests').then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
   }, [])
 
   const [selected, setSelected] = useState<Location | null>(null)

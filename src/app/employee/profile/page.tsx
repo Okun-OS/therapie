@@ -6,14 +6,10 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
-import {
-  SCHEDULE_ENTRIES, getShiftById,
-  getOvertimeRequestsByEmployee, getAbsencesByEmployee, getMonthlyClosingsByEmployee, getOrCreateMonthlyClosing,
-} from '@/lib/mock-data'
 import { HumanContextChat } from '@/components/profile/HumanContextChat'
 import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks, FileText, History, Calendar, Copy, Check } from 'lucide-react'
 import { formatDate, toDateString } from '@/lib/utils'
-import type { Employee, Location } from '@/lib/types'
+import type { Employee, Location, ScheduleEntry, Shift, OvertimeRequest, Absence, MonthlyClosing } from '@/lib/types'
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
@@ -76,10 +72,16 @@ export default function EmployeeProfile() {
   const { user } = useAuth()
   const [allEmployees, setAllEmployees] = useState<Employee[]>([])
   const [allLocations, setAllLocations] = useState<Location[]>([])
+  const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([])
+  const [shifts, setShifts] = useState<Shift[]>([])
+  const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([])
+  const [absences, setAbsences] = useState<Absence[]>([])
+  const [monthlyClosingsAll, setMonthlyClosingsAll] = useState<MonthlyClosing[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setAllLocations(d.locations))
+    fetch('/api/shifts').then(r => r.json()).then(d => setShifts(d.shifts))
   }, [])
 
   const employee = allEmployees.find(e => e.id === user?.id)
@@ -88,26 +90,43 @@ export default function EmployeeProfile() {
   const currentYear = new Date().getFullYear()
   const todayStr = toDateString(new Date())
 
+  const getShiftById = (shiftId: string) => shifts.find(s => s.id === shiftId)
+
   useEffect(() => {
     if (!employee) return
-    for (let i = 0; i < 3; i++) {
-      const d = new Date(currentYear, new Date().getMonth() - i, 1)
-      getOrCreateMonthlyClosing(employee.id, d.getFullYear(), d.getMonth() + 1, employee)
-    }
+    fetch(`/api/schedule-entries?employeeId=${employee.id}`).then(r => r.json()).then(d => setScheduleEntries(d.entries))
+    fetch(`/api/overtime-requests?employeeId=${employee.id}`).then(r => r.json()).then(d => setOvertimeRequests(d.requests))
+    fetch(`/api/absences?employeeId=${employee.id}`).then(r => r.json()).then(d => setAbsences(d.absences))
+  }, [employee?.id])
+
+  useEffect(() => {
+    if (!employee) return
+    const fetchClosings = () => fetch(`/api/monthly-closings?employeeId=${employee.id}`).then(r => r.json()).then(d => setMonthlyClosingsAll(d.closings))
+    ;(async () => {
+      for (let i = 0; i < 3; i++) {
+        const d = new Date(currentYear, new Date().getMonth() - i, 1)
+        await fetch('/api/monthly-closings/get-or-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employeeId: employee.id, year: d.getFullYear(), month: d.getMonth() + 1, employeeInfo: employee }),
+        })
+      }
+      fetchClosings()
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.id])
 
   const overtimeMinutesThisYear = employee
-    ? getOvertimeRequestsByEmployee(employee.id)
+    ? overtimeRequests
         .filter(o => (o.status === 'approved' || o.status === 'partial') && o.date.startsWith(`${currentYear}`))
         .reduce((sum, o) => sum + (o.approvedMinutes ?? 0), 0)
     : 0
-  const absencesThisYear = employee ? getAbsencesByEmployee(employee.id).filter(a => a.startDate.startsWith(`${currentYear}`)) : []
+  const absencesThisYear = employee ? absences.filter(a => a.startDate.startsWith(`${currentYear}`)) : []
   const sickDaysThisYear = absencesThisYear.filter(a => a.type === 'krankheit').reduce((s, a) => s + a.days, 0)
   const otherAbsenceDaysThisYear = absencesThisYear.filter(a => a.type !== 'krankheit').reduce((s, a) => s + a.days, 0)
-  const monthlyClosings = employee ? getMonthlyClosingsByEmployee(employee.id).slice(0, 3) : []
+  const monthlyClosings = employee ? monthlyClosingsAll.slice(0, 3) : []
   const shiftHistory = employee
-    ? SCHEDULE_ENTRIES
+    ? scheduleEntries
         .filter(e => e.employeeId === employee.id && e.date <= todayStr)
         .sort((a, b) => b.date.localeCompare(a.date))
         .slice(0, 6)

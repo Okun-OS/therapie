@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { SCHEDULE_ENTRIES, SHIFTS } from '@/lib/mock-data'
+import { getScheduleByEmployee, listShiftsByLocation } from '@/lib/schedule-entities'
 import { getEmployeeById, getLocationById } from '@/lib/entities'
 import { generateICSContent } from '@/lib/calendar-export'
 
@@ -20,8 +20,10 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
   }
 
-  const entries = SCHEDULE_ENTRIES.filter(e => e.employeeId === employee.id)
-  const content = generateICSContent(entries, SHIFTS, location, employee)
+  const entries = await getScheduleByEmployee(employee.id)
+  const entryLocationIds = Array.from(new Set(entries.map(e => e.locationId)))
+  const shifts = (await Promise.all(entryLocationIds.map(id => listShiftsByLocation(id)))).flat()
+  const content = generateICSContent(entries, shifts, location, employee)
 
   return new NextResponse(content, {
     headers: {

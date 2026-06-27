@@ -8,23 +8,32 @@ import { StatCard } from '@/components/ui/StatCard'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/lib/auth-context'
-import {
-  SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS, VACATION_REQUESTS
-} from '@/lib/mock-data'
 import { Clock, Palmtree, Calendar, TrendingUp, PlayCircle, StopCircle, Sun, Moon, Briefcase, ChevronRight, AlertCircle, ListChecks } from 'lucide-react'
 import { formatDate, formatTime, toDateString, getDayName, getWeekDays } from '@/lib/utils'
 import Link from 'next/link'
-import type { Employee } from '@/lib/types'
+import type { Employee, ScheduleEntry, Shift, TimeLog, VacationRequest } from '@/lib/types'
 
 export default function EmployeeDashboard() {
   const { user } = useAuth()
   const [clockedIn, setClockedIn] = useState(false)
   const [clockInTime, setClockInTime] = useState<Date | null>(null)
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
+  const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
+  const [TIME_LOGS, setTIME_LOGS] = useState<TimeLog[]>([])
+  const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
+    fetch('/api/shifts').then(r => r.json()).then(d => setSHIFTS(d.shifts))
   }, [])
+
+  useEffect(() => {
+    if (!user?.id) return
+    fetch(`/api/schedule-entries?employeeId=${user.id}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries))
+    fetch(`/api/time-logs?employeeId=${user.id}`).then(r => r.json()).then(d => setTIME_LOGS(d.logs))
+    fetch(`/api/vacation-requests?employeeId=${user.id}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
+  }, [user?.id])
 
   const employee = EMPLOYEES.find(e => e.id === user?.id)
   const today = toDateString(new Date())

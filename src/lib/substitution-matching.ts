@@ -1,6 +1,6 @@
-import { SCHEDULE_ENTRIES, VACATION_REQUESTS } from './mock-data'
+import { getScheduleByEmployee, listShiftsByLocation } from './schedule-entities'
+import { getVacationRequestsByEmployee } from './vacation-entities'
 import { calculateFairnessData } from './fairness'
-import { SHIFTS } from './mock-data'
 import { listEmployees } from './entities'
 import { prisma } from './prisma'
 import type { Employee } from './types'
@@ -24,12 +24,12 @@ interface RequestContext {
   qualification?: string | null
 }
 
-function isAvailable(employeeId: string, date: string): boolean {
-  const hasShift = SCHEDULE_ENTRIES.some(e => e.employeeId === employeeId && e.date === date)
+async function isAvailable(employeeId: string, date: string): Promise<boolean> {
+  const entries = await getScheduleByEmployee(employeeId)
+  const hasShift = entries.some(e => e.date === date)
   if (hasShift) return false
-  const onVacation = VACATION_REQUESTS.some(
-    v => v.employeeId === employeeId && v.status === 'approved' && v.startDate <= date && date <= v.endDate,
-  )
+  const vacations = await getVacationRequestsByEmployee(employeeId)
+  const onVacation = vacations.some(v => v.status === 'approved' && v.startDate <= date && date <= v.endDate)
   return !onVacation
 }
 
@@ -58,13 +58,19 @@ export async function findCandidates(
   excludeEmployeeIds: string[] = [],
 ): Promise<MatchCandidate[]> {
   const pool = await candidatePool(stage, ctx)
-  const available = pool.filter(e => isAvailable(e.id, ctx.date) && !excludeEmployeeIds.includes(e.id))
+  const eligible = pool.filter(e => !excludeEmployeeIds.includes(e.id))
+  const availability = await Promise.all(eligible.map(e => isAvailable(e.id, ctx.date)))
+  const available = eligible.filter((_, idx) => availability[idx])
   if (available.length === 0) return []
 
   const profiles = await prisma.employeeProfile.findMany({ where: { employeeId: { in: available.map(e => e.id) } } })
   const profileMap = new Map(profiles.map(p => [p.employeeId, p]))
 
-  const fairness = calculateFairnessData(available, SCHEDULE_ENTRIES, SHIFTS)
+  const entriesPerEmployee = await Promise.all(available.map(e => getScheduleByEmployee(e.id)))
+  const allEntries = entriesPerEmployee.flat()
+  const entryLocationIds = Array.from(new Set(allEntries.map(e => e.locationId)))
+  const allShifts = (await Promise.all(entryLocationIds.map(id => listShiftsByLocation(id)))).flat()
+  const fairness = calculateFairnessData(available, allEntries, allShifts)
   const fairnessMap = new Map(fairness.map(f => [f.employeeId, f]))
 
   const recentCounts = await prisma.substitutionCandidate.groupBy({

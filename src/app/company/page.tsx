@@ -7,13 +7,12 @@ import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { VACATION_REQUESTS, TIME_LOGS } from '@/lib/mock-data'
 import {
   Users, Palmtree, TrendingUp, MapPin, AlertTriangle, Building2,
   ChevronRight, Clock, Search, Filter, Baby,
 } from 'lucide-react'
 import Link from 'next/link'
-import type { Employee, Location } from '@/lib/types'
+import type { Employee, Location, VacationRequest, TimeLog } from '@/lib/types'
 
 type Tab = 'overview' | 'employees' | 'locations'
 

@@ -10,9 +10,8 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
-import { getOvertimeRequestsByEmployee, getAbsencesByEmployee } from '@/lib/mock-data'
 import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight, MessageCircle } from 'lucide-react'
-import type { Employee } from '@/lib/types'
+import type { Employee, OvertimeRequest, Absence } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 
 interface EmployeeHumanContext {
@@ -38,10 +37,26 @@ export default function AdminEmployees() {
   const [editChatDraft, setEditChatDraft] = useState<EmployeeDraft | null>(null)
   const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
   const [allEmployees, setAllEmployees] = useState<Employee[]>([])
+  const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([])
+  const [absences, setAbsences] = useState<Absence[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
   }, [])
+
+  useEffect(() => {
+    if (!selectedEmployee) {
+      setOvertimeRequests([])
+      setAbsences([])
+      return
+    }
+    fetch(`/api/overtime-requests?employeeId=${selectedEmployee.id}`)
+      .then(r => r.json()).then(d => setOvertimeRequests(d.requests ?? []))
+      .catch(() => setOvertimeRequests([]))
+    fetch(`/api/absences?employeeId=${selectedEmployee.id}`)
+      .then(r => r.json()).then(d => setAbsences(d.absences ?? []))
+      .catch(() => setAbsences([]))
+  }, [selectedEmployee])
 
   function employeeToDraft(emp: Employee, ctx: EmployeeHumanContext | null): EmployeeDraft {
     return {
@@ -335,12 +350,12 @@ export default function AdminEmployees() {
             <div className="grid grid-cols-3 gap-3">
               {(() => {
                 const year = new Date().getFullYear()
-                const overtimeMinutes = getOvertimeRequestsByEmployee(selectedEmployee.id)
+                const overtimeMinutes = overtimeRequests
                   .filter(o => (o.status === 'approved' || o.status === 'partial') && o.date.startsWith(`${year}`))
                   .reduce((s, o) => s + (o.approvedMinutes ?? 0), 0)
-                const absences = getAbsencesByEmployee(selectedEmployee.id).filter(a => a.startDate.startsWith(`${year}`))
-                const sickDays = absences.filter(a => a.type === 'krankheit').reduce((s, a) => s + a.days, 0)
-                const otherDays = absences.filter(a => a.type !== 'krankheit').reduce((s, a) => s + a.days, 0)
+                const yearAbsences = absences.filter(a => a.startDate.startsWith(`${year}`))
+                const sickDays = yearAbsences.filter(a => a.type === 'krankheit').reduce((s, a) => s + a.days, 0)
+                const otherDays = yearAbsences.filter(a => a.type !== 'krankheit').reduce((s, a) => s + a.days, 0)
                 return [
                   { label: 'Überstunden', value: `${Math.round(overtimeMinutes / 6) / 10}h` },
                   { label: 'Krankheitstage', value: `${sickDays}` },

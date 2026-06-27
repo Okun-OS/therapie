@@ -6,10 +6,9 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/lib/auth-context'
-import { VACATION_REQUESTS, SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS } from '@/lib/mock-data'
 import { Users, Clock, Palmtree, AlertTriangle, Calendar, CheckCircle, TrendingUp, ChevronRight, UserCheck } from 'lucide-react'
 import { formatDate, toDateString } from '@/lib/utils'
-import { Employee } from '@/lib/types'
+import { Employee, VacationRequest, ScheduleEntry, Shift, TimeLog } from '@/lib/types'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 
@@ -17,10 +16,21 @@ export default function AdminDashboard() {
   const { user } = useAuth()
   const locationId = user?.locationId || 'loc1'
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
+  const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
+  const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
+  const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
+  const [TIME_LOGS, setTIME_LOGS] = useState<TimeLog[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
   }, [])
+
+  useEffect(() => {
+    fetch(`/api/vacation-requests?locationId=${locationId}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests ?? []))
+    fetch(`/api/schedule-entries?locationId=${locationId}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries ?? []))
+    fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
+    fetch(`/api/time-logs`).then(r => r.json()).then(d => setTIME_LOGS((d.logs ?? []).filter((l: TimeLog) => l.locationId === locationId)))
+  }, [locationId])
 
   const locationEmployees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee')
   const pendingVacations = VACATION_REQUESTS.filter(v => v.locationId === locationId && v.status === 'pending')

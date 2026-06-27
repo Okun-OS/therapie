@@ -1,5 +1,7 @@
 import { prisma } from './prisma'
-import { ABSENCES, SCHEDULE_ENTRIES, SHIFTS, TIME_LOGS, VACATION_REQUESTS, WISH_SUBMISSIONS } from './mock-data'
+import { getAbsencesByLocation, getTimeLogsByEmployee } from './time-tracking-entities'
+import { listShiftsByLocation, getAllEntriesForLocation, getWishSubmissionsByLocation } from './schedule-entities'
+import { getVacationRequestsByLocation } from './vacation-entities'
 import { listEmployees, listLocations } from './entities'
 import { getLevelForPoints, LEVEL_ORDER, type WorkforceLevel } from './workforce-score-constants'
 import { ESCALATION_ORDER, type EscalationStage } from './substitution-constants'
@@ -107,7 +109,7 @@ export interface AbsenceInsights {
 
 export async function getAbsenceInsights(locationId?: string): Promise<AbsenceInsights> {
   const locationIds = await scopeLocationIds(locationId)
-  const requests = VACATION_REQUESTS.filter(v => locationIds.includes(v.locationId))
+  const requests = (await Promise.all(locationIds.map(id => getVacationRequestsByLocation(id)))).flat()
   const allEmployees = await listEmployees()
   const employeeCount = allEmployees.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId)).length
 
@@ -150,7 +152,7 @@ export async function getSicknessInsights(locationId?: string): Promise<Sickness
   const locationIds = await scopeLocationIds(locationId)
   const allEmployees = await listEmployees()
   const employees = allEmployees.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
-  const absences = ABSENCES.filter(a => locationIds.includes(a.locationId))
+  const absences = (await Promise.all(locationIds.map(id => getAbsencesByLocation(id)))).flat()
 
   const todayStr = new Date().toISOString().split('T')[0]
   const currentlyAbsentCount = absences.filter(a => a.startDate <= todayStr && todayStr <= a.endDate).length
@@ -221,8 +223,8 @@ export async function getPersonnelOverview(locationId?: string): Promise<Personn
   const locationIds = await scopeLocationIds(locationId)
   const allEmployees = await listEmployees()
   const employees = allEmployees.filter(e => e.role === 'employee' && e.active && e.locationId && locationIds.includes(e.locationId))
-  const absences = ABSENCES.filter(a => locationIds.includes(a.locationId))
-  const vacations = VACATION_REQUESTS.filter(v => locationIds.includes(v.locationId) && v.status === 'approved')
+  const absences = (await Promise.all(locationIds.map(id => getAbsencesByLocation(id)))).flat()
+  const vacations = (await Promise.all(locationIds.map(id => getVacationRequestsByLocation(id)))).flat().filter(v => v.status === 'approved')
 
   const todayStr = new Date().toISOString().split('T')[0]
   const activeToday = absences.filter(a => a.startDate <= todayStr && todayStr <= a.endDate)
@@ -262,7 +264,7 @@ export interface WishFulfillmentInsights {
 
 export async function getWishFulfillmentInsights(locationId?: string): Promise<WishFulfillmentInsights> {
   const locationIds = await scopeLocationIds(locationId)
-  const wishes = WISH_SUBMISSIONS.filter(w => locationIds.includes(w.locationId))
+  const wishes = (await Promise.all(locationIds.map(id => getWishSubmissionsByLocation(id)))).flat()
 
   const fulfilled = wishes.filter(w => w.status === 'fulfilled')
   const notFulfilled = wishes.filter(w => w.status === 'not_fulfilled')
@@ -322,7 +324,7 @@ export async function getWorkloadInsights(locationId?: string): Promise<Workload
     ? Math.round(employees.reduce((s, e) => s + e.weeklyHours, 0) / employees.length)
     : 0
 
-  const mockLogs = TIME_LOGS.filter(t => employeeIds.includes(t.employeeId))
+  const mockLogs = (await Promise.all(employeeIds.map(id => getTimeLogsByEmployee(id)))).flat()
   const realEntries = employeeIds.length > 0
     ? await prisma.timeClockEntry.findMany({ where: { employeeId: { in: employeeIds }, clockOut: { not: null } } })
     : []
@@ -388,8 +390,8 @@ export async function getWorkloadInsights(locationId?: string): Promise<Workload
     }
   })
 
-  const locationShifts = SHIFTS.filter(s => locationIds.includes(s.locationId))
-  const relevantEntries = SCHEDULE_ENTRIES.filter(e => locationIds.includes(e.locationId))
+  const locationShifts = (await Promise.all(locationIds.map(id => listShiftsByLocation(id)))).flat()
+  const relevantEntries = (await Promise.all(locationIds.map(id => getAllEntriesForLocation(id)))).flat()
   const slotKeys = new Set(relevantEntries.map(e => `${e.date}|${e.shiftId}`))
 
   let understaffedShiftSlots = 0
