@@ -134,7 +134,7 @@ export default function EmployeeDetailPage() {
   const downloadYearlySummary = () => {
     const lines = [`Jahres-Summary ${today.getFullYear()} – ${employee.name}`, '']
     lines.push(`Position: ${employee.position}`)
-    lines.push(`Einrichtung: ${location?.name ?? '–'}`)
+    lines.push(`Standort: ${location?.name ?? '–'}`)
     lines.push(`Wochenstunden: ${employee.weeklyHours}h`)
     lines.push(`Stundenkonto: ${employee.hoursBalance >= 0 ? '+' : ''}${employee.hoursBalance}h`)
     lines.push(`Urlaub gesamt: ${employee.vacationDaysTotal} Tage`)

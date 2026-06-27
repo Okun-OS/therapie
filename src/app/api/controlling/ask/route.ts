@@ -6,7 +6,7 @@ import { requireRole, resolveCustomerId } from '@/lib/session'
 const client = new Anthropic()
 
 // Cached system prompt – stays in Claude's prompt cache for 5 min
-const SYSTEM_PROMPT = `Du bist der KI-Controlling-Assistent von Open Workforce, einer Dienstplan-Software für soziale Einrichtungen.
+const SYSTEM_PROMPT = `Du bist der KI-Controlling-Assistent von OKUN Workforce, einer Dienstplan-Software für soziale Standorte.
 
 Du beantwortest Fragen der Führungskraft ausschließlich anhand der bereitgestellten Live-Daten (JSON), die als Nachricht mitgeschickt werden.
 

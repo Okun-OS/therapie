@@ -43,7 +43,7 @@ export default function LoginPage() {
             </div>
             <div>
               <p className="text-white font-bold text-xl leading-tight">OKUN Workforce</p>
-              <p className="text-navy-100 text-sm">Open Workforce</p>
+              <p className="text-navy-100 text-sm">OKUN Workforce</p>
             </div>
           </div>
 
@@ -63,7 +63,7 @@ export default function LoginPage() {
             { icon: '🤖', text: 'KI erstellt optimale Dienstpläne automatisch' },
             { icon: '📱', text: 'Mobile-first, wie eine native App' },
             { icon: '⏱️', text: 'Echtzeit-Zeiterfassung und Stundenkonten' },
-            { icon: '🏢', text: 'Multi-Standort für große Träger' },
+            { icon: '🏢', text: 'Multi-Standort für große Unternehmen' },
           ].map((f, i) => (
             <div key={i} className="flex items-center gap-3 bg-navy-light rounded-xl px-4 py-3">
               <span className="text-xl">{f.icon}</span>
@@ -83,7 +83,7 @@ export default function LoginPage() {
             </div>
             <div>
               <p className="text-white font-bold text-lg">OKUN Workforce</p>
-              <p className="text-navy-100 text-xs">Open Workforce</p>
+              <p className="text-navy-100 text-xs">OKUN Workforce</p>
             </div>
           </div>
 

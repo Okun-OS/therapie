@@ -14,7 +14,7 @@ function nextStage(stage: EscalationStage): EscalationStage | null {
 async function notifyCandidates(request: SubstitutionRequest, candidates: MatchCandidate[]): Promise<void> {
   const location = await getLocationById(request.locationId)
   const title = 'Vertretung gesucht'
-  const body = `${location?.name ?? 'Eine Einrichtung'} benötigt am ${request.date} von ${request.startTime} bis ${request.endTime} Uhr Vertretung.`
+  const body = `${location?.name ?? 'Ein Standort'} benötigt am ${request.date} von ${request.startTime} bis ${request.endTime} Uhr Vertretung.`
 
   await Promise.all(
     candidates.map(c =>

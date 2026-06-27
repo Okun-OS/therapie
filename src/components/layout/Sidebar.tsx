@@ -92,7 +92,7 @@ export function Sidebar() {
           </div>
           <div>
             <p className="text-white font-bold text-base leading-tight">OKUN Workforce</p>
-            <p className="text-navy-100 text-xs">Open Workforce</p>
+            <p className="text-navy-100 text-xs">OKUN Workforce</p>
           </div>
         </div>
       </div>

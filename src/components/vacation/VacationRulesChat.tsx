@@ -13,7 +13,7 @@ interface ChatMessage {
   content: string
 }
 
-const OPENING = 'Beschreibe mir deine Einrichtung und die Regeln für die Urlaubsplanung – z.B. Gruppenstruktur, Mindestbesetzung, wie viele Mitarbeiter maximal gleichzeitig Urlaub haben dürfen, oder besondere Feiertagsregeln. Diese Angaben gelten dauerhaft für alle künftigen Planungen.'
+const OPENING = 'Beschreibe mir deinen Standort und die Regeln für die Urlaubsplanung – z.B. Gruppenstruktur, Mindestbesetzung, wie viele Mitarbeiter maximal gleichzeitig Urlaub haben dürfen, oder besondere Feiertagsregeln. Diese Angaben gelten dauerhaft für alle künftigen Planungen.'
 
 export function VacationRulesChat({
   open,

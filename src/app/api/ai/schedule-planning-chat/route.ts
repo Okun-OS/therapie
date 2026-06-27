@@ -7,7 +7,7 @@ const client = new Anthropic()
 
 // 04_DIENSTPLAN_CHAT.md, Schritt 2–4: statt starrer Eingabefelder werden
 // Besonderheiten für die anstehende Planungsperiode in einem kurzen KI-Dialog erfasst.
-const SYSTEM_PROMPT = `Du bist der KI-Assistent von Open Workforce zur Vorbereitung einer Dienstplan-Erstellung.
+const SYSTEM_PROMPT = `Du bist der KI-Assistent von OKUN Workforce zur Vorbereitung einer Dienstplan-Erstellung.
 
 Führe einen kurzen, natürlichen Dialog mit der Leitung, um Besonderheiten für die anstehende Planungsperiode zu erfassen. Der Zeitraum wurde bereits ausgewählt und wird dir mitgeteilt – frage nicht erneut danach.
 

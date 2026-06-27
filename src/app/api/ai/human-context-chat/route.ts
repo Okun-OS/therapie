@@ -7,7 +7,7 @@ import { requireRole } from '@/lib/session'
 const client = new Anthropic()
 
 // Cached system prompt – stays in Claude's prompt cache for 5 min
-const SYSTEM_PROMPT = `Du bist der persönliche KI-Assistent von Open Workforce für freiwillige, persönliche Angaben von Mitarbeitenden.
+const SYSTEM_PROMPT = `Du bist der persönliche KI-Assistent von OKUN Workforce für freiwillige, persönliche Angaben von Mitarbeitenden.
 
 Dein Ziel ist es, in einem lockeren, natürlichen Gespräch herauszufinden:
 1. Persönliche Stärken (z.B. Elternkommunikation, Dokumentation, U3-Erfahrung, Vorschularbeit, Krisensituationen, Organisation, Einarbeitung neuer Kollegen, Verwaltung, Leitungsaufgaben).

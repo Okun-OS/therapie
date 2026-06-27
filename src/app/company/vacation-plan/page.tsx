@@ -42,13 +42,13 @@ export default function CompanyVacationPlan() {
 
   return (
     <>
-      <Header title="Jahresurlaubsplanung" subtitle="Organisationsweite Übersicht aller Einrichtungen" />
+      <Header title="Jahresurlaubsplanung" subtitle="Organisationsweite Übersicht aller Standorte" />
       <div className="p-4 sm:p-6 space-y-5">
 
         <div className="flex items-center gap-2">
           <Filter size={14} className="text-gray-500" />
           <Select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
-            <option value="all">Alle Einrichtungen</option>
+            <option value="all">Alle Standorte</option>
             {LOCATIONS.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
           </Select>
         </div>
@@ -86,7 +86,7 @@ export default function CompanyVacationPlan() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Urlaub je Einrichtung</CardTitle>
+            <CardTitle>Urlaub je Standort</CardTitle>
           </CardHeader>
           <div className="space-y-3">
             {locationStats.map(loc => (

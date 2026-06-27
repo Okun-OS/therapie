@@ -66,7 +66,7 @@ export async function upsertLocationOnboarding(locationId: string, update: Locat
 // Anzeige/Fortschrittsmessung, die KI darf im Gespräch frei zwischen
 // zusammenhängenden Themen wechseln.
 export const ONBOARDING_PHASES = [
-  { key: 'phase1', label: 'Einrichtung verstehen' },
+  { key: 'phase1', label: 'Standort verstehen' },
   { key: 'phase2', label: 'Organisationsstruktur' },
   { key: 'phase3', label: 'Mitarbeiterstruktur' },
   { key: 'phase4', label: 'Arbeitszeiten' },

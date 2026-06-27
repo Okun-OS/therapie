@@ -75,7 +75,7 @@ export async function listEmployees(customerId?: string): Promise<Employee[]> {
 }
 
 /** customerId scopt auf den Mandanten des anfragenden Nutzers; undefined liefert
- * plattformweit ALLE Einrichtungen und darf daher nur von der 'okun'-Rolle verwendet
+ * plattformweit ALLE Standorte und darf daher nur von der 'okun'-Rolle verwendet
  * werden (siehe requireRole-Aufrufer). */
 export async function listLocations(customerId?: string): Promise<Location[]> {
   const rows = await prisma.location.findMany({ where: customerId ? { customerId } : {} })
@@ -130,8 +130,8 @@ export async function updateLocation(id: string, updates: Partial<Location>): Pr
   return row ? toLocation(row) : undefined
 }
 
-/** Geschäftsführung: Einrichtungsleitung wechseln – die bisherige Leitung wird
- * wieder Mitarbeiter, die neu ernannte Person wird Einrichtungsleitung. */
+/** Geschäftsführung: Standortleitung wechseln – die bisherige Leitung wird
+ * wieder Mitarbeiter, die neu ernannte Person wird Standortleitung. */
 export async function reassignLocationAdmin(locationId: string, newAdminEmployeeId: string): Promise<void> {
   const location = await prisma.location.findUnique({ where: { id: locationId } })
   if (!location) return
@@ -157,8 +157,8 @@ export interface UnassignedCompanyUser {
   email: string
 }
 
-/** Einrichtungen/Accounts aus der Zeit vor der Mandanten-Trennung (#121-126)
- * haben kein customerId, weil die Beziehung Einrichtung→Träger vorher gar
+/** Standorte/Accounts aus der Zeit vor der Mandanten-Trennung (#121-126)
+ * haben kein customerId, weil die Beziehung Standort→Unternehmen vorher gar
  * nicht in den Daten existierte. listUnassigned* macht diese Altlasten für
  * die OKUN-Plattformverwaltung sichtbar, damit sie einmalig zugeordnet werden
  * können (siehe assignLocationToCustomer/assignCompanyUserToCustomer). */
@@ -172,8 +172,8 @@ export async function listUnassignedCompanyUsers(): Promise<UnassignedCompanyUse
   return rows.map(r => ({ id: r.id, name: r.name, email: r.email }))
 }
 
-/** Ordnet eine Altlast-Einrichtung einmalig einem Träger zu und kaskadiert das
- * automatisch auf alle ihre Mitarbeiter und Accounts (Einrichtungsleitung,
+/** Ordnet einen Altlast-Standort einmalig einem Unternehmen zu und kaskadiert das
+ * automatisch auf alle ihre Mitarbeiter und Accounts (Standortleitung,
  * Mitarbeiter-Logins), die noch kein customerId haben – deren Zuordnung lässt
  * sich aus der bestehenden locationId zweifelsfrei ableiten. */
 export async function assignLocationToCustomer(locationId: string, customerId: string): Promise<void> {

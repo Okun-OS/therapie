@@ -4,8 +4,8 @@ export const ESCALATION_ORDER: EscalationStage[] = ['group', 'location', 'organi
 
 export const ESCALATION_LABEL: Record<EscalationStage, string> = {
   group: 'Eigene Gruppe',
-  location: 'Eigene Einrichtung',
-  organization: 'Eigener Träger',
+  location: 'Eigener Standort',
+  organization: 'Eigenes Unternehmen',
   springerpool: 'Springerpool',
 }
 

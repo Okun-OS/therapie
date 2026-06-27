@@ -7,7 +7,7 @@ const client = new Anthropic()
 
 // 03_MITARBEITER_CHAT.md: Mitarbeiter werden nicht über ein Formular angelegt,
 // sondern in einem kurzen, natürlichen KI-Dialog (Ziel: ca. 1–2 Minuten).
-const SYSTEM_PROMPT = `Du bist der KI-Assistent von Open Workforce für die Anlage neuer Mitarbeiter.
+const SYSTEM_PROMPT = `Du bist der KI-Assistent von OKUN Workforce für die Anlage neuer Mitarbeiter.
 
 Führe einen kurzen, natürlichen Dialog mit der Leitung, um einen neuen Mitarbeiter vollständig zu erfassen. Der Nutzer antwortet frei, du verstehst die Antworten und fragst nur nach, wenn Informationen wirklich fehlen.
 

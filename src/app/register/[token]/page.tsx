@@ -7,7 +7,7 @@ import { Lock, Mail, CheckCircle2, AlertCircle, Calendar } from 'lucide-react'
 
 const ROLE_LABEL: Record<string, string> = {
   employee: 'Mitarbeiter',
-  admin: 'Einrichtungsleitung',
+  admin: 'Standortleitung',
   company: 'Geschäftsführung',
   okun: 'OKUN Administrator',
 }

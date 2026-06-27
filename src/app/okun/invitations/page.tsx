@@ -19,7 +19,7 @@ const STATUS_BADGE: Record<string, { label: string; variant: 'success' | 'info' 
 
 const ROLE_LABEL: Record<Role, string> = {
   employee: 'Mitarbeiter',
-  admin: 'Einrichtungsleitung',
+  admin: 'Standortleitung',
   company: 'Geschäftsführung',
   okun: 'OKUN Administrator',
 }
@@ -130,7 +130,7 @@ export default function OkunInvitations() {
             onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}
           >
             <option value="company">Geschäftsführung</option>
-            <option value="admin">Einrichtungsleitung</option>
+            <option value="admin">Standortleitung</option>
             <option value="employee">Mitarbeiter</option>
           </Select>
           <Input

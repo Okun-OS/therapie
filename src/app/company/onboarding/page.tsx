@@ -62,10 +62,10 @@ export default function CompanyOnboarding() {
 
   return (
     <>
-      <Header title="KI-Onboarding" subtitle="Einrichtung verstehen lernen – per Gespräch, nicht per Formular" />
+      <Header title="KI-Onboarding" subtitle="Standort verstehen lernen – per Gespräch, nicht per Formular" />
       <div className="p-4 sm:p-6 space-y-5">
 
-        {/* Träger (Ebene 1) */}
+        {/* Unternehmen (Ebene 1) */}
         <Card padding="lg">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex items-center gap-3">
@@ -73,8 +73,8 @@ export default function CompanyOnboarding() {
                 <Building2 size={20} className="text-brand" />
               </div>
               <div>
-                <p className="font-bold text-navy">Träger-Onboarding</p>
-                <p className="text-xs text-gray-500">Gilt für alle Einrichtungen gemeinsam</p>
+                <p className="font-bold text-navy">Unternehmens-Onboarding</p>
+                <p className="text-xs text-gray-500">Gilt für alle Standorte gemeinsam</p>
               </div>
             </div>
             {org?.completed ? (
@@ -86,7 +86,7 @@ export default function CompanyOnboarding() {
 
           {org && (org.traegerName || org.rollenmodell || org.unternehmensweiteRegeln) && (
             <div className="space-y-1.5 mb-4 text-sm text-gray-600 bg-gray-50 rounded-xl p-3">
-              {org.traegerName && <p><span className="font-semibold text-navy">Träger:</span> {org.traegerName}</p>}
+              {org.traegerName && <p><span className="font-semibold text-navy">Unternehmen:</span> {org.traegerName}</p>}
               {org.rollenmodell && <p><span className="font-semibold text-navy">Rollenmodell:</span> {org.rollenmodell}</p>}
               {org.unternehmensweiteRegeln && <p><span className="font-semibold text-navy">Unternehmensweite Regeln:</span> {org.unternehmensweiteRegeln}</p>}
             </div>
@@ -94,13 +94,13 @@ export default function CompanyOnboarding() {
 
           <Button onClick={() => setChatScope('organization')} className="gap-2">
             <MessageCircle size={16} />
-            {org ? 'Im Gespräch fortsetzen' : 'Träger-Onboarding per KI-Chat starten'}
+            {org ? 'Im Gespräch fortsetzen' : 'Unternehmens-Onboarding per KI-Chat starten'}
           </Button>
         </Card>
 
-        {/* Einrichtungen (Ebene 2) */}
+        {/* Standorte (Ebene 2) */}
         <div>
-          <p className="text-sm font-semibold text-navy mb-2 px-1">Einrichtungen</p>
+          <p className="text-sm font-semibold text-navy mb-2 px-1">Standorte</p>
           <div className="space-y-3">
             {LOCATIONS.map(loc => {
               const state = locs[loc.id]
@@ -153,7 +153,7 @@ export default function CompanyOnboarding() {
                   {!loading && !state && (
                     <div className="flex items-start gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 mb-3">
                       <Sparkles size={14} className="flex-shrink-0 mt-0.5 text-brand" />
-                      <span>Diese Einrichtung wurde noch nicht per KI-Onboarding konfiguriert. Solange das fehlt, plant die KI ausschließlich anhand der allgemeinen Regeln.</span>
+                      <span>Dieser Standort wurde noch nicht per KI-Onboarding konfiguriert. Solange das fehlt, plant die KI ausschließlich anhand der allgemeinen Regeln.</span>
                     </div>
                   )}
 

@@ -4,12 +4,12 @@ import { requireRole } from '@/lib/session'
 
 const client = new Anthropic()
 
-const SYSTEM_PROMPT = `Du bist ein KI-Assistent, der der Einrichtungsleitung eine Empfehlung zu einem einzelnen, während des Jahres eingereichten Urlaubsantrag gibt.
+const SYSTEM_PROMPT = `Du bist ein KI-Assistent, der der Standortleitung eine Empfehlung zu einem einzelnen, während des Jahres eingereichten Urlaubsantrag gibt.
 
 Bewerte den Antrag anhand von:
 - Verbleibendem Urlaubsanspruch des Mitarbeiters
 - Anderen bereits genehmigten Abwesenheiten im selben Zeitraum am selben Standort (Mindestbesetzung/maximale gleichzeitige Abwesenheit)
-- Den Einrichtungsregeln und Zusatzregeln
+- Den Standortregeln und Zusatzregeln
 
 ## Sprache & Ton
 Schreibe in der dritten Person über den Mitarbeiter, niemals in der zweiten Person ("du", "dein"). Verwende ausschließlich natürliches, allgemeinverständliches Deutsch. Interne Feldnamen dürfen niemals wörtlich im Text vorkommen.
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'request ist erforderlich' }, { status: 400 })
   }
 
-  const userPrompt = `## Einrichtungsregeln
+  const userPrompt = `## Standortregeln
 ${facilityDescription || 'Keine besonderen Angaben.'}
 Maximale gleichzeitige Abwesenheit: ${maxConcurrent ?? 'nicht angegeben'} Personen.
 

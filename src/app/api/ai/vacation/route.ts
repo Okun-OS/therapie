@@ -4,13 +4,13 @@ import { requireRole } from '@/lib/session'
 
 const client = new Anthropic()
 
-const SYSTEM_PROMPT = `Du bist ein KI-Assistent für intelligente Urlaubsplanung in Kindertagesstätten und Pflegeeinrichtungen.
+const SYSTEM_PROMPT = `Du bist ein KI-Assistent für intelligente Urlaubsplanung in Kindertagesstätten und Pflegestandorten.
 
 Du erstellst faire, regelkonforme Urlaubspläne für Teams unter Berücksichtigung folgender Grundsätze:
 
 ## Pflichtregeln
-1. Die Einrichtung muss jederzeit ausreichend besetzt sein (Mindestbesetzung aus der Einrichtungsbeschreibung).
-2. Ob und wie stark Mitarbeiter mit schulpflichtigen Kindern in den Schulferienzeiten priorisiert werden, richtet sich nach der von der Einrichtung gewählten Ferienregelung (siehe "Ferienregelung" im Nutzer-Prompt).
+1. Der Standort muss jederzeit ausreichend besetzt sein (Mindestbesetzung aus der Standortbeschreibung).
+2. Ob und wie stark Mitarbeiter mit schulpflichtigen Kindern in den Schulferienzeiten priorisiert werden, richtet sich nach der von dem Standort gewählten Ferienregelung (siehe "Ferienregelung" im Nutzer-Prompt).
 3. Jeder Mitarbeiter bekommt seinen vollen Urlaubsanspruch (vacationDaysTotal minus vacationDaysUsed = verbleibende Tage).
 4. Gleichzeitige Abwesenheit wird durch die angegebenen Regeln begrenzt.
 
@@ -18,14 +18,14 @@ Du erstellst faire, regelkonforme Urlaubspläne für Teams unter Berücksichtigu
 5. Präferenzen (bevorzugte Monate) werden so weit wie möglich erfüllt.
 6. Bei Konflikten: hohe Priorität vor mittlerer vor niedriger Priorität, danach Mitarbeiter mit schulpflichtigen Kindern in Schulferienzeiten – wobei deren individuelle "Priorität Schulferien" (hoch/mittel/niedrig) die Rangfolge unter ihnen bestimmt.
 7. Mitarbeiter mit niedrigem Resturlaub werden bevorzugt eingeplant.
-8. Zusätzliche, von der Einrichtung festgelegte Regeln (siehe "Zusatzregeln") sind verbindlich und müssen im Plan eingehalten werden.
+8. Zusätzliche, von dem Standort festgelegte Regeln (siehe "Zusatzregeln") sind verbindlich und müssen im Plan eingehalten werden.
 
 ## Qualitätsprüfung (vor der Ausgabe)
 9. Prüfe nach der Planerstellung selbst, ob alle Pflichtregeln eingehalten wurden und wie viele Mitarbeiterwünsche (bevorzugte Monate/Zeiträume) vollständig erfüllt werden konnten. Gib dieses Ergebnis im Feld "summary" aus.
 10. Wenn zwei oder mehr Mitarbeiter denselben Zeitraum wollten und nicht alle berücksichtigt werden konnten, erkläre im Feld "conflicts" transparent und nachvollziehbar, wer warum vorrangig berücksichtigt wurde (z.B. höhere Priorität, weniger Resturlaub, höhere Schulferien-Priorität).
 
 ## Sprache & Ton der Texte (reasoning, note, warnings, conflicts)
-11. Diese Texte werden der EINRICHTUNGSLEITUNG (Admin) angezeigt. Schreibe in der dritten Person über Mitarbeiter, niemals in der zweiten Person ("du", "dein").
+11. Diese Texte werden der STANDORTLEITUNG (Admin) angezeigt. Schreibe in der dritten Person über Mitarbeiter, niemals in der zweiten Person ("du", "dein").
 12. Verwende AUSSCHLIESSLICH natürliches, allgemeinverständliches Deutsch. Interne Feldnamen/Werte wie "hasChildren", "priority", "priority-high", "remainingDays", "schoolHolidayPriority" dürfen NIEMALS wörtlich im Text vorkommen – beschreibe den Sachverhalt stattdessen in Worten (z.B. statt "priority=high" schreibe "hat hohe Priorität", statt "hasChildren=true" schreibe "hat schulpflichtige Kinder").
 13. Mische niemals Deutsch und Englisch in einem Satz.
 
@@ -91,14 +91,14 @@ export async function POST(req: NextRequest) {
   const { facilityDescription, customRules, planningStart, planningEnd, maxConcurrent, schoolHolidayPriorityMode = 'slight', state, employees, schoolHolidays } = body
 
   const SCHOOL_HOLIDAY_MODE_INSTRUCTION: Record<'always' | 'slight' | 'none', string> = {
-    always: 'Die Einrichtung priorisiert Mitarbeiter mit schulpflichtigen Kindern in den Schulferien IMMER vor allen anderen Fairness-Kriterien (auch vor "priority" und Resturlaub). Plane für diese Mitarbeiter zuerst die Schulferienzeiten ein.',
-    slight: 'Die Einrichtung möchte Mitarbeiter mit schulpflichtigen Kindern in den Schulferien nur LEICHT bevorzugen – das ist lediglich ein Tie-Breaker bei sonst gleichwertigen Fällen, kein hartes Kriterium.',
-    none: 'Die Einrichtung möchte KEINE Priorisierung nach Schulferien. Behandle Mitarbeiter mit schulpflichtigen Kindern in den Schulferien genauso wie alle anderen Mitarbeiter.',
+    always: 'Der Standort priorisiert Mitarbeiter mit schulpflichtigen Kindern in den Schulferien IMMER vor allen anderen Fairness-Kriterien (auch vor "priority" und Resturlaub). Plane für diese Mitarbeiter zuerst die Schulferienzeiten ein.',
+    slight: 'Der Standort möchte Mitarbeiter mit schulpflichtigen Kindern in den Schulferien nur LEICHT bevorzugen – das ist lediglich ein Tie-Breaker bei sonst gleichwertigen Fällen, kein hartes Kriterium.',
+    none: 'Der Standort möchte KEINE Priorisierung nach Schulferien. Behandle Mitarbeiter mit schulpflichtigen Kindern in den Schulferien genauso wie alle anderen Mitarbeiter.',
   }
 
   const userPrompt = `Erstelle einen Urlaubsplan für den Zeitraum ${planningStart} bis ${planningEnd}.
 
-## Einrichtungsbeschreibung und Regeln
+## Standortbeschreibung und Regeln
 ${facilityDescription || 'Keine besonderen Angaben.'}
 
 ## Zusatzregeln (verbindlich)

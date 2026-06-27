@@ -7,17 +7,17 @@ import { requireRole, resolveCustomerId } from '@/lib/session'
 
 const client = new Anthropic()
 
-const ORGANIZATION_SYSTEM_PROMPT = `Du bist ein erfahrener Organisationsberater, der einen neuen Träger bei der Einrichtung von Open Workforce begleitet (Ebene 1 von 2: Träger-Onboarding).
+const ORGANIZATION_SYSTEM_PROMPT = `Du bist ein erfahrener Organisationsberater, der ein neues Unternehmen bei der Einrichtung von OKUN Workforce begleitet (Ebene 1 von 2: Unternehmens-Onboarding).
 
 Es gibt KEIN klassisches Formular. Du führst ein echtes, natürliches Gespräch. Der Nutzer antwortet frei, du erkennst daraus die Informationen, fasst zusammen und stellst gezielt Rückfragen, wenn etwas fehlt oder unklar ist.
 
-Zu erfassen (trägerweit, gilt für alle Einrichtungen gemeinsam):
-1. Trägername
-2. Standorte/Einrichtungen, die zum Träger gehören
-3. Rollenmodell (z.B. Geschäftsführung, Einrichtungsleitungen, Teamleitungen, Verwaltung)
-4. Unternehmensweite Regeln/Prozesse, die für alle Einrichtungen gelten
+Zu erfassen (unternehmensweit, gilt für alle Standorte gemeinsam):
+1. Unternehmensname
+2. Standorte, die zum Unternehmen gehören
+3. Rollenmodell (z.B. Geschäftsführung, Standortleitungen, Teamleitungen, Verwaltung)
+4. Unternehmensweite Regeln/Prozesse, die für alle Standorte gelten
 
-WICHTIG: Jede einzelne Einrichtung erhält anschließend ihr EIGENES, separates Onboarding (Ebene 2). Das System darf niemals einfach die Regeln einer Einrichtung auf eine andere kopieren – das hier ist ausschließlich der trägerweite, gemeinsame Rahmen.
+WICHTIG: Jeder einzelne Standort erhält anschließend sein EIGENES, separates Onboarding (Ebene 2). Das System darf niemals einfach die Regeln eines Standorts auf einen anderen kopieren – das hier ist ausschließlich der unternehmensweite, gemeinsame Rahmen.
 
 Regeln:
 1. Sprich den Nutzer mit "Du" an, freundlich und professionell, wie ein erfahrener Berater im ersten Gespräch.
@@ -28,14 +28,14 @@ Regeln:
 6. Erfinde niemals Angaben.
 7. Schreibe ausschließlich auf Deutsch.`
 
-const LOCATION_SYSTEM_PROMPT = `Du bist ein erfahrener Einrichtungsberater, der eine einzelne Einrichtung (Standort) bei der Konfiguration von Open Workforce begleitet (Ebene 2 von 2: Einrichtungs-Onboarding).
+const LOCATION_SYSTEM_PROMPT = `Du bist ein erfahrener Standortberater, der einen einzelnen Standort bei der Konfiguration von OKUN Workforce begleitet (Ebene 2 von 2: Standort-Onboarding).
 
 Der erste Kontakt soll sich anfühlen, als würde der Nutzer mit einem erfahrenen Berater sprechen – kein klassisches Formular. Der Nutzer antwortet frei in natürlicher Sprache. Du erkennst Zusammenhänge, speicherst strukturierte Informationen und stellst automatisch Rückfragen, wenn Informationen fehlen oder widersprüchlich sind. Der Chat endet erst, wenn alle notwendigen Informationen vollständig erfasst sind.
 
 Du darfst niemals einfach nur Fragen abarbeiten – führe ein echtes Gespräch und kombiniere thematisch zusammenhängende Fragen natürlich.
 
 Die 12 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reihenfolge an das Gespräch anpassen):
-1. Einrichtung verstehen: Art der Einrichtung (Kita, Wohngruppe, Pflege, Jugendhilfe, Behindertenhilfe, ambulante Dienste, ...).
+1. Standort verstehen: Art des Standorts (Kita, Wohngruppe, Pflege, Jugendhilfe, Behindertenhilfe, ambulante Dienste, ...).
 2. Organisationsstruktur: Gruppen, Bereiche, Teams, Abteilungen, Wohnbereiche, Funktionsräume.
 3. Mitarbeiterstruktur: Rollen wie Leitung, Teamleitung, Springer, Auszubildende, Praktikanten, Verwaltung.
 4. Arbeitszeiten: Öffnungszeiten, Dienstmodelle (Früh/Spät/Nacht/24h), Bereitschaft, Wochenenden, Feiertage.
@@ -46,7 +46,7 @@ Die 12 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reih
 9. Vertretungsregeln: Vorgehen bei Krankheit – Springer, andere Gruppen, freiwillige Übernahme, Prioritäten.
 10. Urlaubslogik: gleichzeitige Urlaube, Sperrzeiten, Ferienregeln, Prioritäten, Gruppenregeln.
 11. Zeiterfassung: Einstempeln, Vertrauensarbeitszeit, Genehmigungspflicht für Überstunden, automatischer Pausenabzug.
-12. Abschluss: Stelle GENAU diese offene Frage, bevor du zusammenfasst: "Gibt es Besonderheiten oder Regeln, die ich noch nicht abgefragt habe, die ich aber kennen muss, um eure Einrichtung korrekt zu planen?" – die Antwort speicherst du in "besonderheiten". Danach erstellst du eine übersichtliche Zusammenfassung aller erfassten Informationen und fragst, ob alles korrekt ist oder noch etwas ergänzt/korrigiert werden soll.
+12. Abschluss: Stelle GENAU diese offene Frage, bevor du zusammenfasst: "Gibt es Besonderheiten oder Regeln, die ich noch nicht abgefragt habe, die ich aber kennen muss, um euren Standort korrekt zu planen?" – die Antwort speicherst du in "besonderheiten". Danach erstellst du eine übersichtliche Zusammenfassung aller erfassten Informationen und fragst, ob alles korrekt ist oder noch etwas ergänzt/korrigiert werden soll.
 
 Regeln:
 1. Sprich den Nutzer mit "Du" an, freundlich, kompetent, professionell.
@@ -65,7 +65,7 @@ interface ChatMessage {
 
 const ORG_TOOL = {
   name: 'update_organization_onboarding',
-  description: 'Speichert die trägerweiten Onboarding-Angaben. Immer den vollständigen, aktuellen Stand je Feld angeben.',
+  description: 'Speichert die unternehmensweiten Onboarding-Angaben. Immer den vollständigen, aktuellen Stand je Feld angeben.',
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -79,7 +79,7 @@ const ORG_TOOL = {
 
 const LOCATION_TOOL = {
   name: 'update_location_onboarding',
-  description: 'Speichert die Onboarding-Angaben dieser Einrichtung. Immer den vollständigen, aktuellen Stand je Feld angeben (kumulativ, nicht nur das Neue).',
+  description: 'Speichert die Onboarding-Angaben dieses Standorts. Immer den vollständigen, aktuellen Stand je Feld angeben (kumulativ, nicht nur das Neue).',
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
 
     if (isOrganization) {
       const existing = await prisma.organizationOnboarding.findUnique({ where: { customerId } })
-      stateNote = `## Bereits bekannte trägerweite Angaben\n${JSON.stringify({
+      stateNote = `## Bereits bekannte unternehmensweite Angaben\n${JSON.stringify({
         traegerName: existing?.traegerName ?? null,
         rollenmodell: existing?.rollenmodell ?? null,
         unternehmensweiteRegeln: existing?.unternehmensweiteRegeln ?? null,
@@ -146,10 +146,10 @@ export async function POST(req: NextRequest) {
       const allLocations = await listLocations(customerId)
       const location = allLocations.find(l => l.id === scope)
       if (!location) {
-        return NextResponse.json({ error: 'Unbekannte Einrichtung' }, { status: 404 })
+        return NextResponse.json({ error: 'Unbekannter Standort' }, { status: 404 })
       }
       const existing = await prisma.locationOnboarding.findUnique({ where: { locationId: scope } })
-      stateNote = `## Einrichtung\nName: ${location.name} (${location.city})\n\n## Bereits bekannte Angaben zu dieser Einrichtung\n${JSON.stringify({
+      stateNote = `## Standort\nName: ${location.name} (${location.city})\n\n## Bereits bekannte Angaben zu diesem Standort\n${JSON.stringify({
         einrichtungsart: existing?.einrichtungsart ?? null,
         organisationsstruktur: existing?.organisationsstruktur ?? null,
         personalstruktur: existing?.personalstruktur ?? null,

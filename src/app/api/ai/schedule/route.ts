@@ -32,11 +32,11 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 11. Begründe bei Konflikten, wer den Vorzug erhält und warum.
 11a. Manche Mitarbeiter haben zusätzlich freiwillige, persönliche Angaben hinterlegt ("staerken", "lebenssituation", "bevorzugte_gruppen", "bevorzugte_taetigkeiten", "besondere_absprachen" in den Mitarbeiterdaten). Berücksichtige diese als weiche Signale bei der Verteilung – z.B. besondere Absprachen einhalten, Rücksicht auf die angegebene Lebenssituation nehmen, Stärken in passenden Situationen einsetzen, bevorzugte Gruppen/Bereiche und bevorzugte Tätigkeiten nach Möglichkeit berücksichtigen – sofern dies nicht im Widerspruch zu Pflicht- oder Fairness-Regeln steht.
 11b. Diese persönlichen Angaben sind freiwillig und liegen nicht für jeden Mitarbeiter vor. Das Fehlen solcher Angaben darf niemals als Nachteil gewertet werden.
-11c. Falls eine "Konfiguration der Einrichtung (aus dem KI-Onboarding)" angegeben ist, sind diese Regeln verbindlich und dauerhaft gültig.
+11c. Falls eine "Konfiguration des Standorts (aus dem KI-Onboarding)" angegeben ist, sind diese Regeln verbindlich und dauerhaft gültig.
 11d. Falls "Besonderheiten ausschließlich für diese eine Planungsperiode" angegeben sind, gelten diese mit hoher Priorität NUR für die aktuelle Woche und können dauerhafte Regeln für diese eine Planung temporär überschreiben.
 
 ## Sprache & Ton der Texte (reasoning, decisions[].message, warnings)
-12. Diese Texte werden der EINRICHTUNGSLEITUNG (Admin) angezeigt, NICHT den Mitarbeitern. Schreibe daher konsequent in der dritten Person über Mitarbeiter (z.B. "Maria Schmidt bekommt den Frühdienst, da..."), niemals in der zweiten Person ("du", "dein", "dich").
+12. Diese Texte werden der STANDORTLEITUNG (Admin) angezeigt, NICHT den Mitarbeitern. Schreibe daher konsequent in der dritten Person über Mitarbeiter (z.B. "Maria Schmidt bekommt den Frühdienst, da..."), niemals in der zweiten Person ("du", "dein", "dich").
 13. Verwende AUSSCHLIESSLICH natürliches, allgemeinverständliches Deutsch. Interne Feldnamen/Variablen wie "earlyDebt", "lateDebt", "midDebt", "fridayLateCnt", "mondayEarlyCnt", "fairnessScore", "debt" oder Mitarbeiter-IDs wie "emp1"/"emp2" dürfen NIEMALS im Text vorkommen – verwende stattdessen den echten Namen des Mitarbeiters und beschreibe den Sachverhalt in Worten (z.B. statt "earlyDebt: 2.5" schreibe "hatte zuletzt unterdurchschnittlich viele Frühdienste").
 14. Mische niemals Deutsch und Englisch in einem Satz.
 
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
   }))
 
   const onboardingSection = locationOnboarding ? `
-## Konfiguration der Einrichtung (aus dem KI-Onboarding, gilt dauerhaft)
+## Konfiguration des Standorts (aus dem KI-Onboarding, gilt dauerhaft)
 ${[
     locationOnboarding.dienstplanlogik && `Dienstplanlogik: ${locationOnboarding.dienstplanlogik}`,
     locationOnboarding.pausenlogik && `Pausenlogik: ${locationOnboarding.pausenlogik}`,
@@ -226,10 +226,10 @@ ${absenceSection}
 ${onboardingSection}
 ${periodNotesSection}
 ${facilityDescription ? `
-## Besondere Einrichtungsbeschreibung vom Teamleiter
+## Besondere Standortbeschreibung vom Teamleiter
 ${facilityDescription}
 
-Beachte diese Einrichtungsbeschreibung besonders beim Erstellen des Plans. Leite daraus zusätzliche Planungsregeln ab und wende sie an.` : ''}
+Beachte diese Standortbeschreibung besonders beim Erstellen des Plans. Leite daraus zusätzliche Planungsregeln ab und wende sie an.` : ''}
 ${confirmedDecisionQuestion ? `
 ## Bestätigte Optimierung
 Die Leitung hat folgende Rückfrage aus einer vorherigen Planung mit JA beantwortet: "${confirmedDecisionQuestion}"

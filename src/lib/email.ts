@@ -49,7 +49,7 @@ function renderEmailHtml(text: string, options: SendEmailOptions): string {
             </tr>
             <tr>
               <td style="background:#E8EEF5;padding:16px 32px;color:#7592BD;font-size:12px;">
-                © ${new Date().getFullYear()} OKUN Workforce · Open Workforce
+                © ${new Date().getFullYear()} OKUN Workforce
               </td>
             </tr>
           </table>

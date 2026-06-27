@@ -477,7 +477,7 @@ export default function AdminSchedule() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          locationName: location?.name ?? 'deiner Einrichtung',
+          locationName: location?.name ?? 'deinem Standort',
           periodLabel: `${formatDateShort(periodWeekdayDates[0])} – ${formatDateShort(periodWeekdayDates[periodWeekdayDates.length - 1])}`,
           assignments: generatedSchedule,
         }),
@@ -602,13 +602,13 @@ export default function AdminSchedule() {
                   </div>
                   <div>
                     <Textarea
-                      label="Einrichtungsbeschreibung (optional)"
+                      label="Standortbeschreibung (optional)"
                       value={facilityDescription}
                       onChange={e => {
                         setFacilityDescription(e.target.value)
                         localStorage.setItem('facilityDescription', e.target.value)
                       }}
-                      placeholder="Beschreibe deine Einrichtung, z.B. Öffnungszeiten, besondere Anforderungen, Gruppenstrukturen... Die KI leitet daraus automatisch Planungsregeln ab."
+                      placeholder="Beschreibe deinen Standort, z.B. Öffnungszeiten, besondere Anforderungen, Gruppenstrukturen... Die KI leitet daraus automatisch Planungsregeln ab."
                       rows={3}
                     />
                   </div>

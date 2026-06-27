@@ -5,7 +5,7 @@ import { ToastProvider } from '@/lib/toast-context'
 import { PwaInstallPrompt } from '@/components/PwaInstallPrompt'
 
 export const metadata: Metadata = {
-  title: 'OKUN Workforce – Open Workforce',
+  title: 'OKUN Workforce',
   description: 'Modernes Mitarbeiter- und Dienstplan-Management',
   manifest: '/manifest.json',
   appleWebApp: {

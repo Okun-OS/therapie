@@ -12,8 +12,8 @@ interface ChatMessage {
   content: string
 }
 
-const ORGANIZATION_OPENING = 'Hallo! Ich freue mich, euren Träger kennenzulernen. Gemeinsam richten wir Open Workforce so ein, dass später alles möglichst automatisch funktioniert. Wie heißt euer Träger, und welche Einrichtungen gehören dazu?'
-const LOCATION_OPENING = (name: string) => `Hallo! Ich freue mich, „${name}“ kennenzulernen. Gemeinsam richten wir Open Workforce so ein, dass die Dienstplanung später möglichst automatisch funktioniert. Magst du mir zunächst kurz erzählen, um welche Art von Einrichtung es sich handelt?`
+const ORGANIZATION_OPENING = 'Hallo! Ich freue mich, euer Unternehmen kennenzulernen. Gemeinsam richten wir OKUN Workforce so ein, dass später alles möglichst automatisch funktioniert. Wie heißt euer Unternehmen, und welche Standorte gehören dazu?'
+const LOCATION_OPENING = (name: string) => `Hallo! Ich freue mich, „${name}” kennenzulernen. Gemeinsam richten wir OKUN Workforce so ein, dass die Dienstplanung später möglichst automatisch funktioniert. Magst du mir zunächst kurz erzählen, um welche Art von Standort es sich handelt?`
 
 export function OnboardingChat({
   open,
@@ -29,7 +29,7 @@ export function OnboardingChat({
   onStateUpdate: (state: unknown) => void
 }) {
   const isOrganization = scope === 'organization'
-  const opening = isOrganization ? ORGANIZATION_OPENING : LOCATION_OPENING(locationName ?? 'eure Einrichtung')
+  const opening = isOrganization ? ORGANIZATION_OPENING : LOCATION_OPENING(locationName ?? 'euren Standort')
   const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', content: opening }])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -62,10 +62,10 @@ export function OnboardingChat({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={isOrganization ? 'KI-Onboarding: Träger' : `KI-Onboarding: ${locationName ?? ''}`} size="lg">
+    <Modal open={open} onClose={onClose} title={isOrganization ? 'KI-Onboarding: Unternehmen' : `KI-Onboarding: ${locationName ?? ''}`} size="lg">
       <div className="flex items-start gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 mb-3">
         <Sparkles size={14} className="flex-shrink-0 mt-0.5 text-brand" />
-        <span>Erzähl mir einfach frei, wie eure Einrichtung arbeitet. Ich frage automatisch nach, falls etwas fehlt oder unklar ist. Du kannst das Gespräch jederzeit unterbrechen und später fortsetzen.</span>
+        <span>Erzähl mir einfach frei, wie euer Standort arbeitet. Ich frage automatisch nach, falls etwas fehlt oder unklar ist. Du kannst das Gespräch jederzeit unterbrechen und später fortsetzen.</span>
       </div>
 
       <div className="space-y-2 mb-3 max-h-96 overflow-y-auto">

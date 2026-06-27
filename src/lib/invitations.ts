@@ -9,7 +9,7 @@ export { invitationExpiry }
 
 const ROLE_LABEL: Record<Role, string> = {
   employee: 'Mitarbeiter',
-  admin: 'Einrichtungsleitung',
+  admin: 'Standortleitung',
   company: 'Geschäftsführung',
   okun: 'OKUN Administrator',
 }
@@ -53,11 +53,24 @@ export async function createAndSendInvitation(
   return invitation
 }
 
+export class LocationCustomerMismatchError extends Error {
+  constructor() {
+    super('Dieser Standort gehört nicht zu deinem Unternehmen.')
+  }
+}
+
 /** Legt Mitarbeiter und Einladung atomar in einer Transaktion an, damit nie ein
  * Mitarbeiter ohne zugehörige Einladung entsteht (oder umgekehrt). Lebt bewusst in
  * invitations.ts statt entities.ts: entities.ts wird auch von 'use client'-Seiten aus
  * über fairness.ts für reine Lesefunktionen importiert, und der E-Mail-/Krypto-Code
- * hier (Resend, crypto.randomBytes) darf nicht ins Client-Bundle gelangen. */
+ * hier (Resend, crypto.randomBytes) darf nicht ins Client-Bundle gelangen.
+ *
+ * expectedCustomerId verhindert, dass ein Mitarbeiter mit fehlendem/falschem
+ * customerId entsteht (und dadurch nach dem nächsten mandantenscoped Fetch
+ * "verschwindet"): bei Standorten ohne customerId (Altlasten vor #121-126) wird
+ * er einmalig auf expectedCustomerId nachgezogen; bei abweichendem customerId
+ * wird die Anfrage abgelehnt statt den Standort eines anderen Unternehmens zu
+ * verwenden. */
 export async function addEmployeeWithInvitation(
   input: {
     name: string
@@ -65,6 +78,7 @@ export async function addEmployeeWithInvitation(
     position: string
     weeklyHours: number
     locationId: string
+    expectedCustomerId?: string
     phone?: string
     birthDate?: string
     roleType?: string
@@ -80,7 +94,14 @@ export async function addEmployeeWithInvitation(
 ): Promise<{ employee: Employee; emailSent: boolean }> {
   const { employeeRow, invitation } = await prisma.$transaction(async tx => {
     const location = await tx.location.findUnique({ where: { id: input.locationId } })
-    const customerId = location?.customerId ?? undefined
+    if (!location) throw new Error('Standort nicht gefunden')
+    if (input.expectedCustomerId && location.customerId && location.customerId !== input.expectedCustomerId) {
+      throw new LocationCustomerMismatchError()
+    }
+    const customerId = input.expectedCustomerId ?? location.customerId ?? undefined
+    if (input.expectedCustomerId && !location.customerId) {
+      await tx.location.update({ where: { id: location.id }, data: { customerId: input.expectedCustomerId } })
+    }
     const employeeRow = await tx.employee.create({
       data: {
         customerId,

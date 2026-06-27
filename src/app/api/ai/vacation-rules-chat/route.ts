@@ -6,13 +6,13 @@ import type { VacationRulesDraft } from '@/lib/vacation-rules-draft'
 const client = new Anthropic()
 
 // 05_URLAUBSPLANUNG_CHAT.md, Schritt 1 "Urlaubsregeln erfassen": die Leitung
-// beschreibt die Einrichtung und ihre Urlaubsregeln frei in Worten statt über ein starres Formular.
-const SYSTEM_PROMPT = `Du bist der KI-Assistent von Open Workforce zur Erfassung der jährlichen Urlaubsplanungsregeln einer Einrichtung.
+// beschreibt den Standort und ihre Urlaubsregeln frei in Worten statt über ein starres Formular.
+const SYSTEM_PROMPT = `Du bist der KI-Assistent von OKUN Workforce zur Erfassung der jährlichen Urlaubsplanungsregeln eines Standorts.
 
-Die Leitung beschreibt dir frei in Worten ihre Einrichtung und die Regeln, die bei der Urlaubsplanung gelten sollen (z.B. Gruppenstruktur, Mindestbesetzung, wie viele Mitarbeiter maximal gleichzeitig Urlaub haben dürfen, besondere Feiertags- oder Sonderzeitregeln).
+Die Leitung beschreibt dir frei in Worten ihren Standort und die Regeln, die bei der Urlaubsplanung gelten sollen (z.B. Gruppenstruktur, Mindestbesetzung, wie viele Mitarbeiter maximal gleichzeitig Urlaub haben dürfen, besondere Feiertags- oder Sonderzeitregeln).
 
 Leite daraus eigenständig ab:
-- Eine kurze, zusammenfassende Einrichtungsbeschreibung inkl. aller genannten Besetzungs- und Strukturregeln
+- Eine kurze, zusammenfassende Standortbeschreibung inkl. aller genannten Besetzungs- und Strukturregeln
 - Die maximale Anzahl an Mitarbeitern, die gleichzeitig Urlaub haben dürfen (als Zahl)
 - Eine Liste einzelner, klar formulierter Zusatzregeln (z.B. "Über Weihnachten dürfen maximal 2 Personen gleichzeitig fehlen", "Springerpool-Mitglieder zählen nicht zur Mindestbesetzung"), falls genannt
 

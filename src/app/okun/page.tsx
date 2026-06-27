@@ -87,7 +87,7 @@ export default function OkunOverview() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-navy truncate">{c.name}</p>
-                  <p className="text-xs text-gray-500">{c.plan} · {c.seatsUsed}/{c.seatsLicensed} Plätze · {c.locationsCount} Einrichtungen</p>
+                  <p className="text-xs text-gray-500">{c.plan} · {c.seatsUsed}/{c.seatsLicensed} Plätze · {c.locationsCount} Standorte</p>
                 </div>
                 <Badge variant={STATUS_BADGE[c.status].variant}>{STATUS_BADGE[c.status].label}</Badge>
               </Link>

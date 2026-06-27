@@ -62,7 +62,7 @@ export default function CompanyLocations() {
     })
     const refreshed = await fetch('/api/employees').then(r => r.json()).then(d => d.employees)
     setEMPLOYEES(refreshed)
-    showToast('Einrichtungsleitung gewechselt', 'success')
+    showToast('Standortleitung gewechselt', 'success')
     setManagingAdmin(false)
   }
 
@@ -263,7 +263,7 @@ export default function CompanyLocations() {
                     className="text-xs text-brand font-semibold flex items-center gap-1 hover:underline"
                   >
                     <UserCog size={13} />
-                    Einrichtungsleitung wechseln
+                    Standortleitung wechseln
                   </button>
                 )}
               </div>

@@ -143,7 +143,7 @@ export interface SicknessInsights {
   groupHotspots: Array<{ gruppe: string; sickDays: number; employeeCount: number; rate: number }>
 }
 
-// Häufung von Krankmeldungen je Gruppe: Quote spürbar über dem Einrichtungs-
+// Häufung von Krankmeldungen je Gruppe: Quote spürbar über dem Standort-
 // durchschnitt deutet auf ein Muster/Engpass in dieser Gruppe hin (Spec: "In
 // Gruppe Blau häufen sich Krankmeldungen").
 const GROUP_HOTSPOT_THRESHOLD_FACTOR = 1.5
@@ -233,7 +233,7 @@ export async function getPersonnelOverview(locationId?: string, customerId?: str
   const otherAbsenceToday = activeToday.filter(a => a.type !== 'krankheit' && a.type !== 'fortbildung').length
   const onVacationToday = vacations.filter(v => v.startDate <= todayStr && todayStr <= v.endDate).length
 
-  // "Offene Stellen": Soll-Personalstärke der Einrichtung (Location.employeeCount)
+  // "Offene Stellen": Soll-Personalstärke des Standorts (Location.employeeCount)
   // abzüglich tatsächlich aktiver Mitarbeiter – unbesetzte Planstellen, die
   // nachbesetzt werden müssen (nicht zu verwechseln mit "Offene Vertretungen").
   const allLocations = await listLocations(customerId)

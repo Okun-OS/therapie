@@ -49,7 +49,7 @@ export default function OkunCustomers() {
   const assignToCustomer = async (type: 'location' | 'companyUser', id: string) => {
     const customerId = assignChoice[id]
     if (!customerId) {
-      showToast('Bitte zuerst einen Träger auswählen', 'error')
+      showToast('Bitte zuerst ein Unternehmen auswählen', 'error')
       return
     }
     await fetch('/api/okun/unassigned/assign', {
@@ -152,7 +152,7 @@ export default function OkunCustomers() {
               <div>
                 <p className="font-semibold text-navy text-sm">Nicht zugeordnete Altdaten</p>
                 <p className="text-xs text-gray-600 mt-0.5">
-                  Diese Einrichtungen/Accounts entstanden, bevor Träger-Zuordnung im System existierte. Bitte einmalig dem richtigen Träger zuordnen – Mitarbeiter und Logins dieser Einrichtung werden automatisch mit zugeordnet.
+                  Diese Standorte/Accounts entstanden, bevor Unternehmens-Zuordnung im System existierte. Bitte einmalig dem richtigen Unternehmen zuordnen – Mitarbeiter und Logins dieses Standorts werden automatisch mit zugeordnet.
                 </p>
               </div>
             </div>
@@ -168,7 +168,7 @@ export default function OkunCustomers() {
                   onChange={e => setAssignChoice(prev => ({ ...prev, [loc.id]: e.target.value }))}
                   className="w-48"
                 >
-                  <option value="">Träger wählen…</option>
+                  <option value="">Unternehmen wählen…</option>
                   {CUSTOMERS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </Select>
                 <Button onClick={() => assignToCustomer('location', loc.id)}>Zuordnen</Button>
@@ -186,7 +186,7 @@ export default function OkunCustomers() {
                   onChange={e => setAssignChoice(prev => ({ ...prev, [u.id]: e.target.value }))}
                   className="w-48"
                 >
-                  <option value="">Träger wählen…</option>
+                  <option value="">Unternehmen wählen…</option>
                   {CUSTOMERS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </Select>
                 <Button onClick={() => assignToCustomer('companyUser', u.id)}>Zuordnen</Button>
@@ -235,7 +235,7 @@ export default function OkunCustomers() {
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold text-navy mb-0.5">{c.locationsCount}</p>
-                  <p className="text-xs text-gray-500">Einrichtungen</p>
+                  <p className="text-xs text-gray-500">Standorte</p>
                 </div>
               </div>
             </div>
@@ -327,7 +327,7 @@ export default function OkunCustomers() {
 
             <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Einrichtungen</span>
+                <span className="text-gray-500">Standorte</span>
                 <span className="font-semibold text-navy">{selected.locationsCount}</span>
               </div>
               <div className="flex justify-between text-sm">

@@ -7,7 +7,7 @@ const client = new Anthropic()
 
 // 04_DIENSTPLAN_CHAT.md, Dynamische Umplanung: ein Ausfall wird per freiem Text
 // gemeldet statt über ein starres Formular erfasst.
-const SYSTEM_PROMPT = `Du bist der KI-Assistent von Open Workforce zur kurzfristigen Vertretungssuche.
+const SYSTEM_PROMPT = `Du bist der KI-Assistent von OKUN Workforce zur kurzfristigen Vertretungssuche.
 
 Die Leitung meldet dir frei in Worten, dass ein Dienst nicht besetzt werden kann (z.B. Krankheit, Ausfall). Erfasse daraus eigenständig den betroffenen Dienst, ohne unnötig nachzufragen.
 

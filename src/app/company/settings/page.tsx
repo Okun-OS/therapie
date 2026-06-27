@@ -37,7 +37,7 @@ export default function CompanySettings() {
 
   return (
     <>
-      <Header title="Organisationsweite Einstellungen" subtitle="Gilt für alle Einrichtungen" />
+      <Header title="Organisationsweite Einstellungen" subtitle="Gilt für alle Standorte" />
       <div className="p-4 sm:p-6 space-y-5">
 
         <Card>
@@ -66,7 +66,7 @@ export default function CompanySettings() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-navy" />
-              <CardTitle>Standardwerte für neue Einrichtungen</CardTitle>
+              <CardTitle>Standardwerte für neue Standorte</CardTitle>
             </div>
           </CardHeader>
           <div className="grid grid-cols-2 gap-3">
@@ -96,7 +96,7 @@ export default function CompanySettings() {
           </CardHeader>
           <Input
             label="Automatische Genehmigung bis (Tage)"
-            hint="Anträge bis zu dieser Dauer werden ohne Rückfrage an die Einrichtungsleitung genehmigt. 0 = immer manuell prüfen."
+            hint="Anträge bis zu dieser Dauer werden ohne Rückfrage an die Standortleitung genehmigt. 0 = immer manuell prüfen."
             type="number"
             min={0}
             value={form.autoApproveVacationUnderDays}

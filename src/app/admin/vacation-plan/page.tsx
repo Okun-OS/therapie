@@ -49,7 +49,7 @@ interface PrefRow {
 }
 
 const AI_STEPS = [
-  'Analysiere Einrichtungsregeln...',
+  'Analysiere Standortregeln...',
   'Prüfe Schulferienzeiten...',
   'Berücksichtige Mitarbeiter-Wünsche...',
   'Berechne Mindestbesetzung...',
@@ -316,7 +316,7 @@ export default function VacationPlanPage() {
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3">
           <Info size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-blue-700">
-            Beschreibe deine Einrichtung und setze Regeln. Die KI plant den Urlaub fair ein – mit Priorität für Mitarbeiter mit Kindern in Schulferienzeiten.
+            Beschreibe deinen Standort und setze Regeln. Die KI plant den Urlaub fair ein – mit Priorität für Mitarbeiter mit Kindern in Schulferienzeiten.
           </p>
         </div>
 
@@ -334,7 +334,7 @@ export default function VacationPlanPage() {
 
           <div className="space-y-4">
             <div className="bg-purple-50 border border-purple-100 rounded-xl p-3">
-              <p className="text-xs font-semibold text-purple-700 mb-1">Einrichtungsbeschreibung & Besetzungsregeln</p>
+              <p className="text-xs font-semibold text-purple-700 mb-1">Standortbeschreibung & Besetzungsregeln</p>
               <p className="text-sm text-purple-900">{rules.facilityDescription}</p>
               <p className="text-xs text-purple-700 mt-2">Maximal <span className="font-bold">{rules.maxConcurrent}</span> Mitarbeiter gleichzeitig im Urlaub.</p>
               {rules.customRules.length > 0 && (
@@ -381,7 +381,7 @@ export default function VacationPlanPage() {
                 label="Bundesland (Ferien)"
                 value={selectedState}
                 onChange={e => setSelectedState(e.target.value)}
-                hint="Automatisch aus dem Bundesland der Einrichtung übernommen."
+                hint="Automatisch aus dem Bundesland des Standorts übernommen."
               >
                 {GERMAN_STATES.map(s => <option key={s}>{s}</option>)}
               </Select>
@@ -510,7 +510,7 @@ export default function VacationPlanPage() {
                   <Sparkles size={18} className="text-purple-600" />
                   <p className="font-bold text-navy">KI-Urlaubsplan erstellen</p>
                 </div>
-                <p className="text-sm text-gray-600">Die KI plant fair und regelkonform – unter Berücksichtigung deiner Einrichtungsregeln und aller Mitarbeiterwünsche.</p>
+                <p className="text-sm text-gray-600">Die KI plant fair und regelkonform – unter Berücksichtigung deiner Standortregeln und aller Mitarbeiterwünsche.</p>
               </div>
               <Button onClick={runAI} size="lg" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
                 <Sparkles size={18} />

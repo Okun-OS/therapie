@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listEmployees } from '@/lib/entities'
-import { addEmployeeWithInvitation } from '@/lib/invitations'
+import { addEmployeeWithInvitation, LocationCustomerMismatchError } from '@/lib/invitations'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { getAppOrigin } from '@/lib/app-url'
 
@@ -29,26 +29,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'name, email, position, weeklyHours und locationId sind erforderlich' }, { status: 400 })
   }
 
-  const { employee, emailSent } = await addEmployeeWithInvitation(
-    {
-      name,
-      email,
-      position,
-      weeklyHours,
-      locationId,
-      phone: body.phone,
-      birthDate: body.birthDate,
-      roleType: body.roleType,
-      employmentType: body.employmentType,
-      gruppe: body.gruppe,
-      bereich: body.bereich,
-      multiGroupCapable: body.multiGroupCapable,
-      fixedLocations: body.fixedLocations,
-      qualifications: body.qualifications,
-      allowedTasks: body.allowedTasks,
-    },
-    getAppOrigin(req),
-  )
+  const expectedCustomerId = session.role === 'okun' ? undefined : await resolveCustomerId(session)
+  if (session.role !== 'okun' && !expectedCustomerId) {
+    return NextResponse.json({ error: 'Kein Mandant für diesen Nutzer hinterlegt' }, { status: 403 })
+  }
 
-  return NextResponse.json({ employee, emailSent })
+  try {
+    const { employee, emailSent } = await addEmployeeWithInvitation(
+      {
+        name,
+        email,
+        position,
+        weeklyHours,
+        locationId,
+        expectedCustomerId,
+        phone: body.phone,
+        birthDate: body.birthDate,
+        roleType: body.roleType,
+        employmentType: body.employmentType,
+        gruppe: body.gruppe,
+        bereich: body.bereich,
+        multiGroupCapable: body.multiGroupCapable,
+        fixedLocations: body.fixedLocations,
+        qualifications: body.qualifications,
+        allowedTasks: body.allowedTasks,
+      },
+      getAppOrigin(req),
+    )
+
+    return NextResponse.json({ employee, emailSent })
+  } catch (err: unknown) {
+    if (err instanceof LocationCustomerMismatchError) {
+      return NextResponse.json({ error: err.message }, { status: 403 })
+    }
+    if (err instanceof Error && err.message === 'Standort nicht gefunden') {
+      return NextResponse.json({ error: err.message }, { status: 404 })
+    }
+    console.error('employees POST', err)
+    const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }

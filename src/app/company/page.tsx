@@ -29,7 +29,7 @@ export default function CompanyDashboard() {
   const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
   const [TIME_LOGS, setTIME_LOGS] = useState<TimeLog[]>([])
 
-  // Beim ersten Login eines neuen Trägers ist das KI-Onboarding (Modul 02) noch
+  // Beim ersten Login eines neuen Unternehmens ist das KI-Onboarding (Modul 02) noch
   // nicht abgeschlossen – dann startet es automatisch statt des Dashboards,
   // statt sich hinter einem Sidebar-Link zu verstecken.
   useEffect(() => {
@@ -82,7 +82,7 @@ export default function CompanyDashboard() {
       <div className="p-4 sm:p-6 space-y-4">
         <FeatureIntro
           featureKey="company-overview"
-          text="Hier sehen Sie alle Einrichtungen Ihres Trägers im Überblick: Mitarbeiterzahlen, Stundenkonten und offene Urlaubsanträge je Standort."
+          text="Hier sehen Sie alle Standorte Ihres Unternehmens im Überblick: Mitarbeiterzahlen, Stundenkonten und offene Urlaubsanträge je Standort."
         />
 
         {/* Tab bar */}
@@ -90,7 +90,7 @@ export default function CompanyDashboard() {
           {([
             { key: 'overview' as Tab,   label: 'Übersicht',       badge: undefined as number | undefined },
             { key: 'employees' as Tab,  label: 'Mitarbeiter',     badge: totalEmployees as number | undefined },
-            { key: 'locations' as Tab,  label: 'Einrichtungen',   badge: LOCATIONS.length as number | undefined },
+            { key: 'locations' as Tab,  label: 'Standorte',       badge: LOCATIONS.length as number | undefined },
           ]).map(({ key, label, badge }) => (
             <button
               key={key}
@@ -199,10 +199,10 @@ export default function CompanyDashboard() {
                 icon={Search}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Name, Position, Einrichtung..."
+                placeholder="Name, Position, Standort..."
               />
               <Select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
-                <option value="all">Alle Einrichtungen</option>
+                <option value="all">Alle Standorte</option>
                 {LOCATIONS.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </Select>
             </div>
@@ -261,7 +261,7 @@ export default function CompanyDashboard() {
           </>
         )}
 
-        {/* ── EINRICHTUNGEN ──────────────────────────────────────────── */}
+        {/* ── STANDORTE ──────────────────────────────────────────────── */}
         {tab === 'locations' && (
           <div className="space-y-3">
             {locationStats.map(loc => (

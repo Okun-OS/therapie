@@ -43,7 +43,7 @@ export default function CompanySchedule() {
 
   return (
     <>
-      <Header title="Dienstpläne aller Einrichtungen" subtitle="Organisationsweite Übersicht · Bearbeitung erfolgt durch die jeweilige Einrichtungsleitung" />
+      <Header title="Dienstpläne aller Standorte" subtitle="Organisationsweite Übersicht · Bearbeitung erfolgt durch die jeweilige Standortleitung" />
       <div className="p-4 sm:p-6 space-y-5">
 
         <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 p-3">

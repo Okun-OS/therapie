@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       notifyEmployee(employeeId, {
         type: 'schedule_published',
         title: 'Neuer Dienstplan veröffentlicht',
-        body: `Dein Dienstplan für ${periodLabel} bei ${locationName ?? 'deiner Einrichtung'} ist jetzt verfügbar.`,
+        body: `Dein Dienstplan für ${periodLabel} bei ${locationName ?? 'deinem Standort'} ist jetzt verfügbar.`,
         url: '/employee/schedule',
       }),
     ),

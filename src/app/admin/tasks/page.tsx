@@ -111,7 +111,7 @@ export default function AdminTasks() {
                 </div>
                 {isOpen && (
                   <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
-                    {employees.length === 0 && <p className="text-xs text-gray-400">Keine Mitarbeiter in dieser Einrichtung</p>}
+                    {employees.length === 0 && <p className="text-xs text-gray-400">Keine Mitarbeiter an diesem Standort</p>}
                     {employees.map(emp => {
                       const assigned = emp.allowedTasks?.includes(task) ?? false
                       return (
