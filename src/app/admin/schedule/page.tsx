@@ -11,14 +11,9 @@ import { ShiftEditor } from '@/components/schedule/ShiftEditor'
 import { SchedulePlanningChat } from '@/components/schedule/SchedulePlanningChat'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import {
-  SCHEDULE_ENTRIES, SHIFTS, VACATION_REQUESTS, ABSENCES,
-  getAllEntriesForFairness, getWishSubmissionsByLocation,
-  setShiftMinStaff, saveScheduleForWeek,
-} from '@/lib/mock-data'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
-import type { Employee, Location } from '@/lib/types'
+import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission } from '@/lib/types'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
   CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff, X, CalendarRange, MessageCircle,
@@ -106,11 +101,37 @@ export default function AdminSchedule() {
   const [minStaffDraft, setMinStaffDraft] = useState<Record<string, number>>({})
   const [periodMode, setPeriodMode] = useState<PeriodMode>('week')
   const [customRange, setCustomRange] = useState<{ start: string; end: string }>({ start: '', end: '' })
+  const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
+  const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
+  const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
+  const [ABSENCES, setABSENCES] = useState<Absence[]>([])
+  const [allHistoricalEntries, setAllHistoricalEntries] = useState<ScheduleEntry[]>([])
+  const [wishSubmissions, setWishSubmissions] = useState<WishSubmission[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
   }, [])
+
+  const loadScheduleEntries = () => {
+    fetch(`/api/schedule-entries?locationId=${locationId}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries ?? []))
+  }
+
+  useEffect(() => {
+    loadScheduleEntries()
+    fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
+    fetch(`/api/vacation-requests?locationId=${locationId}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests ?? []))
+    fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => setABSENCES(d.absences ?? []))
+    fetch(`/api/wish-submissions?locationId=${locationId}`).then(r => r.json()).then(d => setWishSubmissions(d.submissions ?? []))
+  }, [locationId])
+
+  // getAllEntriesForFairness(locationId) im mock-data kombinierte historische
+  // Seed-Einträge mit den aktuellen SCHEDULE_ENTRIES für den Standort. Die
+  // API liefert dieselbe Kombination bereits serverseitig (Postgres enthält
+  // die historischen Einträge), daher reicht ein einzelner Fetch.
+  useEffect(() => {
+    fetch(`/api/schedule-entries?locationId=${locationId}`).then(r => r.json()).then(d => setAllHistoricalEntries(d.entries ?? []))
+  }, [locationId])
 
   useEffect(() => {
     const saved = localStorage.getItem('facilityDescription')
@@ -205,8 +226,6 @@ export default function AdminSchedule() {
 
   const employees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee')
   const locationShifts = SHIFTS.filter(s => s.locationId === locationId)
-  const allHistoricalEntries = useMemo(() => getAllEntriesForFairness(locationId), [locationId])
-  const wishSubmissions = getWishSubmissionsByLocation(locationId)
 
   const fairnessData = useMemo(
     () => calculateFairnessData(employees, allHistoricalEntries, locationShifts, {
@@ -417,17 +436,36 @@ export default function AdminSchedule() {
     setRulesOpen(true)
   }
 
-  const handleSaveRules = () => {
+  const handleSaveRules = async () => {
     setPlanningRules(rulesDraft)
     localStorage.setItem('planningRules', JSON.stringify(rulesDraft))
-    Object.entries(minStaffDraft).forEach(([shiftId, minStaff]) => setShiftMinStaff(shiftId, minStaff))
+    await Promise.all(
+      Object.entries(minStaffDraft).map(([shiftId, minStaff]) =>
+        fetch(`/api/shifts/${shiftId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ minStaff }),
+        })
+      )
+    )
+    fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
     setRulesOpen(false)
     showToast('Planungsregeln gespeichert')
   }
 
   const handleSaveSchedule = async () => {
     if (!generatedSchedule) return
-    saveScheduleForWeek(locationId, periodWeekdayDates, generatedSchedule, aiAssignmentReasons)
+    await fetch('/api/schedule-entries/save-week', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        locationId,
+        weekDates: periodWeekdayDates,
+        assignments: generatedSchedule,
+        reasons: aiAssignmentReasons,
+      }),
+    })
+    loadScheduleEntries()
     setSaved(true)
     showToast('Dienstplan gespeichert – für alle Mitarbeiter sichtbar')
 

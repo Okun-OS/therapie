@@ -69,6 +69,10 @@ export default function EmployeeSchedule() {
 
   const myEntries = SCHEDULE_ENTRIES.filter(s => s.employeeId === user?.id)
 
+  const weekDays = getWeekDays(currentDate)
+  const weekStart = toDateString(weekDays[0])
+  const weekEnd = toDateString(weekDays[6])
+
   const weekEntries = myEntries.filter(e => {
     const d = new Date(e.date + 'T00:00:00')
     return d >= weekDays[0] && d <= weekDays[6]

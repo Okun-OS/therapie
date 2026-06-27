@@ -344,7 +344,7 @@ export default function AdminTimeTracking() {
                         </div>
                         <div className="space-y-1 pt-1 border-t border-gray-200">
                           <p className="text-xs font-semibold text-navy pt-2">Gebuchte Zeiten</p>
-                          {getTimeLogsByMonth(closing.employeeId, closing.year, closing.month).map(log => (
+                          {(timeLogsByClosing[closing.id] ?? []).map(log => (
                             <div key={log.id} className="flex items-center gap-2 text-xs text-gray-600">
                               <span className="flex-1">{formatDate(log.date)} · {log.clockIn}–{log.clockOut ?? '–'} Uhr{log.breakMinutes ? ` · ${log.breakMinutes} Min. Pause` : ''}</span>
                               {closing.status !== 'freigegeben' && (
