@@ -8,8 +8,11 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useToast } from '@/lib/toast-context'
-import { Building2, Plus, Mail, ChevronRight, Edit, Users, KeyRound } from 'lucide-react'
+import { Building2, Plus, Mail, ChevronRight, Edit, Users, KeyRound, AlertTriangle } from 'lucide-react'
 import type { Customer, CustomerStatus, LicensePlan } from '@/lib/types'
+
+interface UnassignedLocation { id: string; name: string; city: string; employeeCount: number }
+interface UnassignedCompanyUser { id: string; name: string; email: string }
 
 const STATUS_BADGE: Record<CustomerStatus, { label: string; variant: 'success' | 'info' | 'warning' | 'danger' }> = {
   trial: { label: 'Test', variant: 'info' },
@@ -27,10 +30,36 @@ const PLAN_LABEL: Record<LicensePlan, string> = {
 export default function OkunCustomers() {
   const { showToast } = useToast()
   const [CUSTOMERS, setCUSTOMERS] = useState<Customer[]>([])
+  const [unassignedLocations, setUnassignedLocations] = useState<UnassignedLocation[]>([])
+  const [unassignedCompanyUsers, setUnassignedCompanyUsers] = useState<UnassignedCompanyUser[]>([])
+  const [assignChoice, setAssignChoice] = useState<Record<string, string>>({})
+
+  const loadUnassigned = () => {
+    fetch('/api/okun/unassigned').then(r => r.json()).then(d => {
+      setUnassignedLocations(d.locations ?? [])
+      setUnassignedCompanyUsers(d.companyUsers ?? [])
+    })
+  }
 
   useEffect(() => {
     fetch('/api/customers').then(r => r.json()).then(d => setCUSTOMERS(d.customers))
+    loadUnassigned()
   }, [])
+
+  const assignToCustomer = async (type: 'location' | 'companyUser', id: string) => {
+    const customerId = assignChoice[id]
+    if (!customerId) {
+      showToast('Bitte zuerst einen Träger auswählen', 'error')
+      return
+    }
+    await fetch('/api/okun/unassigned/assign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, id, customerId }),
+    })
+    showToast('Zuordnung gespeichert', 'success')
+    loadUnassigned()
+  }
 
   const [selected, setSelected] = useState<Customer | null>(null)
   const [isEditing, setIsEditing] = useState(false)
@@ -115,6 +144,56 @@ export default function OkunCustomers() {
             <p className="text-xs text-gray-500">Lizenzplätze genutzt</p>
           </div>
         </div>
+
+        {(unassignedLocations.length > 0 || unassignedCompanyUsers.length > 0) && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-4">
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-navy text-sm">Nicht zugeordnete Altdaten</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Diese Einrichtungen/Accounts entstanden, bevor Träger-Zuordnung im System existierte. Bitte einmalig dem richtigen Träger zuordnen – Mitarbeiter und Logins dieser Einrichtung werden automatisch mit zugeordnet.
+                </p>
+              </div>
+            </div>
+
+            {unassignedLocations.map(loc => (
+              <div key={loc.id} className="flex items-center gap-2 bg-white rounded-xl p-3 border border-gray-100">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-navy truncate">{loc.name}</p>
+                  <p className="text-xs text-gray-500">{loc.city} · {loc.employeeCount} Mitarbeiter</p>
+                </div>
+                <Select
+                  value={assignChoice[loc.id] ?? ''}
+                  onChange={e => setAssignChoice(prev => ({ ...prev, [loc.id]: e.target.value }))}
+                  className="w-48"
+                >
+                  <option value="">Träger wählen…</option>
+                  {CUSTOMERS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </Select>
+                <Button onClick={() => assignToCustomer('location', loc.id)}>Zuordnen</Button>
+              </div>
+            ))}
+
+            {unassignedCompanyUsers.map(u => (
+              <div key={u.id} className="flex items-center gap-2 bg-white rounded-xl p-3 border border-gray-100">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-navy truncate">{u.name}</p>
+                  <p className="text-xs text-gray-500">{u.email} · Geschäftsführung</p>
+                </div>
+                <Select
+                  value={assignChoice[u.id] ?? ''}
+                  onChange={e => setAssignChoice(prev => ({ ...prev, [u.id]: e.target.value }))}
+                  className="w-48"
+                >
+                  <option value="">Träger wählen…</option>
+                  {CUSTOMERS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </Select>
+                <Button onClick={() => assignToCustomer('companyUser', u.id)}>Zuordnen</Button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="space-y-4">
           {CUSTOMERS.map(c => (

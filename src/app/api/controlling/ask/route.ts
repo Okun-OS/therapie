@@ -70,6 +70,7 @@ Antworte ausschließlich auf Basis der obigen Daten.`
     const answer = response.content[0].type === 'text' ? response.content[0].text : ''
     return NextResponse.json({ answer })
   } catch (err: unknown) {
+    console.error('controlling/ask', err)
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
     return NextResponse.json({ error: message }, { status: 500 })
   }

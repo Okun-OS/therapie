@@ -149,6 +149,7 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
 
     return NextResponse.json({ reply, draft: nextDraft })
   } catch (err: unknown) {
+    console.error('employee-creation-chat', err)
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
     return NextResponse.json({ error: message }, { status: 500 })
   }

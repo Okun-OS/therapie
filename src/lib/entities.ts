@@ -144,6 +144,50 @@ export async function reassignLocationAdmin(locationId: string, newAdminEmployee
   })
 }
 
+export interface UnassignedLocation {
+  id: string
+  name: string
+  city: string
+  employeeCount: number
+}
+
+export interface UnassignedCompanyUser {
+  id: string
+  name: string
+  email: string
+}
+
+/** Einrichtungen/Accounts aus der Zeit vor der Mandanten-Trennung (#121-126)
+ * haben kein customerId, weil die Beziehung Einrichtung→Träger vorher gar
+ * nicht in den Daten existierte. listUnassigned* macht diese Altlasten für
+ * die OKUN-Plattformverwaltung sichtbar, damit sie einmalig zugeordnet werden
+ * können (siehe assignLocationToCustomer/assignCompanyUserToCustomer). */
+export async function listUnassignedLocations(): Promise<UnassignedLocation[]> {
+  const rows = await prisma.location.findMany({ where: { customerId: null }, orderBy: { name: 'asc' } })
+  return rows.map(r => ({ id: r.id, name: r.name, city: r.city, employeeCount: r.employeeCount }))
+}
+
+export async function listUnassignedCompanyUsers(): Promise<UnassignedCompanyUser[]> {
+  const rows = await prisma.user.findMany({ where: { role: 'company', customerId: null }, orderBy: { name: 'asc' } })
+  return rows.map(r => ({ id: r.id, name: r.name, email: r.email }))
+}
+
+/** Ordnet eine Altlast-Einrichtung einmalig einem Träger zu und kaskadiert das
+ * automatisch auf alle ihre Mitarbeiter und Accounts (Einrichtungsleitung,
+ * Mitarbeiter-Logins), die noch kein customerId haben – deren Zuordnung lässt
+ * sich aus der bestehenden locationId zweifelsfrei ableiten. */
+export async function assignLocationToCustomer(locationId: string, customerId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.location.update({ where: { id: locationId }, data: { customerId } }),
+    prisma.employee.updateMany({ where: { locationId, customerId: null }, data: { customerId } }),
+    prisma.user.updateMany({ where: { locationId, customerId: null }, data: { customerId } }),
+  ])
+}
+
+export async function assignCompanyUserToCustomer(userId: string, customerId: string): Promise<void> {
+  await prisma.user.update({ where: { id: userId }, data: { customerId } })
+}
+
 export async function updateCustomer(id: string, updates: Partial<Customer>): Promise<Customer | undefined> {
   const { id: _ignored, ...data } = updates as any
   const row = await prisma.customer.update({ where: { id }, data }).catch(() => null)

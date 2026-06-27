@@ -220,6 +220,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ reply, state: savedState })
   } catch (err: unknown) {
+    console.error('onboarding-chat', err)
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
     return NextResponse.json({ error: message }, { status: 500 })
   }

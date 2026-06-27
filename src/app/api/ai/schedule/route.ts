@@ -264,6 +264,7 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
 
     return NextResponse.json(parsed)
   } catch (err: unknown) {
+    console.error('schedule', err)
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
     return NextResponse.json({ error: message }, { status: 500 })
   }
