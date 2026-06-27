@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
 import { ToastProvider } from '@/lib/toast-context'
+import { PwaInstallPrompt } from '@/components/PwaInstallPrompt'
 
 export const metadata: Metadata = {
   title: 'OKUN Workforce – Open Workforce',
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <ToastProvider>
             {children}
+            <PwaInstallPrompt />
           </ToastProvider>
         </AuthProvider>
       </body>

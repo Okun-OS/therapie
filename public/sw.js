@@ -6,6 +6,8 @@ self.addEventListener('activate', event => {
   event.waitUntil(self.clients.claim())
 })
 
+self.addEventListener('fetch', () => {})
+
 self.addEventListener('push', event => {
   let data = { title: 'OKUN Workforce', body: '' }
   try {
