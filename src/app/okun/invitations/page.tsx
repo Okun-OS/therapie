@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useToast } from '@/lib/toast-context'
 import { Mail, Plus, Send, RotateCw, Ban } from 'lucide-react'
-import type { Role, Invitation } from '@/lib/types'
+import type { Role, Invitation, Customer } from '@/lib/types'
 
 const STATUS_BADGE: Record<string, { label: string; variant: 'success' | 'info' | 'warning' }> = {
   pending: { label: 'Ausstehend', variant: 'warning' },
@@ -27,8 +27,9 @@ const ROLE_LABEL: Record<Role, string> = {
 export default function OkunInvitations() {
   const { showToast } = useToast()
   const [invitations, setInvitations] = useState<Invitation[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ email: '', role: 'company' as Role, customerName: '' })
+  const [form, setForm] = useState({ email: '', role: 'company' as Role, customerId: '', customerName: '' })
   const [errors, setErrors] = useState<string[]>([])
   const [sending, setSending] = useState(false)
   const [actingId, setActingId] = useState<string | null>(null)
@@ -42,6 +43,10 @@ export default function OkunInvitations() {
 
   useEffect(() => {
     loadInvitations()
+    fetch('/api/customers')
+      .then(res => res.json())
+      .then(data => setCustomers(data.customers ?? []))
+      .catch(() => {})
   }, [])
 
   const handleSend = async () => {
@@ -67,7 +72,7 @@ export default function OkunInvitations() {
       showToast('Einladung versendet', 'success')
       setModal(false)
       setErrors([])
-      setForm({ email: '', role: 'company', customerName: '' })
+      setForm({ email: '', role: 'company', customerId: '', customerName: '' })
       loadInvitations()
     } catch {
       setErrors(['Verbindung fehlgeschlagen. Bitte erneut versuchen.'])
@@ -192,12 +197,30 @@ export default function OkunInvitations() {
             <option value="admin">Standortleitung</option>
             <option value="employee">Mitarbeiter</option>
           </Select>
-          <Input
-            label="Organisation (optional)"
-            value={form.customerName}
-            onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
-            placeholder="z.B. Lebenshilfe Rheinland"
-          />
+          {(form.role === 'company' || form.role === 'admin') && (
+            <Select
+              label="Unternehmen"
+              value={form.customerId}
+              onChange={e => {
+                const customerId = e.target.value
+                const customer = customers.find(c => c.id === customerId)
+                setForm(f => ({ ...f, customerId, customerName: customer?.name ?? f.customerName }))
+              }}
+              hint={!form.customerId ? 'Ohne Zuordnung kann diese Person später keine Mitarbeiter anlegen, bis ein OKUN-Administrator sie manuell zuordnet.' : undefined}
+            >
+              <option value="">Keine Zuordnung (später manuell zuordnen)</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+          )}
+          {!form.customerId && (
+            <Input
+              label="Organisation (optional, nur Anzeigename)"
+              value={form.customerName}
+              onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
+              placeholder="z.B. Lebenshilfe Rheinland"
+              hint="Neue Organisationen bitte über 'Kunde anlegen' in Kunden & Organisationen anlegen, damit Standorte und Mitarbeiter korrekt zugeordnet werden können."
+            />
+          )}
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setModal(false); setErrors([]) }}>Abbrechen</Button>
             <Button className="flex-1 gap-2" onClick={handleSend} loading={sending}>

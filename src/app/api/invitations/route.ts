@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const body = await req.json()
-  const { email, role, name, customerName, employeeId, locationId } = body
+  const { email, role, name, customerName, customerId, employeeId, locationId } = body
 
   if (!email || typeof email !== 'string' || !email.trim()) {
     return NextResponse.json({ error: 'E-Mail ist erforderlich' }, { status: 400 })
@@ -40,11 +40,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Rolle' }, { status: 400 })
   }
 
+  let resolvedCustomerName = customerName
+  if (customerId) {
+    const customer = await prisma.customer.findUnique({ where: { id: customerId } })
+    if (!customer) {
+      return NextResponse.json({ error: 'Unternehmen nicht gefunden' }, { status: 400 })
+    }
+    resolvedCustomerName = customer.name
+  }
+
   const invitation = await createAndSendInvitation(getAppOrigin(req), {
     email,
     role,
     name,
-    customerName,
+    customerName: resolvedCustomerName,
+    customerId,
     employeeId,
     locationId,
   })

@@ -160,12 +160,15 @@ export interface UnassignedCompanyUser {
   id: string
   name: string
   email: string
+  role: 'company' | 'admin'
 }
 
 /** Standorte/Accounts aus der Zeit vor der Mandanten-Trennung (#121-126)
  * haben kein customerId, weil die Beziehung Standort→Unternehmen vorher gar
- * nicht in den Daten existierte. listUnassigned* macht diese Altlasten für
- * die OKUN-Plattformverwaltung sichtbar, damit sie einmalig zugeordnet werden
+ * nicht in den Daten existierte. Das betrifft auch admin-Accounts (Standort-
+ * leitung), die über die OKUN-Einladungsseite ohne Unternehmens-Zuordnung
+ * eingeladen wurden. listUnassigned* macht diese Altlasten für die
+ * OKUN-Plattformverwaltung sichtbar, damit sie einmalig zugeordnet werden
  * können (siehe assignLocationToCustomer/assignCompanyUserToCustomer). */
 export async function listUnassignedLocations(): Promise<UnassignedLocation[]> {
   const rows = await prisma.location.findMany({ where: { customerId: null }, orderBy: { name: 'asc' } })
@@ -173,8 +176,8 @@ export async function listUnassignedLocations(): Promise<UnassignedLocation[]> {
 }
 
 export async function listUnassignedCompanyUsers(): Promise<UnassignedCompanyUser[]> {
-  const rows = await prisma.user.findMany({ where: { role: 'company', customerId: null }, orderBy: { name: 'asc' } })
-  return rows.map(r => ({ id: r.id, name: r.name, email: r.email }))
+  const rows = await prisma.user.findMany({ where: { role: { in: ['company', 'admin'] }, customerId: null }, orderBy: { name: 'asc' } })
+  return rows.map(r => ({ id: r.id, name: r.name, email: r.email, role: r.role as 'company' | 'admin' }))
 }
 
 /** Ordnet einen Altlast-Standort einmalig einem Unternehmen zu und kaskadiert das

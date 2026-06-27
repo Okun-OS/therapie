@@ -12,7 +12,12 @@ import { Building2, Plus, Mail, ChevronRight, Edit, Users, KeyRound, AlertTriang
 import type { Customer, CustomerStatus, LicensePlan } from '@/lib/types'
 
 interface UnassignedLocation { id: string; name: string; city: string; employeeCount: number }
-interface UnassignedCompanyUser { id: string; name: string; email: string }
+interface UnassignedCompanyUser { id: string; name: string; email: string; role: 'company' | 'admin' }
+
+const UNASSIGNED_ROLE_LABEL: Record<'company' | 'admin', string> = {
+  company: 'Geschäftsführung',
+  admin: 'Standortleitung',
+}
 
 const STATUS_BADGE: Record<CustomerStatus, { label: string; variant: 'success' | 'info' | 'warning' | 'danger' }> = {
   trial: { label: 'Test', variant: 'info' },
@@ -179,7 +184,7 @@ export default function OkunCustomers() {
               <div key={u.id} className="flex items-center gap-2 bg-white rounded-xl p-3 border border-gray-100">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-navy truncate">{u.name}</p>
-                  <p className="text-xs text-gray-500">{u.email} · Geschäftsführung</p>
+                  <p className="text-xs text-gray-500">{u.email} · {UNASSIGNED_ROLE_LABEL[u.role]}</p>
                 </div>
                 <Select
                   value={assignChoice[u.id] ?? ''}
