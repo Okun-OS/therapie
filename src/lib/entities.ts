@@ -104,8 +104,13 @@ export async function getEmployeesByLocation(locationId: string): Promise<Employ
 
 export async function updateEmployee(id: string, updates: Partial<Employee>): Promise<Employee | undefined> {
   const { id: _ignored, ...data } = updates as any
-  const row = await prisma.employee.update({ where: { id }, data }).catch(() => null)
-  return row ? toEmployee(row) : undefined
+  try {
+    const row = await prisma.employee.update({ where: { id }, data })
+    return toEmployee(row)
+  } catch (err: any) {
+    if (err?.code === 'P2025') return undefined
+    throw err
+  }
 }
 
 export async function addLocation(input: { name: string; address: string; city: string; state?: string; customerId?: string }): Promise<Location> {

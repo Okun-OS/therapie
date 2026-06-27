@@ -1,7 +1,8 @@
 'use client'
 
-import { Bell } from 'lucide-react'
+import { Bell, LogOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { formatRelativeTime } from '@/lib/utils'
 import { Logo } from '@/components/ui/Logo'
@@ -20,9 +21,16 @@ interface NotificationItem {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const router = useRouter()
   const [notifOpen, setNotifOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
+
+  const handleLogout = () => {
+    logout()
+    router.push('/login')
+  }
 
   const loadNotifications = (employeeId: string) => {
     fetch(`/api/notifications?employeeId=${employeeId}`)
@@ -114,9 +122,33 @@ export function Header({ title, subtitle }: HeaderProps) {
           )}
         </div>
 
-        {/* Avatar */}
-        <div className="w-9 h-9 rounded-full bg-navy flex items-center justify-center font-bold text-brand text-sm flex-shrink-0">
-          {user?.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+        {/* Profile / Logout */}
+        <div className="relative">
+          <button
+            onClick={() => setProfileOpen(!profileOpen)}
+            className="w-9 h-9 rounded-full bg-navy flex items-center justify-center font-bold text-brand text-sm flex-shrink-0 hover:ring-2 hover:ring-brand/40 transition-all"
+          >
+            {user?.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+          </button>
+
+          {profileOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+              <div className="absolute right-0 top-12 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-sm font-semibold text-navy truncate">{user?.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+                >
+                  <LogOut size={16} />
+                  Abmelden
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>

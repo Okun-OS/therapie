@@ -16,7 +16,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (session instanceof NextResponse) return session
 
   const updates = await req.json()
-  const employee = await updateEmployee(params.id, updates)
-  if (!employee) return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
-  return NextResponse.json({ employee })
+  try {
+    const employee = await updateEmployee(params.id, updates)
+    if (!employee) return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
+    return NextResponse.json({ employee })
+  } catch (err: unknown) {
+    console.error('employees PATCH', err)
+    const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }

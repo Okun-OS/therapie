@@ -11,8 +11,9 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
+import { EmployeeCreationForm } from '@/components/employees/EmployeeCreationForm'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight, MessageCircle } from 'lucide-react'
+import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight, MessageCircle, Sparkles, ListChecks } from 'lucide-react'
 import type { Employee, OvertimeRequest, Absence } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 
@@ -35,6 +36,8 @@ export default function AdminEmployees() {
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', email: '', position: '', weeklyHours: 38 })
   const [chatOpen, setChatOpen] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [editChatEmployee, setEditChatEmployee] = useState<Employee | null>(null)
   const [editChatDraft, setEditChatDraft] = useState<EmployeeDraft | null>(null)
   const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
@@ -91,6 +94,14 @@ export default function AdminEmployees() {
       .catch(() => setHumanContext(null))
   }, [selectedEmployee])
 
+  async function parseEmployeeResponse(res: Response): Promise<Employee> {
+    const data = await res.json().catch(() => null)
+    if (!res.ok || !data?.employee) {
+      throw new Error(data?.error || 'Mitarbeiter konnte nicht gespeichert werden')
+    }
+    return data.employee as Employee
+  }
+
   const startEditing = (emp: Employee) => {
     setEditForm({ name: emp.name, email: emp.email, position: emp.position, weeklyHours: emp.weeklyHours })
     setIsEditing(true)
@@ -102,15 +113,19 @@ export default function AdminEmployees() {
       showToast('Bitte alle Pflichtfelder ausfüllen', 'error')
       return
     }
-    const updated = await fetch(`/api/employees/${selectedEmployee.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
-    }).then(r => r.json()).then(d => d.employee)
-    setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
-    showToast('Mitarbeiter aktualisiert', 'success')
-    setIsEditing(false)
-    setSelectedEmployee(null)
+    try {
+      const updated = await parseEmployeeResponse(await fetch(`/api/employees/${selectedEmployee.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      }))
+      setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
+      showToast('Mitarbeiter aktualisiert', 'success')
+      setIsEditing(false)
+      setSelectedEmployee(null)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Mitarbeiter konnte nicht aktualisiert werden', 'error')
+    }
   }
 
   function patchFieldsFromDraft(draft: EmployeeDraft) {
@@ -198,24 +213,23 @@ export default function AdminEmployees() {
   // addEmployeeWithInvitation ihn komplett neu an.
   const handleSaveFromChat = async (draft: EmployeeDraft, employeeId: string | null) => {
     if (!draft.name?.trim() || !draft.email?.trim()) {
-      showToast('Name und E-Mail werden benötigt, um den Mitarbeiter zu speichern', 'error')
-      return
+      throw new Error('Name und E-Mail werden benötigt, um den Mitarbeiter zu speichern')
     }
 
     let employee: Employee
     let emailSent: boolean
 
     if (employeeId) {
-      employee = await fetch(`/api/employees/${employeeId}`, {
+      employee = await parseEmployeeResponse(await fetch(`/api/employees/${employeeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patchFieldsFromDraft(draft)),
-      }).then(r => r.json()).then(d => d.employee)
+      }))
       setAllEmployees(prev => prev.map(e => e.id === employee.id ? employee : e))
       const inviteResult = await fetch(`/api/employees/${employeeId}/invite`, { method: 'POST' }).then(r => r.json())
       emailSent = !!inviteResult.emailSent
     } else {
-      const created = await fetch('/api/employees', {
+      const res = await fetch('/api/employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -235,9 +249,13 @@ export default function AdminEmployees() {
           qualifications: draft.qualifications,
           allowedTasks: draft.allowedTasks,
         }),
-      }).then(r => r.json())
-      employee = created.employee
-      emailSent = created.emailSent
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.employee) {
+        throw new Error(data?.error || 'Mitarbeiter konnte nicht angelegt werden')
+      }
+      employee = data.employee
+      emailSent = !!data.emailSent
       setAllEmployees(prev => [...prev, employee])
     }
 
@@ -252,11 +270,11 @@ export default function AdminEmployees() {
 
   const handleUpdateFromChat = async (draft: EmployeeDraft) => {
     if (!editChatEmployee) return
-    const updated = await fetch(`/api/employees/${editChatEmployee.id}`, {
+    const updated = await parseEmployeeResponse(await fetch(`/api/employees/${editChatEmployee.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patchFieldsFromDraft(draft)),
-    }).then(r => r.json()).then(d => d.employee)
+    }))
     setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
     await saveHumanContextFromDraft(editChatEmployee.id, draft)
     showToast('Profil aktualisiert', 'success')
@@ -292,10 +310,39 @@ export default function AdminEmployees() {
               placeholder="Mitarbeiter suchen..."
             />
           </div>
-          <Button size="md" onClick={() => setChatOpen(true)} className="gap-2 whitespace-nowrap">
-            <Plus size={16} />
-            <span className="hidden sm:inline">Mitarbeiter</span>
-          </Button>
+          <div className="relative">
+            <Button size="md" onClick={() => setAddMenuOpen(!addMenuOpen)} className="gap-2 whitespace-nowrap">
+              <Plus size={16} />
+              <span className="hidden sm:inline">Mitarbeiter</span>
+            </Button>
+            {addMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
+                <div className="absolute right-0 top-12 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                  <button
+                    onClick={() => { setAddMenuOpen(false); setChatOpen(true) }}
+                    className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <Sparkles size={16} className="text-brand mt-0.5 flex-shrink-0" />
+                    <span>
+                      <span className="block text-sm font-semibold text-navy">Per KI-Chat anlegen</span>
+                      <span className="block text-xs text-gray-500">Geführt, ideal für einzelne Mitarbeiter</span>
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => { setAddMenuOpen(false); setFormOpen(true) }}
+                    className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors border-t border-gray-100"
+                  >
+                    <ListChecks size={16} className="text-brand mt-0.5 flex-shrink-0" />
+                    <span>
+                      <span className="block text-sm font-semibold text-navy">Klassisches Formular</span>
+                      <span className="block text-xs text-gray-500">Schnell, ideal für mehrere Mitarbeiter</span>
+                    </span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Stats Bar */}
@@ -543,6 +590,12 @@ export default function AdminEmployees() {
         onClose={() => setChatOpen(false)}
         onSave={handleSaveFromChat}
         onDraftSync={handleDraftSync}
+      />
+
+      <EmployeeCreationForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSave={draft => handleSaveFromChat(draft, null)}
       />
 
       <EmployeeCreationChat

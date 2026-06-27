@@ -91,6 +91,9 @@ export function EmployeeCreationChat({
           ? { title: 'Profil aktualisiert', items: ['Änderungen am Mitarbeiterprofil gespeichert'] }
           : { title: 'Mitarbeiter angelegt', items: [`${draft.name ?? 'Mitarbeiter'} wurde im System angelegt`, 'Einladung per E-Mail wird versendet'] },
       )
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Entschuldige, da ist etwas schiefgelaufen.'
+      setMessages(prev => [...prev, { role: 'assistant', content: `${message} Du kannst es gerne erneut versuchen.` }])
     } finally {
       setSaving(false)
     }
