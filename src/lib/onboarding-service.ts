@@ -62,6 +62,18 @@ export async function upsertLocationOnboarding(locationId: string, update: Locat
   })
 }
 
+/** Ergänzt die dauerhafte Regelwissensbasis eines Standorts um neue Einträge,
+ * z.B. aus dem Dienstplan-Planungschat ("Frühdienst für 35h-Mitarbeiter ist
+ * immer 06:00–13:30"). Im Unterschied zu upsertLocationOnboarding (volles
+ * Überschreiben durch den Onboarding-Wizard) hängt diese Funktion nur an und
+ * verwirft dabei doppelte Regeln. */
+export async function appendLocationIndividuelleRegeln(locationId: string, newRules: string[]): Promise<void> {
+  const existing = await prisma.locationOnboarding.findUnique({ where: { locationId }, select: { individuelleRegeln: true } })
+  const current = existing?.individuelleRegeln ?? []
+  const merged = [...current, ...newRules.filter(r => !current.includes(r))]
+  await upsertLocationOnboarding(locationId, { individuelleRegeln: merged })
+}
+
 // All 12 Phasen aus 02_ONBOARDING_CHAT.md – die Reihenfolge dient nur der
 // Anzeige/Fortschrittsmessung, die KI darf im Gespräch frei zwischen
 // zusammenhängenden Themen wechseln.

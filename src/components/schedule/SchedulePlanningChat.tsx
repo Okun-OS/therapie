@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { AiChatPanel, type ChatMessage, type ChatCompletion } from '@/components/ui/AiChatPanel'
 import { CalendarCheck } from 'lucide-react'
 import type { SchedulePlanningDraft } from '@/lib/schedule-planning-draft'
-import { draftToNoteStrings } from '@/lib/schedule-planning-draft'
+import { draftToNoteStrings, draftToPermanentRuleStrings } from '@/lib/schedule-planning-draft'
 
 const opening = (periodLabel: string) =>
   `Lass uns kurz die Besonderheiten für den Zeitraum ${periodLabel} besprechen. Gibt es in diesem Zeitraum besondere Ereignisse, die die Planung beeinflussen, z.B. ein Fest, eine Fortbildung oder ein Schließtag?`
@@ -19,7 +19,7 @@ export function SchedulePlanningChat({
 }: {
   open: boolean
   onClose: () => void
-  onSave: (notes: string[]) => Promise<void>
+  onSave: (notes: string[], permanentRules: string[]) => Promise<void>
   periodLabel: string
 }) {
   const openingMessage = opening(periodLabel)
@@ -67,8 +67,9 @@ export function SchedulePlanningChat({
   async function handleSave() {
     setSaving(true)
     try {
-      await onSave(draftToNoteStrings(draft))
-      setCompletion({ title: 'Planungsbesonderheiten übernommen', items: notePreview.length > 0 ? notePreview : ['Besonderheiten für diesen Zeitraum gespeichert'] })
+      await onSave(draftToNoteStrings(draft), draftToPermanentRuleStrings(draft))
+      const items = [...notePreview, ...permanentRulePreview]
+      setCompletion({ title: 'Planungsbesonderheiten übernommen', items: items.length > 0 ? items : ['Besonderheiten für diesen Zeitraum gespeichert'] })
     } finally {
       setSaving(false)
     }
@@ -80,6 +81,7 @@ export function SchedulePlanningChat({
   }
 
   const notePreview = draftToNoteStrings(draft)
+  const permanentRulePreview = draftToPermanentRuleStrings(draft)
 
   return (
     <Modal open={open} onClose={() => { reset(); onClose() }} title="Planungsbesonderheiten per KI-Chat erfassen" size="lg">
@@ -95,10 +97,19 @@ export function SchedulePlanningChat({
           !completion ? (
             <>
               {notePreview.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-1.5">
+                <div className="mb-2 flex flex-wrap gap-1.5">
                   {notePreview.map((n, i) => (
                     <span key={i} className="inline-flex items-center bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded-full">
                       {n}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {permanentRulePreview.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  {permanentRulePreview.map((r, i) => (
+                    <span key={i} className="inline-flex items-center bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                      Dauerhafte Regel: {r}
                     </span>
                   ))}
                 </div>

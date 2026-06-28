@@ -21,6 +21,10 @@ Phase 3 – Besondere Mitarbeiterinformationen: "Gibt es Besonderheiten zu einze
 
 Phase 4 – Abschluss: Fasse kurz zusammen, was du notiert hast (oder dass nichts Besonderes vorliegt) und frage, ob das so passt. Sobald die Leitung bestätigt, ist das Gespräch abgeschlossen.
 
+## Dauerhafte Regeln erkennen (gilt in JEDER Phase)
+Achte während des gesamten Gesprächs darauf, ob eine Aussage der Leitung eigentlich KEINE Besonderheit für diesen einen Zeitraum ist, sondern eine generelle, dauerhaft gültige Regel für den Standort. Erkennungsmerkmal: die Aussage ist nicht an "diese Woche"/"diesen Monat" gebunden, sondern beschreibt, wie es IMMER oder GRUNDSÄTZLICH sein soll. Beispiele für dauerhafte Regeln: "Frühdienst für 35h-Mitarbeiter ist immer 06:00–13:30 Uhr", "Vollzeitkräfte bekommen im Frühdienst grundsätzlich 06:00–14:30 Uhr", "Montags ist in Gruppe Blau grundsätzlich eine Person mehr eingeplant". Im Gegensatz dazu sind Aussagen wie "Tim hat diese Woche Urlaub", "am Montag brauchen wir in Gruppe Blau eine Person mehr" oder "plane Lisa diese Woche nur vormittags ein" eindeutig auf den aktuellen Zeitraum beschränkt und gehören zu Phase 1–3.
+Wenn du eine dauerhafte Regel erkennst, frage kurz nach, ob das ab jetzt dauerhaft für den Standort gelten soll (z.B. "Soll das ab jetzt dauerhaft für alle Frühdienste von 35h-Mitarbeitern gelten, nicht nur für diesen Zeitraum?"). Bestätigt die Leitung das, rufe das Tool mit dem vollständigen, kumulierten Stand der "permanentRules" auf (zusätzlich zu den übrigen Feldern) – diese Regeln werden dauerhaft in der Standort-Wissensbasis gespeichert, nicht nur für diesen Zeitraum. Verneint die Leitung oder ist unklar, ob es dauerhaft gemeint ist, behandle die Aussage wie eine normale Besonderheit für diesen Zeitraum (Phase 1–3) und füge sie NICHT zu "permanentRules" hinzu.
+
 Regeln:
 1. Sprich die Leitung direkt mit "Du" an, freundlich und professionell, aber locker.
 2. Bündele zusammenhängende Fragen (max. zwei pro Nachricht), keine langen Frageblöcke.
@@ -30,7 +34,7 @@ Regeln:
 6. Antworte IMMER zusätzlich mit einem kurzen Text, auch wenn du das Tool aufrufst.
 7. Erfinde niemals Angaben, die nicht genannt wurden.
 8. Schreibe ausschließlich auf Deutsch.
-9. Die hier erfassten Informationen gelten NUR für die aktuelle Planungsperiode, nie dauerhaft.`
+9. Die in "events", "tasks" und "employeeNotes" erfassten Informationen gelten NUR für die aktuelle Planungsperiode, nie dauerhaft. Nur "permanentRules" wird dauerhaft gespeichert, und nur nach ausdrücklicher Bestätigung der Leitung (siehe oben).`
 
 const TOOL = {
   name: 'update_planning_draft',
@@ -54,6 +58,7 @@ const TOOL = {
         },
       },
       employeeNotes: { type: 'array', items: { type: 'string' } },
+      permanentRules: { type: 'array', items: { type: 'string' } },
       currentPhase: { type: 'number' },
       readyToSave: { type: 'boolean' },
     },
@@ -116,6 +121,7 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
           ...(Array.isArray(input.events) && { events: input.events as string[] }),
           ...(Array.isArray(input.tasks) && { tasks: input.tasks as ScheduleTask[] }),
           ...(Array.isArray(input.employeeNotes) && { employeeNotes: input.employeeNotes as string[] }),
+          ...(Array.isArray(input.permanentRules) && { permanentRules: input.permanentRules as string[] }),
           ...(typeof input.currentPhase === 'number' && { currentPhase: input.currentPhase }),
           ...(typeof input.readyToSave === 'boolean' && { readyToSave: input.readyToSave }),
         }

@@ -214,7 +214,7 @@ export default function AdminSchedule() {
     ).then(results => setPeriodNotes(results.flat()))
   }, [locationId, periodWeeks])
 
-  async function savePlanningChatNotes(notes: string[]) {
+  async function savePlanningChatNotes(notes: string[], permanentRules: string[]) {
     for (const note of notes) {
       const res = await fetch('/api/scheduling-period-notes', {
         method: 'POST',
@@ -224,7 +224,14 @@ export default function AdminSchedule() {
       const json = await res.json()
       if (json.note) setPeriodNotes(prev => [...prev, json.note])
     }
-    showToast(notes.length > 0 ? 'Besonderheiten übernommen' : 'Danke, notiert')
+    if (permanentRules.length > 0) {
+      await fetch('/api/location-onboarding/individuelle-regeln', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId, rules: permanentRules }),
+      })
+    }
+    showToast(notes.length > 0 || permanentRules.length > 0 ? 'Besonderheiten übernommen' : 'Danke, notiert')
   }
 
   async function removePeriodNote(id: string) {
