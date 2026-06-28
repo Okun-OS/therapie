@@ -301,7 +301,10 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
   const maxTokens = Math.min(32000, Math.max(8192, 2000 + cellCount * 130))
 
   try {
-    const response = await client.messages.create({
+    // Use streaming: the Anthropic SDK refuses non-streaming calls whose maxTokens
+    // implies a request that could take longer than 10 minutes (our dynamic
+    // maxTokens can exceed that threshold for long planning periods).
+    const stream = client.messages.stream({
       model: 'claude-opus-4-7',
       max_tokens: maxTokens,
       system: [
@@ -313,6 +316,7 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
       ],
       messages: [{ role: 'user', content: userPrompt }],
     })
+    const response = await stream.finalMessage()
 
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
 
