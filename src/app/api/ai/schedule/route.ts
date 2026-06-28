@@ -295,10 +295,15 @@ Die Leitung hat folgende Rückfrage aus einer vorherigen Planung mit JA beantwor
 Erstelle den Plan so, dass diese Verbesserung umgesetzt wird. Setze "decisionQuestion" in dieser Antwort auf null.` : ''}
 Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor oder danach.`
 
+  // The schedule grid (employees × days) dominates response size; scale the
+  // token budget with it instead of a fixed cap that truncates longer periods.
+  const cellCount = activeEmployees.length * weekDates.length
+  const maxTokens = Math.min(32000, Math.max(8192, 2000 + cellCount * 130))
+
   try {
     const response = await client.messages.create({
       model: 'claude-opus-4-7',
-      max_tokens: 8192,
+      max_tokens: maxTokens,
       system: [
         {
           type: 'text',
