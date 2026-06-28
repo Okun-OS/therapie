@@ -1,7 +1,34 @@
 // Echte Postgres-Persistenz für Dienstplanung (ersetzt SHIFTS, SCHEDULE_ENTRIES,
 // SWAP_REQUESTS und WISH_SUBMISSIONS aus mock-data.ts). Server-only.
 import { prisma } from './prisma'
-import type { Shift, ScheduleEntry, SwapRequest, WishSubmission, ShiftType, WishImportance } from './types'
+import type { Shift, ScheduleEntry, SwapRequest, WishSubmission, ShiftType, WishImportance, LocationPlanningRules } from './types'
+
+const DEFAULT_PLANNING_RULES: Omit<LocationPlanningRules, 'locationId'> = {
+  maxWeeklyHours: 40,
+  restHours: 11,
+  maxConsecutiveDays: 5,
+  fridayLateMax: 2,
+  mondayEarlyMax: 3,
+  fridayEarlyMax: 3,
+  weekendMax: 2,
+  considerWishes: true,
+  balanceHoursAccount: true,
+}
+
+function toPlanningRules(row: any): LocationPlanningRules {
+  return {
+    locationId: row.locationId,
+    maxWeeklyHours: row.maxWeeklyHours,
+    restHours: row.restHours,
+    maxConsecutiveDays: row.maxConsecutiveDays,
+    fridayLateMax: row.fridayLateMax,
+    mondayEarlyMax: row.mondayEarlyMax,
+    fridayEarlyMax: row.fridayEarlyMax,
+    weekendMax: row.weekendMax,
+    considerWishes: row.considerWishes,
+    balanceHoursAccount: row.balanceHoursAccount,
+  }
+}
 
 function toShift(row: any): Shift {
   return {
@@ -222,4 +249,26 @@ export async function addWishSubmission(input: {
 export async function updateWishSubmission(id: string, updates: Partial<WishSubmission>): Promise<void> {
   const { id: _ignored, ...data } = updates as any
   await prisma.wishSubmission.update({ where: { id }, data }).catch(() => null)
+}
+
+/** Liefert die Planungsregeln eines Standorts; fällt auf Systemstandard zurück,
+ * solange der Standort noch keine eigenen Regeln gespeichert hat. */
+export async function getPlanningRules(locationId: string): Promise<LocationPlanningRules> {
+  const row = await prisma.locationPlanningRules.findUnique({ where: { locationId } })
+  return row ? toPlanningRules(row) : { locationId, ...DEFAULT_PLANNING_RULES }
+}
+
+export async function upsertPlanningRules(
+  locationId: string,
+  update: Partial<Omit<LocationPlanningRules, 'locationId'>>,
+): Promise<LocationPlanningRules> {
+  const existing = await prisma.locationPlanningRules.findUnique({ where: { locationId } })
+  const base = existing ? toPlanningRules(existing) : { locationId, ...DEFAULT_PLANNING_RULES }
+  const { locationId: _ignored, ...data } = { ...base, ...update }
+  const row = await prisma.locationPlanningRules.upsert({
+    where: { locationId },
+    create: { locationId, ...data },
+    update: data,
+  })
+  return toPlanningRules(row)
 }

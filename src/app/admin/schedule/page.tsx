@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -138,13 +139,16 @@ export default function AdminSchedule() {
   useEffect(() => {
     const saved = localStorage.getItem('facilityDescription')
     if (saved) setFacilityDescription(saved)
-    const rules = localStorage.getItem('planningRules')
-    if (rules) {
-      const parsed = { ...DEFAULT_RULES, ...JSON.parse(rules) }
+  }, [])
+
+  useEffect(() => {
+    fetch(`/api/planning-rules?locationId=${locationId}`).then(r => r.json()).then(d => {
+      if (!d.rules) return
+      const parsed = { ...DEFAULT_RULES, ...d.rules }
       setPlanningRules(parsed)
       setRulesDraft(parsed)
-    }
-  }, [])
+    })
+  }, [locationId])
 
 
   const periodWeeks = useMemo<Date[][]>(() => {
@@ -434,16 +438,20 @@ export default function AdminSchedule() {
 
   const handleSaveRules = async () => {
     setPlanningRules(rulesDraft)
-    localStorage.setItem('planningRules', JSON.stringify(rulesDraft))
-    await Promise.all(
-      Object.entries(minStaffDraft).map(([shiftId, minStaff]) =>
+    await Promise.all([
+      fetch('/api/planning-rules', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId, ...rulesDraft }),
+      }),
+      ...Object.entries(minStaffDraft).map(([shiftId, minStaff]) =>
         fetch(`/api/shifts/${shiftId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ minStaff }),
         })
-      )
-    )
+      ),
+    ])
     fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
     setRulesOpen(false)
     showToast('Planungsregeln gespeichert')
@@ -602,7 +610,20 @@ export default function AdminSchedule() {
 
             {/* AI Panel */}
             <div className={`rounded-2xl p-5 border-2 transition-all ${aiDone ? 'bg-green-50 border-green-200' : 'bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-100'}`}>
-              {!aiRunning && !aiDone ? (
+              {locationShifts.length === 0 ? (
+                <div className="flex items-center gap-3">
+                  <AlertTriangle size={24} className="text-amber-500 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-bold text-navy">Noch keine Schichten für diesen Standort angelegt</p>
+                    <p className="text-sm text-gray-600">Schließe das Standort-Onboarding ab, um Dienstzeiten und Schichten automatisch anzulegen – erst danach kann ein Dienstplan erstellt werden.</p>
+                  </div>
+                  <Link href="/admin/onboarding">
+                    <Button size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
+                      Zum Standort-Onboarding
+                    </Button>
+                  </Link>
+                </div>
+              ) : !aiRunning && !aiDone ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Sparkles size={18} className="text-purple-600" />

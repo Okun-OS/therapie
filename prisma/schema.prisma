@@ -364,6 +364,20 @@ model ScheduleEntry {
   createdAt  DateTime @default(now())
 }
 
+model LocationPlanningRules {
+  locationId          String   @id
+  maxWeeklyHours      Int      @default(40)
+  restHours           Int      @default(11)
+  maxConsecutiveDays  Int      @default(5)
+  fridayLateMax       Int      @default(2)
+  mondayEarlyMax      Int      @default(3)
+  fridayEarlyMax      Int      @default(3)
+  weekendMax          Int      @default(2)
+  considerWishes      Boolean  @default(true)
+  balanceHoursAccount Boolean  @default(true)
+  updatedAt           DateTime @updatedAt
+}
+
 model TimeLog {
   id           String   @id @default(cuid())
   employeeId   String

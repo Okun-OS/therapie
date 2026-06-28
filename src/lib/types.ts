@@ -65,6 +65,19 @@ export interface Shift {
   locationId: string
 }
 
+export interface LocationPlanningRules {
+  locationId: string
+  maxWeeklyHours: number
+  restHours: number
+  maxConsecutiveDays: number
+  fridayLateMax: number
+  mondayEarlyMax: number
+  fridayEarlyMax: number
+  weekendMax: number
+  considerWishes: boolean
+  balanceHoursAccount: boolean
+}
+
 export interface ScheduleEntry {
   id: string
   employeeId: string

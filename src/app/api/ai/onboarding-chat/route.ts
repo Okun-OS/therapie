@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { upsertOrganizationOnboarding, upsertLocationOnboarding, ONBOARDING_PHASES } from '@/lib/onboarding-service'
 import { listLocations } from '@/lib/entities'
-import { listShiftsByLocation, addShift, updateShift } from '@/lib/schedule-entities'
+import { listShiftsByLocation, addShift, updateShift, getPlanningRules, upsertPlanningRules } from '@/lib/schedule-entities'
 import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
 import type { ShiftType } from '@/lib/types'
 
@@ -42,8 +42,8 @@ Die 12 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reih
 1. Standort verstehen: Art des Standorts (Kita, Wohngruppe, Pflege, Jugendhilfe, Behindertenhilfe, ambulante Dienste, ...).
 2. Organisationsstruktur: Gruppen, Bereiche, Teams, Abteilungen, Wohnbereiche, Funktionsräume.
 3. Mitarbeiterstruktur: Rollen wie Leitung, Teamleitung, Springer, Auszubildende, Praktikanten, Verwaltung.
-4. Arbeitszeiten: Öffnungszeiten, Dienstmodelle (Früh/Spät/Nacht/24h), Bereitschaft, Wochenenden, Feiertage. Sobald der Nutzer eine konkrete, benannte Schicht mit Uhrzeiten nennt (z.B. "Frühschicht von 07:00 bis 14:00 Uhr", "Spätdienst 12:00 bis 18:00 Uhr"), rufe ZUSÄTZLICH das Tool "upsert_shifts" auf und übergib die VOLLSTÄNDIGE, aktuelle Liste aller bisher im Gespräch genannten benannten Schichten (nicht nur die neue) – das legt echte Dienstplan-Schichten im System an bzw. aktualisiert sie. Nenne der Person nie eine Schicht zweimal mit unterschiedlichem Namen, sondern aktualisiere bei Korrekturen ("der Frühdienst startet jetzt schon um 06:30") dieselbe Schicht per gleichem Namen.
-5. Dienstplanlogik: Mindestbesetzung, benötigte Qualifikationen, gesetzliche Vorgaben, feste/flexible Schichtmodelle.
+4. Arbeitszeiten: Öffnungszeiten, Dienstmodelle (Früh/Spät/Nacht/24h), Bereitschaft, Wochenenden, Feiertage. DIESE PHASE IST NICHT ABGESCHLOSSEN, bevor der Nutzer mindestens eine konkrete, benannte Schicht mit Uhrzeiten genannt hat (z.B. "Frühschicht von 07:00 bis 14:00 Uhr", "Spätdienst 12:00 bis 18:00 Uhr") – frage aktiv danach, falls noch keine genannt wurde, auch wenn der Nutzer nur allgemein von "Früh- und Spätdienst" spricht. Sobald eine konkrete Schicht mit Uhrzeiten genannt wird, rufe IMMER ZUSÄTZLICH das Tool "upsert_shifts" auf (nicht optional) und übergib die VOLLSTÄNDIGE, aktuelle Liste aller bisher im Gespräch genannten benannten Schichten (nicht nur die neue) – das legt echte Dienstplan-Schichten im System an bzw. aktualisiert sie. Ohne mindestens eine angelegte Schicht kann das System danach keinen Dienstplan erstellen. Nenne der Person nie eine Schicht zweimal mit unterschiedlichem Namen, sondern aktualisiere bei Korrekturen ("der Frühdienst startet jetzt schon um 06:30") dieselbe Schicht per gleichem Namen.
+5. Dienstplanlogik: Mindestbesetzung, benötigte Qualifikationen, gesetzliche Vorgaben, feste/flexible Schichtmodelle. Sobald der Nutzer konkrete Zahlen zu Planungsregeln nennt (z.B. "maximal 40 Stunden pro Woche", "mindestens 11 Stunden Ruhezeit zwischen zwei Diensten", "maximal 5 Tage in Folge", "maximal 2 Wochenenddienste im Monat", "Wunschdienste sollen berücksichtigt werden", "wir führen ein Stundenkonto zum Ausgleich von Mehr-/Minderstunden"), rufe ZUSÄTZLICH das Tool "upsert_planning_rules" auf und übergib nur die tatsächlich genannten Felder – das legt diese Regeln als echte Systemkonfiguration an, die bei jeder Dienstplanerstellung automatisch angewendet wird. Mindestbesetzung pro Schicht wird stattdessen direkt am jeweiligen Schicht-Eintrag über "upsert_shifts" (Feld "minStaff") gespeichert.
 6. Pausenlogik: automatisch geplant oder selbst verwaltet, Dauer, früheste/späteste Lage, feste Regeln.
 7. Wiederkehrende Aufgaben: z.B. Bürozeit, Dokumentation, Teamsitzung, Elterngespräche, Übergaben.
 8. Individuelle Regeln: freie Beschreibung von Besonderheiten (z.B. "Gruppe Rot braucht morgens zwei Fachkräfte"). Speichere jede Regel als eigenen, klar formulierten Satz in "individuelleRegeln".
@@ -55,9 +55,9 @@ Die 12 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reih
 Regeln:
 1. Sprich den Nutzer mit "Du" an, freundlich, kompetent, professionell.
 2. Stelle pro Nachricht nur ein bis zwei zusammenhängende Fragen, keine Frageblöcke.
-3. Rufe bei jeder neuen Information das Tool "update_location_onboarding" auf. Felder, die du dabei aktualisierst, MÜSSEN den vollständigen, aktuellen Stand enthalten (bereits Bekanntes + Neues), niemals nur das Neue. Trage in "completedPhases" alle Phasen-Keys ein, die inhaltlich ausreichend abgedeckt sind (phase1 … phase12). Rufe zusätzlich "upsert_shifts" auf, sobald konkrete, benannte Schichten mit Uhrzeiten genannt werden (siehe Phase 4).
+3. Rufe bei jeder neuen Information das Tool "update_location_onboarding" auf. Felder, die du dabei aktualisierst, MÜSSEN den vollständigen, aktuellen Stand enthalten (bereits Bekanntes + Neues), niemals nur das Neue. Trage in "completedPhases" alle Phasen-Keys ein, die inhaltlich ausreichend abgedeckt sind (phase1 … phase12). Rufe zusätzlich "upsert_shifts" auf, sobald konkrete, benannte Schichten mit Uhrzeiten genannt werden (siehe Phase 4), und "upsert_planning_rules", sobald konkrete Planungsregeln genannt werden (siehe Phase 5).
 4. Antworte IMMER zusätzlich mit einem kurzen Text, auch wenn du das Tool aufrufst.
-5. Der Chat darf erst enden bzw. "completed" darf erst auf true gesetzt werden, wenn alle 12 Phasen abgedeckt sind UND der Nutzer der Abschluss-Zusammenfassung ausdrücklich zugestimmt hat.
+5. Der Chat darf erst enden bzw. "completed" darf erst auf true gesetzt werden, wenn alle 12 Phasen abgedeckt sind, mindestens eine Schicht über "upsert_shifts" angelegt wurde UND der Nutzer der Abschluss-Zusammenfassung ausdrücklich zugestimmt hat. Das System lehnt einen Abschluss ohne mindestens eine angelegte Schicht automatisch ab – frage in diesem Fall aktiv nach konkreten Schichten, statt "completed" zu setzen.
 6. Falls der Nutzer bereits abgeschlossene Angaben später ändert ("Lernfähigkeit", z.B. "wir eröffnen ab nächstem Monat eine weitere Gruppe" oder "der Frühdienst startet jetzt schon um 06:30 Uhr"), erkenne das und aktualisiere die betroffenen Felder bzw. Schichten, ohne von vorne zu beginnen.
 7. Erfinde niemals Angaben, die nicht genannt wurden.
 8. Schreibe ausschließlich auf Deutsch.`
@@ -131,6 +131,25 @@ const SHIFTS_TOOL = {
   },
 }
 
+const PLANNING_RULES_TOOL = {
+  name: 'upsert_planning_rules',
+  description: 'Speichert die Dienstplan-Regeln (Rotation, Ruhezeiten, Wochenstunden, Wunschberücksichtigung, Stundenausgleich) dieses Standorts als echte Systemkonfiguration, die bei jeder Dienstplanerstellung automatisch angewendet wird. Nur tatsächlich genannte Felder übergeben; nicht genannte Felder bleiben unverändert.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      maxWeeklyHours: { type: 'number', description: 'Maximale Wochenstunden pro Mitarbeiter' },
+      restHours: { type: 'number', description: 'Mindestruhezeit zwischen zwei Diensten in Stunden' },
+      maxConsecutiveDays: { type: 'number', description: 'Maximale Anzahl aufeinanderfolgender Arbeitstage' },
+      fridayLateMax: { type: 'number', description: 'Maximale Anzahl Spätdienste am Freitag pro Mitarbeiter im Monat' },
+      mondayEarlyMax: { type: 'number', description: 'Maximale Anzahl Frühdienste am Montag pro Mitarbeiter im Monat' },
+      fridayEarlyMax: { type: 'number', description: 'Maximale Anzahl Frühdienste am Freitag pro Mitarbeiter im Monat' },
+      weekendMax: { type: 'number', description: 'Maximale Anzahl Wochenenddienste pro Mitarbeiter im Monat' },
+      considerWishes: { type: 'boolean', description: 'Sollen Wunschdienste bei der Planung berücksichtigt werden?' },
+      balanceHoursAccount: { type: 'boolean', description: 'Soll ein Stundenkonto zum Ausgleich von Mehr-/Minderstunden geführt werden?' },
+    },
+  },
+}
+
 const SHIFT_TYPE_DEFAULTS: Record<ShiftType, { color: string; bgColor: string }> = {
   early: { color: '#0E6B6F', bgColor: '#E5FAFA' },
   mid: { color: '#C89C5B', bgColor: '#F8EFE2' },
@@ -177,7 +196,7 @@ export async function POST(req: NextRequest) {
   try {
     let stateNote: string
     let systemPrompt: string
-    let tools: (typeof ORG_TOOL | typeof LOCATION_TOOL | typeof SHIFTS_TOOL)[]
+    let tools: (typeof ORG_TOOL | typeof LOCATION_TOOL | typeof SHIFTS_TOOL | typeof PLANNING_RULES_TOOL)[]
 
     if (isOrganization) {
       const [existing, customer] = await Promise.all([
@@ -199,7 +218,11 @@ export async function POST(req: NextRequest) {
       if (!location) {
         return NextResponse.json({ error: 'Unbekannter Standort' }, { status: 404 })
       }
-      const existing = await prisma.locationOnboarding.findUnique({ where: { locationId: scope } })
+      const [existing, existingShifts, planningRules] = await Promise.all([
+        prisma.locationOnboarding.findUnique({ where: { locationId: scope } }),
+        listShiftsByLocation(scope),
+        getPlanningRules(scope),
+      ])
       stateNote = `## Standort\nName: ${location.name} (${location.city})\n\n## Bereits bekannte Angaben zu diesem Standort\n${JSON.stringify({
         einrichtungsart: existing?.einrichtungsart ?? null,
         organisationsstruktur: existing?.organisationsstruktur ?? null,
@@ -215,9 +238,11 @@ export async function POST(req: NextRequest) {
         besonderheiten: existing?.besonderheiten ?? null,
         completedPhases: existing?.completedPhases ?? [],
         completed: existing?.completed ?? false,
-      }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Noch offene Phasen: ${ONBOARDING_PHASES.filter(p => !(existing?.completedPhases ?? []).includes(p.key)).map(p => p.label).join(', ') || 'keine – alle Phasen abgedeckt'}.`
+        bereitsAngelegteSchichten: existingShifts.map(s => ({ name: s.name, type: s.type, startTime: s.startTime, endTime: s.endTime, minStaff: s.minStaff })),
+        planungsregeln: planningRules,
+      }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Noch offene Phasen: ${ONBOARDING_PHASES.filter(p => !(existing?.completedPhases ?? []).includes(p.key)).map(p => p.label).join(', ') || 'keine – alle Phasen abgedeckt'}.\n\nWICHTIG: Es sind aktuell ${existingShifts.length} Schicht(en) im System angelegt. ${existingShifts.length === 0 ? 'Phase 4 ist damit NICHT abgeschlossen – frage aktiv nach mindestens einer konkreten, benannten Schicht mit Uhrzeiten und rufe "upsert_shifts" auf, bevor du den Abschluss vorschlägst. Das System lehnt "completed: true" ohne mindestens eine Schicht automatisch ab.' : 'Phase 4 kann als abgedeckt gelten.'}`
       systemPrompt = LOCATION_SYSTEM_PROMPT
-      tools = [LOCATION_TOOL, SHIFTS_TOOL]
+      tools = [LOCATION_TOOL, SHIFTS_TOOL, PLANNING_RULES_TOOL]
     }
 
     const response = await client.messages.create({
@@ -300,6 +325,44 @@ export async function POST(req: NextRequest) {
             }
           }
         }
+      }
+      if (block.type === 'tool_use' && block.name === 'upsert_planning_rules' && !isOrganization) {
+        const input = block.input as Record<string, unknown>
+        const update: Partial<{
+          maxWeeklyHours: number
+          restHours: number
+          maxConsecutiveDays: number
+          fridayLateMax: number
+          mondayEarlyMax: number
+          fridayEarlyMax: number
+          weekendMax: number
+          considerWishes: boolean
+          balanceHoursAccount: boolean
+        }> = {}
+        for (const key of ['maxWeeklyHours', 'restHours', 'maxConsecutiveDays', 'fridayLateMax', 'mondayEarlyMax', 'fridayEarlyMax', 'weekendMax'] as const) {
+          if (typeof input[key] === 'number') update[key] = input[key] as number
+        }
+        for (const key of ['considerWishes', 'balanceHoursAccount'] as const) {
+          if (typeof input[key] === 'boolean') update[key] = input[key] as boolean
+        }
+        if (Object.keys(update).length > 0) {
+          await upsertPlanningRules(scope, update)
+        }
+      }
+    }
+
+    if (!isOrganization) {
+      const [shiftCount, latestOnboarding] = await Promise.all([
+        prisma.shift.count({ where: { locationId: scope } }),
+        prisma.locationOnboarding.findUnique({ where: { locationId: scope } }),
+      ])
+      const wasMarkedDone = latestOnboarding && (latestOnboarding.completed || latestOnboarding.completedPhases.includes('phase4'))
+      if (shiftCount === 0 && wasMarkedDone) {
+        savedState = await upsertLocationOnboarding(scope, {
+          completedPhases: latestOnboarding!.completedPhases.filter(p => p !== 'phase4'),
+          completed: false,
+        })
+        reply += '\n\nEin Hinweis: Bevor der Standort abgeschlossen werden kann, brauche ich noch mindestens eine konkrete, benannte Schicht mit Uhrzeiten (z.B. "Frühschicht von 07:00 bis 14:00 Uhr") – ohne diese Information kann das System noch keinen Dienstplan erstellen. Welche Schichten gibt es bei euch?'
       }
     }
 
