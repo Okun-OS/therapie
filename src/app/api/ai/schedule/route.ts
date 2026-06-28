@@ -321,7 +321,11 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
     if (droppedCount > 0) {
       console.error('schedule: AI returned invalid entries', { droppedCount, totalCount })
     }
-    if (totalCount > 0 && droppedCount === totalCount) {
+
+    const rawDateCount = rawSchedule && typeof rawSchedule === 'object' ? Object.keys(rawSchedule).length : 0
+    const sanitizedDateCount = Object.keys(sanitizedSchedule).length
+    if ((totalCount > 0 && droppedCount === totalCount) || (rawDateCount > 0 && sanitizedDateCount === 0)) {
+      console.error('schedule: AI returned no usable schedule', { rawDateCount, sanitizedDateCount, totalCount, droppedCount })
       return NextResponse.json({ error: 'KI hat keine gültigen Zuweisungen zurückgegeben (unbekannte IDs/Daten)', raw: rawText }, { status: 502 })
     }
 
