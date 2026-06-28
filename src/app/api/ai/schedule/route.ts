@@ -83,6 +83,39 @@ Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
 
 WICHTIG: Jeder "shiftId"-Wert MUSS exakt der "id" eines Eintrags aus "Verfügbare Schichten" entsprechen, und jeder Datums-Schlüssel im "schedule"-Objekt MUSS exakt einem Eintrag aus "Planungstage" entsprechen (gleiches "YYYY-MM-DD"-Format, keine zusätzlichen oder fehlenden Tage). Erfinde niemals eigene IDs oder Datumsformate.`
 
+// Finds the first balanced {...} object in text, tolerating any stray prose/markdown
+// the model may add before or after it despite being instructed to return only JSON.
+function extractJsonObject(text: string): string | null {
+  const start = text.indexOf('{')
+  if (start === -1) return null
+
+  let depth = 0
+  let inString = false
+  let escaped = false
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+    if (inString) {
+      if (escaped) {
+        escaped = false
+      } else if (ch === '\\') {
+        escaped = true
+      } else if (ch === '"') {
+        inString = false
+      }
+      continue
+    }
+    if (ch === '"') {
+      inString = true
+    } else if (ch === '{') {
+      depth++
+    } else if (ch === '}') {
+      depth--
+      if (depth === 0) return text.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
 interface ScheduleRequest {
   employees: Employee[]
   shifts: Shift[]
@@ -265,7 +298,7 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
   try {
     const response = await client.messages.create({
       model: 'claude-opus-4-7',
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: [
         {
           type: 'text',
@@ -278,13 +311,19 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
 
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
 
-    // Strip any accidental markdown code fences
-    const cleaned = rawText.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim()
+    if (response.stop_reason === 'max_tokens') {
+      console.error('schedule: AI response truncated at max_tokens', { rawLength: rawText.length })
+      return NextResponse.json({ error: 'KI-Antwort wurde abgeschnitten (zu lang für den Planungszeitraum) – bitte einen kürzeren Zeitraum wählen oder erneut versuchen', raw: rawText }, { status: 502 })
+    }
+
+    // Extract the JSON object even if the model added stray text/markdown around it
+    const jsonCandidate = extractJsonObject(rawText) ?? rawText.trim()
 
     let parsed: Record<string, unknown>
     try {
-      parsed = JSON.parse(cleaned)
+      parsed = JSON.parse(jsonCandidate)
     } catch {
+      console.error('schedule: AI did not return valid JSON', { rawText })
       return NextResponse.json({ error: 'KI hat kein gültiges JSON zurückgegeben', raw: rawText }, { status: 502 })
     }
 
