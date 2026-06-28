@@ -38,17 +38,17 @@ const PRIORITY_BADGE: Record<SubstitutionPriority, 'default' | 'info' | 'warning
 export default function EmployeeSubstitutions() {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const { supported, permission, subscribed, subscribe } = usePush(user?.id)
+  const { supported, permission, subscribed, subscribe } = usePush(user?.employeeId)
 
   const [incoming, setIncoming] = useState<IncomingCandidate[]>([])
   const [loading, setLoading] = useState(true)
   const [respondingId, setRespondingId] = useState<string | null>(null)
 
   const loadIncoming = async () => {
-    if (!user?.id) return
+    if (!user?.employeeId) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/substitutions/incoming?employeeId=${user.id}`)
+      const res = await fetch(`/api/substitutions/incoming?employeeId=${user.employeeId}`)
       const data = await res.json()
       setIncoming(data.incoming ?? [])
     } catch {
@@ -61,16 +61,16 @@ export default function EmployeeSubstitutions() {
   useEffect(() => {
     loadIncoming()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id])
+  }, [user?.employeeId])
 
   const handleRespond = async (requestId: string, action: 'accept' | 'decline') => {
-    if (!user?.id) return
+    if (!user?.employeeId) return
     setRespondingId(requestId)
     try {
       const res = await fetch(`/api/substitutions/${requestId}/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId: user.id, action }),
+        body: JSON.stringify({ employeeId: user.employeeId, action }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)

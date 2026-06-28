@@ -233,6 +233,18 @@ export interface WishSubmission {
   }
 }
 
+// ─── Schließzeiten / Pflichturlaub ───────────────────────────────────────────
+
+export interface ClosurePeriod {
+  id: string
+  locationId: string
+  name: string
+  startDate: string
+  endDate: string
+  createdBy: string
+  createdAt: string
+}
+
 // ─── Fairness ────────────────────────────────────────────────────────────────
 
 export interface ShiftFairnessData {
@@ -269,7 +281,9 @@ export interface User {
   name: string
   email: string
   role: Role
+  employeeId?: string
   locationId?: string
+  customerId?: string
   position?: string
 }
 

@@ -30,30 +30,30 @@ export default function EmployeeDashboard() {
   }, [])
 
   useEffect(() => {
-    if (!user?.id) return
-    fetch(`/api/schedule-entries?employeeId=${user.id}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries))
-    fetch(`/api/time-logs?employeeId=${user.id}`).then(r => r.json()).then(d => setTIME_LOGS(d.logs))
-    fetch(`/api/vacation-requests?employeeId=${user.id}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
-  }, [user?.id])
+    if (!user?.employeeId) return
+    fetch(`/api/schedule-entries?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries))
+    fetch(`/api/time-logs?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setTIME_LOGS(d.logs))
+    fetch(`/api/vacation-requests?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
+  }, [user?.employeeId])
 
-  const employee = EMPLOYEES.find(e => e.id === user?.id)
+  const employee = EMPLOYEES.find(e => e.id === user?.employeeId)
   const today = toDateString(new Date())
   const now = new Date()
   const hour = now.getHours()
   const greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend'
 
-  const todayEntries = SCHEDULE_ENTRIES.filter(s => s.employeeId === user?.id && s.date === today)
+  const todayEntries = SCHEDULE_ENTRIES.filter(s => s.employeeId === user?.employeeId && s.date === today)
   const upcomingEntries = SCHEDULE_ENTRIES
-    .filter(s => s.employeeId === user?.id && s.date >= today)
+    .filter(s => s.employeeId === user?.employeeId && s.date >= today)
     .slice(0, 5)
 
   const weekDays = getWeekDays(now)
   const weekStart = toDateString(weekDays[0])
   const weekEnd = toDateString(weekDays[6])
-  const thisWeekLogs = TIME_LOGS.filter(t => t.employeeId === user?.id && t.date >= weekStart && t.date <= weekEnd)
+  const thisWeekLogs = TIME_LOGS.filter(t => t.employeeId === user?.employeeId && t.date >= weekStart && t.date <= weekEnd)
   const weekMinutes = thisWeekLogs.reduce((sum, l) => sum + (l.totalMinutes || 0), 0)
 
-  const myVacations = VACATION_REQUESTS.filter(v => v.employeeId === user?.id)
+  const myVacations = VACATION_REQUESTS.filter(v => v.employeeId === user?.employeeId)
   const pendingVacations = myVacations.filter(v => v.status === 'pending')
 
   const vacationRemaining = (employee?.vacationDaysTotal || 30) - (employee?.vacationDaysUsed || 0)

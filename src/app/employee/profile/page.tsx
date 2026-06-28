@@ -86,7 +86,7 @@ export default function EmployeeProfile() {
     fetch('/api/shifts').then(r => r.json()).then(d => setShifts(d.shifts))
   }, [])
 
-  const employee = allEmployees.find(e => e.id === user?.id)
+  const employee = allEmployees.find(e => e.id === user?.employeeId)
   const location = allLocations.find(l => l.id === employee?.locationId)
 
   const currentYear = new Date().getFullYear()

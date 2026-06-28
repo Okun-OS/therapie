@@ -3,6 +3,7 @@ import { sendEmail } from './email'
 import { generateSecureToken } from './secure-token'
 import { invitationExpiry, INVITATION_VALID_DAYS } from './invitation-expiry'
 import { toEmployee, toCustomer } from './entities'
+import { applyExistingClosuresToNewEmployee } from './vacation-entities'
 import type { Role, Employee, Customer } from './types'
 
 export { invitationExpiry }
@@ -95,7 +96,7 @@ export async function addEmployeeWithInvitation(
 ): Promise<{ employee: Employee; emailSent: boolean }> {
   const sendInvitation = options.sendInvitation ?? true
 
-  const { employeeRow, invitation } = await prisma.$transaction(async tx => {
+  const { employeeRow, invitation, locationState } = await prisma.$transaction(async tx => {
     const location = await tx.location.findUnique({ where: { id: input.locationId } })
     if (!location) throw new Error('Standort nicht gefunden')
     if (input.expectedCustomerId && location.customerId && location.customerId !== input.expectedCustomerId) {
@@ -131,7 +132,7 @@ export async function addEmployeeWithInvitation(
         allowedTasks: input.allowedTasks ?? [],
       },
     })
-    if (!sendInvitation) return { employeeRow, invitation: null }
+    if (!sendInvitation) return { employeeRow, invitation: null, locationState: location.state }
     const invitation = await tx.invitationToken.create({
       data: {
         token: generateSecureToken(),
@@ -144,11 +145,14 @@ export async function addEmployeeWithInvitation(
         expiresAt: invitationExpiry(),
       },
     })
-    return { employeeRow, invitation }
+    return { employeeRow, invitation, locationState: location.state }
   })
 
+  const employee = toEmployee(employeeRow)
+  await applyExistingClosuresToNewEmployee(employee, locationState).catch(() => null)
+
   if (!invitation) {
-    return { employee: toEmployee(employeeRow), emailSent: false }
+    return { employee, emailSent: false }
   }
 
   let emailSent = true
@@ -158,7 +162,7 @@ export async function addEmployeeWithInvitation(
     emailSent = false
   }
 
-  return { employee: toEmployee(employeeRow), emailSent }
+  return { employee, emailSent }
 }
 
 /** Versendet die Einladung für einen Mitarbeiter, der zuvor ohne Einladung

@@ -81,7 +81,6 @@ model SubstitutionRequest {
   filledByEmployeeId String?
   filledAt           DateTime?
   candidates         SubstitutionCandidate[]
-  notifications      Notification[]
 }
 
 model SubstitutionCandidate {
@@ -111,15 +110,14 @@ model PushSubscription {
 }
 
 model Notification {
-  id         String               @id @default(cuid())
+  id         String   @id @default(cuid())
   employeeId String
   type       String
   title      String
   body       String
   requestId  String?
-  request    SubstitutionRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
-  read       Boolean              @default(false)
-  createdAt  DateTime             @default(now())
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
 }
 
 // ─── Workforce Score (Modul 3: Gamification) ────────────────────────────────
@@ -525,6 +523,21 @@ model Absence {
   verifiedBy         String?
   verifiedAt         String?
   submittedAt        String
+}
+
+// ─── Schließzeiten / Pflichturlaub ───────────────────────────────────────────
+// Feste, vom Standort vorgegebene Schließzeiten (Betriebsferien, Kita-Schließzeit,
+// Brückentage, ...). Beim Anlegen werden automatisch Urlaubsanträge (status
+// 'approved', respondedBy 'System (Schließzeit)') für alle betroffenen aktiven
+// Mitarbeiter erzeugt – nur für tatsächliche Arbeitstage (siehe lib/workdays.ts).
+model ClosurePeriod {
+  id         String   @id @default(cuid())
+  locationId String
+  name       String
+  startDate  String
+  endDate    String
+  createdBy  String
+  createdAt  DateTime @default(now())
 }
 
 model MonthlyClosing {

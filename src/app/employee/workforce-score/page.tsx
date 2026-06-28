@@ -36,10 +36,10 @@ export default function EmployeeWorkforceScore() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.employeeId) return
     setLoading(true)
     Promise.all([
-      fetch(`/api/workforce-score/me?employeeId=${user.id}`).then(res => res.json()),
+      fetch(`/api/workforce-score/me?employeeId=${user.employeeId}`).then(res => res.json()),
       fetch('/api/workforce-score/bonus-config').then(res => res.json()),
     ])
       .then(([meData, bonusData]) => {
@@ -47,7 +47,7 @@ export default function EmployeeWorkforceScore() {
         setBonusConfigs(bonusData.configs ?? [])
       })
       .finally(() => setLoading(false))
-  }, [user?.id])
+  }, [user?.employeeId])
 
   const myBonus = bonusConfigs.find(c => c.level === summary?.level)
   const nextThreshold = summary?.nextLevel ? LEVEL_THRESHOLD[summary.nextLevel] : null

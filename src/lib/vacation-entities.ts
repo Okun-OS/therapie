@@ -1,7 +1,9 @@
 // Echte Postgres-Persistenz für Urlaub (ersetzt VACATION_REQUESTS,
 // VACATION_PREFERENCES und VACATION_RULES aus mock-data.ts). Server-only.
 import { prisma } from './prisma'
-import type { VacationRequest, VacationPlanPreference, VacationRules, VacationPlanEntry } from './types'
+import { countWorkdays } from './workdays'
+import { getEmployeesByLocation, getLocationById } from './entities'
+import type { VacationRequest, VacationPlanPreference, VacationRules, VacationPlanEntry, Employee, ClosurePeriod } from './types'
 
 function toVacationRequest(row: any): VacationRequest {
   return {
@@ -67,13 +69,30 @@ export async function getVacationRequestsByEmployee(employeeId: string): Promise
   return rows.map(toVacationRequest)
 }
 
-export async function setVacationRequestStatus(id: string, status: 'approved' | 'denied', respondedBy: string): Promise<void> {
-  await prisma.vacationRequest.update({
+/** Setzt den Status eines Antrags und gleicht das Urlaubskonto (Employee.vacationDaysUsed)
+ * ab, damit der Saldo immer den tatsächlich genehmigten Anträgen entspricht – egal ob
+ * erstmalig genehmigt/abgelehnt oder eine frühere Entscheidung korrigiert wird. */
+export async function setVacationRequestStatus(id: string, status: 'approved' | 'denied', respondedBy: string): Promise<VacationRequest | null> {
+  const existing = await prisma.vacationRequest.findUnique({ where: { id } })
+  if (!existing) return null
+
+  const row = await prisma.vacationRequest.update({
     where: { id },
     data: { status, respondedAt: new Date().toISOString().split('T')[0], respondedBy },
-  }).catch(() => null)
+  })
+
+  if (status === 'approved' && existing.status !== 'approved') {
+    await prisma.employee.update({ where: { id: existing.employeeId }, data: { vacationDaysUsed: { increment: existing.days } } }).catch(() => null)
+  } else if (status === 'denied' && existing.status === 'approved') {
+    await prisma.employee.update({ where: { id: existing.employeeId }, data: { vacationDaysUsed: { decrement: existing.days } } }).catch(() => null)
+  }
+
+  return toVacationRequest(row)
 }
 
+/** Berechnet die tatsächlich abzuziehenden Urlaubstage (nur Arbeitstage, siehe
+ * lib/workdays.ts) und legt den Antrag damit an – days aus dem Client-Body wird
+ * bewusst ignoriert, damit die Berechnung serverseitig autoritativ bleibt. */
 export async function addVacationRequest(input: {
   employeeId: string
   employeeName: string
@@ -81,11 +100,11 @@ export async function addVacationRequest(input: {
   locationName: string
   startDate: string
   endDate: string
-  days: number
   reason?: string
-}): Promise<VacationRequest> {
+}, employee?: Pick<Employee, 'preferences'> | null, state?: string): Promise<VacationRequest> {
+  const days = countWorkdays(input.startDate, input.endDate, employee, state)
   const row = await prisma.vacationRequest.create({
-    data: { ...input, status: 'pending', submittedAt: new Date().toISOString().split('T')[0] },
+    data: { ...input, days, status: 'pending', submittedAt: new Date().toISOString().split('T')[0] },
   })
   return toVacationRequest(row)
 }
@@ -150,4 +169,96 @@ export async function publishVacationPlan(locationId: string, locationName: stri
     }
   }
   return created
+}
+
+// ─── Schließzeiten / Pflichturlaub ───────────────────────────────────────────
+
+function toClosurePeriod(row: any): ClosurePeriod {
+  return {
+    id: row.id,
+    locationId: row.locationId,
+    name: row.name,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt.toISOString(),
+  }
+}
+
+export async function listClosurePeriodsByLocation(locationId: string): Promise<ClosurePeriod[]> {
+  const rows = await prisma.closurePeriod.findMany({ where: { locationId }, orderBy: { startDate: 'asc' } })
+  return rows.map(toClosurePeriod)
+}
+
+export async function deleteClosurePeriod(id: string): Promise<void> {
+  await prisma.closurePeriod.delete({ where: { id } }).catch(() => null)
+}
+
+/** Legt für einen einzelnen Mitarbeiter den Pflichturlaubs-Antrag einer
+ * Schließzeit an, sofern er im Zeitraum tatsächliche Arbeitstage hat und noch
+ * keinen (sich überlappenden) Antrag für diese Schließzeit besitzt. Status
+ * 'approved' + respondedBy 'System (Schließzeit)' erfüllen "beantragt und
+ * genehmigt" – die einfachere der zwei vom Auftrag vorgesehenen Varianten,
+ * weil so jede bestehende Urlaubsauswertung (Konto, Übersicht, Reports) den
+ * Pflichturlaub ohne Sonderfall-Behandlung korrekt mitzählt. */
+async function applyClosureToEmployee(closure: { locationId: string; name: string; startDate: string; endDate: string }, employee: Employee, state?: string): Promise<void> {
+  const already = await prisma.vacationRequest.findFirst({
+    where: { employeeId: employee.id, startDate: closure.startDate, endDate: closure.endDate, reason: `Pflichturlaub: ${closure.name}` },
+  })
+  if (already) return
+
+  const days = countWorkdays(closure.startDate, closure.endDate, employee, state)
+  if (days <= 0) return
+
+  const location = await getLocationById(closure.locationId)
+  const today = new Date().toISOString().split('T')[0]
+  await prisma.$transaction([
+    prisma.vacationRequest.create({
+      data: {
+        employeeId: employee.id,
+        employeeName: employee.name,
+        locationId: closure.locationId,
+        locationName: location?.name ?? '',
+        startDate: closure.startDate,
+        endDate: closure.endDate,
+        days,
+        reason: `Pflichturlaub: ${closure.name}`,
+        status: 'approved',
+        submittedAt: today,
+        respondedAt: today,
+        respondedBy: 'System (Schließzeit)',
+      },
+    }),
+    prisma.employee.update({ where: { id: employee.id }, data: { vacationDaysUsed: { increment: days } } }),
+  ])
+}
+
+/** Wendet eine Schließzeit auf alle aktiven Mitarbeiter ihres Standorts an. */
+export async function applyClosurePeriodToLocationEmployees(closure: ClosurePeriod): Promise<void> {
+  const [employees, location] = await Promise.all([
+    getEmployeesByLocation(closure.locationId),
+    getLocationById(closure.locationId),
+  ])
+  for (const employee of employees) {
+    await applyClosureToEmployee(closure, employee, location?.state)
+  }
+}
+
+export async function addClosurePeriod(input: { locationId: string; name: string; startDate: string; endDate: string; createdBy: string }): Promise<ClosurePeriod> {
+  const row = await prisma.closurePeriod.create({ data: input })
+  const closure = toClosurePeriod(row)
+  await applyClosurePeriodToLocationEmployees(closure)
+  return closure
+}
+
+/** Übernimmt alle bestehenden, noch nicht abgelaufenen Schließzeiten eines
+ * Standorts für einen neu angelegten Mitarbeiter automatisch in dessen
+ * Urlaubskonto. */
+export async function applyExistingClosuresToNewEmployee(employee: Employee, state?: string): Promise<void> {
+  if (!employee.locationId) return
+  const today = new Date().toISOString().split('T')[0]
+  const closures = await prisma.closurePeriod.findMany({ where: { locationId: employee.locationId, endDate: { gte: today } } })
+  for (const row of closures) {
+    await applyClosureToEmployee(toClosurePeriod(row), employee, state)
+  }
 }

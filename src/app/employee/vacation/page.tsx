@@ -13,7 +13,8 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, Send, Baby } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { formatDate, diffDays } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
+import { countWorkdays } from '@/lib/workdays'
 import type { Employee, Location, VacationRequest, VacationPlanPreference } from '@/lib/types'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
@@ -35,12 +36,13 @@ export default function EmployeeVacation() {
   }, [])
 
   useEffect(() => {
-    if (!user?.id) return
-    fetch(`/api/vacation-requests?employeeId=${user.id}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
-  }, [user?.id])
+    if (!user?.employeeId) return
+    fetch(`/api/vacation-requests?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
+  }, [user?.employeeId])
 
-  const employee = EMPLOYEES.find(e => e.id === user?.id)
-  const myRequests = VACATION_REQUESTS.filter(v => v.employeeId === user?.id)
+  const employee = EMPLOYEES.find(e => e.id === user?.employeeId)
+  const location = LOCATIONS.find(l => l.id === employee?.locationId)
+  const myRequests = VACATION_REQUESTS.filter(v => v.employeeId === user?.employeeId)
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
 
   const [existingPref, setExistingPref] = useState<VacationPlanPreference | null>(null)
@@ -52,8 +54,8 @@ export default function EmployeeVacation() {
   const [wishSaved, setWishSaved] = useState(false)
 
   useEffect(() => {
-    if (!user?.id) return
-    fetch(`/api/vacation-preferences?employeeId=${user.id}`)
+    if (!user?.employeeId) return
+    fetch(`/api/vacation-preferences?employeeId=${user.employeeId}`)
       .then(r => r.json())
       .then(d => {
         const pref: VacationPlanPreference | null = d.preference ?? null
@@ -102,7 +104,7 @@ export default function EmployeeVacation() {
   const vacationRemaining = vacationTotal - vacationUsed - pendingDays
 
   const requestDays = form.startDate && form.endDate
-    ? diffDays(form.startDate, form.endDate)
+    ? countWorkdays(form.startDate, form.endDate, employee, location?.state)
     : 0
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,22 +122,30 @@ export default function EmployeeVacation() {
       showToast('Ungültiger Zeitraum oder nicht genug Resturlaub', 'error')
       return
     }
-    if (!employee) return
+    if (!employee?.locationId) {
+      showToast('Dein Account ist keinem Standort zugeordnet', 'error')
+      return
+    }
 
-    const request = await fetch('/api/vacation-requests', {
+    const res = await fetch('/api/vacation-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         employeeId: employee.id,
         employeeName: employee.name,
-        locationId: employee.locationId || 'loc1',
-        locationName: LOCATIONS.find(l => l.id === (employee.locationId || 'loc1'))?.name || '',
+        locationId: employee.locationId,
+        locationName: location?.name || '',
         startDate: form.startDate,
         endDate: form.endDate,
-        days: requestDays,
         reason: form.reason || undefined,
       }),
-    }).then(r => r.json()).then(d => d.request)
+    })
+
+    if (!res.ok) {
+      showToast('Antrag konnte nicht eingereicht werden', 'error')
+      return
+    }
+    const { request } = await res.json()
 
     setVACATION_REQUESTS(prev => [request, ...prev])
     setSubmitted(true)

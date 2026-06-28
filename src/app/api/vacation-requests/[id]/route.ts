@@ -12,5 +12,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const request = await setVacationRequestStatus(params.id, status, respondedBy)
+  if (!request) {
+    return NextResponse.json({ error: 'Antrag nicht gefunden' }, { status: 404 })
+  }
   return NextResponse.json({ request })
 }

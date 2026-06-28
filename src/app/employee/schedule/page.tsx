@@ -57,12 +57,12 @@ export default function EmployeeSchedule() {
   }, [])
 
   useEffect(() => {
-    if (!user?.id) return
-    fetch(`/api/swap-requests?employeeId=${user.id}`).then(r => r.json()).then(d => setSwaps(d.requests))
-    fetch(`/api/wish-submissions?employeeId=${user.id}`).then(r => r.json()).then(d => setMyWishes(d.wishes))
-  }, [user?.id])
+    if (!user?.employeeId) return
+    fetch(`/api/swap-requests?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setSwaps(d.requests))
+    fetch(`/api/wish-submissions?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setMyWishes(d.wishes))
+  }, [user?.employeeId])
 
-  const employee = EMPLOYEES.find(e => e.id === user?.id)
+  const employee = EMPLOYEES.find(e => e.id === user?.employeeId)
   const location = LOCATIONS.find(l => l.id === employee?.locationId)
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function EmployeeSchedule() {
     fetch(`/api/schedule-entries?locationId=${employee.locationId}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries))
   }, [employee?.locationId])
 
-  const myEntries = SCHEDULE_ENTRIES.filter(s => s.employeeId === user?.id)
+  const myEntries = SCHEDULE_ENTRIES.filter(s => s.employeeId === user?.employeeId)
 
   const weekDays = getWeekDays(currentDate)
   const weekStart = toDateString(weekDays[0])
@@ -84,9 +84,9 @@ export default function EmployeeSchedule() {
   // All colleague entries for the same week (for swap)
   const colleagueEntries = SCHEDULE_ENTRIES.filter(e => {
     const d = new Date(e.date + 'T00:00:00')
-    return e.locationId === employee?.locationId && e.employeeId !== user?.id && d >= weekDays[0] && d <= weekDays[6]
+    return e.locationId === employee?.locationId && e.employeeId !== user?.employeeId && d >= weekDays[0] && d <= weekDays[6]
   })
-  const colleagues = EMPLOYEES.filter(e => e.locationId === employee?.locationId && e.id !== user?.id && e.role === 'employee')
+  const colleagues = EMPLOYEES.filter(e => e.locationId === employee?.locationId && e.id !== user?.employeeId && e.role === 'employee')
 
   const go = (delta: number) => {
     const d = new Date(currentDate)
@@ -109,13 +109,13 @@ export default function EmployeeSchedule() {
   }, 0)
 
   const handleSwapSubmit = async (targetEmpId: string, targetDate: string, targetShiftId: string, message: string) => {
-    if (!swapEntry || !user) return
+    if (!swapEntry || !employee) return
     const newSwap = await fetch('/api/swap-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        requesterId: user.id,
-        requesterName: user.name,
+        requesterId: employee.id,
+        requesterName: employee.name,
         requesterDate: swapEntry.date,
         requesterShiftId: swapEntry.shiftId,
         targetEmployeeId: targetEmpId,
@@ -123,7 +123,7 @@ export default function EmployeeSchedule() {
         targetDate,
         targetShiftId,
         message,
-        locationId: employee?.locationId ?? 'loc1',
+        locationId: employee.locationId,
       }),
     }).then(r => r.json()).then(d => d.request)
     setSwaps(prev => [newSwap, ...prev])
@@ -134,7 +134,7 @@ export default function EmployeeSchedule() {
       showToast('Bitte Diensttyp und Datum auswählen', 'error')
       return
     }
-    if (!user || !employee) return
+    if (!employee?.locationId) return
 
     const validShiftTypes: ShiftType[] = ['early', 'late', 'mid']
     const preferredShiftType = (validShiftTypes as string[]).includes(wish.type) ? (wish.type as ShiftType) : 'mid'
@@ -144,9 +144,9 @@ export default function EmployeeSchedule() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        employeeId: user.id,
-        employeeName: user.name,
-        locationId: employee.locationId || 'loc1',
+        employeeId: employee.id,
+        employeeName: employee.name,
+        locationId: employee.locationId,
         date: wish.date,
         preferredShiftType,
         reason: `${specialNote}${wish.reason}`.trim() || undefined,
@@ -178,7 +178,7 @@ export default function EmployeeSchedule() {
     setSwaps(p => p.map(s => s.id === id ? { ...s, status: 'declined' as const } : s))
   }
 
-  const pendingSwapCount = swaps.filter(s => s.targetEmployeeId === user?.id && s.status === 'pending').length
+  const pendingSwapCount = swaps.filter(s => s.targetEmployeeId === user?.employeeId && s.status === 'pending').length
   const unfulfilledWishes = myWishes.filter(w => w.status === 'not_fulfilled')
 
   return (
@@ -345,7 +345,7 @@ export default function EmployeeSchedule() {
             </CardHeader>
             <SwapList
               swaps={swaps}
-              currentUserId={user?.id ?? ''}
+              currentUserId={user?.employeeId ?? ''}
               shifts={SHIFTS}
               onAccept={handleAcceptSwap}
               onDecline={handleDeclineSwap}
