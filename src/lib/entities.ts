@@ -32,6 +32,7 @@ export function toEmployee(row: any): Employee {
     fixedLocations: row.fixedLocations ?? undefined,
     qualifications: row.qualifications,
     allowedTasks: row.allowedTasks,
+    workDaysPerWeek: row.workDaysPerWeek ?? undefined,
   }
 }
 

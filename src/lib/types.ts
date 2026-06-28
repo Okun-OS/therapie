@@ -43,6 +43,7 @@ export interface Employee {
   fixedLocations?: string
   qualifications?: string[]
   allowedTasks?: string[]
+  workDaysPerWeek?: number
 }
 
 export interface EmployeePreferences {
@@ -87,6 +88,8 @@ export interface ScheduleEntry {
   status: 'planned' | 'confirmed'
   note?: string
   reason?: string
+  startTime?: string
+  endTime?: string
 }
 
 export interface TimeLog {

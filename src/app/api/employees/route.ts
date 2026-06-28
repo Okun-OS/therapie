@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
         email,
         position,
         weeklyHours,
+        workDaysPerWeek: body.workDaysPerWeek,
         locationId,
         expectedCustomerId,
         phone: body.phone,

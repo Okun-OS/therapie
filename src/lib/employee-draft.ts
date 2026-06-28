@@ -11,6 +11,7 @@ export interface EmployeeDraft {
   roleType?: string
   employmentType?: string
   weeklyHours?: number
+  workDaysPerWeek?: number
   qualifications?: string[]
   allowedTasks?: string[]
   besonderheiten?: string[]

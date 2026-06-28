@@ -54,6 +54,8 @@ function toScheduleEntry(row: any): ScheduleEntry {
     status: row.status,
     note: row.note ?? undefined,
     reason: row.reason ?? undefined,
+    startTime: row.startTime ?? undefined,
+    endTime: row.endTime ?? undefined,
   }
 }
 
@@ -172,17 +174,33 @@ export async function listAllScheduleEntries(): Promise<ScheduleEntry[]> {
 
 /** Persistiert einen KI-generierten Dienstplan ({ employeeId: { date: shiftId } })
  * für die angegebene Woche; ersetzt vorhandene Einträge derselben Woche/Standort. */
+export interface ScheduleAssignment {
+  shiftId: string
+  startTime?: string
+  endTime?: string
+}
+
 export async function saveScheduleForWeek(
   locationId: string,
   weekDates: string[],
-  assignments: Record<string, Record<string, string>>,
+  assignments: Record<string, Record<string, string | ScheduleAssignment>>,
   reasons?: Record<string, string>,
 ): Promise<void> {
   await prisma.scheduleEntry.deleteMany({ where: { locationId, date: { in: weekDates } } })
-  const rows: { employeeId: string; shiftId: string; date: string; locationId: string; status: string; reason?: string }[] = []
+  const rows: { employeeId: string; shiftId: string; date: string; locationId: string; status: string; reason?: string; startTime?: string; endTime?: string }[] = []
   for (const [employeeId, byDate] of Object.entries(assignments)) {
-    for (const [date, shiftId] of Object.entries(byDate)) {
-      rows.push({ employeeId, shiftId, date, locationId, status: 'confirmed', reason: reasons?.[`${employeeId}|${date}`] })
+    for (const [date, value] of Object.entries(byDate)) {
+      const assignment: ScheduleAssignment = typeof value === 'string' ? { shiftId: value } : value
+      rows.push({
+        employeeId,
+        shiftId: assignment.shiftId,
+        date,
+        locationId,
+        status: 'confirmed',
+        reason: reasons?.[`${employeeId}|${date}`],
+        startTime: assignment.startTime,
+        endTime: assignment.endTime,
+      })
     }
   }
   if (rows.length > 0) await prisma.scheduleEntry.createMany({ data: rows })

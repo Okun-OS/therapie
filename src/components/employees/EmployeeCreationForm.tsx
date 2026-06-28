@@ -187,16 +187,30 @@ export function EmployeeCreationForm({
           </Select>
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-navy mb-1.5">Wochenstunden</label>
-          <div className="flex items-center gap-3">
-            <input
-              type="range" min={5} max={60} step={1}
-              value={draft.weeklyHours ?? 38}
-              onChange={e => update('weeklyHours', Number(e.target.value))}
-              className="flex-1 accent-brand"
-            />
-            <span className="font-bold text-navy w-12 text-center">{draft.weeklyHours ?? 38}h</span>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">Wochenstunden</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range" min={5} max={60} step={1}
+                value={draft.weeklyHours ?? 38}
+                onChange={e => update('weeklyHours', Number(e.target.value))}
+                className="flex-1 accent-brand"
+              />
+              <span className="font-bold text-navy w-12 text-center">{draft.weeklyHours ?? 38}h</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">Arbeitstage / Woche</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range" min={1} max={7} step={1}
+                value={draft.workDaysPerWeek ?? 5}
+                onChange={e => update('workDaysPerWeek', Number(e.target.value))}
+                className="flex-1 accent-brand"
+              />
+              <span className="font-bold text-navy w-12 text-center">{draft.workDaysPerWeek ?? 5} Tage</span>
+            </div>
           </div>
         </div>
 

@@ -15,7 +15,13 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 1. Jeder Mitarbeiter bekommt genau EINEN Dienst pro Tag (oder keinen – Ruhetag).
 2. Mindestbesetzung je Schicht und Tag muss erfüllt sein (minStaff-Wert pro Schicht).
 3. Kein Mitarbeiter arbeitet mehr als 5 aufeinanderfolgende Tage.
-4. Wochenarbeitszeit wird geachtet: 20h/Woche → ~2–3 Dienste, 30h → ~4 Dienste, 40h → ~5 Dienste.
+4. Die Anzahl der Dienste pro Woche ergibt sich aus "wochenstunden" UND "tage_pro_woche" des Mitarbeiters (nicht aus einer pauschalen Stunden-pro-Dienst-Annahme): Dienste pro Woche ≈ tage_pro_woche, die tägliche Dienstdauer ergibt sich aus wochenstunden / tage_pro_woche zzgl. Pause. Ist "tage_pro_woche" nicht angegeben, gehe von 5 Arbeitstagen pro Woche aus.
+
+## Individuelle Dienstzeiten (KEINE starren, für alle gleichen Schichtzeiten)
+4a. OKUN Workforce verwaltet keine starren Standardschichten. Die in "Verfügbare Schichten" angegebene "zeit_richtwert" ist nur eine Orientierung für die Art des Dienstes (z.B. Frühdienst beginnt morgens) – sie gilt NICHT unverändert für jeden Mitarbeiter.
+4b. Berechne für JEDE einzelne Zuweisung individuell eine realistische "startTime" und "endTime" (Format "HH:MM") auf Basis von: den Wochenstunden und Arbeitstagen pro Woche des Mitarbeiters (wochenstunden / tage_pro_woche ergibt die tägliche Soll-Arbeitszeit), den Öffnungszeiten/Arbeitszeiten/Pausenregeln aus der "Konfiguration des Standorts", und ggf. individuellen Angaben des Mitarbeiters (Persönliche Besonderheiten/Notizen/besondere Absprachen).
+4c. Beispiel: Ein Mitarbeiter mit 35h/Woche auf 5 Tage hat täglich ca. 7h Nettoarbeitszeit; ein Vollzeit-Mitarbeiter mit 40h/Woche auf 5 Tage hat täglich ca. 8h. Beginnen beide einen Frühdienst zur Öffnungszeit (z.B. 06:00 Uhr), unterscheidet sich die Endzeit entsprechend (z.B. 13:30 Uhr vs. 14:30 Uhr) – die Schicht selbst (Art/Kategorie) bleibt dieselbe, die konkrete Zeit ist individuell.
+4d. Bleibe innerhalb der Öffnungszeiten des Standorts, achte auf sinnvolle Übergaben zwischen Schichten und auf die in der Standort-Konfiguration angegebenen Pausenregeln.
 
 ## Fairness-Regeln
 5. Früh/Spät/Mittel sollen langfristig fair verteilt sein (je ~40%/40%/20%).
@@ -62,7 +68,7 @@ Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
 {
   "schedule": {
     "YYYY-MM-DD": {
-      "employeeId": "shiftId"
+      "employeeId": { "shiftId": "string", "startTime": "HH:MM", "endTime": "HH:MM" }
     }
   },
   "reasoning": "Kurze Zusammenfassung der Planungslogik auf Deutsch (2–4 Sätze)",
@@ -73,7 +79,9 @@ Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
   "warnings": ["Warnung 1", "Warnung 2"],
   "decisionQuestion": "Ja/Nein-Frage auf Deutsch, oder null",
   "fallback": { "date": "YYYY-MM-DD", "shiftId": "string", "message": "Ja/Nein-Frage auf Deutsch zur Vertretungsanfrage" } | null
-}`
+}
+
+WICHTIG: Jeder "shiftId"-Wert MUSS exakt der "id" eines Eintrags aus "Verfügbare Schichten" entsprechen, und jeder Datums-Schlüssel im "schedule"-Objekt MUSS exakt einem Eintrag aus "Planungstage" entsprechen (gleiches "YYYY-MM-DD"-Format, keine zusätzlichen oder fehlenden Tage). Erfinde niemals eigene IDs oder Datumsformate.`
 
 interface ScheduleRequest {
   employees: Employee[]
@@ -134,6 +142,7 @@ export async function POST(req: NextRequest) {
       id: emp.id,
       name: emp.name,
       wochenstunden: emp.weeklyHours,
+      tage_pro_woche: emp.workDaysPerWeek ?? 5,
       frueh_unterversorgung: fd ? Math.round(fd.earlyDebt * 10) / 10 : 0,
       spaet_unterversorgung: fd ? Math.round(fd.lateDebt * 10) / 10 : 0,
       mittel_unterversorgung: fd ? Math.round(fd.midDebt * 10) / 10 : 0,
@@ -164,7 +173,7 @@ export async function POST(req: NextRequest) {
     id: s.id,
     name: s.name,
     type: s.type,
-    time: `${s.startTime}–${s.endTime}`,
+    zeit_richtwert: `${s.startTime}–${s.endTime}`,
     minStaff: s.minStaff,
   }))
 
@@ -229,7 +238,7 @@ ${JSON.stringify(employeeSummary, null, 2)}
 
 Hinweis: "id" wird NUR als Schlüssel im "schedule"-Objekt der Antwort verwendet, niemals in reasoning/decisions/warnings. Höherer "_unterversorgung"-Wert = Mitarbeiter sollte diese Schicht öfter bekommen, negativer Wert = hat diese Schicht schon überdurchschnittlich oft gehabt – beschreibe das in reasoning/decisions/warnings immer in eigenen Worten, nie mit dem Feldnamen.
 
-## Verfügbare Schichten
+## Verfügbare Schichten (Kategorien – "zeit_richtwert" ist nur eine Orientierung, KEINE für alle Mitarbeiter gleiche Zeitvorgabe, siehe Regel 4a–4d)
 ${JSON.stringify(shiftSummary, null, 2)}
 
 ## Planungstage
@@ -272,14 +281,51 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
     // Strip any accidental markdown code fences
     const cleaned = rawText.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim()
 
-    let parsed: unknown
+    let parsed: Record<string, unknown>
     try {
       parsed = JSON.parse(cleaned)
     } catch {
       return NextResponse.json({ error: 'KI hat kein gültiges JSON zurückgegeben', raw: rawText }, { status: 502 })
     }
 
-    return NextResponse.json(parsed)
+    const validShiftIds = new Set(shifts.map(s => s.id))
+    const validDates = new Set(weekDates)
+    const validEmployeeIds = new Set(activeEmployees.map(e => e.id))
+    const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/
+
+    const rawSchedule = parsed.schedule
+    const sanitizedSchedule: Record<string, Record<string, { shiftId: string; startTime?: string; endTime?: string }>> = {}
+    let droppedCount = 0
+    let totalCount = 0
+
+    if (rawSchedule && typeof rawSchedule === 'object') {
+      for (const [date, byEmployee] of Object.entries(rawSchedule as Record<string, unknown>)) {
+        if (!validDates.has(date) || !byEmployee || typeof byEmployee !== 'object') {
+          droppedCount += Object.keys(byEmployee && typeof byEmployee === 'object' ? byEmployee : {}).length
+          continue
+        }
+        for (const [employeeId, value] of Object.entries(byEmployee as Record<string, unknown>)) {
+          totalCount++
+          if (!validEmployeeIds.has(employeeId)) { droppedCount++; continue }
+          const assignment = typeof value === 'string' ? { shiftId: value } : (value as Record<string, unknown> | null)
+          const shiftId = assignment && typeof assignment.shiftId === 'string' ? assignment.shiftId : undefined
+          if (!shiftId || !validShiftIds.has(shiftId)) { droppedCount++; continue }
+          const startTime = typeof assignment?.startTime === 'string' && timePattern.test(assignment.startTime) ? assignment.startTime : undefined
+          const endTime = typeof assignment?.endTime === 'string' && timePattern.test(assignment.endTime) ? assignment.endTime : undefined
+          if (!sanitizedSchedule[date]) sanitizedSchedule[date] = {}
+          sanitizedSchedule[date][employeeId] = { shiftId, startTime, endTime }
+        }
+      }
+    }
+
+    if (droppedCount > 0) {
+      console.error('schedule: AI returned invalid entries', { droppedCount, totalCount })
+    }
+    if (totalCount > 0 && droppedCount === totalCount) {
+      return NextResponse.json({ error: 'KI hat keine gültigen Zuweisungen zurückgegeben (unbekannte IDs/Daten)', raw: rawText }, { status: 502 })
+    }
+
+    return NextResponse.json({ ...parsed, schedule: sanitizedSchedule })
   } catch (err: unknown) {
     console.error('schedule', err)
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'

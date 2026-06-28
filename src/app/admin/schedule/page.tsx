@@ -10,7 +10,6 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { FairnessReport } from '@/components/schedule/FairnessReport'
-import { ShiftEditor } from '@/components/schedule/ShiftEditor'
 import { SchedulePlanningChat } from '@/components/schedule/SchedulePlanningChat'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
@@ -19,7 +18,7 @@ import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName
 import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission } from '@/lib/types'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
-  CheckCircle, Loader, AlertTriangle, Info, Scale, Clock, CalendarOff, X, CalendarRange, MessageCircle,
+  CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
@@ -31,6 +30,12 @@ const PERIOD_OPTIONS: { key: PeriodMode; label: string }[] = [
   { key: 'month', label: 'Ganzer Monat' },
   { key: 'custom', label: 'Individuell' },
 ]
+
+interface ScheduleAssignment {
+  shiftId: string
+  startTime?: string
+  endTime?: string
+}
 
 interface PlanningRules {
   maxWeeklyHours: number
@@ -81,7 +86,7 @@ export default function AdminSchedule() {
   const [aiStep, setAiStep] = useState(0)
   const [aiDone, setAiDone] = useState(false)
   const [useFairnessAI, setUseFairnessAI] = useState(true)
-  const [generatedSchedule, setGeneratedSchedule] = useState<Record<string, Record<string, string>> | null>(null)
+  const [generatedSchedule, setGeneratedSchedule] = useState<Record<string, Record<string, ScheduleAssignment>> | null>(null)
   const [aiReasoning, setAiReasoning] = useState<string | null>(null)
   const [aiDecisions, setAiDecisions] = useState<{ type: string; message: string }[]>([])
   const [aiAssignmentReasons, setAiAssignmentReasons] = useState<Record<string, string>>({})
@@ -94,7 +99,6 @@ export default function AdminSchedule() {
   const [fallbackHandled, setFallbackHandled] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
-  const [shiftEditorOpen, setShiftEditorOpen] = useState(false)
   const [saved, setSaved] = useState(false)
   const [facilityDescription, setFacilityDescription] = useState('')
   const [periodNotes, setPeriodNotes] = useState<{ id: string; note: string }[]>([])
@@ -272,13 +276,19 @@ export default function AdminSchedule() {
     .filter(a => a.locationId === locationId && a.verificationStatus !== 'abgelehnt' && a.startDate <= periodEnd && a.endDate >= periodStart)
     .map(a => ({ employeeId: a.employeeId, employeeName: a.employeeName, startDate: a.startDate, endDate: a.endDate, type: a.type }))
 
-  const getDisplayShift = (empId: string, dateStr: string) => {
+  const getDisplayAssignment = (empId: string, dateStr: string): { shift: Shift; startTime: string; endTime: string } | null => {
     if (generatedSchedule) {
-      const shiftId = generatedSchedule[empId]?.[dateStr]
-      return shiftId ? locationShifts.find(s => s.id === shiftId) : null
+      const assignment = generatedSchedule[empId]?.[dateStr]
+      if (!assignment) return null
+      const shift = locationShifts.find(s => s.id === assignment.shiftId)
+      if (!shift) return null
+      return { shift, startTime: assignment.startTime ?? shift.startTime, endTime: assignment.endTime ?? shift.endTime }
     }
     const entry = existingEntries.find(e => e.employeeId === empId && e.date === dateStr)
-    return entry ? locationShifts.find(s => s.id === entry.shiftId) : null
+    if (!entry) return null
+    const shift = locationShifts.find(s => s.id === entry.shiftId)
+    if (!shift) return null
+    return { shift, startTime: entry.startTime ?? shift.startTime, endTime: entry.endTime ?? shift.endTime }
   }
 
   const getDisplayReason = (empId: string, dateStr: string): string | null => {
@@ -340,13 +350,13 @@ export default function AdminSchedule() {
 
       const data = await res.json()
 
-      // API returns { date: { empId: shiftId } } – transpose to { empId: { date: shiftId } }
-      const transposed: Record<string, Record<string, string>> = {}
+      // API returns { date: { empId: { shiftId, startTime, endTime } } } – transpose to { empId: { date: assignment } }
+      const transposed: Record<string, Record<string, ScheduleAssignment>> = {}
       if (data.schedule) {
-        for (const [date, assignments] of Object.entries(data.schedule as Record<string, Record<string, string>>)) {
-          for (const [empId, shiftId] of Object.entries(assignments)) {
+        for (const [date, assignments] of Object.entries(data.schedule as Record<string, Record<string, ScheduleAssignment>>)) {
+          for (const [empId, assignment] of Object.entries(assignments)) {
             if (!transposed[empId]) transposed[empId] = {}
-            transposed[empId][date] = shiftId
+            transposed[empId][date] = assignment
           }
         }
       }
@@ -457,21 +467,6 @@ export default function AdminSchedule() {
     showToast('Planungsregeln gespeichert')
   }
 
-  const handleSaveShiftTimes = async (changes: Record<string, { startTime: string; endTime: string }>) => {
-    await Promise.all(
-      Object.entries(changes).map(([shiftId, times]) =>
-        fetch(`/api/shifts/${shiftId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(times),
-        })
-      )
-    )
-    fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
-    setShiftEditorOpen(false)
-    showToast('Dienstzeiten gespeichert')
-  }
-
   const handleSaveSchedule = async () => {
     if (!generatedSchedule) return
     await fetch('/api/schedule-entries/save-week', {
@@ -507,9 +502,9 @@ export default function AdminSchedule() {
     const rows = [['Mitarbeiter', 'Datum', 'Wochentag', 'Dienst', 'Start', 'Ende']]
     employees.forEach(emp => {
       periodWeekdayDates.forEach(dateStr => {
-        const shift = getDisplayShift(emp.id, dateStr)
-        if (!shift) return
-        rows.push([emp.name, dateStr, getDayName(dateStr), shift.name, shift.startTime, shift.endTime])
+        const assignment = getDisplayAssignment(emp.id, dateStr)
+        if (!assignment) return
+        rows.push([emp.name, dateStr, getDayName(dateStr), assignment.shift.name, assignment.startTime, assignment.endTime])
       })
     })
     const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(';')).join('\n')
@@ -679,10 +674,6 @@ export default function AdminSchedule() {
                       </span>
                     </label>
                     <div className="flex gap-2 sm:ml-auto">
-                      <Button variant="ghost" size="sm" onClick={() => setShiftEditorOpen(true)} className="gap-1.5 border border-purple-200 text-purple-700 hover:bg-purple-50">
-                        <Clock size={13} />
-                        Dienstzeiten
-                      </Button>
                       <Button onClick={() => runAI()} size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
                         <Sparkles size={14} />
                         Plan erstellen
@@ -806,26 +797,26 @@ export default function AdminSchedule() {
                               </td>
                               {week.map((day, i) => {
                                 const dateStr = toDateString(day)
-                                const shift = getDisplayShift(emp.id, dateStr)
+                                const assignment = getDisplayAssignment(emp.id, dateStr)
                                 const isWeekend = i >= 5
-                                const Icon = shift ? SHIFT_ICONS[shift.type] : null
+                                const Icon = assignment ? SHIFT_ICONS[assignment.shift.type] : null
                                 return (
                                   <td key={dateStr} className="p-1.5 text-center">
                                     {isWeekend ? (
                                       <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-300">—</span></div>
-                                    ) : shift && Icon ? (
+                                    ) : assignment && Icon ? (
                                       <div
                                         onClick={() => setExplainEntry({
                                           employeeName: emp.name,
-                                          shiftName: shift.name,
+                                          shiftName: assignment.shift.name,
                                           dateStr,
                                           reason: getDisplayReason(emp.id, dateStr),
                                         })}
                                         className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity"
-                                        style={{ backgroundColor: shift.bgColor }}
+                                        style={{ backgroundColor: assignment.shift.bgColor }}
                                       >
-                                        <Icon size={12} style={{ color: shift.color }} />
-                                        <span className="text-[10px] font-semibold" style={{ color: shift.color }}>{shift.startTime}</span>
+                                        <Icon size={12} style={{ color: assignment.shift.color }} />
+                                        <span className="text-[10px] font-semibold" style={{ color: assignment.shift.color }}>{assignment.startTime}–{assignment.endTime}</span>
                                       </div>
                                     ) : (
                                       <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-200">—</span></div>
@@ -1050,14 +1041,6 @@ export default function AdminSchedule() {
         onClose={() => setPlanningChatOpen(false)}
         onSave={savePlanningChatNotes}
         periodLabel={`${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`}
-      />
-
-      {/* Shift Editor Modal */}
-      <ShiftEditor
-        open={shiftEditorOpen}
-        onClose={() => setShiftEditorOpen(false)}
-        shifts={locationShifts}
-        onSave={handleSaveShiftTimes}
       />
 
       {/* Rules Modal */}
