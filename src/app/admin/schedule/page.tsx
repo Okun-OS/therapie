@@ -645,7 +645,7 @@ export default function AdminSchedule() {
                     </Button>
                   </Link>
                 </div>
-              ) : !aiRunning && !aiDone ? (
+              ) : !aiRunning && !aiDone && !aiError ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Sparkles size={18} className="text-purple-600" />
