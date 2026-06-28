@@ -13,7 +13,7 @@ import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
 import { EmployeeCreationForm } from '@/components/employees/EmployeeCreationForm'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight, MessageCircle, Sparkles, ListChecks } from 'lucide-react'
+import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight, MessageCircle, Sparkles, ListChecks, AlertTriangle } from 'lucide-react'
 import type { Employee, OvertimeRequest, Absence } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 
@@ -29,7 +29,7 @@ interface EmployeeHumanContext {
 export default function AdminEmployees() {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const locationId = user?.locationId || 'loc1'
+  const locationId = user?.locationId
 
   const [search, setSearch] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
@@ -290,6 +290,21 @@ export default function AdminEmployees() {
   )
 
   const getBalanceColor = (h: number) => h > 0 ? 'text-green-600' : h < 0 ? 'text-red-500' : 'text-gray-500'
+
+  if (!locationId) {
+    return (
+      <>
+        <Header title="Mitarbeiter" subtitle="Kein Standort zugeordnet" />
+        <div className="p-4 sm:p-6">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Dein Account ist noch keinem Standort zugeordnet"
+            description="Ein OKUN-Administrator muss deinen Account einmalig einem Standort zuordnen, bevor du hier Mitarbeiter anlegen kannst. Bitte wende dich an die OKUN-Plattformverwaltung."
+          />
+        </div>
+      </>
+    )
+  }
 
   return (
     <>

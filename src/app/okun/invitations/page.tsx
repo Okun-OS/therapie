@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useToast } from '@/lib/toast-context'
 import { Mail, Plus, Send, RotateCw, Ban } from 'lucide-react'
-import type { Role, Invitation, Customer } from '@/lib/types'
+import type { Role, Invitation, Customer, Location } from '@/lib/types'
 
 const STATUS_BADGE: Record<string, { label: string; variant: 'success' | 'info' | 'warning' }> = {
   pending: { label: 'Ausstehend', variant: 'warning' },
@@ -28,8 +28,9 @@ export default function OkunInvitations() {
   const { showToast } = useToast()
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ email: '', role: 'company' as Role, customerId: '', customerName: '' })
+  const [form, setForm] = useState({ email: '', role: 'company' as Role, customerId: '', customerName: '', locationId: '' })
   const [errors, setErrors] = useState<string[]>([])
   const [sending, setSending] = useState(false)
   const [actingId, setActingId] = useState<string | null>(null)
@@ -46,6 +47,10 @@ export default function OkunInvitations() {
     fetch('/api/customers')
       .then(res => res.json())
       .then(data => setCustomers(data.customers ?? []))
+      .catch(() => {})
+    fetch('/api/locations')
+      .then(res => res.json())
+      .then(data => setLocations(data.locations ?? []))
       .catch(() => {})
   }, [])
 
@@ -72,7 +77,7 @@ export default function OkunInvitations() {
       showToast('Einladung versendet', 'success')
       setModal(false)
       setErrors([])
-      setForm({ email: '', role: 'company', customerId: '', customerName: '' })
+      setForm({ email: '', role: 'company', customerId: '', customerName: '', locationId: '' })
       loadInvitations()
     } catch {
       setErrors(['Verbindung fehlgeschlagen. Bitte erneut versuchen.'])
@@ -220,6 +225,19 @@ export default function OkunInvitations() {
               placeholder="z.B. Lebenshilfe Rheinland"
               hint="Neue Organisationen bitte über 'Kunde anlegen' in Kunden & Organisationen anlegen, damit Standorte und Mitarbeiter korrekt zugeordnet werden können."
             />
+          )}
+          {form.role === 'admin' && (
+            <Select
+              label="Standort"
+              value={form.locationId}
+              onChange={e => setForm(f => ({ ...f, locationId: e.target.value }))}
+              hint={!form.locationId ? 'Ohne Standort kann diese Person noch keine Mitarbeiter anlegen, bis ein OKUN-Administrator ihr einen Standort zuweist.' : undefined}
+            >
+              <option value="">Keinen Standort zuweisen (später manuell zuordnen)</option>
+              {locations
+                .filter(l => !form.customerId || l.customerId === form.customerId)
+                .map(l => <option key={l.id} value={l.id}>{l.name} · {l.city}</option>)}
+            </Select>
           )}
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setModal(false); setErrors([]) }}>Abbrechen</Button>

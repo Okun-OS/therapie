@@ -9,10 +9,11 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useToast } from '@/lib/toast-context'
 import { Building2, Plus, Mail, ChevronRight, Edit, Users, KeyRound, AlertTriangle } from 'lucide-react'
-import type { Customer, CustomerStatus, LicensePlan } from '@/lib/types'
+import type { Customer, CustomerStatus, LicensePlan, Location } from '@/lib/types'
 
 interface UnassignedLocation { id: string; name: string; city: string; employeeCount: number }
 interface UnassignedCompanyUser { id: string; name: string; email: string; role: 'company' | 'admin' }
+interface UnassignedAdminUser { id: string; name: string; email: string }
 
 const UNASSIGNED_ROLE_LABEL: Record<'company' | 'admin', string> = {
   company: 'Geschäftsführung',
@@ -37,17 +38,21 @@ export default function OkunCustomers() {
   const [CUSTOMERS, setCUSTOMERS] = useState<Customer[]>([])
   const [unassignedLocations, setUnassignedLocations] = useState<UnassignedLocation[]>([])
   const [unassignedCompanyUsers, setUnassignedCompanyUsers] = useState<UnassignedCompanyUser[]>([])
+  const [adminsWithoutLocation, setAdminsWithoutLocation] = useState<UnassignedAdminUser[]>([])
+  const [allLocations, setAllLocations] = useState<Location[]>([])
   const [assignChoice, setAssignChoice] = useState<Record<string, string>>({})
 
   const loadUnassigned = () => {
     fetch('/api/okun/unassigned').then(r => r.json()).then(d => {
       setUnassignedLocations(d.locations ?? [])
       setUnassignedCompanyUsers(d.companyUsers ?? [])
+      setAdminsWithoutLocation(d.adminsWithoutLocation ?? [])
     })
   }
 
   useEffect(() => {
     fetch('/api/customers').then(r => r.json()).then(d => setCUSTOMERS(d.customers))
+    fetch('/api/locations').then(r => r.json()).then(d => setAllLocations(d.locations ?? []))
     loadUnassigned()
   }, [])
 
@@ -63,6 +68,26 @@ export default function OkunCustomers() {
       body: JSON.stringify({ type, id, customerId }),
     })
     showToast('Zuordnung gespeichert', 'success')
+    loadUnassigned()
+  }
+
+  const assignAdminLocation = async (userId: string) => {
+    const locationId = assignChoice[userId]
+    if (!locationId) {
+      showToast('Bitte zuerst einen Standort auswählen', 'error')
+      return
+    }
+    const res = await fetch('/api/okun/unassigned/assign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'adminLocation', id: userId, locationId }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      showToast(data.error || 'Zuordnung fehlgeschlagen', 'error')
+      return
+    }
+    showToast('Standort zugeordnet', 'success')
     loadUnassigned()
   }
 
@@ -150,7 +175,7 @@ export default function OkunCustomers() {
           </div>
         </div>
 
-        {(unassignedLocations.length > 0 || unassignedCompanyUsers.length > 0) && (
+        {(unassignedLocations.length > 0 || unassignedCompanyUsers.length > 0 || adminsWithoutLocation.length > 0) && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-4">
             <div className="flex items-start gap-2">
               <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
@@ -161,6 +186,24 @@ export default function OkunCustomers() {
                 </p>
               </div>
             </div>
+
+            {adminsWithoutLocation.map(u => (
+              <div key={u.id} className="flex items-center gap-2 bg-white rounded-xl p-3 border border-gray-100">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-navy truncate">{u.name}</p>
+                  <p className="text-xs text-gray-500">{u.email} · Standortleitung ohne Standort</p>
+                </div>
+                <Select
+                  value={assignChoice[u.id] ?? ''}
+                  onChange={e => setAssignChoice(prev => ({ ...prev, [u.id]: e.target.value }))}
+                  className="w-48"
+                >
+                  <option value="">Standort wählen…</option>
+                  {allLocations.map(l => <option key={l.id} value={l.id}>{l.name} · {l.city}</option>)}
+                </Select>
+                <Button onClick={() => assignAdminLocation(u.id)}>Zuordnen</Button>
+              </div>
+            ))}
 
             {unassignedLocations.map(loc => (
               <div key={loc.id} className="flex items-center gap-2 bg-white rounded-xl p-3 border border-gray-100">

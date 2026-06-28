@@ -196,6 +196,36 @@ export async function assignCompanyUserToCustomer(userId: string, customerId: st
   await prisma.user.update({ where: { id: userId }, data: { customerId } })
 }
 
+export interface UnassignedAdminUser {
+  id: string
+  name: string
+  email: string
+}
+
+/** Standortleitungen, die über die OKUN-Einladungsseite ohne Standort-Zuordnung
+ * eingeladen wurden (vor der entsprechenden UI-Erweiterung) und deshalb keine
+ * Mitarbeiter anlegen können. Getrennt von listUnassignedCompanyUsers, weil hier
+ * ein Standort statt eines Unternehmens fehlt – beides kann unabhängig fehlen. */
+export async function listAdminUsersWithoutLocation(): Promise<UnassignedAdminUser[]> {
+  const rows = await prisma.user.findMany({ where: { role: 'admin', locationId: null }, orderBy: { name: 'asc' } })
+  return rows.map(r => ({ id: r.id, name: r.name, email: r.email }))
+}
+
+/** Weist einer Standortleitung einmalig einen Standort zu. Übernimmt dabei auch
+ * die customerId des Standorts, falls der Nutzer noch keine hat – ein fehlender
+ * Standort zieht in der Praxis fast immer eine fehlende Unternehmens-Zuordnung
+ * nach sich, da beide über dieselbe Einladungslücke entstehen. */
+export async function assignAdminUserToLocation(userId: string, locationId: string): Promise<void> {
+  const location = await prisma.location.findUnique({ where: { id: locationId } })
+  if (!location) throw new Error('Standort nicht gefunden')
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (!user) throw new Error('Nutzer nicht gefunden')
+  await prisma.user.update({
+    where: { id: userId },
+    data: { locationId, customerId: user.customerId ?? location.customerId },
+  })
+}
+
 export async function updateCustomer(id: string, updates: Partial<Customer>): Promise<Customer | undefined> {
   const { id: _ignored, ...data } = updates as any
   const row = await prisma.customer.update({ where: { id }, data }).catch(() => null)
