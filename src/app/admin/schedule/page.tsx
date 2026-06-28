@@ -724,7 +724,7 @@ export default function AdminSchedule() {
                   <div className="flex-1">
                     <p className="font-bold text-red-700">KI-Fehler</p>
                     <p className="text-sm text-red-600">{aiError}</p>
-                    <p className="text-xs text-gray-500 mt-1">Stelle sicher, dass ANTHROPIC_API_KEY in .env.local konfiguriert ist.</p>
+                    <p className="text-xs text-gray-500 mt-1">Versuche es erneut oder wähle einen kürzeren Zeitraum.</p>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => setAiError(null)} className="text-gray-500">
                     Erneut

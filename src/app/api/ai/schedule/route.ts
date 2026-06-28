@@ -45,6 +45,7 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 12. Diese Texte werden der STANDORTLEITUNG (Admin) angezeigt, NICHT den Mitarbeitern. Schreibe daher konsequent in der dritten Person über Mitarbeiter (z.B. "Maria Schmidt bekommt den Frühdienst, da..."), niemals in der zweiten Person ("du", "dein", "dich").
 13. Verwende AUSSCHLIESSLICH natürliches, allgemeinverständliches Deutsch. Interne Feldnamen/Variablen wie "earlyDebt", "lateDebt", "midDebt", "fridayLateCnt", "mondayEarlyCnt", "fairnessScore", "debt" oder Mitarbeiter-IDs wie "emp1"/"emp2" dürfen NIEMALS im Text vorkommen – verwende stattdessen den echten Namen des Mitarbeiters und beschreibe den Sachverhalt in Worten (z.B. statt "earlyDebt: 2.5" schreibe "hatte zuletzt unterdurchschnittlich viele Frühdienste").
 14. Mische niemals Deutsch und Englisch in einem Satz.
+14a. Verwende in reasoning/decisions[].message/warnings/decisionQuestion/fallback.message NIEMALS das Zeichen " (doppeltes Anführungszeichen) zum Zitieren oder Betonen von Wörtern – das würde das JSON ungültig machen. Nutze stattdessen einfache Anführungszeichen ' oder verzichte ganz auf Anführungszeichen.
 
 ## Rückfrage nach Qualitätsprüfung (Schritt 8)
 15. Prüfe nach der Erstellung deinen eigenen Plan auf sinnvolle Optimierungen, die eine echte Abwägung der Leitung erfordern (z.B. spürbare Reduzierung von Überstunden eines Mitarbeiters durch Tausch zweier Dienste, auf Kosten eines weicheren Signals wie einer Präferenz). Falls eine solche Verbesserung existiert, formuliere GENAU EINE kurze Ja/Nein-Frage dazu im Feld "decisionQuestion" (z.B. "Soll ich die Überstunden von Maria Schmidt reduzieren, indem ihr Frühdienst am Mittwoch mit dem Spätdienst von Klaus Becker getauscht wird?").
@@ -300,39 +301,69 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
   const cellCount = activeEmployees.length * weekDates.length
   const maxTokens = Math.min(32000, Math.max(8192, 2000 + cellCount * 130))
 
-  try {
-    // Use streaming: the Anthropic SDK refuses non-streaming calls whose maxTokens
-    // implies a request that could take longer than 10 minutes (our dynamic
-    // maxTokens can exceed that threshold for long planning periods).
-    const stream = client.messages.stream({
-      model: 'claude-opus-4-7',
-      max_tokens: maxTokens,
-      system: [
-        {
-          type: 'text',
-          text: SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages: [{ role: 'user', content: userPrompt }],
-    })
-    const response = await stream.finalMessage()
+  // Use streaming: the Anthropic SDK refuses non-streaming calls whose maxTokens
+  // implies a request that could take longer than 10 minutes (our dynamic
+  // maxTokens can exceed that threshold for long planning periods).
+  const requestSchedule = (messages: Anthropic.MessageParam[]) =>
+    client.messages
+      .stream({
+        model: 'claude-opus-4-7',
+        max_tokens: maxTokens,
+        system: [
+          {
+            type: 'text',
+            text: SYSTEM_PROMPT,
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages,
+      })
+      .finalMessage()
 
-    const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
+  try {
+    let messages: Anthropic.MessageParam[] = [{ role: 'user', content: userPrompt }]
+    let response = await requestSchedule(messages)
+    let rawText = response.content[0].type === 'text' ? response.content[0].text : ''
 
     if (response.stop_reason === 'max_tokens') {
       console.error('schedule: AI response truncated at max_tokens', { rawLength: rawText.length })
       return NextResponse.json({ error: 'KI-Antwort wurde abgeschnitten (zu lang für den Planungszeitraum) – bitte einen kürzeren Zeitraum wählen oder erneut versuchen', raw: rawText }, { status: 502 })
     }
 
-    // Extract the JSON object even if the model added stray text/markdown around it
-    const jsonCandidate = extractJsonObject(rawText) ?? rawText.trim()
-
-    let parsed: Record<string, unknown>
+    let parsed: Record<string, unknown> | undefined
+    let parseError: Error | undefined
     try {
-      parsed = JSON.parse(jsonCandidate)
-    } catch {
-      console.error('schedule: AI did not return valid JSON', { rawText })
+      parsed = JSON.parse(extractJsonObject(rawText) ?? rawText.trim())
+    } catch (err) {
+      parseError = err instanceof Error ? err : new Error('Unbekannter JSON-Fehler')
+    }
+
+    // The model occasionally breaks its own JSON in very large responses (e.g. an
+    // unescaped quote in German prose) – give it one chance to self-correct before failing.
+    if (!parsed) {
+      console.error('schedule: AI did not return valid JSON, retrying once', { rawText, parseError: parseError?.message })
+      messages = [
+        ...messages,
+        { role: 'assistant', content: rawText },
+        { role: 'user', content: `Deine letzte Antwort war kein gültiges JSON (Fehler: ${parseError?.message}). Antworte erneut ausschließlich mit dem vollständigen, korrigierten, gültigen JSON-Objekt im selben Format. Kein Markdown, kein Text davor oder danach.` },
+      ]
+      response = await requestSchedule(messages)
+      rawText = response.content[0].type === 'text' ? response.content[0].text : ''
+
+      if (response.stop_reason === 'max_tokens') {
+        console.error('schedule: AI retry response truncated at max_tokens', { rawLength: rawText.length })
+        return NextResponse.json({ error: 'KI-Antwort wurde abgeschnitten (zu lang für den Planungszeitraum) – bitte einen kürzeren Zeitraum wählen oder erneut versuchen', raw: rawText }, { status: 502 })
+      }
+
+      try {
+        parsed = JSON.parse(extractJsonObject(rawText) ?? rawText.trim())
+      } catch {
+        console.error('schedule: AI did not return valid JSON after retry', { rawText })
+        return NextResponse.json({ error: 'KI hat kein gültiges JSON zurückgegeben', raw: rawText }, { status: 502 })
+      }
+    }
+
+    if (!parsed) {
       return NextResponse.json({ error: 'KI hat kein gültiges JSON zurückgegeben', raw: rawText }, { status: 502 })
     }
 
