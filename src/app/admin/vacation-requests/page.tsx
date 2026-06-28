@@ -9,7 +9,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Textarea } from '@/components/ui/Textarea'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { CheckCircle, XCircle, Clock, Palmtree, Calendar, Sparkles, Loader2 } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Palmtree, Calendar, Sparkles, Loader2, AlertTriangle } from 'lucide-react'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { VacationRequest, RequestStatus, VacationRecommendation, VacationRules, Employee } from '@/lib/types'
@@ -27,7 +27,7 @@ function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: strin
 export default function AdminVacationRequests() {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const locationId = user?.locationId || 'loc1'
+  const locationId = user?.locationId
 
   const [requests, setRequests] = useState<VacationRequest[]>([])
   const [filter, setFilter] = useState<'all' | RequestStatus>('all')
@@ -43,12 +43,14 @@ export default function AdminVacationRequests() {
   }, [])
 
   useEffect(() => {
+    if (!locationId) return
     fetch(`/api/vacation-requests?locationId=${locationId}`)
       .then(r => r.json())
       .then(d => setRequests(((d.requests ?? []) as VacationRequest[]).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))))
   }, [locationId])
 
   useEffect(() => {
+    if (!locationId) return
     fetch(`/api/vacation-rules?locationId=${locationId}`)
       .then(r => r.json())
       .then(d => setVacationRulesState(d.rules ?? null))
@@ -145,6 +147,21 @@ export default function AdminVacationRequests() {
     approved: { label: 'Genehmigt', icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100', badge: 'success' as const },
     denied: { label: 'Abgelehnt', icon: XCircle, color: 'text-red-500', bg: 'bg-red-100', badge: 'danger' as const },
     pending: { label: 'Ausstehend', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-100', badge: 'warning' as const },
+  }
+
+  if (!locationId) {
+    return (
+      <>
+        <Header title="Urlaubsanträge" subtitle="Kein Standort zugeordnet" />
+        <div className="p-4 sm:p-6">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Dein Account ist noch keinem Standort zugeordnet"
+            description="Ein OKUN-Administrator muss deinen Account einmalig einem Standort zuordnen, bevor hier Urlaubsanträge angezeigt werden können. Bitte wende dich an die OKUN-Plattformverwaltung."
+          />
+        </div>
+      </>
+    )
   }
 
   return (

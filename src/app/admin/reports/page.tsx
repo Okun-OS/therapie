@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAuth } from '@/lib/auth-context'
 import { Employee, TimeLog, Absence, OvertimeRequest } from '@/lib/types'
-import { Download, BarChart3, TrendingUp, Clock, Users, Calendar, Stethoscope } from 'lucide-react'
+import { Download, BarChart3, TrendingUp, Clock, Users, Calendar, Stethoscope, AlertTriangle } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export default function AdminReports() {
   const { user } = useAuth()
-  const locationId = user?.locationId || 'loc1'
+  const locationId = user?.locationId
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [logs, setLogs] = useState<TimeLog[]>([])
   const [absencesByEmployee, setAbsencesByEmployee] = useState<Record<string, Absence[]>>({})
@@ -22,10 +23,12 @@ export default function AdminReports() {
   }, [])
 
   useEffect(() => {
+    if (!locationId) return
     fetch(`/api/time-logs`).then(r => r.json()).then(d => setLogs((d.logs ?? []).filter((l: TimeLog) => l.locationId === locationId)))
   }, [locationId])
 
   useEffect(() => {
+    if (!locationId) return
     fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => {
       const byEmployee: Record<string, Absence[]> = {}
       for (const a of (d.absences ?? []) as Absence[]) {
@@ -72,6 +75,21 @@ export default function AdminReports() {
   })
   const totalSickDays = absenceStats.reduce((s, e) => s + e.sickDays, 0)
   const totalOtherDays = absenceStats.reduce((s, e) => s + e.otherDays, 0)
+
+  if (!locationId) {
+    return (
+      <>
+        <Header title="Berichte" subtitle="Kein Standort zugeordnet" />
+        <div className="p-4 sm:p-6">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Dein Account ist noch keinem Standort zugeordnet"
+            description="Ein OKUN-Administrator muss deinen Account einmalig einem Standort zuordnen, bevor hier Berichte angezeigt werden können. Bitte wende dich an die OKUN-Plattformverwaltung."
+          />
+        </div>
+      </>
+    )
+  }
 
   return (
     <>

@@ -13,7 +13,7 @@ import { useToast } from '@/lib/toast-context'
 import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing, TimeLog, Employee } from '@/lib/types'
 import {
   AlertCircle, CheckCircle, XCircle, Clock, Stethoscope, FileText, ChevronDown, ChevronUp,
-  MessageSquare, ShieldCheck, ShieldX, Pencil, CalendarPlus,
+  MessageSquare, ShieldCheck, ShieldX, Pencil, CalendarPlus, AlertTriangle,
 } from 'lucide-react'
 import { formatDate, formatTime } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -39,7 +39,7 @@ type Tab = 'overtime' | 'absences' | 'closings'
 export default function AdminTimeTracking() {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const locationId = user?.locationId || 'loc1'
+  const locationId = user?.locationId
 
   const [tab, setTab] = useState<Tab>('overtime')
 
@@ -50,9 +50,11 @@ export default function AdminTimeTracking() {
   const openAbsenceCount = absences.filter(a => a.verificationStatus === 'offen').length
 
   const loadOvertimeRequests = () => {
+    if (!locationId) return
     fetch(`/api/overtime-requests?locationId=${locationId}`).then(r => r.json()).then(d => setOvertimeRequests(d.requests ?? []))
   }
   const loadAbsences = () => {
+    if (!locationId) return
     fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => setAbsences(d.absences ?? []))
   }
   useEffect(() => { loadOvertimeRequests() }, [locationId])
@@ -66,11 +68,12 @@ export default function AdminTimeTracking() {
 
   const [closings, setClosings] = useState<MonthlyClosing[]>([])
   const loadClosings = () => {
+    if (!locationId) return
     fetch(`/api/monthly-closings?locationId=${locationId}`).then(r => r.json()).then(d => setClosings(d.closings ?? []))
   }
 
   useEffect(() => {
-    if (employees.length === 0) return
+    if (!locationId || employees.length === 0) return
     const now = new Date()
     Promise.all(
       employees.flatMap(emp =>
@@ -249,6 +252,21 @@ export default function AdminTimeTracking() {
     setBackfillClosing(null)
     showToast('Eintrag nacherfasst', 'success')
     loadClosings()
+  }
+
+  if (!locationId) {
+    return (
+      <>
+        <Header title="Zeiterfassung" subtitle="Kein Standort zugeordnet" />
+        <div className="p-4 sm:p-6">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Dein Account ist noch keinem Standort zugeordnet"
+            description="Ein OKUN-Administrator muss deinen Account einmalig einem Standort zuordnen, bevor hier Zeiterfassungsdaten angezeigt werden können. Bitte wende dich an die OKUN-Plattformverwaltung."
+          />
+        </div>
+      </>
+    )
   }
 
   return (

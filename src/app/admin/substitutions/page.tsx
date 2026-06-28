@@ -12,7 +12,7 @@ import { SubstitutionChat } from '@/components/substitutions/SubstitutionChat'
 import type { SubstitutionDraft } from '@/lib/substitution-draft'
 import { ESCALATION_LABEL, PRIORITY_LABEL, type SubstitutionPriority } from '@/lib/substitution-constants'
 import { formatDate } from '@/lib/utils'
-import { UserPlus, MessageCircle, Calendar, Clock, TrendingUp, ChevronUp, CheckCircle2, XCircle, Hourglass } from 'lucide-react'
+import { UserPlus, MessageCircle, Calendar, Clock, TrendingUp, ChevronUp, CheckCircle2, XCircle, Hourglass, AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 interface Candidate {
@@ -72,7 +72,7 @@ const RESPONSE_LABEL: Record<Candidate['responseStatus'], string> = {
 export default function AdminSubstitutions() {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const locationId = user?.locationId || 'loc1'
+  const locationId = user?.locationId
 
   const [requests, setRequests] = useState<SubRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -80,6 +80,7 @@ export default function AdminSubstitutions() {
   const [escalatingId, setEscalatingId] = useState<string | null>(null)
 
   const loadRequests = async () => {
+    if (!locationId) return
     setLoading(true)
     try {
       const res = await fetch(`/api/substitutions?locationId=${locationId}`)
@@ -142,6 +143,21 @@ export default function AdminSubstitutions() {
 
   const open = requests.filter(r => r.status === 'open')
   const filled = requests.filter(r => r.status === 'filled')
+
+  if (!locationId) {
+    return (
+      <>
+        <Header title="Vertretungsmanagement" subtitle="Kein Standort zugeordnet" />
+        <div className="p-4 sm:p-6">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Dein Account ist noch keinem Standort zugeordnet"
+            description="Ein OKUN-Administrator muss deinen Account einmalig einem Standort zuordnen, bevor hier Vertretungsanfragen verwaltet werden können. Bitte wende dich an die OKUN-Plattformverwaltung."
+          />
+        </div>
+      </>
+    )
+  }
 
   return (
     <>

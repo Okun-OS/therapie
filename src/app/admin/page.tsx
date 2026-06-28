@@ -16,7 +16,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 export default function AdminDashboard() {
   const { user } = useAuth()
-  const locationId = user?.locationId || 'loc1'
+  const locationId = user?.locationId
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
   const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
@@ -28,6 +28,7 @@ export default function AdminDashboard() {
   }, [])
 
   useEffect(() => {
+    if (!locationId) return
     fetch(`/api/vacation-requests?locationId=${locationId}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests ?? []))
     fetch(`/api/schedule-entries?locationId=${locationId}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries ?? []))
     fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
@@ -62,6 +63,21 @@ export default function AdminDashboard() {
   })
 
   const recentVacations = VACATION_REQUESTS.filter(v => v.locationId === locationId).slice(0, 4)
+
+  if (!locationId) {
+    return (
+      <>
+        <Header title="Admin Dashboard" subtitle="Kein Standort zugeordnet" />
+        <div className="p-4 sm:p-6">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Dein Account ist noch keinem Standort zugeordnet"
+            description="Ein OKUN-Administrator muss deinen Account einmalig einem Standort zuordnen, bevor hier Daten angezeigt werden können. Bitte wende dich an die OKUN-Plattformverwaltung."
+          />
+        </div>
+      </>
+    )
+  }
 
   return (
     <>

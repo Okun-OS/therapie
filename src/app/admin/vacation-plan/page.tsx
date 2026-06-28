@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { VacationRulesChat } from '@/components/vacation/VacationRulesChat'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { SCHOOL_HOLIDAYS_2026 } from '@/lib/school-holidays'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
 import type { VacationPlanEntry, VacationPlanSummary, VacationPlanConflict, VacationRules, VacationPlanPreference, Employee, Location } from '@/lib/types'
@@ -68,7 +69,7 @@ export default function VacationPlanPage() {
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
   }, [])
 
-  const locationId = user?.locationId ?? 'loc1'
+  const locationId = user?.locationId
   const location = LOCATIONS.find(l => l.id === locationId)
 
   const employees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee')
@@ -77,6 +78,7 @@ export default function VacationPlanPage() {
   const [rulesChatOpen, setRulesChatOpen] = useState(false)
 
   useEffect(() => {
+    if (!locationId) return
     fetch(`/api/vacation-rules?locationId=${locationId}`)
       .then(r => r.json())
       .then(d => setRules(d.rules ?? DEFAULT_RULES(employees.length)))
@@ -301,6 +303,21 @@ export default function VacationPlanPage() {
     a.download = `urlaubsplan_${location?.name?.replace(/\s/g, '_')}_${planningStart.slice(0, 7)}.txt`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  if (!locationId) {
+    return (
+      <>
+        <Header title="KI-Urlaubsplan" subtitle="Kein Standort zugeordnet" />
+        <div className="p-4 sm:p-6">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Dein Account ist noch keinem Standort zugeordnet"
+            description="Ein OKUN-Administrator muss deinen Account einmalig einem Standort zuordnen, bevor hier ein Urlaubsplan erstellt werden kann. Bitte wende dich an die OKUN-Plattformverwaltung."
+          />
+        </div>
+      </>
+    )
   }
 
   return (

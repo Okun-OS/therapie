@@ -79,7 +79,7 @@ export default function AdminSchedule() {
   const { showToast } = useToast()
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
-  const locationId = user?.locationId ?? 'loc1'
+  const locationId = user?.locationId
   const location = LOCATIONS.find(l => l.id === locationId)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [tab, setTab] = useState<Tab>('plan')
@@ -126,6 +126,7 @@ export default function AdminSchedule() {
   }
 
   useEffect(() => {
+    if (!locationId) return
     loadScheduleEntries()
     fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
     fetch(`/api/vacation-requests?locationId=${locationId}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests ?? []))
@@ -138,6 +139,7 @@ export default function AdminSchedule() {
   // API liefert dieselbe Kombination bereits serverseitig (Postgres enthält
   // die historischen Einträge), daher reicht ein einzelner Fetch.
   useEffect(() => {
+    if (!locationId) return
     fetch(`/api/schedule-entries?locationId=${locationId}`).then(r => r.json()).then(d => setAllHistoricalEntries(d.entries ?? []))
   }, [locationId])
 
@@ -147,6 +149,7 @@ export default function AdminSchedule() {
   }, [])
 
   useEffect(() => {
+    if (!locationId) return
     fetch(`/api/planning-rules?locationId=${locationId}`).then(r => r.json()).then(d => {
       if (!d.rules) return
       const parsed = { ...DEFAULT_RULES, ...d.rules }
@@ -205,6 +208,7 @@ export default function AdminSchedule() {
   }
 
   useEffect(() => {
+    if (!locationId) return
     Promise.all(
       periodWeeks.map(week =>
         fetch(`/api/scheduling-period-notes?locationId=${locationId}&weekStart=${toDateString(week[0])}`)
@@ -524,6 +528,21 @@ export default function AdminSchedule() {
     a.click()
     URL.revokeObjectURL(url)
     showToast('Export gestartet')
+  }
+
+  if (!locationId) {
+    return (
+      <>
+        <Header title="Dienstplan" subtitle="Kein Standort zugeordnet" />
+        <div className="p-4 sm:p-6">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Dein Account ist noch keinem Standort zugeordnet"
+            description="Ein OKUN-Administrator muss deinen Account einmalig einem Standort zuordnen, bevor hier ein Dienstplan erstellt werden kann. Bitte wende dich an die OKUN-Plattformverwaltung."
+          />
+        </div>
+      </>
+    )
   }
 
   return (

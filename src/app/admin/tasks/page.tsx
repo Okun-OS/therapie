@@ -9,13 +9,13 @@ import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import type { Employee } from '@/lib/types'
-import { ListChecks, Plus, Trash2, ChevronDown, ChevronUp, Check } from 'lucide-react'
+import { ListChecks, Plus, Trash2, ChevronDown, ChevronUp, Check, AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 export default function AdminTasks() {
   const { user } = useAuth()
   const { showToast } = useToast()
-  const locationId = user?.locationId || 'loc1'
+  const locationId = user?.locationId
   const [allEmployees, setAllEmployees] = useState<Employee[]>([])
   const employees = allEmployees.filter(e => e.role === 'employee' && e.locationId === locationId)
   const [TASK_CATALOG, setTASK_CATALOG] = useState<string[]>([])
@@ -66,6 +66,21 @@ export default function AdminTasks() {
     setAllEmployees(prev => prev.map(e => ({ ...e, allowedTasks: e.allowedTasks?.filter(t => t !== name) })))
     if (expanded === name) setExpanded(null)
     showToast('Aufgabe entfernt', 'success')
+  }
+
+  if (!locationId) {
+    return (
+      <>
+        <Header title="Aufgaben verwalten" subtitle="Kein Standort zugeordnet" />
+        <div className="p-4 sm:p-6">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Dein Account ist noch keinem Standort zugeordnet"
+            description="Ein OKUN-Administrator muss deinen Account einmalig einem Standort zuordnen, bevor hier Aufgaben verwaltet werden können. Bitte wende dich an die OKUN-Plattformverwaltung."
+          />
+        </div>
+      </>
+    )
   }
 
   return (
