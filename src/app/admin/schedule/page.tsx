@@ -17,7 +17,7 @@ import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission } from '@/lib/types'
 import {
-  ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, Briefcase,
+  ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, MoonStar, Briefcase,
   CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -61,7 +61,8 @@ const DEFAULT_RULES: PlanningRules = {
   balanceHoursAccount: true,
 }
 
-const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase }
+const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase, night: MoonStar }
+const DEFAULT_SHIFT_ICON = Briefcase
 const AI_STEPS = [
   'Analysiere Verfügbarkeiten...',
   'Berechne Fairness-Scores...',
@@ -806,7 +807,7 @@ export default function AdminSchedule() {
                                 const dateStr = toDateString(day)
                                 const assignment = getDisplayAssignment(emp.id, dateStr)
                                 const isWeekend = i >= 5
-                                const Icon = assignment ? SHIFT_ICONS[assignment.shift.type] : null
+                                const Icon = assignment ? (SHIFT_ICONS[assignment.shift.type] ?? DEFAULT_SHIFT_ICON) : null
                                 return (
                                   <td key={dateStr} className="p-1.5 text-center">
                                     {isWeekend ? (
@@ -923,7 +924,7 @@ export default function AdminSchedule() {
             {/* Shift legend */}
             <div className="flex flex-wrap gap-2">
               {locationShifts.map(shift => {
-                const Icon = SHIFT_ICONS[shift.type]
+                const Icon = SHIFT_ICONS[shift.type] ?? DEFAULT_SHIFT_ICON
                 return (
                   <div key={shift.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ backgroundColor: shift.bgColor }}>
                     <Icon size={13} style={{ color: shift.color }} />
