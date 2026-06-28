@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { upsertOrganizationOnboarding, upsertLocationOnboarding, ONBOARDING_PHASES } from '@/lib/onboarding-service'
 import { listLocations } from '@/lib/entities'
-import { requireRole, resolveCustomerId } from '@/lib/session'
+import { listShiftsByLocation, addShift, updateShift } from '@/lib/schedule-entities'
+import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
+import type { ShiftType } from '@/lib/types'
 
 const client = new Anthropic()
 
@@ -40,7 +42,7 @@ Die 12 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reih
 1. Standort verstehen: Art des Standorts (Kita, Wohngruppe, Pflege, Jugendhilfe, Behindertenhilfe, ambulante Dienste, ...).
 2. Organisationsstruktur: Gruppen, Bereiche, Teams, Abteilungen, Wohnbereiche, Funktionsräume.
 3. Mitarbeiterstruktur: Rollen wie Leitung, Teamleitung, Springer, Auszubildende, Praktikanten, Verwaltung.
-4. Arbeitszeiten: Öffnungszeiten, Dienstmodelle (Früh/Spät/Nacht/24h), Bereitschaft, Wochenenden, Feiertage.
+4. Arbeitszeiten: Öffnungszeiten, Dienstmodelle (Früh/Spät/Nacht/24h), Bereitschaft, Wochenenden, Feiertage. Sobald der Nutzer eine konkrete, benannte Schicht mit Uhrzeiten nennt (z.B. "Frühschicht von 07:00 bis 14:00 Uhr", "Spätdienst 12:00 bis 18:00 Uhr"), rufe ZUSÄTZLICH das Tool "upsert_shifts" auf und übergib die VOLLSTÄNDIGE, aktuelle Liste aller bisher im Gespräch genannten benannten Schichten (nicht nur die neue) – das legt echte Dienstplan-Schichten im System an bzw. aktualisiert sie. Nenne der Person nie eine Schicht zweimal mit unterschiedlichem Namen, sondern aktualisiere bei Korrekturen ("der Frühdienst startet jetzt schon um 06:30") dieselbe Schicht per gleichem Namen.
 5. Dienstplanlogik: Mindestbesetzung, benötigte Qualifikationen, gesetzliche Vorgaben, feste/flexible Schichtmodelle.
 6. Pausenlogik: automatisch geplant oder selbst verwaltet, Dauer, früheste/späteste Lage, feste Regeln.
 7. Wiederkehrende Aufgaben: z.B. Bürozeit, Dokumentation, Teamsitzung, Elterngespräche, Übergaben.
@@ -53,10 +55,10 @@ Die 12 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reih
 Regeln:
 1. Sprich den Nutzer mit "Du" an, freundlich, kompetent, professionell.
 2. Stelle pro Nachricht nur ein bis zwei zusammenhängende Fragen, keine Frageblöcke.
-3. Rufe bei jeder neuen Information das Tool "update_location_onboarding" auf. Felder, die du dabei aktualisierst, MÜSSEN den vollständigen, aktuellen Stand enthalten (bereits Bekanntes + Neues), niemals nur das Neue. Trage in "completedPhases" alle Phasen-Keys ein, die inhaltlich ausreichend abgedeckt sind (phase1 … phase12).
+3. Rufe bei jeder neuen Information das Tool "update_location_onboarding" auf. Felder, die du dabei aktualisierst, MÜSSEN den vollständigen, aktuellen Stand enthalten (bereits Bekanntes + Neues), niemals nur das Neue. Trage in "completedPhases" alle Phasen-Keys ein, die inhaltlich ausreichend abgedeckt sind (phase1 … phase12). Rufe zusätzlich "upsert_shifts" auf, sobald konkrete, benannte Schichten mit Uhrzeiten genannt werden (siehe Phase 4).
 4. Antworte IMMER zusätzlich mit einem kurzen Text, auch wenn du das Tool aufrufst.
 5. Der Chat darf erst enden bzw. "completed" darf erst auf true gesetzt werden, wenn alle 12 Phasen abgedeckt sind UND der Nutzer der Abschluss-Zusammenfassung ausdrücklich zugestimmt hat.
-6. Falls der Nutzer bereits abgeschlossene Angaben später ändert ("Lernfähigkeit", z.B. "wir eröffnen ab nächstem Monat eine weitere Gruppe"), erkenne das und aktualisiere die betroffenen Felder, ohne von vorne zu beginnen.
+6. Falls der Nutzer bereits abgeschlossene Angaben später ändert ("Lernfähigkeit", z.B. "wir eröffnen ab nächstem Monat eine weitere Gruppe" oder "der Frühdienst startet jetzt schon um 06:30 Uhr"), erkenne das und aktualisiere die betroffenen Felder bzw. Schichten, ohne von vorne zu beginnen.
 7. Erfinde niemals Angaben, die nicht genannt wurden.
 8. Schreibe ausschließlich auf Deutsch.`
 
@@ -104,8 +106,40 @@ const LOCATION_TOOL = {
   },
 }
 
+const SHIFTS_TOOL = {
+  name: 'upsert_shifts',
+  description: 'Legt benannte Dienstplan-Schichten dieses Standorts als echte Systemdaten an bzw. aktualisiert sie. Immer die VOLLSTÄNDIGE, aktuelle Liste aller bisher im Gespräch genannten benannten Schichten übergeben (kumulativ, nicht nur die neue/geänderte).',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      shifts: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'z.B. "Frühschicht", "Spätdienst"' },
+            type: { type: 'string', enum: ['early', 'mid', 'late', 'night'], description: 'early=Frühschicht, mid=mittig/Kernzeit, late=Spätdienst, night=Nachtdienst' },
+            startTime: { type: 'string', description: 'Format HH:MM' },
+            endTime: { type: 'string', description: 'Format HH:MM' },
+            minStaff: { type: 'number', description: 'Mindestbesetzung, falls genannt' },
+          },
+          required: ['name', 'type', 'startTime', 'endTime'],
+        },
+      },
+    },
+    required: ['shifts'],
+  },
+}
+
+const SHIFT_TYPE_DEFAULTS: Record<ShiftType, { color: string; bgColor: string }> = {
+  early: { color: '#0E6B6F', bgColor: '#E5FAFA' },
+  mid: { color: '#C89C5B', bgColor: '#F8EFE2' },
+  late: { color: '#3A3F42', bgColor: '#E8ECEF' },
+  night: { color: '#26292B', bgColor: '#C9D0D4' },
+}
+
 export async function POST(req: NextRequest) {
-  const session = requireRole(req, ['company', 'okun'])
+  const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -130,10 +164,20 @@ export async function POST(req: NextRequest) {
 
   const isOrganization = scope === 'organization'
 
+  if (session.role === 'admin') {
+    if (isOrganization) {
+      return NextResponse.json({ error: 'Keine Berechtigung für das Unternehmens-Onboarding' }, { status: 403 })
+    }
+    const ownLocationId = await resolveLocationId(session)
+    if (!ownLocationId || ownLocationId !== scope) {
+      return NextResponse.json({ error: 'Keine Berechtigung für diesen Standort' }, { status: 403 })
+    }
+  }
+
   try {
     let stateNote: string
     let systemPrompt: string
-    let tool: typeof ORG_TOOL | typeof LOCATION_TOOL
+    let tools: (typeof ORG_TOOL | typeof LOCATION_TOOL | typeof SHIFTS_TOOL)[]
 
     if (isOrganization) {
       const [existing, customer] = await Promise.all([
@@ -148,7 +192,7 @@ export async function POST(req: NextRequest) {
         completed: existing?.completed ?? false,
       }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Dieses Gespräch kann jederzeit erneut geführt werden, auch wenn "completed" bereits true ist – behandle spätere Ergänzungen/Änderungen dann gemäß Regel 6.`
       systemPrompt = ORGANIZATION_SYSTEM_PROMPT
-      tool = ORG_TOOL
+      tools = [ORG_TOOL]
     } else {
       const allLocations = await listLocations(customerId)
       const location = allLocations.find(l => l.id === scope)
@@ -173,7 +217,7 @@ export async function POST(req: NextRequest) {
         completed: existing?.completed ?? false,
       }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Noch offene Phasen: ${ONBOARDING_PHASES.filter(p => !(existing?.completedPhases ?? []).includes(p.key)).map(p => p.label).join(', ') || 'keine – alle Phasen abgedeckt'}.`
       systemPrompt = LOCATION_SYSTEM_PROMPT
-      tool = LOCATION_TOOL
+      tools = [LOCATION_TOOL, SHIFTS_TOOL]
     }
 
     const response = await client.messages.create({
@@ -183,7 +227,7 @@ export async function POST(req: NextRequest) {
         { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
         { type: 'text', text: stateNote },
       ],
-      tools: [tool],
+      tools,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
     })
 
@@ -222,6 +266,39 @@ export async function POST(req: NextRequest) {
             completedPhases: Array.isArray(input.completedPhases) ? input.completedPhases as string[] : undefined,
             completed: typeof input.completed === 'boolean' ? input.completed : undefined,
           })
+        }
+      }
+      if (block.type === 'tool_use' && block.name === 'upsert_shifts' && !isOrganization) {
+        const input = block.input as { shifts?: unknown }
+        if (Array.isArray(input.shifts)) {
+          const existingShifts = await listShiftsByLocation(scope)
+          for (const entry of input.shifts) {
+            if (typeof entry !== 'object' || !entry) continue
+            const { name, type, startTime, endTime, minStaff } = entry as Record<string, unknown>
+            if (typeof name !== 'string' || !name.trim() || typeof startTime !== 'string' || typeof endTime !== 'string') continue
+            const shiftType: ShiftType = (['early', 'mid', 'late', 'night'] as const).includes(type as ShiftType) ? type as ShiftType : 'mid'
+            const match = existingShifts.find(s => s.name.trim().toLowerCase() === name.trim().toLowerCase())
+            if (match) {
+              await updateShift(match.id, {
+                type: shiftType,
+                startTime,
+                endTime,
+                ...(typeof minStaff === 'number' ? { minStaff } : {}),
+              })
+            } else {
+              const defaults = SHIFT_TYPE_DEFAULTS[shiftType]
+              await addShift({
+                name: name.trim(),
+                type: shiftType,
+                startTime,
+                endTime,
+                color: defaults.color,
+                bgColor: defaults.bgColor,
+                minStaff: typeof minStaff === 'number' ? minStaff : 1,
+                locationId: scope,
+              })
+            }
+          }
         }
       }
     }

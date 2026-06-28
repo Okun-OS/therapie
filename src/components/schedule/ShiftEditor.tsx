@@ -18,12 +18,11 @@ interface ShiftEditorProps {
   open: boolean
   onClose: () => void
   shifts: Shift[]
-  overrides: Record<string, ShiftTimeOverride>
-  onSave: (overrides: Record<string, ShiftTimeOverride>) => void
+  onSave: (changes: Record<string, ShiftTimeOverride>) => void
 }
 
-export function ShiftEditor({ open, onClose, shifts, overrides, onSave }: ShiftEditorProps) {
-  const [local, setLocal] = useState<Record<string, ShiftTimeOverride>>(() => ({ ...overrides }))
+export function ShiftEditor({ open, onClose, shifts, onSave }: ShiftEditorProps) {
+  const [local, setLocal] = useState<Record<string, ShiftTimeOverride>>({})
 
   const handleChange = (shiftId: string, field: 'startTime' | 'endTime', value: string) => {
     setLocal(prev => ({

@@ -98,7 +98,6 @@ export default function AdminSchedule() {
   const [facilityDescription, setFacilityDescription] = useState('')
   const [periodNotes, setPeriodNotes] = useState<{ id: string; note: string }[]>([])
   const [planningChatOpen, setPlanningChatOpen] = useState(false)
-  const [shiftTimeOverrides, setShiftTimeOverrides] = useState<Record<string, { startTime: string; endTime: string }>>({})
   const [planningRules, setPlanningRules] = useState<PlanningRules>(DEFAULT_RULES)
   const [rulesDraft, setRulesDraft] = useState<PlanningRules>(DEFAULT_RULES)
   const [minStaffDraft, setMinStaffDraft] = useState<Record<string, number>>({})
@@ -139,8 +138,6 @@ export default function AdminSchedule() {
   useEffect(() => {
     const saved = localStorage.getItem('facilityDescription')
     if (saved) setFacilityDescription(saved)
-    const overrides = localStorage.getItem('shiftTimeOverrides')
-    if (overrides) setShiftTimeOverrides(JSON.parse(overrides))
     const rules = localStorage.getItem('planningRules')
     if (rules) {
       const parsed = { ...DEFAULT_RULES, ...JSON.parse(rules) }
@@ -256,10 +253,6 @@ export default function AdminSchedule() {
       })
   }, [wishSubmissions, fairnessData])
 
-  const effectiveShifts = locationShifts.map(s =>
-    shiftTimeOverrides[s.id] ? { ...s, ...shiftTimeOverrides[s.id] } : s
-  )
-
   const existingEntries = SCHEDULE_ENTRIES.filter(e => {
     const d = new Date(e.date + 'T00:00:00')
     return e.locationId === locationId && d >= periodWeeks[0][0] && d <= periodWeeks[periodWeeks.length - 1][6]
@@ -278,10 +271,10 @@ export default function AdminSchedule() {
   const getDisplayShift = (empId: string, dateStr: string) => {
     if (generatedSchedule) {
       const shiftId = generatedSchedule[empId]?.[dateStr]
-      return shiftId ? effectiveShifts.find(s => s.id === shiftId) : null
+      return shiftId ? locationShifts.find(s => s.id === shiftId) : null
     }
     const entry = existingEntries.find(e => e.employeeId === empId && e.date === dateStr)
-    return entry ? effectiveShifts.find(s => s.id === entry.shiftId) : null
+    return entry ? locationShifts.find(s => s.id === entry.shiftId) : null
   }
 
   const getDisplayReason = (empId: string, dateStr: string): string | null => {
@@ -320,7 +313,7 @@ export default function AdminSchedule() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employees,
-          shifts: effectiveShifts,
+          shifts: locationShifts,
           fairnessData,
           wishSubmissions: planningRules.considerWishes ? wishSubmissions : [],
           weekDates,
@@ -398,7 +391,7 @@ export default function AdminSchedule() {
 
   const handleCreateSubstitution = async () => {
     if (!fallback) return
-    const shift = effectiveShifts.find(s => s.id === fallback.shiftId)
+    const shift = locationShifts.find(s => s.id === fallback.shiftId)
     setFallbackLoading(true)
     try {
       await fetch('/api/substitutions', {
@@ -454,6 +447,21 @@ export default function AdminSchedule() {
     fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
     setRulesOpen(false)
     showToast('Planungsregeln gespeichert')
+  }
+
+  const handleSaveShiftTimes = async (changes: Record<string, { startTime: string; endTime: string }>) => {
+    await Promise.all(
+      Object.entries(changes).map(([shiftId, times]) =>
+        fetch(`/api/shifts/${shiftId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(times),
+        })
+      )
+    )
+    fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
+    setShiftEditorOpen(false)
+    showToast('Dienstzeiten gespeichert')
   }
 
   const handleSaveSchedule = async () => {
@@ -895,7 +903,7 @@ export default function AdminSchedule() {
 
             {/* Shift legend */}
             <div className="flex flex-wrap gap-2">
-              {effectiveShifts.map(shift => {
+              {locationShifts.map(shift => {
                 const Icon = SHIFT_ICONS[shift.type]
                 return (
                   <div key={shift.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ backgroundColor: shift.bgColor }}>
@@ -1028,11 +1036,7 @@ export default function AdminSchedule() {
         open={shiftEditorOpen}
         onClose={() => setShiftEditorOpen(false)}
         shifts={locationShifts}
-        overrides={shiftTimeOverrides}
-        onSave={overrides => {
-          setShiftTimeOverrides(overrides)
-          localStorage.setItem('shiftTimeOverrides', JSON.stringify(overrides))
-        }}
+        onSave={handleSaveShiftTimes}
       />
 
       {/* Rules Modal */}

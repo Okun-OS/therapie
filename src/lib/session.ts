@@ -121,3 +121,14 @@ export async function resolveCustomerId(session: SessionPayload): Promise<string
   const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { customerId: true } })
   return user?.customerId ?? undefined
 }
+
+/**
+ * Same staleness problem as resolveCustomerId, for locationId. Routes that
+ * restrict a Standortleitung ('admin' role) to their own location should
+ * call this instead of reading session.locationId directly.
+ */
+export async function resolveLocationId(session: SessionPayload): Promise<string | undefined> {
+  if (session.locationId) return session.locationId
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { locationId: true } })
+  return user?.locationId ?? undefined
+}

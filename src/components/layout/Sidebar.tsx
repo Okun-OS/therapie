@@ -31,6 +31,7 @@ const employeeNav: NavItem[] = [
 
 const adminNav: NavItem[] = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/onboarding', label: 'KI-Onboarding', icon: MessageCircle, badge: 'KI' },
   { href: '/admin/employees', label: 'Mitarbeiter', icon: Users },
   { href: '/admin/schedule', label: 'Dienstplan', icon: Calendar, badge: 'KI' },
   { href: '/admin/vacation-requests', label: 'Urlaubsanträge', icon: Palmtree },

@@ -98,6 +98,23 @@ export async function setShiftMinStaff(shiftId: string, minStaff: number): Promi
   await prisma.shift.update({ where: { id: shiftId }, data: { minStaff } }).catch(() => null)
 }
 
+export async function updateShift(shiftId: string, fields: Partial<{
+  name: string
+  type: ShiftType
+  startTime: string
+  endTime: string
+  color: string
+  bgColor: string
+  minStaff: number
+}>): Promise<Shift | null> {
+  const row = await prisma.shift.update({ where: { id: shiftId }, data: fields }).catch(() => null)
+  return row ? toShift(row) : null
+}
+
+export async function deleteShift(shiftId: string): Promise<void> {
+  await prisma.shift.delete({ where: { id: shiftId } }).catch(() => null)
+}
+
 export async function getScheduleByEmployee(employeeId: string): Promise<ScheduleEntry[]> {
   const rows = await prisma.scheduleEntry.findMany({ where: { employeeId } })
   return rows.map(toScheduleEntry)
