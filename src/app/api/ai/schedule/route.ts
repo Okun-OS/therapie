@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
 import type { Employee, Shift, ShiftFairnessData, WishSubmission } from '@/lib/types'
 
 const client = new Anthropic()
@@ -111,12 +111,15 @@ export async function POST(req: NextRequest) {
   // weekDates is a flat Mon–Fri list across one or more weeks; each week contributes exactly 5 entries.
   const weekStarts = weekDates.filter((_, idx) => idx % 5 === 0)
 
-  const [locationOnboarding, periodNotes] = locationId
+  const customerId = await resolveCustomerId(session)
+
+  const [locationOnboarding, periodNotes, organizationOnboarding] = locationId
     ? await Promise.all([
         prisma.locationOnboarding.findUnique({ where: { locationId } }),
         prisma.schedulingPeriodNote.findMany({ where: { locationId, weekStart: { in: weekStarts } } }),
+        customerId ? prisma.organizationOnboarding.findUnique({ where: { customerId } }) : Promise.resolve(null),
       ])
-    : [null, []]
+    : [null, [], null]
 
   const humanContexts = activeEmployees.length > 0
     ? await prisma.employeeHumanContext.findMany({
@@ -165,18 +168,31 @@ export async function POST(req: NextRequest) {
     minStaff: s.minStaff,
   }))
 
-  const onboardingSection = locationOnboarding ? `
-## Konfiguration des Standorts (aus dem KI-Onboarding, gilt dauerhaft)
+  const organizationSection = organizationOnboarding ? `
+## Unternehmensweite Vorgaben (aus dem KI-Unternehmens-Onboarding, gilt für alle Standorte)
 ${[
+    organizationOnboarding.rollenmodell && `Rollenmodell: ${organizationOnboarding.rollenmodell}`,
+    organizationOnboarding.unternehmensweiteRegeln && `Unternehmensweite Regeln: ${organizationOnboarding.unternehmensweiteRegeln}`,
+  ].filter(Boolean).join('\n')}` : ''
+
+  const onboardingSection = locationOnboarding ? `
+## Konfiguration des Standorts (aus dem KI-Standort-Onboarding, gilt dauerhaft als Wissensbasis dieses Standorts)
+${[
+    locationOnboarding.einrichtungsart && `Art des Standorts: ${locationOnboarding.einrichtungsart}`,
+    locationOnboarding.organisationsstruktur && `Organisationsstruktur (Gruppen/Bereiche/Teams): ${locationOnboarding.organisationsstruktur}`,
+    locationOnboarding.personalstruktur && `Personalstruktur: ${locationOnboarding.personalstruktur}`,
+    locationOnboarding.arbeitszeiten && `Arbeitszeiten/Dienstzeiten/Öffnungszeiten: ${locationOnboarding.arbeitszeiten}`,
     locationOnboarding.dienstplanlogik && `Dienstplanlogik: ${locationOnboarding.dienstplanlogik}`,
     locationOnboarding.pausenlogik && `Pausenlogik: ${locationOnboarding.pausenlogik}`,
     locationOnboarding.wiederkehrendeAufgaben && `Wiederkehrende Aufgaben: ${locationOnboarding.wiederkehrendeAufgaben}`,
-    locationOnboarding.vertretungsregeln && `Vertretungsregeln: ${locationOnboarding.vertretungsregeln}`,
     locationOnboarding.individuelleRegeln.length > 0 && `Individuelle Regeln:\n${locationOnboarding.individuelleRegeln.map(r => `- ${r}`).join('\n')}`,
-    locationOnboarding.besonderheiten && `Sonstige Besonderheiten: ${locationOnboarding.besonderheiten}`,
+    locationOnboarding.vertretungsregeln && `Vertretungsregeln: ${locationOnboarding.vertretungsregeln}`,
+    locationOnboarding.urlaubslogik && `Urlaubslogik: ${locationOnboarding.urlaubslogik}`,
+    locationOnboarding.zeiterfassung && `Zeiterfassung: ${locationOnboarding.zeiterfassung}`,
+    locationOnboarding.besonderheiten && `Sonstige Besonderheiten (Standortbeschreibung): ${locationOnboarding.besonderheiten}`,
   ].filter(Boolean).join('\n')}
 
-Beachte diese Konfiguration verbindlich bei der Planung.` : ''
+Dies ist die dauerhafte Wissensbasis dieses Standorts – leite daraus automatisch Dienstzeiten, Schichten, Arbeitsmodelle und Regeln ab und beachte sie verbindlich bei der Planung, auch wenn nicht jedes Feld ausgefüllt ist.` : ''
 
   const periodNotesSection = periodNotes.length > 0 ? `
 ## Besonderheiten ausschließlich für diese eine Planungsperiode
@@ -223,6 +239,7 @@ ${JSON.stringify(weekDates)}
 ${wishSummary.length > 0 ? JSON.stringify(wishSummary, null, 2) : 'Keine Wünsche eingereicht.'}
 ${vacationSection}
 ${absenceSection}
+${organizationSection}
 ${onboardingSection}
 ${periodNotesSection}
 ${facilityDescription ? `

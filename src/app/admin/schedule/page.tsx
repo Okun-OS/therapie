@@ -602,14 +602,15 @@ export default function AdminSchedule() {
                   </div>
                   <div>
                     <Textarea
-                      label="Standortbeschreibung (optional)"
+                      label="Zusätzlicher Hinweis für diesen Plan (optional)"
                       value={facilityDescription}
                       onChange={e => {
                         setFacilityDescription(e.target.value)
                         localStorage.setItem('facilityDescription', e.target.value)
                       }}
-                      placeholder="Beschreibe deinen Standort, z.B. Öffnungszeiten, besondere Anforderungen, Gruppenstrukturen... Die KI leitet daraus automatisch Planungsregeln ab."
+                      placeholder="Nur für diese Planung – die dauerhafte Standortbeschreibung aus dem Standort-Onboarding wird bereits automatisch berücksichtigt."
                       rows={3}
+                      hint="Die Angaben aus dem Standort-Onboarding (Dienstzeiten, Schichten, Regeln, Besonderheiten) fließen automatisch und dauerhaft in jede Planung ein. Hier kannst du zusätzlich etwas ergänzen, das nur für diesen einen Plan gilt."
                     />
                   </div>
                   <div>

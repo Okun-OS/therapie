@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireRole } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+import { requireRole, resolveCustomerId } from '@/lib/session'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 
 const client = new Anthropic()
@@ -17,7 +18,7 @@ Phase 1 – Persönliche Daten: Vor- und Nachname, E-Mail-Adresse, Telefonnummer
 
 Phase 2 – Arbeitsbereich: In welcher Gruppe und welchem Bereich arbeitet die Person? Kann sie in mehreren Gruppen arbeiten? Gibt es feste Einsatzorte?
 
-Phase 3 – Rolle: Welche Rolle übernimmt die Person? Beispiele: Erzieher, Leitung, Stellvertretung, Springer, Verwaltung, Praktikant, Auszubildender, Hauswirtschaft, Sonstige.
+Phase 3 – Rolle: Welche Rolle übernimmt die Person? Du bekommst die im Unternehmens-Onboarding festgelegte Liste der gültigen Rollen mitgeteilt (siehe "Im Unternehmen definierte Rollen" unten) – schlage der Leitung bevorzugt eine dieser bestehenden Rollen vor bzw. ordne die Antwort der Leitung der passendsten bestehenden Rolle zu. Nur wenn wirklich keine der bestehenden Rollen passt, akzeptiere eine neue Rollenbezeichnung (diese wird dann automatisch zur unternehmensweiten Rollenliste hinzugefügt). Falls noch gar keine Rollen definiert sind, übernimm einfach die von der Leitung genannte Rolle.
 
 Phase 4 – Arbeitszeit: Wochenstunden (flexibler Wert, NICHT auf 40 Stunden begrenzen, unterstütze mindestens bis 60 Wochenstunden), und ob Vollzeit, Teilzeit, Minijob oder ein individuelles Arbeitszeitmodell.
 
@@ -95,8 +96,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'messages sind erforderlich' }, { status: 400 })
   }
 
+  const customerId = await resolveCustomerId(session)
+  const customer = customerId ? await prisma.customer.findUnique({ where: { id: customerId }, select: { roles: true } }) : null
+  const companyRoles = customer?.roles ?? []
+
   const stateNote = `## Bisher im Gespräch erfasste Daten
 ${JSON.stringify(draft ?? {}, null, 2)}
+
+## Im Unternehmen definierte Rollen
+${companyRoles.length > 0 ? JSON.stringify(companyRoles) : 'Noch keine Rollen definiert – akzeptiere die von der Leitung genannte Rolle.'}
 
 Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
 
@@ -145,6 +153,10 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
 
     if (!reply.trim()) {
       reply = 'Danke, das habe ich notiert!'
+    }
+
+    if (customerId && nextDraft.roleType && !companyRoles.some(r => r.toLowerCase() === nextDraft.roleType!.toLowerCase())) {
+      await prisma.customer.update({ where: { id: customerId }, data: { roles: [...companyRoles, nextDraft.roleType] } })
     }
 
     return NextResponse.json({ reply, draft: nextDraft })

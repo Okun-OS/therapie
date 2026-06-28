@@ -13,7 +13,7 @@ import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
 import { EmployeeCreationForm } from '@/components/employees/EmployeeCreationForm'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Users, Plus, Search, Clock, TrendingUp, Palmtree, Edit, ChevronRight, MessageCircle, Sparkles, ListChecks, AlertTriangle } from 'lucide-react'
+import { Users, Plus, Search, Clock, TrendingUp, Palmtree, ChevronRight, MessageCircle, Sparkles, ListChecks, AlertTriangle } from 'lucide-react'
 import type { Employee, OvertimeRequest, Absence } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 
@@ -33,13 +33,13 @@ export default function AdminEmployees() {
 
   const [search, setSearch] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ name: '', email: '', position: '', weeklyHours: 38 })
   const [chatOpen, setChatOpen] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [editChatEmployee, setEditChatEmployee] = useState<Employee | null>(null)
   const [editChatDraft, setEditChatDraft] = useState<EmployeeDraft | null>(null)
+  const [editFormEmployee, setEditFormEmployee] = useState<Employee | null>(null)
+  const [editFormDraft, setEditFormDraft] = useState<EmployeeDraft | null>(null)
   const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
   const [allEmployees, setAllEmployees] = useState<Employee[]>([])
   const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([])
@@ -100,32 +100,6 @@ export default function AdminEmployees() {
       throw new Error(data?.error || 'Mitarbeiter konnte nicht gespeichert werden')
     }
     return data.employee as Employee
-  }
-
-  const startEditing = (emp: Employee) => {
-    setEditForm({ name: emp.name, email: emp.email, position: emp.position, weeklyHours: emp.weeklyHours })
-    setIsEditing(true)
-  }
-
-  const saveEdit = async () => {
-    if (!selectedEmployee) return
-    if (!editForm.name.trim() || !editForm.email.trim() || !editForm.position.trim()) {
-      showToast('Bitte alle Pflichtfelder ausfüllen', 'error')
-      return
-    }
-    try {
-      const updated = await parseEmployeeResponse(await fetch(`/api/employees/${selectedEmployee.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm),
-      }))
-      setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
-      showToast('Mitarbeiter aktualisiert', 'success')
-      setIsEditing(false)
-      setSelectedEmployee(null)
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Mitarbeiter konnte nicht aktualisiert werden', 'error')
-    }
   }
 
   function patchFieldsFromDraft(draft: EmployeeDraft) {
@@ -282,6 +256,20 @@ export default function AdminEmployees() {
     setSelectedEmployee(prev => prev && prev.id === editChatEmployee.id ? { ...prev, ...draft } as Employee : prev)
   }
 
+  const handleUpdateFromForm = async (draft: EmployeeDraft) => {
+    if (!editFormEmployee) return
+    const updated = await parseEmployeeResponse(await fetch(`/api/employees/${editFormEmployee.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patchFieldsFromDraft(draft)),
+    }))
+    setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
+    await saveHumanContextFromDraft(editFormEmployee.id, draft)
+    showToast('Profil aktualisiert', 'success')
+    setEditFormEmployee(null)
+    setSelectedEmployee(prev => prev && prev.id === editFormEmployee.id ? { ...prev, ...draft } as Employee : prev)
+  }
+
   const employees = allEmployees.filter(
     e => e.locationId === locationId && e.role === 'employee'
   ).filter(e =>
@@ -427,10 +415,10 @@ export default function AdminEmployees() {
       {/* Employee Detail / Edit Modal */}
       <Modal
         open={!!selectedEmployee}
-        onClose={() => { setSelectedEmployee(null); setIsEditing(false) }}
-        title={isEditing ? 'Mitarbeiter bearbeiten' : 'Mitarbeiter-Details'}
+        onClose={() => setSelectedEmployee(null)}
+        title="Mitarbeiter-Details"
       >
-        {selectedEmployee && !isEditing && (
+        {selectedEmployee && (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-2xl bg-navy flex items-center justify-center font-bold text-brand text-xl flex-shrink-0">
@@ -533,69 +521,28 @@ export default function AdminEmployees() {
               </div>
             )}
 
-            <Button
-              variant="ghost"
-              className="w-full gap-2 border border-gray-200"
-              onClick={() => { setEditChatDraft(employeeToDraft(selectedEmployee, humanContext)); setEditChatEmployee(selectedEmployee); setSelectedEmployee(null) }}
-            >
-              <MessageCircle size={16} />
-              Per KI-Chat aktualisieren
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="ghost"
+                className="gap-2 border border-gray-200"
+                onClick={() => { setEditChatDraft(employeeToDraft(selectedEmployee, humanContext)); setEditChatEmployee(selectedEmployee); setSelectedEmployee(null) }}
+              >
+                <MessageCircle size={16} />
+                Per KI-Chat
+              </Button>
+              <Button
+                variant="ghost"
+                className="gap-2 border border-gray-200"
+                onClick={() => { setEditFormDraft(employeeToDraft(selectedEmployee, humanContext)); setEditFormEmployee(selectedEmployee); setSelectedEmployee(null) }}
+              >
+                <ListChecks size={16} />
+                Klassisch bearbeiten
+              </Button>
+            </div>
+
+            <Button variant="ghost" className="w-full border border-gray-200" onClick={() => setSelectedEmployee(null)}>
+              Schließen
             </Button>
-
-            <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setSelectedEmployee(null)}>
-                Schließen
-              </Button>
-              <Button className="flex-1 gap-2" onClick={() => startEditing(selectedEmployee)}>
-                <Edit size={16} />
-                Bearbeiten
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {selectedEmployee && isEditing && (
-          <div className="space-y-4">
-            <div>
-              <Input
-                label="Name"
-                value={editForm.name}
-                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Input
-                label="E-Mail"
-                type="email"
-                value={editForm.email}
-                onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Input
-                label="Position"
-                value={editForm.position}
-                onChange={e => setEditForm(f => ({ ...f, position: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Wochenstunden</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range" min={10} max={60} step={2}
-                  value={editForm.weeklyHours}
-                  onChange={e => setEditForm(f => ({ ...f, weeklyHours: Number(e.target.value) }))}
-                  className="flex-1 accent-brand"
-                />
-                <span className="font-bold text-navy w-12 text-center">{editForm.weeklyHours}h</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setIsEditing(false)}>
-                Abbrechen
-              </Button>
-              <Button className="flex-1" onClick={saveEdit}>Speichern</Button>
-            </div>
           </div>
         )}
       </Modal>
@@ -620,6 +567,15 @@ export default function AdminEmployees() {
         onSave={handleUpdateFromChat}
         initialDraft={editChatDraft ?? undefined}
         employeeName={editChatEmployee?.name}
+      />
+
+      <EmployeeCreationForm
+        key={editFormEmployee?.id ?? 'none-edit'}
+        open={!!editFormEmployee}
+        onClose={() => { setEditFormEmployee(null); setEditFormDraft(null) }}
+        onSave={handleUpdateFromForm}
+        initialDraft={editFormDraft ?? undefined}
+        employeeName={editFormEmployee?.name}
       />
     </>
   )

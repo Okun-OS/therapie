@@ -94,8 +94,11 @@ export default function CompanyOnboarding() {
 
           <Button onClick={() => setChatScope('organization')} className="gap-2">
             <MessageCircle size={16} />
-            {org ? 'Im Gespräch fortsetzen' : 'Unternehmens-Onboarding per KI-Chat starten'}
+            {org?.completed ? 'Angaben ändern (KI-Chat)' : org ? 'Im Gespräch fortsetzen' : 'Unternehmens-Onboarding per KI-Chat starten'}
           </Button>
+          {org?.completed && (
+            <p className="text-xs text-gray-500 mt-2">Hat sich etwas geändert? Sag es einfach im Chat – die KI aktualisiert nur die betroffenen Angaben.</p>
+          )}
         </Card>
 
         {/* Standorte (Ebene 2) */}
@@ -159,8 +162,11 @@ export default function CompanyOnboarding() {
 
                   <Button onClick={() => setChatScope(loc.id)} variant={state ? 'secondary' : 'primary'} className="gap-2">
                     <MessageCircle size={16} />
-                    {state ? 'Im Gespräch weiter erzählen' : 'Mit KI einrichten'}
+                    {state?.completed ? 'Angaben ändern (KI-Chat)' : state ? 'Im Gespräch weiter erzählen' : 'Mit KI einrichten'}
                   </Button>
+                  {state?.completed && (
+                    <p className="text-xs text-gray-500 mt-2">Hat sich etwas geändert (neue Dienstzeiten, Schichten, Regeln)? Sag es einfach im Chat – die KI passt nur die betroffenen Punkte an.</p>
+                  )}
                 </Card>
               )
             })}

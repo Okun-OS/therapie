@@ -14,19 +14,21 @@ Es gibt KEIN klassisches Formular. Du führst ein echtes, natürliches Gespräch
 Zu erfassen (unternehmensweit, gilt für alle Standorte gemeinsam):
 1. Unternehmensname
 2. Standorte, die zum Unternehmen gehören
-3. Rollenmodell (z.B. Geschäftsführung, Standortleitungen, Teamleitungen, Verwaltung)
-4. Unternehmensweite Regeln/Prozesse, die für alle Standorte gelten
+3. Rollenmodell (Beschreibung der Hierarchie, z.B. Geschäftsführung, Standortleitungen, Teamleitungen, Verwaltung)
+4. Rollen der Mitarbeiter: Welche konkreten Job-Rollen/Berufsbezeichnungen gibt es in diesem Unternehmen (z.B. Erzieher, Pflegefachkraft, Hauswirtschaft, Verwaltung, Vertrieb, Produktion)? Diese Liste wird später als feste Dropdown-Auswahl beim Anlegen von Mitarbeitern verwendet – frage gezielt danach, falls der Nutzer es nicht von selbst erwähnt. Erfasse jede Rolle als eigenen, kurzen Begriff in "rollen" (z.B. ["Erzieher", "Hauswirtschaft", "Verwaltung"]).
+5. Unternehmensweite Regeln/Prozesse, die für alle Standorte gelten
 
 WICHTIG: Jeder einzelne Standort erhält anschließend sein EIGENES, separates Onboarding (Ebene 2). Das System darf niemals einfach die Regeln eines Standorts auf einen anderen kopieren – das hier ist ausschließlich der unternehmensweite, gemeinsame Rahmen.
 
 Regeln:
 1. Sprich den Nutzer mit "Du" an, freundlich und professionell, wie ein erfahrener Berater im ersten Gespräch.
 2. Stelle pro Nachricht höchstens ein bis zwei zusammenhängende Fragen, keine langen Listen.
-3. Rufe bei jeder neuen Information das Tool "update_organization_onboarding" auf, mit dem VOLLSTÄNDIGEN, aktuellen Stand (bereits bekannte + neue Angaben), niemals nur das Neue.
+3. Rufe bei jeder neuen Information das Tool "update_organization_onboarding" auf, mit dem VOLLSTÄNDIGEN, aktuellen Stand (bereits bekannte + neue Angaben), niemals nur das Neue. Das gilt auch für "rollen": immer die vollständige, aktuelle Liste aller bisher genannten Rollen übergeben, nicht nur neue.
 4. Antworte IMMER zusätzlich mit einem kurzen Text, auch wenn du das Tool aufrufst.
-5. Wenn alle vier Punkte klar erfasst sind, fasse kurz zusammen und setze "completed" im Tool-Aufruf auf true – aber nur, wenn der Nutzer der Zusammenfassung zustimmt.
-6. Erfinde niemals Angaben.
-7. Schreibe ausschließlich auf Deutsch.`
+5. Wenn alle Punkte klar erfasst sind, fasse kurz zusammen und setze "completed" im Tool-Aufruf auf true – aber nur, wenn der Nutzer der Zusammenfassung zustimmt.
+6. Falls der Nutzer bereits abgeschlossene Angaben später ändert oder ergänzt (z.B. "wir haben jetzt eine neue Rolle: Praktikant" oder "wir haben einen weiteren Standort eröffnet"), erkenne das und aktualisiere ausschließlich die betroffenen Felder (z.B. "rollen" um den neuen Eintrag ergänzen), ohne das gesamte Onboarding von vorne zu beginnen. Dieses Gespräch ist jederzeit erneut nutzbar, auch nachdem "completed" bereits true war.
+7. Erfinde niemals Angaben.
+8. Schreibe ausschließlich auf Deutsch.`
 
 const LOCATION_SYSTEM_PROMPT = `Du bist ein erfahrener Standortberater, der einen einzelnen Standort bei der Konfiguration von OKUN Workforce begleitet (Ebene 2 von 2: Standort-Onboarding).
 
@@ -71,6 +73,7 @@ const ORG_TOOL = {
     properties: {
       traegerName: { type: 'string' },
       rollenmodell: { type: 'string' },
+      rollen: { type: 'array', items: { type: 'string' }, description: 'Vollständige, aktuelle Liste aller Job-Rollen im Unternehmen, z.B. ["Erzieher", "Hauswirtschaft"]' },
       unternehmensweiteRegeln: { type: 'string' },
       completed: { type: 'boolean', description: 'true nur nach ausdrücklicher Bestätigung durch den Nutzer' },
     },
@@ -133,13 +136,17 @@ export async function POST(req: NextRequest) {
     let tool: typeof ORG_TOOL | typeof LOCATION_TOOL
 
     if (isOrganization) {
-      const existing = await prisma.organizationOnboarding.findUnique({ where: { customerId } })
+      const [existing, customer] = await Promise.all([
+        prisma.organizationOnboarding.findUnique({ where: { customerId } }),
+        prisma.customer.findUnique({ where: { id: customerId }, select: { roles: true } }),
+      ])
       stateNote = `## Bereits bekannte unternehmensweite Angaben\n${JSON.stringify({
         traegerName: existing?.traegerName ?? null,
         rollenmodell: existing?.rollenmodell ?? null,
+        rollen: customer?.roles ?? [],
         unternehmensweiteRegeln: existing?.unternehmensweiteRegeln ?? null,
         completed: existing?.completed ?? false,
-      }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem.`
+      }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Dieses Gespräch kann jederzeit erneut geführt werden, auch wenn "completed" bereits true ist – behandle spätere Ergänzungen/Änderungen dann gemäß Regel 6.`
       systemPrompt = ORGANIZATION_SYSTEM_PROMPT
       tool = ORG_TOOL
     } else {
@@ -193,6 +200,11 @@ export async function POST(req: NextRequest) {
             unternehmensweiteRegeln: typeof input.unternehmensweiteRegeln === 'string' ? input.unternehmensweiteRegeln : undefined,
             completed: typeof input.completed === 'boolean' ? input.completed : undefined,
           })
+          if (Array.isArray(input.rollen)) {
+            const rollen = (input.rollen as unknown[]).filter((r): r is string => typeof r === 'string' && r.trim().length > 0).map(r => r.trim())
+            const deduped = Array.from(new Map(rollen.map(r => [r.toLowerCase(), r])).values())
+            await prisma.customer.update({ where: { id: customerId }, data: { roles: deduped } })
+          }
         } else {
           savedState = await upsertLocationOnboarding(scope, {
             einrichtungsart: typeof input.einrichtungsart === 'string' ? input.einrichtungsart : undefined,

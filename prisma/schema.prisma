@@ -329,6 +329,7 @@ model Customer {
   createdAt      String
   renewalDate    String?
   notes          String?
+  roles          String[] @default([])
   updatedAt      DateTime @updatedAt
 }
 

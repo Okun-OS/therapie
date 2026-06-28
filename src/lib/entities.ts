@@ -63,6 +63,7 @@ export function toCustomer(row: any): Customer {
     createdAt: row.createdAt,
     renewalDate: row.renewalDate ?? undefined,
     notes: row.notes ?? undefined,
+    roles: row.roles ?? [],
   }
 }
 

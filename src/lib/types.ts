@@ -363,6 +363,7 @@ export interface Customer {
   createdAt: string
   renewalDate?: string
   notes?: string
+  roles?: string[]
 }
 
 export interface TestAccount {

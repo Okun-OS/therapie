@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -9,8 +9,8 @@ import { Textarea } from '@/components/ui/Textarea'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 
-const ROLE_OPTIONS = ['Erzieher', 'Leitung', 'Stellvertretung', 'Springer', 'Verwaltung', 'Praktikant', 'Auszubildender', 'Hauswirtschaft', 'Sonstige']
 const EMPLOYMENT_OPTIONS = ['Vollzeit', 'Teilzeit', 'Minijob', 'Individuell']
+const NEW_ROLE_VALUE = '__new_role__'
 
 const EMPTY_DRAFT: EmployeeDraft = { weeklyHours: 38, multiGroupCapable: false }
 
@@ -23,28 +23,72 @@ function fromCsv(value: string): string[] | undefined {
   return items.length > 0 ? items : undefined
 }
 
+function toFreeText(values?: string[]) {
+  return values?.join('\n') ?? ''
+}
+
+function fromFreeText(value: string): string[] | undefined {
+  const trimmed = value.trim()
+  return trimmed ? [trimmed] : undefined
+}
+
 export function EmployeeCreationForm({
   open,
   onClose,
   onSave,
+  initialDraft,
+  employeeName,
 }: {
   open: boolean
   onClose: () => void
   onSave: (draft: EmployeeDraft) => Promise<void>
+  initialDraft?: EmployeeDraft
+  employeeName?: string
 }) {
-  const [draft, setDraft] = useState<EmployeeDraft>(EMPTY_DRAFT)
+  const isEditMode = !!initialDraft
+  const [draft, setDraft] = useState<EmployeeDraft>(initialDraft ?? EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const [roles, setRoles] = useState<string[]>([])
+  const [addingRole, setAddingRole] = useState(false)
+  const [newRole, setNewRole] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setDraft(initialDraft ?? EMPTY_DRAFT)
+  }, [open, initialDraft])
+
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/roles').then(r => r.json()).then(d => setRoles(d.roles ?? [])).catch(() => {})
+  }, [open])
 
   function update<K extends keyof EmployeeDraft>(key: K, value: EmployeeDraft[K]) {
     setDraft(prev => ({ ...prev, [key]: value }))
   }
 
   function reset() {
-    setDraft(EMPTY_DRAFT)
+    setDraft(initialDraft ?? EMPTY_DRAFT)
     setError(null)
     setDone(false)
+    setAddingRole(false)
+    setNewRole('')
+  }
+
+  async function handleAddRole() {
+    const trimmed = newRole.trim()
+    if (!trimmed) return
+    const res = await fetch('/api/roles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: trimmed }),
+    })
+    const data = await res.json()
+    if (data.roles) setRoles(data.roles)
+    update('roleType', trimmed)
+    setAddingRole(false)
+    setNewRole('')
   }
 
   async function handleSubmit() {
@@ -66,11 +110,13 @@ export function EmployeeCreationForm({
 
   if (done) {
     return (
-      <Modal open={open} onClose={() => { reset(); onClose() }} title="Mitarbeiter angelegt" size="md">
+      <Modal open={open} onClose={() => { reset(); onClose() }} title={isEditMode ? 'Profil aktualisiert' : 'Mitarbeiter angelegt'} size="md">
         <div className="text-center py-4">
           <CheckCircle2 size={40} className="text-green-500 mx-auto mb-3" />
-          <p className="text-navy font-semibold">{draft.name} wurde im System angelegt</p>
-          <p className="text-sm text-gray-500 mt-1">Einladung per E-Mail wird versendet</p>
+          <p className="text-navy font-semibold">
+            {isEditMode ? `${draft.name} wurde aktualisiert` : `${draft.name} wurde im System angelegt`}
+          </p>
+          {!isEditMode && <p className="text-sm text-gray-500 mt-1">Einladung per E-Mail wird versendet</p>}
           <Button className="mt-5 w-full" onClick={() => { reset(); onClose() }}>Schließen</Button>
         </div>
       </Modal>
@@ -78,7 +124,12 @@ export function EmployeeCreationForm({
   }
 
   return (
-    <Modal open={open} onClose={() => { reset(); onClose() }} title="Mitarbeiter per Formular anlegen" size="lg">
+    <Modal
+      open={open}
+      onClose={() => { reset(); onClose() }}
+      title={isEditMode ? `${employeeName ?? 'Mitarbeiter'} bearbeiten` : 'Mitarbeiter per Formular anlegen'}
+      size="lg"
+    >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <Input label="Name *" value={draft.name ?? ''} onChange={e => update('name', e.target.value)} placeholder="Vor- und Nachname" />
@@ -105,10 +156,31 @@ export function EmployeeCreationForm({
         <Input label="Feste Einsatzorte" value={draft.fixedLocations ?? ''} onChange={e => update('fixedLocations', e.target.value)} hint="Falls die Person nur an bestimmten Standorten eingesetzt werden kann" />
 
         <div className="grid grid-cols-2 gap-3">
-          <Select label="Rolle" value={draft.roleType ?? ''} onChange={e => update('roleType', e.target.value || undefined)}>
-            <option value="">Bitte wählen</option>
-            {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
-          </Select>
+          <div>
+            {addingRole ? (
+              <div>
+                <label className="block text-sm font-semibold text-navy mb-1.5">Neue Rolle</label>
+                <div className="flex gap-1.5">
+                  <Input value={newRole} onChange={e => setNewRole(e.target.value)} placeholder="z.B. Pflegefachkraft" />
+                  <Button type="button" size="sm" onClick={handleAddRole}>OK</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => { setAddingRole(false); setNewRole('') }}>Abbrechen</Button>
+                </div>
+              </div>
+            ) : (
+              <Select
+                label="Rolle"
+                value={draft.roleType ?? ''}
+                onChange={e => {
+                  if (e.target.value === NEW_ROLE_VALUE) { setAddingRole(true); return }
+                  update('roleType', e.target.value || undefined)
+                }}
+              >
+                <option value="">Bitte wählen</option>
+                {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                <option value={NEW_ROLE_VALUE}>+ Neue Rolle hinzufügen</option>
+              </Select>
+            )}
+          </div>
           <Select label="Beschäftigungsart" value={draft.employmentType ?? ''} onChange={e => update('employmentType', e.target.value || undefined)}>
             <option value="">Bitte wählen</option>
             {EMPLOYMENT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
@@ -140,11 +212,13 @@ export function EmployeeCreationForm({
           onChange={e => update('allowedTasks', fromCsv(e.target.value))}
           hint="Kommagetrennt – fließt in die Dienstplanung ein"
         />
-        <Input
+        <Textarea
           label="Persönliche Besonderheiten"
-          value={toCsv(draft.besonderheiten)}
-          onChange={e => update('besonderheiten', fromCsv(e.target.value))}
-          hint="Kommagetrennt, z.B. Alleinerziehend, kein Führerschein, Wunsch nach Frühdiensten"
+          value={toFreeText(draft.besonderheiten)}
+          onChange={e => update('besonderheiten', fromFreeText(e.target.value))}
+          placeholder="z.B. Alleinerziehend, kein Führerschein, Wunsch nach Frühdiensten, gesundheitliche Einschränkungen, Sprachen, ..."
+          hint="Freitext – beliebig ausführlich. Die KI berücksichtigt diese Angaben bei der Dienstplanung."
+          rows={4}
         />
         <Textarea
           label="Individuelle Absprachen"
@@ -157,7 +231,7 @@ export function EmployeeCreationForm({
 
         <Button className="w-full gap-2" loading={saving} onClick={handleSubmit}>
           <UserPlus size={16} />
-          Mitarbeiter anlegen
+          {isEditMode ? 'Änderungen speichern' : 'Mitarbeiter anlegen'}
         </Button>
       </div>
     </Modal>
