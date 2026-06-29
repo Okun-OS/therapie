@@ -9,10 +9,12 @@ function toTimeLog(row: any): TimeLog {
     employeeId: row.employeeId,
     date: row.date,
     clockIn: row.clockIn,
+    clockInAt: row.clockInAt ? row.clockInAt.toISOString() : undefined,
     clockOut: row.clockOut ?? undefined,
     totalMinutes: row.totalMinutes ?? undefined,
     breakMinutes: row.breakMinutes ?? undefined,
     breakStart: row.breakStart ?? undefined,
+    breakStartAt: row.breakStartAt ? row.breakStartAt.toISOString() : undefined,
     note: row.note ?? undefined,
     locationId: row.locationId,
   }
@@ -114,11 +116,11 @@ export async function getActiveTimeLog(employeeId: string): Promise<TimeLog | un
 }
 
 export async function addTimeLog(input: { employeeId: string; date: string; clockIn: string; locationId: string }): Promise<TimeLog> {
-  const row = await prisma.timeLog.create({ data: input })
+  const row = await prisma.timeLog.create({ data: { ...input, clockInAt: new Date() } })
   return toTimeLog(row)
 }
 
-export async function updateTimeLog(id: string, updates: Partial<TimeLog>): Promise<TimeLog | undefined> {
+export async function updateTimeLog(id: string, updates: { [K in keyof Partial<TimeLog>]: TimeLog[K] | null }): Promise<TimeLog | undefined> {
   const { id: _ignored, ...data } = updates as any
   const row = await prisma.timeLog.update({ where: { id }, data }).catch(() => null)
   return row ? toTimeLog(row) : undefined
@@ -127,16 +129,16 @@ export async function updateTimeLog(id: string, updates: Partial<TimeLog>): Prom
 export async function startBreak(employeeId: string): Promise<void> {
   const log = await getActiveTimeLog(employeeId)
   if (!log) return
-  await updateTimeLog(log.id, { breakStart: new Date().toTimeString().slice(0, 5) })
+  const now = new Date()
+  await updateTimeLog(log.id, { breakStart: now.toTimeString().slice(0, 5), breakStartAt: now.toISOString() })
 }
 
 export async function endBreak(employeeId: string): Promise<void> {
   const log = await getActiveTimeLog(employeeId)
   if (!log || !log.breakStart) return
-  const [bh, bm] = log.breakStart.split(':').map(Number)
-  const now = new Date()
-  const minutes = Math.max(0, (now.getHours() * 60 + now.getMinutes()) - (bh * 60 + bm))
-  await updateTimeLog(log.id, { breakMinutes: (log.breakMinutes ?? 0) + minutes, breakStart: undefined })
+  const startInstant = log.breakStartAt ? new Date(log.breakStartAt) : new Date(`${log.date}T${log.breakStart}:00`)
+  const minutes = Math.max(0, Math.round((Date.now() - startInstant.getTime()) / 60000))
+  await updateTimeLog(log.id, { breakMinutes: (log.breakMinutes ?? 0) + minutes, breakStart: null, breakStartAt: null })
 }
 
 function standardDailyMinutes(weeklyHours: number): number {
@@ -242,14 +244,12 @@ export async function getHoursAccountSummary(employeeId: string, year: number, m
   const logs = await getTimeLogsByMonth(employeeId, year, month)
   const istMinutes = logs.reduce((s, t) => s + (t.totalMinutes ?? 0) - (t.breakMinutes ?? 0), 0)
   const breakMinutes = logs.reduce((s, t) => s + (t.breakMinutes ?? 0), 0)
-  const sollMinutes = workdaysInMonth(year, month) * standardDailyMinutes(weeklyHours)
   const prefix = `${year}-${String(month).padStart(2, '0')}`
 
   const overtimeRequests = await prisma.overtimeRequest.findMany({
     where: { employeeId, status: { in: ['approved', 'partial'] }, date: { startsWith: prefix } },
   })
   const overtimeMinutes = overtimeRequests.reduce((s, o) => s + (o.approvedMinutes ?? 0), 0)
-  const undertimeMinutes = Math.max(0, sollMinutes - istMinutes)
 
   const absences = await prisma.absence.findMany({ where: { employeeId, startDate: { startsWith: prefix } } })
   const sickDays = absences.filter(a => a.type === 'krankheit').reduce((s, a) => s + a.days, 0)
@@ -259,6 +259,11 @@ export async function getHoursAccountSummary(employeeId: string, year: number, m
     where: { employeeId, status: 'approved', startDate: { startsWith: prefix } },
   })
   const vacationDays = vacationRequests.reduce((s, v) => s + v.days, 0)
+
+  // Soll-Arbeitstage abzüglich Urlaub/Krankheit/sonstiger Abwesenheit (bereits als reine Arbeitstage erfasst)
+  const sollDays = Math.max(0, workdaysInMonth(year, month) - vacationDays - sickDays - otherAbsenceDays)
+  const sollMinutes = sollDays * standardDailyMinutes(weeklyHours)
+  const undertimeMinutes = Math.max(0, sollMinutes - istMinutes)
 
   return { employeeId, year, month, sollMinutes, istMinutes, breakMinutes, overtimeMinutes, undertimeMinutes, vacationDays, sickDays, otherAbsenceDays }
 }

@@ -273,13 +273,12 @@ export default function AdminSchedule() {
       })
   }, [wishSubmissions, fairnessData])
 
-  const existingEntries = SCHEDULE_ENTRIES.filter(e => {
-    const d = new Date(e.date + 'T00:00:00')
-    return e.locationId === locationId && d >= periodWeeks[0][0] && d <= periodWeeks[periodWeeks.length - 1][6]
-  })
-
   const periodStart = periodWeekdayDates[0]
   const periodEnd = periodWeekdayDates[periodWeekdayDates.length - 1]
+
+  const existingEntries = SCHEDULE_ENTRIES.filter(e =>
+    e.locationId === locationId && e.date >= periodStart && e.date <= periodEnd
+  )
   const approvedVacations = VACATION_REQUESTS
     .filter(v => v.locationId === locationId && v.status === 'approved' && v.startDate <= periodEnd && v.endDate >= periodStart)
     .map(v => ({ employeeId: v.employeeId, employeeName: v.employeeName, startDate: v.startDate, endDate: v.endDate }))

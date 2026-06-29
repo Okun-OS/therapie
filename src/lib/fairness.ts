@@ -2,6 +2,7 @@ import type { Employee, ScheduleEntry, Shift, ShiftFairnessData, WishSubmission 
 import { listShiftsByLocation, getAllEntriesForLocation } from './schedule-entities'
 import { listEmployees, listLocations } from './entities'
 import { prisma } from './prisma'
+import { toDateString } from './utils'
 
 // ─── Core Fairness Calculation ───────────────────────────────────────────────
 
@@ -265,7 +266,7 @@ export function generateFairSchedule(
   for (const day of weekDays) {
     const dow = day.getDay()
     if (dow === 0 || dow === 6) continue  // skip weekends
-    const dateStr = day.toISOString().split('T')[0]
+    const dateStr = toDateString(day)
     const isFriday = dow === 5
     const isMonday = dow === 1
 

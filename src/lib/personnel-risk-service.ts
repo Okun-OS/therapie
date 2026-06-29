@@ -5,6 +5,7 @@ import { getVacationRequestsByLocation, getVacationRequestsByEmployee } from './
 import { listEmployees, listLocations } from './entities'
 import { getFairnessInsights } from './fairness'
 import { getRiskLevel, type RiskLevel } from './risk-constants'
+import { toDateString } from './utils'
 
 async function scopeLocationIds(locationId?: string, customerId?: string): Promise<string[]> {
   return locationId ? [locationId] : (await listLocations(customerId)).map(l => l.id)
@@ -26,7 +27,7 @@ async function getOvertimeHoursByEmployee(employeeIds: string[]): Promise<Map<st
 
   const logsByEmployee = await Promise.all(employeeIds.map(id => getTimeLogsByEmployee(id)))
   for (const log of logsByEmployee.flat()) {
-    const minutes = log.totalMinutes || 0
+    const minutes = (log.totalMinutes || 0) - (log.breakMinutes || 0)
     if (minutes > DAILY_TARGET_MINUTES) {
       overtimeMinutes.set(log.employeeId, (overtimeMinutes.get(log.employeeId) ?? 0) + (minutes - DAILY_TARGET_MINUTES))
     }
@@ -157,7 +158,7 @@ export async function getUnderstaffingRisk(locationId?: string, customerId?: str
       day.setDate(today.getDate() + i)
       const dow = day.getDay()
       if (dow === 0 || dow === 6) continue // shift plan only covers Mon-Fri, see admin/schedule weekDates slicing
-      const dateStr = day.toISOString().split('T')[0]
+      const dateStr = toDateString(day)
 
       const onVacation = relevantVacations.filter(v => v.startDate <= dateStr && dateStr <= v.endDate).length
       const availableStaff = employees.length - onVacation

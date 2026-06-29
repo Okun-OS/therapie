@@ -333,7 +333,7 @@ export async function getWorkloadInsights(locationId?: string, customerId?: stri
   let totalLoggedMinutes = 0
 
   for (const log of mockLogs) {
-    const minutes = log.totalMinutes || 0
+    const minutes = (log.totalMinutes || 0) - (log.breakMinutes || 0)
     totalLoggedMinutes += minutes
     if (minutes > DAILY_TARGET_MINUTES) {
       overtimeByEmployee.set(log.employeeId, (overtimeByEmployee.get(log.employeeId) ?? 0) + (minutes - DAILY_TARGET_MINUTES))
@@ -371,7 +371,7 @@ export async function getWorkloadInsights(locationId?: string, customerId?: stri
   for (const log of mockLogs) {
     const key = log.date.slice(0, 7)
     if (overtimeMinutesByMonth.has(key)) {
-      overtimeMinutesByMonth.set(key, overtimeMinutesByMonth.get(key)! + overtimeMinutesForLog(log.totalMinutes || 0))
+      overtimeMinutesByMonth.set(key, overtimeMinutesByMonth.get(key)! + overtimeMinutesForLog((log.totalMinutes || 0) - (log.breakMinutes || 0)))
     }
   }
   for (const entry of realEntries) {

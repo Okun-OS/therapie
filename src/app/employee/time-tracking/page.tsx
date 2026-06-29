@@ -104,16 +104,18 @@ export default function TimeTracking() {
 
   const myLogs = TIME_LOGS.filter(t => t.employeeId === user?.employeeId).sort((a, b) => b.date.localeCompare(a.date))
 
+  const netMinutes = (t: TimeLog) => Math.max(0, (t.totalMinutes || 0) - (t.breakMinutes || 0))
+
   const todayMinutes = myLogs
-    .filter(t => t.date === new Date().toISOString().split('T')[0])
-    .reduce((s, t) => s + (t.totalMinutes || 0), 0)
+    .filter(t => t.date === toDateString(new Date()))
+    .reduce((s, t) => s + netMinutes(t), 0)
 
   const weekDays = getWeekDays(new Date())
   const weekStart = toDateString(weekDays[0])
   const weekEnd = toDateString(weekDays[6])
   const weekMinutes = myLogs
     .filter(t => t.date >= weekStart && t.date <= weekEnd)
-    .reduce((s, t) => s + (t.totalMinutes || 0), 0)
+    .reduce((s, t) => s + netMinutes(t), 0)
 
   const todayStr = toDateString(new Date())
   const hasShiftToday = SCHEDULE_ENTRIES.some(e => e.employeeId === user?.employeeId && e.date === todayStr)
@@ -122,18 +124,19 @@ export default function TimeTracking() {
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth() + 1
 
+  const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`
   const monthMinutes = myLogs
-    .filter(t => {
-      const d = new Date(t.date + 'T00:00:00')
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-    })
-    .reduce((s, t) => s + (t.totalMinutes || 0), 0)
+    .filter(t => t.date.startsWith(monthPrefix))
+    .reduce((s, t) => s + netMinutes(t), 0)
 
   const onBreak = !!activeLog?.breakStart
 
   const fetchActiveLog = () => {
     if (!user?.employeeId) return
-    fetch(`/api/time-tracking/active?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setActiveLog(d.log ?? null))
+    fetch(`/api/time-tracking/active?employeeId=${user.employeeId}`).then(r => r.json()).then(d => {
+      setActiveLog(d.log ?? null)
+      setActiveEntryId(d.entryId ?? null)
+    })
   }
 
   const fetchAccount = () => {
@@ -162,6 +165,23 @@ export default function TimeTracking() {
     fetchActiveLog()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.employeeId])
+
+  useEffect(() => {
+    if (activeLog && !activeLog.clockOut) {
+      const startInstant = activeLog.clockInAt
+        ? new Date(activeLog.clockInAt)
+        : new Date(`${activeLog.date}T${activeLog.clockIn}:00`)
+      setClockedIn(true)
+      setClockInTime(startInstant)
+      setActiveTimeLogId(activeLog.id)
+      setElapsed(Math.max(0, Math.floor((Date.now() - startInstant.getTime()) / 1000)))
+    } else {
+      setClockedIn(false)
+      setClockInTime(null)
+      setActiveTimeLogId(null)
+      setElapsed(0)
+    }
+  }, [activeLog])
 
   useEffect(() => {
     fetchAccount()

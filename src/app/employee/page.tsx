@@ -51,7 +51,7 @@ export default function EmployeeDashboard() {
   const weekStart = toDateString(weekDays[0])
   const weekEnd = toDateString(weekDays[6])
   const thisWeekLogs = TIME_LOGS.filter(t => t.employeeId === user?.employeeId && t.date >= weekStart && t.date <= weekEnd)
-  const weekMinutes = thisWeekLogs.reduce((sum, l) => sum + (l.totalMinutes || 0), 0)
+  const weekMinutes = thisWeekLogs.reduce((sum, l) => sum + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0)
 
   const myVacations = VACATION_REQUESTS.filter(v => v.employeeId === user?.employeeId)
   const pendingVacations = myVacations.filter(v => v.status === 'pending')

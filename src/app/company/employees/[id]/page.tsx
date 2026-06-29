@@ -102,7 +102,7 @@ export default function EmployeeDetailPage() {
 
   const balanceColor = employee.hoursBalance < 0 ? 'text-red-500' : 'text-green-600'
   const remainingVacation = employee.vacationDaysTotal - employee.vacationDaysUsed
-  const monthTotalMin = monthLogs.reduce((s, l) => s + (l.totalMinutes ?? 0), 0)
+  const monthTotalMin = monthLogs.reduce((s, l) => s + (l.totalMinutes ?? 0) - (l.breakMinutes ?? 0), 0)
   const expectedMonthMin = Math.round((employee.weeklyHours / 5) * 8 * 60 * monthLogs.length)
 
   const prevMonth = () => {
@@ -117,7 +117,7 @@ export default function EmployeeDetailPage() {
   const downloadCSV = () => {
     const lines = ['Datum,Einstempeln,Ausstempeln,Stunden,Notiz']
     monthLogs.forEach(l => {
-      const h = l.totalMinutes ? (l.totalMinutes / 60).toFixed(2) : '–'
+      const h = l.totalMinutes ? (((l.totalMinutes - (l.breakMinutes ?? 0)) / 60)).toFixed(2) : '–'
       lines.push(`${l.date},${l.clockIn},${l.clockOut ?? '–'},${h},${l.note ?? ''}`)
     })
     lines.push('')
@@ -147,7 +147,7 @@ export default function EmployeeDetailPage() {
         const d = new Date(l.date + 'T00:00:00')
         return d.getFullYear() === today.getFullYear() && d.getMonth() + 1 === m
       })
-      const mMin = mLogs.reduce((s, l) => s + (l.totalMinutes ?? 0), 0)
+      const mMin = mLogs.reduce((s, l) => s + (l.totalMinutes ?? 0) - (l.breakMinutes ?? 0), 0)
       lines.push(`${MONTH_NAMES[m - 1]},${mLogs.length},${(mMin / 60).toFixed(1)}h`)
     }
     const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
@@ -318,7 +318,7 @@ export default function EmployeeDetailPage() {
                         {log.clockIn} – {log.clockOut ?? 'läuft'}
                       </div>
                       <div className="text-xs font-semibold text-navy">
-                        {log.totalMinutes ? formatHours(log.totalMinutes) : '–'}
+                        {log.totalMinutes ? formatHours(log.totalMinutes - (log.breakMinutes ?? 0)) : '–'}
                       </div>
                     </div>
                   ))}
@@ -417,7 +417,8 @@ export default function EmployeeDetailPage() {
                     <tbody>
                       {monthLogs.map((log, idx) => {
                         const expectedMin = Math.round((employee.weeklyHours / 5) * 60)
-                        const diff = (log.totalMinutes ?? 0) - expectedMin
+                        const netMin = (log.totalMinutes ?? 0) - (log.breakMinutes ?? 0)
+                        const diff = netMin - expectedMin
                         return (
                           <tr key={log.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
                             <td className="p-3 text-sm text-navy font-medium">
@@ -426,7 +427,7 @@ export default function EmployeeDetailPage() {
                             <td className="p-3 text-center text-sm text-gray-600">{log.clockIn}</td>
                             <td className="p-3 text-center text-sm text-gray-600">{log.clockOut ?? <span className="text-amber-500 text-xs">läuft</span>}</td>
                             <td className="p-3 text-right text-sm font-semibold text-navy">
-                              {log.totalMinutes ? formatHours(log.totalMinutes) : '–'}
+                              {log.totalMinutes ? formatHours(netMin) : '–'}
                             </td>
                             <td className={`p-3 text-right text-xs font-semibold ${diff >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                               {diff >= 0 ? '+' : ''}{formatHours(diff)}

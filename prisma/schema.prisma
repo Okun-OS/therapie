@@ -368,31 +368,37 @@ model ScheduleEntry {
 }
 
 model LocationPlanningRules {
-  locationId          String   @id
-  maxWeeklyHours      Int      @default(40)
-  restHours           Int      @default(11)
-  maxConsecutiveDays  Int      @default(5)
-  fridayLateMax       Int      @default(2)
-  mondayEarlyMax      Int      @default(3)
-  fridayEarlyMax      Int      @default(3)
-  weekendMax          Int      @default(2)
-  considerWishes      Boolean  @default(true)
-  balanceHoursAccount Boolean  @default(true)
-  updatedAt           DateTime @updatedAt
+  locationId            String    @id
+  maxWeeklyHours        Int       @default(40)
+  restHours             Int       @default(11)
+  maxConsecutiveDays    Int       @default(5)
+  fridayLateMax         Int       @default(2)
+  mondayEarlyMax        Int       @default(3)
+  fridayEarlyMax        Int       @default(3)
+  weekendMax            Int       @default(2)
+  considerWishes        Boolean   @default(true)
+  balanceHoursAccount   Boolean   @default(true)
+  autoBreakDeduction    Boolean   @default(false)
+  breakThresholdMinutes Int       @default(360)
+  breakDeductionMinutes Int       @default(30)
+  breakRulesExtractedAt DateTime?
+  updatedAt             DateTime  @updatedAt
 }
 
 model TimeLog {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   employeeId   String
   date         String
   clockIn      String
+  clockInAt    DateTime?
   clockOut     String?
   totalMinutes Int?
   breakMinutes Int?
   breakStart   String?
+  breakStartAt DateTime?
   note         String?
   locationId   String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 }
 
 model VacationRequest {

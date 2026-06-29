@@ -34,7 +34,7 @@ export default function CompanyReports() {
 
   const filteredEmployees = locationFilter === 'all' ? employees : employees.filter(e => e.locationId === locationFilter)
 
-  const totalHours = logs.reduce((s, l) => s + (l.totalMinutes || 0), 0)
+  const totalHours = logs.reduce((s, l) => s + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0)
   const avgHoursPerEmp = employees.length > 0 ? Math.round(totalHours / employees.length / 60) : 0
   const totalVacationDays = employees.reduce((s, e) => s + e.vacationDaysUsed, 0)
   const totalVacationRemaining = employees.reduce((s, e) => s + (e.vacationDaysTotal - e.vacationDaysUsed), 0)
@@ -53,7 +53,7 @@ export default function CompanyReports() {
   const locationData = locations.map(loc => {
     const emps = employees.filter(e => e.locationId === loc.id)
     const locLogs = logs.filter(l => l.locationId === loc.id)
-    const hours = Math.round(locLogs.reduce((s, l) => s + (l.totalMinutes || 0), 0) / 60)
+    const hours = Math.round(locLogs.reduce((s, l) => s + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0) / 60)
     const vacReqs = VACATION_REQUESTS.filter(v => v.locationId === loc.id)
     const approved = vacReqs.filter(v => v.status === 'approved').reduce((s, v) => s + v.days, 0)
     const pending = vacReqs.filter(v => v.status === 'pending').length

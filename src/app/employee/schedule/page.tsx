@@ -76,16 +76,12 @@ export default function EmployeeSchedule() {
   const weekStart = toDateString(weekDays[0])
   const weekEnd = toDateString(weekDays[6])
 
-  const weekEntries = myEntries.filter(e => {
-    const d = new Date(e.date + 'T00:00:00')
-    return d >= weekDays[0] && d <= weekDays[6]
-  })
+  const weekEntries = myEntries.filter(e => e.date >= weekStart && e.date <= weekEnd)
 
   // All colleague entries for the same week (for swap)
-  const colleagueEntries = SCHEDULE_ENTRIES.filter(e => {
-    const d = new Date(e.date + 'T00:00:00')
-    return e.locationId === employee?.locationId && e.employeeId !== user?.employeeId && d >= weekDays[0] && d <= weekDays[6]
-  })
+  const colleagueEntries = SCHEDULE_ENTRIES.filter(e =>
+    e.locationId === employee?.locationId && e.employeeId !== user?.employeeId && e.date >= weekStart && e.date <= weekEnd
+  )
   const colleagues = EMPLOYEES.filter(e => e.locationId === employee?.locationId && e.id !== user?.employeeId && e.role === 'employee')
 
   const go = (delta: number) => {

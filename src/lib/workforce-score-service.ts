@@ -61,6 +61,13 @@ export async function recordClockIn(employeeId: string, date: string, locationId
   return created
 }
 
+export async function getActiveTimeClockEntry(employeeId: string) {
+  return prisma.timeClockEntry.findFirst({
+    where: { employeeId, clockOut: null },
+    orderBy: { clockIn: 'desc' },
+  })
+}
+
 export async function recordClockOut(timeClockEntryId: string, clockOut: Date) {
   const updated = await prisma.timeClockEntry.update({
     where: { id: timeClockEntryId },

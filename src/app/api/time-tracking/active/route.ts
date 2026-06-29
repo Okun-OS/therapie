@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getActiveTimeLog } from '@/lib/time-tracking-entities'
+import { getActiveTimeClockEntry } from '@/lib/workforce-score-service'
 import { requireRole } from '@/lib/session'
 
 export async function GET(req: NextRequest) {
@@ -11,6 +12,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'employeeId ist erforderlich' }, { status: 400 })
   }
 
-  const log = await getActiveTimeLog(employeeId)
-  return NextResponse.json({ log: log ?? null })
+  const [log, clockEntry] = await Promise.all([
+    getActiveTimeLog(employeeId),
+    getActiveTimeClockEntry(employeeId),
+  ])
+  return NextResponse.json({ log: log ?? null, entryId: clockEntry?.id ?? null })
 }

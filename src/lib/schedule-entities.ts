@@ -13,6 +13,9 @@ const DEFAULT_PLANNING_RULES: Omit<LocationPlanningRules, 'locationId'> = {
   weekendMax: 2,
   considerWishes: true,
   balanceHoursAccount: true,
+  autoBreakDeduction: false,
+  breakThresholdMinutes: 360,
+  breakDeductionMinutes: 30,
 }
 
 function toPlanningRules(row: any): LocationPlanningRules {
@@ -27,6 +30,10 @@ function toPlanningRules(row: any): LocationPlanningRules {
     weekendMax: row.weekendMax,
     considerWishes: row.considerWishes,
     balanceHoursAccount: row.balanceHoursAccount,
+    autoBreakDeduction: row.autoBreakDeduction,
+    breakThresholdMinutes: row.breakThresholdMinutes,
+    breakDeductionMinutes: row.breakDeductionMinutes,
+    breakRulesExtractedAt: row.breakRulesExtractedAt ? row.breakRulesExtractedAt.toISOString() : undefined,
   }
 }
 
@@ -282,11 +289,11 @@ export async function upsertPlanningRules(
 ): Promise<LocationPlanningRules> {
   const existing = await prisma.locationPlanningRules.findUnique({ where: { locationId } })
   const base = existing ? toPlanningRules(existing) : { locationId, ...DEFAULT_PLANNING_RULES }
-  const { locationId: _ignored, ...data } = { ...base, ...update }
+  const { locationId: _ignored, breakRulesExtractedAt, ...data } = { ...base, ...update }
   const row = await prisma.locationPlanningRules.upsert({
     where: { locationId },
-    create: { locationId, ...data },
-    update: data,
+    create: { locationId, ...data, breakRulesExtractedAt: breakRulesExtractedAt ? new Date(breakRulesExtractedAt) : undefined },
+    update: { ...data, breakRulesExtractedAt: breakRulesExtractedAt ? new Date(breakRulesExtractedAt) : undefined },
   })
   return toPlanningRules(row)
 }

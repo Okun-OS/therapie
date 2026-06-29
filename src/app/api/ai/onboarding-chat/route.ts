@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { upsertOrganizationOnboarding, upsertLocationOnboarding, ONBOARDING_PHASES } from '@/lib/onboarding-service'
 import { listLocations } from '@/lib/entities'
 import { listShiftsByLocation, addShift, updateShift, getPlanningRules, upsertPlanningRules } from '@/lib/schedule-entities'
+import { resetBreakRulesExtraction } from '@/lib/break-rules-service'
 import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
 import type { ShiftType } from '@/lib/types'
 
@@ -197,6 +198,7 @@ export async function POST(req: NextRequest) {
     let stateNote: string
     let systemPrompt: string
     let tools: (typeof ORG_TOOL | typeof LOCATION_TOOL | typeof SHIFTS_TOOL | typeof PLANNING_RULES_TOOL)[]
+    let existingPausenlogik: string | null = null
 
     if (isOrganization) {
       const [existing, customer] = await Promise.all([
@@ -223,6 +225,7 @@ export async function POST(req: NextRequest) {
         listShiftsByLocation(scope),
         getPlanningRules(scope),
       ])
+      existingPausenlogik = existing?.pausenlogik ?? null
       stateNote = `## Standort\nName: ${location.name} (${location.city})\n\n## Bereits bekannte Angaben zu diesem Standort\n${JSON.stringify({
         einrichtungsart: existing?.einrichtungsart ?? null,
         organisationsstruktur: existing?.organisationsstruktur ?? null,
@@ -291,6 +294,9 @@ export async function POST(req: NextRequest) {
             completedPhases: Array.isArray(input.completedPhases) ? input.completedPhases as string[] : undefined,
             completed: typeof input.completed === 'boolean' ? input.completed : undefined,
           })
+          if (typeof input.pausenlogik === 'string' && input.pausenlogik.trim() !== (existingPausenlogik ?? '').trim()) {
+            await resetBreakRulesExtraction(scope)
+          }
         }
       }
       if (block.type === 'tool_use' && block.name === 'upsert_shifts' && !isOrganization) {

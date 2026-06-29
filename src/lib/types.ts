@@ -77,6 +77,10 @@ export interface LocationPlanningRules {
   weekendMax: number
   considerWishes: boolean
   balanceHoursAccount: boolean
+  autoBreakDeduction: boolean
+  breakThresholdMinutes: number
+  breakDeductionMinutes: number
+  breakRulesExtractedAt?: string
 }
 
 export interface ScheduleEntry {
@@ -97,10 +101,12 @@ export interface TimeLog {
   employeeId: string
   date: string
   clockIn: string
+  clockInAt?: string
   clockOut?: string
   totalMinutes?: number
   breakMinutes?: number
   breakStart?: string
+  breakStartAt?: string
   note?: string
   locationId: string
 }

@@ -51,12 +51,12 @@ export default function CompanyDashboard() {
 
   const totalEmployees = EMPLOYEES.filter(e => e.role === 'employee').length
   const pendingVacations = VACATION_REQUESTS.filter(v => v.status === 'pending')
-  const monthHours = TIME_LOGS.reduce((s, l) => s + (l.totalMinutes || 0), 0)
+  const monthHours = TIME_LOGS.reduce((s, l) => s + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0)
 
   const locationStats = LOCATIONS.map(loc => {
     const emps = EMPLOYEES.filter(e => e.locationId === loc.id && e.role === 'employee')
     const locLogs = TIME_LOGS.filter(t => t.locationId === loc.id)
-    const locHours = Math.round(locLogs.reduce((s, l) => s + (l.totalMinutes || 0), 0) / 60)
+    const locHours = Math.round(locLogs.reduce((s, l) => s + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0) / 60)
     const pending = VACATION_REQUESTS.filter(v => v.locationId === loc.id && v.status === 'pending')
     const admin = EMPLOYEES.find(e => e.id === loc.adminId)
     return { ...loc, empCount: emps.length, locHours, pendingVacations: pending.length, adminName: admin?.name ?? '–' }
