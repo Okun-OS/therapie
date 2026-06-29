@@ -11,11 +11,13 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { FairnessReport } from '@/components/schedule/FairnessReport'
 import { SchedulePlanningChat } from '@/components/schedule/SchedulePlanningChat'
+import { ScheduleEditChat } from '@/components/schedule/ScheduleEditChat'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission } from '@/lib/types'
+import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, MoonStar, Briefcase,
   CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle,
@@ -104,6 +106,7 @@ export default function AdminSchedule() {
   const [facilityDescription, setFacilityDescription] = useState('')
   const [periodNotes, setPeriodNotes] = useState<{ id: string; note: string }[]>([])
   const [planningChatOpen, setPlanningChatOpen] = useState(false)
+  const [editChatOpen, setEditChatOpen] = useState(false)
   const [planningRules, setPlanningRules] = useState<PlanningRules>(DEFAULT_RULES)
   const [rulesDraft, setRulesDraft] = useState<PlanningRules>(DEFAULT_RULES)
   const [minStaffDraft, setMinStaffDraft] = useState<Record<string, number>>({})
@@ -239,6 +242,26 @@ export default function AdminSchedule() {
     showToast(notes.length > 0 || permanentRules.length > 0 ? 'Besonderheiten übernommen' : 'Danke, notiert')
   }
 
+  async function handleApplyScheduleEdits(changes: ScheduleEditChange[], permanentRules: string[]) {
+    if (changes.length > 0) {
+      await fetch('/api/schedule-entries/apply-edits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId, changes }),
+      })
+      const refreshed = await fetch(`/api/schedule-entries?locationId=${locationId}`).then(r => r.json())
+      setSCHEDULE_ENTRIES(refreshed.entries ?? [])
+    }
+    if (permanentRules.length > 0) {
+      await fetch('/api/location-onboarding/individuelle-regeln', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId, rules: permanentRules }),
+      })
+    }
+    showToast(changes.length > 0 || permanentRules.length > 0 ? 'Dienstplan-Änderungen übernommen' : 'Danke, notiert')
+  }
+
   async function removePeriodNote(id: string) {
     setPeriodNotes(prev => prev.filter(n => n.id !== id))
     await fetch(`/api/scheduling-period-notes?id=${id}`, { method: 'DELETE' })
@@ -279,6 +302,16 @@ export default function AdminSchedule() {
   const existingEntries = SCHEDULE_ENTRIES.filter(e =>
     e.locationId === locationId && e.date >= periodStart && e.date <= periodEnd
   )
+  const editChatEmployees = useMemo(() => employees.map(e => ({ id: e.id, name: e.name })), [employees])
+  const editChatShifts = useMemo(
+    () => locationShifts.map(s => ({ id: s.id, name: s.name, type: s.type, startTime: s.startTime, endTime: s.endTime })),
+    [locationShifts]
+  )
+  const editChatEntries = useMemo(() => existingEntries.map(e => {
+    const emp = EMPLOYEES.find(emp => emp.id === e.employeeId)
+    const shift = locationShifts.find(s => s.id === e.shiftId)
+    return { employeeId: e.employeeId, employeeName: emp?.name ?? '', date: e.date, shiftId: e.shiftId, shiftName: shift?.name ?? '' }
+  }), [existingEntries, EMPLOYEES, locationShifts])
   const approvedVacations = VACATION_REQUESTS
     .filter(v => v.locationId === locationId && v.status === 'approved' && v.startDate <= periodEnd && v.endDate >= periodStart)
     .map(v => ({ employeeId: v.employeeId, employeeName: v.employeeName, startDate: v.startDate, endDate: v.endDate }))
@@ -621,6 +654,11 @@ export default function AdminSchedule() {
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={openRules} className="border border-gray-200">Regeln</Button>
                 <Button variant="ghost" size="sm" onClick={handleExport} className="gap-1 border border-gray-200"><Download size={14} /> Export</Button>
+                {existingEntries.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => setEditChatOpen(true)} className="gap-1 border border-gray-200">
+                    <MessageCircle size={14} /> Dienstplan bearbeiten
+                  </Button>
+                )}
                 {aiDone && (
                   <Button variant="success" size="sm" onClick={handleSaveSchedule} className="gap-1">
                     <Save size={14} />{saved ? 'Gespeichert!' : 'Speichern'}
@@ -1067,6 +1105,19 @@ export default function AdminSchedule() {
         onClose={() => setPlanningChatOpen(false)}
         onSave={savePlanningChatNotes}
         periodLabel={`${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`}
+      />
+
+      {/* Dienstplan-Editier-Chat Modal */}
+      <ScheduleEditChat
+        key={`edit_${periodStart}_${periodEnd}`}
+        open={editChatOpen}
+        onClose={() => setEditChatOpen(false)}
+        onApply={handleApplyScheduleEdits}
+        locationId={locationId ?? ''}
+        periodLabel={`${formatDateShort(periodStart)} – ${formatDateShort(periodEnd)}`}
+        employees={editChatEmployees}
+        shifts={editChatShifts}
+        entries={editChatEntries}
       />
 
       {/* Rules Modal */}

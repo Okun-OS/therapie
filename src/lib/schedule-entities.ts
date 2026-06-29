@@ -213,6 +213,46 @@ export async function saveScheduleForWeek(
   if (rows.length > 0) await prisma.scheduleEntry.createMany({ data: rows })
 }
 
+export interface ScheduleEditChange {
+  employeeId: string
+  date: string
+  action: 'assign' | 'remove'
+  shiftId?: string
+  startTime?: string
+  endTime?: string
+  reason?: string
+}
+
+/** Wendet gezielte Einzeländerungen auf einen bereits gespeicherten Dienstplan an (z.B. aus
+ * dem Dienstplan-Editier-Chat) – im Gegensatz zu saveScheduleForWeek() werden dabei nur die
+ * genannten Tage/Mitarbeiter berührt, der Rest der Woche bleibt unangetastet. */
+export async function applyScheduleEdits(locationId: string, changes: ScheduleEditChange[]): Promise<ScheduleEntry[]> {
+  const results: ScheduleEntry[] = []
+  for (const change of changes) {
+    const existing = await prisma.scheduleEntry.findFirst({ where: { locationId, employeeId: change.employeeId, date: change.date } })
+    if (change.action === 'remove') {
+      if (existing) await prisma.scheduleEntry.delete({ where: { id: existing.id } })
+      continue
+    }
+    if (!change.shiftId) continue
+    const data = {
+      employeeId: change.employeeId,
+      shiftId: change.shiftId,
+      date: change.date,
+      locationId,
+      status: 'confirmed',
+      reason: change.reason,
+      startTime: change.startTime,
+      endTime: change.endTime,
+    }
+    const row = existing
+      ? await prisma.scheduleEntry.update({ where: { id: existing.id }, data })
+      : await prisma.scheduleEntry.create({ data })
+    results.push(toScheduleEntry(row))
+  }
+  return results
+}
+
 export async function getSwapRequestsByEmployee(employeeId: string): Promise<SwapRequest[]> {
   const rows = await prisma.swapRequest.findMany({
     where: { OR: [{ requesterId: employeeId }, { targetEmployeeId: employeeId }] },
