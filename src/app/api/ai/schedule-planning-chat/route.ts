@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/session'
+import { getPlanningRules } from '@/lib/schedule-entities'
 import type { SchedulePlanningDraft, ScheduleTask } from '@/lib/schedule-planning-draft'
 
 const client = new Anthropic()
@@ -21,9 +23,12 @@ Phase 3 – Besondere Mitarbeiterinformationen: "Gibt es Besonderheiten zu einze
 
 Phase 4 – Abschluss: Fasse kurz zusammen, was du notiert hast (oder dass nichts Besonderes vorliegt) und frage, ob das so passt. Sobald die Leitung bestätigt, ist das Gespräch abgeschlossen.
 
+## Zugriff auf die Wissensbasis des Standorts
+Du erhältst unter "Bereits hinterlegte Konfiguration und dauerhafte Regeln dieses Standorts" den vollständigen, aktuellen Stand der Standort-Konfiguration aus dem Onboarding (inkl. bereits gespeicherter individueller Regeln) sowie die administrativ eingestellten Planungsregeln. Du HAST Zugriff auf diese Daten – behaupte niemals, keinen Zugriff auf die Regeln oder Konfiguration dieses Standorts zu haben. Wenn die Leitung danach fragt, was aktuell gilt, fasse es aus diesem Abschnitt zusammen.
+
 ## Dauerhafte Regeln erkennen (gilt in JEDER Phase)
 Achte während des gesamten Gesprächs darauf, ob eine Aussage der Leitung eigentlich KEINE Besonderheit für diesen einen Zeitraum ist, sondern eine generelle, dauerhaft gültige Regel für den Standort. Erkennungsmerkmal: die Aussage ist nicht an "diese Woche"/"diesen Monat" gebunden, sondern beschreibt, wie es IMMER oder GRUNDSÄTZLICH sein soll. Beispiele für dauerhafte Regeln: "Frühdienst für 35h-Mitarbeiter ist immer 06:00–13:30 Uhr", "Vollzeitkräfte bekommen im Frühdienst grundsätzlich 06:00–14:30 Uhr", "Montags ist in Gruppe Blau grundsätzlich eine Person mehr eingeplant". Im Gegensatz dazu sind Aussagen wie "Tim hat diese Woche Urlaub", "am Montag brauchen wir in Gruppe Blau eine Person mehr" oder "plane Lisa diese Woche nur vormittags ein" eindeutig auf den aktuellen Zeitraum beschränkt und gehören zu Phase 1–3.
-Wenn du eine dauerhafte Regel erkennst, frage kurz nach, ob das ab jetzt dauerhaft für den Standort gelten soll (z.B. "Soll das ab jetzt dauerhaft für alle Frühdienste von 35h-Mitarbeitern gelten, nicht nur für diesen Zeitraum?"). Bestätigt die Leitung das, rufe das Tool mit dem vollständigen, kumulierten Stand der "permanentRules" auf (zusätzlich zu den übrigen Feldern) – diese Regeln werden dauerhaft in der Standort-Wissensbasis gespeichert, nicht nur für diesen Zeitraum. Verneint die Leitung oder ist unklar, ob es dauerhaft gemeint ist, behandle die Aussage wie eine normale Besonderheit für diesen Zeitraum (Phase 1–3) und füge sie NICHT zu "permanentRules" hinzu.
+Wenn du eine dauerhafte Regel erkennst, frage kurz nach, ob das ab jetzt dauerhaft für den Standort gelten soll (z.B. "Soll das ab jetzt dauerhaft für alle Frühdienste von 35h-Mitarbeitern gelten, nicht nur für diesen Zeitraum?"). Bestätigt die Leitung das, prüfe gegen die bereits hinterlegten individuellen Regeln, ob die neue Aussage eine bestehende Regel ERSETZT/PRÄZISIERT oder wirklich eine zusätzliche, neue Regel ist – formuliere "permanentRules" so, dass widersprüchliche Alt-Regeln nicht parallel weiterbestehen, sondern die neue Regel die alte inhaltlich ersetzt. Rufe das Tool dann mit dem vollständigen, kumulierten Stand der "permanentRules" auf (zusätzlich zu den übrigen Feldern) – diese Regeln werden dauerhaft in der Standort-Wissensbasis gespeichert, nicht nur für diesen Zeitraum. Verneint die Leitung oder ist unklar, ob es dauerhaft gemeint ist, behandle die Aussage wie eine normale Besonderheit für diesen Zeitraum (Phase 1–3) und füge sie NICHT zu "permanentRules" hinzu.
 
 Regeln:
 1. Sprich die Leitung direkt mit "Du" an, freundlich und professionell, aber locker.
@@ -78,20 +83,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY nicht konfiguriert' }, { status: 500 })
   }
 
-  let body: { messages?: ChatMessage[]; draft?: SchedulePlanningDraft; periodLabel?: string }
+  let body: { messages?: ChatMessage[]; draft?: SchedulePlanningDraft; locationId?: string; periodLabel?: string }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
 
-  const { messages, draft, periodLabel } = body
+  const { messages, draft, locationId, periodLabel } = body
   if (!Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: 'messages sind erforderlich' }, { status: 400 })
   }
 
+  const [locationOnboarding, planningRules] = locationId
+    ? await Promise.all([
+        prisma.locationOnboarding.findUnique({ where: { locationId } }),
+        getPlanningRules(locationId),
+      ])
+    : [null, null]
+
   const stateNote = `## Ausgewählte Planungsperiode
 ${periodLabel ?? 'nicht angegeben'}
+
+## Bereits hinterlegte Konfiguration und dauerhafte Regeln dieses Standorts
+${JSON.stringify({
+    organisationsstruktur: locationOnboarding?.organisationsstruktur ?? null,
+    arbeitszeiten: locationOnboarding?.arbeitszeiten ?? null,
+    pausenlogik: locationOnboarding?.pausenlogik ?? null,
+    individuelleRegeln: locationOnboarding?.individuelleRegeln ?? [],
+    besonderheiten: locationOnboarding?.besonderheiten ?? null,
+    planungsregeln: planningRules,
+  }, null, 2)}
 
 ## Bisher im Gespräch erfasste Daten
 ${JSON.stringify(draft ?? {}, null, 2)}

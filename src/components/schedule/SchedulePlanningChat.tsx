@@ -15,11 +15,13 @@ export function SchedulePlanningChat({
   open,
   onClose,
   onSave,
+  locationId,
   periodLabel,
 }: {
   open: boolean
   onClose: () => void
   onSave: (notes: string[], permanentRules: string[]) => Promise<void>
+  locationId: string
   periodLabel: string
 }) {
   const openingMessage = opening(periodLabel)
@@ -48,7 +50,7 @@ export function SchedulePlanningChat({
       const res = await fetch('/api/ai/schedule-planning-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nextMessages, draft, periodLabel }),
+        body: JSON.stringify({ messages: nextMessages, draft, locationId, periodLabel }),
       })
       const json = await res.json()
       if (json.error) {

@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { getPlanningRules } from '@/lib/schedule-entities'
 import type { Employee, Shift, ShiftFairnessData, WishSubmission } from '@/lib/types'
 
 const client = new Anthropic()
@@ -18,10 +19,12 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 4. Die Anzahl der Dienste pro Woche ergibt sich aus "wochenstunden" UND "tage_pro_woche" des Mitarbeiters (nicht aus einer pauschalen Stunden-pro-Dienst-Annahme): Dienste pro Woche ≈ tage_pro_woche, die tägliche Dienstdauer ergibt sich aus wochenstunden / tage_pro_woche zzgl. Pause. Ist "tage_pro_woche" nicht angegeben, gehe von 5 Arbeitstagen pro Woche aus.
 
 ## Individuelle Dienstzeiten (KEINE starren, für alle gleichen Schichtzeiten)
-4a. OKUN Workforce verwaltet keine starren Standardschichten. Die in "Verfügbare Schichten" angegebene "zeit_richtwert" ist nur eine Orientierung für die Art des Dienstes (z.B. Frühdienst beginnt morgens) – sie gilt NICHT unverändert für jeden Mitarbeiter.
+4a. OKUN Workforce verwaltet keine starren Standardschichten. Die in "Verfügbare Schichten" angegebene "zeit_richtwert" ist nur eine Orientierung für die Art des Dienstes (z.B. Frühdienst beginnt morgens, Spätdienst endet abends) – sie gilt NICHT unverändert für jeden Mitarbeiter.
 4b. Berechne für JEDE einzelne Zuweisung individuell eine realistische "startTime" und "endTime" (Format "HH:MM") auf Basis von: den Wochenstunden und Arbeitstagen pro Woche des Mitarbeiters (wochenstunden / tage_pro_woche ergibt die tägliche Soll-Arbeitszeit), den Öffnungszeiten/Arbeitszeiten/Pausenregeln aus der "Konfiguration des Standorts", und ggf. individuellen Angaben des Mitarbeiters (Persönliche Besonderheiten/Notizen/besondere Absprachen).
-4c. Beispiel: Ein Mitarbeiter mit 35h/Woche auf 5 Tage hat täglich ca. 7h Nettoarbeitszeit; ein Vollzeit-Mitarbeiter mit 40h/Woche auf 5 Tage hat täglich ca. 8h. Beginnen beide einen Frühdienst zur Öffnungszeit (z.B. 06:00 Uhr), unterscheidet sich die Endzeit entsprechend (z.B. 13:30 Uhr vs. 14:30 Uhr) – die Schicht selbst (Art/Kategorie) bleibt dieselbe, die konkrete Zeit ist individuell.
-4d. Bleibe innerhalb der Öffnungszeiten des Standorts, achte auf sinnvolle Übergaben zwischen Schichten und auf die in der Standort-Konfiguration angegebenen Pausenregeln.
+4c. Beispiel für startzeit-verankerte Schichten (typischerweise Frühdienst): Ein Mitarbeiter mit 35h/Woche auf 5 Tage hat täglich ca. 7h Nettoarbeitszeit; ein Vollzeit-Mitarbeiter mit 40h/Woche auf 5 Tage hat täglich ca. 8h. Beginnen beide einen Frühdienst zur Öffnungszeit (z.B. 06:00 Uhr), unterscheidet sich die Endzeit entsprechend (z.B. 13:30 Uhr vs. 14:30 Uhr) – die Schicht selbst (Art/Kategorie) bleibt dieselbe, die konkrete Zeit ist individuell.
+4e. Beispiel für endzeit-verankerte Schichten (typischerweise Spätdienst): Bei Schichten, die durch eine feste oder vorgegebene ENDZEIT bestimmt werden (z.B. Schließzeit der Einrichtung, oder eine in der Standort-Konfiguration genannte feste Spätdienst-Endzeit), ist NICHT die Startzeit der Anker, sondern die Endzeit. Berechne die Startzeit rückwärts von dieser Endzeit abzüglich der individuellen täglichen Arbeitszeit des Mitarbeiters (zzgl. Pause gemäß Pausenregeln). Beispiel: Schließzeit/Dienstende 18:00 Uhr – ein Mitarbeiter mit 6h täglicher Arbeitszeit beginnt entsprechend später (z.B. 12:00 Uhr) als ein Mitarbeiter mit 8h täglicher Arbeitszeit (z.B. 10:00 Uhr); die Schicht selbst bleibt "Spätdienst", nur die konkrete Startzeit unterscheidet sich. Verwende NIEMALS eine für alle Mitarbeiter gleiche, starre Spätdienst-Startzeit, wenn die Endzeit der eigentliche Anker ist.
+4f. Ob eine Schicht start- oder endzeit-verankert ist, ergibt sich aus der Standort-Konfiguration (Arbeitszeiten/Pausenlogik/individuelle Regeln). Ohne eindeutigen Hinweis gilt als Standardannahme: Frühdienste sind startzeit-verankert (Anker = Öffnungszeit), Spätdienste sind endzeit-verankert (Anker = Schließzeit bzw. Dienstende). Halte dich strikt an eine in der Standort-Konfiguration explizit genannte Logik, auch wenn sie dieser Standardannahme widerspricht.
+4g. Bleibe innerhalb der Öffnungszeiten des Standorts, achte auf sinnvolle Übergaben zwischen Schichten und auf die in der Standort-Konfiguration angegebenen Pausenregeln.
 
 ## Fairness-Regeln
 5. Früh/Spät/Mittel sollen langfristig fair verteilt sein (je ~40%/40%/20%).
@@ -31,6 +34,8 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 8a. Freitag-Frühdienst max. 3× pro Monat pro Mitarbeiter – wer das Limit in den letzten 4 Wochen schon erreicht oder überschritten hat, bekommt an diesem Freitag bevorzugt eine andere Schicht.
 8b. Berücksichtige bei der Verteilung auch die Wochenenddienste der letzten 4 Wochen (Hinweis: der aktuelle Plan selbst umfasst nur Montag bis Freitag). Mitarbeiter, die in den letzten 4 Wochen bereits überdurchschnittlich viele Wochenenddienste hatten, sollen das in der Begründung berücksichtigt finden, sofern dies für die Verteilung der aktuellen Woche relevant ist.
 8c. Berücksichtige die persönlichen Dienstpräferenzen jedes Mitarbeiters ("praeferenzen" in den Mitarbeiterdaten), sofern angegeben: bevorzugte Schichtarten, nicht verfügbare Wochentage (hart einzuhalten), Vermeidung von Frühdienst nach Spätdienst und maximale Anzahl an Folgetagen. Nicht verfügbare Wochentage und "kein Frühdienst nach Spätdienst" sind verbindlich einzuhalten; bevorzugte Schichtarten sind ein weiches Signal wie ein Wunsch.
+8d. Die Zahlenwerte in Regel 3, 6, 7 und 8a sind nur Standardwerte. Falls im Abschnitt "Planungsregeln des Standorts (administrativ konfiguriert, verbindlich)" abweichende Werte angegeben sind (z.B. andere Maximalwerte für aufeinanderfolgende Tage, Freitag-Spätdienst, Montag-Frühdienst, Freitag-Frühdienst, Wochenenddienste, maximale Wochenstunden oder Mindestruhezeit), ersetzen diese konfigurierten Werte verbindlich die Standardwerte – sie sind keine Empfehlung, sondern eine feste, vom Standort eingestellte Systemkonfiguration, die bei JEDER Planung gilt, bis sie erneut geändert wird.
+8e. Berücksichtige bei der Verteilung die "gruppe" und "bereich" jedes Mitarbeiters (sofern angegeben) zusammen mit der in der Standort-Konfiguration beschriebenen Organisationsstruktur (Gruppen/Bereiche/Teams). Mitarbeiter sollen bevorzugt in ihrer zugeordneten Gruppe/ihrem zugeordneten Bereich eingeplant werden; ein Wechsel in eine andere Gruppe/einen anderen Bereich ist nur sinnvoll, wenn die Standort-Konfiguration explizit Flexibilität zwischen Gruppen/Bereichen erlaubt oder die Mindestbesetzung sonst nicht erreichbar ist – in letzterem Fall als "conflict" oder "warning" kennzeichnen.
 
 ## Wünsche (WishSubmissions)
 9. Wünsche mit Importance "urgent" haben höchste Priorität, dann "important", dann "normal".
@@ -155,13 +160,14 @@ export async function POST(req: NextRequest) {
 
   const customerId = await resolveCustomerId(session)
 
-  const [locationOnboarding, periodNotes, organizationOnboarding] = locationId
+  const [locationOnboarding, periodNotes, organizationOnboarding, planningRules] = locationId
     ? await Promise.all([
         prisma.locationOnboarding.findUnique({ where: { locationId } }),
         prisma.schedulingPeriodNote.findMany({ where: { locationId, weekStart: { in: weekStarts } } }),
         customerId ? prisma.organizationOnboarding.findUnique({ where: { customerId } }) : Promise.resolve(null),
+        getPlanningRules(locationId),
       ])
-    : [null, [], null]
+    : [null, [], null, null]
 
   const humanContexts = activeEmployees.length > 0
     ? await prisma.employeeHumanContext.findMany({
@@ -177,6 +183,8 @@ export async function POST(req: NextRequest) {
       name: emp.name,
       wochenstunden: emp.weeklyHours,
       tage_pro_woche: emp.workDaysPerWeek ?? 5,
+      ...(emp.gruppe && { gruppe: emp.gruppe }),
+      ...(emp.bereich && { bereich: emp.bereich }),
       frueh_unterversorgung: fd ? Math.round(fd.earlyDebt * 10) / 10 : 0,
       spaet_unterversorgung: fd ? Math.round(fd.lateDebt * 10) / 10 : 0,
       mittel_unterversorgung: fd ? Math.round(fd.midDebt * 10) / 10 : 0,
@@ -237,6 +245,21 @@ ${[
 
 Dies ist die dauerhafte Wissensbasis dieses Standorts – leite daraus automatisch Dienstzeiten, Schichten, Arbeitsmodelle und Regeln ab und beachte sie verbindlich bei der Planung, auch wenn nicht jedes Feld ausgefüllt ist.` : ''
 
+  const planningRulesSection = planningRules ? `
+## Planungsregeln des Standorts (administrativ konfiguriert, verbindlich)
+- Maximale Wochenstunden pro Mitarbeiter: ${planningRules.maxWeeklyHours}
+- Mindestruhezeit zwischen zwei Diensten: ${planningRules.restHours}h
+- Maximale aufeinanderfolgende Arbeitstage: ${planningRules.maxConsecutiveDays}
+- Freitag-Spätdienst maximal pro Mitarbeiter im Monat: ${planningRules.fridayLateMax}
+- Montag-Frühdienst maximal pro Mitarbeiter im Monat: ${planningRules.mondayEarlyMax}
+- Freitag-Frühdienst maximal pro Mitarbeiter im Monat: ${planningRules.fridayEarlyMax}
+- Wochenenddienste maximal pro Mitarbeiter im Monat: ${planningRules.weekendMax}
+- Wunschdienste berücksichtigen: ${planningRules.considerWishes ? 'ja' : 'nein, für diese Planung nicht berücksichtigen'}
+- Stundenkonto-Ausgleich (Mehr-/Minderstunden) anstreben: ${planningRules.balanceHoursAccount ? 'ja' : 'nein'}
+${planningRules.autoBreakDeduction ? `- Automatischer Pausenabzug: ab ${planningRules.breakThresholdMinutes} Minuten Dienstdauer werden ${planningRules.breakDeductionMinutes} Minuten Pause abgezogen – berücksichtige das bei der Berechnung der individuellen Dienstzeiten (Regel 4b–4g).` : ''}
+
+Dies ist die aktuelle, vom Standort eingestellte Systemkonfiguration (siehe Regel 8d) – sie gilt verbindlich, unabhängig davon, ob sie in dieser Konversation erwähnt wird.` : ''
+
   const periodNotesSection = periodNotes.length > 0 ? `
 ## Besonderheiten ausschließlich für diese eine Planungsperiode
 ${periodNotes.map(n => `- ${n.note}`).join('\n')}
@@ -272,7 +295,7 @@ ${JSON.stringify(employeeSummary, null, 2)}
 
 Hinweis: "id" wird NUR als Schlüssel im "schedule"-Objekt der Antwort verwendet, niemals in reasoning/decisions/warnings. Höherer "_unterversorgung"-Wert = Mitarbeiter sollte diese Schicht öfter bekommen, negativer Wert = hat diese Schicht schon überdurchschnittlich oft gehabt – beschreibe das in reasoning/decisions/warnings immer in eigenen Worten, nie mit dem Feldnamen.
 
-## Verfügbare Schichten (Kategorien – "zeit_richtwert" ist nur eine Orientierung, KEINE für alle Mitarbeiter gleiche Zeitvorgabe, siehe Regel 4a–4d)
+## Verfügbare Schichten (Kategorien – "zeit_richtwert" ist nur eine Orientierung, KEINE für alle Mitarbeiter gleiche Zeitvorgabe, siehe Regel 4a–4g)
 ${JSON.stringify(shiftSummary, null, 2)}
 
 ## Planungstage
@@ -284,6 +307,7 @@ ${vacationSection}
 ${absenceSection}
 ${organizationSection}
 ${onboardingSection}
+${planningRulesSection}
 ${periodNotesSection}
 ${facilityDescription ? `
 ## Besondere Standortbeschreibung vom Teamleiter

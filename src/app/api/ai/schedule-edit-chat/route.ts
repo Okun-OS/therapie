@@ -1,7 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { getFairnessInsights } from '@/lib/fairness'
+import { getPlanningRules } from '@/lib/schedule-entities'
 import type { ScheduleEditDraft, ScheduleEditChange } from '@/lib/schedule-edit-draft'
 
 const client = new Anthropic()
@@ -19,8 +21,11 @@ Die Leitung beschreibt dir in natürlicher Sprache, was am Dienstplan im angegeb
 4. Fasse die geplanten Änderungen kurz zusammen und frage, ob das so passt. Setze "readyToApply" erst auf true, nachdem die Leitung das bestätigt hat.
 5. Rufe nach jeder neuen Information das Tool "update_schedule_edit_draft" auf und gib dabei IMMER den vollständigen, kumulierten Stand aller bisher vereinbarten Änderungen an (nicht nur das Delta).
 
+## Zugriff auf die Wissensbasis des Standorts
+Du erhältst unter "Bereits hinterlegte Konfiguration und dauerhafte Regeln dieses Standorts" den vollständigen, aktuellen Stand der Standort-Konfiguration aus dem Onboarding (inkl. bereits gespeicherter individueller Regeln) sowie die administrativ eingestellten Planungsregeln. Du HAST Zugriff auf diese Daten – behaupte niemals, keinen Zugriff auf die Regeln oder Konfiguration dieses Standorts zu haben. Wenn die Leitung danach fragt, was aktuell gilt, fasse es aus diesem Abschnitt zusammen.
+
 ## Dauerhafte Regeln erkennen
-Achte darauf, ob eine Aussage KEINE einmalige Änderung für diesen Zeitraum ist, sondern eine generelle, dauerhaft gültige Regel für den Standort (z.B. "Der Frühdienst soll ab jetzt immer erst um 6:15 Uhr beginnen", "Mittwochs soll grundsätzlich eine Person mehr im Spätdienst sein"). Erkennungsmerkmal: nicht an "diese Woche/diesen Tag" gebunden, sondern "ab jetzt"/"immer"/"grundsätzlich". Frage in diesem Fall kurz nach, ob das dauerhaft für den Standort gelten soll. Bestätigt die Leitung das, nimm die Regel zusätzlich in "permanentRules" auf (vollständiger kumulierter Stand) – sie wird dauerhaft in der Standort-Wissensbasis gespeichert. Eine einmalige Änderung für einen konkreten Tag gehört NICHT in "permanentRules", sondern ausschließlich in "changes".
+Achte darauf, ob eine Aussage KEINE einmalige Änderung für diesen Zeitraum ist, sondern eine generelle, dauerhaft gültige Regel für den Standort (z.B. "Der Frühdienst soll ab jetzt immer erst um 6:15 Uhr beginnen", "Mittwochs soll grundsätzlich eine Person mehr im Spätdienst sein"). Erkennungsmerkmal: nicht an "diese Woche/diesen Tag" gebunden, sondern "ab jetzt"/"immer"/"grundsätzlich". Frage in diesem Fall kurz nach, ob das dauerhaft für den Standort gelten soll. Prüfe dabei gegen die bereits hinterlegten individuellen Regeln, ob die neue Aussage eine bestehende Regel ERSETZT/PRÄZISIERT (z.B. eine andere Uhrzeit für dieselbe Schicht) oder wirklich eine zusätzliche, neue Regel ist – formuliere "permanentRules" so, dass widersprüchliche Alt-Regeln nicht parallel weiterbestehen, sondern die neue Regel die alte inhaltlich ersetzt. Bestätigt die Leitung das, nimm die Regel zusätzlich in "permanentRules" auf (vollständiger kumulierter Stand) – sie wird dauerhaft in der Standort-Wissensbasis gespeichert. Eine einmalige Änderung für einen konkreten Tag gehört NICHT in "permanentRules", sondern ausschließlich in "changes".
 
 ## Keine erfundenen Historien-Aussagen (sehr wichtig)
 Du erhältst unter "Echte Fairness-Daten" die einzigen verlässlichen Zahlen zur bisherigen Verteilung von Diensten je Mitarbeiter. Wenn du eine Änderung mit der bisherigen Verteilung begründest (z.B. "weil Tom zuletzt mehr Spätdienste hatte"), darfst du AUSSCHLIESSLICH Zahlen nennen, die wörtlich in diesen Daten stehen. Erfinde niemals Häufigkeiten, Vergleiche oder Historien, die dort nicht enthalten sind. Wenn die Daten zu einer Behauptung nichts enthalten, lass die Behauptung weg oder formuliere neutral ohne Zahlenangabe.
@@ -99,7 +104,13 @@ export async function POST(req: NextRequest) {
   }
 
   const customerId = await resolveCustomerId(session)
-  const fairnessData = locationId ? await getFairnessInsights(locationId, customerId) : []
+  const [fairnessData, locationOnboarding, planningRules] = locationId
+    ? await Promise.all([
+        getFairnessInsights(locationId, customerId),
+        prisma.locationOnboarding.findUnique({ where: { locationId } }),
+        getPlanningRules(locationId),
+      ])
+    : [[], null, null]
   const fairnessSummary = fairnessData.map(fd => ({
     employeeId: fd.employeeId,
     name: fd.employeeName,
@@ -126,6 +137,16 @@ ${JSON.stringify(entries ?? [], null, 2)}
 
 ## Echte Fairness-Daten (einzige zulässige Quelle für Aussagen über bisherige Verteilung)
 ${JSON.stringify(fairnessSummary, null, 2)}
+
+## Bereits hinterlegte Konfiguration und dauerhafte Regeln dieses Standorts
+${JSON.stringify({
+    organisationsstruktur: locationOnboarding?.organisationsstruktur ?? null,
+    arbeitszeiten: locationOnboarding?.arbeitszeiten ?? null,
+    pausenlogik: locationOnboarding?.pausenlogik ?? null,
+    individuelleRegeln: locationOnboarding?.individuelleRegeln ?? [],
+    besonderheiten: locationOnboarding?.besonderheiten ?? null,
+    planungsregeln: planningRules,
+  }, null, 2)}
 
 ## Bisher im Gespräch vereinbarte Änderungen
 ${JSON.stringify(draft ?? {}, null, 2)}

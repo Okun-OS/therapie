@@ -199,6 +199,7 @@ export async function POST(req: NextRequest) {
     let systemPrompt: string
     let tools: (typeof ORG_TOOL | typeof LOCATION_TOOL | typeof SHIFTS_TOOL | typeof PLANNING_RULES_TOOL)[]
     let existingPausenlogik: string | null = null
+    let existingIndividuelleRegeln: string[] = []
 
     if (isOrganization) {
       const [existing, customer] = await Promise.all([
@@ -226,6 +227,7 @@ export async function POST(req: NextRequest) {
         getPlanningRules(scope),
       ])
       existingPausenlogik = existing?.pausenlogik ?? null
+      existingIndividuelleRegeln = existing?.individuelleRegeln ?? []
       stateNote = `## Standort\nName: ${location.name} (${location.city})\n\n## Bereits bekannte Angaben zu diesem Standort\n${JSON.stringify({
         einrichtungsart: existing?.einrichtungsart ?? null,
         organisationsstruktur: existing?.organisationsstruktur ?? null,
@@ -278,6 +280,16 @@ export async function POST(req: NextRequest) {
             await prisma.customer.update({ where: { id: customerId }, data: { roles: deduped } })
           }
         } else {
+          let nextIndividuelleRegeln: string[] | undefined
+          if (Array.isArray(input.individuelleRegeln)) {
+            const incoming = (input.individuelleRegeln as unknown[]).filter((r): r is string => typeof r === 'string' && r.trim().length > 0)
+            const merged = [...existingIndividuelleRegeln]
+            for (const rule of incoming) {
+              if (!merged.some(r => r.trim().toLowerCase() === rule.trim().toLowerCase())) merged.push(rule)
+            }
+            nextIndividuelleRegeln = incoming.length >= existingIndividuelleRegeln.length ? incoming : merged
+            existingIndividuelleRegeln = nextIndividuelleRegeln
+          }
           savedState = await upsertLocationOnboarding(scope, {
             einrichtungsart: typeof input.einrichtungsart === 'string' ? input.einrichtungsart : undefined,
             organisationsstruktur: typeof input.organisationsstruktur === 'string' ? input.organisationsstruktur : undefined,
@@ -286,7 +298,7 @@ export async function POST(req: NextRequest) {
             dienstplanlogik: typeof input.dienstplanlogik === 'string' ? input.dienstplanlogik : undefined,
             pausenlogik: typeof input.pausenlogik === 'string' ? input.pausenlogik : undefined,
             wiederkehrendeAufgaben: typeof input.wiederkehrendeAufgaben === 'string' ? input.wiederkehrendeAufgaben : undefined,
-            individuelleRegeln: Array.isArray(input.individuelleRegeln) ? input.individuelleRegeln as string[] : undefined,
+            individuelleRegeln: nextIndividuelleRegeln,
             vertretungsregeln: typeof input.vertretungsregeln === 'string' ? input.vertretungsregeln : undefined,
             urlaubslogik: typeof input.urlaubslogik === 'string' ? input.urlaubslogik : undefined,
             zeiterfassung: typeof input.zeiterfassung === 'string' ? input.zeiterfassung : undefined,

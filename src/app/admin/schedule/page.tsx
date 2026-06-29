@@ -363,8 +363,6 @@ export default function AdminSchedule() {
 
     try {
       const weekDates = periodWeekdayDates
-      const ruleSummary = `Zusätzliche Planungsregeln des Admins: maximal ${planningRules.maxWeeklyHours}h Wochenarbeitszeit, mindestens ${planningRules.restHours}h Ruhezeit zwischen zwei Diensten, maximal ${planningRules.maxConsecutiveDays} aufeinanderfolgende Arbeitstage, Freitag-Spätdienst max. ${planningRules.fridayLateMax}×/Monat pro Mitarbeiter, Montag-Frühdienst max. ${planningRules.mondayEarlyMax}×/Monat pro Mitarbeiter, Freitag-Frühdienst max. ${planningRules.fridayEarlyMax}×/Monat pro Mitarbeiter. Mitarbeiterwünsche ${planningRules.considerWishes ? 'sollen aktiv berücksichtigt werden' : 'müssen dieses Mal NICHT berücksichtigt werden'}. Stundenkonten ${planningRules.balanceHoursAccount ? 'sollen ausgeglichen werden' : 'müssen dieses Mal nicht ausgeglichen werden'}.`
-      const combinedDescription = [facilityDescription.trim(), ruleSummary].filter(Boolean).join('\n\n')
 
       const res = await fetch('/api/ai/schedule', {
         method: 'POST',
@@ -377,7 +375,7 @@ export default function AdminSchedule() {
           weekDates,
           locationId,
           locationName: location?.name ?? 'Standort',
-          facilityDescription: combinedDescription || undefined,
+          facilityDescription: facilityDescription.trim() || undefined,
           confirmedDecisionQuestion,
           approvedVacations,
           reportedAbsences,
@@ -1104,6 +1102,7 @@ export default function AdminSchedule() {
         open={planningChatOpen}
         onClose={() => setPlanningChatOpen(false)}
         onSave={savePlanningChatNotes}
+        locationId={locationId}
         periodLabel={`${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`}
       />
 
