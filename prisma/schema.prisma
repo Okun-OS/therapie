@@ -191,6 +191,7 @@ model LocationOnboarding {
   urlaubslogik           String?
   zeiterfassung          String?
   besonderheiten         String?
+  tagesablauf            String?
   completedPhases        String[] @default([])
   completed              Boolean  @default(false)
   updatedAt              DateTime @updatedAt
@@ -357,17 +358,22 @@ model Shift {
 }
 
 model ScheduleEntry {
-  id         String   @id @default(cuid())
-  employeeId String
-  shiftId    String
-  date       String
-  locationId String
-  status     String   @default("planned")
-  note       String?
-  reason     String?
-  startTime  String?
-  endTime    String?
-  createdAt  DateTime @default(now())
+  id              String   @id @default(cuid())
+  employeeId      String
+  shiftId         String
+  date            String
+  locationId      String
+  status          String   @default("planned")
+  note            String?
+  reason          String?
+  startTime       String?
+  endTime         String?
+  gruppe          String?
+  funktion        String?
+  isSubstitution  Boolean  @default(false)
+  substitutionFor String?
+  taskBlocks      Json?
+  createdAt       DateTime @default(now())
 }
 
 model LocationPlanningRules {

@@ -70,12 +70,30 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 20. Damit die Leitung sich später für eine einzelne Schicht anzeigen lassen kann, warum genau diese Zuweisung getroffen wurde, gib bei JEDEM Eintrag mit "type": "assignment" zusätzlich "employeeId" und "date" (YYYY-MM-DD) der betroffenen Zuweisung an. Erstelle solche Einträge für die auffälligsten/wichtigsten Zuweisungen (z. B. Fairness-Ausgleich, erfüllte Wünsche, besondere Absprachen) – nicht für jede einzelne Schicht.
 21. Einträge mit "type": "conflict" oder "warning" benötigen kein "employeeId"/"date".
 
+## Gruppen-Einsatzplanung (Pflicht – sobald Onboarding-Gruppen vorhanden sind)
+22. Sobald die Konfiguration des Standorts Gruppen, Bereiche oder Teams nennt, weise JEDEN Mitarbeitertag, an dem ein Dienst geplant ist, einer konkreten Gruppe/einem Bereich zu. Setze dafür das Feld "gruppe" im schedule-Eintrag. Nutze AUSSCHLIESSLICH Gruppen/Bereiche, die im Onboarding genannt wurden – erfinde NIEMALS eigene. Ist kein Onboarding vorhanden oder nennt es keine Gruppen, bleibt "gruppe" null.
+23. Ein Mitarbeiter soll bevorzugt in seiner zugeordneten Gruppe ("gruppe"-Feld im Mitarbeiterdatensatz) eingeplant werden. Gibt es kein zugeordnetes Feld oder reicht die Besetzung nicht aus, greife auf die im Onboarding festgelegten Vertretungsregeln zurück und kennzeichne einen gruppenübergreifenden Einsatz als Vertretung (isSubstitution: true, substitutionFor: beschreibe kurz den Grund, z.B. "Krankheit Heike" oder "Unterbesetzung Gruppe Sonnenblumen"). Fehlen Vertretungsregeln, priorisiere multiGroupCapable-Mitarbeiter.
+24. Beschreibe im Feld "funktion" kurz und prägnant die Funktion des Mitarbeiters an diesem Tag, z.B. "Frühdienst Gruppe Krümelbären", "Spätdienst Vertretung Gruppe Sonnenblumen", "Leitung Gruppe Blauwal". Nutze dabei ausschließlich Informationen aus dem Onboarding und den Mitarbeiterdaten – nie frei erfunden.
+
+## Tagesplanung (Aufgabenblöcke – nur wenn Tagesablauf im Onboarding definiert)
+25. Ist im Abschnitt "Tagesablauf des Standorts" ein typischer Tagesablauf beschrieben, erzeuge für jeden Diensteintrag ein Feld "taskBlocks" mit einem Array von Aufgabenblöcken, die innerhalb der Dienstzeit des Mitarbeiters anfallen (Format: [{"start":"HH:MM","end":"HH:MM","aufgabe":"string"}]). Leite die Aufgaben und ihre Zeiten AUSSCHLIESSLICH aus dem "Tagesablauf des Standorts" ab – erfinde NIEMALS eigene Aufgaben, Tagesstrukturen oder Zeiten. Passe start/end so an, dass sie innerhalb von startTime–endTime des Dienstes liegen. Sind keine Tagesablauf-Informationen vorhanden, setze "taskBlocks" auf null.
+26. Gruppe, Funktion und Aufgabenblöcke sind KEINE optionalen Zusatzinformationen – wenn Onboarding-Daten vorhanden sind, MÜSSEN sie ausgefüllt sein. Ein Diensteintrag ohne Gruppe (obwohl Gruppen im Onboarding definiert sind) ist ein Fehler.
+
 ## Output-Format (JSON, kein Markdown drumherum)
 Antworte NUR mit einem gültigen JSON-Objekt in diesem Format:
 {
   "schedule": {
     "YYYY-MM-DD": {
-      "employeeId": { "shiftId": "string", "startTime": "HH:MM", "endTime": "HH:MM" }
+      "employeeId": {
+        "shiftId": "string",
+        "startTime": "HH:MM",
+        "endTime": "HH:MM",
+        "gruppe": "string oder null",
+        "funktion": "string oder null",
+        "isSubstitution": false,
+        "substitutionFor": "string oder null",
+        "taskBlocks": [{"start":"HH:MM","end":"HH:MM","aufgabe":"string"}] | null
+      }
     }
   },
   "reasoning": "Kurze Zusammenfassung der Planungslogik auf Deutsch (2–4 Sätze)",
@@ -245,6 +263,7 @@ ${[
     locationOnboarding.urlaubslogik && `Urlaubslogik: ${locationOnboarding.urlaubslogik}`,
     locationOnboarding.zeiterfassung && `Zeiterfassung: ${locationOnboarding.zeiterfassung}`,
     locationOnboarding.besonderheiten && `Sonstige Besonderheiten (Standortbeschreibung): ${locationOnboarding.besonderheiten}`,
+    locationOnboarding.tagesablauf && `Tagesablauf des Standorts (Aufgabenblöcke, Gruppenstruktur, Tagesrhythmus): ${locationOnboarding.tagesablauf}`,
   ].filter(Boolean).join('\n')}
 
 Dies ist die dauerhafte Wissensbasis dieses Standorts – leite daraus automatisch Dienstzeiten, Schichten, Arbeitsmodelle und Regeln ab und beachte sie verbindlich bei der Planung, auch wenn nicht jedes Feld ausgefüllt ist.` : ''
@@ -401,7 +420,7 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
     const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/
 
     const rawSchedule = parsed.schedule
-    const sanitizedSchedule: Record<string, Record<string, { shiftId: string; startTime?: string; endTime?: string }>> = {}
+    const sanitizedSchedule: Record<string, Record<string, { shiftId: string; startTime?: string; endTime?: string; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: unknown }>> = {}
     let droppedCount = 0
     let totalCount = 0
 
@@ -419,8 +438,13 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
           if (!shiftId || !validShiftIds.has(shiftId)) { droppedCount++; continue }
           const startTime = typeof assignment?.startTime === 'string' && timePattern.test(assignment.startTime) ? assignment.startTime : undefined
           const endTime = typeof assignment?.endTime === 'string' && timePattern.test(assignment.endTime) ? assignment.endTime : undefined
+          const gruppe = typeof assignment?.gruppe === 'string' ? assignment.gruppe : undefined
+          const funktion = typeof assignment?.funktion === 'string' ? assignment.funktion : undefined
+          const isSubstitution = assignment?.isSubstitution === true
+          const substitutionFor = typeof assignment?.substitutionFor === 'string' ? assignment.substitutionFor : undefined
+          const taskBlocks = Array.isArray(assignment?.taskBlocks) ? assignment.taskBlocks : undefined
           if (!sanitizedSchedule[date]) sanitizedSchedule[date] = {}
-          sanitizedSchedule[date][employeeId] = { shiftId, startTime, endTime }
+          sanitizedSchedule[date][employeeId] = { shiftId, startTime, endTime, gruppe, funktion, isSubstitution, substitutionFor, taskBlocks }
         }
       }
     }

@@ -86,6 +86,12 @@ export interface LocationPlanningRules {
   breakRulesExtractedAt?: string
 }
 
+export interface TaskBlock {
+  start: string
+  end: string
+  aufgabe: string
+}
+
 export interface ScheduleEntry {
   id: string
   employeeId: string
@@ -97,6 +103,11 @@ export interface ScheduleEntry {
   reason?: string
   startTime?: string
   endTime?: string
+  gruppe?: string
+  funktion?: string
+  isSubstitution?: boolean
+  substitutionFor?: string
+  taskBlocks?: TaskBlock[]
 }
 
 export interface TimeLog {
