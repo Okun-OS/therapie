@@ -11,6 +11,7 @@ import type { EmployeeDraft } from '@/lib/employee-draft'
 
 const EMPLOYMENT_OPTIONS = ['Vollzeit', 'Teilzeit', 'Minijob', 'Individuell']
 const NEW_ROLE_VALUE = '__new_role__'
+const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
 const EMPTY_DRAFT: EmployeeDraft = { weeklyHours: 38, multiGroupCapable: false }
 
@@ -66,6 +67,14 @@ export function EmployeeCreationForm({
 
   function update<K extends keyof EmployeeDraft>(key: K, value: EmployeeDraft[K]) {
     setDraft(prev => ({ ...prev, [key]: value }))
+  }
+
+  function toggleDay(key: 'workDays' | 'fixedOffDays', day: string) {
+    setDraft(prev => {
+      const current = prev[key] ?? []
+      const next = current.includes(day) ? current.filter(d => d !== day) : [...current, day]
+      return { ...prev, [key]: next.length > 0 ? next : undefined }
+    })
   }
 
   function reset() {
@@ -213,6 +222,58 @@ export function EmployeeCreationForm({
             </div>
           </div>
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">Konkrete Arbeitstage (optional)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {WEEKDAYS.map(day => (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => toggleDay('workDays', day)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                    draft.workDays?.includes(day)
+                      ? 'bg-brand text-navy border-brand'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">Feste freie Tage (optional)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {WEEKDAYS.map(day => (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => toggleDay('fixedOffDays', day)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                    draft.fixedOffDays?.includes(day)
+                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <Input
+          label="Tägliche Soll-Stunden (optional)"
+          type="number"
+          min={1}
+          max={12}
+          step={0.5}
+          value={draft.dailyTargetHours ?? ''}
+          onChange={e => update('dailyTargetHours', e.target.value ? Number(e.target.value) : undefined)}
+          hint="Nur ausfüllen, falls abweichend von Wochenstunden ÷ Arbeitstage"
+        />
 
         <Input
           label="Qualifikationen"

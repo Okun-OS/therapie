@@ -44,6 +44,9 @@ export interface Employee {
   qualifications?: string[]
   allowedTasks?: string[]
   workDaysPerWeek?: number
+  workDays?: string[]
+  dailyTargetHours?: number
+  fixedOffDays?: string[]
 }
 
 export interface EmployeePreferences {

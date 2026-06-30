@@ -311,6 +311,9 @@ model Employee {
   qualifications    String[] @default([])
   allowedTasks      String[] @default([])
   workDaysPerWeek   Int?
+  workDays          String[] @default([])
+  dailyTargetHours  Float?
+  fixedOffDays      String[] @default([])
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }

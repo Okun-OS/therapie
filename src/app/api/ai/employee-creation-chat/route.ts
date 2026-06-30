@@ -20,7 +20,7 @@ Phase 2 – Arbeitsbereich: In welcher Gruppe und welchem Bereich arbeitet die P
 
 Phase 3 – Rolle: Welche Rolle übernimmt die Person? Du bekommst die im Unternehmens-Onboarding festgelegte Liste der gültigen Rollen mitgeteilt (siehe "Im Unternehmen definierte Rollen" unten) – schlage der Leitung bevorzugt eine dieser bestehenden Rollen vor bzw. ordne die Antwort der Leitung der passendsten bestehenden Rolle zu. Nur wenn wirklich keine der bestehenden Rollen passt, akzeptiere eine neue Rollenbezeichnung (diese wird dann automatisch zur unternehmensweiten Rollenliste hinzugefügt). Falls noch gar keine Rollen definiert sind, übernimm einfach die von der Leitung genannte Rolle.
 
-Phase 4 – Arbeitszeit: Wochenstunden (flexibler Wert, NICHT auf 40 Stunden begrenzen, unterstütze mindestens bis 60 Wochenstunden), an wie vielen Tagen pro Woche die Person arbeitet (z.B. 5 Tage, 4 Tage, flexibel), und ob Vollzeit, Teilzeit, Minijob oder ein individuelles Arbeitszeitmodell. Diese Angaben bestimmen später automatisch die konkreten Dienstzeiten (z.B. ergibt sich aus 35h/5 Tagen ein anderer Frühdienst als aus 40h Vollzeit) – frage daher aktiv nach den Arbeitstagen, falls nicht klar.
+Phase 4 – Arbeitszeit: Wochenstunden (flexibler Wert, NICHT auf 40 Stunden begrenzen, unterstütze mindestens bis 60 Wochenstunden), an wie vielen Tagen pro Woche die Person arbeitet (z.B. 5 Tage, 4 Tage, flexibel), und ob Vollzeit, Teilzeit, Minijob oder ein individuelles Arbeitszeitmodell. Diese Angaben bestimmen später automatisch die konkreten Dienstzeiten (z.B. ergibt sich aus 35h/5 Tagen ein anderer Frühdienst als aus 40h Vollzeit) – frage daher aktiv nach den Arbeitstagen, falls nicht klar. Erfasse zusätzlich, falls genannt oder erkennbar: an welchen KONKRETEN Wochentagen die Person arbeitet (z.B. "immer Mo-Do, nie freitags" → workDays ["Mo","Di","Mi","Do"]), feste, dauerhaft freie Wochentage (fixedOffDays, z.B. "Mittwoch ist immer frei"), und eine individuelle tägliche Soll-Arbeitszeit, falls abweichend von wochenstunden/Arbeitstage (dailyTargetHours). Frage danach nur, wenn die Leitung von festen Tagen spricht – sonst nicht extra nachfragen.
 
 Phase 5 – Qualifikationen: Welche Qualifikationen besitzt die Person? Besondere Kompetenzen? Darf sie bestimmte Aufgaben übernehmen? Diese Angaben fließen später in die Dienstplanung ein.
 
@@ -61,6 +61,9 @@ const TOOL = {
       employmentType: { type: 'string' },
       weeklyHours: { type: 'number' },
       workDaysPerWeek: { type: 'number' },
+      workDays: { type: 'array', items: { type: 'string' }, description: 'Konkrete Wochentage, z.B. ["Mo","Di","Mi","Do","Fr"]' },
+      dailyTargetHours: { type: 'number' },
+      fixedOffDays: { type: 'array', items: { type: 'string' }, description: 'Fest und dauerhaft freie Wochentage' },
       qualifications: { type: 'array', items: { type: 'string' } },
       allowedTasks: { type: 'array', items: { type: 'string' } },
       besonderheiten: { type: 'array', items: { type: 'string' } },
@@ -112,7 +115,7 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
   try {
     const response = await client.messages.create({
       model: 'claude-opus-4-7',
-      max_tokens: 1024,
+      max_tokens: 4096,
       system: [
         { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
         { type: 'text', text: stateNote },
@@ -142,6 +145,9 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
           ...(typeof input.employmentType === 'string' && { employmentType: input.employmentType }),
           ...(typeof input.weeklyHours === 'number' && { weeklyHours: input.weeklyHours }),
           ...(typeof input.workDaysPerWeek === 'number' && { workDaysPerWeek: input.workDaysPerWeek }),
+          ...(Array.isArray(input.workDays) && { workDays: input.workDays as string[] }),
+          ...(typeof input.dailyTargetHours === 'number' && { dailyTargetHours: input.dailyTargetHours }),
+          ...(Array.isArray(input.fixedOffDays) && { fixedOffDays: input.fixedOffDays as string[] }),
           ...(Array.isArray(input.qualifications) && { qualifications: input.qualifications as string[] }),
           ...(Array.isArray(input.allowedTasks) && { allowedTasks: input.allowedTasks as string[] }),
           ...(Array.isArray(input.besonderheiten) && { besonderheiten: input.besonderheiten as string[] }),

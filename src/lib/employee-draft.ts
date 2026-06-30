@@ -12,6 +12,9 @@ export interface EmployeeDraft {
   employmentType?: string
   weeklyHours?: number
   workDaysPerWeek?: number
+  workDays?: string[]
+  dailyTargetHours?: number
+  fixedOffDays?: string[]
   qualifications?: string[]
   allowedTasks?: string[]
   besonderheiten?: string[]

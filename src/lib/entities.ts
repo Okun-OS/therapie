@@ -33,6 +33,9 @@ export function toEmployee(row: any): Employee {
     qualifications: row.qualifications,
     allowedTasks: row.allowedTasks,
     workDaysPerWeek: row.workDaysPerWeek ?? undefined,
+    workDays: row.workDays,
+    dailyTargetHours: row.dailyTargetHours ?? undefined,
+    fixedOffDays: row.fixedOffDays,
   }
 }
 

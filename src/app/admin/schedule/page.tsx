@@ -251,6 +251,7 @@ export default function AdminSchedule() {
       })
       const refreshed = await fetch(`/api/schedule-entries?locationId=${locationId}`).then(r => r.json())
       setSCHEDULE_ENTRIES(refreshed.entries ?? [])
+      setGeneratedSchedule(null)
     }
     if (permanentRules.length > 0) {
       await fetch('/api/location-onboarding/individuelle-regeln', {
@@ -307,11 +308,24 @@ export default function AdminSchedule() {
     () => locationShifts.map(s => ({ id: s.id, name: s.name, type: s.type, startTime: s.startTime, endTime: s.endTime })),
     [locationShifts]
   )
-  const editChatEntries = useMemo(() => existingEntries.map(e => {
-    const emp = EMPLOYEES.find(emp => emp.id === e.employeeId)
-    const shift = locationShifts.find(s => s.id === e.shiftId)
-    return { employeeId: e.employeeId, employeeName: emp?.name ?? '', date: e.date, shiftId: e.shiftId, shiftName: shift?.name ?? '' }
-  }), [existingEntries, EMPLOYEES, locationShifts])
+  const editChatEntries = useMemo(() => {
+    if (generatedSchedule) {
+      const result: { employeeId: string; employeeName: string; date: string; shiftId: string; shiftName: string }[] = []
+      for (const [empId, byDate] of Object.entries(generatedSchedule)) {
+        const emp = EMPLOYEES.find(e => e.id === empId)
+        for (const [date, assignment] of Object.entries(byDate)) {
+          const shift = locationShifts.find(s => s.id === assignment.shiftId)
+          if (shift) result.push({ employeeId: empId, employeeName: emp?.name ?? '', date, shiftId: assignment.shiftId, shiftName: shift.name })
+        }
+      }
+      return result
+    }
+    return existingEntries.map(e => {
+      const emp = EMPLOYEES.find(emp => emp.id === e.employeeId)
+      const shift = locationShifts.find(s => s.id === e.shiftId)
+      return { employeeId: e.employeeId, employeeName: emp?.name ?? '', date: e.date, shiftId: e.shiftId, shiftName: shift?.name ?? '' }
+    })
+  }, [existingEntries, EMPLOYEES, locationShifts, generatedSchedule])
   const approvedVacations = VACATION_REQUESTS
     .filter(v => v.locationId === locationId && v.status === 'approved' && v.startDate <= periodEnd && v.endDate >= periodStart)
     .map(v => ({ employeeId: v.employeeId, employeeName: v.employeeName, startDate: v.startDate, endDate: v.endDate }))
@@ -828,67 +842,95 @@ export default function AdminSchedule() {
                         </tr>
                       </thead>
                       <tbody>
-                        {employees.map((emp, empIdx) => {
-                          const fd = fairnessData.find(f => f.employeeId === emp.id)
-                          const hasIssues = fd && fd.issues.length > 0
-                          return (
-                            <tr key={emp.id} className={empIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                              <td className="p-3 pl-4">
-                                <div className="flex items-center gap-2">
-                                  {hasIssues && (
-                                    <span
-                                      className="flex-shrink-0 cursor-help"
-                                      title={`Fairness-Hinweis: ${fd!.issues.join(' · ')}`}
-                                    >
-                                      <AlertTriangle size={10} className="text-red-400" />
+                        {(() => {
+                          const groups = new Map<string, Employee[]>()
+                          for (const emp of employees) {
+                            const key = emp.gruppe || ''
+                            if (!groups.has(key)) groups.set(key, [])
+                            groups.get(key)!.push(emp)
+                          }
+                          const hasGroups = Array.from(groups.keys()).some(k => k !== '')
+                          const sortedKeys = Array.from(groups.keys()).sort((a, b) => a === '' ? 1 : b === '' ? -1 : a.localeCompare(b, 'de'))
+                          let rowIdx = 0
+                          return sortedKeys.flatMap(groupKey => {
+                            const groupEmps = groups.get(groupKey)!
+                            const rows = []
+                            if (hasGroups) {
+                              rows.push(
+                                <tr key={`group-${groupKey}`} className="bg-navy/5 border-t border-gray-100">
+                                  <td colSpan={week.length + 1} className="px-4 py-1.5">
+                                    <span className="text-[10px] font-bold text-navy/60 uppercase tracking-widest">
+                                      {groupKey || 'Ohne Bereich'}
                                     </span>
-                                  )}
-                                  <div className="w-7 h-7 rounded-lg bg-navy flex items-center justify-center text-brand text-[10px] font-bold flex-shrink-0">
-                                    {emp.name.split(' ').map(n => n[0]).join('')}
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-semibold text-navy leading-tight">{emp.name.split(' ')[0]}</p>
-                                    <p
-                                      className="text-[10px] text-gray-400 underline decoration-dotted cursor-help"
-                                      title={fd ? `Fairness-Punktzahl ${fd.fairnessScore}/100 – misst wie gleichmäßig Früh-, Spät- und Mitteldienste sowie Montag/Freitag-Sonderdienste in den letzten 4 Wochen verteilt wurden. Unter 60 = Handlungsbedarf.` : `Vertraglich ${emp.weeklyHours}h/Woche`}
-                                    >
-                                      {fd ? `Score ${fd.fairnessScore}` : `${emp.weeklyHours}h`}
-                                    </p>
-                                  </div>
-                                </div>
-                              </td>
-                              {week.map((day, i) => {
-                                const dateStr = toDateString(day)
-                                const assignment = getDisplayAssignment(emp.id, dateStr)
-                                const isWeekend = i >= 5
-                                const Icon = assignment ? (SHIFT_ICONS[assignment.shift.type] ?? DEFAULT_SHIFT_ICON) : null
-                                return (
-                                  <td key={dateStr} className="p-1.5 text-center">
-                                    {isWeekend ? (
-                                      <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-300">—</span></div>
-                                    ) : assignment && Icon ? (
-                                      <div
-                                        onClick={() => setExplainEntry({
-                                          employeeName: emp.name,
-                                          shiftName: assignment.shift.name,
-                                          dateStr,
-                                          reason: getDisplayReason(emp.id, dateStr),
-                                        })}
-                                        className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity"
-                                        style={{ backgroundColor: assignment.shift.bgColor }}
-                                      >
-                                        <Icon size={12} style={{ color: assignment.shift.color }} />
-                                        <span className="text-[10px] font-semibold" style={{ color: assignment.shift.color }}>{assignment.startTime}–{assignment.endTime}</span>
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-200">—</span></div>
-                                    )}
                                   </td>
+                                </tr>
+                              )
+                            }
+                            for (const emp of groupEmps) {
+                              const empRowIdx = rowIdx++
+                              const fd = fairnessData.find(f => f.employeeId === emp.id)
+                              const hasIssues = fd && fd.issues.length > 0
+                              rows.push(
+                                <tr key={emp.id} className={empRowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                                  <td className="p-3 pl-4">
+                                    <div className="flex items-center gap-2">
+                                      {hasIssues && (
+                                        <span
+                                          className="flex-shrink-0 cursor-help"
+                                          title={`Fairness-Hinweis: ${fd!.issues.join(' · ')}`}
+                                        >
+                                          <AlertTriangle size={10} className="text-red-400" />
+                                        </span>
+                                      )}
+                                      <div className="w-7 h-7 rounded-lg bg-navy flex items-center justify-center text-brand text-[10px] font-bold flex-shrink-0">
+                                        {emp.name.split(' ').map(n => n[0]).join('')}
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-semibold text-navy leading-tight">{emp.name.split(' ')[0]}</p>
+                                        <p
+                                          className="text-[10px] text-gray-400 underline decoration-dotted cursor-help"
+                                          title={fd ? `Fairness-Punktzahl ${fd.fairnessScore}/100 – misst wie gleichmäßig Früh-, Spät- und Mitteldienste sowie Montag/Freitag-Sonderdienste in den letzten 4 Wochen verteilt wurden. Unter 60 = Handlungsbedarf.` : `Vertraglich ${emp.weeklyHours}h/Woche`}
+                                        >
+                                          {fd ? `Score ${fd.fairnessScore}` : `${emp.weeklyHours}h`}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  {week.map((day, i) => {
+                                    const dateStr = toDateString(day)
+                                    const assignment = getDisplayAssignment(emp.id, dateStr)
+                                    const isWeekend = i >= 5
+                                    const Icon = assignment ? (SHIFT_ICONS[assignment.shift.type] ?? DEFAULT_SHIFT_ICON) : null
+                                    return (
+                                      <td key={dateStr} className="p-1.5 text-center">
+                                        {isWeekend ? (
+                                          <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-300">—</span></div>
+                                        ) : assignment && Icon ? (
+                                          <div
+                                            onClick={() => setExplainEntry({
+                                              employeeName: emp.name,
+                                              shiftName: assignment.shift.name,
+                                              dateStr,
+                                              reason: getDisplayReason(emp.id, dateStr),
+                                            })}
+                                            className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity"
+                                            style={{ backgroundColor: assignment.shift.bgColor }}
+                                          >
+                                            <Icon size={12} style={{ color: assignment.shift.color }} />
+                                            <span className="text-[10px] font-semibold" style={{ color: assignment.shift.color }}>{assignment.startTime}–{assignment.endTime}</span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-200">—</span></div>
+                                        )}
+                                      </td>
                                 )
                               })}
                             </tr>
                           )
-                        })}
+                            }
+                            return rows
+                          })
+                        })()}
                       </tbody>
                     </table>
                   </div>

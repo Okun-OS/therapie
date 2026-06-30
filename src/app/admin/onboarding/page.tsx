@@ -5,11 +5,12 @@ import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/Modal'
 import { OnboardingChat } from '@/components/onboarding/OnboardingChat'
 import { ONBOARDING_PHASES } from '@/lib/onboarding-service'
 import { useAuth } from '@/lib/auth-context'
 import type { Location } from '@/lib/types'
-import { MapPin, MessageCircle, CheckCircle2, Sparkles } from 'lucide-react'
+import { MapPin, MessageCircle, CheckCircle2, Sparkles, RotateCcw, AlertTriangle } from 'lucide-react'
 
 interface LocState {
   locationId: string
@@ -36,6 +37,9 @@ export default function AdminOnboarding() {
   const [state, setState] = useState<LocState | null>(null)
   const [loading, setLoading] = useState(true)
   const [chatOpen, setChatOpen] = useState(false)
+  const [resetStep, setResetStep] = useState<0 | 1 | 2>(0)
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!locationId) return
@@ -50,6 +54,27 @@ export default function AdminOnboarding() {
       .then(json => setState((json.locations?.[0] as LocState) ?? null))
       .finally(() => setLoading(false))
   }, [])
+
+  async function handleReset() {
+    setResetting(true)
+    setResetError(null)
+    try {
+      const res = await fetch('/api/admin/location-onboarding/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId, confirm: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Zurücksetzen fehlgeschlagen')
+      setState(null)
+      setResetStep(0)
+      setChatOpen(true)
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : 'Zurücksetzen fehlgeschlagen')
+    } finally {
+      setResetting(false)
+    }
+  }
 
   if (!locationId) {
     return (
@@ -121,10 +146,18 @@ export default function AdminOnboarding() {
             </div>
           )}
 
-          <Button onClick={() => setChatOpen(true)} variant={state ? 'secondary' : 'primary'} className="gap-2">
-            <MessageCircle size={16} />
-            {state?.completed ? 'Angaben ändern (KI-Chat)' : state ? 'Im Gespräch weiter erzählen' : 'Mit KI einrichten'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => setChatOpen(true)} variant={state ? 'secondary' : 'primary'} className="gap-2">
+              <MessageCircle size={16} />
+              {state?.completed ? 'Angaben ändern (KI-Chat)' : state ? 'Im Gespräch weiter erzählen' : 'Mit KI einrichten'}
+            </Button>
+            {state && (
+              <Button onClick={() => { setResetError(null); setResetStep(1) }} variant="ghost" className="gap-2 text-red-600 hover:bg-red-50">
+                <RotateCcw size={16} />
+                Onboarding zurücksetzen
+              </Button>
+            )}
+          </div>
           {state?.completed && (
             <p className="text-xs text-gray-500 mt-2">Hat sich etwas geändert (neue Dienstzeiten, Schichten, Regeln)? Sag es einfach im Chat – die KI passt nur die betroffenen Punkte an.</p>
           )}
@@ -140,6 +173,37 @@ export default function AdminOnboarding() {
           onStateUpdate={s => setState(s as LocState)}
         />
       )}
+
+      <Modal open={resetStep === 1} onClose={() => setResetStep(0)} title="Onboarding wirklich zurücksetzen?" size="md">
+        <div className="space-y-4">
+          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+            <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
+            <span>
+              Alle Onboarding-Antworten, Dienste/Schichten, Planungsregeln und temporären Planungshinweise für{' '}
+              <strong>{location?.name ?? 'diesen Standort'}</strong> werden unwiderruflich gelöscht. Mitarbeiter, Nutzerkonten
+              und der bisherige Dienstplanverlauf bleiben erhalten. Anschließend wird das Onboarding neu gestartet.
+            </span>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setResetStep(0)}>Abbrechen</Button>
+            <Button variant="danger" onClick={() => setResetStep(2)}>Weiter</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={resetStep === 2} onClose={() => setResetStep(0)} title="Letzte Bestätigung" size="md">
+        <div className="space-y-4">
+          <div className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+            <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
+            <span>Dieser Vorgang kann nicht rückgängig gemacht werden. Bist du sicher, dass du das Onboarding jetzt zurücksetzen willst?</span>
+          </div>
+          {resetError && <p className="text-sm text-red-600">{resetError}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setResetStep(0)} disabled={resetting}>Abbrechen</Button>
+            <Button variant="danger" loading={resetting} onClick={handleReset}>Jetzt endgültig zurücksetzen</Button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }

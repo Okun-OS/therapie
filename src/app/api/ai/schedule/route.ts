@@ -25,6 +25,7 @@ Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folg
 4e. Beispiel für endzeit-verankerte Schichten (typischerweise Spätdienst): Bei Schichten, die durch eine feste oder vorgegebene ENDZEIT bestimmt werden (z.B. Schließzeit der Einrichtung, oder eine in der Standort-Konfiguration genannte feste Spätdienst-Endzeit), ist NICHT die Startzeit der Anker, sondern die Endzeit. Berechne die Startzeit rückwärts von dieser Endzeit abzüglich der individuellen täglichen Arbeitszeit des Mitarbeiters (zzgl. Pause gemäß Pausenregeln). Beispiel: Schließzeit/Dienstende 18:00 Uhr – ein Mitarbeiter mit 6h täglicher Arbeitszeit beginnt entsprechend später (z.B. 12:00 Uhr) als ein Mitarbeiter mit 8h täglicher Arbeitszeit (z.B. 10:00 Uhr); die Schicht selbst bleibt "Spätdienst", nur die konkrete Startzeit unterscheidet sich. Verwende NIEMALS eine für alle Mitarbeiter gleiche, starre Spätdienst-Startzeit, wenn die Endzeit der eigentliche Anker ist.
 4f. Ob eine Schicht start- oder endzeit-verankert ist, ergibt sich aus der Standort-Konfiguration (Arbeitszeiten/Pausenlogik/individuelle Regeln). Ohne eindeutigen Hinweis gilt als Standardannahme: Frühdienste sind startzeit-verankert (Anker = Öffnungszeit), Spätdienste sind endzeit-verankert (Anker = Schließzeit bzw. Dienstende). Halte dich strikt an eine in der Standort-Konfiguration explizit genannte Logik, auch wenn sie dieser Standardannahme widerspricht.
 4g. Bleibe innerhalb der Öffnungszeiten des Standorts, achte auf sinnvolle Übergaben zwischen Schichten und auf die in der Standort-Konfiguration angegebenen Pausenregeln.
+4h. Ist bei einem Mitarbeiter "arbeitstage" angegeben (konkrete Wochentage, z.B. ["Mo","Di","Mi","Do","Fr"]), plane ausschließlich an diesen Wochentagen einen Dienst ein – an allen anderen Wochentagen bleibt der Mitarbeiter frei, unabhängig von "tage_pro_woche". Ist zusätzlich "feste_freie_tage" angegeben, sind das fest und dauerhaft freie Wochentage – an diesen Tagen wird der Mitarbeiter NIEMALS eingeplant, das ist eine Pflichtregel ohne Ausnahme. Ist "taegliche_soll_stunden" angegeben, verwende diesen Wert als tägliche Soll-Arbeitszeit für die Berechnung von startTime/endTime anstelle von wochenstunden / tage_pro_woche.
 
 ## Fairness-Regeln
 5. Früh/Spät/Mittel sollen langfristig fair verteilt sein (je ~40%/40%/20%).
@@ -185,6 +186,9 @@ export async function POST(req: NextRequest) {
       tage_pro_woche: emp.workDaysPerWeek ?? 5,
       ...(emp.gruppe && { gruppe: emp.gruppe }),
       ...(emp.bereich && { bereich: emp.bereich }),
+      ...(emp.workDays?.length && { arbeitstage: emp.workDays }),
+      ...(emp.dailyTargetHours && { taegliche_soll_stunden: emp.dailyTargetHours }),
+      ...(emp.fixedOffDays?.length && { feste_freie_tage: emp.fixedOffDays }),
       frueh_unterversorgung: fd ? Math.round(fd.earlyDebt * 10) / 10 : 0,
       spaet_unterversorgung: fd ? Math.round(fd.lateDebt * 10) / 10 : 0,
       mittel_unterversorgung: fd ? Math.round(fd.midDebt * 10) / 10 : 0,

@@ -79,6 +79,9 @@ export async function addEmployeeWithInvitation(
     position: string
     weeklyHours: number
     workDaysPerWeek?: number
+    workDays?: string[]
+    dailyTargetHours?: number
+    fixedOffDays?: string[]
     locationId: string
     expectedCustomerId?: string
     phone?: string
@@ -116,6 +119,9 @@ export async function addEmployeeWithInvitation(
         locationId: input.locationId,
         weeklyHours: input.weeklyHours,
         workDaysPerWeek: input.workDaysPerWeek,
+        workDays: input.workDays ?? [],
+        dailyTargetHours: input.dailyTargetHours,
+        fixedOffDays: input.fixedOffDays ?? [],
         position: input.position,
         hoursBalance: 0,
         vacationDaysTotal: 30,
