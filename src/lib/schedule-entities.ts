@@ -1,5 +1,6 @@
 // Echte Postgres-Persistenz für Dienstplanung (ersetzt SHIFTS, SCHEDULE_ENTRIES,
 // SWAP_REQUESTS und WISH_SUBMISSIONS aus mock-data.ts). Server-only.
+import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import type { Shift, ScheduleEntry, SwapRequest, WishSubmission, ShiftType, WishImportance, LocationPlanningRules } from './types'
 
@@ -63,6 +64,11 @@ function toScheduleEntry(row: any): ScheduleEntry {
     reason: row.reason ?? undefined,
     startTime: row.startTime ?? undefined,
     endTime: row.endTime ?? undefined,
+    gruppe: row.gruppe ?? undefined,
+    funktion: row.funktion ?? undefined,
+    isSubstitution: row.isSubstitution ?? false,
+    substitutionFor: row.substitutionFor ?? undefined,
+    taskBlocks: (row.taskBlocks as ScheduleEntry['taskBlocks']) ?? undefined,
   }
 }
 
@@ -185,6 +191,11 @@ export interface ScheduleAssignment {
   shiftId: string
   startTime?: string
   endTime?: string
+  gruppe?: string
+  funktion?: string
+  isSubstitution?: boolean
+  substitutionFor?: string
+  taskBlocks?: ScheduleEntry['taskBlocks']
 }
 
 export async function saveScheduleForWeek(
@@ -194,7 +205,12 @@ export async function saveScheduleForWeek(
   reasons?: Record<string, string>,
 ): Promise<void> {
   await prisma.scheduleEntry.deleteMany({ where: { locationId, date: { in: weekDates } } })
-  const rows: { employeeId: string; shiftId: string; date: string; locationId: string; status: string; reason?: string; startTime?: string; endTime?: string }[] = []
+  const rows: {
+    employeeId: string; shiftId: string; date: string; locationId: string; status: string
+    reason?: string; startTime?: string; endTime?: string
+    gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string
+    taskBlocks?: Prisma.InputJsonValue | typeof Prisma.DbNull
+  }[] = []
   for (const [employeeId, byDate] of Object.entries(assignments)) {
     for (const [date, value] of Object.entries(byDate)) {
       const assignment: ScheduleAssignment = typeof value === 'string' ? { shiftId: value } : value
@@ -207,6 +223,11 @@ export async function saveScheduleForWeek(
         reason: reasons?.[`${employeeId}|${date}`],
         startTime: assignment.startTime,
         endTime: assignment.endTime,
+        gruppe: assignment.gruppe,
+        funktion: assignment.funktion,
+        isSubstitution: assignment.isSubstitution ?? false,
+        substitutionFor: assignment.substitutionFor,
+        taskBlocks: assignment.taskBlocks !== undefined ? (assignment.taskBlocks as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
       })
     }
   }
@@ -221,6 +242,11 @@ export interface ScheduleEditChange {
   startTime?: string
   endTime?: string
   reason?: string
+  gruppe?: string
+  funktion?: string
+  isSubstitution?: boolean
+  substitutionFor?: string
+  taskBlocks?: ScheduleEntry['taskBlocks']
 }
 
 /** Wendet gezielte Einzeländerungen auf einen bereits gespeicherten Dienstplan an (z.B. aus
@@ -244,6 +270,11 @@ export async function applyScheduleEdits(locationId: string, changes: ScheduleEd
       reason: change.reason,
       startTime: change.startTime,
       endTime: change.endTime,
+      gruppe: change.gruppe,
+      funktion: change.funktion,
+      isSubstitution: change.isSubstitution ?? false,
+      substitutionFor: change.substitutionFor,
+      taskBlocks: change.taskBlocks !== undefined ? (change.taskBlocks as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
     }
     const row = existing
       ? await prisma.scheduleEntry.update({ where: { id: existing.id }, data })

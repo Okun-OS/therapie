@@ -267,12 +267,18 @@ export default function EmployeeSchedule() {
 
                     {shift && Icon && entry ? (
                       <div className="flex-1 flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: shift.bgColor }}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: shift.bgColor }}>
                           <Icon size={18} style={{ color: shift.color }} />
+                          {entry.isSubstitution && (
+                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-white" title={`Vertretung${entry.substitutionFor ? `: ${entry.substitutionFor}` : ''}`} />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-navy">{shift.name}</p>
-                          <p className="text-xs text-gray-500">{shift.startTime} – {shift.endTime} Uhr</p>
+                          <p className="text-xs text-gray-500">{entry.startTime ?? shift.startTime} – {entry.endTime ?? shift.endTime} Uhr</p>
+                          {(entry.gruppe || entry.funktion) && (
+                            <p className="text-xs text-gray-400 truncate">{[entry.gruppe, entry.funktion].filter(Boolean).join(' · ')}</p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <Badge variant={entry.status === 'confirmed' ? 'success' : 'default'}>
@@ -460,17 +466,33 @@ export default function EmployeeSchedule() {
             </div>
 
             <div className="space-y-2">
-              {[
+              {([
                 { label: 'Datum', value: `${getDayName(selectedEntry.date)}, ${formatDate(selectedEntry.date)}` },
                 { label: 'Standort', value: location.name },
-                { label: 'Dauer', value: '8 Stunden' },
-              ].map(({ label, value }) => (
+                selectedEntry.gruppe ? { label: 'Gruppe/Bereich', value: selectedEntry.gruppe } : null,
+                selectedEntry.funktion ? { label: 'Funktion', value: selectedEntry.funktion } : null,
+                selectedEntry.isSubstitution ? { label: 'Vertretung', value: selectedEntry.substitutionFor ?? 'Ja' } : null,
+              ] as ({ label: string; value: string } | null)[]).filter((x): x is { label: string; value: string } => x !== null).map(({ label, value }) => (
                 <div key={label} className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-sm text-gray-500">{label}</span>
                   <span className="text-sm font-semibold text-navy">{value}</span>
                 </div>
               ))}
             </div>
+
+            {selectedEntry.taskBlocks && selectedEntry.taskBlocks.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Aufgabenplan</p>
+                <div className="space-y-1.5">
+                  {selectedEntry.taskBlocks.map((block, i) => (
+                    <div key={i} className="flex items-start gap-3 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+                      <span className="text-xs font-mono text-gray-500 flex-shrink-0 mt-0.5">{block.start}–{block.end}</span>
+                      <span className="text-xs text-navy">{block.aufgabe}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Calendar export options */}
             <div>

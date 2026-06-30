@@ -37,6 +37,10 @@ interface ScheduleAssignment {
   shiftId: string
   startTime?: string
   endTime?: string
+  gruppe?: string
+  funktion?: string
+  isSubstitution?: boolean
+  substitutionFor?: string
 }
 
 interface PlanningRules {
@@ -334,19 +338,19 @@ export default function AdminSchedule() {
     .filter(a => a.locationId === locationId && a.verificationStatus !== 'abgelehnt' && a.startDate <= periodEnd && a.endDate >= periodStart)
     .map(a => ({ employeeId: a.employeeId, employeeName: a.employeeName, startDate: a.startDate, endDate: a.endDate, type: a.type }))
 
-  const getDisplayAssignment = (empId: string, dateStr: string): { shift: Shift; startTime: string; endTime: string } | null => {
+  const getDisplayAssignment = (empId: string, dateStr: string): { shift: Shift; startTime: string; endTime: string; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string } | null => {
     if (generatedSchedule) {
       const assignment = generatedSchedule[empId]?.[dateStr]
       if (!assignment) return null
       const shift = locationShifts.find(s => s.id === assignment.shiftId)
       if (!shift) return null
-      return { shift, startTime: assignment.startTime ?? shift.startTime, endTime: assignment.endTime ?? shift.endTime }
+      return { shift, startTime: assignment.startTime ?? shift.startTime, endTime: assignment.endTime ?? shift.endTime, gruppe: assignment.gruppe, funktion: assignment.funktion, isSubstitution: assignment.isSubstitution, substitutionFor: assignment.substitutionFor }
     }
     const entry = existingEntries.find(e => e.employeeId === empId && e.date === dateStr)
     if (!entry) return null
     const shift = locationShifts.find(s => s.id === entry.shiftId)
     if (!shift) return null
-    return { shift, startTime: entry.startTime ?? shift.startTime, endTime: entry.endTime ?? shift.endTime }
+    return { shift, startTime: entry.startTime ?? shift.startTime, endTime: entry.endTime ?? shift.endTime, gruppe: entry.gruppe, funktion: entry.funktion, isSubstitution: entry.isSubstitution, substitutionFor: entry.substitutionFor }
   }
 
   const getDisplayReason = (empId: string, dateStr: string): string | null => {
@@ -913,11 +917,18 @@ export default function AdminSchedule() {
                                               dateStr,
                                               reason: getDisplayReason(emp.id, dateStr),
                                             })}
-                                            className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity"
+                                            className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity relative"
                                             style={{ backgroundColor: assignment.shift.bgColor }}
+                                            title={[assignment.gruppe, assignment.funktion, assignment.isSubstitution ? `Vertretung${assignment.substitutionFor ? `: ${assignment.substitutionFor}` : ''}` : null].filter(Boolean).join(' · ') || undefined}
                                           >
+                                            {assignment.isSubstitution && (
+                                              <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                            )}
                                             <Icon size={12} style={{ color: assignment.shift.color }} />
                                             <span className="text-[10px] font-semibold" style={{ color: assignment.shift.color }}>{assignment.startTime}–{assignment.endTime}</span>
+                                            {assignment.gruppe && (
+                                              <span className="text-[9px] leading-tight truncate max-w-full" style={{ color: assignment.shift.color, opacity: 0.75 }}>{assignment.gruppe}</span>
+                                            )}
                                           </div>
                                         ) : (
                                           <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-200">—</span></div>

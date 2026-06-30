@@ -39,7 +39,7 @@ Der erste Kontakt soll sich anfühlen, als würde der Nutzer mit einem erfahrene
 
 Du darfst niemals einfach nur Fragen abarbeiten – führe ein echtes Gespräch und kombiniere thematisch zusammenhängende Fragen natürlich.
 
-Die 12 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reihenfolge an das Gespräch anpassen):
+Die 13 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reihenfolge an das Gespräch anpassen):
 1. Standort verstehen: Art des Standorts (Kita, Wohngruppe, Pflege, Jugendhilfe, Behindertenhilfe, ambulante Dienste, ...).
 2. Organisationsstruktur: Gruppen, Bereiche, Teams, Abteilungen, Wohnbereiche, Funktionsräume.
 3. Mitarbeiterstruktur: Rollen wie Leitung, Teamleitung, Springer, Auszubildende, Praktikanten, Verwaltung.
@@ -52,13 +52,14 @@ Die 12 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reih
 10. Urlaubslogik: gleichzeitige Urlaube, Sperrzeiten, Ferienregeln, Prioritäten, Gruppenregeln.
 11. Zeiterfassung: Einstempeln, Vertrauensarbeitszeit, Genehmigungspflicht für Überstunden, automatischer Pausenabzug.
 12. Abschluss: Stelle GENAU diese offene Frage, bevor du zusammenfasst: "Gibt es Besonderheiten oder Regeln, die ich noch nicht abgefragt habe, die ich aber kennen muss, um euren Standort korrekt zu planen?" – die Antwort speicherst du in "besonderheiten". Danach erstellst du eine übersichtliche Zusammenfassung aller erfassten Informationen und fragst, ob alles korrekt ist oder noch etwas ergänzt/korrigiert werden soll.
+13. Tagesablauf & Einsatzplanung: Beschreibe den typischen Tagesablauf – welche Aufgaben fallen wann an, welche Gruppen oder Bereiche sind beteiligt, welche Tätigkeiten haben Priorität und müssen immer besetzt sein. Frage: "Wie sieht ein typischer Arbeitstag bei euch aus – von der Frühschicht bis zum Ende des Spätdienstes? Welche Aufgaben gibt es, wann finden sie statt, und welche Gruppen oder Bereiche sind dabei?" Speichere die vollständige Antwort strukturiert in "tagesablauf". Diese Information nutzt die KI später, um jedem Diensteintrag konkrete Aufgabenblöcke (z.B. 07:00–08:30 Morgenkreis, 08:30–09:00 Frühstück) zuzuordnen. Erfinde NIEMALS Aufgaben – trage nur ein, was der Nutzer tatsächlich nennt.
 
 Regeln:
 1. Sprich den Nutzer mit "Du" an, freundlich, kompetent, professionell.
 2. Stelle pro Nachricht nur ein bis zwei zusammenhängende Fragen, keine Frageblöcke.
-3. Rufe bei jeder neuen Information das Tool "update_location_onboarding" auf. Felder, die du dabei aktualisierst, MÜSSEN den vollständigen, aktuellen Stand enthalten (bereits Bekanntes + Neues), niemals nur das Neue. Trage in "completedPhases" alle Phasen-Keys ein, die inhaltlich ausreichend abgedeckt sind (phase1 … phase12). Rufe zusätzlich "upsert_shifts" auf, sobald konkrete, benannte Schichten mit Uhrzeiten genannt werden (siehe Phase 4), und "upsert_planning_rules", sobald konkrete Planungsregeln genannt werden (siehe Phase 5).
+3. Rufe bei jeder neuen Information das Tool "update_location_onboarding" auf. Felder, die du dabei aktualisierst, MÜSSEN den vollständigen, aktuellen Stand enthalten (bereits Bekanntes + Neues), niemals nur das Neue. Trage in "completedPhases" alle Phasen-Keys ein, die inhaltlich ausreichend abgedeckt sind (phase1 … phase13). Rufe zusätzlich "upsert_shifts" auf, sobald konkrete, benannte Schichten mit Uhrzeiten genannt werden (siehe Phase 4), und "upsert_planning_rules", sobald konkrete Planungsregeln genannt werden (siehe Phase 5).
 4. Antworte IMMER zusätzlich mit einem kurzen Text, auch wenn du das Tool aufrufst.
-5. Der Chat darf erst enden bzw. "completed" darf erst auf true gesetzt werden, wenn alle 12 Phasen abgedeckt sind, mindestens eine Schicht über "upsert_shifts" angelegt wurde UND der Nutzer der Abschluss-Zusammenfassung ausdrücklich zugestimmt hat. Das System lehnt einen Abschluss ohne mindestens eine angelegte Schicht automatisch ab – frage in diesem Fall aktiv nach konkreten Schichten, statt "completed" zu setzen.
+5. Der Chat darf erst enden bzw. "completed" darf erst auf true gesetzt werden, wenn alle 13 Phasen abgedeckt sind, mindestens eine Schicht über "upsert_shifts" angelegt wurde UND der Nutzer der Abschluss-Zusammenfassung ausdrücklich zugestimmt hat. Das System lehnt einen Abschluss ohne mindestens eine angelegte Schicht automatisch ab – frage in diesem Fall aktiv nach konkreten Schichten, statt "completed" zu setzen.
 6. Falls der Nutzer bereits abgeschlossene Angaben später ändert ("Lernfähigkeit", z.B. "wir eröffnen ab nächstem Monat eine weitere Gruppe" oder "der Frühdienst startet jetzt schon um 06:30 Uhr"), erkenne das und aktualisiere die betroffenen Felder bzw. Schichten, ohne von vorne zu beginnen.
 7. Erfinde niemals Angaben, die nicht genannt wurden.
 8. Schreibe ausschließlich auf Deutsch.`
@@ -101,6 +102,7 @@ const LOCATION_TOOL = {
       urlaubslogik: { type: 'string' },
       zeiterfassung: { type: 'string' },
       besonderheiten: { type: 'string' },
+      tagesablauf: { type: 'string', description: 'Typischer Tagesablauf des Standorts: welche Aufgaben fallen wann an, welche Gruppen/Bereiche sind beteiligt, Prioritäten. Wird von der KI genutzt, um jedem Diensteintrag konkrete Aufgabenblöcke zuzuordnen.' },
       completedPhases: { type: 'array', items: { type: 'string', enum: ONBOARDING_PHASES.map(p => p.key) } },
       completed: { type: 'boolean', description: 'true nur nach ausdrücklicher Bestätigung der Abschluss-Zusammenfassung durch den Nutzer' },
     },
@@ -241,6 +243,7 @@ export async function POST(req: NextRequest) {
         urlaubslogik: existing?.urlaubslogik ?? null,
         zeiterfassung: existing?.zeiterfassung ?? null,
         besonderheiten: existing?.besonderheiten ?? null,
+        tagesablauf: existing?.tagesablauf ?? null,
         completedPhases: existing?.completedPhases ?? [],
         completed: existing?.completed ?? false,
         bereitsAngelegteSchichten: existingShifts.map(s => ({ name: s.name, type: s.type, startTime: s.startTime, endTime: s.endTime, minStaff: s.minStaff })),
@@ -303,6 +306,7 @@ export async function POST(req: NextRequest) {
             urlaubslogik: typeof input.urlaubslogik === 'string' ? input.urlaubslogik : undefined,
             zeiterfassung: typeof input.zeiterfassung === 'string' ? input.zeiterfassung : undefined,
             besonderheiten: typeof input.besonderheiten === 'string' ? input.besonderheiten : undefined,
+            tagesablauf: typeof input.tagesablauf === 'string' ? input.tagesablauf : undefined,
             completedPhases: Array.isArray(input.completedPhases) ? input.completedPhases as string[] : undefined,
             completed: typeof input.completed === 'boolean' ? input.completed : undefined,
           })

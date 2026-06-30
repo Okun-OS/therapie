@@ -26,6 +26,7 @@ interface LocState {
   urlaubslogik: string | null
   zeiterfassung: string | null
   besonderheiten: string | null
+  tagesablauf: string | null
   completedPhases: string[]
   completed: boolean
 }
@@ -136,6 +137,7 @@ export default function AdminOnboarding() {
               {state.urlaubslogik && <p><span className="font-semibold text-navy">Urlaubslogik:</span> {state.urlaubslogik}</p>}
               {state.zeiterfassung && <p><span className="font-semibold text-navy">Zeiterfassung:</span> {state.zeiterfassung}</p>}
               {state.besonderheiten && <p><span className="font-semibold text-navy">Sonstige Besonderheiten:</span> {state.besonderheiten}</p>}
+              {state.tagesablauf && <p><span className="font-semibold text-navy">Tagesablauf:</span> {state.tagesablauf}</p>}
             </div>
           )}
 

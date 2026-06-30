@@ -39,6 +39,7 @@ export interface LocationOnboardingUpdate {
   urlaubslogik?: string
   zeiterfassung?: string
   besonderheiten?: string
+  tagesablauf?: string
   completedPhases?: string[]
   completed?: boolean
 }
@@ -47,7 +48,7 @@ const LOCATION_FIELDS: (keyof LocationOnboardingUpdate)[] = [
   'einrichtungsart', 'organisationsstruktur', 'personalstruktur', 'arbeitszeiten',
   'dienstplanlogik', 'pausenlogik', 'wiederkehrendeAufgaben', 'individuelleRegeln',
   'vertretungsregeln', 'urlaubslogik', 'zeiterfassung', 'besonderheiten',
-  'completedPhases', 'completed',
+  'tagesablauf', 'completedPhases', 'completed',
 ]
 
 export async function upsertLocationOnboarding(locationId: string, update: LocationOnboardingUpdate) {
@@ -74,9 +75,6 @@ export async function appendLocationIndividuelleRegeln(locationId: string, newRu
   await upsertLocationOnboarding(locationId, { individuelleRegeln: merged })
 }
 
-// All 12 Phasen aus 02_ONBOARDING_CHAT.md – die Reihenfolge dient nur der
-// Anzeige/Fortschrittsmessung, die KI darf im Gespräch frei zwischen
-// zusammenhängenden Themen wechseln.
 export const ONBOARDING_PHASES = [
   { key: 'phase1', label: 'Standort verstehen' },
   { key: 'phase2', label: 'Organisationsstruktur' },
@@ -90,4 +88,5 @@ export const ONBOARDING_PHASES = [
   { key: 'phase10', label: 'Urlaubslogik' },
   { key: 'phase11', label: 'Zeiterfassung' },
   { key: 'phase12', label: 'Abschluss & offene Fragen' },
+  { key: 'phase13', label: 'Tagesablauf & Einsatzplanung' },
 ] as const
