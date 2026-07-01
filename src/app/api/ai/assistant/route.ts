@@ -22,12 +22,27 @@ const TOOLS: Anthropic.Messages.Tool[] = [
   // ── READ ──
   {
     name: 'list_employees',
-    description: 'Listet alle Mitarbeiter des Standorts mit vollständigen Profildaten (Stunden, Gruppen, Rollen, Qualifikationen, Arbeitszeiten, Besonderheiten usw.) auf.',
+    description: 'Listet alle Mitarbeiter des Standorts mit vollständigen Profildaten (Stunden, Gruppen, Rollen, Qualifikationen, Arbeitszeiten, Besonderheiten usw.) auf. Enthält außerdem den Dienstplan der nächsten 14 Tage sowie aktive Urlaubs- und Abwesenheitsstatus je Mitarbeiter.',
     input_schema: {
       type: 'object' as const,
       properties: {
         filter: { type: 'string', description: 'Optionaler Namensfilter (Teilstring)' },
       },
+    },
+  },
+  {
+    name: 'find_substitutes',
+    description: 'Findet geeignete Vertretungskandidaten für einen ausgefallenen Mitarbeiter. Gibt eine nach Verfügbarkeit und Eignung gerankte Liste zurück, mit transparenter Begründung für jeden Kandidaten (frei, verschiebbar, Qualifikation, Wochenstunden).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        date: { type: 'string', description: 'Datum für die Vertretung (YYYY-MM-DD)' },
+        startTime: { type: 'string', description: 'Startzeit der zu besetzenden Schicht (HH:MM)' },
+        endTime: { type: 'string', description: 'Endzeit der zu besetzenden Schicht (HH:MM)' },
+        qualification: { type: 'string', description: 'Benötigte Qualifikation (optional)' },
+        gruppe: { type: 'string', description: 'Benötigte Gruppe/Bereich (optional)' },
+      },
+      required: ['date', 'startTime', 'endTime'],
     },
   },
   {
@@ -243,25 +258,78 @@ async function executeToolCall(name: string, input: Record<string, any>, ctx: To
       const filtered = input.filter
         ? employees.filter(e => e.name.toLowerCase().includes((input.filter as string).toLowerCase()))
         : employees
+
+      // Fetch schedule for the next 14 days
+      const today = new Date().toISOString().split('T')[0]
+      const in14 = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      const [scheduleEntries, vacationRequests, absences, shifts] = await Promise.all([
+        prisma.scheduleEntry.findMany({
+          where: { locationId: ctx.locationId, date: { gte: today, lte: in14 } },
+        }),
+        getVacationRequestsByLocation(ctx.locationId),
+        getAbsencesByLocation(ctx.locationId),
+        listShiftsByLocation(ctx.locationId),
+      ])
+
+      const shiftMap = Object.fromEntries(shifts.map(s => [s.id, { name: s.name, startTime: s.startTime, endTime: s.endTime }]))
+      const approvedVacations = vacationRequests.filter(v => v.status === 'approved')
+      const activeAbsences = absences.filter(a => a.endDate >= today)
+
       return {
         count: filtered.length,
-        employees: filtered.map(e => ({
-          id: e.id,
-          name: e.name,
-          role: e.role,
-          gruppe: e.gruppe,
-          bereich: e.bereich,
-          weeklyHours: e.weeklyHours,
-          workDaysPerWeek: e.workDaysPerWeek,
-          workDays: e.workDays,
-          dailyTargetHours: e.dailyTargetHours,
-          fixedOffDays: e.fixedOffDays,
-          employmentType: e.employmentType,
-          qualifications: e.qualifications,
-          notes: (e as any).notes,
-          vacationDaysTotal: e.vacationDaysTotal,
-          vacationDaysUsed: e.vacationDaysUsed,
-        })),
+        employees: filtered.map(e => {
+          // Scheduled dates in next 14 days
+          const empSchedule = scheduleEntries
+            .filter(s => s.employeeId === e.id)
+            .map(s => ({
+              date: s.date,
+              shiftId: s.shiftId,
+              shiftName: shiftMap[s.shiftId]?.name ?? 'Unbekannte Schicht',
+              startTime: s.startTime ?? shiftMap[s.shiftId]?.startTime,
+              endTime: s.endTime ?? shiftMap[s.shiftId]?.endTime,
+              gruppe: s.gruppe,
+              funktion: s.funktion,
+            }))
+
+          // Vacation: is there an approved vacation covering today or upcoming dates?
+          const onVacation = approvedVacations.some(
+            v => v.employeeId === e.id && v.startDate <= in14 && v.endDate >= today
+          )
+          const vacationPeriods = approvedVacations
+            .filter(v => v.employeeId === e.id && v.startDate <= in14 && v.endDate >= today)
+            .map(v => ({ startDate: v.startDate, endDate: v.endDate }))
+
+          // Absence: is the employee currently absent (sick, etc.)?
+          const currentAbsence = activeAbsences.find(
+            a => a.employeeId === e.id && a.startDate <= in14 && a.endDate >= today
+          )
+
+          return {
+            id: e.id,
+            name: e.name,
+            role: e.role,
+            gruppe: e.gruppe,
+            bereich: e.bereich,
+            weeklyHours: e.weeklyHours,
+            workDaysPerWeek: e.workDaysPerWeek,
+            workDays: e.workDays,
+            dailyTargetHours: e.dailyTargetHours,
+            fixedOffDays: e.fixedOffDays,
+            employmentType: e.employmentType,
+            qualifications: e.qualifications,
+            notes: (e as any).notes,
+            vacationDaysTotal: e.vacationDaysTotal,
+            vacationDaysUsed: e.vacationDaysUsed,
+            // Ausfallmanagement context
+            scheduledDates: empSchedule,
+            onVacation,
+            vacationPeriods,
+            currentAbsenceType: currentAbsence?.type ?? null,
+            currentAbsencePeriod: currentAbsence
+              ? { startDate: currentAbsence.startDate, endDate: currentAbsence.endDate }
+              : null,
+          }
+        }),
       }
     }
 
@@ -481,6 +549,223 @@ async function executeToolCall(name: string, input: Record<string, any>, ctx: To
       return { success: true, message: `Regel dauerhaft gespeichert: "${regel}"` }
     }
 
+    case 'find_substitutes': {
+      const { date, startTime, endTime, qualification, gruppe } = input as {
+        date: string; startTime: string; endTime: string; qualification?: string; gruppe?: string
+      }
+
+      const [employees, scheduleEntries, vacationRequests, absences, shifts] = await Promise.all([
+        getEmployeesByLocation(ctx.locationId),
+        prisma.scheduleEntry.findMany({ where: { locationId: ctx.locationId, date } }),
+        getVacationRequestsByLocation(ctx.locationId),
+        getAbsencesByLocation(ctx.locationId),
+        listShiftsByLocation(ctx.locationId),
+      ])
+
+      const shiftMap = Object.fromEntries(shifts.map(s => [s.id, { name: s.name, startTime: s.startTime, endTime: s.endTime }]))
+      const approvedVacations = vacationRequests.filter(v => v.status === 'approved')
+
+      // Helper: parse HH:MM to minutes since midnight
+      const toMinutes = (t: string): number => {
+        const [h, m] = t.split(':').map(Number)
+        return (h ?? 0) * 60 + (m ?? 0)
+      }
+
+      // Helper: calculate shift duration in hours
+      const shiftHours = (start: string, end: string): number => {
+        const diff = toMinutes(end) - toMinutes(start)
+        return (diff < 0 ? diff + 24 * 60 : diff) / 60
+      }
+
+      const neededHours = shiftHours(startTime, endTime)
+
+      // Calculate scheduled hours this week for each employee
+      const weekStart = new Date(date)
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1) // Monday
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+      const weekStartStr = weekStart.toISOString().split('T')[0]
+      const weekEndStr = weekEnd.toISOString().split('T')[0]
+
+      const weekEntries = await prisma.scheduleEntry.findMany({
+        where: { locationId: ctx.locationId, date: { gte: weekStartStr, lte: weekEndStr } },
+      })
+
+      // Calculate already-scheduled hours per employee this week
+      const weekHoursMap: Record<string, number> = {}
+      for (const entry of weekEntries) {
+        const s = shiftMap[entry.shiftId]
+        const start = entry.startTime ?? s?.startTime ?? '00:00'
+        const end = entry.endTime ?? s?.endTime ?? '00:00'
+        const h = shiftHours(start, end)
+        weekHoursMap[entry.employeeId] = (weekHoursMap[entry.employeeId] ?? 0) + h
+      }
+
+      interface Candidate {
+        employeeId: string
+        name: string
+        availability: 'free' | 'has_shift' | 'unavailable'
+        matchReasons: string[]
+        warnings: string[]
+        qualificationMatch: boolean
+        gruppeMatch: boolean
+        scheduledShiftThatDay: { shiftName: string; startTime: string; endTime: string } | null
+        currentWeekHours: number
+        weeklyHoursLimit: number
+        wouldExceedLimit: boolean
+        score: number
+      }
+
+      const candidates: Candidate[] = []
+
+      for (const emp of employees) {
+        const matchReasons: string[] = []
+        const warnings: string[] = []
+
+        // Check qualification match
+        const qualMatch = !qualification || (emp.qualifications ?? []).includes(qualification)
+        if (qualification) {
+          if (qualMatch) matchReasons.push(`Hat erforderliche Qualifikation: ${qualification}`)
+          else warnings.push(`Fehlt Qualifikation: ${qualification}`)
+        }
+
+        // Check gruppe match
+        const gruppeMatch = !gruppe || emp.gruppe === gruppe
+        if (gruppe) {
+          if (gruppeMatch) matchReasons.push(`Arbeitet in Gruppe/Bereich: ${gruppe}`)
+          else warnings.push(`Andere Gruppe: ${emp.gruppe ?? 'keine'}`)
+        }
+
+        // Check absence (sick, special leave, etc.)
+        const isAbsent = absences.some(
+          a => a.employeeId === emp.id && a.startDate <= date && a.endDate >= date
+        )
+        if (isAbsent) {
+          const abs = absences.find(a => a.employeeId === emp.id && a.startDate <= date && a.endDate >= date)
+          candidates.push({
+            employeeId: emp.id,
+            name: emp.name,
+            availability: 'unavailable',
+            matchReasons: [],
+            warnings: [`Abwesend (${abs?.type ?? 'Abwesenheit'}) bis ${abs?.endDate}`],
+            qualificationMatch: qualMatch,
+            gruppeMatch,
+            scheduledShiftThatDay: null,
+            currentWeekHours: weekHoursMap[emp.id] ?? 0,
+            weeklyHoursLimit: emp.weeklyHours,
+            wouldExceedLimit: false,
+            score: -100,
+          })
+          continue
+        }
+
+        // Check vacation
+        const onVacation = approvedVacations.some(
+          v => v.employeeId === emp.id && v.startDate <= date && v.endDate >= date
+        )
+        if (onVacation) {
+          const vac = approvedVacations.find(v => v.employeeId === emp.id && v.startDate <= date && v.endDate >= date)
+          candidates.push({
+            employeeId: emp.id,
+            name: emp.name,
+            availability: 'unavailable',
+            matchReasons: [],
+            warnings: [`Im genehmigten Urlaub bis ${vac?.endDate}`],
+            qualificationMatch: qualMatch,
+            gruppeMatch,
+            scheduledShiftThatDay: null,
+            currentWeekHours: weekHoursMap[emp.id] ?? 0,
+            weeklyHoursLimit: emp.weeklyHours,
+            wouldExceedLimit: false,
+            score: -100,
+          })
+          continue
+        }
+
+        // Check existing shift that day
+        const existingEntry = scheduleEntries.find(s => s.employeeId === emp.id)
+        let availability: 'free' | 'has_shift' = 'free'
+        let scheduledShiftThatDay: Candidate['scheduledShiftThatDay'] = null
+
+        if (existingEntry) {
+          availability = 'has_shift'
+          const s = shiftMap[existingEntry.shiftId]
+          scheduledShiftThatDay = {
+            shiftName: s?.name ?? 'Unbekannte Schicht',
+            startTime: existingEntry.startTime ?? s?.startTime ?? '',
+            endTime: existingEntry.endTime ?? s?.endTime ?? '',
+          }
+          matchReasons.push(`Hat bereits Dienst (${scheduledShiftThatDay.shiftName} ${scheduledShiftThatDay.startTime}–${scheduledShiftThatDay.endTime}) – Umplanung nötig`)
+        } else {
+          matchReasons.push('Hat an diesem Tag keinen Dienst – sofort verfügbar')
+        }
+
+        // Check weekly hours
+        const currentWeekHours = weekHoursMap[emp.id] ?? 0
+        const wouldExceedLimit = (currentWeekHours + neededHours) > emp.weeklyHours
+        if (wouldExceedLimit) {
+          warnings.push(`Würde Wochenstunden überschreiten: ${currentWeekHours.toFixed(1)}h bereits geplant + ${neededHours.toFixed(1)}h = ${(currentWeekHours + neededHours).toFixed(1)}h > ${emp.weeklyHours}h Limit`)
+        } else {
+          matchReasons.push(`Wochenstunden OK: ${currentWeekHours.toFixed(1)}h + ${neededHours.toFixed(1)}h = ${(currentWeekHours + neededHours).toFixed(1)}h von ${emp.weeklyHours}h`)
+        }
+
+        // Fixed off-day check
+        const dayName = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'][new Date(date).getDay()]
+        const isFixedOffDay = (emp.fixedOffDays ?? []).includes(dayName) || (emp.fixedOffDays ?? []).includes(date)
+        if (isFixedOffDay) {
+          warnings.push(`${dayName} ist ein fester freier Tag für diesen Mitarbeiter`)
+        }
+
+        // Score: free > has_shift, qual/gruppe match boosts, exceed penalizes
+        let score = 0
+        if (availability === 'free') score += 50
+        else score += 10
+        if (qualMatch && qualification) score += 20
+        if (gruppeMatch && gruppe) score += 15
+        if (wouldExceedLimit) score -= 30
+        if (isFixedOffDay) score -= 20
+
+        candidates.push({
+          employeeId: emp.id,
+          name: emp.name,
+          availability,
+          matchReasons,
+          warnings,
+          qualificationMatch: qualMatch,
+          gruppeMatch,
+          scheduledShiftThatDay,
+          currentWeekHours,
+          weeklyHoursLimit: emp.weeklyHours,
+          wouldExceedLimit,
+          score,
+        })
+      }
+
+      // Sort: unavailable last, then by score descending
+      candidates.sort((a, b) => {
+        if (a.availability === 'unavailable' && b.availability !== 'unavailable') return 1
+        if (b.availability === 'unavailable' && a.availability !== 'unavailable') return -1
+        return b.score - a.score
+      })
+
+      const available = candidates.filter(c => c.availability !== 'unavailable')
+      const unavailable = candidates.filter(c => c.availability === 'unavailable')
+
+      return {
+        date,
+        startTime,
+        endTime,
+        neededHours,
+        qualification: qualification ?? null,
+        gruppe: gruppe ?? null,
+        totalChecked: candidates.length,
+        availableCount: available.length,
+        unavailableCount: unavailable.length,
+        candidates: available,
+        unavailableEmployees: unavailable.map(c => ({ name: c.name, warnings: c.warnings })),
+      }
+    }
+
     default:
       return { error: `Unbekanntes Tool: ${name}` }
   }
@@ -524,6 +809,25 @@ Führe die Aktion direkt aus. Kurze Bestätigung danach. Keine langen Erklärung
 **Bei Mehrschrittaufgaben:**
 Führe alle nötigen Tool-Aufrufe hintereinander aus, ohne zu fragen, ob du fortfahren sollst.
 
+## Ausfallmanagement (Personalausfall)
+
+Wenn ein Mitarbeiter ausfällt oder eine Vertretung gesucht wird, gehe IMMER so vor:
+
+1. Rufe ZUERST **find_substitutes** auf mit Datum, Startzeit, Endzeit (und optional Qualifikation/Gruppe).
+2. Präsentiere die Kandidaten klar und transparent:
+   - Zeige zuerst die **sofort verfügbaren** Mitarbeiter (kein Dienst an dem Tag)
+   - Dann die **umplanbaren** (haben Dienst, könnten verschoben werden)
+   - Nenne **immer den Grund**, warum jemand geeignet oder nicht geeignet ist
+3. Prüfe Wochenstunden: **Schlage NIEMALS jemanden vor, der dadurch seine Wochenstunden überschreiten würde** (es sei denn, es gibt keine andere Wahl – dann explizit darauf hinweisen)
+4. Prüfe Urlaub/Abwesenheit: **Schlage NIEMALS jemanden vor, der im genehmigten Urlaub oder abwesend ist**
+5. Wenn du eine Schicht umplanst (assign_shift), rufe danach remove_from_schedule für den ursprünglichen Mitarbeiter auf – oder nutze swap_employees für einen Tausch
+
+**Beispiel-Ablauf Ausfallmanagement:**
+Nutzer: „Maria ist heute krank, wer kann einspringen? Frühdienst 06:00–14:00"
+→ find_substitutes (date=heute, startTime=06:00, endTime=14:00) aufrufen
+→ Ergebnis auflisten mit klaren Begründungen
+→ Auf Wunsch direkt assign_shift ausführen
+
 ## Beispiele
 
 Nutzer: „Wie viele Mitarbeiter haben wir?"
@@ -541,12 +845,16 @@ Nutzer: „Speichere: Vollzeitmitarbeiter beginnen immer um 06:00 Uhr"
 Nutzer: „Wer hat diese Woche Urlaub?"
 → list_vacation_requests (status=approved, dateFrom/dateTo diese Woche) → auflisten
 
+Nutzer: „Klaus ist heute krank, wer kann den Spätdienst 14:00–22:00 übernehmen?"
+→ find_substitutes (date=heute, startTime=14:00, endTime=22:00) → Kandidaten mit Begründung vorstellen
+
 ## Stil
 
 - Antworte auf Deutsch
 - Kurz und direkt – keine Schachtelsätze
 - Bestätigungen nach Aktionen: 1–2 Sätze reichen
-- Bei Fehlern: erkläre was nicht funktioniert hat und was als Alternative möglich ist`
+- Bei Fehlern: erkläre was nicht funktioniert hat und was als Alternative möglich ist
+- Bei Ausfallmanagement: immer transparent begründen, warum jemand vorgeschlagen oder ausgeschlossen wird`
 }
 
 // ─── Route ────────────────────────────────────────────────────────────────────

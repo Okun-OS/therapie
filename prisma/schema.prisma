@@ -311,6 +311,7 @@ model Employee {
   fixedLocations    String?
   qualifications    String[] @default([])
   allowedTasks      String[] @default([])
+  avatarUrl         String?
   workDaysPerWeek   Int?
   workDays          String[] @default([])
   dailyTargetHours  Float?

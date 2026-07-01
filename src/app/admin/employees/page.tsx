@@ -14,6 +14,7 @@ import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationCha
 import { EmployeeCreationForm } from '@/components/employees/EmployeeCreationForm'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Users, Plus, Search, Clock, TrendingUp, Palmtree, ChevronRight, MessageCircle, Sparkles, ListChecks, AlertTriangle } from 'lucide-react'
+import { Avatar } from '@/components/ui/Avatar'
 import type { Employee, OvertimeRequest, Absence } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 
@@ -392,9 +393,7 @@ export default function AdminEmployees() {
               onClick={() => setSelectedEmployee(emp)}
               className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group"
             >
-              <div className="w-12 h-12 rounded-2xl bg-navy flex items-center justify-center font-bold text-brand text-sm flex-shrink-0">
-                {emp.name.split(' ').map(n => n[0]).join('')}
-              </div>
+              <Avatar name={emp.name} avatarUrl={emp.avatarUrl} size="lg" />
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -437,9 +436,7 @@ export default function AdminEmployees() {
         {selectedEmployee && (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-navy flex items-center justify-center font-bold text-brand text-xl flex-shrink-0">
-                {selectedEmployee.name.split(' ').map(n => n[0]).join('')}
-              </div>
+              <Avatar name={selectedEmployee.name} avatarUrl={selectedEmployee.avatarUrl} size="xl" />
               <div>
                 <p className="text-xl font-bold text-navy">{selectedEmployee.name}</p>
                 <p className="text-gray-500 text-sm">{selectedEmployee.position}</p>

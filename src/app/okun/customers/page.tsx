@@ -8,12 +8,13 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useToast } from '@/lib/toast-context'
-import { Building2, Plus, Mail, ChevronRight, Edit, Users, KeyRound, AlertTriangle } from 'lucide-react'
+import { Building2, Plus, Mail, ChevronRight, ChevronDown, Edit, Users, KeyRound, AlertTriangle, MapPin, User } from 'lucide-react'
 import type { Customer, CustomerStatus, LicensePlan, Location } from '@/lib/types'
 
 interface UnassignedLocation { id: string; name: string; city: string; employeeCount: number }
 interface UnassignedCompanyUser { id: string; name: string; email: string; role: 'company' | 'admin' }
 interface UnassignedAdminUser { id: string; name: string; email: string }
+interface Employee { id: string; name: string; email: string }
 
 const UNASSIGNED_ROLE_LABEL: Record<'company' | 'admin', string> = {
   company: 'Geschäftsführung',
@@ -42,6 +43,12 @@ export default function OkunCustomers() {
   const [allLocations, setAllLocations] = useState<Location[]>([])
   const [assignChoice, setAssignChoice] = useState<Record<string, string>>({})
 
+  // Tree expand/collapse state
+  const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set())
+  const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set())
+  const [locationEmployees, setLocationEmployees] = useState<Record<string, Employee[]>>({})
+  const [loadingLocations, setLoadingLocations] = useState<Set<string>>(new Set())
+
   const loadUnassigned = () => {
     fetch('/api/okun/unassigned').then(r => r.json()).then(d => {
       setUnassignedLocations(d.locations ?? [])
@@ -55,6 +62,50 @@ export default function OkunCustomers() {
     fetch('/api/locations').then(r => r.json()).then(d => setAllLocations(d.locations ?? []))
     loadUnassigned()
   }, [])
+
+  const toggleCustomer = (id: string) => {
+    setExpandedCustomers(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const toggleLocation = async (locationId: string) => {
+    // If already expanded, just collapse
+    if (expandedLocations.has(locationId)) {
+      setExpandedLocations(prev => {
+        const next = new Set(prev)
+        next.delete(locationId)
+        return next
+      })
+      return
+    }
+
+    // Expand and fetch employees if not already loaded
+    setExpandedLocations(prev => new Set(prev).add(locationId))
+
+    if (!(locationId in locationEmployees)) {
+      setLoadingLocations(prev => new Set(prev).add(locationId))
+      try {
+        const res = await fetch(`/api/employees?locationId=${locationId}`)
+        const data = await res.json()
+        setLocationEmployees(prev => ({ ...prev, [locationId]: data.employees ?? [] }))
+      } catch {
+        setLocationEmployees(prev => ({ ...prev, [locationId]: [] }))
+      } finally {
+        setLoadingLocations(prev => {
+          const next = new Set(prev)
+          next.delete(locationId)
+          return next
+        })
+      }
+    }
+  }
 
   const assignToCustomer = async (type: 'location' | 'companyUser', id: string) => {
     const customerId = assignChoice[id]
@@ -243,51 +294,125 @@ export default function OkunCustomers() {
           </div>
         )}
 
-        <div className="space-y-4">
-          {CUSTOMERS.map(c => (
-            <div
-              key={c.id}
-              onClick={() => setSelected(c)}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all cursor-pointer overflow-hidden"
-            >
-              <div className="bg-gradient-to-r from-navy to-navy-light p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand/20 border border-brand/30 flex items-center justify-center">
-                    <Building2 size={18} className="text-brand" />
-                  </div>
-                  <div>
-                    <p className="text-white font-bold">{c.name}</p>
-                    <p className="text-navy-100 text-xs mt-0.5">{c.contactName} · {c.contactEmail}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={STATUS_BADGE[c.status].variant}>{STATUS_BADGE[c.status].label}</Badge>
-                  <ChevronRight size={16} className="text-navy-100" />
-                </div>
-              </div>
+        {/* Hierarchical tree view: Unternehmen -> Standorte -> Mitarbeiter */}
+        <div className="space-y-3">
+          {CUSTOMERS.map(c => {
+            const customerLocations = allLocations.filter(l => l.customerId === c.id)
+            const isCustomerExpanded = expandedCustomers.has(c.id)
 
-              <div className="p-4 grid grid-cols-3 gap-3">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <KeyRound size={14} className="text-gray-400" />
-                    <span className="text-sm font-bold text-navy">{PLAN_LABEL[c.plan]}</span>
+            return (
+              <div key={c.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                {/* Customer (Unternehmen) row */}
+                <div
+                  onClick={() => toggleCustomer(c.id)}
+                  className="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-colors select-none"
+                >
+                  <div className="shrink-0 text-gray-400">
+                    {isCustomerExpanded
+                      ? <ChevronDown size={18} className="text-navy" />
+                      : <ChevronRight size={18} />
+                    }
                   </div>
-                  <p className="text-xs text-gray-500">Lizenz</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <Users size={14} className="text-gray-400" />
-                    <span className="text-lg font-bold text-navy">{c.seatsUsed}/{c.seatsLicensed}</span>
+                  <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center shrink-0">
+                    <Building2 size={16} className="text-brand" />
                   </div>
-                  <p className="text-xs text-gray-500">Plätze</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-navy truncate">{c.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{c.contactName} · {c.contactEmail}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-gray-400 hidden sm:block">{customerLocations.length} Standorte</span>
+                    <span className="text-xs text-gray-400 hidden sm:block">·</span>
+                    <span className="text-xs text-gray-400 hidden sm:block">{c.seatsUsed}/{c.seatsLicensed} Plätze</span>
+                    <Badge variant={STATUS_BADGE[c.status].variant}>{STATUS_BADGE[c.status].label}</Badge>
+                    <span className="text-xs font-medium text-navy bg-navy/10 px-2 py-0.5 rounded-lg">{PLAN_LABEL[c.plan]}</span>
+                    <button
+                      onClick={e => { e.stopPropagation(); setSelected(c) }}
+                      className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors text-gray-400 hover:text-navy"
+                      title="Bearbeiten"
+                    >
+                      <Edit size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-navy mb-0.5">{c.locationsCount}</p>
-                  <p className="text-xs text-gray-500">Standorte</p>
-                </div>
+
+                {/* Locations (Standorte) — shown when customer is expanded */}
+                {isCustomerExpanded && (
+                  <div className="border-t border-gray-100">
+                    {customerLocations.length === 0 ? (
+                      <div className="px-6 py-3 text-xs text-gray-400 italic">
+                        Keine Standorte zugeordnet
+                      </div>
+                    ) : (
+                      customerLocations.map((loc, locIdx) => {
+                        const isLocExpanded = expandedLocations.has(loc.id)
+                        const isLoadingEmps = loadingLocations.has(loc.id)
+                        const employees = locationEmployees[loc.id] ?? []
+                        const isLast = locIdx === customerLocations.length - 1
+
+                        return (
+                          <div key={loc.id} className={isLast ? '' : 'border-b border-gray-50'}>
+                            {/* Location row */}
+                            <div
+                              onClick={() => toggleLocation(loc.id)}
+                              className="flex items-center gap-3 pl-10 pr-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors select-none"
+                            >
+                              <div className="shrink-0 text-gray-300">
+                                {isLocExpanded
+                                  ? <ChevronDown size={15} className="text-gray-500" />
+                                  : <ChevronRight size={15} />
+                                }
+                              </div>
+                              <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                                <MapPin size={13} className="text-blue-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-navy truncate">{loc.name}</p>
+                                <p className="text-xs text-gray-400 truncate">{loc.city}</p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex items-center gap-1 text-xs text-gray-400">
+                                  <Users size={12} />
+                                  <span>{loc.employeeCount ?? '–'}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Employees (Mitarbeiter) — shown when location is expanded */}
+                            {isLocExpanded && (
+                              <div className="pl-20 pr-4 pb-2">
+                                {isLoadingEmps ? (
+                                  <p className="text-xs text-gray-400 py-2">Lade Mitarbeiter…</p>
+                                ) : employees.length === 0 ? (
+                                  <p className="text-xs text-gray-400 italic py-2">Keine Mitarbeiter gefunden</p>
+                                ) : (
+                                  <div className="space-y-1 py-1">
+                                    {employees.map(emp => (
+                                      <div key={emp.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50">
+                                        <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                          <User size={11} className="text-gray-400" />
+                                        </div>
+                                        <div className="min-w-0">
+                                          <span className="text-xs font-medium text-navy truncate block">{emp.name}</span>
+                                          {emp.email && (
+                                            <span className="text-xs text-gray-400 truncate block">{emp.email}</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 

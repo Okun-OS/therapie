@@ -43,6 +43,7 @@ export interface Employee {
   fixedLocations?: string
   qualifications?: string[]
   allowedTasks?: string[]
+  avatarUrl?: string
   workDaysPerWeek?: number
   workDays?: string[]
   dailyTargetHours?: number

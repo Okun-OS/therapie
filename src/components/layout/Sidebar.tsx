@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/ui/Logo'
+import { Avatar } from '@/components/ui/Avatar'
 import {
   LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList,
   Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart, Scale, ShieldAlert, Brain, MessageCircle,
@@ -137,9 +138,7 @@ export function Sidebar() {
       {/* User Info + Logout */}
       <div className="p-4 border-t border-navy-light">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-full bg-brand flex items-center justify-center font-bold text-navy text-sm">
-            {user?.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-          </div>
+          {user?.name && <Avatar name={user.name} size="md" />}
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-semibold truncate">{user?.name}</p>
             <p className="text-navy-100 text-xs truncate">{user?.email}</p>
