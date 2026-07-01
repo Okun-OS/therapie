@@ -69,6 +69,18 @@ export interface Shift {
   locationId: string
 }
 
+export interface PlanningUnit {
+  id: string
+  locationId: string
+  name: string
+  type: string
+  description?: string
+  capacity?: number
+  address?: string
+  notes?: string
+  sortOrder: number
+}
+
 export interface LocationPlanningRules {
   locationId: string
   maxWeeklyHours: number

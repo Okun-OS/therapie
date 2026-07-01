@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireRole, resolveCustomerId } from '@/lib/session'
-import { getPlanningRules } from '@/lib/schedule-entities'
+import { getPlanningRules, listPlanningUnitsByLocation } from '@/lib/schedule-entities'
 import type { Employee, Shift, ShiftFairnessData, WishSubmission } from '@/lib/types'
 
 const client = new Anthropic()
@@ -179,14 +179,15 @@ export async function POST(req: NextRequest) {
 
   const customerId = await resolveCustomerId(session)
 
-  const [locationOnboarding, periodNotes, organizationOnboarding, planningRules] = locationId
+  const [locationOnboarding, periodNotes, organizationOnboarding, planningRules, planningUnits] = locationId
     ? await Promise.all([
         prisma.locationOnboarding.findUnique({ where: { locationId } }),
         prisma.schedulingPeriodNote.findMany({ where: { locationId, weekStart: { in: weekStarts } } }),
         customerId ? prisma.organizationOnboarding.findUnique({ where: { customerId } }) : Promise.resolve(null),
         getPlanningRules(locationId),
+        listPlanningUnitsByLocation(locationId),
       ])
-    : [null, [], null, null]
+    : [null, [], null, null, []]
 
   const humanContexts = activeEmployees.length > 0
     ? await prisma.employeeHumanContext.findMany({
@@ -268,6 +269,12 @@ ${[
 
 Dies ist die dauerhafte Wissensbasis dieses Standorts – leite daraus automatisch Dienstzeiten, Schichten, Arbeitsmodelle und Regeln ab und beachte sie verbindlich bei der Planung, auch wenn nicht jedes Feld ausgefüllt ist.` : ''
 
+  const planningUnitsSection = planningUnits && (planningUnits as { name: string; type: string; description?: string }[]).length > 0 ? `
+## Planungseinheiten des Standorts (verbindlich – nur diese dürfen als "gruppe" verwendet werden)
+${(planningUnits as { name: string; type: string; description?: string }[]).map(u => `- ${u.name} (${u.type})${u.description ? ': ' + u.description : ''}`).join('\n')}
+
+PFLICHT: Das Feld "gruppe" in jedem Diensteintrag MUSS exakt einem der obigen Namen entsprechen. Erfinde NIEMALS eigene Gruppen-, Bereichs- oder Einheitennamen. Ist kein passender Eintrag für einen Mitarbeiter vorhanden, wähle den am ehesten passenden aus der obigen Liste.` : ''
+
   const planningRulesSection = planningRules ? `
 ## Planungsregeln des Standorts (administrativ konfiguriert, verbindlich)
 - Maximale Wochenstunden pro Mitarbeiter: ${planningRules.maxWeeklyHours}
@@ -330,6 +337,7 @@ ${vacationSection}
 ${absenceSection}
 ${organizationSection}
 ${onboardingSection}
+${planningUnitsSection}
 ${planningRulesSection}
 ${periodNotesSection}
 ${facilityDescription ? `

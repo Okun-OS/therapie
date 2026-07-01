@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { upsertOrganizationOnboarding, upsertLocationOnboarding, ONBOARDING_PHASES } from '@/lib/onboarding-service'
 import { listLocations } from '@/lib/entities'
-import { listShiftsByLocation, addShift, updateShift, getPlanningRules, upsertPlanningRules } from '@/lib/schedule-entities'
+import { listShiftsByLocation, addShift, updateShift, getPlanningRules, upsertPlanningRules, listPlanningUnitsByLocation, upsertPlanningUnit } from '@/lib/schedule-entities'
 import { resetBreakRulesExtraction } from '@/lib/break-rules-service'
 import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
 import type { ShiftType } from '@/lib/types'
@@ -153,6 +153,32 @@ const PLANNING_RULES_TOOL = {
   },
 }
 
+const PLANNING_UNITS_TOOL = {
+  name: 'upsert_planning_units',
+  description: 'Legt benannte Planungseinheiten dieses Standorts als echte Systemdaten an bzw. aktualisiert sie. Rufe dieses Tool auf, sobald der Nutzer konkrete Namen für Gruppen, Bereiche, Objekte, Touren, Fahrzeuge, Maschinen, Räume, Stationen o.ä. nennt. Immer die VOLLSTÄNDIGE, aktuelle Liste aller bisher genannten Einheiten übergeben (kumulativ). Erfinde niemals Einheitennamen – nur tatsächlich genannte.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      units: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'z.B. "Gruppe Sonnenschein", "Objekt Musterstraße 12", "Tour A"' },
+            type: { type: 'string', enum: ['gruppe', 'bereich', 'objekt', 'tour', 'fahrzeug', 'maschine', 'raum', 'station', 'aufgabenblock', 'sonstiges'], description: 'Art der Planungseinheit' },
+            description: { type: 'string', description: 'Optionale Beschreibung' },
+            capacity: { type: 'number', description: 'Kapazität / Belegungsgröße, falls genannt' },
+            address: { type: 'string', description: 'Adresse (z.B. bei Reinigungsobjekten), falls genannt' },
+            notes: { type: 'string', description: 'Sonstige Hinweise zur Einheit' },
+          },
+          required: ['name', 'type'],
+        },
+      },
+    },
+    required: ['units'],
+  },
+}
+
 const SHIFT_TYPE_DEFAULTS: Record<ShiftType, { color: string; bgColor: string }> = {
   early: { color: '#0E6B6F', bgColor: '#E5FAFA' },
   mid: { color: '#C89C5B', bgColor: '#F8EFE2' },
@@ -199,7 +225,7 @@ export async function POST(req: NextRequest) {
   try {
     let stateNote: string
     let systemPrompt: string
-    let tools: (typeof ORG_TOOL | typeof LOCATION_TOOL | typeof SHIFTS_TOOL | typeof PLANNING_RULES_TOOL)[]
+    let tools: (typeof ORG_TOOL | typeof LOCATION_TOOL | typeof SHIFTS_TOOL | typeof PLANNING_RULES_TOOL | typeof PLANNING_UNITS_TOOL)[]
     let existingPausenlogik: string | null = null
     let existingIndividuelleRegeln: string[] = []
 
@@ -223,10 +249,11 @@ export async function POST(req: NextRequest) {
       if (!location) {
         return NextResponse.json({ error: 'Unbekannter Standort' }, { status: 404 })
       }
-      const [existing, existingShifts, planningRules] = await Promise.all([
+      const [existing, existingShifts, planningRules, existingPlanningUnits] = await Promise.all([
         prisma.locationOnboarding.findUnique({ where: { locationId: scope } }),
         listShiftsByLocation(scope),
         getPlanningRules(scope),
+        listPlanningUnitsByLocation(scope),
       ])
       existingPausenlogik = existing?.pausenlogik ?? null
       existingIndividuelleRegeln = existing?.individuelleRegeln ?? []
@@ -248,9 +275,10 @@ export async function POST(req: NextRequest) {
         completed: existing?.completed ?? false,
         bereitsAngelegteSchichten: existingShifts.map(s => ({ name: s.name, type: s.type, startTime: s.startTime, endTime: s.endTime, minStaff: s.minStaff })),
         planungsregeln: planningRules,
-      }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Noch offene Phasen: ${ONBOARDING_PHASES.filter(p => !(existing?.completedPhases ?? []).includes(p.key)).map(p => p.label).join(', ') || 'keine – alle Phasen abgedeckt'}.\n\nWICHTIG: Es sind aktuell ${existingShifts.length} Schicht(en) im System angelegt. ${existingShifts.length === 0 ? 'Phase 4 ist damit NICHT abgeschlossen – frage aktiv nach mindestens einer konkreten, benannten Schicht mit Uhrzeiten und rufe "upsert_shifts" auf, bevor du den Abschluss vorschlägst. Das System lehnt "completed: true" ohne mindestens eine Schicht automatisch ab.' : 'Phase 4 kann als abgedeckt gelten.'}`
+        bereitsAngelegtePlanungseinheiten: existingPlanningUnits.map(u => ({ name: u.name, type: u.type, description: u.description })),
+      }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Noch offene Phasen: ${ONBOARDING_PHASES.filter(p => !(existing?.completedPhases ?? []).includes(p.key)).map(p => p.label).join(', ') || 'keine – alle Phasen abgedeckt'}.\n\nWICHTIG: Es sind aktuell ${existingShifts.length} Schicht(en) im System angelegt. ${existingShifts.length === 0 ? 'Phase 4 ist damit NICHT abgeschlossen – frage aktiv nach mindestens einer konkreten, benannten Schicht mit Uhrzeiten und rufe "upsert_shifts" auf, bevor du den Abschluss vorschlägst. Das System lehnt "completed: true" ohne mindestens eine Schicht automatisch ab.' : 'Phase 4 kann als abgedeckt gelten.'}\n\nPlanungseinheiten: Sobald der Nutzer konkrete Namen für Gruppen, Bereiche, Objekte, Touren, Fahrzeuge, Maschinen, Räume oder Stationen nennt, rufe IMMER ZUSÄTZLICH "upsert_planning_units" auf. Erfinde NIEMALS eigene Einheitennamen. Es sind aktuell ${existingPlanningUnits.length} Planungseinheit(en) im System angelegt.`
       systemPrompt = LOCATION_SYSTEM_PROMPT
-      tools = [LOCATION_TOOL, SHIFTS_TOOL, PLANNING_RULES_TOOL]
+      tools = [LOCATION_TOOL, SHIFTS_TOOL, PLANNING_RULES_TOOL, PLANNING_UNITS_TOOL]
     }
 
     const response = await client.messages.create({
@@ -345,6 +373,25 @@ export async function POST(req: NextRequest) {
                 locationId: scope,
               })
             }
+          }
+        }
+      }
+      if (block.type === 'tool_use' && block.name === 'upsert_planning_units' && !isOrganization) {
+        const input = block.input as { units?: unknown }
+        if (Array.isArray(input.units)) {
+          for (const entry of input.units) {
+            if (typeof entry !== 'object' || !entry) continue
+            const { name, type, description, capacity, address, notes } = entry as Record<string, unknown>
+            if (typeof name !== 'string' || !name.trim()) continue
+            const unitType = typeof type === 'string' ? type : 'bereich'
+            await upsertPlanningUnit(scope, {
+              name: name.trim(),
+              type: unitType,
+              description: typeof description === 'string' ? description : undefined,
+              capacity: typeof capacity === 'number' ? capacity : undefined,
+              address: typeof address === 'string' ? address : undefined,
+              notes: typeof notes === 'string' ? notes : undefined,
+            })
           }
         }
       }

@@ -572,6 +572,26 @@ model ClosurePeriod {
   createdAt  DateTime @default(now())
 }
 
+// ─── Planungseinheiten (frei konfigurierbarer Einsatzplan) ──────────────────
+// Durch das Onboarding definierte benannte Einheiten eines Standorts:
+// Gruppen, Bereiche, Objekte, Touren, Fahrzeuge, Maschinen, Räume, Stationen.
+// Nur echte, vom Nutzer genannte Einheiten – niemals durch die KI erfunden.
+model PlanningUnit {
+  id          String   @id @default(cuid())
+  locationId  String
+  name        String
+  type        String   @default("bereich")
+  description String?
+  capacity    Int?
+  address     String?
+  notes       String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([locationId])
+}
+
 model MonthlyClosing {
   id               String  @id @default(cuid())
   employeeId       String

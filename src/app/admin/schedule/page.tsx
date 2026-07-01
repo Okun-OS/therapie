@@ -16,11 +16,11 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
-import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission } from '@/lib/types'
+import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, PlanningUnit } from '@/lib/types'
 import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, MoonStar, Briefcase,
-  CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle,
+  CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle, LayoutGrid, Users,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
@@ -122,6 +122,8 @@ export default function AdminSchedule() {
   const [ABSENCES, setABSENCES] = useState<Absence[]>([])
   const [allHistoricalEntries, setAllHistoricalEntries] = useState<ScheduleEntry[]>([])
   const [wishSubmissions, setWishSubmissions] = useState<WishSubmission[]>([])
+  const [planningUnits, setPlanningUnits] = useState<PlanningUnit[]>([])
+  const [scheduleView, setScheduleView] = useState<'mitarbeiter' | 'einheiten'>('mitarbeiter')
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
@@ -139,6 +141,7 @@ export default function AdminSchedule() {
     fetch(`/api/vacation-requests?locationId=${locationId}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests ?? []))
     fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => setABSENCES(d.absences ?? []))
     fetch(`/api/wish-submissions?locationId=${locationId}`).then(r => r.json()).then(d => setWishSubmissions(d.submissions ?? []))
+    fetch(`/api/planning-units?locationId=${locationId}`).then(r => r.json()).then(d => setPlanningUnits(d.units ?? []))
   }, [locationId])
 
   // getAllEntriesForFairness(locationId) im mock-data kombinierte historische
@@ -668,6 +671,16 @@ export default function AdminSchedule() {
                 </button>
               </div>
               <div className="flex gap-2">
+                {planningUnits.length > 0 && (
+                  <div className="flex rounded-xl border border-gray-200 overflow-hidden">
+                    <button onClick={() => setScheduleView('mitarbeiter')} className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold transition-all ${scheduleView === 'mitarbeiter' ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                      <Users size={12} /> Mitarbeiter
+                    </button>
+                    <button onClick={() => setScheduleView('einheiten')} className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold transition-all ${scheduleView === 'einheiten' ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                      <LayoutGrid size={12} /> Einheiten
+                    </button>
+                  </div>
+                )}
                 <Button variant="ghost" size="sm" onClick={openRules} className="border border-gray-200">Regeln</Button>
                 <Button variant="ghost" size="sm" onClick={handleExport} className="gap-1 border border-gray-200"><Download size={14} /> Export</Button>
                 {existingEntries.length > 0 && (
@@ -807,6 +820,86 @@ export default function AdminSchedule() {
                   title="Noch kein Dienstplan für diese Woche"
                   description="Erstelle oben mit einem Klick einen fairness-optimierten KI-Dienstplan, oder trage Dienste manuell ein."
                 />
+              </div>
+            ) : scheduleView === 'einheiten' && planningUnits.length > 0 ? (
+              <div className="space-y-3">
+                {periodWeeks.map((week, weekIdx) => (
+                  <div key={weekIdx}>
+                    {periodWeeks.length > 1 && (
+                      <p className="text-xs font-semibold text-gray-400 mb-1.5 pl-1">
+                        Woche {weekIdx + 1} · {formatDateShort(toDateString(week[0]))} – {formatDateShort(toDateString(week[6]))}
+                      </p>
+                    )}
+                    <Card padding="none" className="overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[700px]">
+                          <thead>
+                            <tr className="bg-navy">
+                              <th className="text-left p-3 pl-4 text-white text-xs font-semibold w-36">Einheit</th>
+                              {week.slice(0, 5).map((day, i) => {
+                                const dateStr = toDateString(day)
+                                const isTodayDay = dateStr === toDateString(new Date())
+                                return (
+                                  <th key={dateStr} className={`text-center p-3 text-xs font-semibold min-w-[90px] ${isTodayDay ? 'text-brand' : 'text-white'}`}>
+                                    <div className="flex flex-col items-center">
+                                      <span>{getDayName(dateStr, true)}</span>
+                                      <span className={`text-lg font-bold ${isTodayDay ? 'text-brand' : 'text-white'}`}>{day.getDate()}</span>
+                                    </div>
+                                  </th>
+                                )
+                              })}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {planningUnits.map((unit, unitIdx) => (
+                              <tr key={unit.id} className={unitIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                                <td className="p-3 pl-4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-navy/10 flex items-center justify-center flex-shrink-0">
+                                      <LayoutGrid size={12} className="text-navy" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-semibold text-navy leading-tight">{unit.name}</p>
+                                      <p className="text-[10px] text-gray-400">{unit.type}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                {week.slice(0, 5).map((day) => {
+                                  const dateStr = toDateString(day)
+                                  const assigned = employees.filter(emp => {
+                                    const a = getDisplayAssignment(emp.id, dateStr)
+                                    return a?.gruppe === unit.name
+                                  })
+                                  return (
+                                    <td key={dateStr} className="p-1.5 align-top">
+                                      {assigned.length === 0 ? (
+                                        <div className="flex items-center justify-center h-12 text-xs text-gray-200">—</div>
+                                      ) : (
+                                        <div className="flex flex-col gap-1">
+                                          {assigned.map(emp => {
+                                            const a = getDisplayAssignment(emp.id, dateStr)!
+                                            const Icon = SHIFT_ICONS[a.shift.type] ?? DEFAULT_SHIFT_ICON
+                                            return (
+                                              <div key={emp.id} className="rounded-lg px-2 py-1 flex items-center gap-1.5" style={{ backgroundColor: a.shift.bgColor }}>
+                                                {a.isSubstitution && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />}
+                                                <Icon size={10} style={{ color: a.shift.color }} />
+                                                <span className="text-[10px] font-semibold truncate" style={{ color: a.shift.color }}>{emp.name.split(' ')[0]}</span>
+                                              </div>
+                                            )
+                                          })}
+                                        </div>
+                                      )}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
+                  </div>
+                ))}
               </div>
             ) : (
             <div className="space-y-3">

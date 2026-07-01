@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
     prisma.locationPlanningRules.deleteMany({ where: { locationId } }),
     prisma.shift.deleteMany({ where: { locationId } }),
     prisma.schedulingPeriodNote.deleteMany({ where: { locationId } }),
+    prisma.planningUnit.deleteMany({ where: { locationId } }),
   ])
 
   return NextResponse.json({ success: true })

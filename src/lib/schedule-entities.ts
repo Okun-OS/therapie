@@ -2,7 +2,7 @@
 // SWAP_REQUESTS und WISH_SUBMISSIONS aus mock-data.ts). Server-only.
 import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
-import type { Shift, ScheduleEntry, SwapRequest, WishSubmission, ShiftType, WishImportance, LocationPlanningRules } from './types'
+import type { Shift, ScheduleEntry, SwapRequest, WishSubmission, ShiftType, WishImportance, LocationPlanningRules, PlanningUnit } from './types'
 
 const DEFAULT_PLANNING_RULES: Omit<LocationPlanningRules, 'locationId'> = {
   maxWeeklyHours: 40,
@@ -352,6 +352,65 @@ export async function updateWishSubmission(id: string, updates: Partial<WishSubm
 export async function getPlanningRules(locationId: string): Promise<LocationPlanningRules> {
   const row = await prisma.locationPlanningRules.findUnique({ where: { locationId } })
   return row ? toPlanningRules(row) : { locationId, ...DEFAULT_PLANNING_RULES }
+}
+
+// ─── PlanningUnit CRUD ──────────────────────────────────────────────────────
+
+function toPlanningUnit(row: any): PlanningUnit {
+  return {
+    id: row.id,
+    locationId: row.locationId,
+    name: row.name,
+    type: row.type,
+    description: row.description ?? undefined,
+    capacity: row.capacity ?? undefined,
+    address: row.address ?? undefined,
+    notes: row.notes ?? undefined,
+    sortOrder: row.sortOrder,
+  }
+}
+
+export async function listPlanningUnitsByLocation(locationId: string): Promise<PlanningUnit[]> {
+  const rows = await prisma.planningUnit.findMany({ where: { locationId }, orderBy: { sortOrder: 'asc' } })
+  return rows.map(toPlanningUnit)
+}
+
+export async function upsertPlanningUnit(locationId: string, entry: {
+  name: string
+  type?: string
+  description?: string
+  capacity?: number
+  address?: string
+  notes?: string
+  sortOrder?: number
+}): Promise<PlanningUnit> {
+  const existing = await prisma.planningUnit.findFirst({ where: { locationId, name: { equals: entry.name, mode: 'insensitive' } } })
+  if (existing) {
+    const row = await prisma.planningUnit.update({
+      where: { id: existing.id },
+      data: {
+        type: entry.type ?? existing.type,
+        description: entry.description ?? existing.description,
+        capacity: entry.capacity ?? existing.capacity,
+        address: entry.address ?? existing.address,
+        notes: entry.notes ?? existing.notes,
+        sortOrder: entry.sortOrder ?? existing.sortOrder,
+      },
+    })
+    return toPlanningUnit(row)
+  }
+  const row = await prisma.planningUnit.create({
+    data: { locationId, name: entry.name, type: entry.type ?? 'bereich', description: entry.description, capacity: entry.capacity, address: entry.address, notes: entry.notes, sortOrder: entry.sortOrder ?? 0 },
+  })
+  return toPlanningUnit(row)
+}
+
+export async function deletePlanningUnit(id: string): Promise<void> {
+  await prisma.planningUnit.delete({ where: { id } }).catch(() => null)
+}
+
+export async function deleteAllPlanningUnitsForLocation(locationId: string): Promise<void> {
+  await prisma.planningUnit.deleteMany({ where: { locationId } })
 }
 
 export async function upsertPlanningRules(
