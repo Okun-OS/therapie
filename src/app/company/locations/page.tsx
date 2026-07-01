@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/lib/toast-context'
-import { Building2, Plus, MapPin, Users, Palmtree, Phone, Edit, MoreVertical, ChevronRight, UserCog, Crown } from 'lucide-react'
+import { Building2, Plus, MapPin, Users, Palmtree, Edit, ChevronRight, UserCog, Crown, Mail } from 'lucide-react'
 import type { Location, Employee, VacationRequest } from '@/lib/types'
 
 export default function CompanyLocations() {
@@ -28,7 +28,13 @@ export default function CompanyLocations() {
   const [editForm, setEditForm] = useState({ name: '', address: '', city: '' })
   const [addModal, setAddModal] = useState(false)
   const [newLoc, setNewLoc] = useState({ name: '', address: '', city: '' })
+  const [adminInviteEmail, setAdminInviteEmail] = useState('')
+  const [adminInviteName, setAdminInviteName] = useState('')
   const [addErrors, setAddErrors] = useState<string[]>([])
+  const [inviteModal, setInviteModal] = useState<{ locationId: string; locationName: string } | null>(null)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteName, setInviteName] = useState('')
+  const [inviting, setInviting] = useState(false)
   const [managingAdmin, setManagingAdmin] = useState(false)
 
   const startEditing = (loc: Location) => {
@@ -71,6 +77,9 @@ export default function CompanyLocations() {
     if (!newLoc.name.trim()) errors.push('Name ist erforderlich')
     if (!newLoc.address.trim()) errors.push('Adresse ist erforderlich')
     if (!newLoc.city.trim()) errors.push('Stadt ist erforderlich')
+    if (adminInviteEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminInviteEmail)) {
+      errors.push('E-Mail der Einrichtungsleitung ist ungültig')
+    }
 
     if (errors.length > 0) {
       setAddErrors(errors)
@@ -83,10 +92,61 @@ export default function CompanyLocations() {
       body: JSON.stringify(newLoc),
     }).then(r => r.json()).then(d => d.location)
     setLOCATIONS(prev => [...prev, location])
-    showToast('Standort gespeichert', 'success')
+
+    // Einrichtungsleitung sofort einladen, falls angegeben
+    if (adminInviteEmail.trim()) {
+      try {
+        await fetch('/api/invitations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: adminInviteEmail.trim(),
+            role: 'admin',
+            name: adminInviteName.trim() || undefined,
+            locationId: location.id,
+            customerId: location.customerId,
+          }),
+        })
+        showToast(`Standort angelegt und Einladung an ${adminInviteEmail} gesendet`, 'success')
+      } catch {
+        showToast('Standort angelegt, aber Einladung konnte nicht gesendet werden', 'error')
+      }
+    } else {
+      showToast('Standort gespeichert', 'success')
+    }
+
     setAddModal(false)
     setAddErrors([])
     setNewLoc({ name: '', address: '', city: '' })
+    setAdminInviteEmail('')
+    setAdminInviteName('')
+  }
+
+  const handleSendInvite = async () => {
+    if (!inviteModal || !inviteEmail.trim()) return
+    setInviting(true)
+    try {
+      const loc = LOCATIONS.find(l => l.id === inviteModal.locationId)
+      await fetch('/api/invitations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
+          role: 'admin',
+          name: inviteName.trim() || undefined,
+          locationId: inviteModal.locationId,
+          customerId: loc?.customerId,
+        }),
+      })
+      showToast(`Einladung an ${inviteEmail} gesendet`, 'success')
+      setInviteModal(null)
+      setInviteEmail('')
+      setInviteName('')
+    } catch {
+      showToast('Einladung konnte nicht gesendet werden', 'error')
+    } finally {
+      setInviting(false)
+    }
   }
 
   const locationStats = LOCATIONS.map(loc => {
@@ -304,12 +364,39 @@ export default function CompanyLocations() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setSelected(null); setManagingAdmin(false) }}>Schließen</Button>
-              <Button className="flex-1 gap-2" onClick={() => startEditing(selectedStats)}>
-                <Edit size={16} />
-                Bearbeiten
-              </Button>
+            <div className="flex flex-col gap-2">
+              {!selectedStats.admin && (
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => {
+                    setSelected(null)
+                    setManagingAdmin(false)
+                    setInviteModal({ locationId: selectedStats.id, locationName: selectedStats.name })
+                  }}
+                >
+                  <Mail size={15} />
+                  Einrichtungsleitung einladen
+                </Button>
+              )}
+              <div className="flex gap-2">
+                <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setSelected(null); setManagingAdmin(false) }}>Schließen</Button>
+                <Button className="flex-1 gap-2" onClick={() => startEditing(selectedStats)}>
+                  <Edit size={16} />
+                  Bearbeiten
+                </Button>
+              </div>
+              {selectedStats.admin && (
+                <button
+                  onClick={() => {
+                    setSelected(null)
+                    setManagingAdmin(false)
+                    setInviteModal({ locationId: selectedStats.id, locationName: selectedStats.name })
+                  }}
+                  className="text-xs text-gray-400 hover:text-gray-600 text-center transition-colors"
+                >
+                  Weitere Einrichtungsleitung einladen
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -343,9 +430,83 @@ export default function CompanyLocations() {
             onChange={e => setNewLoc(l => ({ ...l, city: e.target.value }))}
             placeholder="z.B. Frankfurt"
           />
+
+          {/* Optionale Einrichtungsleitung einladen */}
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs font-semibold text-gray-500 mb-3 flex items-center gap-1.5">
+              <Mail size={13} />
+              Einrichtungsleitung einladen (optional)
+            </p>
+            <div className="space-y-3">
+              <Input
+                label="Name der Einrichtungsleitung"
+                value={adminInviteName}
+                onChange={e => setAdminInviteName(e.target.value)}
+                placeholder="z.B. Maria Müller"
+              />
+              <Input
+                label="E-Mail-Adresse"
+                type="email"
+                value={adminInviteEmail}
+                onChange={e => setAdminInviteEmail(e.target.value)}
+                placeholder="m.mueller@beispiel.de"
+              />
+              {adminInviteEmail && (
+                <p className="text-xs text-gray-500">
+                  Eine Einladungs-E-Mail wird nach dem Anlegen des Standorts automatisch verschickt.
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => { setAddModal(false); setAddErrors([]) }}>Abbrechen</Button>
-            <Button className="flex-1" onClick={handleAddLocation}>Speichern</Button>
+            <Button className="flex-1" onClick={handleAddLocation}>
+              {adminInviteEmail ? 'Anlegen & Einladen' : 'Anlegen'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Invite Admin Modal (for existing locations) */}
+      <Modal
+        open={!!inviteModal}
+        onClose={() => { setInviteModal(null); setInviteEmail(''); setInviteName('') }}
+        title={`Einrichtungsleitung einladen – ${inviteModal?.locationName}`}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Die eingeladene Person erhält eine E-Mail mit einem Registrierungslink und bekommt automatisch Zugriff auf diesen Standort.
+          </p>
+          <Input
+            label="Name"
+            value={inviteName}
+            onChange={e => setInviteName(e.target.value)}
+            placeholder="z.B. Maria Müller"
+          />
+          <Input
+            label="E-Mail-Adresse"
+            type="email"
+            value={inviteEmail}
+            onChange={e => setInviteEmail(e.target.value)}
+            placeholder="m.mueller@beispiel.de"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              className="flex-1 border border-gray-200"
+              onClick={() => { setInviteModal(null); setInviteEmail(''); setInviteName('') }}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              className="flex-1 gap-2"
+              onClick={handleSendInvite}
+              disabled={!inviteEmail.trim() || inviting}
+            >
+              <Mail size={15} />
+              {inviting ? 'Wird gesendet…' : 'Einladung senden'}
+            </Button>
           </div>
         </div>
       </Modal>
