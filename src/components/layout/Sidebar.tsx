@@ -30,6 +30,7 @@ const employeeNav: NavItem[] = [
 ]
 
 const adminNav: NavItem[] = [
+  { href: '/admin/assistant', label: 'OKUN Assistent', icon: Sparkles, badge: 'NEU' },
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/onboarding', label: 'KI-Onboarding', icon: MessageCircle, badge: 'KI' },
   { href: '/admin/employees', label: 'Mitarbeiter', icon: Users },
