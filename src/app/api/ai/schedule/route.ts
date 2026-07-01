@@ -8,7 +8,7 @@ import type { Employee, Shift, ShiftFairnessData, WishSubmission } from '@/lib/t
 const client = new Anthropic()
 
 // Cached system prompt – stays in Claude's prompt cache for 5 min
-const SYSTEM_PROMPT = `Du bist ein KI-Assistent für intelligente Dienstplanerstellung in Kindertagesstätten.
+const SYSTEM_PROMPT = `Du bist ein KI-Assistent für flexible, unternehmensindividuelle Dienstplanerstellung. Du arbeitest für Unternehmen aller Branchen – Kitas, Pflegeeinrichtungen, Reinigungsunternehmen, Hotels, Gastronomie, Produktion, Logistik und mehr. Der Planungsaufbau (Schichten, Gruppen, Bereiche, Objekte, Touren usw.) wird vollständig durch das Onboarding und die Konfiguration des jeweiligen Standorts bestimmt; du erfindest niemals eigene Strukturen.
 
 Du erstellst optimale Wochenpläne für Mitarbeiter unter Berücksichtigung folgender Regeln:
 
