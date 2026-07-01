@@ -354,7 +354,9 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
   // The schedule grid (employees × days) dominates response size; scale the
   // token budget with it instead of a fixed cap that truncates longer periods.
   const cellCount = activeEmployees.length * weekDates.length
-  const maxTokens = Math.min(32000, Math.max(8192, 2000 + cellCount * 130))
+  // 300 tokens/cell accounts for taskBlocks arrays, gruppe, funktion,
+  // isSubstitution, decisions, and reasoning fields added after initial estimate.
+  const maxTokens = Math.min(32000, Math.max(16000, 3000 + cellCount * 300))
 
   // Use streaming: the Anthropic SDK refuses non-streaming calls whose maxTokens
   // implies a request that could take longer than 10 minutes (our dynamic
