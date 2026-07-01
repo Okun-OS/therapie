@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listClosurePeriodsByLocation, addClosurePeriod, deleteClosurePeriod } from '@/lib/vacation-entities'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
+import { listLocations } from '@/lib/entities'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
   const session = requireRole(req)
@@ -40,6 +42,25 @@ export async function DELETE(req: NextRequest) {
   if (!id) {
     return NextResponse.json({ error: 'id ist erforderlich' }, { status: 400 })
   }
+
+  const closure = await prisma.closurePeriod.findUnique({ where: { id }, select: { locationId: true } })
+  if (!closure) {
+    return NextResponse.json({ error: 'Schließzeit nicht gefunden' }, { status: 404 })
+  }
+
+  if (session.role === 'admin') {
+    if (closure.locationId !== session.locationId) {
+      return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+    }
+  } else if (session.role === 'company') {
+    const customerId = await resolveCustomerId(session)
+    const locations = await listLocations(customerId)
+    const locationIds = locations.map(l => l.id)
+    if (!locationIds.includes(closure.locationId)) {
+      return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+    }
+  }
+
   await deleteClosurePeriod(id)
   return NextResponse.json({ ok: true })
 }

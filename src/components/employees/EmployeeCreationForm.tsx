@@ -105,6 +105,10 @@ export function EmployeeCreationForm({
       setError('Name und E-Mail sind erforderlich')
       return
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) {
+      setError('Ungültige E-Mail-Adresse')
+      return
+    }
     setError(null)
     setSaving(true)
     try {

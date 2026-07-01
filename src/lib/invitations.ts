@@ -36,6 +36,9 @@ export async function createAndSendInvitation(
   origin: string,
   input: { email: string; role: Role; name?: string; customerName?: string; customerId?: string; employeeId?: string; locationId?: string },
 ) {
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!EMAIL_RE.test(input.email?.trim() ?? '')) throw new Error('Ungültige E-Mail-Adresse')
+
   const invitation = await prisma.invitationToken.create({
     data: {
       token: generateSecureToken(),

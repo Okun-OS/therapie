@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { setShiftMinStaff, updateShift, deleteShift } from '@/lib/schedule-entities'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
+import { listLocations } from '@/lib/entities'
+import { prisma } from '@/lib/prisma'
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = requireRole(req, ['admin', 'company', 'okun'])
@@ -34,6 +36,25 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
+
+  const shift = await prisma.shift.findUnique({ where: { id: params.id }, select: { locationId: true } })
+  if (!shift) {
+    return NextResponse.json({ error: 'Schicht nicht gefunden' }, { status: 404 })
+  }
+
+  if (session.role === 'admin') {
+    if (shift.locationId !== session.locationId) {
+      return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+    }
+  } else if (session.role === 'company') {
+    const customerId = await resolveCustomerId(session)
+    const locations = await listLocations(customerId)
+    const locationIds = locations.map(l => l.id)
+    if (!locationIds.includes(shift.locationId)) {
+      return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+    }
+  }
+  // 'okun' role: allow any
 
   await deleteShift(params.id)
   return NextResponse.json({ ok: true })

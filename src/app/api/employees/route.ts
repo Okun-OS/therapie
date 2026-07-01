@@ -25,6 +25,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { name, email, position, weeklyHours, locationId } = body
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!EMAIL_RE.test(email?.trim() ?? '')) return NextResponse.json({ error: 'Ungültige E-Mail-Adresse' }, { status: 400 })
+
   if (!name?.trim() || !email?.trim() || !position?.trim() || !weeklyHours || !locationId) {
     return NextResponse.json({ error: 'name, email, position, weeklyHours und locationId sind erforderlich' }, { status: 400 })
   }

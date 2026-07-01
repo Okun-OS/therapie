@@ -22,6 +22,8 @@ export function calculateFairnessData(
   return employees.map(emp => {
     const empEntries = entries.filter(e => e.employeeId === emp.id)
 
+    const hasWeekendWork = (ruleLimits?.weekendMax ?? 2) > 0
+
     let earlyCnt = 0, lateCnt = 0, midCnt = 0
     let fridayEarlyCnt = 0, fridayLateCnt = 0
     let mondayEarlyCnt = 0, mondayLateCnt = 0
@@ -33,7 +35,7 @@ export function calculateFairnessData(
       if (!shift) continue
       const dow = new Date(entry.date + 'T00:00:00').getDay() // 0=Sun, 5=Fri, 1=Mon
       dayOfWeekCounts[dow]++
-      if (dow === 0 || dow === 6) weekendCnt++
+      if (hasWeekendWork && (dow === 0 || dow === 6)) weekendCnt++
 
       if (shift.type === 'early') {
         earlyCnt++
@@ -91,7 +93,7 @@ export function calculateFairnessData(
     if (fridayEarlyCnt >= fridayEarlyMax) {
       issues.push(`${fridayEarlyCnt}× Freitag-Frühdienst in 4 Wochen (Limit: ${fridayEarlyMax})`)
     }
-    if (weekendCnt > weekendMax) {
+    if (hasWeekendWork && weekendCnt > weekendMax) {
       issues.push(`${weekendCnt}× Wochenenddienst in 4 Wochen (Limit: ${weekendMax})`)
     }
     if (Math.abs(earlyDebt) > 2) {
@@ -110,7 +112,7 @@ export function calculateFairnessData(
       Math.max(0, fridayLateCnt - fridayLateMax) * 15 +
       Math.max(0, mondayEarlyCnt - mondayEarlyMax) * 15 +
       Math.max(0, fridayEarlyCnt - fridayEarlyMax) * 10 +
-      Math.max(0, weekendCnt - weekendMax) * 10 +
+      (hasWeekendWork ? Math.max(0, weekendCnt - weekendMax) * 10 : 0) +
       Math.max(0, maxConsecutiveDays - 5) * 15
     const fairnessScore = Math.max(0, Math.min(100, 100 - deviationPenalty - specialDayPenalty))
 
@@ -147,6 +149,22 @@ export async function getFairnessInsights(locationId?: string, customerId?: stri
   const employees = allEmployees.filter(e => e.role === 'employee' && e.locationId && locationIds.includes(e.locationId))
   const shifts = (await Promise.all(locationIds.map(id => listShiftsByLocation(id)))).flat()
   const entries = (await Promise.all(locationIds.map(id => getAllEntriesForLocation(id)))).flat()
+
+  // Load planning rules from DB so weekend/special-day limits reflect location config
+  if (!ruleLimits) {
+    const rules = locationId
+      ? await prisma.locationPlanningRules.findUnique({ where: { locationId } })
+      : null
+    if (rules) {
+      ruleLimits = {
+        weekendMax: rules.weekendMax,
+        fridayLateMax: rules.fridayLateMax,
+        mondayEarlyMax: rules.mondayEarlyMax,
+        fridayEarlyMax: rules.fridayEarlyMax,
+      }
+    }
+  }
+
   const fairnessData = calculateFairnessData(employees, entries, shifts, ruleLimits)
 
   const employeeIds = employees.map(e => e.id)
