@@ -619,3 +619,65 @@ model MonthlyClosing {
 
   @@unique([employeeId, year, month])
 }
+
+// ─── Neue Planungsarchitektur: CompanyModel + Solver-Evaluator ───────────────
+
+model CompanyModelRecord {
+  id          String   @id @default(cuid())
+  customerId  String   @unique
+  version     Int      @default(1)
+  model       Json
+  generatedBy String   @default("ai")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LocationRuleModelRecord {
+  id             String   @id @default(cuid())
+  locationId     String   @unique
+  customerId     String
+  version        Int      @default(1)
+  ruleModel      Json
+  companyModelId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model PlanningSession {
+  id            String              @id @default(cuid())
+  locationId    String
+  customerId    String
+  zeitraumVon   String
+  zeitraumBis   String
+  status        String              @default("pending")
+  ruleModelSnap Json
+  finalPlan     Json?
+  finalScore    Float?
+  iterationen   PlanningIteration[]
+  createdAt     DateTime            @default(now())
+  completedAt   DateTime?
+}
+
+model PlanningIteration {
+  id         String          @id @default(cuid())
+  sessionId  String
+  session    PlanningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  nummer     Int
+  planJson   Json
+  bewertung  Json
+  durationMs Int?
+  createdAt  DateTime        @default(now())
+
+  @@unique([sessionId, nummer])
+}
+
+model PlanningRuleFeedback {
+  id         String   @id @default(cuid())
+  locationId String
+  customerId String
+  regelTyp   String
+  regelId    String
+  feedback   String
+  kommentar  String?
+  createdAt  DateTime @default(now())
+}

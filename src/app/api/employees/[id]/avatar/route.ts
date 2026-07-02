@@ -34,8 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updated = await (prisma.employee as any).update({
+  const updated = await prisma.employee.update({
     where: { id: params.id },
     data: { avatarUrl: avatarDataUrl },
   })
