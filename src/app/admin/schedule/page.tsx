@@ -109,6 +109,8 @@ export default function AdminSchedule() {
   const [saved, setSaved] = useState(false)
   const [facilityDescription, setFacilityDescription] = useState('')
   const [periodNotes, setPeriodNotes] = useState<{ id: string; note: string }[]>([])
+  const [quickEventInput, setQuickEventInput] = useState('')
+  const [quickEventSaving, setQuickEventSaving] = useState(false)
   const [planningChatOpen, setPlanningChatOpen] = useState(false)
   const [editChatOpen, setEditChatOpen] = useState(false)
   const [planningRules, setPlanningRules] = useState<PlanningRules>(DEFAULT_RULES)
@@ -268,6 +270,26 @@ export default function AdminSchedule() {
       })
     }
     showToast(changes.length > 0 || permanentRules.length > 0 ? 'Dienstplan-Änderungen übernommen' : 'Danke, notiert')
+  }
+
+  async function addQuickEvent() {
+    const text = quickEventInput.trim()
+    if (!text || !locationId || !weekStart || quickEventSaving) return
+    setQuickEventSaving(true)
+    const note = text.startsWith('Ereignis:') || text.startsWith('Aufgabe:') || text.startsWith('Hinweis:')
+      ? text
+      : `Ereignis: ${text}`
+    const res = await fetch('/api/scheduling-period-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locationId, weekStart, note }),
+    })
+    const json = await res.json()
+    if (json.note) {
+      setPeriodNotes(prev => [...prev, json.note])
+      setQuickEventInput('')
+    }
+    setQuickEventSaving(false)
   }
 
   async function removePeriodNote(id: string) {
@@ -791,7 +813,7 @@ export default function AdminSchedule() {
                     </div>
                     <p className="text-[11px] text-gray-400 mb-1.5">Gilt ausschließlich für {formatDateShort(weekStart)} – {formatDateShort(weekEnd)}, z.B. Ereignisse, zusätzliche Aufgaben oder Mitarbeiterbesonderheiten. Wird nicht in künftige Zeiträume übernommen.</p>
                     {periodNotes.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5 mb-2">
                         {periodNotes.map(n => (
                           <span key={n.id} className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded-full">
                             {n.note}
@@ -802,6 +824,23 @@ export default function AdminSchedule() {
                         ))}
                       </div>
                     )}
+                    <div className="flex gap-2">
+                      <input
+                        value={quickEventInput}
+                        onChange={e => setQuickEventInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addQuickEvent() } }}
+                        placeholder="Termin hinzufügen, z.B. Team-Meeting Montag 14h…"
+                        disabled={quickEventSaving}
+                        className="flex-1 text-xs border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent disabled:opacity-50"
+                      />
+                      <button
+                        onClick={addQuickEvent}
+                        disabled={!quickEventInput.trim() || quickEventSaving}
+                        className="px-3 py-1.5 text-xs font-semibold bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <label className="flex items-center gap-2 cursor-pointer">
