@@ -7,26 +7,47 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Logo } from '@/components/ui/Logo'
 import Link from 'next/link'
-import { Mail, Lock } from 'lucide-react'
+import { Mail, Lock, ShieldCheck, ArrowLeft } from 'lucide-react'
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, loginWithTotp } = useAuth()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // TOTP second step
+  const [pendingToken, setPendingToken] = useState<string | null>(null)
+  const [totpCode, setTotpCode] = useState('')
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const ok = await login(email, password)
-    if (ok) {
+    const result = await login(email, password)
+    if (result.ok) {
+      const user = JSON.parse(sessionStorage.getItem('dienstplan_user') || '{}')
+      router.push(`/${user.role}`)
+    } else if (result.requiresTOTP && result.pendingToken) {
+      setPendingToken(result.pendingToken)
+    } else {
+      setError('E-Mail oder Passwort ungültig. Nutze den Einladungslink aus deiner E-Mail oder setze dein Passwort zurück.')
+    }
+    setLoading(false)
+  }
+
+  const handleTotpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!pendingToken) return
+    setError('')
+    setLoading(true)
+    const result = await loginWithTotp(pendingToken, totpCode)
+    if (result.ok) {
       const user = JSON.parse(sessionStorage.getItem('dienstplan_user') || '{}')
       router.push(`/${user.role}`)
     } else {
-      setError('E-Mail oder Passwort ungültig. Nutze den Einladungslink aus deiner E-Mail oder setze dein Passwort zurück.')
+      setError(result.error ?? 'Ungültiger Code. Bitte erneut versuchen.')
     }
     setLoading(false)
   }
@@ -83,46 +104,92 @@ export default function LoginPage() {
             </div>
 
             <div className="p-6 pt-2">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <Input
-                  label="E-Mail"
-                  icon={Mail}
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="name@firma.de"
-                  required
-                />
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-sm font-semibold text-navy">Passwort</label>
-                    <Link href="/forgot-password" className="text-xs text-brand font-medium hover:underline">
-                      Passwort vergessen?
-                    </Link>
-                  </div>
+              {!pendingToken ? (
+                <form onSubmit={handleLogin} className="space-y-4">
                   <Input
-                    icon={Lock}
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    label="E-Mail"
+                    icon={Mail}
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="name@firma.de"
+                    required
                   />
-                </div>
-
-                {error && (
-                  <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">
-                    {error}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-semibold text-navy">Passwort</label>
+                      <Link href="/forgot-password" className="text-xs text-brand font-medium hover:underline">
+                        Passwort vergessen?
+                      </Link>
+                    </div>
+                    <Input
+                      icon={Lock}
+                      type="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                    />
                   </div>
-                )}
 
-                <Button type="submit" className="w-full" size="lg" loading={loading}>
-                  Anmelden
-                </Button>
+                  {error && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
 
-                <p className="text-center text-xs text-gray-400">
-                  Noch kein Konto? Nutze den Einladungslink aus deiner E-Mail.
-                </p>
-              </form>
+                  <Button type="submit" className="w-full" size="lg" loading={loading}>
+                    Anmelden
+                  </Button>
+
+                  <p className="text-center text-xs text-gray-400">
+                    Noch kein Konto? Nutze den Einladungslink aus deiner E-Mail.
+                  </p>
+                </form>
+              ) : (
+                <form onSubmit={handleTotpSubmit} className="space-y-4">
+                  <div className="flex items-center gap-3 bg-teal-50 border border-teal-100 rounded-xl px-4 py-3">
+                    <ShieldCheck size={20} className="text-teal-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-teal-800">Zwei-Faktor-Authentifizierung</p>
+                      <p className="text-xs text-teal-600">Bitte gib den 6-stelligen Code aus deiner Authenticator-App ein.</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-navy mb-1.5">Authenticator-Code</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9 ]*"
+                      maxLength={7}
+                      value={totpCode}
+                      onChange={e => setTotpCode(e.target.value.replace(/[^0-9 ]/g, ''))}
+                      placeholder="000 000"
+                      autoFocus
+                      className="w-full px-4 py-3 text-center text-2xl font-mono tracking-[0.4em] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+
+                  <Button type="submit" className="w-full" size="lg" loading={loading}>
+                    Bestätigen
+                  </Button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setPendingToken(null); setTotpCode(''); setError('') }}
+                    className="w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-navy transition-colors"
+                  >
+                    <ArrowLeft size={14} />
+                    Zurück zur Anmeldung
+                  </button>
+                </form>
+              )}
             </div>
           </div>
 

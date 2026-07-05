@@ -236,6 +236,8 @@ model User {
   locationId   String?
   customerId   String?
   customerName String?
+  totpSecret   String?
+  totpEnabled  Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

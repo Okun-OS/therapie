@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyPassword } from '@/lib/auth'
-import { setSessionCookie, type SessionRole } from '@/lib/session'
+import { setSessionCookie, createPendingToken, type SessionRole } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +14,11 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.findUnique({ where: { email: String(email).trim().toLowerCase() } })
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     return NextResponse.json({ error: 'E-Mail oder Passwort ungültig' }, { status: 401 })
+  }
+
+  if (user.totpEnabled) {
+    const pendingToken = createPendingToken(user.id)
+    return NextResponse.json({ requiresTOTP: true, pendingToken })
   }
 
   const res = NextResponse.json({

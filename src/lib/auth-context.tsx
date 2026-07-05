@@ -3,10 +3,18 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import type { User } from './types'
 
+export interface LoginResult {
+  ok: boolean
+  requiresTOTP?: boolean
+  pendingToken?: string
+  error?: string
+}
+
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<LoginResult>
+  loginWithTotp: (pendingToken: string, totpCode: string) => Promise<LoginResult>
   logout: () => void
 }
 
@@ -41,20 +49,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false))
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-      if (!res.ok) return false
+      if (!res.ok) return { ok: false }
+      const data = await res.json()
+      if (data.requiresTOTP) {
+        return { ok: false, requiresTOTP: true, pendingToken: data.pendingToken }
+      }
+      const { user: loggedInUser } = data
+      setUser(loggedInUser)
+      sessionStorage.setItem('dienstplan_user', JSON.stringify(loggedInUser))
+      return { ok: true }
+    } catch {
+      return { ok: false }
+    }
+  }
+
+  const loginWithTotp = async (pendingToken: string, totpCode: string): Promise<LoginResult> => {
+    try {
+      const res = await fetch('/api/auth/2fa/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pendingToken, totpCode }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        return { ok: false, error: data.error }
+      }
       const { user: loggedInUser } = await res.json()
       setUser(loggedInUser)
       sessionStorage.setItem('dienstplan_user', JSON.stringify(loggedInUser))
-      return true
+      return { ok: true }
     } catch {
-      return false
+      return { ok: false }
     }
   }
 
@@ -65,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginWithTotp, logout }}>
       {children}
     </AuthContext.Provider>
   )

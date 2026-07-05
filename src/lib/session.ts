@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'crypto'
+import { createHmac, timingSafeEqual, randomBytes } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from './prisma'
 
@@ -131,4 +131,38 @@ export async function resolveLocationId(session: SessionPayload): Promise<string
   if (session.locationId) return session.locationId
   const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { locationId: true } })
   return user?.locationId ?? undefined
+}
+
+/**
+ * Creates a short-lived signed token encoding a userId, used as a TOTP
+ * "pending" token between login step 1 (password) and step 2 (TOTP code).
+ * Expires after 5 minutes.
+ */
+export function createPendingToken(userId: string): string {
+  const nonce = randomBytes(8).toString('hex')
+  const exp = Date.now() + 5 * 60 * 1000
+  const data = Buffer.from(JSON.stringify({ userId, exp, nonce })).toString('base64url')
+  const signature = createHmac('sha256', getSecret()).update(data).digest('base64url')
+  return `${data}.${signature}`
+}
+
+/**
+ * Verifies a pending TOTP token. Returns the userId if valid, null otherwise.
+ */
+export function verifyPendingToken(token: string): { userId: string } | null {
+  if (!token) return null
+  const parts = token.split('.')
+  if (parts.length !== 2) return null
+  const [data, signature] = parts
+  const expectedSignature = createHmac('sha256', getSecret()).update(data).digest('base64url')
+  const sigBuf = Buffer.from(signature)
+  const expectedBuf = Buffer.from(expectedSignature)
+  if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) return null
+  try {
+    const payload = JSON.parse(Buffer.from(data, 'base64url').toString('utf8')) as { userId: string; exp: number }
+    if (Date.now() > payload.exp) return null
+    return { userId: payload.userId }
+  } catch {
+    return null
+  }
 }

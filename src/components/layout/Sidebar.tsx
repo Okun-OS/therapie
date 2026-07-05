@@ -9,7 +9,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import {
   LayoutDashboard, Calendar, CalendarDays, Clock, Palmtree, User, Users, ClipboardList,
   Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart, Scale, ShieldAlert, Brain, MessageCircle,
-  KeyRound, LifeBuoy, Mail, Settings, ListChecks, Euro
+  KeyRound, LifeBuoy, Mail, Settings, ListChecks, Euro, ShieldCheck
 } from 'lucide-react'
 
 interface NavItem {
@@ -147,6 +147,13 @@ export function Sidebar() {
             <p className="text-navy-100 text-xs truncate">{user?.email}</p>
           </div>
         </div>
+        <Link
+          href="/account/security"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-navy-100 hover:bg-navy-light hover:text-white transition-colors mb-1"
+        >
+          <ShieldCheck size={16} />
+          Sicherheit &amp; 2FA
+        </Link>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-navy-100 hover:bg-red-500/20 hover:text-red-300 transition-colors"
