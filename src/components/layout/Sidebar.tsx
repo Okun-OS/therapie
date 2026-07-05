@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { Logo } from '@/components/ui/Logo'
 import { Avatar } from '@/components/ui/Avatar'
 import {
-  LayoutDashboard, Calendar, Clock, Palmtree, User, Users, ClipboardList,
+  LayoutDashboard, Calendar, CalendarDays, Clock, Palmtree, User, Users, ClipboardList,
   Building2, MapPin, BarChart3, LogOut, ChevronRight, Sparkles, MessageSquare, UserPlus, Trophy, LineChart, Scale, ShieldAlert, Brain, MessageCircle,
   KeyRound, LifeBuoy, Mail, Settings, ListChecks
 } from 'lucide-react'
@@ -36,6 +36,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/onboarding', label: 'KI-Onboarding', icon: MessageCircle, badge: 'KI' },
   { href: '/admin/employees', label: 'Mitarbeiter', icon: Users },
   { href: '/admin/schedule', label: 'Dienstplan', icon: Calendar, badge: 'KI' },
+  { href: '/admin/calendar', label: 'Kalender', icon: CalendarDays },
   { href: '/admin/vacation-requests', label: 'Urlaubsanträge', icon: Palmtree },
   { href: '/admin/vacation-plan', label: 'Urlaubsplan', icon: ClipboardList, badge: 'KI' },
   { href: '/admin/tasks', label: 'Aufgaben', icon: ListChecks },
