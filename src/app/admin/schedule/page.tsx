@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
+import { getPublicHolidayName } from '@/lib/holidays'
 import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, PlanningUnit } from '@/lib/types'
 import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import {
@@ -928,11 +929,13 @@ export default function AdminSchedule() {
                               {week.slice(0, 5).map((day, i) => {
                                 const dateStr = toDateString(day)
                                 const isTodayDay = dateStr === toDateString(new Date())
+                                const holiday = getPublicHolidayName(dateStr, location?.bundesland)
                                 return (
-                                  <th key={dateStr} className={`text-center p-3 text-xs font-semibold min-w-[90px] ${isTodayDay ? 'text-brand' : 'text-white'}`}>
+                                  <th key={dateStr} className={`text-center p-3 text-xs font-semibold min-w-[90px] ${holiday ? 'bg-red-900/30' : ''} ${isTodayDay ? 'text-brand' : 'text-white'}`}>
                                     <div className="flex flex-col items-center">
                                       <span>{getDayName(dateStr, true)}</span>
-                                      <span className={`text-lg font-bold ${isTodayDay ? 'text-brand' : 'text-white'}`}>{day.getDate()}</span>
+                                      <span className={`text-lg font-bold ${isTodayDay ? 'text-brand' : holiday ? 'text-red-300' : 'text-white'}`}>{day.getDate()}</span>
+                                      {holiday && <span className="text-[8px] text-red-300 font-bold uppercase tracking-wide truncate max-w-[80px]">{holiday}</span>}
                                     </div>
                                   </th>
                                 )
@@ -1011,16 +1014,19 @@ export default function AdminSchedule() {
                             const isTodayDay = dateStr === toDateString(new Date())
                             const isFriday = i === 4
                             const isMonday = i === 0
+                            const holiday = !isWeekend ? getPublicHolidayName(dateStr, location?.bundesland) : undefined
                             return (
-                              <th key={dateStr} className={`text-center p-3 text-xs font-semibold min-w-[90px] ${isWeekend ? 'text-gray-500' : isTodayDay ? 'text-brand' : (isFriday || isMonday) ? 'text-yellow-300' : 'text-white'}`}>
+                              <th key={dateStr} className={`text-center p-3 text-xs font-semibold min-w-[90px] ${holiday ? 'bg-red-900/30' : ''} ${isWeekend ? 'text-gray-500' : isTodayDay ? 'text-brand' : (isFriday || isMonday) ? 'text-yellow-300' : 'text-white'}`}>
                                 <div className="flex flex-col items-center">
                                   <span>{getDayName(dateStr, true)}</span>
-                                  <span className={`text-lg font-bold ${isTodayDay ? 'text-brand' : isWeekend ? 'text-gray-500' : 'text-white'}`}>{day.getDate()}</span>
-                                  {(isFriday || isMonday) && !isWeekend && (
+                                  <span className={`text-lg font-bold ${isTodayDay ? 'text-brand' : isWeekend ? 'text-gray-500' : holiday ? 'text-red-300' : 'text-white'}`}>{day.getDate()}</span>
+                                  {holiday ? (
+                                    <span className="text-[8px] text-red-300 font-bold uppercase tracking-wide truncate max-w-[80px]">{holiday}</span>
+                                  ) : (isFriday || isMonday) && !isWeekend ? (
                                     <span className="text-[8px] text-yellow-300 font-bold uppercase tracking-wide">
                                       {isFriday ? 'Freitag' : 'Montag'}
                                     </span>
-                                  )}
+                                  ) : null}
                                 </div>
                               </th>
                             )

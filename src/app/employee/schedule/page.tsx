@@ -25,6 +25,7 @@ import {
   getWeekDays, toDateString, formatDateShort, formatDate,
   getDayName, isToday,
 } from '@/lib/utils'
+import { getPublicHolidayName } from '@/lib/holidays'
 import type { ScheduleEntry } from '@/lib/types'
 
 const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase }
@@ -253,16 +254,18 @@ export default function EmployeeSchedule() {
                 const todayFlag = isToday(dateStr)
                 const isPast = day < new Date(new Date().setHours(0, 0, 0, 0))
                 const Icon = shift ? SHIFT_ICONS[shift.type] : null
+                const holiday = getPublicHolidayName(dateStr, location?.bundesland)
 
                 return (
                   <div
                     key={dateStr}
-                    className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${todayFlag ? 'border-brand bg-amber-50' : 'border-gray-100 bg-white'} ${isPast && !todayFlag ? 'opacity-60' : ''}`}
+                    className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${todayFlag ? 'border-brand bg-amber-50' : holiday ? 'border-red-200 bg-red-50/40' : 'border-gray-100 bg-white'} ${isPast && !todayFlag ? 'opacity-60' : ''}`}
                   >
-                    <div className={`w-14 text-center flex-shrink-0 ${todayFlag ? 'text-navy' : 'text-gray-500'}`}>
+                    <div className={`w-14 text-center flex-shrink-0 ${todayFlag ? 'text-navy' : holiday ? 'text-red-600' : 'text-gray-500'}`}>
                       <p className="text-xs font-medium">{getDayName(dateStr, true)}</p>
                       <p className="text-xl font-bold">{day.getDate()}</p>
                       {todayFlag && <div className="w-1.5 h-1.5 rounded-full bg-brand mx-auto mt-0.5" />}
+                      {holiday && <p className="text-[8px] font-bold text-red-500 leading-tight mt-0.5 truncate">{holiday}</p>}
                     </div>
 
                     {shift && Icon && entry ? (

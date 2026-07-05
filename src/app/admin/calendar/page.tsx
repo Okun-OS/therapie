@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { ChevronLeft, ChevronRight, CalendarDays, List, X } from 'lucide-react'
+import { getPublicHolidayName } from '@/lib/holidays'
 
 interface ScheduleEntry {
   id: string
@@ -76,6 +77,18 @@ export default function CalendarPage() {
   const [view, setView] = useState<'month' | 'week'>('month')
 
   const locationId = (user as any)?.locationId as string | undefined
+  const [bundesland, setBundesland] = useState<string | undefined>()
+
+  useEffect(() => {
+    if (!locationId) return
+    fetch(`/api/locations`)
+      .then(r => r.json())
+      .then(d => {
+        const loc = (d.locations ?? []).find((l: { id: string; bundesland?: string }) => l.id === locationId)
+        if (loc?.bundesland) setBundesland(loc.bundesland)
+      })
+      .catch(() => {})
+  }, [locationId])
 
   const loadData = useCallback(async (year: number, month: number) => {
     if (!locationId) return
@@ -218,6 +231,7 @@ export default function CalendarPage() {
                     const isToday = ds === todayStr
                     const isSelected = ds === selectedDay
                     const isPast = day < today && !isToday
+                    const holiday = getPublicHolidayName(ds, bundesland)
                     return (
                       <button
                         key={ci}
@@ -227,17 +241,22 @@ export default function CalendarPage() {
                             ? 'border-teal-400 bg-teal-50 shadow-sm'
                             : isToday
                             ? 'border-teal-300 bg-white shadow-sm'
+                            : holiday
+                            ? 'border-red-200 bg-red-50/50 hover:border-red-300 hover:shadow-sm'
                             : 'border-gray-100 bg-white hover:border-gray-300 hover:shadow-sm'
                         } ${isPast ? 'opacity-60' : ''}`}
                       >
-                        <div className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${
-                          isToday ? 'bg-teal-600 text-white' : isSelected ? 'text-teal-700' : 'text-gray-700'
+                        <div className={`text-xs font-medium mb-0.5 w-6 h-6 flex items-center justify-center rounded-full ${
+                          isToday ? 'bg-teal-600 text-white' : isSelected ? 'text-teal-700' : holiday ? 'text-red-700' : 'text-gray-700'
                         }`}>
                           {day.getDate()}
                         </div>
+                        {holiday && (
+                          <div className="text-[8px] text-red-500 font-semibold leading-tight truncate mb-0.5">{holiday}</div>
+                        )}
                         {dayData.length > 0 && (
                           <div className="space-y-0.5">
-                            {dayData.slice(0, 3).map((d, i) => (
+                            {dayData.slice(0, holiday ? 2 : 3).map((d, i) => (
                               <div
                                 key={i}
                                 className="text-[9px] leading-tight rounded px-1 py-0.5 truncate font-medium"
@@ -246,8 +265,8 @@ export default function CalendarPage() {
                                 {d.employee.name.split(' ')[0]}
                               </div>
                             ))}
-                            {dayData.length > 3 && (
-                              <div className="text-[9px] text-gray-400 font-medium pl-1">+{dayData.length - 3}</div>
+                            {dayData.length > (holiday ? 2 : 3) && (
+                              <div className="text-[9px] text-gray-400 font-medium pl-1">+{dayData.length - (holiday ? 2 : 3)}</div>
                             )}
                           </div>
                         )}
@@ -279,15 +298,20 @@ export default function CalendarPage() {
                 {weekDays.map((d, i) => {
                   const ds = isoDate(d)
                   const isToday = ds === todayStr
+                  const holiday = getPublicHolidayName(ds, bundesland)
                   return (
                     <button
                       key={i}
                       onClick={() => setSelectedDay(ds)}
-                      className={`py-2 text-center transition-colors ${isToday ? 'bg-teal-50' : 'hover:bg-gray-50'}`}
+                      className={`py-2 text-center transition-colors ${isToday ? 'bg-teal-50' : holiday ? 'bg-red-50/60' : 'hover:bg-gray-50'}`}
                     >
                       <div className="text-xs text-gray-400">{WEEKDAYS[i]}</div>
-                      <div className={`text-sm font-semibold ${isToday ? 'text-teal-600' : 'text-gray-800'}`}>{d.getDate()}</div>
-                      <div className="text-xs text-gray-400">{dayEntries(ds).length || ''}</div>
+                      <div className={`text-sm font-semibold ${isToday ? 'text-teal-600' : holiday ? 'text-red-600' : 'text-gray-800'}`}>{d.getDate()}</div>
+                      {holiday ? (
+                        <div className="text-[8px] text-red-400 font-medium truncate px-0.5 leading-tight">{holiday}</div>
+                      ) : (
+                        <div className="text-xs text-gray-400">{dayEntries(ds).length || ''}</div>
+                      )}
                     </button>
                   )
                 })}
