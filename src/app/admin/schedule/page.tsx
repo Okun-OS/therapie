@@ -17,7 +17,7 @@ import { useToast } from '@/lib/toast-context'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import { getPublicHolidayName } from '@/lib/holidays'
-import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, PlanningUnit } from '@/lib/types'
+import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, PlanningUnit, TaskBlock } from '@/lib/types'
 import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, MoonStar, Briefcase,
@@ -42,6 +42,7 @@ interface ScheduleAssignment {
   funktion?: string
   isSubstitution?: boolean
   substitutionFor?: string
+  taskBlocks?: TaskBlock[]
 }
 
 interface PlanningRules {
@@ -98,7 +99,7 @@ export default function AdminSchedule() {
   const [aiReasoning, setAiReasoning] = useState<string | null>(null)
   const [aiDecisions, setAiDecisions] = useState<{ type: string; message: string }[]>([])
   const [aiAssignmentReasons, setAiAssignmentReasons] = useState<Record<string, string>>({})
-  const [explainEntry, setExplainEntry] = useState<{ employeeName: string; shiftName: string; dateStr: string; reason: string | null } | null>(null)
+  const [explainEntry, setExplainEntry] = useState<{ employeeName: string; shiftName: string; dateStr: string; reason: string | null; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null>(null)
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
   const [aiDecisionQuestion, setAiDecisionQuestion] = useState<string | null>(null)
   const [decisionLoading, setDecisionLoading] = useState(false)
@@ -364,19 +365,19 @@ export default function AdminSchedule() {
     .filter(a => a.locationId === locationId && a.verificationStatus !== 'abgelehnt' && a.startDate <= periodEnd && a.endDate >= periodStart)
     .map(a => ({ employeeId: a.employeeId, employeeName: a.employeeName, startDate: a.startDate, endDate: a.endDate, type: a.type }))
 
-  const getDisplayAssignment = (empId: string, dateStr: string): { shift: Shift; startTime: string; endTime: string; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string } | null => {
+  const getDisplayAssignment = (empId: string, dateStr: string): { shift: Shift; startTime: string; endTime: string; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null => {
     if (generatedSchedule) {
       const assignment = generatedSchedule[empId]?.[dateStr]
       if (!assignment) return null
       const shift = locationShifts.find(s => s.id === assignment.shiftId)
       if (!shift) return null
-      return { shift, startTime: assignment.startTime ?? shift.startTime, endTime: assignment.endTime ?? shift.endTime, gruppe: assignment.gruppe, funktion: assignment.funktion, isSubstitution: assignment.isSubstitution, substitutionFor: assignment.substitutionFor }
+      return { shift, startTime: assignment.startTime ?? shift.startTime, endTime: assignment.endTime ?? shift.endTime, gruppe: assignment.gruppe, funktion: assignment.funktion, isSubstitution: assignment.isSubstitution, substitutionFor: assignment.substitutionFor, taskBlocks: assignment.taskBlocks }
     }
     const entry = existingEntries.find(e => e.employeeId === empId && e.date === dateStr)
     if (!entry) return null
     const shift = locationShifts.find(s => s.id === entry.shiftId)
     if (!shift) return null
-    return { shift, startTime: entry.startTime ?? shift.startTime, endTime: entry.endTime ?? shift.endTime, gruppe: entry.gruppe, funktion: entry.funktion, isSubstitution: entry.isSubstitution, substitutionFor: entry.substitutionFor }
+    return { shift, startTime: entry.startTime ?? shift.startTime, endTime: entry.endTime ?? shift.endTime, gruppe: entry.gruppe, funktion: entry.funktion, isSubstitution: entry.isSubstitution, substitutionFor: entry.substitutionFor, taskBlocks: entry.taskBlocks }
   }
 
   const getDisplayReason = (empId: string, dateStr: string): string | null => {
@@ -972,10 +973,15 @@ export default function AdminSchedule() {
                                             const a = getDisplayAssignment(emp.id, dateStr)!
                                             const Icon = SHIFT_ICONS[a.shift.type] ?? DEFAULT_SHIFT_ICON
                                             return (
-                                              <div key={emp.id} className="rounded-lg px-2 py-1 flex items-center gap-1.5" style={{ backgroundColor: a.shift.bgColor }}>
-                                                {a.isSubstitution && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />}
-                                                <Icon size={10} style={{ color: a.shift.color }} />
-                                                <span className="text-[10px] font-semibold truncate" style={{ color: a.shift.color }}>{emp.name.split(' ')[0]}</span>
+                                              <div key={emp.id} className="rounded-lg px-2 py-1 flex flex-col gap-0.5" style={{ backgroundColor: a.shift.bgColor }}>
+                                                <div className="flex items-center gap-1.5">
+                                                  {a.isSubstitution && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />}
+                                                  <Icon size={10} style={{ color: a.shift.color }} />
+                                                  <span className="text-[10px] font-semibold truncate" style={{ color: a.shift.color }}>{emp.name.split(' ')[0]}</span>
+                                                </div>
+                                                {a.funktion && (
+                                                  <span className="text-[8px] leading-tight truncate italic" style={{ color: a.shift.color, opacity: 0.65 }}>{a.funktion}</span>
+                                                )}
                                               </div>
                                             )
                                           })}
@@ -1104,6 +1110,11 @@ export default function AdminSchedule() {
                                               shiftName: assignment.shift.name,
                                               dateStr,
                                               reason: getDisplayReason(emp.id, dateStr),
+                                              gruppe: assignment.gruppe,
+                                              funktion: assignment.funktion,
+                                              isSubstitution: assignment.isSubstitution,
+                                              substitutionFor: assignment.substitutionFor,
+                                              taskBlocks: assignment.taskBlocks,
                                             })}
                                             className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity relative"
                                             style={{ backgroundColor: assignment.shift.bgColor }}
@@ -1116,6 +1127,9 @@ export default function AdminSchedule() {
                                             <span className="text-[10px] font-semibold" style={{ color: assignment.shift.color }}>{assignment.startTime}–{assignment.endTime}</span>
                                             {assignment.gruppe && (
                                               <span className="text-[9px] leading-tight truncate max-w-full" style={{ color: assignment.shift.color, opacity: 0.75 }}>{assignment.gruppe}</span>
+                                            )}
+                                            {assignment.funktion && (
+                                              <span className="text-[9px] leading-tight truncate max-w-full italic" style={{ color: assignment.shift.color, opacity: 0.6 }}>{assignment.funktion}</span>
                                             )}
                                           </div>
                                         ) : (
@@ -1470,15 +1484,47 @@ export default function AdminSchedule() {
       </Modal>
 
       {/* Explain Assignment Modal */}
-      <Modal open={!!explainEntry} onClose={() => setExplainEntry(null)} title="Warum diese Zuweisung?" size="sm">
+      <Modal open={!!explainEntry} onClose={() => setExplainEntry(null)} title="Zuweisung" size="sm">
         {explainEntry && (
           <div className="space-y-3">
             <div className="text-sm text-gray-700">
               <span className="font-semibold">{explainEntry.employeeName}</span> · {explainEntry.shiftName} · {formatDateShort(explainEntry.dateStr)}
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              {explainEntry.reason ?? 'Für diese Zuweisung liegt keine gespeicherte KI-Begründung vor (z. B. weil sie manuell erstellt oder bearbeitet wurde).'}
-            </p>
+            {(explainEntry.gruppe || explainEntry.funktion || explainEntry.isSubstitution) && (
+              <div className="flex flex-wrap gap-1.5">
+                {explainEntry.gruppe && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-navy/10 text-xs font-medium text-navy">{explainEntry.gruppe}</span>
+                )}
+                {explainEntry.funktion && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-brand/10 text-xs font-medium text-brand">{explainEntry.funktion}</span>
+                )}
+                {explainEntry.isSubstitution && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-xs font-medium text-amber-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    {explainEntry.substitutionFor ? `Vertretung: ${explainEntry.substitutionFor}` : 'Vertretung'}
+                  </span>
+                )}
+              </div>
+            )}
+            {explainEntry.taskBlocks && explainEntry.taskBlocks.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">Aufgabenplan</p>
+                <div className="space-y-1">
+                  {explainEntry.taskBlocks.map((block, i) => (
+                    <div key={i} className="flex items-start gap-2.5 p-2 rounded-lg bg-gray-50 border border-gray-100">
+                      <span className="text-xs font-mono text-gray-400 flex-shrink-0">{block.start}–{block.end}</span>
+                      <span className="text-xs text-navy">{block.aufgabe}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1">KI-Begründung</p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {explainEntry.reason ?? 'Für diese Zuweisung liegt keine gespeicherte KI-Begründung vor (z. B. weil sie manuell erstellt oder bearbeitet wurde).'}
+              </p>
+            </div>
           </div>
         )}
       </Modal>
