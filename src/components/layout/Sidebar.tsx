@@ -56,6 +56,7 @@ const companyNav: NavItem[] = [
   { href: '/company/locations', label: 'Standorte', icon: MapPin },
   { href: '/company/schedule', label: 'Dienstpläne', icon: Calendar },
   { href: '/company/vacation-plan', label: 'Jahresurlaubsplanung', icon: Palmtree },
+  { href: '/company/substitutions', label: 'Vertretungen', icon: UserPlus },
   { href: '/company/workforce-score', label: 'Workforce Score', icon: Trophy, badge: 'KI' },
   { href: '/company/workforce-insights', label: 'Workforce Insights', icon: LineChart, badge: 'KI' },
   { href: '/company/fairness-engine', label: 'Fairness Engine', icon: Scale, badge: 'KI' },
