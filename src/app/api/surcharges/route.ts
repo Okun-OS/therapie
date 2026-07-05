@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireRole, resolveLocationId } from '@/lib/session'
-import { aggregateSurcharges } from '@/lib/surcharge-engine'
+import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
+import { aggregateWithRules, DEFAULT_SURCHARGE_RULES } from '@/lib/surcharge-engine'
+import type { ConfiguredSurchargeRule } from '@/lib/surcharge-engine'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company'])
@@ -14,6 +17,9 @@ export async function GET(req: NextRequest) {
   const year = yearParam ? parseInt(yearParam) : new Date().getFullYear()
   const month = monthParam ? parseInt(monthParam) : new Date().getMonth() + 1
 
+  const customerId = await resolveCustomerId(session)
+  if (!customerId) return NextResponse.json({ error: 'customerId fehlt' }, { status: 400 })
+
   const locationId = locationIdParam ?? (await resolveLocationId(session))
   if (!locationId) {
     return NextResponse.json({ error: 'locationId nicht gefunden' }, { status: 400 })
@@ -22,24 +28,31 @@ export async function GET(req: NextRequest) {
   const dateFrom = `${year}-${String(month).padStart(2, '0')}-01`
   const dateTo = `${year}-${String(month).padStart(2, '0')}-31`
 
-  // Fetch location for bundesland
-  const location = await prisma.location.findUnique({
-    where: { id: locationId },
-    select: { bundesland: true },
-  })
+  const [location, ruleSet] = await Promise.all([
+    prisma.location.findUnique({ where: { id: locationId }, select: { bundesland: true } }),
+    prisma.surchargeRuleSet.findFirst({
+      where: { customerId, locationId: locationId ?? null },
+      include: { rules: { orderBy: { sortOrder: 'asc' } }, wageConfigs: true },
+    }),
+  ])
+
   const bundesland = location?.bundesland ?? undefined
 
-  // Fetch all time logs for this location + month
+  const rules: ConfiguredSurchargeRule[] = (ruleSet?.rules ?? []).length > 0
+    ? (ruleSet!.rules as unknown as ConfiguredSurchargeRule[])
+    : DEFAULT_SURCHARGE_RULES
+
+  const wageByEmployee: Record<string, number> = {}
+  for (const wc of ruleSet?.wageConfigs ?? []) {
+    if (wc.employeeId) wageByEmployee[wc.employeeId] = wc.hourlyWage
+  }
+  const defaultWage = ruleSet?.defaultHourlyWage ?? undefined
+
   const logs = await prisma.timeLog.findMany({
-    where: {
-      locationId,
-      date: { gte: dateFrom, lte: dateTo },
-      clockOut: { not: null },
-    },
+    where: { locationId, date: { gte: dateFrom, lte: dateTo }, clockOut: { not: null } },
     orderBy: { date: 'asc' },
   })
 
-  // Fetch employees to get names
   const employeeIds = Array.from(new Set(logs.map(l => l.employeeId)))
   const employees = await prisma.employee.findMany({
     where: { id: { in: employeeIds } },
@@ -47,7 +60,6 @@ export async function GET(req: NextRequest) {
   })
   const empMap = Object.fromEntries(employees.map(e => [e.id, e.name]))
 
-  // Group by employee
   const byEmployee = new Map<string, { employeeId: string; employeeName: string; entries: { date: string; clockIn: string; clockOut: string; totalMinutes: number }[] }>()
   for (const log of logs) {
     if (!log.clockOut) continue
@@ -66,8 +78,22 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const rows = aggregateSurcharges(Array.from(byEmployee.values()), bundesland)
+  const rows = aggregateWithRules(
+    Array.from(byEmployee.values()),
+    rules,
+    bundesland,
+    wageByEmployee,
+    defaultWage,
+  )
   rows.sort((a, b) => a.employeeName.localeCompare(b.employeeName, 'de'))
 
-  return NextResponse.json({ rows, year, month, locationId, bundesland })
+  return NextResponse.json({
+    rows,
+    ruleSet: ruleSet ?? null,
+    usingDefaults: (ruleSet?.rules ?? []).length === 0,
+    year,
+    month,
+    locationId,
+    bundesland,
+  })
 }

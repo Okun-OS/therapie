@@ -688,3 +688,52 @@ model PlanningRuleFeedback {
   kommentar  String?
   createdAt  DateTime @default(now())
 }
+
+// ── Zuschlags-Engine ──────────────────────────────────────────────────────────
+
+model SurchargeRuleSet {
+  id                  String               @id @default(cuid())
+  customerId          String
+  locationId          String?
+  name                String               @default("Zuschlagsregelwerk")
+  defaultHourlyWage   Float?
+  onboardingCompleted Boolean              @default(false)
+  onboardingMessages  Json?
+  rules               SurchargeRule[]
+  wageConfigs         SurchargeWageConfig[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model SurchargeRule {
+  id               String           @id @default(cuid())
+  ruleSetId        String
+  ruleSet          SurchargeRuleSet @relation(fields: [ruleSetId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  type             String           // night|sunday|holiday|saturday|overtime|shift_24h|oncall_passive|oncall_active|custom
+  timeStart        String?          // HH:MM, null = full shift
+  timeEnd          String?          // HH:MM
+  daysOfWeek       Int[]            // 0=Sun…6=Sat, empty = all days
+  includeHolidays  Boolean          @default(false)
+  excludeHolidays  Boolean          @default(false)
+  rateType         String           // percent | fixed_per_hour | fixed_per_shift
+  rateValue        Float
+  priority         Int              @default(0)
+  roundingMinutes  Int              @default(0)
+  maxMinutesPerDay Int?
+  isActive         Boolean          @default(true)
+  sortOrder        Int              @default(0)
+  createdAt        DateTime         @default(now())
+}
+
+model SurchargeWageConfig {
+  id         String           @id @default(cuid())
+  ruleSetId  String
+  ruleSet    SurchargeRuleSet @relation(fields: [ruleSetId], references: [id], onDelete: Cascade)
+  employeeId String?          // null = location default
+  hourlyWage Float
+  validFrom  String           // YYYY-MM-DD
+  validTo    String?          // YYYY-MM-DD, null = ongoing
+  createdAt  DateTime         @default(now())
+}
