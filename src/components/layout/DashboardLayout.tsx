@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { Sidebar } from './Sidebar'
 import { MobileNav } from './MobileNav'
 import { SystemTour } from '@/components/onboarding/SystemTour'
+import { FloatingHelp } from '@/components/ui/FloatingHelp'
 import type { Role } from '@/lib/types'
 
 interface DashboardLayoutProps {
@@ -52,6 +53,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
       </div>
       <MobileNav />
       <SystemTour role={user.role} />
+      <FloatingHelp />
     </div>
   )
 }
