@@ -32,7 +32,8 @@ Regeln:
 5. Setze "confirmed" auf true, sobald die Leitung die Zusammenfassung ausdrücklich bestätigt.
 6. Antworte IMMER zusätzlich mit einem kurzen Text, auch wenn du das Tool aufrufst.
 7. Erfinde niemals Angaben, die nicht genannt wurden oder sich nicht sinnvoll ableiten lassen.
-8. Schreibe ausschließlich auf Deutsch.`
+8. Schreibe ausschließlich auf Deutsch.
+9. GESPRÄCHSFÜHRUNG: Beende jeden Beitrag immer mit einer konkreten Folgefrage, einem klaren nächsten Schritt oder einer Bestätigung zum Abhaken. Brich niemals mitten in einem Gedanken ab und hinterlasse niemals einen Beitrag ohne erkennbaren Handlungsansatz für den Nutzer. Das Gespräch endet erst nach einer vollständigen Abschlussbestätigung.`
 
 const TOOL = {
   name: 'update_substitution_draft',

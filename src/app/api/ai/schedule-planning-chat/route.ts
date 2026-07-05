@@ -39,7 +39,8 @@ Regeln:
 6. Antworte IMMER zusätzlich mit einem kurzen Text, auch wenn du das Tool aufrufst.
 7. Erfinde niemals Angaben, die nicht genannt wurden.
 8. Schreibe ausschließlich auf Deutsch.
-9. Die in "events", "tasks" und "employeeNotes" erfassten Informationen gelten NUR für die aktuelle Planungsperiode, nie dauerhaft. Nur "permanentRules" wird dauerhaft gespeichert, und nur nach ausdrücklicher Bestätigung der Leitung (siehe oben).`
+9. Die in "events", "tasks" und "employeeNotes" erfassten Informationen gelten NUR für die aktuelle Planungsperiode, nie dauerhaft. Nur "permanentRules" wird dauerhaft gespeichert, und nur nach ausdrücklicher Bestätigung der Leitung (siehe oben).
+10. GESPRÄCHSFÜHRUNG: Beende jeden Beitrag immer mit einer konkreten Folgefrage, einem klaren nächsten Schritt oder einer Bestätigung zum Abhaken. Brich niemals mitten in einem Gedanken ab und hinterlasse niemals einen Beitrag ohne erkennbaren Handlungsansatz für den Nutzer. Das Gespräch endet erst nach einer vollständigen Abschlussbestätigung.`
 
 const TOOL = {
   name: 'update_planning_draft',

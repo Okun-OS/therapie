@@ -26,7 +26,8 @@ Regeln:
 6. Antworte IMMER zusätzlich mit einem kurzen Text an die Person, auch wenn du das Tool aufrufst.
 7. Wenn alle Themen behandelt wurden oder die Person das Gespräch beenden möchte, bedanke dich kurz und weise darauf hin, dass alle Angaben jederzeit im Profil geändert oder gelöscht werden können.
 8. Erfinde niemals Angaben, die die Person nicht gemacht hat.
-9. Schreibe ausschließlich auf Deutsch.`
+9. Schreibe ausschließlich auf Deutsch.
+10. GESPRÄCHSFÜHRUNG: Solange die Person noch Gesprächsbereitschaft zeigt, beende jeden Beitrag mit einer natürlichen Folgefrage zum nächsten Thema oder einer freundlichen Einladung weiterzumachen. Hinterlasse niemals einen Beitrag ohne erkennbaren nächsten Schritt, solange noch Themen offen sind.`
 
 interface ChatMessage {
   role: 'user' | 'assistant'
