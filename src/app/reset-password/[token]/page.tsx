@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Logo } from '@/components/ui/Logo'
 import { Lock, Mail, CheckCircle2, AlertCircle } from 'lucide-react'
+import { PasswordStrength } from '@/components/ui/PasswordStrength'
 
 export default function ResetPasswordPage({ params }: { params: { token: string } }) {
   const [loading, setLoading] = useState(true)
@@ -30,7 +31,9 @@ export default function ResetPasswordPage({ params }: { params: { token: string 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const errs: string[] = []
-    if (password.length < 8) errs.push('Passwort muss mindestens 8 Zeichen lang sein')
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password) || password.length < 8) {
+      errs.push('Passwort erfüllt die Mindestanforderungen nicht (siehe Anzeige unten)')
+    }
     if (password !== confirmPassword) errs.push('Passwörter stimmen nicht überein')
     if (errs.length > 0) {
       setErrors(errs)
@@ -102,6 +105,7 @@ export default function ResetPasswordPage({ params }: { params: { token: string 
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Mindestens 8 Zeichen"
               />
+              <PasswordStrength password={password} className="mt-2" />
 
               <Input
                 label="Passwort bestätigen"

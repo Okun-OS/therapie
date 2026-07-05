@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { hashPassword } from '@/lib/auth'
+import { hashPassword, validatePassword } from '@/lib/auth'
 import { setSessionCookie, type SessionRole } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
@@ -8,8 +8,12 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
   const { password, name } = await req.json()
 
-  if (!password || typeof password !== 'string' || password.length < 8) {
-    return NextResponse.json({ error: 'Passwort muss mindestens 8 Zeichen lang sein' }, { status: 400 })
+  if (!password || typeof password !== 'string') {
+    return NextResponse.json({ error: 'Passwort ist erforderlich' }, { status: 400 })
+  }
+  const pwResult = validatePassword(password)
+  if (!pwResult.valid) {
+    return NextResponse.json({ error: pwResult.errors.join(', ') }, { status: 400 })
   }
 
   const invitation = await prisma.invitationToken.findUnique({ where: { token: params.token } })

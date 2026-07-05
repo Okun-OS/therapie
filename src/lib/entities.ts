@@ -48,6 +48,11 @@ function toLocation(row: any): Location {
     address: row.address,
     city: row.city,
     state: row.state,
+    zip: row.zip ?? undefined,
+    street: row.street ?? undefined,
+    houseNumber: row.houseNumber ?? undefined,
+    country: row.country ?? undefined,
+    bundesland: row.bundesland ?? undefined,
     employeeCount: row.employeeCount,
     adminId: row.adminId,
     active: row.active,
@@ -119,14 +124,30 @@ export async function updateEmployee(id: string, updates: Partial<Employee>): Pr
   }
 }
 
-export async function addLocation(input: { name: string; address: string; city: string; state?: string; customerId?: string }): Promise<Location> {
+export async function addLocation(input: {
+  name: string
+  address: string
+  city: string
+  state?: string
+  zip?: string
+  street?: string
+  houseNumber?: string
+  country?: string
+  bundesland?: string
+  customerId?: string
+}): Promise<Location> {
   const row = await prisma.location.create({
     data: {
       customerId: input.customerId,
       name: input.name,
       address: input.address,
       city: input.city,
-      state: input.state || 'Berlin',
+      state: input.state || input.bundesland || '',
+      zip: input.zip,
+      street: input.street,
+      houseNumber: input.houseNumber,
+      country: input.country || 'Deutschland',
+      bundesland: input.bundesland,
       employeeCount: 0,
       adminId: '',
       active: true,

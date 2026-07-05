@@ -278,6 +278,11 @@ model Location {
   address       String
   city          String
   state         String
+  zip           String?
+  street        String?
+  houseNumber   String?
+  country       String?
+  bundesland    String?
   employeeCount Int      @default(0)
   adminId       String
   active        Boolean  @default(true)

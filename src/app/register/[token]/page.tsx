@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Logo } from '@/components/ui/Logo'
+import { PasswordStrength } from '@/components/ui/PasswordStrength'
 import { Lock, Mail, CheckCircle2, AlertCircle } from 'lucide-react'
 
 const ROLE_LABEL: Record<string, string> = {
@@ -47,7 +48,9 @@ export default function RegisterPage({ params }: { params: { token: string } }) 
     e.preventDefault()
     const errs: string[] = []
     if (!name.trim()) errs.push('Name ist erforderlich')
-    if (password.length < 8) errs.push('Passwort muss mindestens 8 Zeichen lang sein')
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password) || password.length < 8) {
+      errs.push('Passwort erfüllt die Mindestanforderungen nicht (siehe Anzeige unten)')
+    }
     if (password !== confirmPassword) errs.push('Passwörter stimmen nicht überein')
     if (errs.length > 0) {
       setErrors(errs)
@@ -131,6 +134,7 @@ export default function RegisterPage({ params }: { params: { token: string } }) 
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Mindestens 8 Zeichen"
               />
+              <PasswordStrength password={password} className="mt-2" />
 
               <Input
                 label="Passwort bestätigen"

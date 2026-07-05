@@ -12,6 +12,11 @@ export interface Location {
   address: string
   city: string
   state: string
+  zip?: string
+  street?: string
+  houseNumber?: string
+  country?: string
+  bundesland?: string
   employeeCount: number
   adminId: string
   active: boolean

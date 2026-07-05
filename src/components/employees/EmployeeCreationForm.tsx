@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -54,6 +54,8 @@ export function EmployeeCreationForm({
   const [roles, setRoles] = useState<string[]>([])
   const [addingRole, setAddingRole] = useState(false)
   const [newRole, setNewRole] = useState('')
+  const [emailTaken, setEmailTaken] = useState(false)
+  const emailCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -64,6 +66,25 @@ export function EmployeeCreationForm({
     if (!open) return
     fetch('/api/roles').then(r => r.json()).then(d => setRoles(d.roles ?? [])).catch(() => {})
   }, [open])
+
+  useEffect(() => {
+    if (isEditMode) return
+    const email = draft.email?.trim()
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailTaken(false)
+      return
+    }
+    if (emailCheckTimer.current) clearTimeout(emailCheckTimer.current)
+    emailCheckTimer.current = setTimeout(() => {
+      fetch(`/api/check-email?email=${encodeURIComponent(email)}`)
+        .then(r => r.json())
+        .then(d => setEmailTaken(!d.available))
+        .catch(() => {})
+    }, 500)
+    return () => {
+      if (emailCheckTimer.current) clearTimeout(emailCheckTimer.current)
+    }
+  }, [draft.email, isEditMode])
 
   function update<K extends keyof EmployeeDraft>(key: K, value: EmployeeDraft[K]) {
     setDraft(prev => ({ ...prev, [key]: value }))
@@ -109,6 +130,10 @@ export function EmployeeCreationForm({
       setError('Ungültige E-Mail-Adresse')
       return
     }
+    if (!isEditMode && emailTaken) {
+      setError('Diese E-Mail-Adresse ist bereits im System registriert.')
+      return
+    }
     setError(null)
     setSaving(true)
     try {
@@ -146,7 +171,10 @@ export function EmployeeCreationForm({
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <Input label="Name *" value={draft.name ?? ''} onChange={e => update('name', e.target.value)} placeholder="Vor- und Nachname" />
-          <Input label="E-Mail *" type="email" value={draft.email ?? ''} onChange={e => update('email', e.target.value)} placeholder="name@beispiel.de" />
+          <div>
+            <Input label="E-Mail *" type="email" value={draft.email ?? ''} onChange={e => update('email', e.target.value)} placeholder="name@beispiel.de" />
+            {emailTaken && <p className="text-xs text-red-600 mt-0.5">Diese E-Mail ist bereits vergeben</p>}
+          </div>
           <Input label="Telefon" value={draft.phone ?? ''} onChange={e => update('phone', e.target.value)} />
           <Input label="Geburtsdatum" type="date" value={draft.birthDate ?? ''} onChange={e => update('birthDate', e.target.value)} />
         </div>

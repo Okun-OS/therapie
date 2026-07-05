@@ -21,12 +21,25 @@ export async function POST(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const body = await req.json()
-  const { name, address, city, state } = body
+  const { name, city, state, zip, street, houseNumber, country, bundesland } = body
+  // Support both old flat address and new structured fields
+  const address = (street && houseNumber) ? `${street} ${houseNumber}` : (body.address?.trim() || street || '')
 
-  if (!name?.trim() || !address?.trim() || !city?.trim()) {
-    return NextResponse.json({ error: 'name, address und city sind erforderlich' }, { status: 400 })
+  if (!name?.trim() || !city?.trim()) {
+    return NextResponse.json({ error: 'name und city sind erforderlich' }, { status: 400 })
   }
 
-  const location = await addLocation({ name, address, city, state, customerId: await resolveCustomerId(session) })
+  const location = await addLocation({
+    name,
+    address,
+    city,
+    state,
+    zip,
+    street,
+    houseNumber,
+    country,
+    bundesland,
+    customerId: await resolveCustomerId(session),
+  })
   return NextResponse.json({ location })
 }

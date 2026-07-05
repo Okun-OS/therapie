@@ -73,6 +73,10 @@ export async function POST(req: NextRequest) {
     if (err instanceof Error && err.message === 'Standort nicht gefunden') {
       return NextResponse.json({ error: err.message }, { status: 404 })
     }
+    const prismaErr = err as { code?: string }
+    if (prismaErr?.code === 'P2002') {
+      return NextResponse.json({ error: 'Diese E-Mail-Adresse ist bereits im System registriert.' }, { status: 409 })
+    }
     console.error('employees POST', err)
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
     return NextResponse.json({ error: message }, { status: 500 })

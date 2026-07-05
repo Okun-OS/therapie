@@ -25,9 +25,9 @@ export default function CompanyLocations() {
 
   const [selected, setSelected] = useState<Location | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ name: '', address: '', city: '' })
+  const [editForm, setEditForm] = useState({ name: '', street: '', houseNumber: '', zip: '', city: '', bundesland: '', country: 'Deutschland' })
   const [addModal, setAddModal] = useState(false)
-  const [newLoc, setNewLoc] = useState({ name: '', address: '', city: '' })
+  const [newLoc, setNewLoc] = useState({ name: '', street: '', houseNumber: '', zip: '', city: '', bundesland: '', country: 'Deutschland' })
   const [adminInviteEmail, setAdminInviteEmail] = useState('')
   const [adminInviteName, setAdminInviteName] = useState('')
   const [addErrors, setAddErrors] = useState<string[]>([])
@@ -38,20 +38,29 @@ export default function CompanyLocations() {
   const [managingAdmin, setManagingAdmin] = useState(false)
 
   const startEditing = (loc: Location) => {
-    setEditForm({ name: loc.name, address: loc.address, city: loc.city })
+    setEditForm({
+      name: loc.name,
+      street: loc.street || '',
+      houseNumber: loc.houseNumber || '',
+      zip: loc.zip || '',
+      city: loc.city,
+      bundesland: loc.bundesland || loc.state || '',
+      country: loc.country || 'Deutschland',
+    })
     setIsEditing(true)
   }
 
   const saveEdit = async () => {
     if (!selected) return
-    if (!editForm.name.trim() || !editForm.address.trim() || !editForm.city.trim()) {
-      showToast('Bitte alle Pflichtfelder ausfüllen', 'error')
+    if (!editForm.name.trim() || !editForm.city.trim()) {
+      showToast('Name und Stadt sind erforderlich', 'error')
       return
     }
+    const address = editForm.street ? `${editForm.street}${editForm.houseNumber ? ' ' + editForm.houseNumber : ''}` : selected.address
     const updated = await fetch(`/api/locations/${selected.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
+      body: JSON.stringify({ ...editForm, address, state: editForm.bundesland }),
     }).then(r => r.json()).then(d => d.location)
     setLOCATIONS(prev => prev.map(l => l.id === updated.id ? updated : l))
     showToast('Standort aktualisiert', 'success')
@@ -75,7 +84,6 @@ export default function CompanyLocations() {
   const handleAddLocation = async () => {
     const errors: string[] = []
     if (!newLoc.name.trim()) errors.push('Name ist erforderlich')
-    if (!newLoc.address.trim()) errors.push('Adresse ist erforderlich')
     if (!newLoc.city.trim()) errors.push('Stadt ist erforderlich')
     if (adminInviteEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminInviteEmail)) {
       errors.push('E-Mail der Einrichtungsleitung ist ungültig')
@@ -86,10 +94,11 @@ export default function CompanyLocations() {
       return
     }
 
+    const address = newLoc.street ? `${newLoc.street}${newLoc.houseNumber ? ' ' + newLoc.houseNumber : ''}` : ''
     const location = await fetch('/api/locations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newLoc),
+      body: JSON.stringify({ ...newLoc, address }),
     }).then(r => r.json()).then(d => d.location)
     setLOCATIONS(prev => [...prev, location])
 
@@ -117,7 +126,7 @@ export default function CompanyLocations() {
 
     setAddModal(false)
     setAddErrors([])
-    setNewLoc({ name: '', address: '', city: '' })
+    setNewLoc({ name: '', street: '', houseNumber: '', zip: '', city: '', bundesland: '', country: 'Deutschland' })
     setAdminInviteEmail('')
     setAdminInviteName('')
   }
@@ -205,7 +214,10 @@ export default function CompanyLocations() {
                     <p className="text-white font-bold">{loc.name}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <MapPin size={11} className="text-navy-100" />
-                      <p className="text-navy-100 text-xs">{loc.address}, {loc.city}</p>
+                      <p className="text-navy-100 text-xs">
+                        {loc.street ? `${loc.street}${loc.houseNumber ? ' ' + loc.houseNumber : ''}, ` : loc.address ? loc.address + ', ' : ''}
+                        {loc.zip ? loc.zip + ' ' : ''}{loc.city}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -274,15 +286,53 @@ export default function CompanyLocations() {
               value={editForm.name}
               onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
             />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Input
+                  label="Straße"
+                  value={editForm.street}
+                  onChange={e => setEditForm(f => ({ ...f, street: e.target.value }))}
+                  placeholder="Musterstraße"
+                />
+              </div>
+              <div className="w-28">
+                <Input
+                  label="Hausnummer"
+                  value={editForm.houseNumber}
+                  onChange={e => setEditForm(f => ({ ...f, houseNumber: e.target.value }))}
+                  placeholder="12a"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <div className="w-32">
+                <Input
+                  label="PLZ"
+                  value={editForm.zip}
+                  onChange={e => setEditForm(f => ({ ...f, zip: e.target.value }))}
+                  placeholder="10115"
+                />
+              </div>
+              <div className="flex-1">
+                <Input
+                  label="Stadt"
+                  value={editForm.city}
+                  onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+                  placeholder="Berlin"
+                />
+              </div>
+            </div>
             <Input
-              label="Adresse"
-              value={editForm.address}
-              onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
+              label="Bundesland"
+              value={editForm.bundesland}
+              onChange={e => setEditForm(f => ({ ...f, bundesland: e.target.value }))}
+              placeholder="Berlin"
             />
             <Input
-              label="Stadt"
-              value={editForm.city}
-              onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+              label="Land"
+              value={editForm.country}
+              onChange={e => setEditForm(f => ({ ...f, country: e.target.value }))}
+              placeholder="Deutschland"
             />
             <div className="flex gap-2">
               <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setIsEditing(false)}>Abbrechen</Button>
@@ -299,7 +349,11 @@ export default function CompanyLocations() {
               </div>
               <div>
                 <p className="text-xl font-bold text-navy">{selectedStats.name}</p>
-                <p className="text-gray-500 text-sm">{selectedStats.address}, {selectedStats.city}</p>
+                <p className="text-gray-500 text-sm">
+                  {selectedStats.street
+                    ? `${selectedStats.street}${selectedStats.houseNumber ? ' ' + selectedStats.houseNumber : ''}, ${selectedStats.zip ? selectedStats.zip + ' ' : ''}${selectedStats.city}${selectedStats.bundesland ? ', ' + selectedStats.bundesland : ''}${selectedStats.country && selectedStats.country !== 'Deutschland' ? ', ' + selectedStats.country : ''}`
+                    : `${selectedStats.address ? selectedStats.address + ', ' : ''}${selectedStats.city}`}
+                </p>
               </div>
             </div>
 
@@ -418,17 +472,47 @@ export default function CompanyLocations() {
             onChange={e => setNewLoc(l => ({ ...l, name: e.target.value }))}
             placeholder="z.B. Kita Sonnenblume"
           />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Input
+                label="Straße"
+                value={newLoc.street}
+                onChange={e => setNewLoc(l => ({ ...l, street: e.target.value }))}
+                placeholder="Musterstraße"
+              />
+            </div>
+            <div className="w-28">
+              <Input
+                label="Hausnummer"
+                value={newLoc.houseNumber}
+                onChange={e => setNewLoc(l => ({ ...l, houseNumber: e.target.value }))}
+                placeholder="12a"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="w-32">
+              <Input
+                label="PLZ"
+                value={newLoc.zip}
+                onChange={e => setNewLoc(l => ({ ...l, zip: e.target.value }))}
+                placeholder="10115"
+              />
+            </div>
+            <div className="flex-1">
+              <Input
+                label="Stadt"
+                value={newLoc.city}
+                onChange={e => setNewLoc(l => ({ ...l, city: e.target.value }))}
+                placeholder="z.B. Frankfurt"
+              />
+            </div>
+          </div>
           <Input
-            label="Adresse"
-            value={newLoc.address}
-            onChange={e => setNewLoc(l => ({ ...l, address: e.target.value }))}
-            placeholder="Straße Hausnummer"
-          />
-          <Input
-            label="Stadt"
-            value={newLoc.city}
-            onChange={e => setNewLoc(l => ({ ...l, city: e.target.value }))}
-            placeholder="z.B. Frankfurt"
+            label="Bundesland"
+            value={newLoc.bundesland}
+            onChange={e => setNewLoc(l => ({ ...l, bundesland: e.target.value }))}
+            placeholder="z.B. Hessen"
           />
 
           {/* Optionale Einrichtungsleitung einladen */}
