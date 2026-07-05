@@ -6,6 +6,7 @@ import { listLocations } from '@/lib/entities'
 import { listShiftsByLocation, addShift, updateShift, getPlanningRules, upsertPlanningRules, listPlanningUnitsByLocation, upsertPlanningUnit } from '@/lib/schedule-entities'
 import { resetBreakRulesExtraction } from '@/lib/break-rules-service'
 import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
+import { generateCompanyModelFromOnboarding } from '@/lib/company-model-service'
 import type { ShiftType } from '@/lib/types'
 
 const client = new Anthropic()
@@ -321,6 +322,7 @@ export async function POST(req: NextRequest) {
             nextIndividuelleRegeln = incoming.length >= existingIndividuelleRegeln.length ? incoming : merged
             existingIndividuelleRegeln = nextIndividuelleRegeln
           }
+          const isNowCompleted = input.completed === true
           savedState = await upsertLocationOnboarding(scope, {
             einrichtungsart: typeof input.einrichtungsart === 'string' ? input.einrichtungsart : undefined,
             organisationsstruktur: typeof input.organisationsstruktur === 'string' ? input.organisationsstruktur : undefined,
@@ -338,6 +340,11 @@ export async function POST(req: NextRequest) {
             completedPhases: Array.isArray(input.completedPhases) ? input.completedPhases as string[] : undefined,
             completed: typeof input.completed === 'boolean' ? input.completed : undefined,
           })
+          if (isNowCompleted && customerId) {
+            generateCompanyModelFromOnboarding(customerId).catch(err =>
+              console.error('CompanyModel-Generierung nach Onboarding fehlgeschlagen:', err)
+            )
+          }
           if (typeof input.pausenlogik === 'string' && input.pausenlogik.trim() !== (existingPausenlogik ?? '').trim()) {
             await resetBreakRulesExtraction(scope)
           }

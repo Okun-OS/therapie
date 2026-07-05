@@ -384,38 +384,67 @@ export default function AdminSchedule() {
 
     try {
       const weekDates = periodWeekdayDates
+      const von = periodWeekdayDates[0]
+      const bis = periodWeekdayDates[periodWeekdayDates.length - 1]
 
-      const res = await fetch('/api/ai/schedule', {
+      // Try new Solver-Evaluator-Orchestrator endpoint first
+      const newRes = await fetch('/api/ai/solve-schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          employees,
-          shifts: locationShifts,
-          fairnessData,
-          wishSubmissions: planningRules.considerWishes ? wishSubmissions : [],
-          weekDates,
           locationId,
-          locationName: location?.name ?? 'Standort',
-          facilityDescription: facilityDescription.trim() || undefined,
-          confirmedDecisionQuestion,
-          approvedVacations,
-          reportedAbsences,
+          von,
+          bis,
+          kontext: facilityDescription.trim() || undefined,
         }),
       })
+
+      let data: Record<string, unknown>
+      let usedNewEngine = false
+
+      if (newRes.ok) {
+        data = await newRes.json()
+        usedNewEngine = true
+      } else if (newRes.status === 422) {
+        // No CompanyModel yet — fall back to legacy endpoint
+        const legacyRes = await fetch('/api/ai/schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            employees,
+            shifts: locationShifts,
+            fairnessData,
+            wishSubmissions: planningRules.considerWishes ? wishSubmissions : [],
+            weekDates,
+            locationId,
+            locationName: location?.name ?? 'Standort',
+            facilityDescription: facilityDescription.trim() || undefined,
+            confirmedDecisionQuestion,
+            approvedVacations,
+            reportedAbsences,
+          }),
+        })
+        if (!legacyRes.ok) {
+          const err = await legacyRes.json().catch(() => ({ error: legacyRes.statusText }))
+          throw new Error(err.error ?? 'API-Fehler')
+        }
+        data = await legacyRes.json()
+      } else {
+        const err = await newRes.json().catch(() => ({ error: newRes.statusText }))
+        throw new Error(err.error ?? 'API-Fehler')
+      }
 
       clearInterval(interval)
       setAiStep(AI_STEPS.length - 1)
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }))
-        throw new Error(err.error ?? 'API-Fehler')
-      }
-
-      const data = await res.json()
-
-      // API returns { date: { empId: { shiftId, startTime, endTime } } } – transpose to { empId: { date: assignment } }
       const transposed: Record<string, Record<string, ScheduleAssignment>> = {}
-      if (data.schedule) {
+      if (usedNewEngine && data.week) {
+        // New engine returns { empId: { date: { shiftId, ... } } } — no transposing needed
+        for (const [empId, dates] of Object.entries(data.week as Record<string, Record<string, ScheduleAssignment>>)) {
+          transposed[empId] = dates
+        }
+      } else if (data.schedule) {
+        // Legacy engine returns { date: { empId: { shiftId, ... } } } — transpose
         for (const [date, assignments] of Object.entries(data.schedule as Record<string, Record<string, ScheduleAssignment>>)) {
           for (const [empId, assignment] of Object.entries(assignments)) {
             if (!transposed[empId]) transposed[empId] = {}
@@ -425,8 +454,24 @@ export default function AdminSchedule() {
       }
 
       setGeneratedSchedule(transposed)
-      setAiReasoning(data.reasoning ? sanitizeAiText(data.reasoning) : null)
-      const decisions = (data.decisions ?? []) as { type: string; message: string; employeeId?: string; date?: string }[]
+
+      // Normalize decisions from both engine formats
+      type NewDecision = { typ: string; beschreibung: string; betroffeneMitarbeiter?: string[]; betroffenesDatum?: string }
+      type OldDecision = { type: string; message: string; employeeId?: string; date?: string }
+      const decisions: OldDecision[] = usedNewEngine
+        ? ((data.decisions ?? []) as NewDecision[]).map(d => ({
+            type: d.typ,
+            message: d.beschreibung,
+            employeeId: d.betroffeneMitarbeiter?.[0],
+            date: d.betroffenesDatum,
+          }))
+        : ((data.decisions ?? []) as OldDecision[])
+
+      const reasoning = usedNewEngine
+        ? ((data.bewertung as Record<string, unknown>)?.zusammenfassung as string | undefined) ?? null
+        : (data.reasoning as string | undefined) ?? null
+
+      setAiReasoning(reasoning ? sanitizeAiText(reasoning) : null)
       setAiDecisions(decisions.map(d => ({ ...d, message: sanitizeAiText(d.message) })))
       const reasonsByEntry: Record<string, string> = {}
       decisions.forEach(d => {
@@ -435,9 +480,14 @@ export default function AdminSchedule() {
         }
       })
       setAiAssignmentReasons(reasonsByEntry)
-      setAiWarnings((data.warnings ?? []).map((w: string) => sanitizeAiText(w)))
-      setAiDecisionQuestion(confirmedDecisionQuestion ? null : (data.decisionQuestion ? sanitizeAiText(data.decisionQuestion) : null))
-      setFallback(data.fallback ? { ...data.fallback, message: sanitizeAiText(data.fallback.message) } : null)
+      setAiWarnings(((data.warnings ?? []) as string[]).map((w: string) => sanitizeAiText(w)))
+      setAiDecisionQuestion(confirmedDecisionQuestion ? null : (data.decisionQuestion ? sanitizeAiText(data.decisionQuestion as string) : null))
+      if (data.fallback) {
+        const fb = data.fallback as { date: string; shiftId: string; message: string }
+        setFallback({ date: fb.date, shiftId: fb.shiftId, message: sanitizeAiText(fb.message) })
+      } else {
+        setFallback(null)
+      }
       setFallbackHandled(false)
       setAiDone(true)
     } catch (err: unknown) {
