@@ -912,7 +912,7 @@ export async function POST(req: NextRequest) {
     let response: Anthropic.Messages.Message
     try {
       response = await client.messages.create({
-        model: 'claude-opus-4-7',
+        model: 'claude-opus-4-8',
         max_tokens: 4096,
         system: systemPrompt,
         messages,

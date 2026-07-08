@@ -364,7 +364,7 @@ Antworte ausschließlich mit dem JSON-Objekt. Kein Markdown, kein Text davor ode
   const requestSchedule = (messages: Anthropic.MessageParam[]) =>
     client.messages
       .stream({
-        model: 'claude-opus-4-7',
+        model: 'claude-opus-4-8',
         max_tokens: maxTokens,
         system: [
           {
