@@ -7,6 +7,7 @@ import { Sidebar } from './Sidebar'
 import { MobileNav } from './MobileNav'
 import { SystemTour } from '@/components/onboarding/SystemTour'
 import { FloatingHelp } from '@/components/ui/FloatingHelp'
+import { BugReportButton } from '@/components/ui/BugReportButton'
 import type { Role } from '@/lib/types'
 
 interface DashboardLayoutProps {
@@ -54,6 +55,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
       <MobileNav />
       <SystemTour role={user.role} />
       <FloatingHelp />
+      <BugReportButton />
     </div>
   )
 }

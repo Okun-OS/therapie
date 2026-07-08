@@ -31,6 +31,28 @@ import type { ScheduleEntry } from '@/lib/types'
 const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase }
 
 type Tab = 'schedule' | 'swaps' | 'wishes'
+type CalView = 'day' | 'week' | 'month'
+
+const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
+const MONTH_NAMES_FULL = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+const WEEKDAY_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+
+function getMonthGrid(year: number, month: number): (Date | null)[][] {
+  const first = new Date(year, month, 1)
+  const last = new Date(year, month + 1, 0)
+  const startDow = (first.getDay() + 6) % 7
+  const rows: (Date | null)[][] = []
+  let row: (Date | null)[] = Array(startDow).fill(null)
+  for (let d = 1; d <= last.getDate(); d++) {
+    row.push(new Date(year, month, d))
+    if (row.length === 7) { rows.push(row); row = [] }
+  }
+  if (row.length > 0) {
+    while (row.length < 7) row.push(null)
+    rows.push(row)
+  }
+  return rows
+}
 
 export default function EmployeeSchedule() {
   const { user } = useAuth()
@@ -44,6 +66,7 @@ export default function EmployeeSchedule() {
   const [wishModal, setWishModal] = useState(false)
   const [wish, setWish] = useState({ type: '', date: '', reason: '', importance: 'normal' })
   const [calendarModal, setCalendarModal] = useState(false)
+  const [calView, setCalView] = useState<CalView>('week')
   const [swaps, setSwaps] = useState<SwapRequest[]>([])
   const [myWishes, setMyWishes] = useState<WishSubmission[]>([])
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
@@ -87,7 +110,9 @@ export default function EmployeeSchedule() {
 
   const go = (delta: number) => {
     const d = new Date(currentDate)
-    d.setDate(d.getDate() + delta * 7)
+    if (calView === 'day') d.setDate(d.getDate() + delta)
+    else if (calView === 'month') d.setMonth(d.getMonth() + delta)
+    else d.setDate(d.getDate() + delta * 7)
     setCurrentDate(d)
   }
 
@@ -208,23 +233,39 @@ export default function EmployeeSchedule() {
         {/* ── SCHEDULE TAB ─────────────────────────────────────── */}
         {tab === 'schedule' && (
           <>
-            {/* Navigation + Actions */}
+            {/* Navigation + View toggle + Actions */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-1">
                 <button onClick={() => go(-1)} className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all">
                   <ChevronLeft size={18} className="text-gray-600" />
                 </button>
-                <span className="px-4 py-2 text-sm font-semibold text-navy min-w-[180px] text-center">
-                  {formatDateShort(weekStart)} – {formatDateShort(weekEnd)} {weekDays[0].getFullYear()}
+                <span className="px-3 py-2 text-sm font-semibold text-navy min-w-[150px] text-center">
+                  {calView === 'day'
+                    ? `${formatDateShort(toDateString(currentDate))}`
+                    : calView === 'month'
+                    ? `${MONTH_NAMES_FULL[currentDate.getMonth()]} ${currentDate.getFullYear()}`
+                    : `${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`}
                 </span>
                 <button onClick={() => go(1)} className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all">
                   <ChevronRight size={18} className="text-gray-600" />
                 </button>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                {/* View toggle */}
+                <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-0.5">
+                  {(['day', 'week', 'month'] as CalView[]).map(v => (
+                    <button
+                      key={v}
+                      onClick={() => setCalView(v)}
+                      className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${calView === v ? 'bg-white text-navy shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      {v === 'day' ? 'Tag' : v === 'week' ? 'Woche' : 'Monat'}
+                    </button>
+                  ))}
+                </div>
                 <Button size="sm" variant="ghost" onClick={() => setCalendarModal(true)} className="gap-1.5 border border-gray-200">
                   <CalendarPlus size={14} />
-                  <span className="hidden sm:inline">Kalender</span>
+                  <span className="hidden sm:inline">Export</span>
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setWishModal(true)} className="gap-1.5 border border-gray-200">
                   <MessageSquare size={14} />
@@ -233,6 +274,103 @@ export default function EmployeeSchedule() {
               </div>
             </div>
 
+            {/* Day view */}
+            {calView === 'day' && (() => {
+              const dateStr = toDateString(currentDate)
+              const entry = myEntries.find(e => e.date === dateStr)
+              const shift = entry ? getShift(entry.shiftId) : null
+              const todayFlag = isToday(dateStr)
+              const holiday = getPublicHolidayName(dateStr, undefined)
+              return (
+                <div className="space-y-3">
+                  <div className={`rounded-2xl border-2 p-5 ${todayFlag ? 'border-teal-400 bg-teal-50' : 'border-gray-100 bg-white'}`}>
+                    <p className="text-xs font-semibold text-gray-400 uppercase mb-2">
+                      {WEEKDAY_SHORT[(currentDate.getDay() + 6) % 7]} · {formatDate(dateStr)}
+                      {todayFlag && <span className="ml-2 bg-teal-600 text-white text-[10px] rounded-full px-1.5 py-0.5">Heute</span>}
+                    </p>
+                    {holiday && <p className="text-xs text-red-600 font-medium mb-2">🏖 {holiday}</p>}
+                    {entry && shift ? (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: shift.color }} />
+                          <p className="text-lg font-bold text-navy">{shift.name}</p>
+                        </div>
+                        <p className="text-sm text-gray-600 font-mono">{shift.startTime} – {shift.endTime}</p>
+                        {(entry.gruppe || entry.funktion) && (
+                          <p className="text-xs text-gray-400 mt-1">{[entry.gruppe, entry.funktion].filter(Boolean).join(' · ')}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm">{holiday ? 'Feiertag – kein Dienst' : 'Kein Dienst geplant'}</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Month view */}
+            {calView === 'month' && (() => {
+              const grid = getMonthGrid(currentDate.getFullYear(), currentDate.getMonth())
+              const todayStr = toDateString(new Date())
+              return (
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  <div className="grid grid-cols-7 border-b border-gray-100">
+                    {WEEKDAY_SHORT.map(d => (
+                      <div key={d} className="py-2 text-center text-[10px] font-semibold text-gray-400">{d}</div>
+                    ))}
+                  </div>
+                  <div className="p-2 space-y-1">
+                    {grid.map((row, ri) => (
+                      <div key={ri} className="grid grid-cols-7 gap-1">
+                        {row.map((day, ci) => {
+                          if (!day) return <div key={ci} className="aspect-square" />
+                          const ds = toDateString(day)
+                          const entry = myEntries.find(e => e.date === ds)
+                          const shift = entry ? getShift(entry.shiftId) : null
+                          const isT = ds === todayStr
+                          const isPast = day < new Date() && !isT
+                          return (
+                            <div
+                              key={ci}
+                              className={`aspect-square rounded-xl flex flex-col items-center justify-center p-0.5 ${
+                                isT ? 'bg-teal-50 border-2 border-teal-400' : entry ? 'bg-gray-50 border border-gray-100' : ''
+                              } ${isPast ? 'opacity-50' : ''}`}
+                            >
+                              <span className={`text-[10px] font-semibold ${isT ? 'text-teal-700' : 'text-gray-600'}`}>{day.getDate()}</span>
+                              {shift && (
+                                <span
+                                  className="text-[8px] rounded-full px-1 font-medium mt-0.5 leading-tight text-center"
+                                  style={{ backgroundColor: shift.bgColor, color: shift.color }}
+                                >
+                                  {shift.name.slice(0, 3)}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Legend */}
+                  <div className="px-4 py-3 border-t border-gray-100 flex flex-wrap gap-3">
+                    {SHIFTS.filter(s => myEntries.some(e => e.shiftId === s.id && {
+                      gte: toDateString(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)),
+                      lte: toDateString(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)),
+                    }.gte <= e.date && e.date <= ({
+                      gte: toDateString(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)),
+                      lte: toDateString(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)),
+                    } as { gte: string; lte: string }).lte)).map(s => (
+                      <div key={s.id} className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
+                        <span className="text-xs text-gray-600">{s.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {calView === 'week' && (<>
             {/* Week summary */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
@@ -335,6 +473,7 @@ export default function EmployeeSchedule() {
                 </div>
               </div>
             </Card>
+            </>)}
           </>
         )}
 

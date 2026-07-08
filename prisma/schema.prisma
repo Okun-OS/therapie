@@ -737,3 +737,106 @@ model SurchargeWageConfig {
   validTo    String?          // YYYY-MM-DD, null = ongoing
   createdAt  DateTime         @default(now())
 }
+
+// ── Bug Reports ───────────────────────────────────────────────────────────────
+
+model BugReport {
+  id            String   @id @default(cuid())
+  ticketId      String   @unique
+  status        String   @default("open")
+  priority      String   @default("normal")
+  severity      String   @default("normal")
+  userId        String?
+  userName      String?
+  userRole      String?
+  customerId    String?
+  customerName  String?
+  title         String   @default("")
+  description   String?
+  page          String?
+  browser       String?
+  os            String?
+  screenSize    String?
+  consoleErrors String?
+  lastActions   String?
+  adminNotes    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Timesheet Approvals ───────────────────────────────────────────────────────
+
+model TimesheetApproval {
+  id              String   @id @default(cuid())
+  employeeId      String
+  employeeName    String?
+  locationId      String?
+  year            Int
+  month           Int
+  status          String   @default("pending")
+  approvedBy      String?
+  approvedAt      String?
+  rejectionReason String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([employeeId, year, month])
+}
+
+// ── Payroll Entries ───────────────────────────────────────────────────────────
+
+model PayrollEntry {
+  id              String   @id @default(cuid())
+  employeeId      String
+  employeeName    String?
+  locationId      String?
+  customerId      String
+  year            Int
+  month           Int
+  status          String   @default("draft")
+  // Wage
+  hourlyWage      Float?
+  monthlyWage     Float?
+  // Labour hours
+  regularHours    Float    @default(0)
+  overtimeHours   Float    @default(0)
+  nightHours      Float    @default(0)
+  sundayHours     Float    @default(0)
+  holidayHours    Float    @default(0)
+  saturdayHours   Float    @default(0)
+  vacationDays    Int      @default(0)
+  sickDays        Int      @default(0)
+  // Tax & insurance
+  taxClass        Int      @default(1)
+  childCount      Float    @default(0)
+  insuranceType   String   @default("GKV")
+  pkv             Float?
+  churchTax       Boolean  @default(false)
+  bundesland      String?
+  // Calculated results
+  brutto          Float    @default(0)
+  surchargesTotal Float    @default(0)
+  lohnsteuer      Float    @default(0)
+  kirchensteuer   Float    @default(0)
+  soli            Float    @default(0)
+  rvAN            Float    @default(0)
+  kvAN            Float    @default(0)
+  pvAN            Float    @default(0)
+  avAN            Float    @default(0)
+  totalDeductions Float    @default(0)
+  netto           Float    @default(0)
+  rvAG            Float    @default(0)
+  kvAG            Float    @default(0)
+  pvAG            Float    @default(0)
+  avAG            Float    @default(0)
+  totalAgCost     Float    @default(0)
+  // Meta
+  approvedBy      String?
+  approvedAt      String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([employeeId, year, month])
+}

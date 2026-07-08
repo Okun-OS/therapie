@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { ChevronLeft, ChevronRight, CalendarDays, List, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, List, X, Clock } from 'lucide-react'
 import { getPublicHolidayName } from '@/lib/holidays'
 
 interface ScheduleEntry {
@@ -74,7 +74,7 @@ export default function CalendarPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [view, setView] = useState<'month' | 'week'>('month')
+  const [view, setView] = useState<'month' | 'week' | 'day'>('month')
 
   const locationId = (user as any)?.locationId as string | undefined
   const [bundesland, setBundesland] = useState<string | undefined>()
@@ -191,10 +191,10 @@ export default function CalendarPage() {
           </div>
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
             <button
-              onClick={() => setView('month')}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${view === 'month' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setView('day')}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${view === 'day' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              <CalendarDays className="w-3.5 h-3.5" /> Monat
+              <Clock className="w-3.5 h-3.5" /> Tag
             </button>
             <button
               onClick={() => setView('week')}
@@ -202,12 +202,87 @@ export default function CalendarPage() {
             >
               <List className="w-3.5 h-3.5" /> Woche
             </button>
+            <button
+              onClick={() => setView('month')}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${view === 'month' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <CalendarDays className="w-3.5 h-3.5" /> Monat
+            </button>
           </div>
         </div>
 
         {loading && (
           <div className="h-1 bg-gray-100">
             <div className="h-full bg-teal-500 animate-pulse w-1/2 mx-auto rounded" />
+          </div>
+        )}
+
+        {/* Day view */}
+        {view === 'day' && (
+          <div className="flex-1 overflow-auto p-4">
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={() => {
+                const d = new Date(selectedDay ?? todayStr)
+                d.setDate(d.getDate() - 1)
+                setSelectedDay(isoDate(d))
+              }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="text-center">
+                <p className="text-xs text-gray-400">{WEEKDAYS[((new Date(selectedDay ?? todayStr).getDay()) + 6) % 7]}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {new Date(selectedDay ?? todayStr).getDate()}. {MONTH_NAMES[(new Date(selectedDay ?? todayStr)).getMonth()]} {(new Date(selectedDay ?? todayStr)).getFullYear()}
+                </p>
+              </div>
+              <button onClick={() => {
+                const d = new Date(selectedDay ?? todayStr)
+                d.setDate(d.getDate() + 1)
+                setSelectedDay(isoDate(d))
+              }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            {(() => {
+              const ds = selectedDay ?? todayStr
+              const holiday = getPublicHolidayName(ds, bundesland)
+              const data = dayEntries(ds)
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  {holiday && (
+                    <div className="px-4 py-2 bg-red-50 border-b border-red-200">
+                      <p className="text-xs font-semibold text-red-700">Feiertag: {holiday}</p>
+                    </div>
+                  )}
+                  {data.length === 0 ? (
+                    <div className="p-12 text-center">
+                      <CalendarDays className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-400">Keine Dienste geplant</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {data.map((de, i) => (
+                        <div key={i} className="px-4 py-3 flex items-center gap-3">
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: de.shift.color }} />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">{de.employee.name}</p>
+                            <p className="text-xs text-gray-400">{de.shift.name} · {de.shift.startTime}–{de.shift.endTime}</p>
+                            {(de.entry.gruppe || de.entry.funktion) && (
+                              <p className="text-xs text-gray-400">{[de.entry.gruppe, de.entry.funktion].filter(Boolean).join(' · ')}</p>
+                            )}
+                          </div>
+                          {de.entry.isSubstitution && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Vertretung</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
+                    <p className="text-xs text-gray-400 text-center">{data.length} {data.length === 1 ? 'Mitarbeiter' : 'Mitarbeiter'} eingeplant</p>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         )}
 
