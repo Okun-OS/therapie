@@ -55,7 +55,7 @@ export function OnboardingChat({
       })
       const json = await res.json()
       if (json.error) {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Entschuldige, da ist etwas schiefgelaufen. Du kannst es gerne erneut versuchen.' }])
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Fehler: ' + (json.error || 'Unbekannt') + ' – bitte Screenshot machen und melden.' }])
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: json.reply }])
         if (json.state) {
@@ -63,8 +63,9 @@ export function OnboardingChat({
           setState(json.state)
         }
       }
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Entschuldige, da ist etwas schiefgelaufen. Du kannst es gerne erneut versuchen.' }])
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Netzwerkfehler'
+      setMessages(prev => [...prev, { role: 'assistant', content: `Fehler: ${msg} – bitte Screenshot machen und melden.` }])
     } finally {
       setSending(false)
     }

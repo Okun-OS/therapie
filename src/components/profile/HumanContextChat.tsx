@@ -45,13 +45,13 @@ export function HumanContextChat({
       })
       const json = await res.json()
       if (json.error) {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Entschuldige, da ist etwas schiefgelaufen. Du kannst es gerne erneut versuchen.' }])
+        setMessages(prev => [...prev, { role: 'assistant', content: `Fehler: ${json.error} – bitte Screenshot machen und melden.` }])
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: json.reply }])
         if (json.context) onContextUpdate(json.context)
       }
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Entschuldige, da ist etwas schiefgelaufen. Du kannst es gerne erneut versuchen.' }])
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'assistant', content: `Fehler: ${err instanceof Error ? err.message : 'Netzwerkfehler'} – bitte Screenshot machen und melden.` }])
     } finally {
       setSending(false)
     }
