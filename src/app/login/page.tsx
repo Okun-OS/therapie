@@ -7,19 +7,27 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Logo } from '@/components/ui/Logo'
 import Link from 'next/link'
-import { Mail, Lock, ShieldCheck, ArrowLeft } from 'lucide-react'
+import { Mail, Lock, ShieldCheck, ArrowLeft, MessageSquare } from 'lucide-react'
+
+type LoginStep = 'credentials' | 'totp' | 'sms'
 
 export default function LoginPage() {
-  const { login, loginWithTotp } = useAuth()
+  const { login, loginWithTotp, loginWithSms } = useAuth()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [step, setStep] = useState<LoginStep>('credentials')
 
-  // TOTP second step
+  // TOTP
   const [pendingToken, setPendingToken] = useState<string | null>(null)
   const [totpCode, setTotpCode] = useState('')
+
+  // SMS
+  const [smsUserId, setSmsUserId] = useState<string | null>(null)
+  const [smsCode, setSmsCode] = useState('')
+  const [smsSent, setSmsSent] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,6 +39,17 @@ export default function LoginPage() {
       router.push(`/${user.role}`)
     } else if (result.requiresTOTP && result.pendingToken) {
       setPendingToken(result.pendingToken)
+      setStep('totp')
+    } else if (result.requiresSMS && result.userId) {
+      setSmsUserId(result.userId)
+      setStep('sms')
+      // Auto-send the SMS code
+      await fetch('/api/auth/2fa/sms-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: result.userId }),
+      })
+      setSmsSent(true)
     } else {
       setError('E-Mail oder Passwort ungültig. Nutze den Einladungslink aus deiner E-Mail oder setze dein Passwort zurück.')
     }
@@ -50,6 +69,31 @@ export default function LoginPage() {
       setError(result.error ?? 'Ungültiger Code. Bitte erneut versuchen.')
     }
     setLoading(false)
+  }
+
+  const handleSmsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!smsUserId) return
+    setError('')
+    setLoading(true)
+    const result = await loginWithSms(smsUserId, smsCode)
+    if (result.ok) {
+      const user = JSON.parse(sessionStorage.getItem('dienstplan_user') || '{}')
+      router.push(`/${user.role}`)
+    } else {
+      setError(result.error ?? 'Ungültiger Code. Bitte erneut versuchen.')
+    }
+    setLoading(false)
+  }
+
+  const goBack = () => {
+    setStep('credentials')
+    setPendingToken(null)
+    setSmsUserId(null)
+    setTotpCode('')
+    setSmsCode('')
+    setError('')
+    setSmsSent(false)
   }
 
   return (
@@ -104,7 +148,7 @@ export default function LoginPage() {
             </div>
 
             <div className="p-6 pt-2">
-              {!pendingToken ? (
+              {step === 'credentials' && (
                 <form onSubmit={handleLogin} className="space-y-4">
                   <Input
                     label="E-Mail"
@@ -145,7 +189,9 @@ export default function LoginPage() {
                     Noch kein Konto? Nutze den Einladungslink aus deiner E-Mail.
                   </p>
                 </form>
-              ) : (
+              )}
+
+              {step === 'totp' && (
                 <form onSubmit={handleTotpSubmit} className="space-y-4">
                   <div className="flex items-center gap-3 bg-teal-50 border border-teal-100 rounded-xl px-4 py-3">
                     <ShieldCheck size={20} className="text-teal-600 flex-shrink-0" />
@@ -180,11 +226,51 @@ export default function LoginPage() {
                     Bestätigen
                   </Button>
 
-                  <button
-                    type="button"
-                    onClick={() => { setPendingToken(null); setTotpCode(''); setError('') }}
-                    className="w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-navy transition-colors"
-                  >
+                  <button type="button" onClick={goBack} className="w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-navy transition-colors">
+                    <ArrowLeft size={14} />
+                    Zurück zur Anmeldung
+                  </button>
+                </form>
+              )}
+
+              {step === 'sms' && (
+                <form onSubmit={handleSmsSubmit} className="space-y-4">
+                  <div className="flex items-center gap-3 bg-teal-50 border border-teal-100 rounded-xl px-4 py-3">
+                    <MessageSquare size={20} className="text-teal-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-teal-800">SMS-Bestätigung</p>
+                      <p className="text-xs text-teal-600">
+                        {smsSent ? 'Wir haben dir einen Code per SMS gesendet.' : 'Code wird gesendet…'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-navy mb-1.5">SMS-Code</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      value={smsCode}
+                      onChange={e => setSmsCode(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="000000"
+                      autoFocus
+                      className="w-full px-4 py-3 text-center text-2xl font-mono tracking-[0.4em] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+
+                  <Button type="submit" className="w-full" size="lg" loading={loading} disabled={smsCode.length < 6}>
+                    Bestätigen
+                  </Button>
+
+                  <button type="button" onClick={goBack} className="w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-navy transition-colors">
                     <ArrowLeft size={14} />
                     Zurück zur Anmeldung
                   </button>

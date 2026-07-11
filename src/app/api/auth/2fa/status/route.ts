@@ -10,8 +10,13 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { totpEnabled: true },
+    select: { totpEnabled: true, smsOtpEnabled: true, phoneVerified: true, phone: true },
   })
 
-  return NextResponse.json({ totpEnabled: user?.totpEnabled ?? false })
+  return NextResponse.json({
+    totpEnabled: user?.totpEnabled ?? false,
+    smsOtpEnabled: user?.smsOtpEnabled ?? false,
+    phoneVerified: user?.phoneVerified ?? false,
+    phone: user?.phone ? user.phone.replace(/(\+\d{1,3})\d+(\d{2})$/, '$1***$2') : null,
+  })
 }

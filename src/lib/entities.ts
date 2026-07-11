@@ -93,8 +93,11 @@ export async function listLocations(customerId?: string): Promise<Location[]> {
   return rows.map(toLocation)
 }
 
-export async function listCustomers(): Promise<Customer[]> {
-  const rows = await prisma.customer.findMany()
+export async function listCustomers(includeDeleted = false): Promise<Customer[]> {
+  const rows = await prisma.customer.findMany({
+    where: includeDeleted ? undefined : { deletedAt: null },
+    orderBy: { name: 'asc' },
+  })
   return rows.map(toCustomer)
 }
 
@@ -257,6 +260,19 @@ export async function updateCustomer(id: string, updates: Partial<Customer>): Pr
   const { id: _ignored, ...data } = updates as any
   const row = await prisma.customer.update({ where: { id }, data }).catch(() => null)
   return row ? toCustomer(row) : undefined
+}
+
+export async function softDeleteCustomer(id: string): Promise<boolean> {
+  const row = await prisma.customer.update({
+    where: { id },
+    data: { deletedAt: new Date(), status: 'cancelled' },
+  }).catch(() => null)
+  return !!row
+}
+
+export async function hardDeleteCustomer(id: string): Promise<boolean> {
+  const row = await prisma.customer.delete({ where: { id } }).catch(() => null)
+  return !!row
 }
 
 /** Entfernt einen entfallenen Aufgabentyp aus allowedTasks aller Mitarbeiter. */

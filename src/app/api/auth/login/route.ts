@@ -21,6 +21,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ requiresTOTP: true, pendingToken })
   }
 
+  if (user.smsOtpEnabled && user.phoneVerified) {
+    return NextResponse.json({ requiresSMS: true, userId: user.id })
+  }
+
   const res = NextResponse.json({
     user: {
       id: user.id,
@@ -35,10 +39,12 @@ export async function POST(req: NextRequest) {
   setSessionCookie(res, {
     userId: user.id,
     email: user.email,
+    name: user.name,
     role: user.role as SessionRole,
     employeeId: user.employeeId ?? undefined,
     locationId: user.locationId ?? undefined,
     customerId: user.customerId ?? undefined,
+    customerName: user.customerName ?? undefined,
   })
   return res
 }

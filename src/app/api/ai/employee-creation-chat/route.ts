@@ -41,7 +41,7 @@ Regeln:
 8. Erfinde niemals Angaben, die nicht genannt wurden.
 9. Schreibe ausschließlich auf Deutsch.
 10. Falls beim Gesprächsstart laut den bereits bekannten Daten schon viele Felder ausgefüllt sind (Update eines bestehenden Mitarbeiters statt Neuanlage), durchlaufe NICHT erneut alle Phasen 1–8. Frage stattdessen direkt, was sich geändert hat oder ergänzt werden soll, und aktualisiere nur die genannten Felder. Beispiele für solche Änderungen: "Lisa arbeitet ab nächstem Monat auch in Gruppe Gelb", "Thomas hat seine Stunden auf 35 erhöht", "Anna übernimmt künftig Leitungsaufgaben".
-11. GESPRÄCHSFÜHRUNG: Beende jeden Beitrag immer mit einer konkreten Folgefrage, einem klaren nächsten Schritt oder einer Bestätigung zum Abhaken. Brich niemals mitten in einem Gedanken ab und hinterlasse niemals einen Beitrag ohne erkennbaren Handlungsansatz für den Nutzer. Das Gespräch endet erst nach einer vollständigen Abschlussbestätigung.`
+11. GESPRÄCHSFÜHRUNG – PFLICHTSTRUKTUR jeder Antwort: (1) Kurze Bestätigung was du verstanden hast (z.B. "Alles klar, Lisa Müller als Erzieherin."). (2) Tool-Aufruf zum Speichern. (3) SOFORT die nächste konkrete Frage. — Sätze wie "Okay, das notiere ich mir.", "Perfekt, gespeichert!", "Alles klar!" ALLEIN (ohne direkte Folgefrage) sind ABSOLUT VERBOTEN. Eine Antwort ohne abschließende Frage oder konkreten nächsten Schritt ist NICHT AKZEPTABEL. Das Gespräch endet erst nach ausdrücklicher Abschlussbestätigung.`
 
 const TOOL = {
   name: 'update_employee_draft',

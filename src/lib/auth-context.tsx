@@ -7,6 +7,8 @@ export interface LoginResult {
   ok: boolean
   requiresTOTP?: boolean
   pendingToken?: string
+  requiresSMS?: boolean
+  userId?: string
   error?: string
 }
 
@@ -15,6 +17,7 @@ interface AuthContextType {
   isLoading: boolean
   login: (email: string, password: string) => Promise<LoginResult>
   loginWithTotp: (pendingToken: string, totpCode: string) => Promise<LoginResult>
+  loginWithSms: (userId: string, code: string) => Promise<LoginResult>
   logout: () => void
 }
 
@@ -61,6 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.requiresTOTP) {
         return { ok: false, requiresTOTP: true, pendingToken: data.pendingToken }
       }
+      if (data.requiresSMS) {
+        return { ok: false, requiresSMS: true, userId: data.userId }
+      }
       const { user: loggedInUser } = data
       setUser(loggedInUser)
       sessionStorage.setItem('dienstplan_user', JSON.stringify(loggedInUser))
@@ -90,6 +96,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const loginWithSms = async (userId: string, code: string): Promise<LoginResult> => {
+    try {
+      const res = await fetch('/api/auth/2fa/sms-validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, code }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        return { ok: false, error: data.error }
+      }
+      const meRes = await fetch('/api/auth/me')
+      if (meRes.ok) {
+        const { user: loggedInUser } = await meRes.json()
+        if (loggedInUser) {
+          setUser(loggedInUser)
+          sessionStorage.setItem('dienstplan_user', JSON.stringify(loggedInUser))
+        }
+      }
+      return { ok: true }
+    } catch {
+      return { ok: false }
+    }
+  }
+
   const logout = () => {
     setUser(null)
     sessionStorage.removeItem('dienstplan_user')
@@ -97,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginWithTotp, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginWithTotp, loginWithSms, logout }}>
       {children}
     </AuthContext.Provider>
   )

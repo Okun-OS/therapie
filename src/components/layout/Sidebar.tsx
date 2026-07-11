@@ -73,7 +73,7 @@ const okunNav: NavItem[] = [
   { href: '/okun/customers', label: 'Kunden & Organisationen', icon: Building2 },
   { href: '/okun/test-accounts', label: 'Testzugänge', icon: KeyRound },
   { href: '/okun/invitations', label: 'Einladungen', icon: Mail },
-  { href: '/okun/support', label: 'Support', icon: LifeBuoy },
+  { href: '/okun/support', label: 'Support-Anfragen', icon: LifeBuoy },
   { href: '/okun/bugs', label: 'Bug-Management', icon: Bug },
 ]
 

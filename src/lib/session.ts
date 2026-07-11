@@ -10,10 +10,12 @@ export type SessionRole = 'employee' | 'admin' | 'company' | 'okun'
 export interface SessionPayload {
   userId: string
   email: string
+  name?: string
   role: SessionRole
   employeeId?: string
   locationId?: string
   customerId?: string
+  customerName?: string
   iat: number
 }
 
