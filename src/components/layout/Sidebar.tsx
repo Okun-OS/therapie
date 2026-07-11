@@ -65,6 +65,7 @@ const companyNav: NavItem[] = [
   { href: '/company/personnel-risk', label: 'Personalrisiko', icon: ShieldAlert, badge: 'KI' },
   { href: '/company/controlling', label: 'KI-Controlling', icon: Brain, badge: 'KI' },
   { href: '/company/reports', label: 'Berichte', icon: BarChart3 },
+  { href: '/company/support', label: 'Support', icon: LifeBuoy },
   { href: '/company/settings', label: 'Einstellungen', icon: Settings },
 ]
 

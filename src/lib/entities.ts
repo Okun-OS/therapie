@@ -275,6 +275,20 @@ export async function hardDeleteCustomer(id: string): Promise<boolean> {
   return !!row
 }
 
+export async function deleteEmployee(id: string): Promise<{ name: string } | null> {
+  const row = await prisma.employee.findUnique({ where: { id }, select: { name: true } })
+  if (!row) return null
+  await prisma.employee.delete({ where: { id } })
+  return row
+}
+
+export async function deleteLocation(id: string): Promise<{ name: string } | null> {
+  const row = await prisma.location.findUnique({ where: { id }, select: { name: true } })
+  if (!row) return null
+  await prisma.location.delete({ where: { id } })
+  return row
+}
+
 /** Entfernt einen entfallenen Aufgabentyp aus allowedTasks aller Mitarbeiter. */
 export async function removeAllowedTaskFromEmployees(name: string): Promise<void> {
   await prisma.$executeRaw`UPDATE "Employee" SET "allowedTasks" = array_remove("allowedTasks", ${name}) WHERE ${name} = ANY("allowedTasks")`
