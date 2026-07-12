@@ -3,8 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { Sidebar } from './Sidebar'
-import { MobileNav } from './MobileNav'
+import { FloatingDock } from '@/components/nav/FloatingDock'
 import { SystemTour } from '@/components/onboarding/SystemTour'
 import { FloatingHelp } from '@/components/ui/FloatingHelp'
 import { BugReportButton } from '@/components/ui/BugReportButton'
@@ -46,13 +45,10 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="lg:pl-64">
-        <main className="min-h-screen pb-24 lg:pb-6">
-          {children}
-        </main>
-      </div>
-      <MobileNav />
+      <main className="min-h-screen pb-32">
+        {children}
+      </main>
+      <FloatingDock />
       <SystemTour role={user.role} />
       <FloatingHelp />
       <BugReportButton />
