@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { getPlanningRules, listPlanningUnitsByLocation } from '@/lib/schedule-entities'
+import { getPublicHolidays } from '@/lib/holidays'
 import type { Employee, Shift, ShiftFairnessData, WishSubmission } from '@/lib/types'
 
 const client = new Anthropic()
@@ -179,15 +180,16 @@ export async function POST(req: NextRequest) {
 
   const customerId = await resolveCustomerId(session)
 
-  const [locationOnboarding, periodNotes, organizationOnboarding, planningRules, planningUnits] = locationId
+  const [locationOnboarding, periodNotes, organizationOnboarding, planningRules, planningUnits, locationMeta] = locationId
     ? await Promise.all([
         prisma.locationOnboarding.findUnique({ where: { locationId } }),
         prisma.schedulingPeriodNote.findMany({ where: { locationId, weekStart: { in: weekStarts } } }),
         customerId ? prisma.organizationOnboarding.findUnique({ where: { customerId } }) : Promise.resolve(null),
         getPlanningRules(locationId),
         listPlanningUnitsByLocation(locationId),
+        prisma.location.findUnique({ where: { id: locationId }, select: { bundesland: true } }),
       ])
-    : [null, [], null, null, []]
+    : [null, [], null, null, [], null]
 
   const humanContexts = activeEmployees.length > 0
     ? await prisma.employeeHumanContext.findMany({
@@ -308,6 +310,17 @@ ${JSON.stringify(reportedAbsences, null, 2)}
 
 Diese Mitarbeiter sind an den genannten Tagen (startDate bis endDate, jeweils inklusive) krankheitsbedingt oder anderweitig abwesend und nicht verfügbar.` : ''
 
+  const bundesland = (locationMeta as { bundesland?: string | null } | null)?.bundesland ?? undefined
+  const holidaysInPeriod = weekDates.flatMap(date => {
+    const year = parseInt(date.slice(0, 4), 10)
+    return getPublicHolidays(year, bundesland).filter(h => h.date === date).map(h => ({ date, name: h.name }))
+  })
+  const feiertagSection = holidaysInPeriod.length > 0 ? `
+## Gesetzliche Feiertage im Planungszeitraum${bundesland ? ` (${bundesland})` : ''}
+${holidaysInPeriod.map(h => `- ${h.date}: ${h.name}`).join('\n')}
+
+Hinweis: Ob an diesen Feiertagen gearbeitet wird, hängt von der Art des Standorts und den Standortregeln ab. Pflegeeinrichtungen, Kitas und vergleichbare Einrichtungen haben in der Regel auch an Feiertagen Betrieb. Orientiere dich an der Standort-Konfiguration. Mitarbeiter, die an Feiertagen arbeiten, erhalten automatisch einen Feiertagszuschlag durch das System – das musst du nicht separat ausweisen. Vermerke Feiertage im "reasoning", wenn sie die Planung beeinflussen.` : ''
+
   const wishSummary = wishSubmissions.map(w => ({
     employeeId: w.employeeId,
     employeeName: w.employeeName,
@@ -335,6 +348,7 @@ ${JSON.stringify(weekDates)}
 ${wishSummary.length > 0 ? JSON.stringify(wishSummary, null, 2) : 'Keine Wünsche eingereicht.'}
 ${vacationSection}
 ${absenceSection}
+${feiertagSection}
 ${organizationSection}
 ${onboardingSection}
 ${planningUnitsSection}
