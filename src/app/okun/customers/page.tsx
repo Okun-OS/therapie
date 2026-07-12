@@ -656,7 +656,7 @@ export default function OkunCustomers() {
                   <input type="radio" name="deleteMode" value="soft" checked={deleteMode === 'soft'} onChange={() => setDeleteMode('soft')} className="mt-0.5" />
                   <div>
                     <p className="text-sm font-semibold text-navy">Deaktivieren (empfohlen)</p>
-                    <p className="text-xs text-gray-500">Status wird auf "Gekündigt" gesetzt. Daten bleiben erhalten und können wiederhergestellt werden.</p>
+                    <p className="text-xs text-gray-500">Status wird auf &quot;Gekündigt&quot; gesetzt. Daten bleiben erhalten und können wiederhergestellt werden.</p>
                   </div>
                 </label>
                 <label className="flex items-start gap-3 p-3 border border-red-100 rounded-xl cursor-pointer hover:bg-red-50 transition-colors">

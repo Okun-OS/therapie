@@ -162,7 +162,7 @@ export default function TimesheetPrintPage() {
           >
             <Printer size={16} /> Als PDF speichern / Drucken
           </button>
-          <span className="text-sm text-gray-500">Browser-Druckdialog → „Als PDF speichern"</span>
+          <span className="text-sm text-gray-500">Browser-Druckdialog → &bdquo;Als PDF speichern&ldquo;</span>
         </div>
 
         <div className="flex items-center gap-3">
