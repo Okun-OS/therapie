@@ -3,6 +3,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import type { EmployeeDraft } from '@/lib/employee-draft'
+import {
+  WORKFLOW_STATUS_TOOL,
+  SUPERVISOR_SYSTEM_SUFFIX,
+  extractWorkflowStatus,
+  superviseTurn,
+  saveDiscoveredRequirements,
+  resolveCurrentPhase,
+  getWorkflow,
+} from '@/lib/workflow-engine'
 
 const client = new Anthropic()
 
@@ -118,10 +127,10 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
       model: 'claude-opus-4-8',
       max_tokens: 4096,
       system: [
-        { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: SYSTEM_PROMPT + SUPERVISOR_SYSTEM_SUFFIX, cache_control: { type: 'ephemeral' } },
         { type: 'text', text: stateNote },
       ],
-      tools: [TOOL],
+      tools: [TOOL, WORKFLOW_STATUS_TOOL],
       messages: messages.map(m => ({ role: m.role, content: m.content })),
     })
 
@@ -166,6 +175,30 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
 
     if (customerId && nextDraft.roleType && !companyRoles.some(r => r.toLowerCase() === nextDraft.roleType!.toLowerCase())) {
       await prisma.customer.update({ where: { id: customerId }, data: { roles: [...companyRoles, nextDraft.roleType] } })
+    }
+
+    // ── Workflow Engine: Supervisor pass ──────────────────────────────────────
+    const workflowDef = getWorkflow('employee-creation')
+    const workflowStatus = extractWorkflowStatus(
+      response.content as Array<{ type: string; name?: string; input?: unknown }>,
+    )
+    if (workflowDef) {
+      const collectedData: Record<string, unknown> = {
+        currentPhase: nextDraft.currentPhase ?? 1,
+        readyToSave: nextDraft.readyToSave ?? false,
+        confirmed: nextDraft.confirmed ?? false,
+        name: nextDraft.name ?? null,
+        email: nextDraft.email ?? null,
+      }
+      const currentPhase = resolveCurrentPhase(workflowDef.phases, collectedData)
+      const supervised = superviseTurn(reply, workflowStatus, currentPhase, collectedData)
+      reply = supervised.supervisedReply
+      if (workflowStatus?.discoveredRequirements?.length) {
+        saveDiscoveredRequirements(workflowStatus.discoveredRequirements, {
+          workflowId: 'employee-creation',
+          customerId: customerId ?? undefined,
+        }).catch(err => console.error('WorkflowLearning save failed:', err))
+      }
     }
 
     return NextResponse.json({ reply, draft: nextDraft })

@@ -8,6 +8,15 @@ import { resetBreakRulesExtraction } from '@/lib/break-rules-service'
 import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
 import { generateCompanyModelFromOnboarding } from '@/lib/company-model-service'
 import type { ShiftType } from '@/lib/types'
+import {
+  WORKFLOW_STATUS_TOOL,
+  SUPERVISOR_SYSTEM_SUFFIX,
+  extractWorkflowStatus,
+  superviseTurn,
+  saveDiscoveredRequirements,
+  resolveCurrentPhase,
+  getWorkflow,
+} from '@/lib/workflow-engine'
 
 const client = new Anthropic()
 
@@ -228,7 +237,7 @@ export async function POST(req: NextRequest) {
   try {
     let stateNote: string
     let systemPrompt: string
-    let tools: (typeof ORG_TOOL | typeof LOCATION_TOOL | typeof SHIFTS_TOOL | typeof PLANNING_RULES_TOOL | typeof PLANNING_UNITS_TOOL)[]
+    let tools: (typeof ORG_TOOL | typeof LOCATION_TOOL | typeof SHIFTS_TOOL | typeof PLANNING_RULES_TOOL | typeof PLANNING_UNITS_TOOL | typeof WORKFLOW_STATUS_TOOL)[]
     let existingPausenlogik: string | null = null
     let existingIndividuelleRegeln: string[] = []
 
@@ -245,7 +254,7 @@ export async function POST(req: NextRequest) {
         completed: existing?.completed ?? false,
       }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Dieses Gespräch kann jederzeit erneut geführt werden, auch wenn "completed" bereits true ist – behandle spätere Ergänzungen/Änderungen dann gemäß Regel 6.`
       systemPrompt = ORGANIZATION_SYSTEM_PROMPT
-      tools = [ORG_TOOL]
+      tools = [ORG_TOOL, WORKFLOW_STATUS_TOOL]
     } else {
       const allLocations = await listLocations(customerId)
       const location = allLocations.find(l => l.id === scope)
@@ -281,14 +290,14 @@ export async function POST(req: NextRequest) {
         bereitsAngelegtePlanungseinheiten: existingPlanningUnits.map(u => ({ name: u.name, type: u.type, description: u.description })),
       }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Noch offene Phasen: ${ONBOARDING_PHASES.filter(p => !(existing?.completedPhases ?? []).includes(p.key)).map(p => p.label).join(', ') || 'keine – alle Phasen abgedeckt'}.\n\nWICHTIG: Es sind aktuell ${existingShifts.length} Schicht(en) im System angelegt. ${existingShifts.length === 0 ? 'Phase 4 ist damit NICHT abgeschlossen – frage aktiv nach mindestens einer konkreten, benannten Schicht mit Uhrzeiten und rufe "upsert_shifts" auf, bevor du den Abschluss vorschlägst. Das System lehnt "completed: true" ohne mindestens eine Schicht automatisch ab.' : 'Phase 4 kann als abgedeckt gelten.'}\n\nPlanungseinheiten: Sobald der Nutzer konkrete Namen für Gruppen, Bereiche, Objekte, Touren, Fahrzeuge, Maschinen, Räume oder Stationen nennt, rufe IMMER ZUSÄTZLICH "upsert_planning_units" auf. Erfinde NIEMALS eigene Einheitennamen. Es sind aktuell ${existingPlanningUnits.length} Planungseinheit(en) im System angelegt.`
       systemPrompt = LOCATION_SYSTEM_PROMPT
-      tools = [LOCATION_TOOL, SHIFTS_TOOL, PLANNING_RULES_TOOL, PLANNING_UNITS_TOOL]
+      tools = [LOCATION_TOOL, SHIFTS_TOOL, PLANNING_RULES_TOOL, PLANNING_UNITS_TOOL, WORKFLOW_STATUS_TOOL]
     }
 
     const response = await client.messages.create({
       model: 'claude-opus-4-8',
       max_tokens: 1536,
       system: [
-        { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: systemPrompt + SUPERVISOR_SYSTEM_SUFFIX, cache_control: { type: 'ephemeral' } },
         { type: 'text', text: stateNote },
       ],
       tools,
@@ -446,6 +455,43 @@ export async function POST(req: NextRequest) {
 
     if (!reply.trim()) {
       reply = 'Danke, das habe ich gespeichert!'
+    }
+
+    // ── Workflow Engine: Supervisor pass ──────────────────────────────────────
+    const workflowId = isOrganization ? 'org-onboarding' : 'location-onboarding'
+    const workflowDef = getWorkflow(workflowId)
+    const workflowStatus = extractWorkflowStatus(
+      response.content as Array<{ type: string; name?: string; input?: unknown }>,
+    )
+    if (workflowDef) {
+      let collectedData: Record<string, unknown>
+      if (isOrganization) {
+        const s = savedState as Record<string, unknown> | null
+        collectedData = {
+          traegerName: s?.traegerName ?? null,
+          rollenmodell: s?.rollenmodell ?? null,
+          unternehmensweiteRegeln: s?.unternehmensweiteRegeln ?? null,
+          completed: s?.completed ?? false,
+        }
+      } else {
+        const s = savedState as Record<string, unknown> | null
+        const shiftCountFinal = await prisma.shift.count({ where: { locationId: scope } })
+        collectedData = {
+          completedPhases: (s?.completedPhases as string[] | undefined) ?? [],
+          completed: s?.completed ?? false,
+          _shiftCount: shiftCountFinal,
+        }
+      }
+      const currentPhase = resolveCurrentPhase(workflowDef.phases, collectedData)
+      const supervised = superviseTurn(reply, workflowStatus, currentPhase, collectedData)
+      reply = supervised.supervisedReply
+      if (workflowStatus?.discoveredRequirements?.length) {
+        saveDiscoveredRequirements(workflowStatus.discoveredRequirements, {
+          workflowId,
+          customerId: customerId ?? undefined,
+          locationId: isOrganization ? undefined : scope,
+        }).catch(err => console.error('WorkflowLearning save failed:', err))
+      }
     }
 
     return NextResponse.json({ reply, state: savedState })

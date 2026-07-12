@@ -939,3 +939,18 @@ model AdminAuditLog {
   details    String?
   createdAt  DateTime @default(now())
 }
+
+// ── Workflow Engine — Requirement Learning Queue ───────────────────────────────
+
+model WorkflowLearning {
+  id             String   @id @default(cuid())
+  workflowId     String
+  customerId     String?
+  locationId     String?
+  type           String
+  description    String
+  confidence     String
+  structuredData Json?
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+}
