@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -431,7 +430,7 @@ export default function PayrollPage() {
   const totalAgCost = entries.reduce((s, e) => s + e.totalAgCost, 0)
 
   return (
-    <DashboardLayout requiredRole="admin">
+    <>
       <Header
         title="Lohnabrechnung"
         subtitle="Monatliche Lohnabrechnung für alle Mitarbeiter – deterministisch berechnet nach deutschem Recht (2025)"
@@ -568,6 +567,6 @@ export default function PayrollPage() {
           onClose={() => setShowModal(false)}
         />
       )}
-    </DashboardLayout>
+    </>
   )
 }

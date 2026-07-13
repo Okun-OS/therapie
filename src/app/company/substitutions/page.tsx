@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -178,7 +177,7 @@ export default function CompanySubstitutionsPage() {
   }, {})
 
   return (
-    <DashboardLayout requiredRole="company">
+    <>
       <Header
         title="Vertretungsanfragen"
         subtitle="Unternehmensweite Übersicht aller Standorte"
@@ -246,6 +245,6 @@ export default function CompanySubstitutionsPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   )
 }

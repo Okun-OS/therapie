@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Header } from '@/components/layout/Header'
 import { Bug, RefreshCw, CheckCircle, Clock, AlertTriangle, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
 
@@ -88,7 +87,7 @@ export default function BugsPage() {
   }
 
   return (
-    <DashboardLayout requiredRole="okun">
+    <>
       <Header title="Bug-Management" subtitle="Alle gemeldeten Fehler zentral verwalten" />
       <div className="p-4 sm:p-6 space-y-5">
 
@@ -236,6 +235,6 @@ export default function BugsPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   )
 }

@@ -324,6 +324,7 @@ export function FloatingDock() {
           style={{ overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
         >
         <div
+          data-tour="dock-bar"
           className="flex items-end gap-1.5 px-3 py-2.5 rounded-[26px] flex-shrink-0"
           style={{
             background: 'rgba(20,23,25,0.88)',

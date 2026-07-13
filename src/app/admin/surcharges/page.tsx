@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -848,7 +847,7 @@ export default function SurchargesPage() {
   const [tab, setTab] = useState<Tab>('berechnung')
 
   return (
-    <DashboardLayout requiredRole="admin">
+    <>
       <Header title="Zuschlags-Engine" subtitle="Zuschlagsberechnung und Regelkonfiguration" />
 
       <div className="p-4 sm:p-6">
@@ -874,6 +873,6 @@ export default function SurchargesPage() {
         {tab === 'konfiguration' && <KonfigurationTab />}
         {tab === 'ki' && <KIEinrichtungTab />}
       </div>
-    </DashboardLayout>
+    </>
   )
 }

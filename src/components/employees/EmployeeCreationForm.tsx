@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
-import { UserPlus, CheckCircle2 } from 'lucide-react'
-import type { EmployeeDraft } from '@/lib/employee-draft'
+import { UserPlus, CheckCircle2, Plus, Trash2 } from 'lucide-react'
+import type { EmployeeDraft, PreApprovedVacation } from '@/lib/employee-draft'
 
 const EMPLOYMENT_OPTIONS = ['Vollzeit', 'Teilzeit', 'Minijob', 'Individuell']
 const NEW_ROLE_VALUE = '__new_role__'
@@ -333,6 +333,100 @@ export function EmployeeCreationForm({
           onChange={e => update('absprachen', e.target.value || undefined)}
           placeholder="z.B. feste Bürozeit montags, nie Spätdienst am Freitag"
         />
+
+        {/* ── Vertrag & Stundenstand ─────────────────────────────── */}
+        <div className="pt-1 border-t border-gray-100">
+          <p className="text-sm font-bold text-navy mb-3">Vertrag & Stundenstand</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">
+                Vertragsurlaub (Tage/Jahr)
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range" min={20} max={40} step={1}
+                  value={draft.contractVacationDays ?? 30}
+                  onChange={e => update('contractVacationDays', Number(e.target.value))}
+                  className="flex-1 accent-brand"
+                />
+                <span className="font-bold text-navy w-14 text-center">
+                  {draft.contractVacationDays ?? 30} T
+                </span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">
+                Aktueller Stundenstand
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step={0.5}
+                  min={-200}
+                  max={200}
+                  value={draft.hoursBalanceOffset ?? 0}
+                  onChange={e => update('hoursBalanceOffset', Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold text-navy focus:outline-none focus:ring-2 focus:ring-brand/30 text-center"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">h</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">Positiv = Überstunden · Negativ = Minusstunden</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Bereits genehmigte Urlaube ─────────────────────────── */}
+        <div className="pt-1 border-t border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-navy">Bereits genehmigte Urlaube</p>
+            <button
+              type="button"
+              onClick={() => update('preApprovedVacations', [...(draft.preApprovedVacations ?? []), { from: '', to: '' }])}
+              className="flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand/80 transition-colors"
+            >
+              <Plus size={13} /> Urlaub hinzufügen
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">
+            Diese Urlaube werden direkt als genehmigt in den Kalender eingetragen.
+          </p>
+          {(draft.preApprovedVacations ?? []).length === 0 && (
+            <p className="text-xs text-gray-400 italic">Keine bereits genehmigten Urlaube</p>
+          )}
+          <div className="space-y-2">
+            {(draft.preApprovedVacations ?? []).map((v, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                <Input
+                  label={i === 0 ? 'Von' : undefined}
+                  type="date"
+                  value={v.from}
+                  onChange={e => {
+                    const next = [...(draft.preApprovedVacations ?? [])]
+                    next[i] = { ...next[i], from: e.target.value }
+                    update('preApprovedVacations', next)
+                  }}
+                />
+                <Input
+                  label={i === 0 ? 'Bis' : undefined}
+                  type="date"
+                  value={v.to}
+                  onChange={e => {
+                    const next = [...(draft.preApprovedVacations ?? [])]
+                    next[i] = { ...next[i], to: e.target.value }
+                    update('preApprovedVacations', next)
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => update('preApprovedVacations', (draft.preApprovedVacations ?? []).filter((_, j) => j !== i))}
+                  className="mb-0.5 p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 

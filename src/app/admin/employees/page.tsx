@@ -126,6 +126,8 @@ export default function AdminEmployees() {
       ...(draft.fixedLocations !== undefined && { fixedLocations: draft.fixedLocations }),
       ...(draft.qualifications !== undefined && { qualifications: draft.qualifications }),
       ...(draft.allowedTasks !== undefined && { allowedTasks: draft.allowedTasks }),
+      ...(draft.contractVacationDays !== undefined && { vacationDaysTotal: draft.contractVacationDays }),
+      ...(draft.hoursBalanceOffset !== undefined && { hoursBalance: draft.hoursBalanceOffset }),
     }
   }
 
@@ -239,6 +241,9 @@ export default function AdminEmployees() {
           fixedLocations: draft.fixedLocations,
           qualifications: draft.qualifications,
           allowedTasks: draft.allowedTasks,
+          contractVacationDays: draft.contractVacationDays,
+          hoursBalanceOffset: draft.hoursBalanceOffset,
+          preApprovedVacations: draft.preApprovedVacations,
         }),
       })
       const data = await res.json().catch(() => null)

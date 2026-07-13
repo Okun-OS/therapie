@@ -1,3 +1,9 @@
+export interface PreApprovedVacation {
+  from: string
+  to: string
+  note?: string
+}
+
 export interface EmployeeDraft {
   name?: string
   email?: string
@@ -19,6 +25,10 @@ export interface EmployeeDraft {
   allowedTasks?: string[]
   besonderheiten?: string[]
   absprachen?: string
+  // Contract & balance fields
+  contractVacationDays?: number
+  hoursBalanceOffset?: number
+  preApprovedVacations?: PreApprovedVacation[]
   currentPhase?: number
   readyToSave?: boolean
   confirmed?: boolean

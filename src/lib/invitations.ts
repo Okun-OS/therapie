@@ -97,6 +97,9 @@ export async function addEmployeeWithInvitation(
     fixedLocations?: string
     qualifications?: string[]
     allowedTasks?: string[]
+    contractVacationDays?: number
+    hoursBalanceOffset?: number
+    preApprovedVacations?: Array<{ from: string; to: string; note?: string }>
   },
   origin: string,
   options: { sendInvitation?: boolean } = {},
@@ -126,8 +129,8 @@ export async function addEmployeeWithInvitation(
         dailyTargetHours: input.dailyTargetHours,
         fixedOffDays: input.fixedOffDays ?? [],
         position: input.position,
-        hoursBalance: 0,
-        vacationDaysTotal: 30,
+        hoursBalance: input.hoursBalanceOffset ?? 0,
+        vacationDaysTotal: input.contractVacationDays ?? 30,
         vacationDaysUsed: 0,
         active: true,
         joinedAt: new Date().toISOString().split('T')[0],
@@ -143,6 +146,33 @@ export async function addEmployeeWithInvitation(
         allowedTasks: input.allowedTasks ?? [],
       },
     })
+    // Create pre-approved vacation requests
+    if (input.preApprovedVacations?.length) {
+      const today = new Date().toISOString().split('T')[0]
+      for (const v of input.preApprovedVacations) {
+        if (!v.from || !v.to) continue
+        const fromDate = new Date(v.from)
+        const toDate = new Date(v.to)
+        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) continue
+        const days = Math.max(1, Math.round((toDate.getTime() - fromDate.getTime()) / 86400000) + 1)
+        await tx.vacationRequest.create({
+          data: {
+            employeeId: employeeRow.id,
+            employeeName: input.name,
+            locationId: input.locationId,
+            locationName: location.name,
+            startDate: v.from,
+            endDate: v.to,
+            days,
+            reason: v.note ?? 'Bereits genehmigt (bei Eintritt erfasst)',
+            status: 'approved',
+            submittedAt: today,
+            respondedAt: today,
+            respondedBy: 'system',
+          },
+        })
+      }
+    }
     if (!sendInvitation) return { employeeRow, invitation: null, locationState: location.state }
     const invitation = await tx.invitationToken.create({
       data: {
