@@ -200,14 +200,8 @@ function DockIcon({
           }}
         >
           <Icon
-            size={22}
-            className={
-              item.isGold
-                ? `text-gold ${item.isGold ? 'animate-gold-glitch' : ''}`
-                : isActive || isPathActive
-                ? 'text-brand'
-                : 'text-white/60'
-            }
+            size={36}
+            className={item.isGold ? 'animate-gold-glitch' : undefined}
           />
           {/* Badge */}
           {item.badge !== undefined && (
