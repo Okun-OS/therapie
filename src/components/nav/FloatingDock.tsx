@@ -1,10 +1,11 @@
 'use client'
 
 import { useRef, useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { LogOut, ShieldCheck, Search } from 'lucide-react'
+import { LogOut, Search } from 'lucide-react'
 import { getDockItems, type DockItem } from './navData'
 import { SearchModal } from './SearchModal'
 
@@ -23,6 +24,27 @@ function spawnRipples(el: HTMLElement, isGold: boolean) {
     el.appendChild(r)
     r.addEventListener('animationend', () => r.remove())
   }
+}
+
+// ── Portal tooltip ───────────────────────────────────────────────
+// Renders as position:fixed so it escapes any overflow container on the dock
+function DockLabel({ label, x, bottom }: { label: string; x: number; bottom: number }) {
+  return createPortal(
+    <div
+      className="fixed z-[9999] pointer-events-none"
+      style={{
+        left: x,
+        bottom,
+        transform: 'translateX(-50%)',
+        animation: 'tooltip-up 0.18s ease-out forwards',
+      }}
+    >
+      <span className="block text-[11px] font-semibold text-white/90 bg-black/80 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/10 whitespace-nowrap">
+        {label}
+      </span>
+    </div>,
+    document.body
+  )
 }
 
 // ── Panel ────────────────────────────────────────────────────────
@@ -74,19 +96,24 @@ function MegaPanel({ item, onClose }: { item: DockItem; onClose: () => void }) {
                     key={it.href}
                     href={it.href}
                     onClick={onClose}
-                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 group"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group"
                     style={{
                       background: active ? 'rgba(38,198,198,0.14)' : 'transparent',
                     }}
                     onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)' }}
                     onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                   >
-                    {it.icon && (
-                      <span
-                        className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-sm leading-none"
-                        style={{ background: active ? 'rgba(38,198,198,0.2)' : 'rgba(255,255,255,0.07)' }}
-                      >{it.icon}</span>
-                    )}
+                    {/* Icon container — always rendered so text aligns */}
+                    <span
+                      className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-lg leading-none select-none"
+                      style={{
+                        background: active ? 'rgba(38,198,198,0.2)' : 'rgba(255,255,255,0.09)',
+                        border: active ? '1px solid rgba(38,198,198,0.25)' : '1px solid rgba(255,255,255,0.07)',
+                      }}
+                    >
+                      {it.icon ?? '·'}
+                    </span>
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={`text-sm font-medium ${active ? 'text-brand' : 'text-white/85'}`}>
@@ -131,7 +158,7 @@ function DockIcon({
   scale: number
 }) {
   const btnRef = useRef<HTMLButtonElement>(null)
-  const [showTooltip, setShowTooltip] = useState(false)
+  const [labelPos, setLabelPos] = useState<{ x: number; bottom: number } | null>(null)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -141,20 +168,24 @@ function DockIcon({
         : pathname.startsWith(item.href))
     : (item.panel?.sections.flatMap(s => s.items).some(i => pathname.startsWith(i.href)) ?? false)
 
+  const handleMouseEnter = () => {
+    const el = btnRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setLabelPos({ x: rect.left + rect.width / 2, bottom: window.innerHeight - rect.top + 10 })
+  }
+
   const handleClick = () => {
     const el = btnRef.current
     if (!el) return
 
-    // Haptic
     if ('vibrate' in navigator) navigator.vibrate([10])
 
-    // Ripple
     spawnRipples(el, item.isGold ?? false)
 
-    // Glow pulse via class
     const glowClass = item.isGold ? 'animate-dock-glow-gold' : 'animate-dock-glow'
     el.classList.remove(glowClass)
-    void el.offsetWidth // force reflow
+    void el.offsetWidth
     el.classList.add(glowClass)
     el.addEventListener('animationend', () => el.classList.remove(glowClass), { once: true })
 
@@ -170,23 +201,13 @@ function DockIcon({
 
   return (
     <div className="relative flex flex-col items-center" style={{ transform: `scale(${scale})`, transition: 'transform 0.15s ease-out', transformOrigin: 'bottom center' }}>
-      {/* Tooltip */}
-      {showTooltip && (
-        <div
-          className="absolute bottom-full mb-2.5 left-1/2 whitespace-nowrap pointer-events-none"
-          style={{ animation: 'tooltip-up 0.18s ease-out forwards', transform: 'translateX(-50%)' }}
-        >
-          <span className="text-[11px] font-semibold text-white/90 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/10">
-            {item.label}
-          </span>
-        </div>
-      )}
+      {labelPos && <DockLabel label={item.label} x={labelPos.x} bottom={labelPos.bottom} />}
 
       <button
         ref={btnRef}
         onClick={handleClick}
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setLabelPos(null)}
         className="relative flex flex-col items-center gap-0 focus:outline-none"
         style={{ WebkitTapHighlightColor: 'transparent' }}
         aria-label={item.label}
@@ -244,7 +265,15 @@ function UtilityButton({ label, scale, onClick, href, children }: {
   danger?: boolean
   children: React.ReactNode
 }) {
-  const [showTooltip, setShowTooltip] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [labelPos, setLabelPos] = useState<{ x: number; bottom: number } | null>(null)
+
+  const handleMouseEnter = () => {
+    const el = wrapperRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setLabelPos({ x: rect.left + rect.width / 2, bottom: window.innerHeight - rect.top + 10 })
+  }
 
   const inner = (
     <div
@@ -257,21 +286,13 @@ function UtilityButton({ label, scale, onClick, href, children }: {
 
   return (
     <div
+      ref={wrapperRef}
       className="relative flex flex-col items-center"
       style={{ transform: `scale(${scale})`, transition: 'transform 0.15s ease-out', transformOrigin: 'bottom center' }}
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setLabelPos(null)}
     >
-      {showTooltip && (
-        <div
-          className="absolute bottom-full mb-2.5 left-1/2 whitespace-nowrap pointer-events-none"
-          style={{ animation: 'tooltip-up 0.18s ease-out forwards', transform: 'translateX(-50%)' }}
-        >
-          <span className="text-[11px] font-semibold text-white/90 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/10">
-            {label}
-          </span>
-        </div>
-      )}
+      {labelPos && <DockLabel label={label} x={labelPos.x} bottom={labelPos.bottom} />}
       {href
         ? <Link href={href} aria-label={label} className="focus:outline-none">{inner}</Link>
         : <button onClick={onClick} aria-label={label} className="focus:outline-none" style={{ WebkitTapHighlightColor: 'transparent' }}>{inner}</button>
@@ -368,64 +389,64 @@ export function FloatingDock() {
         className="fixed bottom-0 left-0 right-0 z-40"
         style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
       >
-        {/* Horizontally scrollable wrapper — hides overflow on narrow screens */}
+        {/* Horizontally scrollable wrapper */}
         <div
           ref={dockRef}
           className="dock-scroll flex justify-center items-end px-3"
-          style={{ overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+          style={{ overflowX: 'auto', overflowY: 'visible', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
         >
-        <div
-          data-tour="dock-bar"
-          className="flex items-end gap-1.5 px-3 py-2.5 rounded-[26px] flex-shrink-0"
-          style={{
-            background: 'rgba(20,23,25,0.88)',
-            backdropFilter: 'blur(32px)',
-            WebkitBackdropFilter: 'blur(32px)',
-            border: '1px solid rgba(38,198,198,0.15)',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)',
-          }}
-        >
-          {/* Nav items */}
-          {items.map(item => (
-            <div key={item.id} data-dock-slot={item.id}>
-              <DockIcon
-                item={item}
-                isActive={openId === item.id}
-                onActivate={setOpenId}
-                scale={scales[item.id] ?? 1}
-              />
-            </div>
-          ))}
-
-          {/* Divider */}
-          <div className="w-px h-8 mx-1 self-center" style={{ background: 'rgba(255,255,255,0.1)' }} />
-
-          {/* Search */}
-          <div data-dock-slot="search">
-            <UtilityButton label="Suche" scale={scales['search'] ?? 1} onClick={() => setSearchOpen(true)}>
-              <Search size={22} className="text-white/65" />
-            </UtilityButton>
-          </div>
-
-          {/* Account */}
-          <div data-dock-slot="account">
-            <UtilityButton label={user?.name ?? 'Konto'} scale={scales['account'] ?? 1} href="/account/security">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold text-navy"
-                style={{ background: 'linear-gradient(135deg, #26C6C6 0%, #0E6B6F 100%)' }}
-              >
-                {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
+          <div
+            data-tour="dock-bar"
+            className="flex items-end gap-1.5 px-3 py-2.5 rounded-[26px] flex-shrink-0"
+            style={{
+              background: 'rgba(20,23,25,0.88)',
+              backdropFilter: 'blur(32px)',
+              WebkitBackdropFilter: 'blur(32px)',
+              border: '1px solid rgba(38,198,198,0.15)',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)',
+            }}
+          >
+            {/* Nav items */}
+            {items.map(item => (
+              <div key={item.id} data-dock-slot={item.id}>
+                <DockIcon
+                  item={item}
+                  isActive={openId === item.id}
+                  onActivate={setOpenId}
+                  scale={scales[item.id] ?? 1}
+                />
               </div>
-            </UtilityButton>
-          </div>
+            ))}
 
-          {/* Logout */}
-          <div data-dock-slot="logout">
-            <UtilityButton label="Abmelden" scale={scales['logout'] ?? 1} onClick={handleLogout} danger>
-              <LogOut size={20} className="text-white/50" />
-            </UtilityButton>
+            {/* Divider */}
+            <div className="w-px h-8 mx-1 self-center" style={{ background: 'rgba(255,255,255,0.1)' }} />
+
+            {/* Search */}
+            <div data-dock-slot="search">
+              <UtilityButton label="Suche" scale={scales['search'] ?? 1} onClick={() => setSearchOpen(true)}>
+                <Search size={22} className="text-white/65" />
+              </UtilityButton>
+            </div>
+
+            {/* Account */}
+            <div data-dock-slot="account">
+              <UtilityButton label={user?.name ?? 'Konto'} scale={scales['account'] ?? 1} href="/account/security">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold text-navy"
+                  style={{ background: 'linear-gradient(135deg, #26C6C6 0%, #0E6B6F 100%)' }}
+                >
+                  {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
+                </div>
+              </UtilityButton>
+            </div>
+
+            {/* Logout */}
+            <div data-dock-slot="logout">
+              <UtilityButton label="Abmelden" scale={scales['logout'] ?? 1} onClick={handleLogout}>
+                <LogOut size={20} className="text-white/50" />
+              </UtilityButton>
+            </div>
           </div>
-        </div>
         </div>
       </div>
 

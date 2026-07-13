@@ -1,45 +1,47 @@
+import {
+  LayoutDashboard, Users, CalendarDays, Clock, DollarSign,
+  Sparkles, Settings, MapPin, Search, Sun, CalendarPlus,
+  Calendar, CalendarX, CheckSquare, Repeat, BarChart2,
+  TrendingUp, ShieldAlert, HelpCircle, UserCircle, Receipt,
+  Percent, Scale, Bot,
+} from 'lucide-react'
+
 interface IconProps {
   size?: number
   className?: string
 }
 
-function navIcon(path: string) {
-  const Ico = ({ size = 36, className }: IconProps) => (
-    <img
-      src={path}
-      alt=""
-      width={size}
-      height={size}
-      className={className}
-      style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }}
-      draggable={false}
-    />
+function navIcon(LIcon: React.FC<any>, color = 'rgba(255,255,255,0.82)') { // any: lucide ForwardRefExoticComponent
+  const Ico = ({ size = 40, className }: IconProps) => (
+    <LIcon size={22} strokeWidth={1.6} color={color} className={className} />
   )
   return Ico
 }
 
-export const IcoDashboard           = navIcon('/icons/nav/ico-dashboard.png')
-export const IcoMitarbeiter         = navIcon('/icons/nav/ico-mitarbeiter.png')
-export const IcoDienstplanung       = navIcon('/icons/nav/ico-dienstplanung.png')
-export const IcoZeitUrlaub          = navIcon('/icons/nav/ico-zeit-urlaub.png')
-export const IcoFinanzen            = navIcon('/icons/nav/ico-finanzen.png')
-export const IcoKIAnalyse           = navIcon('/icons/nav/ico-ki-analyse.png')
-export const IcoEinstellungen       = navIcon('/icons/nav/ico-einstellungen.png')
-export const IcoStandorte           = navIcon('/icons/nav/ico-standorte.png')
-export const IcoSuche               = navIcon('/icons/nav/ico-suche.png')
-export const IcoHeute               = navIcon('/icons/nav/ico-heute.png')
-export const IcoDienstplanErstellen = navIcon('/icons/nav/ico-dienstplan-erstellen.png')
-export const IcoKalender            = navIcon('/icons/nav/ico-kalender.png')
-export const IcoUrlaubsantraege     = navIcon('/icons/nav/ico-urlaubsantraege.png')
-export const IcoAufgaben            = navIcon('/icons/nav/ico-aufgaben.png')
-export const IcoVertretungen        = navIcon('/icons/nav/ico-vertretungen.png')
-export const IcoBerichte            = navIcon('/icons/nav/ico-berichte.png')
-export const IcoWorkforceScore      = navIcon('/icons/nav/ico-workforce-score.png')
-export const IcoPersonalrisiko      = navIcon('/icons/nav/ico-personalrisiko.png')
-export const IcoSupport             = navIcon('/icons/nav/ico-support.png')
-export const IcoMitarbeiterprofil   = navIcon('/icons/nav/ico-mitarbeiterprofil.png')
-export const IcoLohnabrechnung      = navIcon('/icons/nav/ico-lohnabrechnung.png')
-export const IcoZuschlagsEngine     = navIcon('/icons/nav/ico-zuschlags-engine.png')
-export const IcoFairnessEngine      = navIcon('/icons/nav/ico-fairness-engine.png')
-export const IcoKIOnboarding        = navIcon('/icons/nav/ico-ki-onboarding.png')
-export const IcoOKUNAssistent       = navIcon('/icons/nav/ico-okun-assistent.png')
+const gold = 'rgba(200,156,91,0.95)'
+
+export const IcoDashboard           = navIcon(LayoutDashboard)
+export const IcoMitarbeiter         = navIcon(Users)
+export const IcoDienstplanung       = navIcon(CalendarDays)
+export const IcoZeitUrlaub          = navIcon(Clock)
+export const IcoFinanzen            = navIcon(DollarSign)
+export const IcoKIAnalyse           = navIcon(Sparkles, gold)
+export const IcoEinstellungen       = navIcon(Settings)
+export const IcoStandorte           = navIcon(MapPin)
+export const IcoSuche               = navIcon(Search)
+export const IcoHeute               = navIcon(Sun)
+export const IcoDienstplanErstellen = navIcon(CalendarPlus)
+export const IcoKalender            = navIcon(Calendar)
+export const IcoUrlaubsantraege     = navIcon(CalendarX)
+export const IcoAufgaben            = navIcon(CheckSquare)
+export const IcoVertretungen        = navIcon(Repeat)
+export const IcoBerichte            = navIcon(BarChart2)
+export const IcoWorkforceScore      = navIcon(TrendingUp)
+export const IcoPersonalrisiko      = navIcon(ShieldAlert)
+export const IcoSupport             = navIcon(HelpCircle)
+export const IcoMitarbeiterprofil   = navIcon(UserCircle)
+export const IcoLohnabrechnung      = navIcon(Receipt)
+export const IcoZuschlagsEngine     = navIcon(Percent)
+export const IcoFairnessEngine      = navIcon(Scale)
+export const IcoKIOnboarding        = navIcon(Bot)
+export const IcoOKUNAssistent       = navIcon(Sparkles, gold)
