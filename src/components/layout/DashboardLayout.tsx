@@ -45,7 +45,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="min-h-screen pb-32">
+      <main className="min-h-screen" style={{ paddingBottom: 'max(176px, calc(128px + env(safe-area-inset-bottom, 0px)))' }}>
         {children}
       </main>
       <FloatingDock />

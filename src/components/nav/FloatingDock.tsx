@@ -200,7 +200,7 @@ function DockIcon({
           }}
         >
           <Icon
-            size={36}
+            size={40}
             className={item.isGold ? 'animate-gold-glitch' : undefined}
           />
           {/* Badge */}
@@ -314,12 +314,17 @@ export function FloatingDock() {
 
       {/* Dock */}
       <div
-        ref={dockRef}
-        className="fixed bottom-0 left-0 right-0 z-40 flex justify-center items-end pb-3 px-4"
+        className="fixed bottom-0 left-0 right-0 z-40"
         style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
       >
+        {/* Horizontally scrollable wrapper — hides overflow on narrow screens */}
         <div
-          className="flex items-end gap-1.5 px-3 py-2.5 rounded-[26px]"
+          ref={dockRef}
+          className="dock-scroll flex justify-center items-end px-3"
+          style={{ overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+        >
+        <div
+          className="flex items-end gap-1.5 px-3 py-2.5 rounded-[26px] flex-shrink-0"
           style={{
             background: 'rgba(20,23,25,0.88)',
             backdropFilter: 'blur(32px)',
@@ -391,6 +396,7 @@ export function FloatingDock() {
               </button>
             </div>
           </div>
+        </div>
         </div>
       </div>
 
