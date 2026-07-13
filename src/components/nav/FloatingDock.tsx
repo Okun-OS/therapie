@@ -74,13 +74,19 @@ function MegaPanel({ item, onClose }: { item: DockItem; onClose: () => void }) {
                     key={it.href}
                     href={it.href}
                     onClick={onClose}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group"
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 group"
                     style={{
                       background: active ? 'rgba(38,198,198,0.14)' : 'transparent',
                     }}
                     onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)' }}
                     onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                   >
+                    {it.icon && (
+                      <span
+                        className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-sm leading-none"
+                        style={{ background: active ? 'rgba(38,198,198,0.2)' : 'rgba(255,255,255,0.07)' }}
+                      >{it.icon}</span>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={`text-sm font-medium ${active ? 'text-brand' : 'text-white/85'}`}>

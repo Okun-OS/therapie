@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { listEmployees } from '@/lib/entities'
+import { listEmployees, locationIdsForBereiche } from '@/lib/entities'
 import { addEmployeeWithInvitation, LocationCustomerMismatchError } from '@/lib/invitations'
-import { requireRole, resolveCustomerId } from '@/lib/session'
+import { requireRole, resolveCustomerId, resolveBereichIds } from '@/lib/session'
 import { getAppOrigin } from '@/lib/app-url'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +14,17 @@ export async function GET(req: NextRequest) {
   if (session.role !== 'okun' && !customerId) {
     return NextResponse.json({ employees: [] })
   }
-  const employees = await listEmployees(customerId)
+  let employees = await listEmployees(customerId)
+
+  // Bereichsleiter: scope to employees in their bereiche's locations
+  if (session.role === 'company') {
+    const bereichIds = await resolveBereichIds(session)
+    if (bereichIds.length > 0) {
+      const allowedLocationIds = await locationIdsForBereiche(bereichIds)
+      employees = employees.filter(e => e.locationId && allowedLocationIds.includes(e.locationId))
+    }
+  }
+
   return NextResponse.json({ employees })
 }
 

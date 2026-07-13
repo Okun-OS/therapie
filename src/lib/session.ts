@@ -16,6 +16,7 @@ export interface SessionPayload {
   locationId?: string
   customerId?: string
   customerName?: string
+  bereichIds?: string[]
   iat: number
 }
 
@@ -133,6 +134,17 @@ export async function resolveLocationId(session: SessionPayload): Promise<string
   if (session.locationId) return session.locationId
   const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { locationId: true } })
   return user?.locationId ?? undefined
+}
+
+/**
+ * Bereichsleiter: company-role users whose access is scoped to specific Bereiche.
+ * Returns the bereichIds from the cookie (fast path) or re-reads from DB
+ * (stale-cookie fallback). An empty array means unrestricted company access.
+ */
+export async function resolveBereichIds(session: SessionPayload): Promise<string[]> {
+  if (session.bereichIds && session.bereichIds.length > 0) return session.bereichIds
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { bereichIds: true } })
+  return user?.bereichIds ?? []
 }
 
 /**

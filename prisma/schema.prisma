@@ -241,6 +241,7 @@ model User {
   phone           String?
   phoneVerified   Boolean  @default(false)
   smsOtpEnabled   Boolean  @default(false)
+  bereichIds      String[] @default([])
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -290,6 +291,7 @@ model Location {
   bundesland    String?
   employeeCount Int      @default(0)
   adminId       String
+  bereichId     String?
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -346,6 +348,21 @@ model Customer {
   roles          String[]  @default([])
   deletedAt      DateTime?
   updatedAt      DateTime  @updatedAt
+}
+
+// ─── Bereich: optionale Zwischenebene Company → Bereich → Location ───────────
+// Reine Organisationsstruktur, keine neue Rolle. Company-Nutzer mit bereichIds
+// (Bereichsleiter) sehen ausschließlich Standorte und Mitarbeiter in ihren Bereichen.
+
+model Bereich {
+  id          String   @id @default(cuid())
+  customerId  String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([customerId])
 }
 
 // ─── Echte Datenpersistenz: Dienstplanung, Zeiterfassung, Urlaub, Plattform ─

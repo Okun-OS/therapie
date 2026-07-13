@@ -12,6 +12,7 @@ export interface PanelItem {
   description?: string
   badge?: string
   isGold?: boolean
+  icon?: string
 }
 
 export interface PanelSection {
@@ -31,7 +32,6 @@ export interface DockItem {
 
 // ── Employee ────────────────────────────────────────────────────
 const employeeDock: DockItem[] = [
-  // "Mein Tag" = persönlicher Dashboard-Einstieg für Mitarbeiter
   { id: 'dashboard', label: 'Mein Tag', icon: IcoHeute, href: '/employee' },
   {
     id: 'dienstplan', label: 'Dienstplan', icon: IcoDienstplanung,
@@ -39,9 +39,9 @@ const employeeDock: DockItem[] = [
       title: 'Dienstplan',
       sections: [
         { items: [
-          { href: '/employee/schedule',              label: 'Mein Dienstplan', description: 'Aktuelle Schichten & Woche' },
-          { href: '/employee/schedule?tab=wishes',   label: 'Wunschdienste',   description: 'Schichtwünsche eintragen' },
-          { href: '/employee/substitutions',         label: 'Vertretungen',    description: 'Schichten tauschen' },
+          { href: '/employee/schedule',              label: 'Mein Dienstplan', description: 'Aktuelle Schichten & Woche',  icon: '📅' },
+          { href: '/employee/schedule?tab=wishes',   label: 'Wunschdienste',   description: 'Schichtwünsche eintragen',   icon: '⭐' },
+          { href: '/employee/substitutions',         label: 'Vertretungen',    description: 'Schichten tauschen',          icon: '🔄' },
         ]},
       ],
     },
@@ -52,19 +52,17 @@ const employeeDock: DockItem[] = [
       title: 'Zeit & Urlaub',
       sections: [
         { items: [
-          { href: '/employee/time-tracking', label: 'Zeiterfassung', description: 'Stunden & Überstunden erfassen' },
-          { href: '/employee/vacation',      label: 'Urlaub',        description: 'Anträge stellen & Resturlaub' },
+          { href: '/employee/time-tracking', label: 'Zeiterfassung', description: 'Stunden & Überstunden erfassen', icon: '⏱' },
+          { href: '/employee/vacation',      label: 'Urlaub',        description: 'Anträge stellen & Resturlaub',   icon: '🌴' },
         ]},
       ],
     },
   },
-  // Profil: direkter Link — kein Panel, kein Workforce Score hier
   { id: 'profil', label: 'Profil', icon: IcoMitarbeiterprofil, href: '/employee/profile' },
   { id: 'assistent', label: 'OKUN Assistent', icon: IcoOKUNAssistent, href: '/admin/assistant', isGold: true },
 ]
 
 // ── Admin (Standortleitung) ──────────────────────────────────────
-// WICHTIG: Lohnabrechnung gehört NICHT hierher → ausschließlich Unternehmensebene
 const adminDock: DockItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: IcoDashboard, href: '/admin' },
   {
@@ -73,8 +71,7 @@ const adminDock: DockItem[] = [
       title: 'Mitarbeiter',
       sections: [
         { items: [
-          // Mitarbeiter anlegen erfolgt über die Listenansicht selbst (+ Button)
-          { href: '/admin/employees', label: 'Alle Mitarbeiter', description: 'Übersicht, Profile & Bearbeitung' },
+          { href: '/admin/employees', label: 'Alle Mitarbeiter', description: 'Übersicht, Profile & Bearbeitung', icon: '👥' },
         ]},
       ],
     },
@@ -85,19 +82,18 @@ const adminDock: DockItem[] = [
       title: 'Dienstplanung',
       sections: [
         { title: 'Planung', items: [
-          { href: '/admin/schedule',  label: 'Dienstplan erstellen', description: 'KI-gestützte Wochenplanung', badge: 'KI', isGold: true },
-          { href: '/admin/calendar',  label: 'Kalender',             description: 'Monatsübersicht' },
+          { href: '/admin/schedule',  label: 'Dienstplan erstellen', description: 'KI-gestützte Wochenplanung', badge: 'KI', isGold: true, icon: '🗓' },
+          { href: '/admin/calendar',  label: 'Kalender',             description: 'Monatsübersicht',             icon: '📅' },
         ]},
         { title: 'Verwaltung', items: [
-          { href: '/admin/vacation-requests', label: 'Urlaubsanträge', description: 'Genehmigen & ablehnen', badge: 'KI', isGold: true },
-          { href: '/admin/vacation-plan',     label: 'Urlaubsplan',    description: 'Jahresplanung',          badge: 'KI', isGold: true },
-          { href: '/admin/tasks',             label: 'Aufgaben',       description: 'To-dos & Checklisten' },
-          { href: '/admin/substitutions',     label: 'Vertretungen',   description: 'Ausfälle & Ersatz',     badge: 'KI', isGold: true },
+          { href: '/admin/vacation-requests', label: 'Urlaubsanträge', description: 'Genehmigen & ablehnen',  badge: 'KI', isGold: true, icon: '🌴' },
+          { href: '/admin/vacation-plan',     label: 'Urlaubsplan',    description: 'Jahresplanung',           badge: 'KI', isGold: true, icon: '📊' },
+          { href: '/admin/tasks',             label: 'Aufgaben',       description: 'To-dos & Checklisten',    icon: '✅' },
+          { href: '/admin/substitutions',     label: 'Vertretungen',   description: 'Ausfälle & Ersatz',       badge: 'KI', isGold: true, icon: '🔄' },
         ]},
       ],
     },
   },
-  // Zeiterfassung: einzelne Seite → direkter Link statt Panel
   { id: 'zeit', label: 'Zeiterfassung', icon: IcoZeitUrlaub, href: '/admin/time-tracking' },
   {
     id: 'ki', label: 'KI & Analyse', icon: IcoKIAnalyse, isGold: true,
@@ -105,14 +101,14 @@ const adminDock: DockItem[] = [
       title: 'KI & Analyse',
       sections: [
         { title: 'Intelligence', items: [
-          { href: '/admin/workforce-score',    label: 'Workforce Score',    description: 'Team-Performance',       badge: 'KI', isGold: true },
-          { href: '/admin/workforce-insights', label: 'Workforce Insights', description: 'Tiefenanalyse',          badge: 'KI', isGold: true },
-          { href: '/admin/fairness-engine',    label: 'Fairness Engine',    description: 'Gerechte Verteilung',    badge: 'KI', isGold: true },
-          { href: '/admin/personnel-risk',     label: 'Personalrisiko',     description: 'Frühwarnsystem',         badge: 'KI', isGold: true },
-          { href: '/admin/controlling',        label: 'KI-Controlling',     description: 'Kennzahlen & Trends',    badge: 'KI', isGold: true },
+          { href: '/admin/workforce-score',    label: 'Workforce Score',    description: 'Team-Performance',    badge: 'KI', isGold: true, icon: '⚡' },
+          { href: '/admin/workforce-insights', label: 'Workforce Insights', description: 'Tiefenanalyse',       badge: 'KI', isGold: true, icon: '🔍' },
+          { href: '/admin/fairness-engine',    label: 'Fairness Engine',    description: 'Gerechte Verteilung', badge: 'KI', isGold: true, icon: '⚖️' },
+          { href: '/admin/personnel-risk',     label: 'Personalrisiko',     description: 'Frühwarnsystem',      badge: 'KI', isGold: true, icon: '🛡️' },
+          { href: '/admin/controlling',        label: 'KI-Controlling',     description: 'Kennzahlen & Trends', badge: 'KI', isGold: true, icon: '📈' },
         ]},
         { title: 'Berichte', items: [
-          { href: '/admin/reports', label: 'Berichte & Export', description: 'Daten exportieren' },
+          { href: '/admin/reports', label: 'Berichte & Export', description: 'Daten exportieren', icon: '📤' },
         ]},
       ],
     },
@@ -123,9 +119,8 @@ const adminDock: DockItem[] = [
       title: 'Einstellungen',
       sections: [
         { items: [
-          // Standort-Onboarding = Regeln, Schichten, Arbeitszeiten für diesen Standort
-          { href: '/admin/onboarding', label: 'Standort-Onboarding', description: 'Schichten, Regeln & Arbeitszeiten', badge: 'KI', isGold: true },
-          { href: '/company/support',  label: 'Support & Hilfe',     description: 'Hilfe & Kontakt' },
+          { href: '/admin/onboarding', label: 'Standort-Onboarding', description: 'Schichten, Regeln & Arbeitszeiten', badge: 'KI', isGold: true, icon: '🏢' },
+          { href: '/company/support',  label: 'Support & Hilfe',     description: 'Hilfe & Kontakt',                   icon: '💬' },
         ]},
       ],
     },
@@ -142,8 +137,9 @@ const companyDock: DockItem[] = [
       title: 'Standorte',
       sections: [
         { items: [
-          { href: '/company/locations', label: 'Alle Standorte',  description: 'Übersicht & Vergleich' },
-          { href: '/company/onboarding', label: 'KI-Onboarding', description: 'Neuen Standort einrichten', badge: 'KI', isGold: true },
+          { href: '/company/locations', label: 'Alle Standorte',  description: 'Übersicht & Vergleich',       icon: '📍' },
+          { href: '/company/bereiche',  label: 'Bereiche',        description: 'Organisationsstruktur & Bereichsleitung', icon: '🗂' },
+          { href: '/company/onboarding', label: 'KI-Onboarding', description: 'Neuen Standort einrichten', badge: 'KI', isGold: true, icon: '🤖' },
         ]},
       ],
     },
@@ -154,7 +150,7 @@ const companyDock: DockItem[] = [
       title: 'Mitarbeiter',
       sections: [
         { items: [
-          { href: '/company/employees/[id]', label: 'Mitarbeiterprofile', description: 'Standortübergreifend' },
+          { href: '/company/employees/[id]', label: 'Mitarbeiterprofile', description: 'Standortübergreifend', icon: '👤' },
         ]},
       ],
     },
@@ -165,9 +161,9 @@ const companyDock: DockItem[] = [
       title: 'Dienstplanung',
       sections: [
         { items: [
-          { href: '/company/schedule',       label: 'Alle Dienstpläne',    description: 'Standortübergreifende Ansicht' },
-          { href: '/company/vacation-plan',  label: 'Jahresurlaubsplanung', description: 'Unternehmensweite Übersicht' },
-          { href: '/company/substitutions',  label: 'Vertretungen',        description: 'Ausfallmanagement' },
+          { href: '/company/schedule',       label: 'Alle Dienstpläne',     description: 'Standortübergreifende Ansicht', icon: '🗓' },
+          { href: '/company/vacation-plan',  label: 'Jahresurlaubsplanung', description: 'Unternehmensweite Übersicht',   icon: '📅' },
+          { href: '/company/substitutions',  label: 'Vertretungen',         description: 'Ausfallmanagement',             icon: '🔄' },
         ]},
       ],
     },
@@ -178,8 +174,8 @@ const companyDock: DockItem[] = [
       title: 'Finanzen & Abrechnung',
       sections: [
         { items: [
-          { href: '/admin/payroll',    label: 'Lohnabrechnung',  description: 'Gehaltsabrechnungen aller Standorte', badge: 'NEU' },
-          { href: '/admin/surcharges', label: 'Zuschlags-Engine', description: 'Zuschläge, Prämien & Sonderzahlungen', badge: 'NEU' },
+          { href: '/admin/payroll',    label: 'Lohnabrechnung',   description: 'Gehaltsabrechnungen aller Standorte',       badge: 'NEU', icon: '💰' },
+          { href: '/admin/surcharges', label: 'Zuschlags-Engine', description: 'Zuschläge, Prämien & Sonderzahlungen',       badge: 'NEU', icon: '⚡' },
         ]},
       ],
     },
@@ -190,14 +186,14 @@ const companyDock: DockItem[] = [
       title: 'KI & Analyse',
       sections: [
         { title: 'Intelligence', items: [
-          { href: '/company/workforce-score',    label: 'Workforce Score',    description: 'Unternehmensweite Performance', badge: 'KI', isGold: true },
-          { href: '/company/workforce-insights', label: 'Workforce Insights', description: 'Tiefenanalyse',                  badge: 'KI', isGold: true },
-          { href: '/company/fairness-engine',    label: 'Fairness Engine',    description: 'Gerechte Verteilung',             badge: 'KI', isGold: true },
-          { href: '/company/personnel-risk',     label: 'Personalrisiko',     description: 'Frühwarnsystem',                  badge: 'KI', isGold: true },
-          { href: '/company/controlling',        label: 'KI-Controlling',     description: 'Kennzahlen & Trends',             badge: 'KI', isGold: true },
+          { href: '/company/workforce-score',    label: 'Workforce Score',    description: 'Unternehmensweite Performance', badge: 'KI', isGold: true, icon: '⚡' },
+          { href: '/company/workforce-insights', label: 'Workforce Insights', description: 'Tiefenanalyse',                  badge: 'KI', isGold: true, icon: '🔍' },
+          { href: '/company/fairness-engine',    label: 'Fairness Engine',    description: 'Gerechte Verteilung',             badge: 'KI', isGold: true, icon: '⚖️' },
+          { href: '/company/personnel-risk',     label: 'Personalrisiko',     description: 'Frühwarnsystem',                  badge: 'KI', isGold: true, icon: '🛡️' },
+          { href: '/company/controlling',        label: 'KI-Controlling',     description: 'Kennzahlen & Trends',             badge: 'KI', isGold: true, icon: '📈' },
         ]},
         { title: 'Berichte', items: [
-          { href: '/company/reports', label: 'Berichte & Export', description: 'Daten exportieren' },
+          { href: '/company/reports', label: 'Berichte & Export', description: 'Daten exportieren', icon: '📤' },
         ]},
       ],
     },
@@ -208,8 +204,8 @@ const companyDock: DockItem[] = [
       title: 'Einstellungen',
       sections: [
         { items: [
-          { href: '/company/settings', label: 'Unternehmenseinstellungen', description: 'Globale Konfiguration' },
-          { href: '/company/support',  label: 'Support & Hilfe',           description: 'Hilfe & Kontakt' },
+          { href: '/company/settings', label: 'Unternehmenseinstellungen', description: 'Globale Konfiguration', icon: '⚙️' },
+          { href: '/company/support',  label: 'Support & Hilfe',           description: 'Hilfe & Kontakt',        icon: '💬' },
         ]},
       ],
     },
@@ -227,8 +223,8 @@ const okunDock: DockItem[] = [
       title: 'Plattform-Verwaltung',
       sections: [
         { items: [
-          { href: '/okun/test-accounts', label: 'Testzugänge', description: 'Demo-Konten verwalten' },
-          { href: '/okun/invitations',   label: 'Einladungen', description: 'Zugänge versenden' },
+          { href: '/okun/test-accounts', label: 'Testzugänge', description: 'Demo-Konten verwalten', icon: '🔑' },
+          { href: '/okun/invitations',   label: 'Einladungen', description: 'Zugänge versenden',      icon: '✉️' },
         ]},
       ],
     },

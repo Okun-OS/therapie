@@ -3,7 +3,7 @@
 // Prisma und darf daher NIE von einer 'use client' Komponente importiert werden –
 // Client-Seiten laden diese Daten ausschließlich über die /api/* Routen.
 import { prisma } from './prisma'
-import type { Employee, Location, Customer, EmployeePreferences } from './types'
+import type { Employee, Location, Customer, Bereich, EmployeePreferences } from './types'
 
 export function toEmployee(row: any): Employee {
   return {
@@ -44,6 +44,7 @@ function toLocation(row: any): Location {
   return {
     id: row.id,
     customerId: row.customerId ?? undefined,
+    bereichId: row.bereichId ?? undefined,
     name: row.name,
     address: row.address,
     city: row.city,
@@ -56,6 +57,16 @@ function toLocation(row: any): Location {
     employeeCount: row.employeeCount,
     adminId: row.adminId,
     active: row.active,
+  }
+}
+
+function toBereich(row: any): Bereich {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    name: row.name,
+    description: row.description ?? undefined,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
   }
 }
 
@@ -300,4 +311,55 @@ export async function applyHoursBalanceDelta(employeeId: string, deltaHours: num
   if (!row) return
   const hoursBalance = Math.round((row.hoursBalance + deltaHours) * 10) / 10
   await prisma.employee.update({ where: { id: employeeId }, data: { hoursBalance } })
+}
+
+// ─── Bereich CRUD ─────────────────────────────────────────────────────────────
+
+export async function listBereiche(customerId: string): Promise<Bereich[]> {
+  const rows = await prisma.bereich.findMany({ where: { customerId }, orderBy: { name: 'asc' } })
+  return rows.map(toBereich)
+}
+
+export async function getBereichById(id: string): Promise<Bereich | undefined> {
+  const row = await prisma.bereich.findUnique({ where: { id } })
+  return row ? toBereich(row) : undefined
+}
+
+export async function createBereich(input: { customerId: string; name: string; description?: string }): Promise<Bereich> {
+  const row = await prisma.bereich.create({ data: input })
+  return toBereich(row)
+}
+
+export async function updateBereich(id: string, updates: { name?: string; description?: string }): Promise<Bereich | undefined> {
+  const row = await prisma.bereich.update({ where: { id }, data: updates }).catch(() => null)
+  return row ? toBereich(row) : undefined
+}
+
+export async function deleteBereich(id: string): Promise<boolean> {
+  // Unlink locations first so no orphan references remain
+  await prisma.location.updateMany({ where: { bereichId: id }, data: { bereichId: null } })
+  const deleted = await prisma.bereich.delete({ where: { id } }).catch(() => null)
+  return !!deleted
+}
+
+/** Returns all company-role User rows for a customer, for Bereichsleiter management. */
+export async function listCompanyUsers(customerId: string): Promise<{ id: string; name: string; email: string; bereichIds: string[] }[]> {
+  const rows = await prisma.user.findMany({
+    where: { customerId, role: 'company' },
+    select: { id: true, name: true, email: true, bereichIds: true },
+    orderBy: { name: 'asc' },
+  })
+  return rows
+}
+
+/** Sets the bereichIds on a User (replaces the whole array). */
+export async function setUserBereichIds(userId: string, bereichIds: string[]): Promise<void> {
+  await prisma.user.update({ where: { id: userId }, data: { bereichIds } })
+}
+
+/** Filters a list of locationIds to those belonging to the given bereiche. */
+export async function locationIdsForBereiche(bereichIds: string[]): Promise<string[]> {
+  if (bereichIds.length === 0) return []
+  const rows = await prisma.location.findMany({ where: { bereichId: { in: bereichIds } }, select: { id: true } })
+  return rows.map(r => r.id)
 }

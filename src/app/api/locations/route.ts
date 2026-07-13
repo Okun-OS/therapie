@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { listLocations, addLocation } from '@/lib/entities'
-import { requireRole, resolveCustomerId } from '@/lib/session'
+import { listLocations, addLocation, locationIdsForBereiche } from '@/lib/entities'
+import { requireRole, resolveCustomerId, resolveBereichIds } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +12,17 @@ export async function GET(req: NextRequest) {
   if (session.role !== 'okun' && !customerId) {
     return NextResponse.json({ locations: [] })
   }
-  const locations = await listLocations(customerId)
+  let locations = await listLocations(customerId)
+
+  // Bereichsleiter: scope to their bereiche
+  if (session.role === 'company') {
+    const bereichIds = await resolveBereichIds(session)
+    if (bereichIds.length > 0) {
+      const allowedIds = await locationIdsForBereiche(bereichIds)
+      locations = locations.filter(l => allowedIds.includes(l.id))
+    }
+  }
+
   return NextResponse.json({ locations })
 }
 

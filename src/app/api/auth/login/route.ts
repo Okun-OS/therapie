@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     locationId: user.locationId ?? undefined,
     customerId: user.customerId ?? undefined,
     customerName: user.customerName ?? undefined,
+    bereichIds: user.bereichIds.length > 0 ? user.bereichIds : undefined,
   })
   return res
 }
