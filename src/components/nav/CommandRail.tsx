@@ -163,7 +163,7 @@ export function CommandRail() {
   return (
     <>
       <div
-        className="fixed top-0 left-0 right-0 z-30 h-14 flex items-center px-4 gap-2 select-none"
+        className="fixed top-0 left-0 right-0 z-30 h-[70px] flex items-center px-4 gap-2 select-none"
         style={{
           background: 'rgba(249,250,251,0.92)',
           backdropFilter: 'blur(20px)',
@@ -172,14 +172,10 @@ export function CommandRail() {
         }}
       >
         {/* ── Left: Logo + page label ────────────────── */}
-        <div className="flex items-center gap-2.5 flex-shrink-0 min-w-0">
-          <Logo variant="icon" iconSize={26} className="opacity-95 flex-shrink-0" />
-          <div className="hidden sm:flex flex-col justify-center leading-none">
-            <span className="text-[12px] font-extrabold text-navy tracking-tight">
-              OKUN <span style={{ color: '#26C6C6' }}>Workforce</span>
-            </span>
-          </div>
-          <div className="w-px h-4 bg-black/10 flex-shrink-0" />
+        <div className="flex items-center gap-3 flex-shrink-0 min-w-0">
+          <Logo variant="wordmark" tagline iconSize={52} className="flex-shrink-0 hidden sm:block" />
+          <Logo variant="icon" iconSize={32} className="flex-shrink-0 sm:hidden opacity-95" />
+          <div className="w-px h-5 bg-black/10 flex-shrink-0" />
           <div className="flex flex-col justify-center min-w-0">
             <span
               className="text-[12px] font-semibold text-navy/80 tracking-tight leading-tight truncate"
