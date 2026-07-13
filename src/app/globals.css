@@ -114,7 +114,30 @@
   100% { opacity: 1; transform: translateY(0)    scale(1); }
 }
 
-/* Hide scrollbar on dock scroll wrapper (mobile) */
+/* ── Page transitions ─────────────────────────────────────────── */
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-in { animation: page-in 0.22s ease-out forwards; }
+
+/* ── CommandRail label crossfade ──────────────────────────────── */
+
+@keyframes label-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Ambient dot-grid background ─────────────────────────────── */
+
+.bg-dot-grid {
+  background-image: radial-gradient(circle, rgba(0,0,0,0.055) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* ── Hide scrollbar on dock scroll wrapper (mobile) ──────────── */
 .dock-scroll::-webkit-scrollbar { display: none; }
 
 .animate-panel-in  { animation: panel-in  0.38s cubic-bezier(.34,1.4,.64,1) forwards; }

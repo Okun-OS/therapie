@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { FloatingDock } from '@/components/nav/FloatingDock'
+import { CommandRail } from '@/components/nav/CommandRail'
 import { SystemTour } from '@/components/onboarding/SystemTour'
 import { FloatingHelp } from '@/components/ui/FloatingHelp'
 import { BugReportButton } from '@/components/ui/BugReportButton'
@@ -17,6 +18,8 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps) {
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
+  const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -30,12 +33,21 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
     }
   }, [user, isLoading, router, requiredRole])
 
+  // Page-in animation on every navigation
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    el.classList.remove('page-in')
+    void el.offsetWidth // force reflow to restart animation
+    el.classList.add('page-in')
+  }, [pathname])
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 bg-dot-grid flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-navy border-t-brand rounded-full animate-spin" />
-          <p className="text-gray-500 text-sm">Wird geladen...</p>
+          <p className="text-gray-500 text-sm">Wird geladen…</p>
         </div>
       </div>
     )
@@ -44,10 +56,30 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="min-h-screen" style={{ paddingBottom: 'max(176px, calc(128px + env(safe-area-inset-bottom, 0px)))' }}>
+    <div className="min-h-screen bg-gray-50 bg-dot-grid">
+
+      {/* Command Rail — persistent top bar */}
+      <CommandRail />
+
+      {/* Page content */}
+      <main
+        ref={contentRef}
+        className="min-h-screen pt-11 page-in"
+        style={{ paddingBottom: 'max(176px, calc(128px + env(safe-area-inset-bottom, 0px)))' }}
+      >
         {children}
       </main>
+
+      {/* Dock ambient glow — soft teal light source below the dock */}
+      <div
+        className="fixed bottom-0 left-0 right-0 pointer-events-none"
+        style={{
+          zIndex: 38,
+          height: 180,
+          background: 'radial-gradient(ellipse 640px 180px at 50% 100%, rgba(38,198,198,0.065) 0%, transparent 70%)',
+        }}
+      />
+
       <FloatingDock />
       <SystemTour role={user.role} />
       <FloatingHelp />
