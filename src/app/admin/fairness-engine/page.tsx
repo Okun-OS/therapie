@@ -1,6 +1,5 @@
 'use client'
 
-import { Header } from '@/components/layout/Header'
 import { useAuth } from '@/lib/auth-context'
 import { FairnessEngineDashboard } from '@/components/fairness/FairnessEngineDashboard'
 import { AlertTriangle } from 'lucide-react'
@@ -13,7 +12,7 @@ export default function AdminFairnessEngine() {
   if (!locationId) {
     return (
       <>
-        <Header title="Fairness Engine" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -27,7 +26,7 @@ export default function AdminFairnessEngine() {
 
   return (
     <>
-      <Header title="Fairness Engine" subtitle="Transparenz-Dashboard für deinen Standort" />
+      
       <div className="p-4 sm:p-6">
         <FairnessEngineDashboard fetchUrl={`/api/fairness-engine?locationId=${locationId}`} />
       </div>

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { useAuth } from '@/lib/auth-context'
 import {
@@ -59,7 +58,7 @@ export default function EmployeeWorkforceScore() {
 
   return (
     <>
-      <Header title="Mein Level" subtitle="Dein Workforce Score" />
+      
       <div className="p-4 sm:p-6 space-y-4">
         {loading ? (
           <div className="text-center py-12 text-sm text-gray-400">Wird geladen...</div>

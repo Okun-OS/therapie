@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -304,7 +303,7 @@ export default function AdminEmployees() {
   if (!locationId) {
     return (
       <>
-        <Header title="Mitarbeiter" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -318,7 +317,7 @@ export default function AdminEmployees() {
 
   return (
     <>
-      <Header title="Mitarbeiter" subtitle={`${employees.length} aktive Mitarbeiter`} />
+      
       <div className="p-4 sm:p-6 space-y-4">
         <FeatureIntro
           featureKey="admin-employees-time-tracking"

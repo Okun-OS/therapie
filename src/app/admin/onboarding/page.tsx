@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -80,7 +79,7 @@ export default function AdminOnboarding() {
   if (!locationId) {
     return (
       <>
-        <Header title="KI-Onboarding" subtitle="Standort verstehen lernen – per Gespräch, nicht per Formular" />
+        
         <div className="p-4 sm:p-6">
           <Card padding="lg">
             <p className="text-sm text-gray-500">Deinem Konto ist aktuell kein Standort zugeordnet. Bitte wende dich an deine Geschäftsführung.</p>
@@ -94,7 +93,7 @@ export default function AdminOnboarding() {
 
   return (
     <>
-      <Header title="KI-Onboarding" subtitle="Standort verstehen lernen – per Gespräch, nicht per Formular" />
+      
       <div className="p-4 sm:p-6">
         <Card padding="lg">
           <div className="flex items-start justify-between gap-3 mb-3">

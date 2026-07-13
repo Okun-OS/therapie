@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -178,10 +177,7 @@ export default function CompanySubstitutionsPage() {
 
   return (
     <>
-      <Header
-        title="Vertretungsanfragen"
-        subtitle="Unternehmensweite Übersicht aller Standorte"
-      />
+      
 
       <div className="p-4 sm:p-6 space-y-6">
         {/* Stats */}

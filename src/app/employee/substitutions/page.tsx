@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -85,7 +84,7 @@ export default function EmployeeSubstitutions() {
 
   return (
     <>
-      <Header title="Vertretungsanfragen" subtitle={`${incoming.length} offene Anfragen für dich`} />
+      
       <div className="p-4 sm:p-6 space-y-4">
 
         {supported && !subscribed && (

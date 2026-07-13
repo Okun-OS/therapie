@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Select } from '@/components/ui/Select'
@@ -42,7 +41,7 @@ export default function CompanyVacationPlan() {
 
   return (
     <>
-      <Header title="Jahresurlaubsplanung" subtitle="Organisationsweite Übersicht aller Standorte" />
+      
       <div className="p-4 sm:p-6 space-y-5">
 
         <div className="flex items-center gap-2">

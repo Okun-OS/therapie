@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -152,7 +151,7 @@ export default function AdminVacationRequests() {
   if (!locationId) {
     return (
       <>
-        <Header title="Urlaubsanträge" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -166,7 +165,7 @@ export default function AdminVacationRequests() {
 
   return (
     <>
-      <Header title="Urlaubsanträge" subtitle={`${pending.length} offen`} />
+      
       <div className="p-4 sm:p-6 space-y-4">
 
         {/* Stats */}

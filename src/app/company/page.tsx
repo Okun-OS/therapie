@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Header } from '@/components/layout/Header'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -79,7 +78,7 @@ export default function CompanyDashboard() {
 
   return (
     <>
-      <Header title="Unternehmens-Übersicht" subtitle="BrightCare GmbH · Alle Standorte" />
+      
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         <FeatureIntro
           featureKey="company-overview"

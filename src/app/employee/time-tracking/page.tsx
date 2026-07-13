@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -380,7 +379,7 @@ export default function TimeTracking() {
 
   return (
     <>
-      <Header title="Zeiterfassung" subtitle={currentTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} />
+      
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* Main Clock Widget */}

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -79,7 +78,7 @@ export default function AdminReports() {
   if (!locationId) {
     return (
       <>
-        <Header title="Berichte" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -93,7 +92,7 @@ export default function AdminReports() {
 
   return (
     <>
-      <Header title="Berichte" subtitle="Auswertungen & Analysen" />
+      
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* Export Buttons */}

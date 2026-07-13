@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import {
@@ -848,7 +847,7 @@ export default function SurchargesPage() {
 
   return (
     <>
-      <Header title="Zuschlags-Engine" subtitle="Zuschlagsberechnung und Regelkonfiguration" />
+      
 
       <div className="p-4 sm:p-6">
         {/* Tab bar */}

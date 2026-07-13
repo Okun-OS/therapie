@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -274,7 +273,7 @@ export default function OkunCustomers() {
 
   return (
     <>
-      <Header title="Kunden & Organisationen" subtitle={`${CUSTOMERS.length} Kunden verwaltet`} />
+      
       <div className="p-4 sm:p-6 space-y-5">
 
         <div className="flex justify-end">

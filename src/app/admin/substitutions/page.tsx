@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -147,7 +146,7 @@ export default function AdminSubstitutions() {
   if (!locationId) {
     return (
       <>
-        <Header title="Vertretungsmanagement" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -161,7 +160,7 @@ export default function AdminSubstitutions() {
 
   return (
     <>
-      <Header title="Vertretungsmanagement" subtitle={`${open.length} offene Anfragen`} />
+      
       <div className="p-4 sm:p-6 space-y-4">
         <FeatureIntro
           featureKey="admin-substitutions"

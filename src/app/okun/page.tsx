@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/layout/Header'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -41,7 +40,7 @@ export default function OkunOverview() {
 
   return (
     <>
-      <Header title="Systemübersicht" subtitle="OKUN Plattform-Administration" />
+      
       <div className="p-4 sm:p-6 space-y-5">
         <FeatureIntro
           featureKey="okun-overview"

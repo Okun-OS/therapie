@@ -1,6 +1,5 @@
 'use client'
 
-import { Header } from '@/components/layout/Header'
 import { useAuth } from '@/lib/auth-context'
 import { PersonnelRiskDashboard } from '@/components/personnel-risk/PersonnelRiskDashboard'
 import { AlertTriangle } from 'lucide-react'
@@ -13,7 +12,7 @@ export default function AdminPersonnelRisk() {
   if (!locationId) {
     return (
       <>
-        <Header title="Personalrisiko-Analyse" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -27,7 +26,7 @@ export default function AdminPersonnelRisk() {
 
   return (
     <>
-      <Header title="Personalrisiko-Analyse" subtitle="Burnout-, Fluktuations- und Unterbesetzungsrisiko für deinen Standort" />
+      
       <div className="p-4 sm:p-6">
         <PersonnelRiskDashboard fetchUrl={`/api/personnel-risk?locationId=${locationId}`} />
       </div>

@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -171,7 +170,6 @@ export default function AdminSchedule() {
       setRulesDraft(parsed)
     })
   }, [locationId])
-
 
   const periodWeeks = useMemo<Date[][]>(() => {
     if (periodMode === 'custom') {
@@ -658,7 +656,7 @@ export default function AdminSchedule() {
   if (!locationId) {
     return (
       <>
-        <Header title="Dienstplan" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -672,7 +670,7 @@ export default function AdminSchedule() {
 
   return (
     <>
-      <Header title="Dienstplan" subtitle={`${location?.name} · KI-Planung`} />
+      
       <div className="p-4 sm:p-6 space-y-4">
 
         {/* Tab bar */}

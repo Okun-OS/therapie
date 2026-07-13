@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -71,7 +70,7 @@ export default function AdminTasks() {
   if (!locationId) {
     return (
       <>
-        <Header title="Aufgaben verwalten" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -85,7 +84,7 @@ export default function AdminTasks() {
 
   return (
     <>
-      <Header title="Aufgaben verwalten" subtitle="Aufgabentypen definieren und Mitarbeitern zuweisen" />
+      
       <div className="p-4 sm:p-6 space-y-5">
         <div className="flex justify-end">
           <Button className="gap-2" onClick={() => setAddOpen(true)}>

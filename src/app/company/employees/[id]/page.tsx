@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -165,10 +164,7 @@ export default function EmployeeDetailPage() {
 
   return (
     <>
-      <Header
-        title={employee.name}
-        subtitle={`${employee.position} · ${location?.name ?? '–'}`}
-      />
+      
       <div className="p-4 sm:p-6 space-y-4">
 
         {/* Back + Quick actions */}

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -308,7 +307,7 @@ export default function VacationPlanPage() {
   if (!locationId) {
     return (
       <>
-        <Header title="KI-Urlaubsplan" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -322,7 +321,7 @@ export default function VacationPlanPage() {
 
   return (
     <>
-      <Header title="KI-Urlaubsplan" subtitle={`${location?.name} · KI-gestützte Planung`} />
+      
       <div className="p-4 sm:p-6 space-y-4">
         <FeatureIntro
           featureKey="admin-vacation-plan"

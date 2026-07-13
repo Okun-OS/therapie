@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -37,7 +36,7 @@ export default function CompanySettings() {
 
   return (
     <>
-      <Header title="Organisationsweite Einstellungen" subtitle="Gilt für alle Standorte" />
+      
       <div className="p-4 sm:p-6 space-y-5">
 
         <Card>

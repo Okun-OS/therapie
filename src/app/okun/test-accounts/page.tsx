@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -68,7 +67,7 @@ export default function OkunTestAccounts() {
 
   return (
     <>
-      <Header title="Testzugänge" subtitle={`${TEST_ACCOUNTS.length} Testzugänge`} />
+      
       <div className="p-4 sm:p-6 space-y-5">
 
         <div className="flex justify-end">

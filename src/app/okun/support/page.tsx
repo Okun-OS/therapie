@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Textarea } from '@/components/ui/Textarea'
@@ -201,7 +200,7 @@ export default function OkunSupportPage() {
 
   return (
     <>
-      <Header title="Support-Anfragen" subtitle="Ticket-Management für eingehende Support-Anfragen" />
+      
 
       <div className="flex h-[calc(100vh-130px)] overflow-hidden">
         {/* Left: Ticket list */}

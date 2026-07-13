@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -79,7 +78,7 @@ export default function CompanyWorkforceScore() {
 
   return (
     <>
-      <Header title="Workforce Score" subtitle="Ranking über alle Standorte" />
+      
       <div className="p-4 sm:p-6 space-y-5">
         <Card padding="sm">
           <div className="flex items-center gap-2 mb-3">

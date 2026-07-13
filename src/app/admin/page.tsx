@@ -1,6 +1,5 @@
 'use client'
 
-import { Header } from '@/components/layout/Header'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -67,7 +66,7 @@ export default function AdminDashboard() {
   if (!locationId) {
     return (
       <>
-        <Header title="Admin Dashboard" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -81,10 +80,7 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <Header
-        title={`Admin Dashboard`}
-        subtitle={`${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`}
-      />
+      
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* Alerts */}

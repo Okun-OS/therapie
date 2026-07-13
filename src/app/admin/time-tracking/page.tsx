@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -257,7 +256,7 @@ export default function AdminTimeTracking() {
   if (!locationId) {
     return (
       <>
-        <Header title="Zeiterfassung" subtitle="Kein Standort zugeordnet" />
+        
         <div className="p-4 sm:p-6">
           <EmptyState
             icon={AlertTriangle}
@@ -271,7 +270,7 @@ export default function AdminTimeTracking() {
 
   return (
     <>
-      <Header title="Zeiterfassung" subtitle="Überstunden, Abwesenheiten und Monatsabschluss prüfen" />
+      
       <div className="p-4 sm:p-6 space-y-4">
 
         {/* Tab bar */}

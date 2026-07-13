@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Select } from '@/components/ui/Select'
@@ -118,7 +117,7 @@ export default function CompanySupportPage() {
 
   return (
     <>
-      <Header title="Support" subtitle="Tickets & Datenzugriff verwalten" />
+      
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* Active grants overview */}

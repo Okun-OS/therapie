@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import {
@@ -431,10 +430,7 @@ export default function PayrollPage() {
 
   return (
     <>
-      <Header
-        title="Lohnabrechnung"
-        subtitle="Monatliche Lohnabrechnung für alle Mitarbeiter – deterministisch berechnet nach deutschem Recht (2025)"
-      />
+      
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* Month navigator */}

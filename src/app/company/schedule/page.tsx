@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { getWeekDays, toDateString, formatDateShort, getDayName } from '@/lib/utils'
@@ -73,7 +72,7 @@ export default function CompanySchedule() {
 
   return (
     <>
-      <Header title="Dienstpläne aller Standorte" subtitle="Organisationsweite Übersicht · Bearbeitung erfolgt durch die jeweilige Standortleitung" />
+      
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* Nav bar */}

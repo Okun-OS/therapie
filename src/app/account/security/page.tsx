@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -172,7 +171,7 @@ export default function SecurityPage() {
   if (!status) {
     return (
       <DashboardLayout>
-        <Header title="Sicherheit" subtitle="Konto & Zwei-Faktor-Authentifizierung" />
+        
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-navy border-t-brand rounded-full animate-spin" />
         </div>
@@ -182,7 +181,7 @@ export default function SecurityPage() {
 
   return (
     <DashboardLayout>
-      <Header title="Sicherheit" subtitle="Konto & Zwei-Faktor-Authentifizierung" />
+      
 
       <div className="p-4 sm:p-6 max-w-2xl space-y-5">
 

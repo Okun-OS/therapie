@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
@@ -75,10 +74,7 @@ export default function EmployeeDashboard() {
 
   return (
     <>
-      <Header
-        title={`${greeting}, ${user?.name.split(' ')[0]}!`}
-        subtitle={`${now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}`}
-      />
+      
 
       <div className="p-4 sm:p-6 space-y-5">
         <FeatureIntro

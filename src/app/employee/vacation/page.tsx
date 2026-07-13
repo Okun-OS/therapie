@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -162,7 +161,7 @@ export default function EmployeeVacation() {
 
   return (
     <>
-      <Header title="Urlaub & Abwesenheit" />
+      
       <div className="p-4 sm:p-6 space-y-5">
 
         {submitted && (
