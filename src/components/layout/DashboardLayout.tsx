@@ -64,7 +64,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
       {/* Page content */}
       <main
         ref={contentRef}
-        className="min-h-screen pt-11 page-in"
+        className="min-h-screen pt-14 page-in"
         style={{ paddingBottom: 'max(176px, calc(128px + env(safe-area-inset-bottom, 0px)))' }}
       >
         {children}

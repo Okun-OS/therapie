@@ -358,18 +358,6 @@ export function FloatingDock() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // ⌘K shortcut
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        setSearchOpen(true)
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
-
   const handleLogout = () => {
     logout()
     router.push('/login')
