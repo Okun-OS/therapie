@@ -235,6 +235,51 @@ function DockIcon({
   )
 }
 
+// ── Utility Button ───────────────────────────────────────────────
+function UtilityButton({ label, scale, onClick, href, children }: {
+  label: string
+  scale: number
+  onClick?: () => void
+  href?: string
+  danger?: boolean
+  children: React.ReactNode
+}) {
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  const inner = (
+    <div
+      className="w-12 h-12 flex items-center justify-center rounded-2xl transition-colors duration-150"
+      style={{ background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,255,255,0.08)' }}
+    >
+      {children}
+    </div>
+  )
+
+  return (
+    <div
+      className="relative flex flex-col items-center"
+      style={{ transform: `scale(${scale})`, transition: 'transform 0.15s ease-out', transformOrigin: 'bottom center' }}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {showTooltip && (
+        <div
+          className="absolute bottom-full mb-2.5 left-1/2 whitespace-nowrap pointer-events-none"
+          style={{ animation: 'tooltip-up 0.18s ease-out forwards', transform: 'translateX(-50%)' }}
+        >
+          <span className="text-[11px] font-semibold text-white/90 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/10">
+            {label}
+          </span>
+        </div>
+      )}
+      {href
+        ? <Link href={href} aria-label={label} className="focus:outline-none">{inner}</Link>
+        : <button onClick={onClick} aria-label={label} className="focus:outline-none" style={{ WebkitTapHighlightColor: 'transparent' }}>{inner}</button>
+      }
+    </div>
+  )
+}
+
 // ── FloatingDock ─────────────────────────────────────────────────
 export function FloatingDock() {
   const { user, logout } = useAuth()
@@ -357,51 +402,28 @@ export function FloatingDock() {
 
           {/* Search */}
           <div data-dock-slot="search">
-            <div className="relative flex flex-col items-center" style={{ transform: `scale(${scales['search'] ?? 1})`, transition: 'transform 0.15s ease-out', transformOrigin: 'bottom center' }}>
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="w-12 h-12 flex items-center justify-center rounded-2xl transition-colors duration-150 focus:outline-none"
-                style={{ background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,255,255,0.08)' }}
-                aria-label="Suche"
-              >
-                <Search size={20} className="text-white/55" />
-              </button>
-            </div>
+            <UtilityButton label="Suche" scale={scales['search'] ?? 1} onClick={() => setSearchOpen(true)}>
+              <Search size={22} className="text-white/65" />
+            </UtilityButton>
           </div>
 
           {/* Account */}
           <div data-dock-slot="account">
-            <div className="relative flex flex-col items-center" style={{ transform: `scale(${scales['account'] ?? 1})`, transition: 'transform 0.15s ease-out', transformOrigin: 'bottom center' }}>
-              <div className="flex flex-col items-center gap-1">
-                <Link
-                  href="/account/security"
-                  className="w-12 h-12 flex items-center justify-center rounded-2xl transition-colors duration-150 focus:outline-none"
-                  style={{ background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,255,255,0.08)' }}
-                  aria-label="Sicherheit"
-                >
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-navy"
-                    style={{ background: 'linear-gradient(135deg, #26C6C6 0%, #0E6B6F 100%)' }}
-                  >
-                    {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
-                  </div>
-                </Link>
+            <UtilityButton label={user?.name ?? 'Konto'} scale={scales['account'] ?? 1} href="/account/security">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold text-navy"
+                style={{ background: 'linear-gradient(135deg, #26C6C6 0%, #0E6B6F 100%)' }}
+              >
+                {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
               </div>
-            </div>
+            </UtilityButton>
           </div>
 
           {/* Logout */}
           <div data-dock-slot="logout">
-            <div className="relative flex flex-col items-center" style={{ transform: `scale(${scales['logout'] ?? 1})`, transition: 'transform 0.15s ease-out', transformOrigin: 'bottom center' }}>
-              <button
-                onClick={handleLogout}
-                className="w-12 h-12 flex items-center justify-center rounded-2xl transition-colors duration-150 focus:outline-none"
-                style={{ background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,255,255,0.08)' }}
-                aria-label="Abmelden"
-              >
-                <LogOut size={18} className="text-white/45 hover:text-red-400 transition-colors" />
-              </button>
-            </div>
+            <UtilityButton label="Abmelden" scale={scales['logout'] ?? 1} onClick={handleLogout} danger>
+              <LogOut size={20} className="text-white/50" />
+            </UtilityButton>
           </div>
         </div>
         </div>
