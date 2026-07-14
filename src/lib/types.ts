@@ -443,6 +443,8 @@ export interface Customer {
   renewalDate?: string
   notes?: string
   roles?: string[]
+  legalContractDate?: string
+  legalContractNotes?: string
 }
 
 export interface TestAccount {

@@ -85,6 +85,8 @@ export function toCustomer(row: any): Customer {
     renewalDate: row.renewalDate ?? undefined,
     notes: row.notes ?? undefined,
     roles: row.roles ?? [],
+    legalContractDate: row.legalContractDate ?? undefined,
+    legalContractNotes: row.legalContractNotes ?? undefined,
   }
 }
 

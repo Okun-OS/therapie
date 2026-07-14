@@ -161,13 +161,13 @@ export default function OkunCustomers() {
 
   const [selected, setSelected] = useState<Customer | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ name: '', contactName: '', contactEmail: '', status: 'trial' as CustomerStatus, plan: 'starter' as LicensePlan, seatsLicensed: 0 })
+  const [editForm, setEditForm] = useState({ name: '', contactName: '', contactEmail: '', status: 'trial' as CustomerStatus, plan: 'starter' as LicensePlan, seatsLicensed: 0, legalContractDate: '', legalContractNotes: '' })
   const [addModal, setAddModal] = useState(false)
   const [newCust, setNewCust] = useState({ name: '', contactName: '', contactEmail: '', plan: 'starter' as LicensePlan, seatsLicensed: 10 })
   const [addErrors, setAddErrors] = useState<string[]>([])
 
   const startEditing = (c: Customer) => {
-    setEditForm({ name: c.name, contactName: c.contactName, contactEmail: c.contactEmail, status: c.status, plan: c.plan, seatsLicensed: c.seatsLicensed })
+    setEditForm({ name: c.name, contactName: c.contactName, contactEmail: c.contactEmail, status: c.status, plan: c.plan, seatsLicensed: c.seatsLicensed, legalContractDate: c.legalContractDate ?? '', legalContractNotes: c.legalContractNotes ?? '' })
     setIsEditing(true)
   }
 
@@ -547,6 +547,22 @@ export default function OkunCustomers() {
               </Select>
             </div>
             <Input label="Lizenzplätze" type="number" min={1} value={editForm.seatsLicensed} onChange={e => setEditForm(f => ({ ...f, seatsLicensed: Number(e.target.value) }))} />
+            <div className="border-t border-gray-100 pt-3 mt-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Vertragsunterlagen (intern)</p>
+              <div className="space-y-3">
+                <Input label="Vertragsdatum (AVV + AGB)" type="date" value={editForm.legalContractDate} onChange={e => setEditForm(f => ({ ...f, legalContractDate: e.target.value }))} hint="Datum, an dem AVV und AGB unterzeichnet wurden" />
+                <div>
+                  <label className="block text-sm font-semibold text-navy mb-1.5">Notizen zum Vertrag</label>
+                  <textarea
+                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-navy placeholder-gray-400 focus:outline-none focus:border-brand resize-none"
+                    rows={2}
+                    placeholder="z.B. AVV v2.1, unterzeichnet per Post, Akte: 2024-042"
+                    value={editForm.legalContractNotes}
+                    onChange={e => setEditForm(f => ({ ...f, legalContractNotes: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
             <div className="flex gap-2">
               <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setIsEditing(false)}>Abbrechen</Button>
               <Button className="flex-1" onClick={saveEdit}>Speichern</Button>
@@ -596,6 +612,20 @@ export default function OkunCustomers() {
               {selected.notes && (
                 <div className="pt-1.5 border-t border-gray-100 mt-1.5">
                   <p className="text-xs text-gray-500">{selected.notes}</p>
+                </div>
+              )}
+              {(selected.legalContractDate || selected.legalContractNotes) && (
+                <div className="pt-1.5 border-t border-gray-100 mt-1.5 space-y-1">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Vertragsunterlagen</p>
+                  {selected.legalContractDate && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">AVV/AGB unterzeichnet</span>
+                      <span className="font-semibold text-navy">{selected.legalContractDate}</span>
+                    </div>
+                  )}
+                  {selected.legalContractNotes && (
+                    <p className="text-xs text-gray-500 mt-0.5">{selected.legalContractNotes}</p>
+                  )}
                 </div>
               )}
             </div>

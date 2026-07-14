@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getSessionFromRequest, setSessionCookie, type SessionRole } from '@/lib/session'
+import { getSessionFromRequest, setSessionCookie, clearSessionCookie, type SessionRole } from '@/lib/session'
+import { logAudit } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,3 +48,33 @@ export async function GET(req: NextRequest) {
 
   return res
 }
+
+// DSGVO Art. 17 – Recht auf Löschung
+export async function DELETE(req: NextRequest) {
+  const session = getSessionFromRequest(req)
+  if (!session) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
+
+  await logAudit({
+    userId: session.userId,
+    userEmail: session.email,
+    userRole: session.role,
+    action: 'delete',
+    entityType: 'user_self',
+    entityId: session.userId,
+    customerId: session.customerId,
+    details: { reason: 'DSGVO Art. 17 self-deletion' },
+  })
+
+  if (session.employeeId) {
+    await prisma.employee.updateMany({
+      where: { id: session.employeeId },
+      data: { active: false, name: 'Gelöschter Mitarbeiter', email: `deleted-${session.userId}@okun.deleted`, avatarUrl: null },
+    })
+  }
+  await prisma.user.delete({ where: { id: session.userId } })
+
+  const res = NextResponse.json({ ok: true })
+  clearSessionCookie(res)
+  return res
+}
+

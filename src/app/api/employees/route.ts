@@ -3,6 +3,7 @@ import { listEmployees, locationIdsForBereiche } from '@/lib/entities'
 import { addEmployeeWithInvitation, LocationCustomerMismatchError } from '@/lib/invitations'
 import { requireRole, resolveCustomerId, resolveBereichIds } from '@/lib/session'
 import { getAppOrigin } from '@/lib/app-url'
+import { logAudit } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,6 +78,17 @@ export async function POST(req: NextRequest) {
       getAppOrigin(req),
       { sendInvitation: body.sendInvitation !== false },
     )
+
+    logAudit({
+      userId: session.userId,
+      userEmail: session.email,
+      userRole: session.role,
+      action: 'create',
+      entityType: 'employee',
+      entityId: employee.id,
+      customerId: employee.customerId ?? undefined,
+      details: { name: employee.name, email: employee.email },
+    }).catch(() => {})
 
     return NextResponse.json({ employee, emailSent })
   } catch (err: unknown) {

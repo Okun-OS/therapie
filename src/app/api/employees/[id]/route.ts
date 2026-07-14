@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getEmployeeById, updateEmployee, deleteEmployee } from '@/lib/entities'
 import { requireRole } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   try {
     const employee = await updateEmployee(params.id, fields as any)
     if (!employee) return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
+    logAudit({
+      userId: session.userId,
+      userEmail: session.email,
+      userRole: session.role,
+      action: 'update',
+      entityType: 'employee',
+      entityId: params.id,
+      customerId: employee.customerId ?? undefined,
+      details: { updatedFields: Object.keys(fields) },
+    }).catch(() => {})
     return NextResponse.json({ employee })
   } catch (err: unknown) {
     console.error('employees PATCH', err)
