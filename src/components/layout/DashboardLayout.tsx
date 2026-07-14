@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import { FloatingDock } from '@/components/nav/FloatingDock'
 import { CommandRail } from '@/components/nav/CommandRail'
 import { SystemTour } from '@/components/onboarding/SystemTour'
+import { PageBanner } from '@/components/onboarding/PageBanner'
 import { FloatingHelp } from '@/components/ui/FloatingHelp'
 import { BugReportButton } from '@/components/ui/BugReportButton'
 import type { Role } from '@/lib/types'
@@ -67,6 +68,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
         className="min-h-screen pt-[70px] page-in"
         style={{ paddingBottom: 'max(176px, calc(128px + env(safe-area-inset-bottom, 0px)))' }}
       >
+        <PageBanner />
         {children}
       </main>
 

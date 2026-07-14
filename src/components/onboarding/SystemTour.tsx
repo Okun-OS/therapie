@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { X, ArrowRight, ArrowLeft, CheckCircle, RefreshCw } from 'lucide-react'
+import { X, ArrowRight, ArrowLeft, CheckCircle, RefreshCw, Zap } from 'lucide-react'
 import type { Role } from '@/lib/types'
 
 // ── Persistence ──────────────────────────────────────────────────────────────
 
-const STATE_KEY = 'okun_tour_v5'
-const DONE_KEY = (role: Role) => `okun_tour_done_v5:${role}`
+const STATE_KEY = 'okun_tour_v6'
+const DONE_KEY = (role: Role) => `okun_tour_done_v6:${role}`
 
 interface TourState {
   role: Role
@@ -22,7 +22,29 @@ function loadState(): TourState | null {
 function saveState(s: TourState) { localStorage.setItem(STATE_KEY, JSON.stringify(s)) }
 function clearState() { localStorage.removeItem(STATE_KEY) }
 
+// ── CSS keyframes injected once ───────────────────────────────────────────────
+
+const TOUR_KEYFRAMES = `
+  @keyframes tour-beacon {
+    0%, 100% { transform: scale(1); opacity: 0.9; }
+    60% { transform: scale(2.2); opacity: 0; }
+  }
+  @keyframes tour-card-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)   scale(1); }
+  }
+  @keyframes tour-welcome-in {
+    from { opacity: 0; transform: scale(0.92); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+`
+
 // ── Step definitions ─────────────────────────────────────────────────────────
+
+interface QuickAction {
+  label: string
+  path: string
+}
 
 interface TourStep {
   emoji: string
@@ -30,184 +52,311 @@ interface TourStep {
   body: string
   tip?: string
   path: string
-  // Optional CSS selector for a dock slot to spotlight
   spotlightSelector?: string
+  isWelcome?: boolean
+  tryCta?: string
+  tryPath?: string
+  quickActions?: QuickAction[]
 }
 
-// ── Admin steps ───────────────────────────────────────────────────────────────
+// ── Confetti Canvas ───────────────────────────────────────────────────────────
+
+function ConfettiCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const W = (canvas.width = window.innerWidth)
+    const H = (canvas.height = window.innerHeight)
+    const COLORS = ['#26C6C6', '#0E9F9F', '#FFD700', '#FF6B6B', '#78DFE5', '#A8E6CF', '#FFA500', '#C5A3FF']
+
+    type Piece = {
+      x: number; y: number; vx: number; vy: number
+      angle: number; va: number; w: number; h: number; color: string
+    }
+
+    const pieces: Piece[] = Array.from({ length: 130 }, () => ({
+      x: Math.random() * W,
+      y: -20 - Math.random() * H * 0.35,
+      vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 4 + 2,
+      angle: Math.random() * Math.PI * 2,
+      va: (Math.random() - 0.5) * 0.16,
+      w: Math.random() * 10 + 4,
+      h: Math.random() * 5 + 2,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    }))
+
+    let frame: number
+    const startTime = performance.now()
+
+    function draw(now: number) {
+      const elapsed = now - startTime
+      if (elapsed > 3800) { ctx!.clearRect(0, 0, W, H); return }
+      ctx!.clearRect(0, 0, W, H)
+      ctx!.globalAlpha = elapsed > 2800 ? Math.max(0, 1 - (elapsed - 2800) / 1000) : 1
+      pieces.forEach(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.06; p.angle += p.va
+        ctx!.save()
+        ctx!.translate(p.x, p.y); ctx!.rotate(p.angle)
+        ctx!.fillStyle = p.color
+        ctx!.fillRect(-p.w / 2, -p.h / 2, p.w, p.h)
+        ctx!.restore()
+      })
+      frame = requestAnimationFrame(draw)
+    }
+    frame = requestAnimationFrame(draw)
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 99990 }}
+    />
+  )
+}
+
+// ── Spotlight ─────────────────────────────────────────────────────────────────
+
+function Spotlight({ rect, beacon }: { rect: DOMRect; beacon?: boolean }) {
+  return (
+    <>
+      <div
+        style={{
+          position: 'fixed',
+          top: rect.top - 8, left: rect.left - 8,
+          width: rect.width + 16, height: rect.height + 16,
+          borderRadius: 20,
+          boxShadow: '0 0 0 9999px rgba(0,0,0,0.52), 0 0 0 4px rgba(0,168,156,0.3)',
+          border: '2px solid #00A89C',
+          pointerEvents: 'none',
+          zIndex: 9998,
+          transition: 'all 0.35s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      />
+      {beacon && (
+        <div
+          style={{
+            position: 'fixed',
+            top: rect.top + rect.height / 2 - 8,
+            left: rect.left + rect.width / 2 - 8,
+            width: 16, height: 16,
+            borderRadius: '50%',
+            background: '#00A89C',
+            zIndex: 9999,
+            pointerEvents: 'none',
+            animation: 'tour-beacon 1.5s ease-in-out infinite',
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+// ── Admin steps (8 steps, matching DOCX v2.0) ─────────────────────────────────
 
 const ADMIN_STEPS: TourStep[] = [
   {
     emoji: '✨',
-    title: 'Willkommen bei OKUN Workforce',
-    body: 'Diese Tour erklärt die neue Navigation. Du kannst sie jederzeit minimieren — sie läuft nach Seitenwechseln genau dort weiter, wo du aufgehört hast.',
+    title: 'Herzlich willkommen!',
+    body: 'Du verwaltest jetzt deinen Standort digital – Dienstplanung, Zeiterfassung und KI-Analyse an einem Ort.\n\nIn den nächsten 5 Minuten richten wir gemeinsam alles ein.',
     path: '/admin',
-  },
-  {
-    emoji: '🧭',
-    title: 'Das Floating Dock',
-    body: 'Deine gesamte Navigation befindet sich im Dock am unteren Bildschirmrand. Tippe auf ein Symbol, um direkt dorthin zu gelangen — oder öffne ein Mega-Panel mit weiteren Unterseiten.',
-    tip: 'Auf dem Desktop reagieren die Icons magnetisch auf deine Mausbewegung.',
-    path: '/admin',
-    spotlightSelector: '[data-tour="dock-bar"]',
-  },
-  {
-    emoji: '📋',
-    title: 'Mega-Panels',
-    body: 'Symbole mit Unterseiten öffnen ein Mega-Panel — ein dunkles Menü mit allen Bereichen. Tippe nochmal auf dasselbe Symbol, um es zu schließen.',
-    tip: 'Im Mega-Panel siehst du alle Seiten eines Bereichs auf einen Blick.',
-    path: '/admin',
-    spotlightSelector: '[data-tour="dock-bar"]',
-  },
-  {
-    emoji: '🔍',
-    title: 'Globale Suche (⌘K)',
-    body: 'Das Suchsymbol im Dock öffnet die globale Suche. Finde Mitarbeiter, Seiten und Funktionen blitzschnell — per Tastatur (⌘K / Strg+K) oder durch Tippen.',
-    tip: 'Die Suche zeigt kontextuelle Ergebnisse passend zu deiner Rolle.',
-    path: '/admin',
-    spotlightSelector: '[data-dock-slot="search"]',
+    isWelcome: true,
   },
   {
     emoji: '🏠',
-    title: 'Dashboard: Dein Überblick',
-    body: 'Das Dashboard zeigt offene Urlaubsanträge, aktuelle Warnungen und anstehende Aufgaben. Hier startest du deinen Arbeitstag.',
+    title: 'Dein Dashboard',
+    body: 'Dein täglicher Überblick.\n\nAktive Mitarbeitende, Anwesenheit heute, offene Urlaubsanträge, Wochenstunden – alles auf einen Blick, immer aktuell.',
+    tip: 'Kritischer Schritt: Ohne Standort-Beschreibung kennt die KI deinen Standort nicht.',
     path: '/admin',
+    spotlightSelector: '[data-tour="kpi-tiles"]',
+  },
+  {
+    emoji: '⚙️',
+    title: 'Standort der KI erklären',
+    body: 'Das ist der wichtigste Schritt.\n\nBeschreibe deinen Standort: Wie viele Gruppen, welche Schichten, welche Regeln? Die KI liest das und plant automatisch danach.',
+    path: '/admin/onboarding',
+    spotlightSelector: '[data-tour="onboarding-main"]',
+    tryCta: 'Beschreibung eingeben',
+    tryPath: '/admin/onboarding',
   },
   {
     emoji: '👥',
-    title: 'Mitarbeiter verwalten',
-    body: 'Lege Mitarbeiter per KI-Dialog oder klassischem Formular an. Qualifikationen, Arbeitsmodell und Besonderheiten werden direkt erfasst.',
+    title: 'Team anlegen',
+    body: 'Trage jetzt deine Mitarbeitenden ein.\n\nWochenstunden, Gruppe, Bereich – die KI braucht diese Daten für die Planung.',
     path: '/admin/employees',
-  },
-  {
-    emoji: '📅',
-    title: 'Dienstplanung',
-    body: 'Die KI erstellt automatisch einen optimierten Dienstplan auf Basis deiner Standort-Einstellungen. Verfeinere ihn per Chat oder passe Schichten manuell an.',
-    tip: 'Klicke auf „KI-Planung starten" und beschreibe besondere Ereignisse.',
-    path: '/admin/schedule',
-  },
-  {
-    emoji: '⏱️',
-    title: 'Zeiterfassung',
-    body: 'Genehmige Überstunden, prüfe Abwesenheiten und führe Monatsabschlüsse durch. Alle Einträge sind rechtssicher dokumentiert.',
-    path: '/admin/time-tracking',
+    spotlightSelector: '[data-tour="add-employee"]',
+    tryCta: 'Probier es aus: Mitarbeiter hinzufügen',
+    tryPath: '/admin/employees',
   },
   {
     emoji: '🤖',
+    title: 'Ersten KI-Dienstplan erstellen',
+    body: 'Jetzt das Herzstück von OKUN.\n\nDie KI liest deine Standortbeschreibung + alle Mitarbeitenden und erstellt sofort einen vollständigen, fairen Wochenplan. Du kannst danach jeden Eintrag manuell anpassen.',
+    path: '/admin/schedule',
+    spotlightSelector: '[data-tour="create-plan"]',
+    tryCta: 'Plan jetzt erstellen',
+    tryPath: '/admin/schedule',
+  },
+  {
+    emoji: '⚖️',
+    title: 'Fairness Engine',
+    body: 'OKUN plant nicht nur schnell – es plant fair.\n\nWer hatte schon Frühdienst? Wer viele Wochenenddienste? Die Engine gleicht das automatisch aus – und zeigt dir sofort wer einen Score-Alarm hat.',
+    path: '/admin/fairness-engine',
+    spotlightSelector: '[data-tour="fairness-score"]',
+  },
+  {
+    emoji: '💬',
     title: 'OKUN Assistent',
-    body: 'Der KI-Assistent beantwortet Fragen, hilft bei Entscheidungen und analysiert deine Daten in Echtzeit — direkt im Chat.',
-    tip: 'Probiere: „Wer hat nächste Woche Urlaub?" oder „Zeig mir Überstunden im Juli".',
+    body: 'Neu: Dein KI-Kollege mit Vollzugriff.\n\nStelle direkte Fragen oder gib Befehle – der Assistent handelt sofort im System.',
+    tip: 'Demo-Frage ausprobieren: „Wer hat diese Woche die meisten Stunden?"',
     path: '/admin/assistant',
     spotlightSelector: '[data-dock-slot="assistent"]',
+    tryCta: 'Demo-Frage abschicken',
+    tryPath: '/admin/assistant',
   },
   {
     emoji: '🎉',
-    title: 'Tour abgeschlossen!',
-    body: 'Du kennst jetzt die neue Navigation. Dein Dashboard warnt dich proaktiv bei kritischen Situationen. Viel Erfolg!',
-    tip: 'Die Tour lässt sich unter Einstellungen → Produkttour jederzeit neu starten.',
+    title: 'Alles eingerichtet!',
+    body: 'Du kennst jetzt alle wichtigen Funktionen. Dein Dashboard warnt dich proaktiv bei kritischen Situationen. Viel Erfolg!',
     path: '/admin',
+    quickActions: [
+      { label: 'Dienstplan öffnen', path: '/admin/schedule' },
+      { label: 'Team anzeigen', path: '/admin/employees' },
+      { label: 'Assistent fragen', path: '/admin/assistant' },
+    ],
   },
 ]
 
-// ── Employee steps ────────────────────────────────────────────────────────────
+// ── Employee steps (6 steps) ──────────────────────────────────────────────────
 
 const EMPLOYEE_STEPS: TourStep[] = [
   {
     emoji: '✨',
-    title: 'Willkommen bei OKUN Workforce',
-    body: 'Diese Tour zeigt dir alle wichtigen Bereiche. Du kannst sie jederzeit minimieren und später fortsetzen — auch nach einem Seitenwechsel.',
+    title: 'Herzlich willkommen!',
+    body: 'OKUN hilft dir, deinen Arbeitsalltag einfach im Blick zu behalten:\ndeine Dienste, Stunden und deinen Urlaub.\n\nAlles in einer App – in unter 4 Minuten erklärt.',
     path: '/employee',
-  },
-  {
-    emoji: '🧭',
-    title: 'Das Floating Dock',
-    body: 'Deine Navigation befindet sich im Dock am unteren Bildschirmrand. Tippe auf ein Symbol für die jeweilige Seite. Symbole mit Pfeil öffnen ein Untermenü (Mega-Panel).',
-    path: '/employee',
-    spotlightSelector: '[data-tour="dock-bar"]',
-  },
-  {
-    emoji: '🔍',
-    title: 'Globale Suche',
-    body: 'Das Suchsymbol im Dock öffnet die Schnellsuche. Navigiere blitzschnell zu jeder Seite — auch per ⌘K / Strg+K auf der Tastatur.',
-    path: '/employee',
-    spotlightSelector: '[data-dock-slot="search"]',
+    isWelcome: true,
   },
   {
     emoji: '📅',
-    title: 'Dein Dienstplan',
-    body: 'Sieh deinen Dienstplan für die aktuelle Woche. Wechsle zwischen Tages-, Wochen- und Monatsansicht. Im Tab „Wunschdienste" kannst du Wünsche einreichen.',
-    path: '/employee/schedule',
+    title: 'Mein Tag – dein täglicher Start',
+    body: 'Hier startest du jeden Tag.\n\nOben siehst du deinen heutigen Dienst. Der „Einstempeln"-Button startet deine Zeiterfassung – drück ihn wenn du anfängst, „Ausstempeln" wenn du gehst.\n\nDie vier Kacheln zeigen: Stundenkonto, geplante Stunden, Resturlaub und offene Anträge.',
+    path: '/employee',
+    spotlightSelector: '[data-tour="stamp-button"]',
   },
   {
-    emoji: '⏱️',
-    title: 'Zeiterfassung',
-    body: 'Starte und stoppe deine Arbeitszeit per Knopfdruck. Du siehst dein Stundenkonto immer aktuell — inklusive Überstunden und Minusstunden.',
-    tip: 'Denk daran, auch Pausen zu erfassen. Das ist wichtig für deinen Monatsnachweis.',
-    path: '/employee/time-tracking',
+    emoji: '📋',
+    title: 'Mein Dienstplan',
+    body: 'Hier siehst du alle deine Dienste.\n\nWechsle zwischen Tag-, Wochen- und Monatsansicht. Der heutige Tag ist immer hervorgehoben.\n\nJede Schicht zeigt: Uhrzeit, Diensttyp und Icons für Zeiterfassung, Details und Dienst-Tausch.',
+    path: '/employee/schedule',
+    spotlightSelector: '[data-tour="schedule-week"]',
+  },
+  {
+    emoji: '🔄',
+    title: 'Tauschbörse & Dienstwünsche',
+    body: '🔄 Tauschbörse: Du kannst eine Schicht direkt mit Kolleg·innen tauschen – ganz ohne Leitungsumweg.\n\n💭 Wünsche: Trage ein, welche Dienste du nicht möchtest. Die KI berücksichtigt das bei der Planung.',
+    path: '/employee/schedule',
+    spotlightSelector: '[data-tour="schedule-tabs"]',
+    tryCta: 'Probier es aus: Tausch starten',
+    tryPath: '/employee/schedule',
   },
   {
     emoji: '🌴',
-    title: 'Urlaub beantragen',
-    body: 'Beantrage Urlaub direkt in der App. Du siehst sofort, wer gleichzeitig Urlaub hat und wie viele Urlaubstage dir noch zustehen.',
-    tip: 'Du erhältst eine Benachrichtigung, sobald dein Antrag genehmigt oder abgelehnt wurde.',
+    title: 'Urlaub & Zeiterfassung',
+    body: 'Urlaub: Sieh deinen Resturlaub und stelle Anträge direkt in der App. Der Status kommt in Echtzeit.\n\nZeiterfassung: Große Uhr mit Start/Stopp. Dein Stundenkonto wird automatisch geführt – du siehst Überstunden und Minusstunden sofort.',
     path: '/employee/vacation',
+    spotlightSelector: '[data-tour="vacation-banner"]',
+    tryCta: 'Antrag stellen testen',
+    tryPath: '/employee/vacation',
   },
   {
     emoji: '🎉',
-    title: 'Tour abgeschlossen!',
+    title: 'Du kennst dich aus!',
     body: 'Du bist startklar! Dein Dashboard zeigt immer deine nächsten Schichten, offene Anträge und aktuelle Benachrichtigungen.',
     path: '/employee',
+    quickActions: [
+      { label: 'Einstempeln', path: '/employee' },
+      { label: 'Dienstplan', path: '/employee/schedule' },
+      { label: 'Urlaub beantragen', path: '/employee/vacation' },
+    ],
   },
 ]
 
-// ── Company steps ─────────────────────────────────────────────────────────────
+// ── Company steps (8 steps, Sie-form) ────────────────────────────────────────
 
 const COMPANY_STEPS: TourStep[] = [
   {
     emoji: '✨',
-    title: 'Willkommen bei OKUN Workforce',
-    body: 'Als Geschäftsführung hast du einen Überblick über alle Standorte. Diese Tour zeigt dir die wichtigsten Funktionen auf Unternehmensebene.',
+    title: 'Herzlich willkommen!',
+    body: 'Sie haben OKUN Workforce für Ihr gesamtes Unternehmen eingerichtet. Von hier aus behalten Sie alle Standorte, Mitarbeitenden und KI-Analysen im Blick.\n\nIn wenigen Minuten richten wir gemeinsam die wichtigsten Bereiche ein.',
     path: '/company',
+    isWelcome: true,
   },
   {
-    emoji: '🧭',
-    title: 'Das Floating Dock',
-    body: 'Deine Navigation befindet sich im Dock am unteren Bildschirmrand. Symbole mit Pfeil öffnen ein Mega-Panel mit allen Unterseiten des jeweiligen Bereichs.',
+    emoji: '🏢',
+    title: 'Unternehmensübersicht',
+    body: 'Ihr Unternehmens-Cockpit auf einen Blick.\n\nDie vier Kacheln zeigen: Mitarbeitende gesamt, aktive Standorte, offene Urlaubsanträge und erfasste Stunden aller Standorte.\n\nDas Diagramm vergleicht alle Standorte direkt miteinander – sehen Sie sofort wo Handlungsbedarf besteht.',
     path: '/company',
-    spotlightSelector: '[data-tour="dock-bar"]',
+    spotlightSelector: '[data-tour="kpi-tiles"]',
   },
   {
-    emoji: '🔍',
-    title: 'Globale Suche',
-    body: 'Das Suchsymbol öffnet die standortübergreifende Suche. Finde Mitarbeiter, Standorte und Berichte in Sekundenschnelle.',
-    path: '/company',
-    spotlightSelector: '[data-dock-slot="search"]',
-  },
-  {
-    emoji: '💬',
-    title: 'Unternehmens-Onboarding',
-    body: 'Richte dein Unternehmen ein: Name, Standorte, Rollenmodell und unternehmensweite Regeln — alles per KI-Dialog. Das Rollenmodell gilt für alle Standorte.',
-    tip: 'Nach dem Unternehmens-Onboarding richtet jede Standortleitung ihren Standort separat ein.',
+    emoji: '🤖',
+    title: 'KI für Ihr Unternehmen einrichten',
+    body: 'Der wichtigste Konfigurationsschritt.\n\nIm Unternehmens-Onboarding definieren Sie globale Regeln: Rollenmodell, unternehmensweite Regelungen, Führungsstruktur. Diese Regeln liest die KI bei jeder Dienstplan-Erstellung automatisch.',
+    tip: '„Noch nicht gestartet" bei einem Standort bedeutet: Die KI plant diesen Standort nur nach allgemeinen Regeln.',
     path: '/company/onboarding',
+    spotlightSelector: '[data-tour="company-onboarding"]',
+    tryCta: 'KI-Onboarding starten',
+    tryPath: '/company/onboarding',
   },
   {
-    emoji: '📍',
-    title: 'Standorte',
-    body: 'Verwalte alle Standorte deines Unternehmens. Für jeden Standort führt die Standortleitung ihr eigenes KI-Onboarding durch.',
-    path: '/company/locations',
+    emoji: '📅',
+    title: 'Dienstpläne & Vertretungen',
+    body: 'Alle Standortpläne auf einen Blick.\n\nDie Übersicht zeigt pro Standort und Wochentag wie viele Schichten besetzt sind. „Vollständig besetzt" (grün) = kein Handlungsbedarf.\n\nVertretungen zeigt alle offenen Ausfälle – inklusive „Org.-eskaliert".',
+    path: '/company/schedule',
+    spotlightSelector: '[data-tour="schedule-overview"]',
+  },
+  {
+    emoji: '🗓️',
+    title: 'Jahresurlaubsplanung mit Schulferienkalender',
+    body: 'Unternehmensweite Urlaubsplanung – endlich beherrschbar.\n\nOKUN integriert den Schulferienkalender automatisch. Sie sehen sofort welche Schulferien anstehen und ob bei Ihren Standorten Urlaubskonflikte drohen.',
+    tip: 'Filtern Sie nach Standort oder betrachten Sie alle auf einmal.',
+    path: '/company/vacation-plan',
+    spotlightSelector: '[data-tour="vacation-plan"]',
+  },
+  {
+    emoji: '💰',
+    title: 'Finanzen: Lohnabrechnung & Zuschlags-Engine',
+    body: 'Zwei neue Features – in Kürze verfügbar.\n\nLohnabrechnung: Gehaltsabrechnungen aller Standorte an einem Ort. Zuschlags-Engine: Automatische Berechnung von Zuschlägen, Prämien und Sonderzahlungen.\n\nSie sehen sie als Erste.',
+    path: '/company/controlling',
+    spotlightSelector: '[data-tour="finance-preview"]',
   },
   {
     emoji: '📊',
-    title: 'Workforce Insights',
-    body: 'Analysiere Personalkosten, Überstunden-Trends, Krankheitsquoten und Besetzungsqualität über alle Standorte hinweg.',
-    path: '/company/workforce-insights',
+    title: 'KI-Controlling: Ihr Management-Cockpit',
+    body: 'Das mächtigste Feature der Geschäftsführungs-Ebene.\n\nDer Lagebericht fasst die aktuelle Personalsituation zusammen: Auslastung, Krankenquote, Fairness-Score, Vertretungsquote, Dienstplanstabilität – 15 Kennzahlen auf einer Seite.',
+    tip: 'Am Seitenende: eingebetteter KI-Assistent für direkte Fragen – jetzt eine Demo-Frage stellen.',
+    path: '/company/controlling',
+    spotlightSelector: '[data-tour="controlling-kpis"]',
+    tryCta: 'Demo-Frage abschicken',
+    tryPath: '/company/controlling',
   },
   {
     emoji: '🎉',
-    title: 'Tour abgeschlossen!',
-    body: 'Dein Dashboard zeigt immer die wichtigsten Kennzahlen und standortübergreifende Warnungen. Viel Erfolg!',
-    tip: 'Die Tour lässt sich unter Einstellungen → Produkttour jederzeit neu starten.',
+    title: 'Ihr Unternehmen ist startklar!',
+    body: 'Sie kennen jetzt alle wichtigen Funktionen. Ihr Dashboard zeigt immer die wichtigsten Kennzahlen und standortübergreifende Warnungen. Viel Erfolg!',
     path: '/company',
+    quickActions: [
+      { label: 'KI-Controlling', path: '/company/controlling' },
+      { label: 'Alle Dienstpläne', path: '/company/schedule' },
+      { label: 'Einstellungen', path: '/company/settings' },
+    ],
   },
 ]
 
@@ -216,16 +365,10 @@ const COMPANY_STEPS: TourStep[] = [
 const OKUN_STEPS: TourStep[] = [
   {
     emoji: '✨',
-    title: 'Willkommen im OKUN Adminbereich',
-    body: 'Als OKUN-Administrator hast du Zugriff auf alle Mandanten und Plattformfunktionen. Diese Tour zeigt dir die wichtigsten Bereiche.',
+    title: 'Willkommen im OKUN Adminbereich!',
+    body: 'Als OKUN-Administrator hast du Zugriff auf alle Mandanten und Plattformfunktionen.\n\nDiese kurze Tour zeigt dir die wichtigsten Bereiche.',
     path: '/okun',
-  },
-  {
-    emoji: '🧭',
-    title: 'Das Floating Dock',
-    body: 'Die Navigation erfolgt über das Dock am unteren Bildschirmrand. Tippe auf ein Symbol für eine Direktseite oder öffne ein Mega-Panel für Unterseiten.',
-    path: '/okun',
-    spotlightSelector: '[data-tour="dock-bar"]',
+    isWelcome: true,
   },
   {
     emoji: '🏢',
@@ -244,6 +387,11 @@ const OKUN_STEPS: TourStep[] = [
     title: 'Tour abgeschlossen!',
     body: 'Du kennst jetzt alle wichtigen Plattformfunktionen. Viel Erfolg bei der Verwaltung!',
     path: '/okun',
+    quickActions: [
+      { label: 'Kunden', path: '/okun/customers' },
+      { label: 'Bug-Reports', path: '/okun/bugs' },
+      { label: 'Support', path: '/okun/support' },
+    ],
   },
 ]
 
@@ -255,28 +403,6 @@ function getSteps(role: Role): TourStep[] {
   return []
 }
 
-// ── Spotlight overlay ─────────────────────────────────────────────────────────
-
-function Spotlight({ rect }: { rect: DOMRect }) {
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        top: rect.top - 8,
-        left: rect.left - 8,
-        width: rect.width + 16,
-        height: rect.height + 16,
-        borderRadius: 20,
-        boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
-        pointerEvents: 'none',
-        zIndex: 9998,
-        transition: 'all 0.35s cubic-bezier(0.4,0,0.2,1)',
-        border: '2px solid rgba(38,198,198,0.7)',
-      }}
-    />
-  )
-}
-
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function SystemTour({ role }: { role: Role }) {
@@ -285,6 +411,7 @@ export function SystemTour({ role }: { role: Role }) {
   const [state, setStateLocal] = useState<TourState | null>(null)
   const [minimized, setMinimized] = useState(false)
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null)
+  const [showConfetti, setShowConfetti] = useState(false)
 
   const steps = getSteps(role)
 
@@ -308,7 +435,6 @@ export function SystemTour({ role }: { role: Role }) {
     if (!state?.active) return
     if (prevPathname.current === pathname) return
     prevPathname.current = pathname
-
     for (let i = state.step + 1; i < steps.length; i++) {
       if (steps[i].path === pathname) {
         const next: TourState = { ...state, step: i }
@@ -324,7 +450,6 @@ export function SystemTour({ role }: { role: Role }) {
     if (!state?.active) { setSpotlightRect(null); return }
     const current = steps[state.step]
     if (!current?.spotlightSelector) { setSpotlightRect(null); return }
-
     const find = () => {
       const el = document.querySelector<HTMLElement>(current.spotlightSelector!)
       if (el) {
@@ -341,6 +466,18 @@ export function SystemTour({ role }: { role: Role }) {
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [state?.step, pathname, steps, state?.active])
 
+  // Confetti on welcome step and last step
+  useEffect(() => {
+    if (!state?.active) return
+    const current = steps[state.step]
+    if (current?.isWelcome || state.step === steps.length - 1) {
+      setShowConfetti(true)
+      const t = setTimeout(() => setShowConfetti(false), 4000)
+      return () => clearTimeout(t)
+    }
+    setShowConfetti(false)
+  }, [state?.step, state?.active, steps])
+
   const updateState = useCallback((s: TourState) => {
     saveState(s)
     setStateLocal(s)
@@ -351,6 +488,7 @@ export function SystemTour({ role }: { role: Role }) {
     clearState()
     setStateLocal(null)
     setSpotlightRect(null)
+    setShowConfetti(false)
   }
 
   function next() {
@@ -369,6 +507,10 @@ export function SystemTour({ role }: { role: Role }) {
     updateState(ns)
     const target = steps[ns.step].path
     if (target && pathname !== target) router.push(target)
+  }
+
+  function tryIt(tryPath: string) {
+    if (pathname !== tryPath) router.push(tryPath)
   }
 
   function restart() {
@@ -390,7 +532,6 @@ export function SystemTour({ role }: { role: Role }) {
   }
 
   if (!state?.active || steps.length === 0) return null
-
   const current = steps[state.step]
   if (!current) return null
 
@@ -398,47 +539,194 @@ export function SystemTour({ role }: { role: Role }) {
   const isFirst = state.step === 0
   const progress = ((state.step + 1) / steps.length) * 100
 
-  // Panel is always anchored above the dock, centered
+  // ── Minimized pill ────────────────────────────────────────────────────────
+
+  if (minimized) {
+    return (
+      <>
+        <style>{TOUR_KEYFRAMES}</style>
+        <button
+          onClick={() => setMinimized(false)}
+          style={{
+            position: 'fixed',
+            bottom: 'max(112px, calc(96px + env(safe-area-inset-bottom, 0px)))',
+            right: '1rem',
+            zIndex: 9999,
+          }}
+          className="flex items-center gap-2 bg-white border border-gray-200 shadow-lg rounded-2xl px-3 py-2 text-sm font-medium text-navy hover:shadow-xl transition-all"
+        >
+          <div className="w-2 h-2 rounded-full bg-brand animate-pulse" />
+          Tour ({state.step + 1}/{steps.length})
+        </button>
+      </>
+    )
+  }
+
+  // ── Fullscreen welcome modal ──────────────────────────────────────────────
+
+  if (current.isWelcome) {
+    return (
+      <>
+        <style>{TOUR_KEYFRAMES}</style>
+        {showConfetti && <ConfettiCanvas />}
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          {/* Overlay */}
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,10,12,0.88)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }} />
+          {/* Ambient glow */}
+          <div style={{
+            position: 'absolute', width: 900, height: 500,
+            background: 'radial-gradient(ellipse at center, rgba(38,198,198,0.14) 0%, transparent 65%)',
+            top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+          }} />
+          {/* Card */}
+          <div
+            style={{
+              position: 'relative',
+              background: 'rgba(18,21,24,0.97)',
+              border: '1px solid rgba(38,198,198,0.28)',
+              borderRadius: 28,
+              padding: '48px 40px 36px',
+              maxWidth: 480,
+              width: '90vw',
+              textAlign: 'center',
+              boxShadow: '0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(38,198,198,0.08)',
+              animation: 'tour-welcome-in 0.4s cubic-bezier(.34,1.2,.64,1) both',
+            }}
+          >
+            <div style={{ fontSize: 58, marginBottom: 16, lineHeight: 1 }}>{current.emoji}</div>
+            <h2 style={{ color: 'white', fontSize: 26, fontWeight: 800, marginBottom: 14, letterSpacing: '-0.4px' }}>
+              {current.title}
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 15, lineHeight: 1.65, marginBottom: 32, whiteSpace: 'pre-line' }}>
+              {current.body}
+            </p>
+            <button
+              onClick={next}
+              style={{
+                width: '100%', padding: '14px 24px',
+                background: '#26C6C6', color: '#1A1D1F',
+                borderRadius: 16, border: 'none',
+                fontSize: 16, fontWeight: 700, cursor: 'pointer',
+                marginBottom: 12, letterSpacing: '-0.2px',
+              }}
+            >
+              Los geht&apos;s →
+            </button>
+            <button
+              onClick={dismiss}
+              style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+            >
+              Überspringen
+            </button>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // ── Shared panel position (above dock, centered) ──────────────────────────
+
   const panelStyle: React.CSSProperties = {
     position: 'fixed',
     bottom: 'max(112px, calc(96px + env(safe-area-inset-bottom, 0px)))',
     left: '50%',
     transform: 'translateX(-50%)',
-    width: 'min(92vw, 320px)',
+    width: 'min(92vw, 340px)',
     zIndex: 9999,
-    animation: 'modal-in 0.3s cubic-bezier(.34,1.4,.64,1) both',
+    animation: 'tour-card-in 0.28s cubic-bezier(.34,1.2,.64,1) both',
   }
 
-  if (minimized) {
+  // ── Final step with confetti + quick actions ──────────────────────────────
+
+  if (isLast && current.quickActions) {
     return (
-      <button
-        onClick={() => setMinimized(false)}
-        style={{
-          position: 'fixed',
-          bottom: 'max(112px, calc(96px + env(safe-area-inset-bottom, 0px)))',
-          right: '1rem',
-          zIndex: 9999,
-        }}
-        className="flex items-center gap-2 bg-white border border-gray-200 shadow-lg rounded-2xl px-3 py-2 text-sm font-medium text-navy hover:shadow-xl transition-all"
-      >
-        <div className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-        Tour ({state.step + 1}/{steps.length})
-      </button>
+      <>
+        <style>{TOUR_KEYFRAMES}</style>
+        {showConfetti && <ConfettiCanvas />}
+        <div style={panelStyle}>
+          <div
+            className="rounded-2xl overflow-hidden shadow-2xl"
+            style={{
+              background: 'rgba(18,21,24,0.97)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(38,198,198,0.3)',
+            }}
+          >
+            <div className="h-0.5" style={{ background: 'linear-gradient(90deg,#26C6C6,#0E9F9F)' }} />
+            <div className="px-4 pt-4 pb-4 text-center">
+              <div style={{ fontSize: 40, marginBottom: 8, lineHeight: 1 }}>{current.emoji}</div>
+              <h3 className="text-sm font-bold text-white/95 mb-1.5">{current.title}</h3>
+              <p className="text-xs mb-4 leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>{current.body}</p>
+              <div className="grid grid-cols-3 gap-1.5 mb-3">
+                {current.quickActions.map(a => (
+                  <button
+                    key={a.path}
+                    onClick={() => { router.push(a.path); dismiss() }}
+                    style={{
+                      padding: '8px 4px',
+                      background: 'rgba(38,198,198,0.1)',
+                      border: '1px solid rgba(38,198,198,0.22)',
+                      borderRadius: 12,
+                      color: '#26C6C6',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={dismiss}
+                style={{
+                  width: '100%', padding: '10px',
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 12,
+                  color: 'rgba(255,255,255,0.55)',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <CheckCircle className="w-3.5 h-3.5" /> Tour abschließen
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
     )
+  }
+
+  // ── Standard step panel ───────────────────────────────────────────────────
+
+  const btnBase: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+    padding: '8px 12px', borderRadius: 12, fontSize: 12, fontWeight: 600,
+    cursor: 'pointer', border: '1px solid transparent', transition: 'opacity 0.15s',
   }
 
   return (
     <>
-      {spotlightRect && <Spotlight rect={spotlightRect} />}
+      <style>{TOUR_KEYFRAMES}</style>
+      {spotlightRect && <Spotlight rect={spotlightRect} beacon />}
 
       <div style={panelStyle}>
         <div
           className="rounded-2xl overflow-hidden shadow-2xl"
           style={{
-            background: 'rgba(20,23,25,0.95)',
+            background: 'rgba(18,21,24,0.97)',
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',
-            border: '1px solid rgba(38,198,198,0.25)',
+            border: '1px solid rgba(38,198,198,0.22)',
           }}
         >
           {/* Progress bar */}
@@ -449,97 +737,139 @@ export function SystemTour({ role }: { role: Role }) {
             />
           </div>
 
-          {/* Header */}
-          <div className="px-4 pt-3.5 pb-0 flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="text-2xl leading-none flex-shrink-0">{current.emoji}</span>
-              <span className="text-white/40 text-[11px] font-semibold tabular-nums">
-                {state.step + 1}&thinsp;/&thinsp;{steps.length}
-              </span>
+          {/* Breadcrumb chips + controls */}
+          <div className="px-3 pt-2.5 pb-0 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1 flex-wrap">
+              {steps.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => i <= state.step ? goTo(i) : undefined}
+                  style={{
+                    width: 22, height: 22,
+                    borderRadius: '50%',
+                    background: i === state.step
+                      ? '#26C6C6'
+                      : i < state.step
+                      ? 'rgba(38,198,198,0.35)'
+                      : 'rgba(255,255,255,0.1)',
+                    color: i === state.step
+                      ? '#1A1D1F'
+                      : i < state.step
+                      ? 'rgba(38,198,198,0.9)'
+                      : 'rgba(255,255,255,0.28)',
+                    border: i === state.step ? '2px solid #26C6C6' : 'none',
+                    fontSize: 10, fontWeight: 700,
+                    cursor: i <= state.step ? 'pointer' : 'default',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s',
+                    flexShrink: 0,
+                  }}
+                >
+                  {i + 1}
+                </button>
+              ))}
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-0.5 flex-shrink-0">
               <button
                 onClick={() => setMinimized(true)}
-                className="w-6 h-6 flex items-center justify-center rounded-lg text-white/35 hover:text-white/70 hover:bg-white/10 transition-colors text-lg leading-none"
                 title="Minimieren"
+                style={{ ...btnBase, padding: '4px 6px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 18, lineHeight: 1 }}
               >−</button>
               <button
                 onClick={restart}
-                className="w-6 h-6 flex items-center justify-center rounded-lg text-white/35 hover:text-white/70 hover:bg-white/10 transition-colors"
                 title="Neu starten"
+                style={{ ...btnBase, padding: '4px 6px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.3)' }}
               ><RefreshCw className="w-3 h-3" /></button>
               <button
                 onClick={dismiss}
-                className="w-6 h-6 flex items-center justify-center rounded-lg text-white/35 hover:text-white/70 hover:bg-white/10 transition-colors"
                 title="Tour beenden"
+                style={{ ...btnBase, padding: '4px 6px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.3)' }}
               ><X className="w-3.5 h-3.5" /></button>
             </div>
           </div>
 
           {/* Content */}
           <div className="px-4 pb-4 pt-2.5">
-            <h3 className="text-sm font-bold text-white/95 mb-1.5">{current.title}</h3>
-            <p className="text-xs text-white/55 leading-relaxed mb-2">{current.body}</p>
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>{current.emoji}</span>
+              <h3 className="text-sm font-bold text-white/95 leading-snug">{current.title}</h3>
+            </div>
+
+            <p
+              className="text-xs leading-relaxed mb-2"
+              style={{ color: 'rgba(255,255,255,0.52)', whiteSpace: 'pre-line' }}
+            >
+              {current.body}
+            </p>
+
             {current.tip && (
               <div
-                className="rounded-xl px-3 py-2 mb-3"
-                style={{ background: 'rgba(38,198,198,0.1)', border: '1px solid rgba(38,198,198,0.2)' }}
+                className="rounded-xl px-3 py-2 mb-2.5"
+                style={{ background: 'rgba(38,198,198,0.09)', border: '1px solid rgba(38,198,198,0.18)' }}
               >
-                <p className="text-xs leading-relaxed" style={{ color: 'rgba(38,198,198,0.9)' }}>
+                <p className="text-xs leading-relaxed" style={{ color: 'rgba(38,198,198,0.88)' }}>
                   💡 {current.tip}
                 </p>
               </div>
             )}
 
-            {/* Step dots */}
-            <div className="flex items-center justify-center gap-1 mb-3 flex-wrap">
-              {steps.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goTo(i)}
-                  className="rounded-full transition-all"
-                  style={{
-                    width: i === state.step ? 16 : 6,
-                    height: 6,
-                    background: i === state.step
-                      ? '#26C6C6'
-                      : i < state.step
-                      ? 'rgba(38,198,198,0.4)'
-                      : 'rgba(255,255,255,0.15)',
-                  }}
-                />
-              ))}
-            </div>
+            {/* Primary action: Probier es aus (if any) */}
+            {current.tryCta && current.tryPath && (
+              <button
+                onClick={() => tryIt(current.tryPath!)}
+                style={{
+                  ...btnBase,
+                  width: '100%',
+                  marginBottom: 6,
+                  background: 'rgba(38,198,198,0.12)',
+                  border: '1px solid rgba(38,198,198,0.28)',
+                  color: '#26C6C6',
+                  fontSize: 11,
+                }}
+              >
+                <Zap className="w-3 h-3 flex-shrink-0" />
+                {current.tryCta}
+              </button>
+            )}
 
             {/* Navigation */}
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               {!isFirst && (
                 <button
                   onClick={prev}
-                  className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  style={{
+                    ...btnBase,
+                    flexShrink: 0,
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: 'rgba(255,255,255,0.55)',
+                    fontSize: 11,
+                  }}
                 >
                   <ArrowLeft className="w-3 h-3" /> Zurück
                 </button>
               )}
               <button
                 onClick={next}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs rounded-xl font-semibold transition-all"
-                style={{ background: isLast ? 'rgba(38,198,198,0.2)' : '#26C6C6', color: isLast ? '#26C6C6' : '#1A1D1F', border: isLast ? '1px solid rgba(38,198,198,0.4)' : 'none' }}
+                style={{
+                  ...btnBase,
+                  flex: 1,
+                  background: '#26C6C6',
+                  color: '#1A1D1F',
+                  fontSize: 12,
+                }}
               >
-                {isLast
-                  ? <><CheckCircle className="w-3.5 h-3.5" /> Abgeschlossen!</>
-                  : <>Weiter <ArrowRight className="w-3.5 h-3.5" /></>
-                }
+                Weiter <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
+
             {!isLast && (
               <button
                 onClick={dismiss}
-                className="w-full text-center text-[11px] mt-2 py-0.5 transition-colors"
-                style={{ color: 'rgba(255,255,255,0.25)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.5)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.25)')}
+                className="w-full text-center text-[11px] mt-2 py-0.5 transition-colors bg-transparent border-none cursor-pointer"
+                style={{ color: 'rgba(255,255,255,0.2)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.45)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}
               >
                 Tour beenden
               </button>
@@ -557,4 +887,3 @@ export function restartTour(role: Role) {
   localStorage.removeItem(DONE_KEY(role))
   localStorage.removeItem(STATE_KEY)
 }
-
