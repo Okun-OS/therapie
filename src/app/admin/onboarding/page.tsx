@@ -169,8 +169,9 @@ export default function AdminOnboarding() {
         <OnboardingChat
           open
           onClose={() => setChatOpen(false)}
-          scope={locationId}
+          scope={locationId ?? ''}
           locationName={location?.name}
+          locationId={locationId}
           onStateUpdate={s => setState(s as LocState)}
         />
       )}

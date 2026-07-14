@@ -16,10 +16,15 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
+      window.dispatchEvent(new CustomEvent('modal:open'))
     } else {
       document.body.style.overflow = ''
+      window.dispatchEvent(new CustomEvent('modal:close'))
     }
-    return () => { document.body.style.overflow = '' }
+    return () => {
+      document.body.style.overflow = ''
+      window.dispatchEvent(new CustomEvent('modal:close'))
+    }
   }, [open])
 
   if (!open) return null

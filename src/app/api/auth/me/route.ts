@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
       employeeId: user.employeeId ?? undefined,
       locationId: user.locationId ?? undefined,
       customerId: user.customerId ?? undefined,
+      customerName: user.customerName ?? undefined,
+      avatarUrl: user.avatarUrl ?? undefined,
     },
   })
 

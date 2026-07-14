@@ -347,7 +347,9 @@ export interface User {
   employeeId?: string
   locationId?: string
   customerId?: string
+  customerName?: string
   position?: string
+  avatarUrl?: string
 }
 
 export interface DashboardStats {

@@ -289,10 +289,13 @@ export function CommandRail() {
               aria-label="Benutzerprofil"
             >
               <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-navy flex-shrink-0"
-                style={{ background: 'linear-gradient(135deg, #26C6C6 0%, #0E6B6F 100%)' }}
+                className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-[11px] font-bold text-navy flex-shrink-0"
+                style={!user?.avatarUrl ? { background: 'linear-gradient(135deg, #26C6C6 0%, #0E6B6F 100%)' } : undefined}
               >
-                {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
+                {user?.avatarUrl
+                  ? <img src={user.avatarUrl} alt={user?.name ?? ''} className="w-full h-full object-cover" />
+                  : (user?.name?.charAt(0)?.toUpperCase() ?? '?')
+                }
               </div>
               <div className="hidden sm:flex flex-col items-start leading-none gap-0.5">
                 <span className="text-[12px] font-semibold text-navy truncate max-w-[96px]">{user?.name}</span>

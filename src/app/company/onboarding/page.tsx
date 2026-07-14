@@ -179,6 +179,7 @@ export default function CompanyOnboarding() {
           onClose={() => setChatScope(null)}
           scope={chatScope}
           locationName={activeLocation?.name}
+          locationId={chatScope !== 'organization' ? chatScope : undefined}
           onStateUpdate={state => {
             if (chatScope === 'organization') {
               setOrg(state as OrgState)

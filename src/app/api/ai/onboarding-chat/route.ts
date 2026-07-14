@@ -494,6 +494,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Persist full chat history so the UI can resume the conversation
+    try {
+      const fullMessages = [...messages, { role: 'assistant' as const, content: reply }]
+      if (isOrganization) {
+        if (customerId) {
+          await prisma.organizationOnboarding.upsert({
+            where: { customerId },
+            create: { customerId, chatMessages: fullMessages as unknown as import('@prisma/client').Prisma.JsonArray },
+            update: { chatMessages: fullMessages as unknown as import('@prisma/client').Prisma.JsonArray },
+          })
+        }
+      } else {
+        await prisma.locationOnboarding.upsert({
+          where: { locationId: scope },
+          create: { locationId: scope, chatMessages: fullMessages as unknown as import('@prisma/client').Prisma.JsonArray },
+          update: { chatMessages: fullMessages as unknown as import('@prisma/client').Prisma.JsonArray },
+        })
+      }
+    } catch (saveErr) {
+      console.error('onboarding-chat: failed to save chat history', saveErr)
+    }
+
     return NextResponse.json({ reply, state: savedState })
   } catch (err: unknown) {
     console.error('onboarding-chat', err)

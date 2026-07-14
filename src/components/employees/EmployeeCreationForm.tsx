@@ -29,8 +29,7 @@ function toFreeText(values?: string[]) {
 }
 
 function fromFreeText(value: string): string[] | undefined {
-  const trimmed = value.trim()
-  return trimmed ? [trimmed] : undefined
+  return value.trim() ? [value] : undefined
 }
 
 export function EmployeeCreationForm({

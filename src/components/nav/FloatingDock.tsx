@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { LogOut, Search } from 'lucide-react'
+import { LogOut, Search, ChevronUp } from 'lucide-react'
 import { getDockItems, type DockItem } from './navData'
 import { SearchModal } from './SearchModal'
 
@@ -309,9 +309,42 @@ export function FloatingDock() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [scales, setScales] = useState<Record<string, number>>({})
   const [searchOpen, setSearchOpen] = useState(false)
+  const [dockHidden, setDockHidden] = useState(false)
 
   const items = getDockItems(user?.role)
   const openItem = items.find(i => i.id === openId) ?? null
+
+  // ── Dock hide/show persistence ──
+  useEffect(() => {
+    const stored = localStorage.getItem('okun_dock_hidden')
+    if (stored === '1') setDockHidden(true)
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('okun_dock_hidden', dockHidden ? '1' : '0')
+  }, [dockHidden])
+
+  // Auto-show when cursor near bottom edge
+  useEffect(() => {
+    if (!dockHidden) return
+    const handler = (e: MouseEvent) => {
+      if (e.clientY > window.innerHeight - 40) setDockHidden(false)
+    }
+    document.addEventListener('mousemove', handler)
+    return () => document.removeEventListener('mousemove', handler)
+  }, [dockHidden])
+
+  // Auto-minimize when a fullscreen modal opens, restore when it closes
+  useEffect(() => {
+    const onOpen = () => setDockHidden(true)
+    const onClose = () => setDockHidden(false)
+    window.addEventListener('modal:open', onOpen)
+    window.addEventListener('modal:close', onClose)
+    return () => {
+      window.removeEventListener('modal:open', onOpen)
+      window.removeEventListener('modal:close', onClose)
+    }
+  }, [])
 
   // ── Magnetic effect ──
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -375,13 +408,32 @@ export function FloatingDock() {
       {/* Dock */}
       <div
         className="fixed bottom-0 left-0 right-0 z-40"
-        style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+        style={{
+          transform: dockHidden ? 'translateY(calc(100% - 20px))' : 'translateY(0)',
+          transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
       >
+        {/* Grip / toggle strip */}
+        <div className="flex justify-center pb-0.5">
+          <button
+            onClick={() => setDockHidden(h => !h)}
+            aria-label={dockHidden ? 'Dock einblenden' : 'Dock ausblenden'}
+            className="flex flex-col items-center gap-0.5 px-4 py-1 rounded-t-xl hover:bg-black/5 transition-colors"
+          >
+            <div className="w-8 h-1 rounded-full bg-gray-300/80" />
+            <ChevronUp
+              size={10}
+              className="text-gray-400 transition-transform"
+              style={{ transform: dockHidden ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}
+            />
+          </button>
+        </div>
+
         {/* Horizontally scrollable wrapper */}
         <div
           ref={dockRef}
           className="dock-scroll flex justify-center items-end px-3"
-          style={{ overflowX: 'auto', overflowY: 'visible', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+          style={{ overflowX: 'auto', overflowY: 'visible', scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch', paddingBottom: 'max(12px, env(safe-area-inset-bottom))' } as React.CSSProperties}
         >
           <div
             data-tour="dock-bar"
@@ -418,12 +470,14 @@ export function FloatingDock() {
 
             {/* Account */}
             <div data-dock-slot="account">
-              <UtilityButton label={user?.name ?? 'Konto'} scale={scales['account'] ?? 1} href="/account/security">
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold text-navy"
-                  style={{ background: 'linear-gradient(135deg, #26C6C6 0%, #0E6B6F 100%)' }}
+              <UtilityButton label={user?.name ?? 'Konto'} scale={scales['account'] ?? 1} href="/account">
+                <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-[12px] font-bold text-navy flex-shrink-0"
+                  style={!user?.avatarUrl ? { background: 'linear-gradient(135deg, #26C6C6 0%, #0E6B6F 100%)' } : undefined}
                 >
-                  {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
+                  {user?.avatarUrl
+                    ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                    : (user?.name?.charAt(0)?.toUpperCase() ?? '?')
+                  }
                 </div>
               </UtilityButton>
             </div>
