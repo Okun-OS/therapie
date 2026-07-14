@@ -56,9 +56,15 @@ export function EmployeeCreationForm({
   const [emailTaken, setEmailTaken] = useState(false)
   const emailCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Local raw text states for CSV fields — avoids trim() eating spaces during typing
+  const [qualificationsText, setQualificationsText] = useState(toCsv(initialDraft?.qualifications))
+  const [allowedTasksText, setAllowedTasksText] = useState(toCsv(initialDraft?.allowedTasks))
+
   useEffect(() => {
     if (!open) return
     setDraft(initialDraft ?? EMPTY_DRAFT)
+    setQualificationsText(toCsv(initialDraft?.qualifications))
+    setAllowedTasksText(toCsv(initialDraft?.allowedTasks))
   }, [open, initialDraft])
 
   useEffect(() => {
@@ -121,11 +127,19 @@ export function EmployeeCreationForm({
   }
 
   async function handleSubmit() {
-    if (!draft.name?.trim() || !draft.email?.trim()) {
+    // Flush local CSV text states into draft before validation
+    const flushedDraft = {
+      ...draft,
+      qualifications: fromCsv(qualificationsText),
+      allowedTasks: fromCsv(allowedTasksText),
+    }
+    setDraft(flushedDraft)
+
+    if (!flushedDraft.name?.trim() || !flushedDraft.email?.trim()) {
       setError('Name und E-Mail sind erforderlich')
       return
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((flushedDraft.email ?? '').trim())) {
       setError('Ungültige E-Mail-Adresse')
       return
     }
@@ -136,7 +150,7 @@ export function EmployeeCreationForm({
     setError(null)
     setSaving(true)
     try {
-      await onSave(draft)
+      await onSave(flushedDraft)
       setDone(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Mitarbeiter konnte nicht angelegt werden')
@@ -308,14 +322,16 @@ export function EmployeeCreationForm({
 
         <Input
           label="Qualifikationen"
-          value={toCsv(draft.qualifications)}
-          onChange={e => update('qualifications', fromCsv(e.target.value))}
+          value={qualificationsText}
+          onChange={e => setQualificationsText(e.target.value)}
+          onBlur={e => update('qualifications', fromCsv(e.target.value))}
           hint="Kommagetrennt, z.B. Erste-Hilfe-Schein, Schwimmbefähigung"
         />
         <Input
           label="Erlaubte Aufgaben"
-          value={toCsv(draft.allowedTasks)}
-          onChange={e => update('allowedTasks', fromCsv(e.target.value))}
+          value={allowedTasksText}
+          onChange={e => setAllowedTasksText(e.target.value)}
+          onBlur={e => update('allowedTasks', fromCsv(e.target.value))}
           hint="Kommagetrennt – fließt in die Dienstplanung ein"
         />
         <Textarea

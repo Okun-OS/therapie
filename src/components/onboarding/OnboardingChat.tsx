@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal'
 import { AiChatPanel, type ChatMessage } from '@/components/ui/AiChatPanel'
 import { Button } from '@/components/ui/Button'
 import { ONBOARDING_PHASES } from '@/lib/onboarding-service'
-import { CheckCircle2, RotateCcw, FileText, Settings, Bookmark } from 'lucide-react'
+import { CheckCircle2, RotateCcw, FileText, Settings, Bookmark, Check, List } from 'lucide-react'
 
 const ORGANIZATION_OPENING = 'Hallo! Ich freue mich, euer Unternehmen kennenzulernen. Gemeinsam richten wir OKUN Workforce so ein, dass später alles möglichst automatisch funktioniert. Wie heißt euer Unternehmen, welche Standorte gehören dazu, und wie ist die Führung grob aufgebaut (z.B. Geschäftsführung, Standortleitungen)?'
 const LOCATION_OPENING = (name: string) => `Hallo! Ich freue mich, „${name}" kennenzulernen. Gemeinsam richten wir OKUN Workforce so ein, dass die Dienstplanung später möglichst automatisch funktioniert. Magst du mir zunächst kurz erzählen, um welche Art von Standort es sich handelt und wie die Gruppen/Bereiche dort aufgeteilt sind?`
@@ -53,7 +53,8 @@ export function OnboardingChat({
   const [hasSavedHistory, setHasSavedHistory] = useState(false)
   const [savedAt, setSavedAt] = useState<string | null>(null)
   const [savedLoading, setSavedLoading] = useState(false)
-  const [completedView, setCompletedView] = useState<'options' | 'chat'>('chat')
+  const [completedView, setCompletedView] = useState<'options' | 'chat' | 'summary'>('chat')
+  const [showSaved, setShowSaved] = useState(false)
 
   // Load saved messages when modal opens
   useEffect(() => {
@@ -130,7 +131,11 @@ export function OnboardingChat({
   }
 
   function handleSaveAndClose() {
-    onClose()
+    setShowSaved(true)
+    setTimeout(() => {
+      setShowSaved(false)
+      onClose()
+    }, 1200)
   }
 
   async function handleRestart() {
@@ -188,6 +193,17 @@ export function OnboardingChat({
 
           <div className="grid gap-2">
             <button
+              onClick={() => setCompletedView('summary')}
+              className="flex items-center gap-3 p-4 rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 transition-colors text-left"
+            >
+              <List size={18} className="text-brand flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-navy text-sm">Zusammenfassung</p>
+                <p className="text-xs text-gray-500">Überblick über alle erfassten Bereiche</p>
+              </div>
+            </button>
+
+            <button
               onClick={() => setCompletedView('chat')}
               className="flex items-center gap-3 p-4 rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 transition-colors text-left"
             >
@@ -221,16 +237,64 @@ export function OnboardingChat({
             </button>
           </div>
         </div>
+      ) : isCompleted && completedView === 'summary' ? (
+        /* ── Zusammenfassung: erfasste Bereiche ────────────────────── */
+        <div className="py-2 space-y-3">
+          <button
+            onClick={() => setCompletedView('options')}
+            className="text-xs text-brand hover:underline flex items-center gap-1"
+          >
+            ← Zurück
+          </button>
+          <p className="text-sm font-semibold text-navy">Erfasste Bereiche</p>
+          {isOrganization ? (
+            <div className="space-y-2">
+              {[
+                { label: 'Unternehmensname', done: true },
+                { label: 'Rollenmodell & Hierarchie', done: true },
+                { label: 'Unternehmensweite Regeln', done: true },
+              ].map(item => (
+                <div key={item.label} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white">
+                  <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                  <span className="text-sm text-navy">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {ONBOARDING_PHASES.map(phase => {
+                const done = (state as LocState | null)?.completedPhases.includes(phase.key) ?? false
+                return (
+                  <div key={phase.key} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white">
+                    {done
+                      ? <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                      : <div className="w-4 h-4 rounded-full border-2 border-gray-300 flex-shrink-0" />
+                    }
+                    <span className={`text-sm ${done ? 'text-navy' : 'text-gray-400'}`}>{phase.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <p className="text-xs text-gray-400 pt-1">
+            Die erfassten Regeln sind aktiv und werden bei der Dienstplanung automatisch angewendet.
+          </p>
+        </div>
       ) : (
         /* ── Chat view ──────────────────────────────────────────────── */
         <>
           {hasSavedHistory && !isCompleted && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-brand/5 rounded-xl border border-brand/10 mb-3 text-xs text-brand">
-              <Bookmark size={12} className="flex-shrink-0" />
-              <span>
-                Gespeichertes Gespräch fortgesetzt
-                {savedAt ? ` (zuletzt gespeichert: ${new Date(savedAt).toLocaleDateString('de-DE')})` : ''}
-              </span>
+            <div className="flex items-start gap-2 px-3 py-2 bg-brand/5 rounded-xl border border-brand/10 mb-3 text-xs text-brand">
+              <Bookmark size={12} className="flex-shrink-0 mt-0.5" />
+              <div>
+                <span className="font-medium">Gespräch fortgesetzt</span>
+                {savedAt && <span className="text-brand/70"> · zuletzt gespeichert {new Date(savedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
+                {!isOrganization && (state as LocState | null)?.completedPhases && (state as LocState | null)!.completedPhases.length > 0 && (
+                  <p className="text-brand/70 mt-0.5">
+                    {(state as LocState).completedPhases.length} von {ONBOARDING_PHASES.length} Bereichen erfasst · noch offen: {ONBOARDING_PHASES.filter(p => !(state as LocState).completedPhases.includes(p.key)).map(p => p.label).join(', ') || 'keine'}
+                  </p>
+                )}
+              </div>
             </div>
           )}
           <AiChatPanel
@@ -246,15 +310,22 @@ export function OnboardingChat({
             onCloseCompletion={() => setCompletedView('options')}
           />
           <div className="mt-3 flex justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSaveAndClose}
-              className="flex items-center gap-1.5 text-gray-500"
-            >
-              <Bookmark size={13} />
-              Speichern und später fortsetzen
-            </Button>
+            {showSaved ? (
+              <div className="flex items-center gap-1.5 text-green-600 text-sm font-medium px-3 py-1.5">
+                <Check size={14} />
+                Gespeichert
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSaveAndClose}
+                className="flex items-center gap-1.5 text-gray-500"
+              >
+                <Bookmark size={13} />
+                Speichern und später fortsetzen
+              </Button>
+            )}
           </div>
         </>
       )}
