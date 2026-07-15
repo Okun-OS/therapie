@@ -20,7 +20,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Kein Mandant zugeordnet' }, { status: 403 })
   }
 
-  const companyModel = await getOrGenerateCompanyModel(customerId)
+  let companyModel
+  try {
+    companyModel = await getOrGenerateCompanyModel(customerId)
+  } catch (err) {
+    console.error('[solve-schedule] CompanyModel generation failed:', err)
+    return NextResponse.json(
+      { error: 'Das Unternehmens-Modell konnte nicht generiert werden. Bitte versuche es erneut.', code: 'COMPANY_MODEL_ERROR' },
+      { status: 500 },
+    )
+  }
+
   if (!companyModel) {
     return NextResponse.json(
       { error: 'Das Unternehmens-Onboarding ist noch nicht abgeschlossen. Bitte schließe zuerst das KI-Onboarding ab.', code: 'NO_COMPANY_MODEL' },
@@ -28,9 +38,18 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const result = await runPlanningSession(locationId, customerId, von, bis, kontext)
+  let result
+  try {
+    result = await runPlanningSession(locationId, customerId, von, bis, kontext)
+  } catch (err) {
+    console.error('[solve-schedule] Planning session failed:', err)
+    const message = err instanceof Error ? err.message : 'Unbekannter Planungsfehler'
+    return NextResponse.json(
+      { error: `Dienstplan-Generierung fehlgeschlagen: ${message}`, code: 'PLANNING_ERROR' },
+      { status: 500 },
+    )
+  }
 
-  // Convert GenerierterPlan to week format compatible with existing schedule page
   const shifts = await prisma.shift.findMany({ where: { locationId } })
   const shiftMap = new Map(shifts.map(s => [s.id, s]))
 

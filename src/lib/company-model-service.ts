@@ -19,11 +19,14 @@ export async function saveCompanyModel(customerId: string, model: CompanyModel):
 }
 
 export async function generateCompanyModelFromOnboarding(customerId: string): Promise<CompanyModel> {
-  const [orgOnboarding, locationOnboardings, locations] = await Promise.all([
+  const [orgOnboarding, locationOnboardingsAll, locations] = await Promise.all([
     prisma.organizationOnboarding.findUnique({ where: { customerId } }),
     prisma.locationOnboarding.findMany(),
     prisma.location.findMany({ where: { customerId } }),
   ])
+  const locationOnboardings = locationOnboardingsAll.filter(lo =>
+    locations.some(l => l.id === lo.locationId)
+  )
 
   const locationData = locations.map(loc => {
     const onboarding = locationOnboardings.find(lo => lo.locationId === loc.id)

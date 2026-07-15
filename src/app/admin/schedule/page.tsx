@@ -106,6 +106,7 @@ export default function AdminSchedule() {
   const [fallbackLoading, setFallbackLoading] = useState(false)
   const [fallbackHandled, setFallbackHandled] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [aiErrorCode, setAiErrorCode] = useState<string | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [saved, setSaved] = useState(false)
   const [facilityDescription, setFacilityDescription] = useState('')
@@ -389,6 +390,7 @@ export default function AdminSchedule() {
     setAiDone(false)
     setAiStep(0)
     setAiError(null)
+    setAiErrorCode(null)
     setAiReasoning(null)
     setAiDecisions([])
     setAiAssignmentReasons({})
@@ -422,8 +424,9 @@ export default function AdminSchedule() {
       })
 
       if (!newRes.ok) {
-        const err = await newRes.json().catch(() => ({ error: newRes.statusText }))
-        throw new Error(err.error ?? 'API-Fehler')
+        const errData = await newRes.json().catch(() => ({ error: newRes.statusText }))
+        setAiErrorCode(errData.code ?? null)
+        throw new Error(errData.error ?? 'API-Fehler')
       }
       const data: Record<string, unknown> = await newRes.json()
 
@@ -829,17 +832,34 @@ export default function AdminSchedule() {
                   </div>
                 </div>
               ) : aiError ? (
-                <div className="flex items-center gap-3">
-                  <AlertTriangle size={24} className="text-red-500 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-bold text-red-700">KI-Fehler</p>
-                    <p className="text-sm text-red-600">{aiError}</p>
-                    <p className="text-xs text-gray-500 mt-1">Versuche es erneut oder wähle einen kürzeren Zeitraum.</p>
+                aiErrorCode === 'NO_COMPANY_MODEL' ? (
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={24} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-bold text-amber-800">Unternehmens-Onboarding noch nicht abgeschlossen</p>
+                      <p className="text-sm text-amber-700 mt-0.5">
+                        Die KI-Dienstplanung benötigt das abgeschlossene Unternehmens-Onboarding, damit sie dein Unternehmen, die Rollen und die grundlegenden Regeln kennt. Bitte schließe es zuerst ab.
+                      </p>
+                    </div>
+                    <Link href="/company/onboarding">
+                      <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white whitespace-nowrap flex-shrink-0 focus:ring-amber-500">
+                        Zum Onboarding
+                      </Button>
+                    </Link>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => setAiError(null)} className="text-gray-500">
-                    Erneut
-                  </Button>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle size={24} className="text-red-500 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-bold text-red-700">Fehler beim Erstellen</p>
+                      <p className="text-sm text-red-600">{aiError}</p>
+                      <p className="text-xs text-gray-500 mt-1">Versuche es erneut oder wähle einen kürzeren Zeitraum.</p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => { setAiError(null); setAiErrorCode(null); runAI() }} className="text-gray-500">
+                      Erneut
+                    </Button>
+                  </div>
+                )
               ) : (
                 <div className="flex items-center gap-3">
                   <CheckCircle size={24} className="text-green-600 flex-shrink-0" />
