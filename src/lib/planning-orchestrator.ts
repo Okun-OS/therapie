@@ -4,8 +4,7 @@ import { solvePlan } from '@/lib/planning-solver'
 import { evaluatePlan } from '@/lib/plan-evaluator'
 import type { GenerierterPlan, PlanBewertung } from '@/lib/company-model-types'
 
-const MAX_ITERATIONS = 3
-const MIN_ACCEPTABLE_SCORE = 70
+const MAX_ITERATIONS = 1
 
 export interface PlanningResult {
   sessionId: string
@@ -35,23 +34,13 @@ export async function runPlanningSession(
 
   let bestPlan: GenerierterPlan | null = null
   let bestBewertung: PlanBewertung | null = null
-  let iterationNummer = 0
-  let vorherigeBewertung: string | undefined
+  const iterationNummer = 1
 
   try {
     for (let i = 0; i < MAX_ITERATIONS; i++) {
-      iterationNummer = i + 1
       const start = Date.now()
 
-      const ruleModel = await buildRuleModel(
-        locationId,
-        customerId,
-        von,
-        bis,
-        session.id,
-        kontext,
-        vorherigeBewertung,
-      )
+      const ruleModel = await buildRuleModel(locationId, customerId, von, bis, session.id, kontext)
 
       if (i === 0) {
         await prisma.planningSession.update({
@@ -67,7 +56,7 @@ export async function runPlanningSession(
       await prisma.planningIteration.create({
         data: {
           sessionId: session.id,
-          nummer: iterationNummer,
+          nummer: i + 1,
           planJson: plan as object,
           bewertung: bewertung as object,
           durationMs,
@@ -78,19 +67,6 @@ export async function runPlanningSession(
         bestPlan = plan
         bestBewertung = bewertung
       }
-
-      const hasCritical = bewertung.verletzungen.some(v => v.schwere === 'kritisch')
-      const hasHigh = bewertung.verletzungen.some(v => v.schwere === 'hoch')
-
-      if (!hasCritical && !hasHigh && bewertung.gesamtScore >= MIN_ACCEPTABLE_SCORE) {
-        break
-      }
-
-      vorherigeBewertung = JSON.stringify({
-        score: bewertung.gesamtScore,
-        verletzungen: bewertung.verletzungen,
-        vorschlaege: bewertung.optimierungsVorschlaege,
-      })
     }
 
     await prisma.planningSession.update({
