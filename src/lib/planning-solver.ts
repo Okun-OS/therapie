@@ -1,128 +1,225 @@
-import Anthropic from '@anthropic-ai/sdk'
-import type { PlanningRuleModel, GenerierterPlan, PlanEintrag } from '@/lib/company-model-types'
+import type {
+  PlanningRuleModel,
+  GenerierterPlan,
+  PlanEintrag,
+  PlanDecision,
+  SchichtDefinition,
+} from '@/lib/company-model-types'
 
-const client = new Anthropic()
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const SOLVER_SYSTEM = `Du bist ein präziser Dienstplan-Solver für professionelle Personalplanung.
-Du erhältst ein strukturiertes Regelmodell (PlanningRuleModel) und erstellst daraus einen optimalen Dienstplan.
+function shiftDurationHours(s: SchichtDefinition): number {
+  const [sh, sm] = s.von.split(':').map(Number)
+  const [eh, em] = s.bis.split(':').map(Number)
+  const mins = eh * 60 + em - (sh * 60 + sm)
+  return (mins <= 0 ? mins + 24 * 60 : mins) / 60
+}
 
-WICHTIG: Antworte AUSSCHLIESSLICH mit validem JSON. Kein Text, keine Erklärungen außerhalb des JSON.
+function restHoursBetween(
+  lastDate: string,
+  lastEnd: string,
+  lastIsOvernight: boolean,
+  nextDate: string,
+  nextStart: string,
+): number {
+  const [lh, lm] = lastEnd.split(':').map(Number)
+  const [nh, nm] = nextStart.split(':').map(Number)
+  const endMs = new Date(lastDate).setHours(lh, lm) + (lastIsOvernight ? 86400000 : 0)
+  const startMs = new Date(nextDate).setHours(nh, nm)
+  return (startMs - endMs) / 3600000
+}
 
-Das JSON muss diesem Schema entsprechen:
-{
-  "eintraege": [
-    {
-      "mitarbeiterId": "string",
-      "datum": "YYYY-MM-DD",
-      "schichtId": "string",
-      "einheitId": "string (optional)",
-      "funktion": "string (optional)",
-      "aufgaben": ["string"] (optional),
-      "istVertretung": false,
-      "startzeit": "HH:MM (optional, nur wenn von Schicht-Standard abweichend)",
-      "endzeit": "HH:MM (optional)",
-      "hinweis": "string (optional)"
+function weekKey(dateStr: string): string {
+  const d = new Date(dateStr)
+  const dow = d.getDay() || 7
+  const mon = new Date(d)
+  mon.setDate(d.getDate() - dow + 1)
+  return mon.toISOString().slice(0, 10)
+}
+
+function prevDay(dateStr: string): string {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().slice(0, 10)
+}
+
+// ─── Algorithmic solver ───────────────────────────────────────────────────────
+
+const SHIFT_PRIORITY: Record<string, number> = {
+  nacht: 0, frueh: 1, spaet: 2, mittel: 3,
+  bereitschaft: 4, rufbereitschaft: 5, sonderdienst: 6,
+}
+
+interface EmpState {
+  weekHours: Record<string, number>
+  consecDays: number
+  lastWorkDate: string | null
+  lastShiftEnd: string | null
+  lastShiftIsOvernight: boolean
+  shiftTypeCounts: Record<string, number>
+  weekendShifts: number
+  totalShifts: number
+}
+
+function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
+  const { zeitraum, mitarbeiter, schichten, einheiten, harteRegeln, fairness } = ruleModel
+
+  // Extract constraint values from structured hard rules
+  const maxWeeklyHours = harteRegeln.find(r => r.typ === 'max_wochenstunden')?.wert ?? 40
+  const minRestHours   = harteRegeln.find(r => r.typ === 'min_ruhezeit')?.wert ?? 11
+  const maxConsecDays  = harteRegeln.find(r => r.typ === 'max_folgetage')?.wert ?? 5
+
+  // Per-employee running state
+  const state: Record<string, EmpState> = {}
+  for (const emp of mitarbeiter) {
+    state[emp.id] = {
+      weekHours: {},
+      consecDays: 0,
+      lastWorkDate: null,
+      lastShiftEnd: null,
+      lastShiftIsOvernight: false,
+      shiftTypeCounts: {},
+      weekendShifts: 0,
+      totalShifts: 0,
     }
-  ],
-  "decisions": [
-    {
-      "typ": "string",
-      "beschreibung": "string",
-      "betroffeneMitarbeiter": ["string"] (optional),
-      "betroffenesDatum": "YYYY-MM-DD (optional)"
+  }
+
+  const eintraege: PlanEintrag[] = []
+  const decisions: PlanDecision[] = []
+
+  const sortedSchichten = [...schichten].sort(
+    (a, b) => (SHIFT_PRIORITY[a.typ] ?? 9) - (SHIFT_PRIORITY[b.typ] ?? 9),
+  )
+
+  for (const day of zeitraum.arbeitstage) {
+    const dow = new Date(day).getDay()
+    const isWeekend = dow === 0 || dow === 6
+    const wk = weekKey(day)
+
+    // Build wish lookup for today
+    type Wish = { schichtId: string; typ: 'wunsch' | 'wunschfrei' }
+    const wishMap = new Map<string, Wish>()
+    for (const emp of mitarbeiter) {
+      const w = emp.wuensche.find(w => w.datum === day)
+      if (w) wishMap.set(emp.id, { schichtId: w.schichtId, typ: w.typ })
     }
-  ],
-  "metadaten": {
-    "erstelltAm": "ISO timestamp",
-    "solver": "claude-opus-4-7",
-    "regelmodellVersion": "string"
+
+    const assignedToday = new Set<string>()
+
+    for (const schicht of sortedSchichten) {
+      const minStaff   = schicht.minBesetzungGesamt ?? 1
+      const shiftHours = shiftDurationHours(schicht)
+
+      const eligible = mitarbeiter.filter(emp => {
+        // Hard: vacation / absence / wunschfrei
+        if (emp.urlaubAn.includes(day))          return false
+        if (emp.nichtVerfuegbarAn.includes(day)) return false
+        const wish = wishMap.get(emp.id)
+        if (wish?.typ === 'wunschfrei')          return false
+        // Hard: already assigned today
+        if (assignedToday.has(emp.id))           return false
+        const st = state[emp.id]
+        // Hard: max weekly hours
+        if ((st.weekHours[wk] ?? 0) + shiftHours > maxWeeklyHours + 0.01) return false
+        // Hard: min rest between consecutive shifts
+        if (st.lastWorkDate && st.lastShiftEnd) {
+          const rest = restHoursBetween(
+            st.lastWorkDate, st.lastShiftEnd, st.lastShiftIsOvernight,
+            day, schicht.von,
+          )
+          if (rest < minRestHours) return false
+        }
+        // Hard: max consecutive work days
+        if (st.consecDays >= maxConsecDays) return false
+        return true
+      })
+
+      // Sort by: explicit shift wish > fairness (fewest of this type) > weekend count > total shifts
+      eligible.sort((a, b) => {
+        const aw = wishMap.get(a.id)
+        const bw = wishMap.get(b.id)
+        const aScore = aw?.typ === 'wunsch' && aw.schichtId === schicht.id ? -2
+                     : aw?.typ === 'wunsch' ? -1 : 0
+        const bScore = bw?.typ === 'wunsch' && bw.schichtId === schicht.id ? -2
+                     : bw?.typ === 'wunsch' ? -1 : 0
+        if (aScore !== bScore) return aScore - bScore
+
+        const diff = (state[a.id].shiftTypeCounts[schicht.typ] ?? 0)
+                   - (state[b.id].shiftTypeCounts[schicht.typ] ?? 0)
+        if (diff !== 0) return diff
+
+        if (isWeekend && fairness.wochenendArbeit !== false) {
+          const wd = state[a.id].weekendShifts - state[b.id].weekendShifts
+          if (wd !== 0) return wd
+        }
+
+        return state[a.id].totalShifts - state[b.id].totalShifts
+      })
+
+      let assigned = 0
+      for (const emp of eligible) {
+        if (assigned >= minStaff) break
+        const st = state[emp.id]
+        const usedHours = st.weekHours[wk] ?? 0
+        const target    = emp.wochenstundenSoll ?? 40
+        // Allow slight overage only if we still need to fill min staffing
+        if (usedHours >= target + shiftHours && assigned >= minStaff) continue
+
+        // Determine unit: use employee's primary unit if available
+        const einheitId = emp.einheiten?.[0]
+          ?? (einheiten.length > 0 ? einheiten[0].id : undefined)
+
+        eintraege.push({
+          mitarbeiterId: emp.id,
+          datum: day,
+          schichtId: schicht.id,
+          einheitId,
+          istVertretung: false,
+        })
+
+        // Update running state
+        st.weekHours[wk]                       = usedHours + shiftHours
+        st.consecDays                          = st.lastWorkDate === prevDay(day) ? st.consecDays + 1 : 1
+        st.lastWorkDate                        = day
+        st.lastShiftEnd                        = schicht.bis
+        st.lastShiftIsOvernight                = schicht.uebernacht ?? false
+        st.shiftTypeCounts[schicht.typ]        = (st.shiftTypeCounts[schicht.typ] ?? 0) + 1
+        if (isWeekend) st.weekendShifts++
+        st.totalShifts++
+        assignedToday.add(emp.id)
+        assigned++
+      }
+
+      if (assigned < minStaff) {
+        decisions.push({
+          typ: 'unterbesetzung',
+          beschreibung: `Schicht „${schicht.name}" am ${day}: nur ${assigned} von ${minStaff} Stellen besetzt`,
+          betroffenesDatum: day,
+        })
+      }
+    }
+
+    // Reset consecutive-days counter for employees not working today
+    for (const emp of mitarbeiter) {
+      if (!assignedToday.has(emp.id)) {
+        state[emp.id].consecDays = 0
+      }
+    }
+  }
+
+  return {
+    eintraege,
+    decisions,
+    metadaten: {
+      erstelltAm: new Date().toISOString(),
+      solver: 'algorithmic-v1',
+      regelmodellVersion: '1.0',
+    },
   }
 }
 
-Regeln für den Solver:
-1. Harte Regeln sind absolut – niemals verletzen
-2. Mitarbeiter im Urlaub oder krank: keine Einträge für diese Tage
-3. Besetzungsminima aller Schichten und Einheiten erfüllen
-4. Wünsche berücksichtigen (soft)
-5. Fairness bei Wochenendarbeit und Nachtdiensten beachten
-6. Jede Entscheidung, die von Standard abweicht, in decisions dokumentieren
-7. Keine Vertretungseinträge außer wenn explizit gefordert`
-
-/**
- * Code-based hard-rule enforcement — runs after the AI generates a plan.
- * Guarantees absolute rules are upheld regardless of what the AI produced.
- */
-function enforceHardRules(plan: GenerierterPlan, ruleModel: PlanningRuleModel): GenerierterPlan {
-  const validShiftIds = new Set(ruleModel.schichten.map(s => s.id))
-  const empMap = new Map(ruleModel.mitarbeiter.map(m => [m.id, m]))
-  const seen = new Set<string>()
-  const removed: string[] = []
-
-  const validEntries = plan.eintraege.filter((entry: PlanEintrag) => {
-    const emp = empMap.get(entry.mitarbeiterId)
-
-    if (!emp) {
-      removed.push(`Unbekannter Mitarbeiter ${entry.mitarbeiterId} am ${entry.datum}`)
-      return false
-    }
-    if (emp.urlaubAn.includes(entry.datum)) {
-      removed.push(`${emp.name} ist am ${entry.datum} im Urlaub`)
-      return false
-    }
-    if (emp.nichtVerfuegbarAn.includes(entry.datum)) {
-      removed.push(`${emp.name} ist am ${entry.datum} nicht verfügbar`)
-      return false
-    }
-    if (!validShiftIds.has(entry.schichtId)) {
-      removed.push(`Ungültige Schicht-ID "${entry.schichtId}" für ${emp.name} am ${entry.datum}`)
-      return false
-    }
-    const dupKey = `${entry.mitarbeiterId}|${entry.datum}`
-    if (seen.has(dupKey)) {
-      removed.push(`Doppelter Eintrag für ${emp.name} am ${entry.datum} entfernt`)
-      return false
-    }
-    seen.add(dupKey)
-    return true
-  })
-
-  if (removed.length > 0) {
-    console.warn(`[enforceHardRules] ${removed.length} Einträge korrigiert:`, removed)
-    plan.decisions.push({
-      typ: 'regelkorrektur',
-      beschreibung: `${removed.length} regelwidrige Einträge automatisch korrigiert: ${removed.slice(0, 5).join('; ')}${removed.length > 5 ? ` … (+${removed.length - 5} weitere)` : ''}`,
-    })
-  }
-
-  return { ...plan, eintraege: validEntries }
-}
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function solvePlan(ruleModel: PlanningRuleModel): Promise<GenerierterPlan> {
-  const cellCount = ruleModel.mitarbeiter.length * ruleModel.zeitraum.arbeitstage.length
-  const maxTokens = Math.min(32000, Math.max(16000, 3000 + cellCount * 300))
-
-  const response = await client.messages.create({
-    model: 'claude-opus-4-7',
-    max_tokens: maxTokens,
-    system: SOLVER_SYSTEM,
-    messages: [
-      {
-        role: 'user',
-        content: `Erstelle den optimalen Dienstplan für dieses Regelmodell:\n\n${JSON.stringify(ruleModel, null, 2)}`,
-      },
-    ],
-  })
-
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
-    throw new Error('Solver hat kein gültiges JSON zurückgegeben')
-  }
-
-  const plan = JSON.parse(jsonMatch[0]) as GenerierterPlan
-  if (!plan.eintraege || !Array.isArray(plan.eintraege)) {
-    throw new Error('Solver-Antwort enthält keine gültigen Planeinträge')
-  }
-
-  return enforceHardRules(plan, ruleModel)
+  return algorithmicSolve(ruleModel)
 }
