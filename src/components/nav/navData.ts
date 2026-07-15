@@ -140,6 +140,7 @@ const companyDock: DockItem[] = [
           { href: '/company/locations', label: 'Alle Standorte',  description: 'Übersicht & Vergleich',       icon: '📍' },
           { href: '/company/bereiche',  label: 'Bereiche',        description: 'Organisationsstruktur & Bereichsleitung', icon: '🗂' },
           { href: '/company/onboarding', label: 'KI-Onboarding', description: 'Neuen Standort einrichten', badge: 'KI', isGold: true, icon: '🤖' },
+          { href: '/company/model', label: 'Planungsmodell', description: 'Schichten, Regeln & Besetzung', icon: '📋' },
         ]},
       ],
     },
