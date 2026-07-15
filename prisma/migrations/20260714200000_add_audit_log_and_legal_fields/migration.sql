@@ -1,9 +1,9 @@
 -- Add legalContractDate and legalContractNotes to Customer
-ALTER TABLE "Customer" ADD COLUMN "legalContractDate" TEXT;
-ALTER TABLE "Customer" ADD COLUMN "legalContractNotes" TEXT;
+ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "legalContractDate" TEXT;
+ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "legalContractNotes" TEXT;
 
 -- Create AuditLog table (DSGVO-focused event log)
-CREATE TABLE "AuditLog" (
+CREATE TABLE IF NOT EXISTS "AuditLog" (
     "id" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "userId" TEXT NOT NULL,

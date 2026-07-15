@@ -1,20 +1,20 @@
--- DropForeignKey
-ALTER TABLE "SupportAccessGrant" DROP CONSTRAINT "SupportAccessGrant_ticketId_fkey";
+-- DropForeignKey (IF EXISTS so retries are safe)
+ALTER TABLE "SupportAccessGrant" DROP CONSTRAINT IF EXISTS "SupportAccessGrant_ticketId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "SupportAccessLog" DROP CONSTRAINT "SupportAccessLog_grantId_fkey";
+ALTER TABLE "SupportAccessLog" DROP CONSTRAINT IF EXISTS "SupportAccessLog_grantId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "SupportTicketMessage" DROP CONSTRAINT "SupportTicketMessage_ticketId_fkey";
+ALTER TABLE "SupportTicketMessage" DROP CONSTRAINT IF EXISTS "SupportTicketMessage_ticketId_fkey";
 
 -- AlterTable
 ALTER TABLE "BugReport" ALTER COLUMN "updatedAt" DROP DEFAULT;
 
 -- AlterTable
-ALTER TABLE "LocationOnboarding" ADD COLUMN     "chatMessages" JSONB;
+ALTER TABLE "LocationOnboarding" ADD COLUMN IF NOT EXISTS "chatMessages" JSONB;
 
 -- AlterTable
-ALTER TABLE "OrganizationOnboarding" ADD COLUMN     "chatMessages" JSONB;
+ALTER TABLE "OrganizationOnboarding" ADD COLUMN IF NOT EXISTS "chatMessages" JSONB;
 
 -- AlterTable
 ALTER TABLE "PayrollEntry" ALTER COLUMN "updatedAt" DROP DEFAULT;
@@ -32,10 +32,10 @@ ALTER TABLE "SurchargeRuleSet" ALTER COLUMN "updatedAt" DROP DEFAULT;
 ALTER TABLE "TimesheetApproval" ALTER COLUMN "updatedAt" DROP DEFAULT;
 
 -- AlterTable
-ALTER TABLE "User" ADD COLUMN     "avatarUrl" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "avatarUrl" TEXT;
 
 -- CreateTable
-CREATE TABLE "CompanyModelRecord" (
+CREATE TABLE IF NOT EXISTS "CompanyModelRecord" (
     "id" TEXT NOT NULL,
     "customerId" TEXT NOT NULL,
     "version" INTEGER NOT NULL DEFAULT 1,
@@ -48,7 +48,7 @@ CREATE TABLE "CompanyModelRecord" (
 );
 
 -- CreateTable
-CREATE TABLE "LocationRuleModelRecord" (
+CREATE TABLE IF NOT EXISTS "LocationRuleModelRecord" (
     "id" TEXT NOT NULL,
     "locationId" TEXT NOT NULL,
     "customerId" TEXT NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE "LocationRuleModelRecord" (
 );
 
 -- CreateTable
-CREATE TABLE "PlanningSession" (
+CREATE TABLE IF NOT EXISTS "PlanningSession" (
     "id" TEXT NOT NULL,
     "locationId" TEXT NOT NULL,
     "customerId" TEXT NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE "PlanningSession" (
 );
 
 -- CreateTable
-CREATE TABLE "PlanningIteration" (
+CREATE TABLE IF NOT EXISTS "PlanningIteration" (
     "id" TEXT NOT NULL,
     "sessionId" TEXT NOT NULL,
     "nummer" INTEGER NOT NULL,
@@ -92,7 +92,7 @@ CREATE TABLE "PlanningIteration" (
 );
 
 -- CreateTable
-CREATE TABLE "PlanningRuleFeedback" (
+CREATE TABLE IF NOT EXISTS "PlanningRuleFeedback" (
     "id" TEXT NOT NULL,
     "locationId" TEXT NOT NULL,
     "customerId" TEXT NOT NULL,
@@ -105,23 +105,32 @@ CREATE TABLE "PlanningRuleFeedback" (
     CONSTRAINT "PlanningRuleFeedback_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "CompanyModelRecord_customerId_key" ON "CompanyModelRecord"("customerId");
+-- CreateIndex (IF NOT EXISTS so retries are safe)
+CREATE UNIQUE INDEX IF NOT EXISTS "CompanyModelRecord_customerId_key" ON "CompanyModelRecord"("customerId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "LocationRuleModelRecord_locationId_key" ON "LocationRuleModelRecord"("locationId");
+CREATE UNIQUE INDEX IF NOT EXISTS "LocationRuleModelRecord_locationId_key" ON "LocationRuleModelRecord"("locationId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "PlanningIteration_sessionId_nummer_key" ON "PlanningIteration"("sessionId", "nummer");
+CREATE UNIQUE INDEX IF NOT EXISTS "PlanningIteration_sessionId_nummer_key" ON "PlanningIteration"("sessionId", "nummer");
 
--- AddForeignKey
-ALTER TABLE "PlanningIteration" ADD CONSTRAINT "PlanningIteration_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "PlanningSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey (DO blocks used so duplicate-constraint errors are silently ignored)
+DO $$ BEGIN
+  ALTER TABLE "PlanningIteration" ADD CONSTRAINT "PlanningIteration_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "PlanningSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "SupportTicketMessage" ADD CONSTRAINT "SupportTicketMessage_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "SupportTicket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "SupportTicketMessage" ADD CONSTRAINT "SupportTicketMessage_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "SupportTicket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "SupportAccessGrant" ADD CONSTRAINT "SupportAccessGrant_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "SupportTicket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "SupportAccessGrant" ADD CONSTRAINT "SupportAccessGrant_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "SupportTicket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "SupportAccessLog" ADD CONSTRAINT "SupportAccessLog_grantId_fkey" FOREIGN KEY ("grantId") REFERENCES "SupportAccessGrant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "SupportAccessLog" ADD CONSTRAINT "SupportAccessLog_grantId_fkey" FOREIGN KEY ("grantId") REFERENCES "SupportAccessGrant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
