@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
-import { getCompanyModel } from '@/lib/company-model-service'
+import { getOrGenerateCompanyModel } from '@/lib/company-model-service'
 import { runPlanningSession } from '@/lib/planning-orchestrator'
 import { prisma } from '@/lib/prisma'
 
@@ -20,10 +20,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Kein Mandant zugeordnet' }, { status: 403 })
   }
 
-  const companyModel = await getCompanyModel(customerId)
+  const companyModel = await getOrGenerateCompanyModel(customerId)
   if (!companyModel) {
     return NextResponse.json(
-      { error: 'Kein CompanyModel vorhanden. Bitte zuerst das Onboarding abschließen.', code: 'NO_COMPANY_MODEL' },
+      { error: 'Das Unternehmens-Onboarding ist noch nicht abgeschlossen. Bitte schließe zuerst das KI-Onboarding ab.', code: 'NO_COMPANY_MODEL' },
       { status: 422 },
     )
   }

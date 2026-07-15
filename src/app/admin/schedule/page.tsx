@@ -421,77 +421,32 @@ export default function AdminSchedule() {
         }),
       })
 
-      let data: Record<string, unknown>
-      let usedNewEngine = false
-
-      if (newRes.ok) {
-        data = await newRes.json()
-        usedNewEngine = true
-      } else if (newRes.status === 422) {
-        // No CompanyModel yet — fall back to legacy endpoint
-        const legacyRes = await fetch('/api/ai/schedule', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            employees,
-            shifts: locationShifts,
-            fairnessData,
-            wishSubmissions: planningRules.considerWishes ? wishSubmissions : [],
-            weekDates,
-            locationId,
-            locationName: location?.name ?? 'Standort',
-            facilityDescription: facilityDescription.trim() || undefined,
-            confirmedDecisionQuestion,
-            approvedVacations,
-            reportedAbsences,
-          }),
-        })
-        if (!legacyRes.ok) {
-          const err = await legacyRes.json().catch(() => ({ error: legacyRes.statusText }))
-          throw new Error(err.error ?? 'API-Fehler')
-        }
-        data = await legacyRes.json()
-      } else {
+      if (!newRes.ok) {
         const err = await newRes.json().catch(() => ({ error: newRes.statusText }))
         throw new Error(err.error ?? 'API-Fehler')
       }
+      const data: Record<string, unknown> = await newRes.json()
 
       clearInterval(interval)
       setAiStep(AI_STEPS.length - 1)
 
       const transposed: Record<string, Record<string, ScheduleAssignment>> = {}
-      if (usedNewEngine && data.week) {
-        // New engine returns { empId: { date: { shiftId, ... } } } — no transposing needed
-        for (const [empId, dates] of Object.entries(data.week as Record<string, Record<string, ScheduleAssignment>>)) {
-          transposed[empId] = dates
-        }
-      } else if (data.schedule) {
-        // Legacy engine returns { date: { empId: { shiftId, ... } } } — transpose
-        for (const [date, assignments] of Object.entries(data.schedule as Record<string, Record<string, ScheduleAssignment>>)) {
-          for (const [empId, assignment] of Object.entries(assignments)) {
-            if (!transposed[empId]) transposed[empId] = {}
-            transposed[empId][date] = assignment
-          }
-        }
+      for (const [empId, dates] of Object.entries(data.week as Record<string, Record<string, ScheduleAssignment>> ?? {})) {
+        transposed[empId] = dates
       }
 
       setGeneratedSchedule(transposed)
 
-      // Normalize decisions from both engine formats
       type NewDecision = { typ: string; beschreibung: string; betroffeneMitarbeiter?: string[]; betroffenesDatum?: string }
       type OldDecision = { type: string; message: string; employeeId?: string; date?: string }
-      const decisions: OldDecision[] = usedNewEngine
-        ? ((data.decisions ?? []) as NewDecision[]).map(d => ({
-            type: d.typ,
-            message: d.beschreibung,
-            employeeId: d.betroffeneMitarbeiter?.[0],
-            date: d.betroffenesDatum,
-          }))
-        : ((data.decisions ?? []) as OldDecision[])
+      const decisions: OldDecision[] = ((data.decisions ?? []) as NewDecision[]).map(d => ({
+        type: d.typ,
+        message: d.beschreibung,
+        employeeId: d.betroffeneMitarbeiter?.[0],
+        date: d.betroffenesDatum,
+      }))
 
-      const reasoning = usedNewEngine
-        ? ((data.bewertung as Record<string, unknown>)?.zusammenfassung as string | undefined) ?? null
-        : (data.reasoning as string | undefined) ?? null
+      const reasoning = ((data.bewertung as Record<string, unknown>)?.zusammenfassung as string | undefined) ?? null
 
       setAiReasoning(reasoning ? sanitizeAiText(reasoning) : null)
       setAiDecisions(decisions.map(d => ({ ...d, message: sanitizeAiText(d.message) })))
