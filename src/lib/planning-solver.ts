@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import type { PlanningRuleModel, GenerierterPlan } from '@/lib/company-model-types'
+import type { PlanningRuleModel, GenerierterPlan, PlanEintrag } from '@/lib/company-model-types'
 
 const client = new Anthropic()
 
@@ -48,6 +48,55 @@ Regeln für den Solver:
 6. Jede Entscheidung, die von Standard abweicht, in decisions dokumentieren
 7. Keine Vertretungseinträge außer wenn explizit gefordert`
 
+/**
+ * Code-based hard-rule enforcement — runs after the AI generates a plan.
+ * Guarantees absolute rules are upheld regardless of what the AI produced.
+ */
+function enforceHardRules(plan: GenerierterPlan, ruleModel: PlanningRuleModel): GenerierterPlan {
+  const validShiftIds = new Set(ruleModel.schichten.map(s => s.id))
+  const empMap = new Map(ruleModel.mitarbeiter.map(m => [m.id, m]))
+  const seen = new Set<string>()
+  const removed: string[] = []
+
+  const validEntries = plan.eintraege.filter((entry: PlanEintrag) => {
+    const emp = empMap.get(entry.mitarbeiterId)
+
+    if (!emp) {
+      removed.push(`Unbekannter Mitarbeiter ${entry.mitarbeiterId} am ${entry.datum}`)
+      return false
+    }
+    if (emp.urlaubAn.includes(entry.datum)) {
+      removed.push(`${emp.name} ist am ${entry.datum} im Urlaub`)
+      return false
+    }
+    if (emp.nichtVerfuegbarAn.includes(entry.datum)) {
+      removed.push(`${emp.name} ist am ${entry.datum} nicht verfügbar`)
+      return false
+    }
+    if (!validShiftIds.has(entry.schichtId)) {
+      removed.push(`Ungültige Schicht-ID "${entry.schichtId}" für ${emp.name} am ${entry.datum}`)
+      return false
+    }
+    const dupKey = `${entry.mitarbeiterId}|${entry.datum}`
+    if (seen.has(dupKey)) {
+      removed.push(`Doppelter Eintrag für ${emp.name} am ${entry.datum} entfernt`)
+      return false
+    }
+    seen.add(dupKey)
+    return true
+  })
+
+  if (removed.length > 0) {
+    console.warn(`[enforceHardRules] ${removed.length} Einträge korrigiert:`, removed)
+    plan.decisions.push({
+      typ: 'regelkorrektur',
+      beschreibung: `${removed.length} regelwidrige Einträge automatisch korrigiert: ${removed.slice(0, 5).join('; ')}${removed.length > 5 ? ` … (+${removed.length - 5} weitere)` : ''}`,
+    })
+  }
+
+  return { ...plan, eintraege: validEntries }
+}
+
 export async function solvePlan(ruleModel: PlanningRuleModel): Promise<GenerierterPlan> {
   const cellCount = ruleModel.mitarbeiter.length * ruleModel.zeitraum.arbeitstage.length
   const maxTokens = Math.min(32000, Math.max(16000, 3000 + cellCount * 300))
@@ -75,5 +124,5 @@ export async function solvePlan(ruleModel: PlanningRuleModel): Promise<Generiert
     throw new Error('Solver-Antwort enthält keine gültigen Planeinträge')
   }
 
-  return plan
+  return enforceHardRules(plan, ruleModel)
 }

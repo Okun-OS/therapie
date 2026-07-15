@@ -58,10 +58,11 @@ export function AiChatPanel({
   footer,
   disabled,
 }: AiChatPanelProps) {
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    const el = scrollContainerRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages.length, sending, completion])
 
   const isDone = !!completion
@@ -99,7 +100,7 @@ export function AiChatPanel({
         </div>
       )}
 
-      <div className="space-y-3 mb-3 max-h-[28rem] overflow-y-auto pr-1">
+      <div ref={scrollContainerRef} className="space-y-3 mb-3 max-h-[28rem] overflow-y-auto pr-1">
         {messages.map((m, i) => (
           <div key={i} className={cn('flex gap-2 animate-fade-in', m.role === 'user' ? 'justify-end' : 'justify-start')}>
             {m.role === 'assistant' && <AssistantAvatar size="sm" />}
@@ -127,7 +128,6 @@ export function AiChatPanel({
           </div>
         )}
 
-        <div ref={bottomRef} />
       </div>
 
       {isDone ? (
