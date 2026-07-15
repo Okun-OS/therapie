@@ -20,7 +20,7 @@ import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence
 import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, MoonStar, Briefcase,
-  CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle, LayoutGrid, Users,
+  CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle, LayoutGrid, Users, Plus, Trash2,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
@@ -98,7 +98,7 @@ export default function AdminSchedule() {
   const [aiReasoning, setAiReasoning] = useState<string | null>(null)
   const [aiDecisions, setAiDecisions] = useState<{ type: string; message: string }[]>([])
   const [aiAssignmentReasons, setAiAssignmentReasons] = useState<Record<string, string>>({})
-  const [explainEntry, setExplainEntry] = useState<{ employeeName: string; shiftName: string; dateStr: string; reason: string | null; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null>(null)
+  const [explainEntry, setExplainEntry] = useState<{ employeeId: string; employeeName: string; shiftName: string; dateStr: string; reason: string | null; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null>(null)
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
   const [aiDecisionQuestion, setAiDecisionQuestion] = useState<string | null>(null)
   const [decisionLoading, setDecisionLoading] = useState(false)
@@ -107,6 +107,7 @@ export default function AdminSchedule() {
   const [fallbackHandled, setFallbackHandled] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiErrorCode, setAiErrorCode] = useState<string | null>(null)
+  const [manualPickerCell, setManualPickerCell] = useState<{ empId: string; dateStr: string } | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [saved, setSaved] = useState(false)
   const [facilityDescription, setFacilityDescription] = useState('')
@@ -611,6 +612,33 @@ export default function AdminSchedule() {
     showToast('Export gestartet')
   }
 
+  const handleManualAssign = (empId: string, dateStr: string, shiftId: string) => {
+    setGeneratedSchedule(prev => {
+      const base: Record<string, Record<string, ScheduleAssignment>> = prev
+        ? { ...prev }
+        : (() => {
+            const s: Record<string, Record<string, ScheduleAssignment>> = {}
+            for (const e of existingEntries) {
+              if (!s[e.employeeId]) s[e.employeeId] = {}
+              s[e.employeeId][e.date] = { shiftId: e.shiftId }
+            }
+            return s
+          })()
+      return { ...base, [empId]: { ...(base[empId] ?? {}), [dateStr]: { shiftId } } }
+    })
+    setManualPickerCell(null)
+  }
+
+  const handleManualRemove = (empId: string, dateStr: string) => {
+    setGeneratedSchedule(prev => {
+      if (!prev) return prev
+      const empSchedule = { ...(prev[empId] ?? {}) }
+      delete empSchedule[dateStr]
+      return { ...prev, [empId]: empSchedule }
+    })
+    setExplainEntry(null)
+  }
+
   if (!locationId) {
     return (
       <>
@@ -718,7 +746,7 @@ export default function AdminSchedule() {
                     <MessageCircle size={14} /> Dienstplan bearbeiten
                   </Button>
                 )}
-                {aiDone && (
+                {(aiDone || !!generatedSchedule) && (
                   <Button variant="success" size="sm" onClick={handleSaveSchedule} className="gap-1">
                     <Save size={14} />{saved ? 'Gespeichert!' : 'Speichern'}
                   </Button>
@@ -877,15 +905,7 @@ export default function AdminSchedule() {
             </div>
 
             {/* Schedule Grid */}
-            {!generatedSchedule && existingEntries.length === 0 ? (
-              <div className="bg-white border border-gray-100 rounded-2xl">
-                <EmptyState
-                  icon={CalendarOff}
-                  title="Noch kein Dienstplan für diese Woche"
-                  description="Erstelle oben mit einem Klick einen fairness-optimierten KI-Dienstplan, oder trage Dienste manuell ein."
-                />
-              </div>
-            ) : scheduleView === 'einheiten' && planningUnits.length > 0 ? (
+            {scheduleView === 'einheiten' && planningUnits.length > 0 ? (
               <div className="space-y-3">
                 {periodWeeks.map((week, weekIdx) => (
                   <div key={weekIdx}>
@@ -1079,6 +1099,7 @@ export default function AdminSchedule() {
                                         ) : assignment && Icon ? (
                                           <div
                                             onClick={() => setExplainEntry({
+                                              employeeId: emp.id,
                                               employeeName: emp.name,
                                               shiftName: assignment.shift.name,
                                               dateStr,
@@ -1106,7 +1127,14 @@ export default function AdminSchedule() {
                                             )}
                                           </div>
                                         ) : (
-                                          <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-200">—</span></div>
+                                          <button
+                                            onClick={() => setManualPickerCell({ empId: emp.id, dateStr })}
+                                            className="w-full flex items-center justify-center h-9 rounded-lg transition-colors hover:bg-gray-50 text-gray-200 hover:text-brand group"
+                                            title="Schicht manuell zuweisen"
+                                          >
+                                            <span className="text-xs group-hover:hidden">—</span>
+                                            <Plus size={14} className="hidden group-hover:block" />
+                                          </button>
                                         )}
                                       </td>
                                 )
@@ -1498,8 +1526,60 @@ export default function AdminSchedule() {
                 {explainEntry.reason ?? 'Für diese Zuweisung liegt keine gespeicherte KI-Begründung vor (z. B. weil sie manuell erstellt oder bearbeitet wurde).'}
               </p>
             </div>
+            <div className="pt-1 border-t border-gray-100 flex justify-between items-center">
+              <button
+                onClick={() => setManualPickerCell({ empId: explainEntry.employeeId, dateStr: explainEntry.dateStr })}
+                className="text-xs text-brand font-semibold hover:underline"
+              >
+                Schicht ändern
+              </button>
+              <button
+                onClick={() => handleManualRemove(explainEntry.employeeId, explainEntry.dateStr)}
+                className="flex items-center gap-1 text-xs text-red-500 font-semibold hover:text-red-700"
+              >
+                <Trash2 size={12} /> Entfernen
+              </button>
+            </div>
           </div>
         )}
+      </Modal>
+
+      {/* Manual Shift Picker Modal */}
+      <Modal open={!!manualPickerCell} onClose={() => setManualPickerCell(null)} title="Schicht zuweisen" size="sm">
+        {manualPickerCell && (() => {
+          const pickerEmp = employees.find(e => e.id === manualPickerCell.empId)
+          return (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold">{pickerEmp?.name}</span> · {formatDateShort(manualPickerCell.dateStr)}
+              </p>
+              {locationShifts.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">Keine Schichten für diesen Standort angelegt.</p>
+              ) : (
+                <div className="space-y-2">
+                  {locationShifts.map(shift => {
+                    const Icon = SHIFT_ICONS[shift.type] ?? DEFAULT_SHIFT_ICON
+                    return (
+                      <button
+                        key={shift.id}
+                        onClick={() => handleManualAssign(manualPickerCell.empId, manualPickerCell.dateStr, shift.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-all text-left"
+                      >
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: shift.bgColor }}>
+                          <Icon size={14} style={{ color: shift.color }} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-navy">{shift.name}</p>
+                          <p className="text-xs text-gray-500">{shift.startTime} – {shift.endTime}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </Modal>
     </>
   )
