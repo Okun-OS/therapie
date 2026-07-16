@@ -5,9 +5,10 @@ import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import {
   Euro, Moon, Sun, Star, Calendar, Settings, Bot, ChevronLeft, ChevronRight,
-  Plus, Trash2, Edit2, Check, X, Send, Loader2, Info, Clock,
+  Plus, Trash2, Edit2, Check, X, Send, Loader2, Info, Clock, Download,
 } from 'lucide-react'
 import { minutesToHours, formatEuros } from '@/lib/surcharge-engine'
+import { useAuth } from '@/lib/auth-context'
 import type { EmployeeSurchargeRow, RuleResult, ConfiguredSurchargeRule } from '@/lib/surcharge-engine'
 import type { Anthropic } from '@anthropic-ai/sdk'
 
@@ -83,6 +84,8 @@ function BerechnungTab() {
   const [bundesland, setBundesland] = useState<string | undefined>()
   const [usingDefaults, setUsingDefaults] = useState(false)
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+  const canSeeAmounts = user?.role === 'company'
 
   useEffect(() => {
     setLoading(true)
@@ -101,6 +104,34 @@ function BerechnungTab() {
     if (m < 1) { m = 12; y-- }
     if (m > 12) { m = 1; y++ }
     setMonth(m); setYear(y)
+  }
+
+  function exportCSV() {
+    if (!rows.length) return
+
+    // Collect all unique rule IDs/names
+    const ruleIds = Array.from(new Set(rows.flatMap(r => r.byRule.map(b => b.ruleId))))
+    const ruleNames = new Map<string, string>()
+    rows.forEach(r => r.byRule.forEach(b => ruleNames.set(b.ruleId, b.ruleName)))
+
+    const headers = ['Mitarbeiter', 'Gesamtminuten', ...ruleIds.map(id => ruleNames.get(id) ?? id), 'Gesamtbetrag (€)']
+    const csvRows = rows.map(row => {
+      const totalEuros = row.byRule.reduce((s, r) => s + r.euros, 0)
+      const ruleCols = ruleIds.map(id => {
+        const r = row.byRule.find(b => b.ruleId === id)
+        return r ? `${r.minutes}min / ${r.euros.toFixed(2)}€` : ''
+      })
+      return [row.employeeName, String(row.totalWorkedMinutes), ...ruleCols, totalEuros.toFixed(2)]
+    })
+
+    const csv = [headers, ...csvRows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `zuschlaege-${year}-${String(month).padStart(2, '0')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   // Collect all unique rule IDs/names across all rows
@@ -141,6 +172,15 @@ function BerechnungTab() {
             {bundesland}
           </span>
         )}
+        {canSeeAmounts && rows.length > 0 && (
+          <button
+            onClick={exportCSV}
+            className="flex items-center gap-1.5 text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors"
+          >
+            <Download size={14} />
+            Export CSV
+          </button>
+        )}
       </div>
 
       {usingDefaults && (
@@ -174,7 +214,14 @@ function BerechnungTab() {
                       {col.name}
                     </th>
                   ))}
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-emerald-600 uppercase tracking-wide">€ Zuschlag</th>
+                  {canSeeAmounts && (
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-emerald-600 uppercase tracking-wide">€ Zuschlag</th>
+                  )}
+                  {!canSeeAmounts && (
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      <span className="text-xs text-gray-400 italic normal-case">Nur Unternehmensebene</span>
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -192,7 +239,7 @@ function BerechnungTab() {
                             {r ? (
                               <div>
                                 <div className="font-semibold text-navy">{minutesToHours(r.minutes)}</div>
-                                {r.euros > 0 && <div className="text-[10px] text-emerald-600">{formatEuros(r.euros)}</div>}
+                                {canSeeAmounts && r.euros > 0 && <div className="text-[10px] text-emerald-600">{formatEuros(r.euros)}</div>}
                               </div>
                             ) : (
                               <span className="text-gray-200">–</span>
@@ -201,7 +248,7 @@ function BerechnungTab() {
                         )
                       })}
                       <td className="px-4 py-3 text-right font-semibold text-emerald-700">
-                        {totalEuros > 0 ? formatEuros(totalEuros) : <span className="text-gray-300">–</span>}
+                        {canSeeAmounts && (totalEuros > 0 ? formatEuros(totalEuros) : <span className="text-gray-300">–</span>)}
                       </td>
                     </tr>
                   )
@@ -217,12 +264,12 @@ function BerechnungTab() {
                       return (
                         <td key={col.id} className="px-4 py-3 text-right">
                           <div className="text-xs font-bold text-navy">{t ? minutesToHours(t.minutes) : '–'}</div>
-                          {t && t.euros > 0 && <div className="text-[10px] text-emerald-600 font-semibold">{formatEuros(t.euros)}</div>}
+                          {canSeeAmounts && t && t.euros > 0 && <div className="text-[10px] text-emerald-600 font-semibold">{formatEuros(t.euros)}</div>}
                         </td>
                       )
                     })}
                     <td className="px-4 py-3 text-right text-xs font-bold text-emerald-700">
-                      {formatEuros(Array.from(ruleColTotals.values()).reduce((s, t) => s + t.euros, 0))}
+                      {canSeeAmounts && formatEuros(Array.from(ruleColTotals.values()).reduce((s, t) => s + t.euros, 0))}
                     </td>
                   </tr>
                 </tfoot>

@@ -109,6 +109,13 @@ export default function AdminSchedule() {
   const [fallbackHandled, setFallbackHandled] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiErrorCode, setAiErrorCode] = useState<string | null>(null)
+  const [surchargeEstimate, setSurchargeEstimate] = useState<{
+    employeeId: string
+    employeeName: string
+    totalMinutes: number
+    totalEuros: number
+    ruleNames: string[]
+  }[] | null>(null)
   const [manualPickerCell, setManualPickerCell] = useState<{ empId: string; dateStr: string } | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -396,6 +403,7 @@ export default function AdminSchedule() {
     setAiStep(0)
     setAiError(null)
     setAiErrorCode(null)
+    setSurchargeEstimate(null)
     setAiReasoning(null)
     setAiDecisions([])
     setAiAssignmentReasons({})
@@ -476,6 +484,29 @@ export default function AdminSchedule() {
       }
       setFallbackHandled(false)
       setAiDone(true)
+
+      // Build entries for surcharge estimate
+      const empMap = new Map(employees.map(e => [e.id, e.name]))
+      const planEntries: { employeeId: string; employeeName: string; date: string; shiftId: string }[] = []
+      for (const [empId, days] of Object.entries(transposed)) {
+        for (const [date, assignment] of Object.entries(days as Record<string, ScheduleAssignment>)) {
+          if (assignment?.shiftId) {
+            planEntries.push({
+              employeeId: empId,
+              employeeName: empMap.get(empId) ?? empId,
+              date,
+              shiftId: assignment.shiftId,
+            })
+          }
+        }
+      }
+      if (planEntries.length > 0) {
+        fetch('/api/surcharges/estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entries: planEntries }),
+        }).then(r => r.json()).then(d => setSurchargeEstimate(d.rows ?? null)).catch(() => {})
+      }
     } catch (err: unknown) {
       clearInterval(interval)
       setAiError(err instanceof Error ? err.message : 'Unbekannter Fehler')
@@ -1213,6 +1244,25 @@ export default function AdminSchedule() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {surchargeEstimate && surchargeEstimate.length > 0 && user?.role === 'company' && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-xs font-semibold text-amber-700 mb-2">Geschätzte Zuschläge (aus Dienstplan)</p>
+                <div className="space-y-1">
+                  {surchargeEstimate.map(row => (
+                    <div key={row.employeeId} className="flex justify-between text-xs">
+                      <span className="text-gray-700">{row.employeeName}</span>
+                      <span className="font-mono text-emerald-700">
+                        {row.totalEuros > 0
+                          ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(row.totalEuros)
+                          : '–'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-amber-600 mt-1.5">Schätzung basierend auf geplanten Schichten. Exakte Berechnung nach Zeiterfassung.</p>
               </div>
             )}
 
