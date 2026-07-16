@@ -26,6 +26,15 @@ interface EmployeeHumanContext {
   agreements: string | null
 }
 
+interface PlanningProfile {
+  shiftPreference: string
+  childPickupTimes: { day: string; beforeTime: string }[]
+  maxConsecutiveDays: number
+  weekendRule: string | null
+  planningNote: string | null
+  surchargeMode: string
+}
+
 export default function AdminEmployees() {
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -44,6 +53,10 @@ export default function AdminEmployees() {
   const [allEmployees, setAllEmployees] = useState<Employee[]>([])
   const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([])
   const [absences, setAbsences] = useState<Absence[]>([])
+  const [planningProfile, setPlanningProfile] = useState<PlanningProfile | null>(null)
+  const [planningProfileOpen, setPlanningProfileOpen] = useState(false)
+  const [planningProfileSaving, setPlanningProfileSaving] = useState(false)
+  const [planningProfileDraft, setPlanningProfileDraft] = useState<PlanningProfile | null>(null)
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
@@ -90,12 +103,19 @@ export default function AdminEmployees() {
   useEffect(() => {
     if (!selectedEmployee) {
       setHumanContext(null)
+      setPlanningProfile(null)
+      setPlanningProfileOpen(false)
+      setPlanningProfileDraft(null)
       return
     }
     fetch(`/api/employee-human-context?employeeId=${selectedEmployee.id}`)
       .then(res => res.json())
       .then(data => setHumanContext(data.contexts?.[0] ?? null))
       .catch(() => setHumanContext(null))
+    fetch(`/api/employees/${selectedEmployee.id}/planning-profile`)
+      .then(r => r.json())
+      .then(d => setPlanningProfile(d.profile ?? null))
+      .catch(() => setPlanningProfile(null))
   }, [selectedEmployee])
 
   async function parseEmployeeResponse(res: Response): Promise<Employee> {
@@ -537,6 +557,165 @@ export default function AdminEmployees() {
                 )}
               </div>
             )}
+
+            {/* Planungsprofil (Schicht 2) */}
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 transition-colors"
+                onClick={() => {
+                  setPlanningProfileOpen(o => !o)
+                  if (!planningProfileDraft) {
+                    setPlanningProfileDraft(planningProfile ?? {
+                      shiftPreference: 'keine',
+                      childPickupTimes: [],
+                      maxConsecutiveDays: 0,
+                      weekendRule: null,
+                      planningNote: null,
+                      surchargeMode: 'unternehmensregel',
+                    })
+                  }
+                }}
+              >
+                <span className="text-xs font-semibold text-gray-700">Planungsprofil (automatisch aktiv)</span>
+                <ChevronRight size={14} className={`text-gray-400 transition-transform ${planningProfileOpen ? 'rotate-90' : ''}`} />
+              </button>
+
+              {planningProfileOpen && planningProfileDraft && (
+                <div className="px-3 pb-3 pt-1 space-y-3 border-t border-gray-100">
+                  {/* Schicht-Präferenz */}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Schicht-Präferenz</label>
+                    <select
+                      value={planningProfileDraft.shiftPreference}
+                      onChange={e => setPlanningProfileDraft(d => d ? { ...d, shiftPreference: e.target.value } : d)}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="keine">Keine Präferenz</option>
+                      <option value="frueh">Frühschicht bevorzugt</option>
+                      <option value="spaet">Spätschicht bevorzugt</option>
+                      <option value="nacht">Nachtschicht bevorzugt</option>
+                    </select>
+                  </div>
+
+                  {/* Kinder-Abholzeiten */}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Kinder-Abholzeiten (kein Spätdienst danach)</label>
+                    {planningProfileDraft.childPickupTimes.map((cp, i) => (
+                      <div key={i} className="flex gap-1 mb-1">
+                        <select
+                          value={cp.day}
+                          onChange={e => {
+                            const arr = [...planningProfileDraft.childPickupTimes]
+                            arr[i] = { ...arr[i], day: e.target.value }
+                            setPlanningProfileDraft(d => d ? { ...d, childPickupTimes: arr } : d)
+                          }}
+                          className="text-xs border border-gray-200 rounded px-1.5 py-1 w-16"
+                        >
+                          {['Mo','Di','Mi','Do','Fr','Sa','So'].map(day => <option key={day}>{day}</option>)}
+                        </select>
+                        <input
+                          type="time"
+                          value={cp.beforeTime}
+                          onChange={e => {
+                            const arr = [...planningProfileDraft.childPickupTimes]
+                            arr[i] = { ...arr[i], beforeTime: e.target.value }
+                            setPlanningProfileDraft(d => d ? { ...d, childPickupTimes: arr } : d)
+                          }}
+                          className="text-xs border border-gray-200 rounded px-1.5 py-1 flex-1"
+                        />
+                        <button
+                          onClick={() => {
+                            const arr = planningProfileDraft.childPickupTimes.filter((_, j) => j !== i)
+                            setPlanningProfileDraft(d => d ? { ...d, childPickupTimes: arr } : d)
+                          }}
+                          className="text-xs text-red-500 px-1"
+                        >&#x2715;</button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setPlanningProfileDraft(d => d ? { ...d, childPickupTimes: [...d.childPickupTimes, { day: 'Mo', beforeTime: '15:30' }] } : d)}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      + Abholzeit hinzufügen
+                    </button>
+                  </div>
+
+                  {/* Wochenend-Vereinbarung */}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Wochenend-Vereinbarung</label>
+                    <input
+                      type="text"
+                      value={planningProfileDraft.weekendRule ?? ''}
+                      onChange={e => setPlanningProfileDraft(d => d ? { ...d, weekendRule: e.target.value || null } : d)}
+                      placeholder="z. B. jedes 2. Wochenende frei"
+                      className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Max aufeinanderfolgende Tage */}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Max. aufeinanderfolgende Tage (0 = Unternehmensregel)</label>
+                    <input
+                      type="number"
+                      min={0} max={7}
+                      value={planningProfileDraft.maxConsecutiveDays}
+                      onChange={e => setPlanningProfileDraft(d => d ? { ...d, maxConsecutiveDays: Number(e.target.value) } : d)}
+                      className="w-20 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Planungsnotiz */}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Dauerhafte Planungsnotiz</label>
+                    <textarea
+                      value={planningProfileDraft.planningNote ?? ''}
+                      onChange={e => setPlanningProfileDraft(d => d ? { ...d, planningNote: e.target.value || null } : d)}
+                      placeholder="z. B. bevorzugt keine Freitag-Spätdienste"
+                      rows={2}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Zuschlagsregelung */}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Zuschlagsregelung</label>
+                    <select
+                      value={planningProfileDraft.surchargeMode}
+                      onChange={e => setPlanningProfileDraft(d => d ? { ...d, surchargeMode: e.target.value } : d)}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none"
+                    >
+                      <option value="unternehmensregel">Unternehmensweite Regelung gilt</option>
+                      <option value="abweichungen">Gilt mit Abweichungen</option>
+                      <option value="individuell">Individuelle Regelung</option>
+                    </select>
+                  </div>
+
+                  <button
+                    disabled={planningProfileSaving}
+                    onClick={async () => {
+                      if (!selectedEmployee || !planningProfileDraft) return
+                      setPlanningProfileSaving(true)
+                      const res = await fetch(`/api/employees/${selectedEmployee.id}/planning-profile`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(planningProfileDraft),
+                      })
+                      if (res.ok) {
+                        const d = await res.json()
+                        setPlanningProfile(d.profile)
+                        showToast('Planungsprofil gespeichert', 'success')
+                      } else {
+                        showToast('Fehler beim Speichern', 'error')
+                      }
+                      setPlanningProfileSaving(false)
+                    }}
+                    className="w-full text-xs bg-blue-600 text-white rounded-lg py-1.5 disabled:opacity-50"
+                  >
+                    {planningProfileSaving ? 'Speichert…' : 'Planungsprofil speichern'}
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-2">
               <Button

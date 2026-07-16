@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/Textarea'
 import { FairnessReport } from '@/components/schedule/FairnessReport'
 import { SchedulePlanningChat } from '@/components/schedule/SchedulePlanningChat'
 import { ScheduleEditChat } from '@/components/schedule/ScheduleEditChat'
+import { PlanungslaufPanel } from '@/components/schedule/PlanungslaufPanel'
+import type { PlanContext } from '@/components/schedule/PlanungslaufPanel'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
@@ -116,6 +118,8 @@ export default function AdminSchedule() {
   const [quickEventSaving, setQuickEventSaving] = useState(false)
   const [planningChatOpen, setPlanningChatOpen] = useState(false)
   const [editChatOpen, setEditChatOpen] = useState(false)
+  const [showPlanPanel, setShowPlanPanel] = useState(false)
+  const [lastUsedKontext, setLastUsedKontext] = useState('')
   const [planningRules, setPlanningRules] = useState<PlanningRules>(DEFAULT_RULES)
   const [rulesDraft, setRulesDraft] = useState<PlanningRules>(DEFAULT_RULES)
   const [minStaffDraft, setMinStaffDraft] = useState<Record<string, number>>({})
@@ -386,7 +390,7 @@ export default function AdminSchedule() {
     return entry?.reason ?? null
   }
 
-  const runAI = async (confirmedDecisionQuestion?: string) => {
+  const runAI = async (confirmedDecisionQuestion?: string, kontextOverride?: string) => {
     setAiRunning(true)
     setAiDone(false)
     setAiStep(0)
@@ -399,6 +403,7 @@ export default function AdminSchedule() {
     setAiDecisionQuestion(null)
     setFallback(null)
     setFallbackHandled(false)
+    const effectiveKontext = kontextOverride !== undefined ? kontextOverride : lastUsedKontext
 
     // Animate progress steps while waiting for the real API
     let step = 0
@@ -420,7 +425,7 @@ export default function AdminSchedule() {
           locationId,
           von,
           bis,
-          kontext: facilityDescription.trim() || undefined,
+          kontext: effectiveKontext.trim() || undefined,
         }),
       })
 
@@ -479,6 +484,29 @@ export default function AdminSchedule() {
     } finally {
       setAiRunning(false)
     }
+  }
+
+  function buildKontext(ctx: PlanContext): string {
+    const parts: string[] = []
+    const empMap = new Map(employees.map(e => [e.id, e]))
+    for (const [empId, decision] of Object.entries(ctx.overtimeDecisions)) {
+      const emp = empMap.get(empId)
+      if (!emp) continue
+      if (decision === 'reduce') {
+        parts.push(emp.hoursBalance > 0
+          ? `${emp.name}: 1 Dienst weniger diese Woche (${emp.hoursBalance > 0 ? '+' : ''}${emp.hoursBalance.toFixed(1)}h Überstunden abbauen)`
+          : `${emp.name}: 1 Dienst mehr diese Woche (${emp.hoursBalance.toFixed(1)}h Minusstunden ausgleichen)`)
+      }
+    }
+    if (ctx.sondernotiz.trim()) parts.push(ctx.sondernotiz.trim())
+    return parts.join('. ')
+  }
+
+  function handlePlanConfirm(planCtx: PlanContext) {
+    const k = buildKontext(planCtx)
+    setLastUsedKontext(k)
+    setShowPlanPanel(false)
+    runAI(undefined, k)
   }
 
   const handleDecisionYes = async () => {
@@ -842,7 +870,7 @@ export default function AdminSchedule() {
                       </span>
                     </label>
                     <div className="flex gap-2 sm:ml-auto">
-                      <Button onClick={() => runAI()} size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
+                      <Button onClick={() => setShowPlanPanel(true)} size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
                         <Sparkles size={14} />
                         Plan erstellen
                       </Button>

@@ -103,6 +103,11 @@ export async function buildRuleModel(
   const companyModel = earlyModel
   const standort = earlyStandort
 
+  const planningProfiles = await prisma.employeePlanningProfile.findMany({
+    where: { employeeId: { in: employees.map(e => e.id) } },
+  })
+  const profileByEmp = new Map(planningProfiles.map(p => [p.employeeId, p]))
+
   // Build einheiten from CompanyModel or DB
   let einheiten: PlanungsEinheit[] = standort?.planungsEinheiten ?? []
   if (einheiten.length === 0) {
@@ -262,6 +267,16 @@ export async function buildRuleModel(
       einheiten.forEach(e => { if (!empEinheiten.includes(e.id)) empEinheiten.push(e.id) })
     }
 
+    const profile = profileByEmp.get(emp.id)
+    const profileText = profile ? [
+      profile.shiftPreference !== 'keine' ? `bevorzugt ${profile.shiftPreference}` : null,
+      profile.weekendRule ?? null,
+      profile.planningNote ?? null,
+      (profile.childPickupTimes as {day: string; beforeTime: string}[]).length > 0
+        ? `Kinderabholung: ${(profile.childPickupTimes as {day: string; beforeTime: string}[]).map(c => `${c.day} bis ${c.beforeTime}`).join(', ')}`
+        : null,
+    ].filter(Boolean).join('; ') : null
+
     return {
       id: emp.id,
       name: emp.name,
@@ -273,7 +288,7 @@ export async function buildRuleModel(
       nichtVerfuegbarAn: nichtVerfuegbar,
       urlaubAn,
       wuensche: empWishes,
-      besonderheiten: emp.fixedLocations ?? undefined,
+      besonderheiten: [emp.fixedLocations ?? null, profileText].filter(Boolean).join('; ') || undefined,
       letzteSchichten,
       belastungsHistorie: { nachtSchichten, wochenendDienste, spaetDienste },
     }
