@@ -64,6 +64,24 @@ model EmployeeHumanContext {
   updatedAt           DateTime @updatedAt
 }
 
+model EmployeePlanningProfile {
+  employeeId          String   @id
+  // Schicht-Präferenz für den Solver
+  shiftPreference     String   @default("keine")   // frueh | spaet | nacht | keine
+  // Kinder-Abholzeiten: [{day:"Mo", beforeTime:"15:30"}, ...]
+  childPickupTimes    Json     @default("[]")
+  // Maximale aufeinanderfolgende Arbeitstage (0 = Unternehmensregel gilt)
+  maxConsecutiveDays  Int      @default(0)
+  // Wochenend-Freiheits-Vereinbarung (z.B. "jedes 2. Wochenende frei")
+  weekendRule         String?
+  // Zusätzliche Planungsnotiz (dauerhaft, nicht pro Lauf)
+  planningNote        String?
+  // Zuschlagsregelung
+  surchargeMode       String   @default("unternehmensregel")  // unternehmensregel | abweichungen | individuell
+  surchargeOverrides  Json?    // nur abweichende Felder vom Unternehmensstandard
+  updatedAt           DateTime @updatedAt
+}
+
 model SubstitutionRequest {
   id                 String                  @id @default(cuid())
   locationId         String

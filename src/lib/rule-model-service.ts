@@ -92,7 +92,7 @@ export async function buildRuleModel(
       where: {
         locationId,
         date: {
-          gte: new Date(new Date(von).getTime() - 14 * 86400000).toISOString().slice(0, 10),
+          gte: new Date(new Date(von).getTime() - 35 * 86400000).toISOString().slice(0, 10),
           lt: von,
         },
       },
@@ -234,10 +234,26 @@ export async function buildRuleModel(
         }
       })
 
-    const letzteSchichten = recentEntries
-      .filter(e => e.employeeId === emp.id)
+    const empRecent = recentEntries.filter(e => e.employeeId === emp.id)
+
+    const letzteSchichten = empRecent
       .slice(0, 10)
       .map(e => ({ datum: e.date, schichtId: e.shiftId }))
+
+    const nachtSchichten = empRecent.filter(e => {
+      const s = schichten.find(sh => sh.id === e.shiftId)
+      return s?.typ === 'nacht'
+    }).length
+
+    const spaetDienste = empRecent.filter(e => {
+      const s = schichten.find(sh => sh.id === e.shiftId)
+      return s?.typ === 'spaet'
+    }).length
+
+    const wochenendDienste = empRecent.filter(e => {
+      const dow = new Date(e.date).getDay()
+      return dow === 0 || dow === 6
+    }).length
 
     const empEinheiten: string[] = []
     if (emp.gruppe) empEinheiten.push(emp.gruppe)
@@ -259,6 +275,7 @@ export async function buildRuleModel(
       wuensche: empWishes,
       besonderheiten: emp.fixedLocations ?? undefined,
       letzteSchichten,
+      belastungsHistorie: { nachtSchichten, wochenendDienste, spaetDienste },
     }
   })
 

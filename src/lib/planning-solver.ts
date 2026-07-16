@@ -4,6 +4,8 @@ import type {
   PlanEintrag,
   PlanDecision,
   SchichtDefinition,
+  PlanungsMitarbeiter,
+  SchichtTyp,
 } from '@/lib/company-model-types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -41,6 +43,14 @@ function prevDay(dateStr: string): string {
   const d = new Date(dateStr)
   d.setDate(d.getDate() - 1)
   return d.toISOString().slice(0, 10)
+}
+
+function belastungsScore(emp: PlanungsMitarbeiter, schichtTyp: SchichtTyp): number {
+  const h = emp.belastungsHistorie
+  if (!h) return 0
+  if (schichtTyp === 'nacht') return h.nachtSchichten
+  if (schichtTyp === 'spaet') return h.spaetDienste
+  return 0
 }
 
 // ─── Algorithmic solver ───────────────────────────────────────────────────────
@@ -147,6 +157,11 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
         const diff = (state[a.id].shiftTypeCounts[schicht.typ] ?? 0)
                    - (state[b.id].shiftTypeCounts[schicht.typ] ?? 0)
         if (diff !== 0) return diff
+
+        // Soft: prefer employee with lower recent-history load for this shift type
+        const bsDiff = belastungsScore(a, schicht.typ as SchichtTyp)
+                     - belastungsScore(b, schicht.typ as SchichtTyp)
+        if (bsDiff !== 0) return bsDiff
 
         if (isWeekend && fairness.wochenendArbeit !== false) {
           const wd = state[a.id].weekendShifts - state[b.id].weekendShifts

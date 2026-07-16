@@ -161,6 +161,11 @@ export interface PlanungsMitarbeiter {
   wuensche: PlanungsWunsch[]
   besonderheiten?: string
   letzteSchichten?: Array<{ datum: string; schichtId: string }>
+  belastungsHistorie?: {
+    nachtSchichten: number    // count in last 5 weeks
+    wochenendDienste: number  // count in last 5 weeks
+    spaetDienste: number      // count in last 5 weeks
+  }
 }
 
 export interface PlanningRuleModel {
