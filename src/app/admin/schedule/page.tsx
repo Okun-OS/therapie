@@ -1572,6 +1572,17 @@ export default function AdminSchedule() {
         )}
       </Modal>
 
+      {/* Planungslauf Panel Modal */}
+      <Modal open={showPlanPanel} onClose={() => setShowPlanPanel(false)} title="Vor dem Planungslauf" size="md">
+        {locationId && (
+          <PlanungslaufPanel
+            locationId={locationId}
+            onConfirm={handlePlanConfirm}
+            onCancel={() => setShowPlanPanel(false)}
+          />
+        )}
+      </Modal>
+
       {/* Manual Shift Picker Modal */}
       <Modal open={!!manualPickerCell} onClose={() => setManualPickerCell(null)} title="Schicht zuweisen" size="sm">
         {manualPickerCell && (() => {
