@@ -28,16 +28,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    let cached: User | null = null
     try {
       const stored = sessionStorage.getItem('dienstplan_user')
-      if (stored) {
-        cached = JSON.parse(stored)
-        setUser(cached)
-      }
+      if (stored) setUser(JSON.parse(stored))
     } catch {}
 
-    fetch('/api/auth/me')
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+
+    fetch('/api/auth/me', { signal: controller.signal })
       .then(res => (res.ok ? res.json() : { user: null }))
       .then(({ user: serverUser }) => {
         if (serverUser) {
@@ -49,7 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {})
-      .finally(() => setIsLoading(false))
+      .finally(() => {
+        clearTimeout(timeout)
+        setIsLoading(false)
+      })
   }, [])
 
   const login = async (email: string, password: string): Promise<LoginResult> => {
