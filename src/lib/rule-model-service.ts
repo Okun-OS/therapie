@@ -12,13 +12,13 @@ import type {
   FairnessKonfig,
 } from '@/lib/company-model-types'
 
-function getWorkdays(von: string, bis: string): string[] {
+function getWorkdays(von: string, bis: string, includeWeekends = false): string[] {
   const days: string[] = []
   const start = new Date(von)
   const end = new Date(bis)
   for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const day = d.getDay()
-    if (day !== 0 && day !== 6) {
+    const dow = d.getDay()
+    if (includeWeekends || (dow !== 0 && dow !== 6)) {
       days.push(d.toISOString().slice(0, 10))
     }
   }
@@ -45,10 +45,18 @@ export async function buildRuleModel(
   kontext?: string,
   vorherigeBewertung?: string,
 ): Promise<PlanningRuleModel> {
-  const arbeitstage = getWorkdays(von, bis)
+  // Resolve includeWeekends before getWorkdays — we need companyModel first but
+  // that's fetched in the Promise.all below. Use a two-phase approach: fetch
+  // the model quickly, then build the full arbeitstage list.
+  const earlyModel = await getCompanyModel(customerId)
+  const earlyStandort = earlyModel ? getStandortModell(earlyModel, locationId) : null
+  const betriebsTyp = earlyModel?.organisation?.betriebsTyp ?? 'mon_fri'
+  const includeWeekends =
+    betriebsTyp === '7_tage' || betriebsTyp === '24_7' || betriebsTyp === 'schichtbetrieb' ||
+    (earlyStandort?.schichtmodell?.arbeitstage ?? []).some(d => d === 'Sa' || d === 'So')
+  const arbeitstage = getWorkdays(von, bis, includeWeekends)
 
   const [
-    companyModel,
     planningRules,
     dbShifts,
     employees,
@@ -57,7 +65,6 @@ export async function buildRuleModel(
     wishes,
     recentEntries,
   ] = await Promise.all([
-    getCompanyModel(customerId),
     prisma.locationPlanningRules.findUnique({ where: { locationId } }),
     prisma.shift.findMany({ where: { locationId } }),
     prisma.employee.findMany({ where: { locationId, active: true } }),
@@ -93,7 +100,8 @@ export async function buildRuleModel(
     }),
   ])
 
-  const standort = companyModel ? getStandortModell(companyModel, locationId) : null
+  const companyModel = earlyModel
+  const standort = earlyStandort
 
   // Build einheiten from CompanyModel or DB
   let einheiten: PlanungsEinheit[] = standort?.planungsEinheiten ?? []

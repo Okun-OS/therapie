@@ -109,7 +109,24 @@ function codeBasedFallback(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
   const { mitarbeiter, schichten, harteRegeln, zeitraum } = ruleModel
   const verletzungen: RegelVerletzung[] = []
 
-  const maxWeeklyHours = harteRegeln.find(r => r.typ === 'max_wochenstunden')?.wert ?? 40
+  // Detect completely empty plan — this is always a critical failure
+  if (plan.eintraege.length === 0 && mitarbeiter.length > 0 && zeitraum.arbeitstage.length > 0) {
+    return {
+      gesamtScore: 0,
+      kategorien: { regelkonformitaet: 0, fairness: 0, abdeckung: 0, wunscherfuellung: 0, qualitaet: 0 },
+      verletzungen: [{
+        schwere: 'kritisch',
+        regelId: 'hr-leerplan',
+        beschreibung: schichten.length === 0
+          ? `Keine Schichten im Regelmodell — Solver konnte keinen Plan erstellen. Bitte zuerst Onboarding abschließen oder Schichten manuell anlegen.`
+          : `Kein einziger Mitarbeiter wurde eingeplant (${mitarbeiter.length} verfügbar, ${zeitraum.arbeitstage.length} Arbeitstage). Bitte Onboarding und Mitarbeiterdaten prüfen.`,
+        betrifft: [],
+      }],
+      optimierungsVorschlaege: [],
+      freigabeEmpfehlung: 'ueberarbeiten',
+      zusammenfassung: 'Planung fehlgeschlagen: leerer Plan erzeugt.',
+    }
+  }
 
   const byEmp = new Map<string, typeof plan.eintraege>()
   for (const e of plan.eintraege) {

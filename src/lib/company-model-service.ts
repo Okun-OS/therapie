@@ -59,7 +59,7 @@ Erstelle das CompanyModel als JSON mit diesem Schema:
   },
   "standortModelle": [
     {
-      "locationId": "...",
+      "locationId": "<EXAKT die location.id aus den Onboarding-Daten übernehmen — niemals erfinden>",
       "locationName": "...",
       "planungsEinheiten": [
         {
@@ -162,5 +162,11 @@ export async function getOrGenerateCompanyModel(customerId: string): Promise<Com
 }
 
 export function getStandortModell(model: CompanyModel, locationId: string): StandortModell | null {
-  return model.standortModelle.find(s => s.locationId === locationId) ?? null
+  // Exact match first
+  const exact = model.standortModelle.find(s => s.locationId === locationId)
+  if (exact) return exact
+  // If exactly one location model exists, use it regardless of ID — the AI
+  // often generates a placeholder ID instead of the real DB UUID.
+  if (model.standortModelle.length === 1) return model.standortModelle[0]
+  return null
 }

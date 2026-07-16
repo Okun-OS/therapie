@@ -49,6 +49,16 @@ export async function runPlanningSession(
     // ── Step 2: Algorithmic solve ────────────────────────────────────────────
     let plan = await solvePlan(ruleModel)
 
+    // Guard: if the solver returned nothing meaningful, give an actionable error
+    if (plan.eintraege.length === 0) {
+      const reason = ruleModel.schichten.length === 0
+        ? 'Keine Schichten im Regelmodell — bitte Onboarding abschließen oder Schichten manuell anlegen.'
+        : ruleModel.mitarbeiter.length === 0
+        ? 'Keine aktiven Mitarbeiter für diesen Standort gefunden.'
+        : 'Solver hat keinen Dienstplan erstellen können — alle Mitarbeiter sind im gewählten Zeitraum nicht verfügbar (Urlaub, Abwesenheit oder Stundenlimit).'
+      throw new Error(reason)
+    }
+
     // ── Step 3: AI evaluation + correction loop ──────────────────────────────
     for (let round = 0; round <= MAX_CORRECTION_ROUNDS; round++) {
       iterationNummer = round + 1
