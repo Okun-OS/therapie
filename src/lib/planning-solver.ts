@@ -236,5 +236,23 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function solvePlan(ruleModel: PlanningRuleModel): Promise<GenerierterPlan> {
+  const solverUrl = process.env.SOLVER_SERVICE_URL
+  if (solverUrl) {
+    try {
+      const resp = await fetch(`${solverUrl}/solve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ruleModel),
+        signal: AbortSignal.timeout(35_000),
+      })
+      if (resp.ok) {
+        const plan = await resp.json() as GenerierterPlan
+        return plan
+      }
+      console.warn(`[solver] HTTP ${resp.status} from OR-Tools service, falling back to greedy`)
+    } catch (err) {
+      console.warn('[solver] OR-Tools service unavailable, falling back to greedy solver:', err)
+    }
+  }
   return algorithmicSolve(ruleModel)
 }
