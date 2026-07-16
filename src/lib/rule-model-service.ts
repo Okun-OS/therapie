@@ -117,11 +117,14 @@ export async function buildRuleModel(
     }))
   }
 
-  // Build schichten from CompanyModel or DB shifts
-  let schichten: SchichtDefinition[] = standort?.schichtmodell.schichten ?? []
-  if (schichten.length === 0) {
+  // Build schichten — DB shifts take priority because the frontend resolves
+  // shift display by DB UUID. CompanyModel schichten use AI-generated IDs like
+  // "frueh" which never match, so they are used only as a last-resort fallback
+  // when no DB shifts exist yet.
+  let schichten: SchichtDefinition[] = []
+  if (dbShifts.length > 0) {
     schichten = dbShifts.map(s => ({
-      id: s.id,
+      id: s.id,               // real DB UUID — frontend uses this
       name: s.name,
       typ: toSchichtTyp(s.name),
       von: s.startTime,
@@ -130,6 +133,8 @@ export async function buildRuleModel(
       minBesetzungGesamt: s.minStaff,
       aufgaben: [],
     }))
+  } else if ((standort?.schichtmodell.schichten ?? []).length > 0) {
+    schichten = standort!.schichtmodell.schichten
   }
 
   // Hard rules from CompanyModel + DB planning rules
