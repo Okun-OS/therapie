@@ -16,7 +16,6 @@ Soft objective (maximized):
   - +1 per shift assigned (encourages full coverage)
 """
 
-from ortools.sat.python import cp_model
 from datetime import datetime, timedelta
 
 
@@ -53,6 +52,8 @@ def _iso_week_key(date_str: str) -> str:
 
 
 def solve(rule_model: dict) -> dict:
+    from ortools.sat.python import cp_model  # lazy import: keeps startup fast for /health
+
     days: list[str] = rule_model["zeitraum"]["arbeitstage"]
     employees: list[dict] = rule_model["mitarbeiter"]
     shifts: list[dict] = rule_model["schichten"]

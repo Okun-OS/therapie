@@ -36,4 +36,5 @@ async def solve_endpoint(request: Request) -> JSONResponse:
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8080))
+    print(f"[solver] starting on port {port}", flush=True)
     uvicorn.run(app, host="0.0.0.0", port=port)
