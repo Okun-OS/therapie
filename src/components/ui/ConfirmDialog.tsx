@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AlertTriangle } from 'lucide-react'
 
 interface ConfirmDialogProps {
@@ -24,6 +25,10 @@ export function ConfirmDialog({
   cancelLabel = 'Abbrechen',
   danger = true,
 }: ConfirmDialogProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
@@ -35,23 +40,24 @@ export function ConfirmDialog({
     }
   }, [open])
 
-  if (!open) return null
+  if (!mounted || !open) return null
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
       onClick={onClose}
     >
-      <div className="w-full max-w-sm bg-white shadow-2xl rounded-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div
+        style={{ width: '100%', maxWidth: '24rem', backgroundColor: '#fff', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+        onClick={e => e.stopPropagation()}
+      >
         <div className="p-6">
           {danger && (
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mx-auto mb-4">
               <AlertTriangle size={24} className="text-red-500" />
             </div>
           )}
-          <h2 className="text-lg font-semibold text-navy text-center mb-2">
-            {title}
-          </h2>
+          <h2 className="text-lg font-semibold text-navy text-center mb-2">{title}</h2>
           <p className="text-sm text-gray-500 text-center mb-6">{message}</p>
           <div className="flex gap-3">
             <button
@@ -61,10 +67,7 @@ export function ConfirmDialog({
               {cancelLabel}
             </button>
             <button
-              onClick={() => {
-                onConfirm()
-                onClose()
-              }}
+              onClick={() => { onConfirm(); onClose() }}
               className={
                 danger
                   ? 'flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition-colors'
@@ -76,6 +79,7 @@ export function ConfirmDialog({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

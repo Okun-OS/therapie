@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +14,10 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
@@ -27,7 +32,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     }
   }, [open])
 
-  if (!open) return null
+  if (!mounted || !open) return null
 
   const sizes = {
     sm: 'max-w-sm',
@@ -36,9 +41,9 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     xl: 'max-w-4xl',
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50"
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 0 }}
       onClick={onClose}
     >
       <div
@@ -48,6 +53,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
           'max-h-[90vh] overflow-y-auto',
           sizes[size]
         )}
+        style={{ margin: '0 auto' }}
         onClick={e => e.stopPropagation()}
       >
         {title && (
@@ -60,6 +66,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
         )}
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
