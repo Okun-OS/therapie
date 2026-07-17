@@ -43,7 +43,7 @@ export function ConfirmDialog({
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-sm bg-white shadow-2xl rounded-2xl overflow-hidden">
+      <div className="relative z-10 w-full max-w-sm bg-white shadow-2xl rounded-2xl overflow-hidden">
         <div className="p-6">
           {danger && (
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mx-auto mb-4">
