@@ -37,14 +37,19 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className={cn(
-        'relative z-10 w-full bg-white shadow-2xl animate-slide-up',
-        'rounded-t-3xl sm:rounded-2xl',
-        'max-h-[90vh] overflow-y-auto',
-        sizes[size]
-      )}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className={cn(
+          'w-full bg-white shadow-2xl animate-slide-up',
+          'rounded-t-3xl sm:rounded-2xl',
+          'max-h-[90vh] overflow-y-auto',
+          sizes[size]
+        )}
+        onClick={e => e.stopPropagation()}
+      >
         {title && (
           <div className="flex items-center justify-between p-5 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-navy">{title}</h2>
