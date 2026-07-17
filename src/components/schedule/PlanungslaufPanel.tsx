@@ -29,8 +29,9 @@ export function PlanungslaufPanel({ locationId, onConfirm, onCancel }: Planungsl
           (e: Employee) => e.locationId === locationId && e.role === 'employee'
         )
         setEmployees(filtered)
-        setLoading(false)
       })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [locationId])
 
   // Only employees with significant imbalance
