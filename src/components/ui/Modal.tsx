@@ -38,7 +38,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50"
       onClick={onClose}
     >
       <div
