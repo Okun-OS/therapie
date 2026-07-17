@@ -43,13 +43,13 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
 
   return createPortal(
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 0 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
       onClick={onClose}
     >
       <div
         className={cn(
           'w-full bg-white shadow-2xl animate-slide-up',
-          'rounded-t-3xl sm:rounded-2xl',
+          'rounded-2xl',
           'max-h-[90vh] overflow-y-auto',
           sizes[size]
         )}
