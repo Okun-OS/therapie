@@ -58,17 +58,18 @@ function MegaPanel({ item, onClose }: { item: DockItem; onClose: () => void }) {
       style={{ bottom: 96, left: '50%', width: 'min(92vw, 520px)' }}
     >
       <div
-        className="rounded-2xl overflow-hidden"
+        className="rounded-2xl overflow-hidden flex flex-col"
         style={{
           background: 'rgba(20,23,25,0.92)',
           backdropFilter: 'blur(32px)',
           WebkitBackdropFilter: 'blur(32px)',
           border: '1px solid rgba(38,198,198,0.18)',
           boxShadow: '0 24px 64px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)',
+          maxHeight: 'calc(100dvh - 120px)',
         }}
       >
         {/* Panel header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/[0.07]">
+        <div className="flex-shrink-0 flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/[0.07]">
           <span className="text-white/90 text-sm font-semibold tracking-wide">{panel.title}</span>
           <button
             onClick={onClose}
@@ -81,7 +82,7 @@ function MegaPanel({ item, onClose }: { item: DockItem; onClose: () => void }) {
         </div>
 
         {/* Sections */}
-        <div className="p-3 space-y-1">
+        <div className="p-3 space-y-1 overflow-y-auto">
           {panel.sections.map((section, si) => (
             <div key={si}>
               {section.title && (
