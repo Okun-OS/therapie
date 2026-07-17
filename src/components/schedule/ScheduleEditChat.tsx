@@ -8,7 +8,7 @@ import { CalendarCheck } from 'lucide-react'
 import type { ScheduleEditDraft, ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import { draftToChangeStrings, draftToPermanentRuleStrings } from '@/lib/schedule-edit-draft'
 
-interface EmployeeBrief { id: string; name: string }
+interface EmployeeBrief { id: string; name: string; gruppe?: string; bereich?: string }
 interface ShiftBrief { id: string; name: string; type: string; startTime: string; endTime: string }
 interface EntryBrief { employeeId: string; employeeName: string; date: string; shiftId: string; shiftName: string }
 

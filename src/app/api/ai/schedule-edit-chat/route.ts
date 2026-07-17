@@ -72,7 +72,7 @@ interface ChatMessage {
   content: string
 }
 
-interface EmployeeBrief { id: string; name: string }
+interface EmployeeBrief { id: string; name: string; gruppe?: string; bereich?: string }
 interface ShiftBrief { id: string; name: string; type: string; startTime: string; endTime: string }
 interface EntryBrief { employeeId: string; employeeName: string; date: string; shiftId: string; shiftName: string }
 

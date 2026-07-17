@@ -345,7 +345,7 @@ export default function AdminSchedule() {
   const existingEntries = SCHEDULE_ENTRIES.filter(e =>
     e.locationId === locationId && e.date >= periodStart && e.date <= periodEnd
   )
-  const editChatEmployees = useMemo(() => employees.map(e => ({ id: e.id, name: e.name })), [employees])
+  const editChatEmployees = useMemo(() => employees.map(e => ({ id: e.id, name: e.name, gruppe: e.gruppe, bereich: e.bereich })), [employees])
   const editChatShifts = useMemo(
     () => locationShifts.map(s => ({ id: s.id, name: s.name, type: s.type, startTime: s.startTime, endTime: s.endTime })),
     [locationShifts]
