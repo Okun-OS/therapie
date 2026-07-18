@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
-import { getOrGenerateCompanyModel } from '@/lib/company-model-service'
+import { getOrGenerateLocationModel } from '@/lib/company-model-service'
 import { runPlanningSession } from '@/lib/planning-orchestrator'
 import { prisma } from '@/lib/prisma'
 
@@ -20,23 +20,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Kein Mandant zugeordnet' }, { status: 403 })
   }
 
-  let companyModel
-  try {
-    companyModel = await getOrGenerateCompanyModel(customerId)
-  } catch (err) {
-    console.error('[solve-schedule] CompanyModel generation failed:', err)
+  // Gate: location must have shifts configured
+  const shiftCount = await prisma.shift.count({ where: { locationId } })
+  if (shiftCount === 0) {
     return NextResponse.json(
-      { error: 'Das Unternehmens-Modell konnte nicht generiert werden. Bitte versuche es erneut.', code: 'COMPANY_MODEL_ERROR' },
-      { status: 500 },
-    )
-  }
-
-  if (!companyModel) {
-    return NextResponse.json(
-      { error: 'Das Unternehmens-Onboarding ist noch nicht abgeschlossen. Bitte schließe zuerst das KI-Onboarding ab.', code: 'NO_COMPANY_MODEL' },
+      { error: 'Dieser Standort hat noch keine Dienstzeiten konfiguriert. Bitte schließe zuerst das Standort-Onboarding ab.', code: 'NO_SHIFTS' },
       { status: 422 },
     )
   }
+
+  // Generate/refresh the per-location model in the background (used by future calls for richer rule data)
+  getOrGenerateLocationModel(locationId, customerId).catch(err =>
+    console.error('[solve-schedule] LocationModel generation failed:', err)
+  )
 
   let result
   try {

@@ -6,7 +6,7 @@ import { listLocations } from '@/lib/entities'
 import { listShiftsByLocation, addShift, updateShift, getPlanningRules, upsertPlanningRules, listPlanningUnitsByLocation, upsertPlanningUnit } from '@/lib/schedule-entities'
 import { resetBreakRulesExtraction } from '@/lib/break-rules-service'
 import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
-import { generateCompanyModelFromOnboarding } from '@/lib/company-model-service'
+import { generateCompanyModelFromOnboarding, generateLocationModelFromOnboarding } from '@/lib/company-model-service'
 import type { ShiftType } from '@/lib/types'
 import {
   WORKFLOW_STATUS_TOOL,
@@ -352,9 +352,15 @@ export async function POST(req: NextRequest) {
             completed: typeof input.completed === 'boolean' ? input.completed : undefined,
           })
           if (isNowCompleted && customerId) {
-            generateCompanyModelFromOnboarding(customerId).catch(err =>
-              console.error('CompanyModel-Generierung nach Onboarding fehlgeschlagen:', err)
-            )
+            if (isOrganization) {
+              generateCompanyModelFromOnboarding(customerId).catch(err =>
+                console.error('CompanyModel-Generierung nach Onboarding fehlgeschlagen:', err)
+              )
+            } else {
+              generateLocationModelFromOnboarding(scope, customerId).catch(err =>
+                console.error('LocationModel-Generierung nach Onboarding fehlgeschlagen:', err)
+              )
+            }
           }
           if (typeof input.pausenlogik === 'string' && input.pausenlogik.trim() !== (existingPausenlogik ?? '').trim()) {
             await resetBreakRulesExtraction(scope)

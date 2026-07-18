@@ -141,6 +141,14 @@ export interface CompanyModel {
   erkannteModule: ModulTyp[]
 }
 
+// Per-location planning model — primary unit for solver configuration.
+// Each Standort owns an independent LocationModel stored in LocationRuleModelRecord.
+export interface LocationModel extends StandortModell {
+  customerId: string
+  betriebsTyp: BetriebsTyp
+  bundesland?: string
+}
+
 export interface PlanungsWunsch {
   datum: string
   schichtId: string

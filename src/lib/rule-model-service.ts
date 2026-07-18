@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { getCompanyModel, getStandortModell } from '@/lib/company-model-service'
+import { getLocationModel } from '@/lib/company-model-service'
 import type {
   PlanningRuleModel,
   PlanungsMitarbeiter,
@@ -45,15 +45,13 @@ export async function buildRuleModel(
   kontext?: string,
   vorherigeBewertung?: string,
 ): Promise<PlanningRuleModel> {
-  // Resolve includeWeekends before getWorkdays — we need companyModel first but
-  // that's fetched in the Promise.all below. Use a two-phase approach: fetch
-  // the model quickly, then build the full arbeitstage list.
-  const earlyModel = await getCompanyModel(customerId)
-  const earlyStandort = earlyModel ? getStandortModell(earlyModel, locationId) : null
-  const betriebsTyp = earlyModel?.organisation?.betriebsTyp ?? 'mon_fri'
+  // Fetch the per-location model to resolve weekend inclusion and planning rules.
+  // Falls back gracefully to defaults when no LocationModel has been generated yet.
+  const locationModel = await getLocationModel(locationId)
+  const betriebsTyp = locationModel?.betriebsTyp ?? 'mon_fri'
   const includeWeekends =
     betriebsTyp === '7_tage' || betriebsTyp === '24_7' || betriebsTyp === 'schichtbetrieb' ||
-    (earlyStandort?.schichtmodell?.arbeitstage ?? []).some(d => d === 'Sa' || d === 'So')
+    (locationModel?.schichtmodell?.arbeitstage ?? []).some(d => d === 'Sa' || d === 'So')
   const arbeitstage = getWorkdays(von, bis, includeWeekends)
 
   const [
@@ -100,8 +98,7 @@ export async function buildRuleModel(
     }),
   ])
 
-  const companyModel = earlyModel
-  const standort = earlyStandort
+  const standort = locationModel
 
   const planningProfiles = await prisma.employeePlanningProfile.findMany({
     where: { employeeId: { in: employees.map(e => e.id) } },
