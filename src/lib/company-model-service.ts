@@ -283,13 +283,15 @@ Leite alle Werte ausschließlich aus den Onboarding-Daten ab. Erfinde keine Rege
 
   const response = await client.messages.create({
     model: 'claude-opus-4-7',
-    max_tokens: 4096,
+    max_tokens: 16000,
     system: SYSTEM,
     messages: [{ role: 'user', content: USER }],
   })
 
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  // Strip markdown code fences if the model wrapped the JSON
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('KI hat kein gültiges LocationModel-JSON zurückgegeben')
 
   const model = JSON.parse(jsonMatch[0]) as LocationModel
