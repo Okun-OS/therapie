@@ -184,7 +184,15 @@ export async function generateLocationModelFromOnboarding(locationId: string, cu
     prisma.organizationOnboarding.findUnique({ where: { customerId } }),
   ])
 
-  if (!locationOnboarding?.completed) return null
+  // Allow generation even if completed=false, as long as some onboarding data exists
+  // (handles accounts that went through onboarding before the completed flag was reliable)
+  const hasData = locationOnboarding && (
+    locationOnboarding.completed ||
+    locationOnboarding.arbeitszeiten !== null ||
+    locationOnboarding.dienstplanlogik !== null ||
+    locationOnboarding.einrichtungsart !== null
+  )
+  if (!hasData) return null
 
   const SYSTEM = `Du bist ein Experte für betriebliche Organisations- und Personalplanung.
 Analysiere die Onboarding-Daten eines einzelnen Standorts und erstelle ein strukturiertes LocationModel.
