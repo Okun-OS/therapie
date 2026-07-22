@@ -2,11 +2,18 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Brain, Sparkles, Loader2, CheckCircle2, X, ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { usePathname } from 'next/navigation'
+import { Brain, Sparkles, CheckCircle2, X, ArrowRight } from 'lucide-react'
 import type { Role } from '@/lib/types'
 
-const SEEN_KEY = 'okun_lm_migration_v1'
+// Permanently suppressed once the model is generated
+const DONE_KEY = 'okun_lm_migration_done'
+// Timestamp of last "Später" dismiss — re-shows after SNOOZE_DAYS
+const SNOOZE_KEY = 'okun_lm_migration_snoozed'
+const SNOOZE_DAYS = 3
+
+// Pages where the modal always shows, regardless of snooze
+const ALWAYS_SHOW_PATHS = ['/admin/model', '/admin/onboarding']
 
 const KF = `
 @keyframes lm-in {
@@ -28,11 +35,26 @@ export function LocationModelMigrationModal({ role }: Props) {
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     setMounted(true)
     if (role !== 'admin') return
-    if (typeof localStorage !== 'undefined' && localStorage.getItem(SEEN_KEY)) return
+    if (typeof localStorage === 'undefined') return
+
+    // Permanently done — never show again
+    if (localStorage.getItem(DONE_KEY)) return
+
+    const isAlwaysShowPage = ALWAYS_SHOW_PATHS.some(p => pathname === p)
+
+    // On regular pages respect the snooze timer
+    if (!isAlwaysShowPage) {
+      const snoozeTs = localStorage.getItem(SNOOZE_KEY)
+      if (snoozeTs) {
+        const daysSince = (Date.now() - parseInt(snoozeTs, 10)) / (1000 * 60 * 60 * 24)
+        if (daysSince < SNOOZE_DAYS) return
+      }
+    }
 
     fetch('/api/location-model')
       .then(r => r.json())
@@ -40,12 +62,14 @@ export function LocationModelMigrationModal({ role }: Props) {
         if (data.needsMigration) setShow(true)
       })
       .catch(() => null)
-  }, [role])
+  }, [role, pathname])
 
   if (!mounted || !show) return null
 
   function dismiss() {
-    if (typeof localStorage !== 'undefined') localStorage.setItem(SEEN_KEY, '1')
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(SNOOZE_KEY, String(Date.now()))
+    }
     setShow(false)
   }
 
@@ -62,7 +86,10 @@ export function LocationModelMigrationModal({ role }: Props) {
       }
       if (!res.ok) throw new Error(data.error ?? 'Unbekannter Fehler')
       setDone(true)
-      if (typeof localStorage !== 'undefined') localStorage.setItem(SEEN_KEY, '1')
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(DONE_KEY, '1')
+        localStorage.removeItem(SNOOZE_KEY)
+      }
       setTimeout(() => setShow(false), 2800)
     } catch (e) {
       setError((e as Error).message)
