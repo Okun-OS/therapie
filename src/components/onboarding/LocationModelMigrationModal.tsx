@@ -54,8 +54,13 @@ export function LocationModelMigrationModal({ role }: Props) {
     setError(null)
     try {
       const res = await fetch('/api/location-model/generate', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Fehler')
+      let data: { error?: string; model?: unknown } = {}
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error('Server-Fehler: Keine gültige Antwort erhalten. Bitte erneut versuchen.')
+      }
+      if (!res.ok) throw new Error(data.error ?? 'Unbekannter Fehler')
       setDone(true)
       if (typeof localStorage !== 'undefined') localStorage.setItem(SEEN_KEY, '1')
       setTimeout(() => setShow(false), 2800)
