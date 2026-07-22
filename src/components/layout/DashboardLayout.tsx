@@ -7,6 +7,7 @@ import { FloatingDock } from '@/components/nav/FloatingDock'
 import { CommandRail } from '@/components/nav/CommandRail'
 import { SystemTour } from '@/components/onboarding/SystemTour'
 import { WhatsNewModal } from '@/components/onboarding/WhatsNewModal'
+import { LocationModelMigrationModal } from '@/components/onboarding/LocationModelMigrationModal'
 import { PageBanner } from '@/components/onboarding/PageBanner'
 import { FloatingHelp } from '@/components/ui/FloatingHelp'
 import { BugReportButton } from '@/components/ui/BugReportButton'
@@ -86,6 +87,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
       <FloatingDock />
       <SystemTour role={user.role} />
       <WhatsNewModal role={user.role} />
+      <LocationModelMigrationModal role={user.role} />
       <FloatingHelp />
       <BugReportButton />
     </div>
