@@ -350,8 +350,10 @@ export default function AdminSchedule() {
       })
   }, [wishSubmissions, fairnessData])
 
-  const periodStart = periodWeekdayDates[0]
-  const periodEnd = periodWeekdayDates[periodWeekdayDates.length - 1]
+  // Full calendar range (Mon–Sun) so the edit chat and solver see all 7 days.
+  // The solver's buildRuleModel filters down to actual arbeitstage internally.
+  const periodStart = weekStart
+  const periodEnd = weekEnd
 
   const existingEntries = SCHEDULE_ENTRIES.filter(e =>
     e.locationId === locationId && e.date >= periodStart && e.date <= periodEnd
@@ -432,9 +434,8 @@ export default function AdminSchedule() {
     }, 900)
 
     try {
-      const weekDates = periodWeekdayDates
-      const von = periodWeekdayDates[0]
-      const bis = periodWeekdayDates[periodWeekdayDates.length - 1]
+      const von = weekStart
+      const bis = weekEnd
 
       // Try new Solver-Evaluator-Orchestrator endpoint first
       const newRes = await fetch('/api/ai/solve-schedule', {
@@ -638,7 +639,15 @@ export default function AdminSchedule() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         locationId,
-        weekDates: periodWeekdayDates,
+        weekDates: (() => {
+          const dates: string[] = []
+          const s = new Date(weekStart + 'T00:00:00')
+          const e = new Date(weekEnd + 'T00:00:00')
+          for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+            dates.push(d.toISOString().slice(0, 10))
+          }
+          return dates
+        })(),
         assignments: generatedSchedule,
         reasons: aiAssignmentReasons,
       }),
@@ -653,7 +662,7 @@ export default function AdminSchedule() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           locationName: location?.name ?? 'deinem Standort',
-          periodLabel: `${formatDateShort(periodWeekdayDates[0])} – ${formatDateShort(periodWeekdayDates[periodWeekdayDates.length - 1])}`,
+          periodLabel: `${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`,
           assignments: generatedSchedule,
         }),
       })
