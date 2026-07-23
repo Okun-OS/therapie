@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { AiChatPanel, type ChatMessage, type ChatCompletion } from '@/components/ui/AiChatPanel'
-import { CalendarCheck } from 'lucide-react'
+import { CalendarCheck, ShieldCheck, Clock } from 'lucide-react'
 import type { ScheduleEditDraft, ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import { draftToChangeStrings, draftToPermanentRuleStrings } from '@/lib/schedule-edit-draft'
 
@@ -76,12 +76,15 @@ export function ScheduleEditChat({
     }
   }
 
-  async function handleApply() {
+  async function apply(withPermanentRules: boolean) {
     setApplying(true)
     try {
-      await onApply(draft.changes ?? [], draft.permanentRules ?? [])
-      const items = [...changePreview, ...permanentRulePreview]
-      setCompletion({ title: 'Dienstplan-Änderungen übernommen', items: items.length > 0 ? items : ['Änderungen wurden übernommen'] })
+      await onApply(draft.changes ?? [], withPermanentRules ? (draft.permanentRules ?? []) : [])
+      const items = [...changePreview, ...(withPermanentRules ? permanentRulePreview.map(r => `Dauerhafte Regel: ${r}`) : [])]
+      setCompletion({
+        title: 'Dienstplan-Änderungen übernommen',
+        items: items.length > 0 ? items : ['Änderungen wurden übernommen'],
+      })
     } finally {
       setApplying(false)
     }
@@ -94,6 +97,7 @@ export function ScheduleEditChat({
 
   const changePreview = draftToChangeStrings(draft)
   const permanentRulePreview = draftToPermanentRuleStrings(draft)
+  const hasPermanentRules = permanentRulePreview.length > 0
 
   return (
     <Modal open={open} onClose={() => { reset(); onClose() }} title="Dienstplan per KI-Chat bearbeiten" size="lg">
@@ -108,6 +112,7 @@ export function ScheduleEditChat({
         footer={
           !completion ? (
             <>
+              {/* Change preview chips */}
               {changePreview.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {changePreview.map((c, i) => (
@@ -117,18 +122,53 @@ export function ScheduleEditChat({
                   ))}
                 </div>
               )}
-              {permanentRulePreview.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-1.5">
-                  {permanentRulePreview.map((r, i) => (
-                    <span key={i} className="inline-flex items-center bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                      Dauerhafte Regel: {r}
-                    </span>
-                  ))}
+
+              {/* Decision card — only when readyToApply AND permanent rules exist */}
+              {draft.readyToApply && hasPermanentRules && (
+                <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 overflow-hidden">
+                  <div className="px-4 pt-3 pb-2 border-b border-amber-100">
+                    <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1.5">
+                      Dauerhafte Regeln erkannt
+                    </p>
+                    <div className="space-y-1">
+                      {permanentRulePreview.map((r, i) => (
+                        <p key={i} className="text-sm text-amber-900 flex items-start gap-1.5">
+                          <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-amber-200 flex items-center justify-center text-[10px] font-bold text-amber-700">{i + 1}</span>
+                          {r}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-4 py-3">
+                    <p className="text-xs text-amber-700 mb-2.5">
+                      Sollen diese Regeln dauerhaft ins Planungsmodell übernommen werden — oder nur für diesen Dienstplan gelten?
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => apply(true)}
+                        disabled={applying}
+                        className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold py-2.5 px-3 transition-colors disabled:opacity-50"
+                      >
+                        <ShieldCheck size={15} />
+                        Dauerhaft speichern
+                      </button>
+                      <button
+                        onClick={() => apply(false)}
+                        disabled={applying}
+                        className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-white border border-amber-200 hover:bg-amber-50 text-amber-800 text-sm font-medium py-2.5 px-3 transition-colors disabled:opacity-50"
+                      >
+                        <Clock size={15} />
+                        Nur für diesen Plan
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
-              {draft.readyToApply && (
+
+              {/* Simple apply — when readyToApply but no permanent rules */}
+              {draft.readyToApply && !hasPermanentRules && (
                 <div className="mb-3">
-                  <Button className="w-full gap-2" loading={applying} onClick={handleApply}>
+                  <Button className="w-full gap-2" loading={applying} onClick={() => apply(false)}>
                     <CalendarCheck size={16} />
                     Übernehmen
                   </Button>
