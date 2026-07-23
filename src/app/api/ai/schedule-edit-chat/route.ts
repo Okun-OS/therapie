@@ -155,6 +155,16 @@ ${JSON.stringify(draft ?? {}, null, 2)}
 Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
 
   try {
+    // Keep only the last 12 messages — stateNote already carries the full current
+    // context (draft, schedule, employees), so old history adds noise and token cost.
+    // Also trim from the start so the first message is always from 'user'
+    // (Anthropic API requirement) and guard against empty content fields.
+    const recentMessages = messages.slice(-12)
+    const firstUserIdx = recentMessages.findIndex(m => m.role === 'user')
+    const safeMessages = (firstUserIdx > 0 ? recentMessages.slice(firstUserIdx) : recentMessages)
+      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content || 'ok' }))
+      .filter(m => m.content.trim().length > 0)
+
     const response = await client.messages.create({
       model: 'claude-opus-4-8',
       max_tokens: 4096,
@@ -163,7 +173,7 @@ Frage nicht erneut nach Dingen, die hier schon stehen. Baue darauf auf.`
         { type: 'text', text: stateNote },
       ],
       tools: [TOOL],
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      messages: safeMessages,
     })
 
     let reply = ''
