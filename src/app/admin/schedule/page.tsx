@@ -276,11 +276,22 @@ export default function AdminSchedule() {
       setGeneratedSchedule(null)
     }
     if (permanentRules.length > 0) {
+      // Save to onboarding context (chat sees these on next turn)
       await fetch('/api/location-onboarding/individuelle-regeln', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ locationId, rules: permanentRules }),
       })
+      // Also add to LocationModel so the solver actually uses them next run
+      await Promise.allSettled(
+        permanentRules.map(text =>
+          fetch('/api/location-model/add-rule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text }),
+          })
+        )
+      )
     }
     showToast(changes.length > 0 || permanentRules.length > 0 ? 'Dienstplan-Änderungen übernommen' : 'Danke, notiert')
   }

@@ -201,13 +201,19 @@ export async function buildRuleModel(
     },
   ]
 
-  const fairness: FairnessKonfig = standort?.fairnessKonfig ?? {
+  const hasWeekend = effectiveArbeitstage.some(d => d === 'Sa' || d === 'So')
+  const baseFairness: FairnessKonfig = standort?.fairnessKonfig ?? {
     wochenendArbeit: false,
     wochenendLimitProMonat: planningRules?.weekendMax ?? 2,
     nachtdienstFair: true,
     schichttypFairness: true,
     belastungsgleichverteilung: true,
   }
+  // If arbeitstage includes weekend days, force wochenendArbeit=true so the
+  // evaluator doesn't penalise weekend assignments as violations.
+  const fairness: FairnessKonfig = hasWeekend
+    ? { ...baseFairness, wochenendArbeit: true }
+    : baseFairness
 
   // Build employee data
   const mitarbeiter: PlanungsMitarbeiter[] = employees.map(emp => {
