@@ -12,13 +12,27 @@ import type {
   FairnessKonfig,
 } from '@/lib/company-model-types'
 
-function getWorkdays(von: string, bis: string, includeWeekends = false): string[] {
+const DAY_NAME_TO_DOW: Record<string, number> = {
+  Mo: 1, Di: 2, Mi: 3, Do: 4, Fr: 5, Sa: 6, So: 0,
+}
+
+const BETRIEBSTYP_ARBEITSTAGE: Record<string, string[]> = {
+  mon_fri:      ['Mo', 'Di', 'Mi', 'Do', 'Fr'],
+  mon_sat:      ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+  '7_tage':     ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+  '24_7':       ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+  schichtbetrieb: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+}
+
+function getWorkdays(von: string, bis: string, arbeitstage: string[]): string[] {
+  const dows = new Set(
+    arbeitstage.map(d => DAY_NAME_TO_DOW[d]).filter((n): n is number => n !== undefined),
+  )
   const days: string[] = []
   const start = new Date(von)
   const end = new Date(bis)
   for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dow = d.getDay()
-    if (includeWeekends || (dow !== 0 && dow !== 6)) {
+    if (dows.has(d.getDay())) {
       days.push(d.toISOString().slice(0, 10))
     }
   }
@@ -45,14 +59,16 @@ export async function buildRuleModel(
   kontext?: string,
   vorherigeBewertung?: string,
 ): Promise<PlanningRuleModel> {
-  // Fetch the per-location model to resolve weekend inclusion and planning rules.
+  // Fetch the per-location model to resolve which days to plan.
   // Falls back gracefully to defaults when no LocationModel has been generated yet.
   const locationModel = await getLocationModel(locationId)
   const betriebsTyp = locationModel?.betriebsTyp ?? 'mon_fri'
-  const includeWeekends =
-    betriebsTyp === '7_tage' || betriebsTyp === '24_7' || betriebsTyp === 'schichtbetrieb' ||
-    (locationModel?.schichtmodell?.arbeitstage ?? []).some(d => d === 'Sa' || d === 'So')
-  const arbeitstage = getWorkdays(von, bis, includeWeekends)
+  const modelArbeitstage = locationModel?.schichtmodell?.arbeitstage ?? []
+  // Explicit arbeitstage array wins; fall back to betriebsTyp-derived days
+  const effectiveArbeitstage = modelArbeitstage.length > 0
+    ? modelArbeitstage
+    : (BETRIEBSTYP_ARBEITSTAGE[betriebsTyp] ?? ['Mo', 'Di', 'Mi', 'Do', 'Fr'])
+  const arbeitstage = getWorkdays(von, bis, effectiveArbeitstage)
 
   const [
     planningRules,

@@ -16,7 +16,11 @@ import {
   MessageCircle,
   Save,
   Brain,
+  CalendarDays,
 } from 'lucide-react'
+
+const ALL_DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const
+type Wochentag = typeof ALL_DAYS[number]
 import type { LocationModel, HarteRegel, WeicheRegel } from '@/lib/company-model-types'
 import Link from 'next/link'
 
@@ -51,6 +55,7 @@ export default function AdminModelPage() {
   const [saving, setSaving] = useState(false)
   const [ruleText, setRuleText] = useState('')
   const [addingRule, setAddingRule] = useState(false)
+  const [savingDays, setSavingDays] = useState(false)
 
   const load = useCallback(async () => {
     const [modelRes, shiftsRes] = await Promise.all([
@@ -97,6 +102,32 @@ export default function AdminModelPage() {
       showToast('Regel konnte nicht hinzugefügt werden', 'error')
     } finally {
       setAddingRule(false)
+    }
+  }
+
+  const handleDayToggle = async (day: Wochentag) => {
+    if (!model || savingDays) return
+    const current = model.schichtmodell?.arbeitstage ?? ['Mo', 'Di', 'Mi', 'Do', 'Fr']
+    const next = current.includes(day)
+      ? current.filter(d => d !== day)
+      : [...current, day].sort((a, b) => ALL_DAYS.indexOf(a as Wochentag) - ALL_DAYS.indexOf(b as Wochentag))
+    if (next.length === 0) return // must keep at least one
+    const optimistic = { ...model, schichtmodell: { ...model.schichtmodell, arbeitstage: next } }
+    setModel(optimistic)
+    setSavingDays(true)
+    try {
+      const res = await fetch('/api/location-model', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ arbeitstage: next }),
+      })
+      if (!res.ok) throw new Error()
+      showToast('Arbeitstage gespeichert', 'success')
+    } catch {
+      setModel(model) // revert
+      showToast('Speichern fehlgeschlagen', 'error')
+    } finally {
+      setSavingDays(false)
     }
   }
 
@@ -167,6 +198,42 @@ export default function AdminModelPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Arbeitstage */}
+      <Card padding="lg">
+        <div className="flex items-center gap-2 mb-3">
+          <CalendarDays size={14} className="text-gray-400" />
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Arbeitstage</p>
+          {savingDays && <Loader2 size={12} className="animate-spin text-brand ml-auto" />}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {ALL_DAYS.map(day => {
+            const active = (model.schichtmodell?.arbeitstage ?? ['Mo', 'Di', 'Mi', 'Do', 'Fr']).includes(day)
+            const isWeekend = day === 'Sa' || day === 'So'
+            return (
+              <button
+                key={day}
+                onClick={() => handleDayToggle(day)}
+                disabled={savingDays}
+                className={[
+                  'w-10 h-10 rounded-xl text-sm font-semibold transition-all select-none',
+                  active
+                    ? isWeekend
+                      ? 'bg-brand text-white shadow-sm shadow-brand/30'
+                      : 'bg-navy text-white'
+                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200',
+                  savingDays ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+                ].join(' ')}
+              >
+                {day}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-xs text-gray-400 mt-2">
+          Nur markierte Tage werden beim Dienstplan verplant.
+        </p>
+      </Card>
 
       {hasMinEdits && (
         <div className="flex items-center justify-between gap-3 bg-brand/10 border border-brand/20 rounded-xl px-4 py-3">
