@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveLocationId, resolveCustomerId } from '@/lib/session'
 import { getLocationModel, saveLocationModel } from '@/lib/company-model-service'
+import type { WochentagKuerzel } from '@/lib/company-model-types'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
@@ -39,8 +40,8 @@ export async function PATCH(req: NextRequest) {
     if (!model) return NextResponse.json({ error: 'Kein Planungsmodell vorhanden' }, { status: 404 })
 
     if (body.arbeitstage !== undefined) {
-      const valid = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-      const cleaned = body.arbeitstage.filter(d => valid.includes(d))
+      const valid: WochentagKuerzel[] = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+      const cleaned = body.arbeitstage.filter((d): d is WochentagKuerzel => valid.includes(d as WochentagKuerzel))
       if (cleaned.length === 0) {
         return NextResponse.json({ error: 'Mindestens ein Arbeitstag muss ausgewählt sein' }, { status: 400 })
       }

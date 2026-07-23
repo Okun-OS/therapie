@@ -18,11 +18,10 @@ import {
   Brain,
   CalendarDays,
 } from 'lucide-react'
-
-const ALL_DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const
-type Wochentag = typeof ALL_DAYS[number]
-import type { LocationModel, HarteRegel, WeicheRegel } from '@/lib/company-model-types'
+import type { LocationModel, HarteRegel, WeicheRegel, WochentagKuerzel } from '@/lib/company-model-types'
 import Link from 'next/link'
+
+const ALL_DAYS: WochentagKuerzel[] = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
 const QUELLE_LABELS: Record<string, string> = {
   gesetz: 'Gesetz',
@@ -105,12 +104,12 @@ export default function AdminModelPage() {
     }
   }
 
-  const handleDayToggle = async (day: Wochentag) => {
+  const handleDayToggle = async (day: WochentagKuerzel) => {
     if (!model || savingDays) return
-    const current = model.schichtmodell?.arbeitstage ?? ['Mo', 'Di', 'Mi', 'Do', 'Fr']
+    const current: WochentagKuerzel[] = model.schichtmodell?.arbeitstage ?? ['Mo', 'Di', 'Mi', 'Do', 'Fr']
     const next = current.includes(day)
       ? current.filter(d => d !== day)
-      : [...current, day].sort((a, b) => ALL_DAYS.indexOf(a as Wochentag) - ALL_DAYS.indexOf(b as Wochentag))
+      : [...current, day].sort((a, b) => ALL_DAYS.indexOf(a) - ALL_DAYS.indexOf(b))
     if (next.length === 0) return // must keep at least one
     const optimistic = { ...model, schichtmodell: { ...model.schichtmodell, arbeitstage: next } }
     setModel(optimistic)
@@ -208,7 +207,8 @@ export default function AdminModelPage() {
         </div>
         <div className="flex gap-2 flex-wrap">
           {ALL_DAYS.map(day => {
-            const active = (model.schichtmodell?.arbeitstage ?? ['Mo', 'Di', 'Mi', 'Do', 'Fr']).includes(day)
+            const activeDays: WochentagKuerzel[] = model.schichtmodell?.arbeitstage ?? ['Mo', 'Di', 'Mi', 'Do', 'Fr']
+            const active = activeDays.includes(day)
             const isWeekend = day === 'Sa' || day === 'So'
             return (
               <button
