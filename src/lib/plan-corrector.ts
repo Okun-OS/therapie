@@ -133,7 +133,7 @@ export function correctPlan(
         consec++
         if (consec > maxConsecDays) {
           toRemove2.add(empEntries[i])
-          consec = 0 // reset streak after removal
+          consec = 1 // Fix 5a: reset to 1 (gap day), not 0
         }
       } else {
         consec = 1
@@ -143,6 +143,25 @@ export function correctPlan(
   eintraege = eintraege.filter(e => !toRemove2.has(e))
 
   // ── 6. Fill understaffing if a spare employee is available ─────────────────
+  // Fix 4: Use bewertung to prioritize days with critical/high violations.
+  // Build day priority from violations that reference a specific date.
+  const priorityDays = new Set<string>()
+  for (const v of bewertung.verletzungen) {
+    if (v.schwere === 'kritisch' || v.schwere === 'hoch') {
+      const m = v.beschreibung.match(/\d{4}-\d{2}-\d{2}/)
+      if (m) priorityDays.add(m[0])
+    }
+  }
+  const sortedDays = [...zeitraum.arbeitstage].sort((a, b) => {
+    const ap = priorityDays.has(a) ? 0 : 1
+    const bp = priorityDays.has(b) ? 0 : 1
+    return ap - bp || a.localeCompare(b)
+  })
+  // When coverage score is low, allow slight hour-overage to fill gaps
+  const fillMaxHours = (bewertung.kategorien?.abdeckung ?? 100) < 70
+    ? maxWeeklyHours + 8
+    : maxWeeklyHours
+
   // Build a set of already-assigned (empId, date) pairs for fast lookup
   const assignedKey = new Set(eintraege.map(e => `${e.mitarbeiterId}|${e.datum}`))
   const currentWeekHours: Record<string, Record<string, number>> = {}
@@ -155,7 +174,7 @@ export function correctPlan(
     currentWeekHours[e.mitarbeiterId][wk] = (currentWeekHours[e.mitarbeiterId][wk] ?? 0) + h
   }
 
-  for (const day of zeitraum.arbeitstage) {
+  for (const day of sortedDays) {
     const wk = weekKey(day)
     for (const schicht of schichten) {
       const required = schicht.minBesetzungGesamt ?? 1
@@ -169,10 +188,12 @@ export function correctPlan(
         if (filled >= needed) break
         if (assignedKey.has(`${emp.id}|${day}`)) continue
         if (emp.urlaubAn.includes(day) || emp.nichtVerfuegbarAn.includes(day)) continue
+        // Fix 5b: respect wunschfrei wishes when filling understaffing
+        if (emp.wuensche.some(w => w.datum === day && w.typ === 'wunschfrei')) continue
 
         const h    = shiftDurationHours(schicht.von, schicht.bis)
         const used = currentWeekHours[emp.id]?.[wk] ?? 0
-        if (used + h > maxWeeklyHours + 0.01) continue
+        if (used + h > fillMaxHours + 0.01) continue
 
         eintraege.push({
           mitarbeiterId: emp.id,

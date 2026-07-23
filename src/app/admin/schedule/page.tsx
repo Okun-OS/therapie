@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -34,6 +34,9 @@ const PERIOD_OPTIONS: { key: PeriodMode; label: string }[] = [
   { key: 'month', label: 'Ganzer Monat' },
   { key: 'custom', label: 'Individuell' },
 ]
+
+const MONTH_NAMES = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']
+const DOW_TO_KUERZEL: Record<number, string> = { 0: 'So', 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 5: 'Fr', 6: 'Sa' }
 
 interface ScheduleAssignment {
   shiftId: string
@@ -140,6 +143,9 @@ export default function AdminSchedule() {
   const [wishSubmissions, setWishSubmissions] = useState<WishSubmission[]>([])
   const [planningUnits, setPlanningUnits] = useState<PlanningUnit[]>([])
   const [scheduleView, setScheduleView] = useState<'mitarbeiter' | 'einheiten'>('mitarbeiter')
+  const [locationArbeitstage, setLocationArbeitstage] = useState<string[]>(['Mo', 'Di', 'Mi', 'Do', 'Fr'])
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false)
+  const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear())
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
@@ -184,6 +190,14 @@ export default function AdminSchedule() {
     })
   }, [locationId])
 
+  useEffect(() => {
+    if (!locationId) return
+    fetch('/api/location-model').then(r => r.json()).then(d => {
+      const arb = d.model?.schichtmodell?.arbeitstage
+      if (Array.isArray(arb) && arb.length > 0) setLocationArbeitstage(arb)
+    }).catch(() => {})
+  }, [locationId])
+
   const periodWeeks = useMemo<Date[][]>(() => {
     if (periodMode === 'custom') {
       if (!customRange.start || !customRange.end) return [getWeekDays(currentDate)]
@@ -206,9 +220,31 @@ export default function AdminSchedule() {
   const weekDays = periodWeeks[0]
   const weekStart = toDateString(periodWeeks[0][0])
   const weekEnd = toDateString(periodWeeks[periodWeeks.length - 1][6])
+
+  // Fix 1a/1b: work-day awareness from location model
+  const locationWorkDaySet = useMemo(() => new Set(locationArbeitstage), [locationArbeitstage])
+  const isLocationWorkDay = useCallback((date: Date) => locationWorkDaySet.has(DOW_TO_KUERZEL[date.getDay()]), [locationWorkDaySet])
+
+  // For month mode: plan only the exact calendar month, not the full surrounding Mon-Sun weeks
+  const monthStart = periodMode === 'month'
+    ? toDateString(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1))
+    : weekStart
+  const monthEnd = periodMode === 'month'
+    ? toDateString(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0))
+    : weekEnd
+
+  // Solver receives exact month boundaries; other modes use Mon-Sun week boundaries
+  const solverFrom = monthStart
+  const solverTo = monthEnd
+
+  // Display filter range (existingEntries, editChat period)
+  const periodStart = monthStart
+  const periodEnd = monthEnd
+
+  // Dates actually available for display/export (location work days within period)
   const periodWeekdayDates = useMemo(
-    () => periodWeeks.flatMap(week => week.slice(0, 5).map(toDateString)),
-    [periodWeeks]
+    () => periodWeeks.flatMap(week => week.filter(d => isLocationWorkDay(d) && toDateString(d) >= periodStart && toDateString(d) <= periodEnd).map(toDateString)),
+    [periodWeeks, isLocationWorkDay, periodStart, periodEnd]
   )
 
   const shiftPeriod = (direction: 1 | -1) => {
@@ -266,6 +302,11 @@ export default function AdminSchedule() {
 
   async function handleApplyScheduleEdits(changes: ScheduleEditChange[], permanentRules: string[]) {
     if (changes.length > 0) {
+      // Fix 2: If there's an unsaved generated plan, persist it first so chat
+      // changes don't wipe the whole plan when generatedSchedule is cleared.
+      if (generatedSchedule && !saved) {
+        await handleSaveSchedule()
+      }
       await fetch('/api/schedule-entries/apply-edits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -350,11 +391,6 @@ export default function AdminSchedule() {
       })
   }, [wishSubmissions, fairnessData])
 
-  // Full calendar range (Mon–Sun) so the edit chat and solver see all 7 days.
-  // The solver's buildRuleModel filters down to actual arbeitstage internally.
-  const periodStart = weekStart
-  const periodEnd = weekEnd
-
   const existingEntries = SCHEDULE_ENTRIES.filter(e =>
     e.locationId === locationId && e.date >= periodStart && e.date <= periodEnd
   )
@@ -434,8 +470,8 @@ export default function AdminSchedule() {
     }, 900)
 
     try {
-      const von = weekStart
-      const bis = weekEnd
+      const von = solverFrom
+      const bis = solverTo
 
       // Try new Solver-Evaluator-Orchestrator endpoint first
       const newRes = await fetch('/api/ai/solve-schedule', {
@@ -769,7 +805,11 @@ export default function AdminSchedule() {
               {PERIOD_OPTIONS.map(opt => (
                 <button
                   key={opt.key}
-                  onClick={() => { setPeriodMode(opt.key); setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setFallback(null); setFallbackHandled(false); setSaved(false) }}
+                  onClick={() => {
+                    setPeriodMode(opt.key)
+                    if (opt.key === 'month') { setPickerYear(currentDate.getFullYear()); setMonthPickerOpen(true) }
+                    setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setFallback(null); setFallbackHandled(false); setSaved(false)
+                  }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${periodMode === opt.key ? 'bg-navy text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                 >
                   {opt.label}
@@ -794,18 +834,55 @@ export default function AdminSchedule() {
 
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-3 justify-between">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 relative">
                 <button onClick={() => shiftPeriod(-1)} disabled={periodMode === 'custom' && (!customRange.start || !customRange.end)}
                   className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all disabled:opacity-40">
                   <ChevronLeft size={18} className="text-gray-600" />
                 </button>
-                <span className="px-4 py-2 text-sm font-semibold text-navy min-w-[200px] text-center">
-                  {formatDateShort(weekStart)} – {formatDateShort(weekEnd)} {weekDays[0].getFullYear()}
-                </span>
+                {periodMode === 'month' ? (
+                  <button
+                    onClick={() => { setPickerYear(currentDate.getFullYear()); setMonthPickerOpen(v => !v) }}
+                    className="px-4 py-2 text-sm font-semibold text-navy min-w-[200px] text-center hover:bg-white rounded-xl border border-transparent hover:border-gray-200 transition-all"
+                  >
+                    {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
+                  </button>
+                ) : (
+                  <span className="px-4 py-2 text-sm font-semibold text-navy min-w-[200px] text-center">
+                    {formatDateShort(weekStart)} – {formatDateShort(weekEnd)} {weekDays[0].getFullYear()}
+                  </span>
+                )}
                 <button onClick={() => shiftPeriod(1)} disabled={periodMode === 'custom' && (!customRange.start || !customRange.end)}
                   className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all disabled:opacity-40">
                   <ChevronRight size={18} className="text-gray-600" />
                 </button>
+                {/* Month picker dropdown */}
+                {monthPickerOpen && (
+                  <div className="absolute top-full left-0 z-50 mt-1 bg-white border border-gray-200 rounded-2xl shadow-xl p-4 min-w-[240px]">
+                    <div className="flex items-center justify-between mb-3">
+                      <button onClick={() => setPickerYear(y => y - 1)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 font-bold">‹</button>
+                      <span className="text-sm font-bold text-navy">{pickerYear}</span>
+                      <button onClick={() => setPickerYear(y => y + 1)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 font-bold">›</button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {MONTH_NAMES.map((name, i) => {
+                        const isSelected = pickerYear === currentDate.getFullYear() && i === currentDate.getMonth()
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              setCurrentDate(new Date(pickerYear, i, 1))
+                              setMonthPickerOpen(false)
+                              setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setFallback(null); setFallbackHandled(false); setSaved(false)
+                            }}
+                            className={`py-1.5 rounded-xl text-xs font-semibold transition-all ${isSelected ? 'bg-navy text-white' : 'hover:bg-gray-100 text-gray-700'}`}
+                          >
+                            {name.slice(0, 3)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2">
                 {planningUnits.length > 0 && (
@@ -820,7 +897,7 @@ export default function AdminSchedule() {
                 )}
                 <Button variant="ghost" size="sm" onClick={openRules} className="border border-gray-200">Regeln</Button>
                 <Button variant="ghost" size="sm" onClick={handleExport} className="gap-1 border border-gray-200"><Download size={14} /> Export</Button>
-                {existingEntries.length > 0 && (
+                {(existingEntries.length > 0 || !!generatedSchedule) && (
                   <Button variant="ghost" size="sm" onClick={() => setEditChatOpen(true)} className="gap-1 border border-gray-200">
                     <MessageCircle size={14} /> Dienstplan bearbeiten
                   </Button>
@@ -999,7 +1076,7 @@ export default function AdminSchedule() {
                           <thead>
                             <tr className="bg-navy">
                               <th className="text-left p-3 pl-4 text-white text-xs font-semibold w-36">Einheit</th>
-                              {week.slice(0, 5).map((day, i) => {
+                              {week.filter(d => isLocationWorkDay(d) && toDateString(d) >= periodStart && toDateString(d) <= periodEnd).map((day) => {
                                 const dateStr = toDateString(day)
                                 const isTodayDay = dateStr === toDateString(new Date())
                                 const holiday = getPublicHolidayName(dateStr, location?.bundesland)
@@ -1029,7 +1106,7 @@ export default function AdminSchedule() {
                                     </div>
                                   </div>
                                 </td>
-                                {week.slice(0, 5).map((day) => {
+                                {week.filter(d => isLocationWorkDay(d) && toDateString(d) >= periodStart && toDateString(d) <= periodEnd).map((day) => {
                                   const dateStr = toDateString(day)
                                   const assigned = employees.filter(emp => {
                                     const a = getDisplayAssignment(emp.id, dateStr)
@@ -1088,19 +1165,22 @@ export default function AdminSchedule() {
                           <th className="text-left p-3 pl-4 text-white text-xs font-semibold w-36">Mitarbeiter</th>
                           {week.map((day, i) => {
                             const dateStr = toDateString(day)
-                            const isWeekend = i >= 5
+                            // Fix 1b: use location-configured work days, not hardcoded i>=5
+                            const isNonWorkDay = !isLocationWorkDay(day)
+                            const isOutsidePeriod = dateStr < periodStart || dateStr > periodEnd
+                            const hideCell = isNonWorkDay || isOutsidePeriod
                             const isTodayDay = dateStr === toDateString(new Date())
                             const isFriday = i === 4
                             const isMonday = i === 0
-                            const holiday = !isWeekend ? getPublicHolidayName(dateStr, location?.bundesland) : undefined
+                            const holiday = !hideCell ? getPublicHolidayName(dateStr, location?.bundesland) : undefined
                             return (
-                              <th key={dateStr} className={`text-center p-3 text-xs font-semibold min-w-[90px] ${holiday ? 'bg-red-900/30' : ''} ${isWeekend ? 'text-gray-500' : isTodayDay ? 'text-brand' : (isFriday || isMonday) ? 'text-yellow-300' : 'text-white'}`}>
+                              <th key={dateStr} className={`text-center p-3 text-xs font-semibold min-w-[90px] ${holiday ? 'bg-red-900/30' : ''} ${hideCell ? 'text-gray-500 bg-navy/5' : isTodayDay ? 'text-brand' : (isFriday || isMonday) ? 'text-yellow-300' : 'text-white'}`}>
                                 <div className="flex flex-col items-center">
                                   <span>{getDayName(dateStr, true)}</span>
-                                  <span className={`text-lg font-bold ${isTodayDay ? 'text-brand' : isWeekend ? 'text-gray-500' : holiday ? 'text-red-300' : 'text-white'}`}>{day.getDate()}</span>
-                                  {holiday ? (
+                                  <span className={`text-lg font-bold ${isTodayDay ? 'text-brand' : hideCell ? 'text-gray-500' : holiday ? 'text-red-300' : 'text-white'}`}>{day.getDate()}</span>
+                                  {!hideCell && holiday ? (
                                     <span className="text-[8px] text-red-300 font-bold uppercase tracking-wide truncate max-w-[80px]">{holiday}</span>
-                                  ) : (isFriday || isMonday) && !isWeekend ? (
+                                  ) : !hideCell && (isFriday || isMonday) ? (
                                     <span className="text-[8px] text-yellow-300 font-bold uppercase tracking-wide">
                                       {isFriday ? 'Freitag' : 'Montag'}
                                     </span>
@@ -1169,12 +1249,15 @@ export default function AdminSchedule() {
                                   {week.map((day, i) => {
                                     const dateStr = toDateString(day)
                                     const assignment = getDisplayAssignment(emp.id, dateStr)
-                                    const isWeekend = i >= 5
+                                    // Fix 1b: hide cells outside location work days or period bounds
+                                    const isNonWorkDay2 = !isLocationWorkDay(day)
+                                    const isOutsidePeriod2 = dateStr < periodStart || dateStr > periodEnd
+                                    const hideCell2 = isNonWorkDay2 || isOutsidePeriod2
                                     const Icon = assignment ? (SHIFT_ICONS[assignment.shift.type] ?? DEFAULT_SHIFT_ICON) : null
                                     return (
-                                      <td key={dateStr} className="p-1.5 text-center">
-                                        {isWeekend ? (
-                                          <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-300">—</span></div>
+                                      <td key={dateStr} className={`p-1.5 text-center ${hideCell2 ? 'bg-gray-50/50' : ''}`}>
+                                        {hideCell2 ? (
+                                          <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-200">—</span></div>
                                         ) : assignment && Icon ? (
                                           <div
                                             onClick={() => setExplainEntry({
@@ -1467,7 +1550,7 @@ export default function AdminSchedule() {
         onClose={() => setEditChatOpen(false)}
         onApply={handleApplyScheduleEdits}
         locationId={locationId ?? ''}
-        periodLabel={`${formatDateShort(periodStart)} – ${formatDateShort(periodEnd)}`}
+        periodLabel={periodMode === 'month' ? `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}` : `${formatDateShort(periodStart)} – ${formatDateShort(periodEnd)}`}
         employees={editChatEmployees}
         shifts={editChatShifts}
         entries={editChatEntries}

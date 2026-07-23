@@ -78,6 +78,13 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
   const maxWeeklyHours = harteRegeln.find(r => r.typ === 'max_wochenstunden')?.wert ?? 40
   const minRestHours   = harteRegeln.find(r => r.typ === 'min_ruhezeit')?.wert ?? 11
   const maxConsecDays  = harteRegeln.find(r => r.typ === 'max_folgetage')?.wert ?? 5
+  // Fix 3b: weekend shift limit per planning run (from fairnessKonfig)
+  const weekendShiftMax = fairness.wochenendArbeit !== false
+    ? (fairness.wochenendLimitProMonat ?? Infinity)
+    : Infinity
+
+  // Fix 3c: build einheit lookup for maximalbesetzung checks
+  const einheitById = new Map(einheiten.map(e => [e.id, e]))
 
   // Per-employee running state
   const state: Record<string, EmpState> = {}
@@ -115,6 +122,8 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
     }
 
     const assignedToday = new Set<string>()
+    // Fix 3c: track how many employees per Einheit are assigned today
+    const unitDayCount: Record<string, number> = {}
 
     for (const schicht of sortedSchichten) {
       const minStaff   = schicht.minBesetzungGesamt ?? 1
@@ -141,10 +150,18 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
         }
         // Hard: max consecutive work days
         if (st.consecDays >= maxConsecDays) return false
+        // Fix 3c: Hard: don't exceed Einheit maximalbesetzung
+        const empEinheitId = emp.einheiten?.[0]
+        if (empEinheitId) {
+          const einheit = einheitById.get(empEinheitId)
+          if (einheit?.maximalbesetzung !== undefined && (unitDayCount[empEinheitId] ?? 0) >= einheit.maximalbesetzung) {
+            return false
+          }
+        }
         return true
       })
 
-      // Sort by: explicit shift wish > fairness (fewest of this type) > weekend count > total shifts
+      // Sort by: explicit shift wish > target-hours remaining > fairness > weekend count > total shifts
       eligible.sort((a, b) => {
         const aw = wishMap.get(a.id)
         const bw = wishMap.get(b.id)
@@ -153,6 +170,13 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
         const bScore = bw?.typ === 'wunsch' && bw.schichtId === schicht.id ? -2
                      : bw?.typ === 'wunsch' ? -1 : 0
         if (aScore !== bScore) return aScore - bScore
+
+        // Fix 3a: prefer employees who haven't reached their weekly target yet
+        const aUsed = state[a.id].weekHours[wk] ?? 0
+        const bUsed = state[b.id].weekHours[wk] ?? 0
+        const aOverTarget = aUsed + shiftHours > (a.wochenstundenSoll ?? 40)
+        const bOverTarget = bUsed + shiftHours > (b.wochenstundenSoll ?? 40)
+        if (aOverTarget !== bOverTarget) return aOverTarget ? 1 : -1
 
         const diff = (state[a.id].shiftTypeCounts[schicht.typ] ?? 0)
                    - (state[b.id].shiftTypeCounts[schicht.typ] ?? 0)
@@ -164,6 +188,10 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
         if (bsDiff !== 0) return bsDiff
 
         if (isWeekend && fairness.wochenendArbeit !== false) {
+          // Fix 3b: deprioritize employees who already hit their weekend limit
+          const aOverWELimit = state[a.id].weekendShifts >= weekendShiftMax
+          const bOverWELimit = state[b.id].weekendShifts >= weekendShiftMax
+          if (aOverWELimit !== bOverWELimit) return aOverWELimit ? 1 : -1
           const wd = state[a.id].weekendShifts - state[b.id].weekendShifts
           if (wd !== 0) return wd
         }
@@ -174,11 +202,6 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
       let assigned = 0
       for (const emp of eligible) {
         if (assigned >= minStaff) break
-        const st = state[emp.id]
-        const usedHours = st.weekHours[wk] ?? 0
-        const target    = emp.wochenstundenSoll ?? 40
-        // Allow slight overage only if we still need to fill min staffing
-        if (usedHours >= target + shiftHours && assigned >= minStaff) continue
 
         // Determine unit: use employee's primary unit if available
         const einheitId = emp.einheiten?.[0]
@@ -193,6 +216,8 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
         })
 
         // Update running state
+        const st = state[emp.id]
+        const usedHours = st.weekHours[wk] ?? 0
         st.weekHours[wk]                       = usedHours + shiftHours
         st.consecDays                          = st.lastWorkDate === prevDay(day) ? st.consecDays + 1 : 1
         st.lastWorkDate                        = day
@@ -202,6 +227,8 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
         if (isWeekend) st.weekendShifts++
         st.totalShifts++
         assignedToday.add(emp.id)
+        // Fix 3c: update unit count
+        if (einheitId) unitDayCount[einheitId] = (unitDayCount[einheitId] ?? 0) + 1
         assigned++
       }
 

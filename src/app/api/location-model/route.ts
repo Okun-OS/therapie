@@ -46,6 +46,10 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Mindestens ein Arbeitstag muss ausgewählt sein' }, { status: 400 })
       }
       model.schichtmodell = { ...model.schichtmodell, arbeitstage: cleaned }
+      // Keep betriebsTyp in sync so buildRuleModel fallback also works correctly
+      const hasSa = cleaned.includes('Sa')
+      const hasSo = cleaned.includes('So')
+      model.betriebsTyp = hasSa && hasSo ? '7_tage' : hasSa ? 'mon_sat' : 'mon_fri'
     }
 
     await saveLocationModel(locationId, customerId, model)
