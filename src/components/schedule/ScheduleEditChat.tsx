@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { AiChatPanel, type ChatMessage, type ChatCompletion } from '@/components/ui/AiChatPanel'
-import { CalendarCheck, ShieldCheck, Clock } from 'lucide-react'
+import { CalendarCheck, ShieldCheck, Clock, RotateCcw } from 'lucide-react'
 import type { ScheduleEditDraft, ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import { draftToChangeStrings, draftToPermanentRuleStrings } from '@/lib/schedule-edit-draft'
 
@@ -14,6 +14,10 @@ interface EntryBrief { employeeId: string; employeeName: string; date: string; s
 
 const opening = (periodLabel: string) =>
   `Was soll am Dienstplan für ${periodLabel} geändert werden? Du kannst z.B. einen Tausch beschreiben ("Tausche Anna und Tom am Freitag") oder jemanden freistellen ("Gib Klaus am Mittwoch frei").`
+
+function storageKey(locationId: string, periodLabel: string) {
+  return `schedule-edit-chat:${locationId}:${periodLabel}`
+}
 
 export function ScheduleEditChat({
   open,
@@ -35,18 +39,47 @@ export function ScheduleEditChat({
   entries: EntryBrief[]
 }) {
   const openingMessage = opening(periodLabel)
-  const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', content: openingMessage }])
+  const key = storageKey(locationId, periodLabel)
+
+  // Initialise from localStorage so chat survives accidental modal close
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem(key) : null
+      if (saved) {
+        const parsed = JSON.parse(saved) as { messages?: ChatMessage[]; draft?: ScheduleEditDraft }
+        if (parsed.messages?.length) return parsed.messages
+      }
+    } catch { /* ignore parse errors */ }
+    return [{ role: 'assistant', content: openingMessage }]
+  })
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [applying, setApplying] = useState(false)
-  const [draft, setDraft] = useState<ScheduleEditDraft>({})
+  const [draft, setDraft] = useState<ScheduleEditDraft>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem(key) : null
+      if (saved) {
+        const parsed = JSON.parse(saved) as { messages?: ChatMessage[]; draft?: ScheduleEditDraft }
+        if (parsed.draft) return parsed.draft
+      }
+    } catch { /* ignore */ }
+    return {}
+  })
   const [completion, setCompletion] = useState<ChatCompletion | undefined>(undefined)
+
+  // Persist messages + draft to localStorage whenever they change
+  const persist = useCallback((msgs: ChatMessage[], dr: ScheduleEditDraft) => {
+    try { localStorage.setItem(key, JSON.stringify({ messages: msgs, draft: dr })) } catch { /* quota */ }
+  }, [key])
+
+  useEffect(() => { persist(messages, draft) }, [messages, draft, persist])
 
   function reset() {
     setMessages([{ role: 'assistant', content: openingMessage }])
     setInput('')
     setDraft({})
     setCompletion(undefined)
+    try { localStorage.removeItem(key) } catch { /* ignore */ }
   }
 
   async function handleSend() {
@@ -64,10 +97,19 @@ export function ScheduleEditChat({
       })
       const json = await res.json()
       if (json.error) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `Fehler: ${json.error} – bitte Screenshot machen und melden.` }])
+        setMessages(prev => {
+          const next = [...prev, { role: 'assistant' as const, content: `Fehler: ${json.error} – bitte Screenshot machen und melden.` }]
+          persist(next, draft)
+          return next
+        })
       } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: json.reply }])
-        if (json.draft) setDraft(json.draft as ScheduleEditDraft)
+        const newDraft = json.draft ? (json.draft as ScheduleEditDraft) : draft
+        setMessages(prev => {
+          const next = [...prev, { role: 'assistant' as const, content: json.reply }]
+          persist(next, newDraft)
+          return next
+        })
+        if (json.draft) setDraft(newDraft)
       }
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: `Fehler: ${err instanceof Error ? err.message : 'Netzwerkfehler'} – bitte Screenshot machen und melden.` }])
@@ -91,7 +133,7 @@ export function ScheduleEditChat({
   }
 
   function handleCloseCompletion() {
-    reset()
+    reset()   // clears localStorage + state
     onClose()
   }
 
@@ -99,8 +141,19 @@ export function ScheduleEditChat({
   const permanentRulePreview = draftToPermanentRuleStrings(draft)
   const hasPermanentRules = permanentRulePreview.length > 0
 
+  const isRestored = messages.length > 1
+
   return (
-    <Modal open={open} onClose={() => { reset(); onClose() }} title="Dienstplan per KI-Chat bearbeiten" size="lg">
+    <Modal open={open} onClose={onClose} title="Dienstplan per KI-Chat bearbeiten" size="lg">
+      {isRestored && !completion && (
+        <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between gap-2 text-xs text-blue-700">
+          <span>Chat-Verlauf wiederhergestellt.</span>
+          <button onClick={reset} className="flex items-center gap-1 font-medium hover:text-blue-900 transition-colors">
+            <RotateCcw size={11} />
+            Neuen Chat starten
+          </button>
+        </div>
+      )}
       <AiChatPanel
         messages={messages}
         sending={sending}
