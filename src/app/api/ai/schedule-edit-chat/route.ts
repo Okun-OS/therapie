@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireRole, resolveCustomerId } from '@/lib/session'
+import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
 import { getFairnessInsights } from '@/lib/fairness'
 import { getPlanningRules } from '@/lib/schedule-entities'
 import type { ScheduleEditDraft, ScheduleEditChange } from '@/lib/schedule-edit-draft'
@@ -23,6 +23,9 @@ Die Leitung beschreibt dir in natürlicher Sprache, was am Dienstplan im angegeb
 
 ## Zugriff auf die Wissensbasis des Standorts
 Du erhältst unter "Bereits hinterlegte Konfiguration und dauerhafte Regeln dieses Standorts" den vollständigen, aktuellen Stand der Standort-Konfiguration aus dem Onboarding (inkl. bereits gespeicherter individueller Regeln) sowie die administrativ eingestellten Planungsregeln. Du HAST Zugriff auf diese Daten – behaupte niemals, keinen Zugriff auf die Regeln oder Konfiguration dieses Standorts zu haben. Wenn die Leitung danach fragt, was aktuell gilt, fasse es aus diesem Abschnitt zusammen.
+
+## Urlaub, Abwesenheiten und Wünsche
+Du erhältst unter "Urlaub, Abwesenheiten und Wünsche der Mitarbeiter" die vollständigen, eingetragenen Urlaubs- und Abwesenheitstage sowie Dienstwünsche aller Mitarbeiter. Du HAST Zugriff auf diese Daten. Schlage niemals vor, jemanden an einem Tag einzuplanen, für den ein Urlaub (Feld "urlaub") oder eine Abwesenheit (Feld "nichtVerfuegbar") eingetragen ist. Behaupte niemals, keinen Zugriff auf Urlaubsdaten zu haben.
 
 ## Dauerhafte Regeln erkennen
 Achte darauf, ob eine Aussage KEINE einmalige Änderung für diesen Zeitraum ist, sondern eine generelle, dauerhaft gültige Regel für den Standort (z.B. "Der Frühdienst soll ab jetzt immer erst um 6:15 Uhr beginnen", "Mittwochs soll grundsätzlich eine Person mehr im Spätdienst sein"). Erkennungsmerkmal: nicht an "diese Woche/diesen Tag" gebunden, sondern "ab jetzt"/"immer"/"grundsätzlich". Frage in diesem Fall kurz nach, ob das dauerhaft für den Standort gelten soll. Prüfe dabei gegen die bereits hinterlegten individuellen Regeln, ob die neue Aussage eine bestehende Regel ERSETZT/PRÄZISIERT (z.B. eine andere Uhrzeit für dieselbe Schicht) oder wirklich eine zusätzliche, neue Regel ist – formuliere "permanentRules" so, dass widersprüchliche Alt-Regeln nicht parallel weiterbestehen, sondern die neue Regel die alte inhaltlich ersetzt. Bestätigt die Leitung das, nimm die Regel zusätzlich in "permanentRules" auf (vollständiger kumulierter Stand) – sie wird dauerhaft in der Standort-Wissensbasis gespeichert. Eine einmalige Änderung für einen konkreten Tag gehört NICHT in "permanentRules", sondern ausschließlich in "changes".
@@ -105,13 +108,17 @@ export async function POST(req: NextRequest) {
   }
 
   const customerId = await resolveCustomerId(session)
-  const [fairnessData, locationOnboarding, planningRules] = locationId
+  const resolvedLocationId = locationId ?? (await resolveLocationId(session)) ?? undefined
+  const [fairnessData, locationOnboarding, planningRules, vacationRows, absenceRows, wishRows] = resolvedLocationId
     ? await Promise.all([
-        getFairnessInsights(locationId, customerId),
-        prisma.locationOnboarding.findUnique({ where: { locationId } }),
-        getPlanningRules(locationId),
+        getFairnessInsights(resolvedLocationId, customerId),
+        prisma.locationOnboarding.findUnique({ where: { locationId: resolvedLocationId } }),
+        getPlanningRules(resolvedLocationId),
+        prisma.vacationRequest.findMany({ where: { locationId: resolvedLocationId, status: 'approved' } }),
+        prisma.absence.findMany({ where: { locationId: resolvedLocationId } }),
+        prisma.wishSubmission.findMany({ where: { locationId: resolvedLocationId, status: { in: ['pending', 'approved'] } } }),
       ])
-    : [[], null, null]
+    : [[], null, null, [], [], []]
   const fairnessSummary = fairnessData.map(fd => ({
     employeeId: fd.employeeId,
     name: fd.employeeName,
@@ -124,6 +131,31 @@ export async function POST(req: NextRequest) {
     fairness_punktzahl: fd.fairnessScore,
   }))
 
+  // Build a per-employee vacation/absence/wish summary for the AI
+  const empNames = new Map((employees ?? []).map((e: EmployeeBrief) => [e.id, e.name]))
+  const absenceByEmp = new Map<string, { urlaub: string[]; nichtVerfuegbar: string[]; wuensche: { datum: string; typ: string; prioritaet?: string }[] }>()
+  for (const v of (vacationRows as { employeeId: string; startDate: string; endDate: string }[])) {
+    if (!absenceByEmp.has(v.employeeId)) absenceByEmp.set(v.employeeId, { urlaub: [], nichtVerfuegbar: [], wuensche: [] })
+    absenceByEmp.get(v.employeeId)!.urlaub.push(`${v.startDate} bis ${v.endDate}`)
+  }
+  for (const a of (absenceRows as { employeeId: string; startDate: string; endDate: string; type?: string }[])) {
+    if (!absenceByEmp.has(a.employeeId)) absenceByEmp.set(a.employeeId, { urlaub: [], nichtVerfuegbar: [], wuensche: [] })
+    const label = a.type ? `${a.startDate} bis ${a.endDate} (${a.type})` : `${a.startDate} bis ${a.endDate}`
+    absenceByEmp.get(a.employeeId)!.nichtVerfuegbar.push(label)
+  }
+  for (const w of (wishRows as { employeeId: string; date: string; preferredShiftType: string; importance?: string }[])) {
+    if (!absenceByEmp.has(w.employeeId)) absenceByEmp.set(w.employeeId, { urlaub: [], nichtVerfuegbar: [], wuensche: [] })
+    absenceByEmp.get(w.employeeId)!.wuensche.push({ datum: w.date, typ: w.preferredShiftType, ...(w.importance && w.importance !== 'normal' && { prioritaet: w.importance }) })
+  }
+  const empAbsenceMap = Array.from(absenceByEmp.entries())
+    .map(([id, data]) => ({
+      id,
+      name: empNames.get(id) ?? id,
+      ...(data.urlaub.length > 0 && { urlaub: data.urlaub }),
+      ...(data.nichtVerfuegbar.length > 0 && { nichtVerfuegbar: data.nichtVerfuegbar }),
+      ...(data.wuensche.length > 0 && { wuensche: data.wuensche }),
+    }))
+
   const stateNote = `## Zeitraum
 ${periodLabel ?? 'nicht angegeben'}
 
@@ -135,6 +167,9 @@ ${JSON.stringify(shifts ?? [], null, 2)}
 
 ## Aktueller Dienstplan im gewählten Zeitraum (bereits gespeichert)
 ${JSON.stringify(entries ?? [], null, 2)}
+
+## Urlaub, Abwesenheiten und Wünsche der Mitarbeiter
+${empAbsenceMap.length > 0 ? JSON.stringify(empAbsenceMap, null, 2) : '(keine eingetragenen Urlaube, Abwesenheiten oder Wünsche)'}
 
 ## Echte Fairness-Daten (einzige zulässige Quelle für Aussagen über bisherige Verteilung)
 ${JSON.stringify(fairnessSummary, null, 2)}
