@@ -29,11 +29,18 @@ function getWorkdays(von: string, bis: string, arbeitstage: string[]): string[] 
     arbeitstage.map(d => DAY_NAME_TO_DOW[d]).filter((n): n is number => n !== undefined),
   )
   const days: string[] = []
-  const start = new Date(von)
-  const end = new Date(bis)
+  // Parse as local midnight to avoid UTC-offset day-of-week mismatch
+  const [sy, sm, sd] = von.split('-').map(Number)
+  const [ey, em, ed] = bis.split('-').map(Number)
+  const start = new Date(sy, sm - 1, sd)
+  const end   = new Date(ey, em - 1, ed)
   for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     if (dows.has(d.getDay())) {
-      days.push(d.toISOString().slice(0, 10))
+      // Emit as YYYY-MM-DD using local date components to stay consistent
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      days.push(`${y}-${m}-${day}`)
     }
   }
   return days

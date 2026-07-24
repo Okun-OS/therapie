@@ -296,6 +296,16 @@ export default function AdminSchedule() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ locationId, rules: permanentRules }),
       })
+      // Also write into the LocationModel so the solver actually picks them up
+      await Promise.allSettled(
+        permanentRules.map(text =>
+          fetch('/api/location-model/add-rule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text }),
+          })
+        )
+      )
     }
     showToast(notes.length > 0 || permanentRules.length > 0 ? 'Besonderheiten übernommen' : 'Danke, notiert')
   }
@@ -700,10 +710,17 @@ export default function AdminSchedule() {
         locationId,
         weekDates: (() => {
           const dates: string[] = []
-          const s = new Date(weekStart + 'T00:00:00')
-          const e = new Date(weekEnd + 'T00:00:00')
+          // Use periodStart/periodEnd (= monthStart/monthEnd for month mode) so we
+          // never delete or overwrite entries outside the selected period.
+          const [sy, sm, sd] = periodStart.split('-').map(Number)
+          const [ey, em, ed] = periodEnd.split('-').map(Number)
+          const s = new Date(sy, sm - 1, sd)
+          const e = new Date(ey, em - 1, ed)
           for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-            dates.push(d.toISOString().slice(0, 10))
+            const y = d.getFullYear()
+            const mo = String(d.getMonth() + 1).padStart(2, '0')
+            const dy = String(d.getDate()).padStart(2, '0')
+            dates.push(`${y}-${mo}-${dy}`)
           }
           return dates
         })(),
