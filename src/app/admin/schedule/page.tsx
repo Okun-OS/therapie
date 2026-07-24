@@ -337,6 +337,29 @@ export default function AdminSchedule() {
     showToast(changes.length > 0 || permanentRules.length > 0 ? 'Dienstplan-Änderungen übernommen' : 'Danke, notiert')
   }
 
+  async function handleReplanAfterChat(permanentRules: string[]) {
+    // 1. Save permanent rules if any
+    if (permanentRules.length > 0) {
+      await fetch('/api/location-onboarding/individuelle-regeln', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId, rules: permanentRules }),
+      })
+      await Promise.allSettled(
+        permanentRules.map(text =>
+          fetch('/api/location-model/add-rule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text }),
+          })
+        )
+      )
+    }
+    // 2. Close the chat modal and trigger a full AI replan for the current period
+    setEditChatOpen(false)
+    await runAI()
+  }
+
   async function addQuickEvent() {
     const text = quickEventInput.trim()
     if (!text || !locationId || !weekStart || quickEventSaving) return
@@ -1549,6 +1572,7 @@ export default function AdminSchedule() {
         open={editChatOpen}
         onClose={() => setEditChatOpen(false)}
         onApply={handleApplyScheduleEdits}
+        onReplan={handleReplanAfterChat}
         locationId={locationId ?? ''}
         periodLabel={periodMode === 'month' ? `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}` : `${formatDateShort(periodStart)} – ${formatDateShort(periodEnd)}`}
         employees={editChatEmployees}

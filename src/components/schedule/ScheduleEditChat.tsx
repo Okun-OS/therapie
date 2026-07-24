@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { AiChatPanel, type ChatMessage, type ChatCompletion } from '@/components/ui/AiChatPanel'
-import { CalendarCheck, ShieldCheck, Clock, RotateCcw } from 'lucide-react'
+import { CalendarCheck, ShieldCheck, Clock, RotateCcw, Sparkles } from 'lucide-react'
 import type { ScheduleEditDraft, ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import { draftToChangeStrings, draftToPermanentRuleStrings } from '@/lib/schedule-edit-draft'
 
@@ -23,6 +23,7 @@ export function ScheduleEditChat({
   open,
   onClose,
   onApply,
+  onReplan,
   locationId,
   periodLabel,
   employees,
@@ -32,6 +33,7 @@ export function ScheduleEditChat({
   open: boolean
   onClose: () => void
   onApply: (changes: ScheduleEditChange[], permanentRules: string[]) => Promise<void>
+  onReplan: (permanentRules: string[]) => Promise<void>
   locationId: string
   periodLabel: string
   employees: EmployeeBrief[]
@@ -132,6 +134,22 @@ export function ScheduleEditChat({
     }
   }
 
+  async function replan() {
+    setApplying(true)
+    try {
+      await onReplan(draft.permanentRules ?? [])
+      setCompletion({
+        title: 'Dienstplan wird neu erstellt',
+        items: [
+          ...(permanentRulePreview.length > 0 ? permanentRulePreview.map(r => `Regel gespeichert: ${r}`) : []),
+          'Die KI erstellt jetzt einen neuen Dienstplan auf Basis aller Regeln.',
+        ],
+      })
+    } finally {
+      setApplying(false)
+    }
+  }
+
   function handleCloseCompletion() {
     reset()   // clears localStorage + state
     onClose()
@@ -176,7 +194,7 @@ export function ScheduleEditChat({
                 </div>
               )}
 
-              {/* Decision card — only when readyToApply AND permanent rules exist */}
+              {/* Decision card — when readyToApply AND permanent rules exist */}
               {draft.readyToApply && hasPermanentRules && (
                 <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 overflow-hidden">
                   <div className="px-4 pt-3 pb-2 border-b border-amber-100">
@@ -192,8 +210,8 @@ export function ScheduleEditChat({
                       ))}
                     </div>
                   </div>
-                  <div className="px-4 py-3">
-                    <p className="text-xs text-amber-700 mb-2.5">
+                  <div className="px-4 py-3 space-y-2">
+                    <p className="text-xs text-amber-700">
                       Sollen diese Regeln dauerhaft ins Planungsmodell übernommen werden — oder nur für diesen Dienstplan gelten?
                     </p>
                     <div className="flex gap-2">
@@ -214,17 +232,33 @@ export function ScheduleEditChat({
                         Nur für diesen Plan
                       </button>
                     </div>
+                    <button
+                      onClick={replan}
+                      disabled={applying}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2.5 px-3 transition-colors disabled:opacity-50"
+                    >
+                      <Sparkles size={15} />
+                      Regeln speichern &amp; Dienstplan neu erstellen
+                    </button>
                   </div>
                 </div>
               )}
 
               {/* Simple apply — when readyToApply but no permanent rules */}
               {draft.readyToApply && !hasPermanentRules && (
-                <div className="mb-3">
+                <div className="mb-3 flex flex-col gap-2">
                   <Button className="w-full gap-2" loading={applying} onClick={() => apply(false)}>
                     <CalendarCheck size={16} />
                     Übernehmen
                   </Button>
+                  <button
+                    onClick={replan}
+                    disabled={applying}
+                    className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2.5 px-3 transition-colors disabled:opacity-50"
+                  >
+                    <Sparkles size={15} />
+                    Dienstplan neu erstellen
+                  </button>
                 </div>
               )}
             </>
