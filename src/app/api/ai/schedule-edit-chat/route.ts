@@ -24,6 +24,9 @@ Die Leitung beschreibt dir in natürlicher Sprache, was am Dienstplan im angegeb
 ## Zugriff auf die Wissensbasis des Standorts
 Du erhältst unter "Bereits hinterlegte Konfiguration und dauerhafte Regeln dieses Standorts" den vollständigen, aktuellen Stand der Standort-Konfiguration aus dem Onboarding (inkl. bereits gespeicherter individueller Regeln) sowie die administrativ eingestellten Planungsregeln. Du HAST Zugriff auf diese Daten – behaupte niemals, keinen Zugriff auf die Regeln oder Konfiguration dieses Standorts zu haben. Wenn die Leitung danach fragt, was aktuell gilt, fasse es aus diesem Abschnitt zusammen.
 
+## Mitarbeiterstammdaten und Einschränkungen
+Du erhältst unter "Mitarbeiter dieses Standorts (vollständige Stammdaten)" alle relevanten Planungsdaten pro Mitarbeiter: Wochenstunden, Beschäftigungsart, feste freie Tage (Feld "feste_freie_tage"), reguläre Arbeitstage, Qualifikationen, Schichtpräferenzen, Wochenendregelungen und individuelle Planungsnotizen. Du HAST Zugriff auf alle diese Daten. Behaupte niemals, keinen Zugriff auf feste freie Tage, Arbeitstage oder sonstige Stammdaten zu haben. Schlage niemals vor, jemanden an einem festen freien Tag (feste_freie_tage) einzuplanen, es sei denn, die Leitung ordnet es ausdrücklich an.
+
 ## Urlaub, Abwesenheiten und Wünsche
 Du erhältst unter "Urlaub, Abwesenheiten und Wünsche der Mitarbeiter" die vollständigen, eingetragenen Urlaubs- und Abwesenheitstage sowie Dienstwünsche aller Mitarbeiter. Du HAST Zugriff auf diese Daten. Schlage niemals vor, jemanden an einem Tag einzuplanen, für den ein Urlaub (Feld "urlaub") oder eine Abwesenheit (Feld "nichtVerfuegbar") eingetragen ist. Behaupte niemals, keinen Zugriff auf Urlaubsdaten zu haben.
 
@@ -109,7 +112,7 @@ export async function POST(req: NextRequest) {
 
   const customerId = await resolveCustomerId(session)
   const resolvedLocationId = locationId ?? (await resolveLocationId(session)) ?? undefined
-  const [fairnessData, locationOnboarding, planningRules, vacationRows, absenceRows, wishRows] = resolvedLocationId
+  const [fairnessData, locationOnboarding, planningRules, vacationRows, absenceRows, wishRows, dbEmployees] = resolvedLocationId
     ? await Promise.all([
         getFairnessInsights(resolvedLocationId, customerId),
         prisma.locationOnboarding.findUnique({ where: { locationId: resolvedLocationId } }),
@@ -117,8 +120,9 @@ export async function POST(req: NextRequest) {
         prisma.vacationRequest.findMany({ where: { locationId: resolvedLocationId, status: 'approved' } }),
         prisma.absence.findMany({ where: { locationId: resolvedLocationId } }),
         prisma.wishSubmission.findMany({ where: { locationId: resolvedLocationId, status: { in: ['pending', 'approved'] } } }),
+        prisma.employee.findMany({ where: { locationId: resolvedLocationId, active: true } }),
       ])
-    : [[], null, null, [], [], []]
+    : [[], null, null, [], [], [], []]
   const fairnessSummary = fairnessData.map(fd => ({
     employeeId: fd.employeeId,
     name: fd.employeeName,
@@ -131,19 +135,53 @@ export async function POST(req: NextRequest) {
     fairness_punktzahl: fd.fairnessScore,
   }))
 
-  // Build a per-employee vacation/absence/wish summary for the AI
-  const empNames = new Map((employees ?? []).map((e: EmployeeBrief) => [e.id, e.name]))
+  // Fetch planning profiles for all employees
+  const empIds = (dbEmployees as { id: string }[]).map(e => e.id)
+  const planningProfiles = empIds.length > 0
+    ? await prisma.employeePlanningProfile.findMany({ where: { employeeId: { in: empIds } } })
+    : []
+  const profileByEmpId = new Map(planningProfiles.map(p => [p.employeeId, p]))
+
+  // Build comprehensive per-employee constraints map
+  type EmpDb = {
+    id: string; name: string; weeklyHours: number; employmentType?: string | null
+    fixedOffDays: string[]; workDays: string[]; workDaysPerWeek?: number | null
+    qualifications: string[]
+  }
+  const empNames = new Map((dbEmployees as EmpDb[]).map(e => [e.id, e.name]))
+  const empConstraints = (dbEmployees as EmpDb[]).map(emp => {
+    const profile = profileByEmpId.get(emp.id)
+    return {
+      id: emp.id,
+      name: emp.name,
+      wochenstunden: emp.weeklyHours,
+      ...(emp.employmentType && { beschaeftigungsart: emp.employmentType }),
+      ...(emp.fixedOffDays.length > 0 && { feste_freie_tage: emp.fixedOffDays }),
+      ...(emp.workDays.length > 0 && { arbeitstage: emp.workDays }),
+      ...(emp.workDaysPerWeek && { tage_pro_woche: emp.workDaysPerWeek }),
+      ...(emp.qualifications.length > 0 && { qualifikationen: emp.qualifications }),
+      ...(profile?.shiftPreference && profile.shiftPreference !== 'keine' && { schichtpraeferenz: profile.shiftPreference }),
+      ...(profile?.weekendRule && { wochenend_regelung: profile.weekendRule }),
+      ...(profile?.maxConsecutiveDays && profile.maxConsecutiveDays > 0 && { max_aufeinanderfolgende_tage: profile.maxConsecutiveDays }),
+      ...(profile?.planningNote && { planungsnotiz: profile.planningNote }),
+    }
+  })
+
+  // Per-employee vacation / absence / wish data
+  type VacRow = { employeeId: string; startDate: string; endDate: string }
+  type AbsRow = { employeeId: string; startDate: string; endDate: string; type?: string }
+  type WishRow = { employeeId: string; date: string; preferredShiftType: string; importance?: string }
   const absenceByEmp = new Map<string, { urlaub: string[]; nichtVerfuegbar: string[]; wuensche: { datum: string; typ: string; prioritaet?: string }[] }>()
-  for (const v of (vacationRows as { employeeId: string; startDate: string; endDate: string }[])) {
+  for (const v of vacationRows as VacRow[]) {
     if (!absenceByEmp.has(v.employeeId)) absenceByEmp.set(v.employeeId, { urlaub: [], nichtVerfuegbar: [], wuensche: [] })
     absenceByEmp.get(v.employeeId)!.urlaub.push(`${v.startDate} bis ${v.endDate}`)
   }
-  for (const a of (absenceRows as { employeeId: string; startDate: string; endDate: string; type?: string }[])) {
+  for (const a of absenceRows as AbsRow[]) {
     if (!absenceByEmp.has(a.employeeId)) absenceByEmp.set(a.employeeId, { urlaub: [], nichtVerfuegbar: [], wuensche: [] })
     const label = a.type ? `${a.startDate} bis ${a.endDate} (${a.type})` : `${a.startDate} bis ${a.endDate}`
     absenceByEmp.get(a.employeeId)!.nichtVerfuegbar.push(label)
   }
-  for (const w of (wishRows as { employeeId: string; date: string; preferredShiftType: string; importance?: string }[])) {
+  for (const w of wishRows as WishRow[]) {
     if (!absenceByEmp.has(w.employeeId)) absenceByEmp.set(w.employeeId, { urlaub: [], nichtVerfuegbar: [], wuensche: [] })
     absenceByEmp.get(w.employeeId)!.wuensche.push({ datum: w.date, typ: w.preferredShiftType, ...(w.importance && w.importance !== 'normal' && { prioritaet: w.importance }) })
   }
@@ -159,8 +197,8 @@ export async function POST(req: NextRequest) {
   const stateNote = `## Zeitraum
 ${periodLabel ?? 'nicht angegeben'}
 
-## Mitarbeiter dieses Standorts
-${JSON.stringify(employees ?? [], null, 2)}
+## Mitarbeiter dieses Standorts (vollständige Stammdaten)
+${JSON.stringify(empConstraints.length > 0 ? empConstraints : (employees ?? []), null, 2)}
 
 ## Verfügbare Schichten dieses Standorts
 ${JSON.stringify(shifts ?? [], null, 2)}
