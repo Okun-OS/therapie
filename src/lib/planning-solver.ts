@@ -150,14 +150,8 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
         }
         // Hard: max consecutive work days
         if (st.consecDays >= maxConsecDays) return false
-        // Fix 3c: Hard: don't exceed Einheit maximalbesetzung
-        const empEinheitId = emp.einheiten?.[0]
-        if (empEinheitId) {
-          const einheit = einheitById.get(empEinheitId)
-          if (einheit?.maximalbesetzung !== undefined && (unitDayCount[empEinheitId] ?? 0) >= einheit.maximalbesetzung) {
-            return false
-          }
-        }
+        // Fix 3b: hard-exclude employees who've already hit their weekend shift limit
+        if (isWeekend && weekendShiftMax !== Infinity && st.weekendShifts >= weekendShiftMax) return false
         return true
       })
 
@@ -206,6 +200,14 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
         // Determine unit: use employee's primary unit if available
         const einheitId = emp.einheiten?.[0]
           ?? (einheiten.length > 0 ? einheiten[0].id : undefined)
+
+        // Fix 3c: check unit capacity at assignment time (unitDayCount was 0 when filter ran)
+        if (einheitId) {
+          const einheit = einheitById.get(einheitId)
+          if (einheit?.maximalbesetzung !== undefined && (unitDayCount[einheitId] ?? 0) >= einheit.maximalbesetzung) {
+            continue
+          }
+        }
 
         eintraege.push({
           mitarbeiterId: emp.id,

@@ -195,6 +195,17 @@ export function correctPlan(
         const used = currentWeekHours[emp.id]?.[wk] ?? 0
         if (used + h > fillMaxHours + 0.01) continue
 
+        // Fix 5a: don't re-add if adding this day would violate maxConsecDays
+        const empDates = new Set(eintraege.filter(e => e.mitarbeiterId === emp.id).map(e => e.datum))
+        let streak = 1
+        const dPrev = new Date(day)
+        dPrev.setDate(dPrev.getDate() - 1)
+        while (empDates.has(dPrev.toISOString().slice(0, 10))) { streak++; dPrev.setDate(dPrev.getDate() - 1) }
+        const dNext = new Date(day)
+        dNext.setDate(dNext.getDate() + 1)
+        while (empDates.has(dNext.toISOString().slice(0, 10))) { streak++; dNext.setDate(dNext.getDate() + 1) }
+        if (streak > maxConsecDays) continue
+
         eintraege.push({
           mitarbeiterId: emp.id,
           datum: day,
