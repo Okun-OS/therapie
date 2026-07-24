@@ -1592,6 +1592,8 @@ export default function AdminSchedule() {
         onReplan={handleReplanAfterChat}
         locationId={locationId ?? ''}
         periodLabel={periodMode === 'month' ? `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}` : `${formatDateShort(periodStart)} – ${formatDateShort(periodEnd)}`}
+        periodStart={periodStart}
+        periodEnd={periodEnd}
         employees={editChatEmployees}
         shifts={editChatShifts}
         entries={editChatEntries}
