@@ -101,6 +101,38 @@ function algorithmicSolve(ruleModel: PlanningRuleModel): GenerierterPlan {
     }
   }
 
+  // Seed state from recent history so cross-period consecutive-day limits are respected.
+  // Without this the solver restarts consecDays at 0 each planning run, allowing e.g.
+  // Mon-Fri worked in the previous week + Sat assigned in the new period (6 consecutive).
+  if (zeitraum.arbeitstage.length > 0) {
+    const planStart = zeitraum.arbeitstage[0]
+    const [py, pm, pd] = planStart.split('-').map(Number)
+    for (const emp of mitarbeiter) {
+      const st = state[emp.id]
+      if (!emp.letzteSchichten?.length) continue
+      const recent = [...emp.letzteSchichten].sort((a, b) => (a.datum < b.datum ? -1 : 1))
+      const last = recent[recent.length - 1]
+      st.lastWorkDate = last.datum
+      const lastShiftDef = schichten.find(s => s.id === last.schichtId)
+      if (lastShiftDef) {
+        st.lastShiftEnd = lastShiftDef.bis
+        st.lastShiftIsOvernight = lastShiftDef.uebernacht ?? false
+      }
+      // Count consecutive work days immediately before the planning period starts
+      const recentDates = new Set(recent.map(r => r.datum))
+      let streak = 0
+      const checkD = new Date(py, pm - 1, pd)
+      checkD.setDate(checkD.getDate() - 1)
+      while (streak < 35) {
+        const ds = `${checkD.getFullYear()}-${String(checkD.getMonth() + 1).padStart(2, '0')}-${String(checkD.getDate()).padStart(2, '0')}`
+        if (!recentDates.has(ds)) break
+        streak++
+        checkD.setDate(checkD.getDate() - 1)
+      }
+      st.consecDays = streak
+    }
+  }
+
   const eintraege: PlanEintrag[] = []
   const decisions: PlanDecision[] = []
 

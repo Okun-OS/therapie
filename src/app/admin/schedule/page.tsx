@@ -75,6 +75,14 @@ const DEFAULT_RULES: PlanningRules = {
 
 const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase, night: MoonStar }
 const DEFAULT_SHIFT_ICON = Briefcase
+
+function calcShiftHours(startTime: string, endTime: string): number {
+  const [sh, sm] = startTime.split(':').map(Number)
+  const [eh, em] = endTime.split(':').map(Number)
+  let mins = (eh * 60 + em) - (sh * 60 + sm)
+  if (mins <= 0) mins += 1440
+  return Math.round(mins * 10 / 60) / 10
+}
 const AI_STEPS = [
   'Analysiere Verfügbarkeiten...',
   'Berechne Fairness-Scores...',
@@ -120,6 +128,9 @@ export default function AdminSchedule() {
     ruleNames: string[]
   }[] | null>(null)
   const [manualPickerCell, setManualPickerCell] = useState<{ empId: string; dateStr: string } | null>(null)
+  const [customTimeShiftId, setCustomTimeShiftId] = useState('')
+  const [customStartTime, setCustomStartTime] = useState('')
+  const [customEndTime, setCustomEndTime] = useState('')
   const [rulesOpen, setRulesOpen] = useState(false)
   const [saved, setSaved] = useState(false)
   const [facilityDescription, setFacilityDescription] = useState('')
@@ -767,7 +778,42 @@ export default function AdminSchedule() {
     showToast('Export gestartet')
   }
 
-  const handleManualAssign = (empId: string, dateStr: string, shiftId: string) => {
+  const handlePrint = () => {
+    const printData = {
+      locationName: location?.name ?? '',
+      periodLabel: periodMode === 'month'
+        ? `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`
+        : `${formatDateShort(periodStart)} – ${formatDateShort(periodEnd)}`,
+      exportedAt: new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      employees: employees.map(e => ({ id: e.id, name: e.name, weeklyHours: e.weeklyHours })),
+      shifts: locationShifts.map(s => ({ id: s.id, name: s.name, startTime: s.startTime, endTime: s.endTime })),
+      weeks: periodWeeks.map(week => ({
+        dates: week
+          .filter(d => isLocationWorkDay(d) && toDateString(d) >= periodStart && toDateString(d) <= periodEnd)
+          .map(toDateString),
+      })).filter(w => w.dates.length > 0),
+      assignments: (() => {
+        const result: Record<string, Record<string, { shiftName: string; startTime: string; endTime: string }>> = {}
+        for (const emp of employees) {
+          const empA: Record<string, { shiftName: string; startTime: string; endTime: string }> = {}
+          for (const week of periodWeeks) {
+            for (const day of week) {
+              const ds = toDateString(day)
+              if (!isLocationWorkDay(day) || ds < periodStart || ds > periodEnd) continue
+              const a = getDisplayAssignment(emp.id, ds)
+              if (a) empA[ds] = { shiftName: a.shift.name, startTime: a.startTime, endTime: a.endTime }
+            }
+          }
+          if (Object.keys(empA).length > 0) result[emp.id] = empA
+        }
+        return result
+      })(),
+    }
+    try { localStorage.setItem('schedule-print-v1', JSON.stringify(printData)) } catch { /* quota */ }
+    window.open('/admin/schedule/print', '_blank')
+  }
+
+  const handleManualAssign = (empId: string, dateStr: string, shiftId: string, startTime?: string, endTime?: string) => {
     setGeneratedSchedule(prev => {
       const base: Record<string, Record<string, ScheduleAssignment>> = prev
         ? { ...prev }
@@ -779,9 +825,17 @@ export default function AdminSchedule() {
             }
             return s
           })()
-      return { ...base, [empId]: { ...(base[empId] ?? {}), [dateStr]: { shiftId } } }
+      const assignment: ScheduleAssignment = {
+        shiftId,
+        ...(startTime ? { startTime } : {}),
+        ...(endTime ? { endTime } : {}),
+      }
+      return { ...base, [empId]: { ...(base[empId] ?? {}), [dateStr]: assignment } }
     })
     setManualPickerCell(null)
+    setCustomTimeShiftId('')
+    setCustomStartTime('')
+    setCustomEndTime('')
   }
 
   const handleManualRemove = (empId: string, dateStr: string) => {
@@ -792,6 +846,7 @@ export default function AdminSchedule() {
       return { ...prev, [empId]: empSchedule }
     })
     setExplainEntry(null)
+    setManualPickerCell(null)
   }
 
   if (!locationId) {
@@ -936,7 +991,8 @@ export default function AdminSchedule() {
                   </div>
                 )}
                 <Button variant="ghost" size="sm" onClick={openRules} className="border border-gray-200">Regeln</Button>
-                <Button variant="ghost" size="sm" onClick={handleExport} className="gap-1 border border-gray-200"><Download size={14} /> Export</Button>
+                <Button variant="ghost" size="sm" onClick={handlePrint} className="gap-1 border border-gray-200"><Download size={14} /> PDF</Button>
+                <Button variant="ghost" size="sm" onClick={handleExport} className="gap-1 border border-gray-200"><Download size={14} /> CSV</Button>
                 {(existingEntries.length > 0 || !!generatedSchedule) && (
                   <Button variant="ghost" size="sm" onClick={() => setEditChatOpen(true)} className="gap-1 border border-gray-200">
                     <MessageCircle size={14} /> Dienstplan bearbeiten
@@ -1229,6 +1285,7 @@ export default function AdminSchedule() {
                               </th>
                             )
                           })}
+                          <th className="text-center p-3 text-white text-xs font-semibold w-20">Std.</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1248,7 +1305,7 @@ export default function AdminSchedule() {
                             if (hasGroups) {
                               rows.push(
                                 <tr key={`group-${groupKey}`} className="bg-navy/5 border-t border-gray-100">
-                                  <td colSpan={week.length + 1} className="px-4 py-1.5">
+                                  <td colSpan={week.length + 2} className="px-4 py-1.5">
                                     <span className="text-[10px] font-bold text-navy/60 uppercase tracking-widest">
                                       {groupKey || 'Ohne Bereich'}
                                     </span>
@@ -1300,18 +1357,7 @@ export default function AdminSchedule() {
                                           <div className="flex items-center justify-center h-9"><span className="text-xs text-gray-200">—</span></div>
                                         ) : assignment && Icon ? (
                                           <div
-                                            onClick={() => setExplainEntry({
-                                              employeeId: emp.id,
-                                              employeeName: emp.name,
-                                              shiftName: assignment.shift.name,
-                                              dateStr,
-                                              reason: getDisplayReason(emp.id, dateStr),
-                                              gruppe: assignment.gruppe,
-                                              funktion: assignment.funktion,
-                                              isSubstitution: assignment.isSubstitution,
-                                              substitutionFor: assignment.substitutionFor,
-                                              taskBlocks: assignment.taskBlocks,
-                                            })}
+                                            onClick={() => setManualPickerCell({ empId: emp.id, dateStr })}
                                             className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity relative"
                                             style={{ backgroundColor: assignment.shift.bgColor }}
                                             title={[assignment.gruppe, assignment.funktion, assignment.isSubstitution ? `Vertretung${assignment.substitutionFor ? `: ${assignment.substitutionFor}` : ''}` : null].filter(Boolean).join(' · ') || undefined}
@@ -1341,6 +1387,28 @@ export default function AdminSchedule() {
                                       </td>
                                 )
                               })}
+                              <td className="p-2 text-center align-middle">
+                                {(() => {
+                                  const visibleDays = week.filter(d => {
+                                    const ds = toDateString(d)
+                                    return isLocationWorkDay(d) && ds >= periodStart && ds <= periodEnd
+                                  })
+                                  const ist = visibleDays.reduce((sum, d) => {
+                                    const a = getDisplayAssignment(emp.id, toDateString(d))
+                                    return a ? sum + calcShiftHours(a.startTime, a.endTime) : sum
+                                  }, 0)
+                                  const soll = emp.weeklyHours
+                                  const pct = soll > 0 ? ist / soll : 0
+                                  return (
+                                    <div className="text-xs font-mono whitespace-nowrap leading-tight">
+                                      <span className={pct > 1.05 ? 'text-red-600 font-bold' : pct >= 0.9 ? 'text-green-600' : 'text-blue-500'}>
+                                        {ist.toFixed(1)}
+                                      </span>
+                                      <span className="text-gray-400">/{soll}h</span>
+                                    </div>
+                                  )
+                                })()}
+                              </td>
                             </tr>
                           )
                             }
@@ -1780,37 +1848,101 @@ export default function AdminSchedule() {
       </Modal>
 
       {/* Manual Shift Picker Modal */}
-      <Modal open={!!manualPickerCell} onClose={() => setManualPickerCell(null)} title="Schicht zuweisen" size="sm">
+      <Modal open={!!manualPickerCell} onClose={() => { setManualPickerCell(null); setCustomTimeShiftId(''); setCustomStartTime(''); setCustomEndTime('') }} title="Schicht bearbeiten" size="sm">
         {manualPickerCell && (() => {
           const pickerEmp = employees.find(e => e.id === manualPickerCell.empId)
+          const currentAssignment = getDisplayAssignment(manualPickerCell.empId, manualPickerCell.dateStr)
+          const reason = getDisplayReason(manualPickerCell.empId, manualPickerCell.dateStr)
           return (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold">{pickerEmp?.name}</span> · {formatDateShort(manualPickerCell.dateStr)}
-              </p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">{pickerEmp?.name}</span> · {formatDateShort(manualPickerCell.dateStr)}
+                </p>
+                {currentAssignment && (
+                  <button
+                    onClick={() => handleManualRemove(manualPickerCell.empId, manualPickerCell.dateStr)}
+                    className="flex items-center gap-1 text-xs text-red-500 font-semibold hover:text-red-700 transition-colors"
+                  >
+                    <X size={12} /> Dienst entfernen
+                  </button>
+                )}
+              </div>
+
               {locationShifts.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-4">Keine Schichten für diesen Standort angelegt.</p>
               ) : (
                 <div className="space-y-2">
                   {locationShifts.map(shift => {
                     const Icon = SHIFT_ICONS[shift.type] ?? DEFAULT_SHIFT_ICON
+                    const isActive = currentAssignment?.shift.id === shift.id && !customTimeShiftId
                     return (
                       <button
                         key={shift.id}
                         onClick={() => handleManualAssign(manualPickerCell.empId, manualPickerCell.dateStr, shift.id)}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-all text-left"
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${isActive ? 'border-navy bg-navy/5' : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'}`}
                       >
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: shift.bgColor }}>
                           <Icon size={14} style={{ color: shift.color }} />
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-navy">{shift.name}</p>
                           <p className="text-xs text-gray-500">{shift.startTime} – {shift.endTime}</p>
                         </div>
+                        {isActive && <CheckCircle size={14} className="text-navy flex-shrink-0" />}
                       </button>
                     )
                   })}
                 </div>
+              )}
+
+              {/* Custom time section */}
+              <div className="border-t border-gray-100 pt-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Individuelle Zeit</p>
+                <div className="space-y-2">
+                  <select
+                    value={customTimeShiftId}
+                    onChange={e => {
+                      setCustomTimeShiftId(e.target.value)
+                      const s = locationShifts.find(s => s.id === e.target.value)
+                      if (s) { setCustomStartTime(s.startTime); setCustomEndTime(s.endTime) }
+                    }}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy/20"
+                  >
+                    <option value="">Schichttyp wählen…</option>
+                    {locationShifts.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  {customTimeShiftId && (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="time"
+                        value={customStartTime}
+                        onChange={e => setCustomStartTime(e.target.value)}
+                        className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy/20"
+                      />
+                      <span className="text-gray-400 text-xs">–</span>
+                      <input
+                        type="time"
+                        value={customEndTime}
+                        onChange={e => setCustomEndTime(e.target.value)}
+                        className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy/20"
+                      />
+                      <button
+                        disabled={!customStartTime || !customEndTime}
+                        onClick={() => handleManualAssign(manualPickerCell.empId, manualPickerCell.dateStr, customTimeShiftId, customStartTime, customEndTime)}
+                        className="px-3 py-2 rounded-lg bg-navy text-white text-xs font-semibold disabled:opacity-40 hover:bg-navy/80 transition-colors"
+                      >
+                        OK
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {reason && (
+                <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2 italic">{reason}</p>
               )}
             </div>
           )
