@@ -91,7 +91,7 @@ export default function SchedulePrintPage() {
         >
           Schließen
         </button>
-        <span className="text-xs text-gray-400 ml-2">Tipp: Im Druckdialog „Als PDF speichern" wählen</span>
+        <span className="text-xs text-gray-400 ml-2">Tipp: Im Druckdialog &bdquo;Als PDF speichern&ldquo; wählen</span>
       </div>
 
       <div className="p-6">
