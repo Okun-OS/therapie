@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 interface LogoProps {
@@ -12,7 +13,7 @@ interface LogoProps {
 export function Logo({ variant = 'wordmark', onDark = false, tagline = false, iconSize = 36, className }: LogoProps) {
   if (variant === 'icon') {
     return (
-      <img
+      <Image
         src="/brand/icon.png"
         alt="OKUN Workforce"
         width={iconSize}
@@ -25,10 +26,12 @@ export function Logo({ variant = 'wordmark', onDark = false, tagline = false, ic
 
   if (!onDark) {
     return (
-      <img
+      <Image
         src={tagline ? '/brand/logo-full-tagline.png' : '/brand/logo-horizontal.png'}
         alt="OKUN Workforce"
-        style={{ height: iconSize * 1.05 }}
+        width={240}
+        height={Math.round(iconSize * 1.05)}
+        style={{ height: iconSize * 1.05, width: 'auto' }}
         className={cn('object-contain', className)}
       />
     )
@@ -36,7 +39,7 @@ export function Logo({ variant = 'wordmark', onDark = false, tagline = false, ic
 
   return (
     <div className={cn('flex items-center gap-3', className)}>
-      <img
+      <Image
         src="/brand/icon.png"
         alt=""
         width={iconSize}
