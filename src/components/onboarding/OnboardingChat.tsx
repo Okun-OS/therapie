@@ -61,6 +61,7 @@ export function OnboardingChat({
     if (!open || loaded) return
     setLoaded(true)
     loadHistory()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   // Reset when closed

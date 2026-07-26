@@ -21,6 +21,7 @@ const ROLE_LABELS: Record<string, string> = {
 function Avatar({ name, avatarUrl, size = 80 }: { name: string; avatarUrl?: string; size?: number }) {
   if (avatarUrl) {
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={avatarUrl}
         alt={name}

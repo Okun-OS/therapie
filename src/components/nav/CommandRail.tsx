@@ -293,6 +293,7 @@ export function CommandRail() {
                 style={!user?.avatarUrl ? { background: 'linear-gradient(135deg, #26C6C6 0%, #0E6B6F 100%)' } : undefined}
               >
                 {user?.avatarUrl
+                  // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={user.avatarUrl} alt={user?.name ?? ''} className="w-full h-full object-cover" />
                   : (user?.name?.charAt(0)?.toUpperCase() ?? '?')
                 }

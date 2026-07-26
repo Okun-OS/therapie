@@ -223,6 +223,7 @@ export default function SecurityPage() {
                 Scanne den QR-Code mit deiner Authenticator-App und gib anschließend den 6-stelligen Code zur Bestätigung ein.
               </p>
               <div className="flex justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {qrDataUrl && <img src={qrDataUrl} alt="QR-Code für 2FA" className="w-48 h-48 rounded-xl border border-gray-200" />}
               </div>
               <div>
