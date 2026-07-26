@@ -147,6 +147,7 @@ export default function AdminSchedule() {
   const [editChatOpen, setEditChatOpen] = useState(false)
   const [showPlanPanel, setShowPlanPanel] = useState(false)
   const [lastUsedKontext, setLastUsedKontext] = useState('')
+  const [lastOvertimeDecisions, setLastOvertimeDecisions] = useState<Record<string, 'reduce' | 'normal' | 'compensate'> | null>(null)
   const [planningRules, setPlanningRules] = useState<PlanningRules>(DEFAULT_RULES)
   const [rulesDraft, setRulesDraft] = useState<PlanningRules>(DEFAULT_RULES)
   const [minStaffDraft, setMinStaffDraft] = useState<Record<string, number>>({})
@@ -496,7 +497,7 @@ export default function AdminSchedule() {
     return entry?.reason ?? null
   }
 
-  const runAI = async (confirmedDecisionQuestion?: string, kontextOverride?: string) => {
+  const runAI = async (confirmedDecisionQuestion?: string, kontextOverride?: string, decisionsOverride?: Record<string, 'reduce' | 'normal' | 'compensate'>) => {
     setAiRunning(true)
     setAiDone(false)
     setAiStep(0)
@@ -511,6 +512,7 @@ export default function AdminSchedule() {
     setFallback(null)
     setFallbackHandled(false)
     const effectiveKontext = kontextOverride !== undefined ? kontextOverride : lastUsedKontext
+    const effectiveDecisions = decisionsOverride !== undefined ? decisionsOverride : lastOvertimeDecisions
 
     // Animate progress steps while waiting for the real API
     let step = 0
@@ -532,6 +534,7 @@ export default function AdminSchedule() {
           von,
           bis,
           kontext: effectiveKontext.trim() || undefined,
+          overtimeDecisions: effectiveDecisions ?? undefined,
         }),
       })
 
@@ -619,12 +622,14 @@ export default function AdminSchedule() {
     const parts: string[] = []
     const empMap = new Map(employees.map(e => [e.id, e]))
     for (const [empId, decision] of Object.entries(ctx.overtimeDecisions)) {
+      if (decision === 'normal') continue
       const emp = empMap.get(empId)
       if (!emp) continue
+      const bal = emp.hoursBalance ?? 0
       if (decision === 'reduce') {
-        parts.push(emp.hoursBalance > 0
-          ? `${emp.name}: 1 Dienst weniger diese Woche (${emp.hoursBalance > 0 ? '+' : ''}${emp.hoursBalance.toFixed(1)}h Überstunden abbauen)`
-          : `${emp.name}: 1 Dienst mehr diese Woche (${emp.hoursBalance.toFixed(1)}h Minusstunden ausgleichen)`)
+        parts.push(`${emp.name}: 1 Dienst weniger (${bal >= 0 ? '+' : ''}${bal.toFixed(1)}h Überstunden abbauen)`)
+      } else if (decision === 'compensate') {
+        parts.push(`${emp.name}: 1 Dienst mehr (${bal.toFixed(1)}h Minusstunden ausgleichen)`)
       }
     }
     if (ctx.sondernotiz.trim()) parts.push(ctx.sondernotiz.trim())
@@ -634,8 +639,9 @@ export default function AdminSchedule() {
   function handlePlanConfirm(planCtx: PlanContext) {
     const k = buildKontext(planCtx)
     setLastUsedKontext(k)
+    setLastOvertimeDecisions(planCtx.overtimeDecisions)
     setShowPlanPanel(false)
-    runAI(undefined, k)
+    runAI(undefined, k, planCtx.overtimeDecisions)
   }
 
   const handleDecisionYes = async () => {

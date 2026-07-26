@@ -65,6 +65,7 @@ export async function buildRuleModel(
   sessionId: string,
   kontext?: string,
   vorherigeBewertung?: string,
+  overtimeDecisions?: Record<string, 'reduce' | 'normal' | 'compensate'>,
 ): Promise<PlanningRuleModel> {
   // Fetch the per-location model to resolve which days to plan.
   // Falls back gracefully to defaults when no LocationModel has been generated yet.
@@ -306,12 +307,23 @@ export async function buildRuleModel(
         : null,
     ].filter(Boolean).join('; ') : null
 
+    const baseWeeklyHours = emp.weeklyHours ?? 0
+    const daysPerWeek = emp.workDaysPerWeek ?? 5
+    const dailyHours = daysPerWeek > 0 ? baseWeeklyHours / daysPerWeek : 0
+    const overtimeDecision = overtimeDecisions?.[emp.id]
+    let wochenstundenSoll = baseWeeklyHours
+    if (overtimeDecision === 'reduce') {
+      wochenstundenSoll = Math.max(0, baseWeeklyHours - dailyHours)
+    } else if (overtimeDecision === 'compensate') {
+      wochenstundenSoll = baseWeeklyHours + dailyHours
+    }
+
     return {
       id: emp.id,
       name: emp.name,
       einheiten: empEinheiten,
       verfuegbareSchichtTypen: (emp.workDays?.length ? ['frueh', 'spaet', 'mittel'] : ['frueh', 'spaet', 'nacht', 'mittel']) as SchichtTyp[],
-      wochenstundenSoll: emp.weeklyHours,
+      wochenstundenSoll,
       arbeitstageProWoche: emp.workDaysPerWeek ?? 5,
       qualifikationen: emp.qualifications,
       nichtVerfuegbarAn: nichtVerfuegbar,

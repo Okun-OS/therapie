@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const body = await req.json()
-  const { locationId, von, bis, kontext } = body
+  const { locationId, von, bis, kontext, overtimeDecisions } = body
 
   if (!locationId || !von || !bis) {
     return NextResponse.json({ error: 'locationId, von und bis sind erforderlich' }, { status: 400 })
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   let result
   try {
-    result = await runPlanningSession(locationId, customerId, von, bis, kontext)
+    result = await runPlanningSession(locationId, customerId, von, bis, kontext, overtimeDecisions)
   } catch (err) {
     console.error('[solve-schedule] Planning session failed:', err)
     const message = err instanceof Error ? err.message : 'Unbekannter Planungsfehler'

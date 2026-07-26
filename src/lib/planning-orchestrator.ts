@@ -22,6 +22,7 @@ export async function runPlanningSession(
   von: string,
   bis: string,
   kontext?: string,
+  overtimeDecisions?: Record<string, 'reduce' | 'normal' | 'compensate'>,
 ): Promise<PlanningResult> {
   const session = await prisma.planningSession.create({
     data: {
@@ -40,7 +41,7 @@ export async function runPlanningSession(
 
   try {
     // ── Step 1: Build rule model from DB (once) ─────────────────────────────
-    const ruleModel = await buildRuleModel(locationId, customerId, von, bis, session.id, kontext)
+    const ruleModel = await buildRuleModel(locationId, customerId, von, bis, session.id, kontext, undefined, overtimeDecisions)
     await prisma.planningSession.update({
       where: { id: session.id },
       data: { ruleModelSnap: ruleModel as object },
