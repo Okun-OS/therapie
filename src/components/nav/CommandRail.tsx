@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Logo } from '@/components/ui/Logo'
-import { Bell, Search, ChevronDown, LogOut, User as UserIcon } from 'lucide-react'
+import { Bell, Search, ChevronDown, LogOut, User as UserIcon, Megaphone, Send, X } from 'lucide-react'
 import Link from 'next/link'
 import { getDockItems } from './navData'
 import { SearchModal } from './SearchModal'
@@ -100,6 +100,11 @@ export function CommandRail() {
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [broadcastOpen, setBroadcastOpen] = useState(false)
+  const [broadcastTitle, setBroadcastTitle] = useState('')
+  const [broadcastBody, setBroadcastBody] = useState('')
+  const [broadcastSending, setBroadcastSending] = useState(false)
+  const [broadcastResult, setBroadcastResult] = useState<{ sent: number; failed: number } | null>(null)
 
   const notifRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
@@ -151,6 +156,27 @@ export function CommandRail() {
   const markRead = (id: string) => {
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)))
     fetch(`/api/notifications/${id}/read`, { method: 'POST' }).catch(() => {})
+  }
+
+  const sendBroadcast = async () => {
+    if (!broadcastTitle.trim() || !broadcastBody.trim()) return
+    setBroadcastSending(true)
+    setBroadcastResult(null)
+    try {
+      const res = await fetch('/api/notifications/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: broadcastTitle.trim(), body: broadcastBody.trim(), url: '/employee/schedule' }),
+      })
+      const data = await res.json()
+      setBroadcastResult({ sent: data.sent ?? 0, failed: data.failed ?? 0 })
+      setBroadcastTitle('')
+      setBroadcastBody('')
+    } catch {
+      setBroadcastResult({ sent: 0, failed: 1 })
+    } finally {
+      setBroadcastSending(false)
+    }
   }
 
   const handleLogout = () => {
@@ -250,12 +276,62 @@ export function CommandRail() {
               >
                 <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                   <p className="font-semibold text-navy text-[13px]">Benachrichtigungen</p>
-                  {unread > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(38,198,198,0.15)', color: '#0E6B6F' }}>
-                      {unread} neu
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {unread > 0 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(38,198,198,0.15)', color: '#0E6B6F' }}>
+                        {unread} neu
+                      </span>
+                    )}
+                    {(user?.role === 'admin' || user?.role === 'company') && (
+                      <button
+                        onClick={() => { setBroadcastOpen(o => !o); setBroadcastResult(null) }}
+                        title="Ankündigung an alle Mitarbeiter senden"
+                        className="flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-navy px-2 py-0.5 rounded hover:bg-gray-100 transition-colors"
+                      >
+                        <Megaphone size={12} />
+                        Senden
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {broadcastOpen && (user?.role === 'admin' || user?.role === 'company') && (
+                  <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 space-y-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Ankündigung an alle Mitarbeiter</p>
+                      <button onClick={() => setBroadcastOpen(false)} className="text-gray-400 hover:text-gray-600">
+                        <X size={12} />
+                      </button>
+                    </div>
+                    <input
+                      value={broadcastTitle}
+                      onChange={e => setBroadcastTitle(e.target.value)}
+                      placeholder="Titel"
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy/20 bg-white"
+                    />
+                    <textarea
+                      value={broadcastBody}
+                      onChange={e => setBroadcastBody(e.target.value)}
+                      placeholder="Nachricht…"
+                      rows={2}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-navy/20 bg-white"
+                    />
+                    {broadcastResult && (
+                      <p className={`text-[11px] font-medium ${broadcastResult.failed > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                        {broadcastResult.failed > 0
+                          ? `${broadcastResult.sent} gesendet, ${broadcastResult.failed} fehlgeschlagen`
+                          : `${broadcastResult.sent} Mitarbeiter benachrichtigt`}
+                      </p>
+                    )}
+                    <button
+                      onClick={sendBroadcast}
+                      disabled={broadcastSending || !broadcastTitle.trim() || !broadcastBody.trim()}
+                      className="w-full flex items-center justify-center gap-1.5 text-[12px] font-semibold py-1.5 rounded-lg bg-navy text-white hover:bg-navy/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {broadcastSending ? <span className="animate-pulse">Senden…</span> : <><Send size={11} /> An alle senden</>}
+                    </button>
+                  </div>
+                )}
                 <div className="divide-y divide-gray-50/80 max-h-72 overflow-y-auto">
                   {notifications.length === 0 && (
                     <p className="px-4 py-6 text-sm text-gray-400 text-center">Keine Benachrichtigungen</p>
