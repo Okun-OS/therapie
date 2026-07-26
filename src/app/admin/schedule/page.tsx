@@ -59,6 +59,8 @@ interface PlanningRules {
   weekendMax: number
   considerWishes: boolean
   balanceHoursAccount: boolean
+  breakThresholdMinutes: number
+  breakDeductionMinutes: number
 }
 
 const DEFAULT_RULES: PlanningRules = {
@@ -71,16 +73,19 @@ const DEFAULT_RULES: PlanningRules = {
   weekendMax: 2,
   considerWishes: true,
   balanceHoursAccount: true,
+  breakThresholdMinutes: 360,
+  breakDeductionMinutes: 30,
 }
 
 const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase, night: MoonStar }
 const DEFAULT_SHIFT_ICON = Briefcase
 
-function calcShiftHours(startTime: string, endTime: string): number {
+function calcShiftHours(startTime: string, endTime: string, breakThresholdMinutes = 360, breakDeductionMinutes = 30): number {
   const [sh, sm] = startTime.split(':').map(Number)
   const [eh, em] = endTime.split(':').map(Number)
   let mins = (eh * 60 + em) - (sh * 60 + sm)
   if (mins <= 0) mins += 1440
+  if (mins >= breakThresholdMinutes) mins -= breakDeductionMinutes
   return Math.round(mins * 10 / 60) / 10
 }
 const AI_STEPS = [
@@ -809,8 +814,13 @@ export default function AdminSchedule() {
         return result
       })(),
     }
-    try { localStorage.setItem('schedule-print-v1', JSON.stringify(printData)) } catch { /* quota */ }
-    window.open('/admin/schedule/print', '_blank')
+    const fullPrintData = {
+      ...printData,
+      breakThresholdMinutes: planningRules.breakThresholdMinutes ?? 360,
+      breakDeductionMinutes: planningRules.breakDeductionMinutes ?? 30,
+    }
+    try { localStorage.setItem('schedule-print-v1', JSON.stringify(fullPrintData)) } catch { /* quota */ }
+    window.open('/print/schedule', '_blank')
   }
 
   const handleManualAssign = (empId: string, dateStr: string, shiftId: string, startTime?: string, endTime?: string) => {
@@ -1394,7 +1404,7 @@ export default function AdminSchedule() {
                                   })
                                   const ist = visibleDays.reduce((sum, d) => {
                                     const a = getDisplayAssignment(emp.id, toDateString(d))
-                                    return a ? sum + calcShiftHours(a.startTime, a.endTime) : sum
+                                    return a ? sum + calcShiftHours(a.startTime, a.endTime, planningRules.breakThresholdMinutes, planningRules.breakDeductionMinutes) : sum
                                   }, 0)
                                   const soll = emp.weeklyHours
                                   const pct = soll > 0 ? ist / soll : 0
