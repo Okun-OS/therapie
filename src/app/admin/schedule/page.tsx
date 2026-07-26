@@ -991,8 +991,7 @@ export default function AdminSchedule() {
                   </div>
                 )}
                 <Button variant="ghost" size="sm" onClick={openRules} className="border border-gray-200">Regeln</Button>
-                <Button variant="ghost" size="sm" onClick={handlePrint} className="gap-1 border border-gray-200"><Download size={14} /> PDF</Button>
-                <Button variant="ghost" size="sm" onClick={handleExport} className="gap-1 border border-gray-200"><Download size={14} /> CSV</Button>
+                <Button variant="ghost" size="sm" onClick={handlePrint} className="gap-1 border border-gray-200"><Download size={14} /> PDF Export</Button>
                 {(existingEntries.length > 0 || !!generatedSchedule) && (
                   <Button variant="ghost" size="sm" onClick={() => setEditChatOpen(true)} className="gap-1 border border-gray-200">
                     <MessageCircle size={14} /> Dienstplan bearbeiten

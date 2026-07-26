@@ -162,8 +162,11 @@ export async function buildRuleModel(
     schichten = standort!.schichtmodell.schichten
   }
 
-  // Hard rules from CompanyModel + DB planning rules
-  const harteRegeln: HarteRegel[] = standort?.planungsRegeln.hart ?? [
+  // Hard rules: use stored rules from the location model only when they are
+  // non-empty — an empty array silently disables all constraints, so fall back
+  // to the DB PlanningRules (or statutory defaults) in that case.
+  const storedHarteRegeln = standort?.planungsRegeln?.hart ?? []
+  const harteRegeln: HarteRegel[] = storedHarteRegeln.length > 0 ? storedHarteRegeln : [
     {
       id: 'hr-maxwochenstunden',
       kategorie: 'arbeitszeit',

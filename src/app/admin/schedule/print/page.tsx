@@ -72,10 +72,14 @@ export default function SchedulePrintPage() {
         @page { size: A4 landscape; margin: 12mm; }
         @media print {
           .no-print { display: none !important; }
+          .print-fullscreen { position: static !important; overflow: visible !important; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
         body { font-family: system-ui, sans-serif; background: white; color: #1a1a2e; }
       `}</style>
+
+      {/* Full-screen overlay to cover the admin nav/sidebar */}
+      <div className="print-fullscreen" style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'white', overflowY: 'auto' }}>
 
       {/* Print-only controls */}
       <div className="no-print flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-10">
@@ -211,6 +215,8 @@ export default function SchedulePrintPage() {
           </div>
         </div>
       </div>
+
+      </div> {/* end print-fullscreen overlay */}
     </>
   )
 }
