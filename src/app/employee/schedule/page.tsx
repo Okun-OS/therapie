@@ -29,7 +29,7 @@ import type { ScheduleEntry } from '@/lib/types'
 
 const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase }
 
-type Tab = 'schedule' | 'swaps' | 'wishes'
+type Tab = 'schedule' | 'swaps' | 'wishes' | 'team'
 type CalView = 'day' | 'week' | 'month'
 
 const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
@@ -211,8 +211,9 @@ export default function EmployeeSchedule() {
         <div className="flex bg-white border border-gray-100 rounded-2xl p-1">
           {([
             { key: 'schedule', label: 'Dienstplan', badge: 0 },
-            { key: 'swaps', label: 'Tauschbörse', badge: pendingSwapCount },
-            { key: 'wishes', label: 'Wünsche', badge: unfulfilledWishes.length },
+            { key: 'team',     label: 'Team',        badge: 0 },
+            { key: 'swaps',    label: 'Tauschbörse', badge: pendingSwapCount },
+            { key: 'wishes',   label: 'Wünsche',     badge: unfulfilledWishes.length },
           ] as const).map(({ key, label, badge }) => (
             <button
               key={key}
@@ -474,6 +475,93 @@ export default function EmployeeSchedule() {
             </Card>
             </>)}
           </>
+        )}
+
+        {/* ── TEAM TAB ─────────────────────────────────────────── */}
+        {tab === 'team' && (
+          <div className="space-y-3">
+            {/* Navigation */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <button onClick={() => go(-1)} className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all">
+                  <ChevronLeft size={18} className="text-gray-600" />
+                </button>
+                <span className="px-3 py-2 text-sm font-semibold text-navy min-w-[150px] text-center">
+                  {formatDateShort(weekStart)} &ndash; {formatDateShort(weekEnd)}
+                </span>
+                <button onClick={() => go(1)} className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all">
+                  <ChevronRight size={18} className="text-gray-600" />
+                </button>
+              </div>
+            </div>
+
+            {/* Team grid */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-navy text-white">
+                      <th className="px-3 py-2.5 text-left font-semibold w-28">Mitarbeiter</th>
+                      {weekDays.map(day => {
+                        const ds = toDateString(day)
+                        const isT = isToday(ds)
+                        return (
+                          <th key={ds} className={`px-2 py-2.5 text-center font-semibold ${isT ? 'bg-brand/80' : ''}`}>
+                            <div className="text-[10px] opacity-70">{WEEKDAY_SHORT[(day.getDay() + 6) % 7]}</div>
+                            <div>{day.getDate()}</div>
+                          </th>
+                        )
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[employee, ...colleagues].filter(Boolean).map((emp, i) => {
+                      if (!emp) return null
+                      const isMe = emp.id === user?.employeeId
+                      return (
+                        <tr key={emp.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className={`px-3 py-2 font-semibold truncate max-w-[7rem] ${isMe ? 'text-brand' : 'text-navy'}`}>
+                            {emp.name.split(' ')[0]}
+                            {isMe && <span className="ml-1 text-[9px] text-brand opacity-70">Du</span>}
+                          </td>
+                          {weekDays.map(day => {
+                            const ds = toDateString(day)
+                            const entry = SCHEDULE_ENTRIES.find(e => e.employeeId === emp.id && e.date === ds)
+                            const shift = entry ? getShift(entry.shiftId) : null
+                            const isT = isToday(ds)
+                            return (
+                              <td key={ds} className={`px-1 py-1.5 text-center ${isT ? 'bg-amber-50' : ''}`}>
+                                {shift ? (
+                                  <div className="rounded px-1 py-0.5 leading-tight" style={{ backgroundColor: shift.bgColor }}>
+                                    <div className="font-bold" style={{ color: shift.color }}>{shift.name.slice(0, 3)}</div>
+                                    <div className="text-[9px]" style={{ color: shift.color, opacity: 0.8 }}>
+                                      {(entry?.startTime ?? shift.startTime).slice(0, 5)}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-200">&mdash;</span>
+                                )}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Legend */}
+              <div className="px-4 py-3 border-t border-gray-100 flex flex-wrap gap-3">
+                {SHIFTS.filter(s => SCHEDULE_ENTRIES.some(e => e.shiftId === s.id && e.date >= weekStart && e.date <= weekEnd)).map(s => (
+                  <div key={s.id} className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
+                    <span className="text-xs text-gray-600">{s.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── SWAPS TAB ────────────────────────────────────────── */}

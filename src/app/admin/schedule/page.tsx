@@ -21,7 +21,7 @@ import { getPublicHolidayName } from '@/lib/holidays'
 import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, PlanningUnit, TaskBlock } from '@/lib/types'
 import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import {
-  ChevronLeft, ChevronRight, Sparkles, Download, Save, Sun, Moon, MoonStar, Briefcase,
+  ChevronLeft, ChevronRight, Sparkles, Download, Save, Send, Sun, Moon, MoonStar, Briefcase,
   CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle, LayoutGrid, Users, Plus, Trash2,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -138,6 +138,7 @@ export default function AdminSchedule() {
   const [customEndTime, setCustomEndTime] = useState('')
   const [rulesOpen, setRulesOpen] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [isDraft, setIsDraft] = useState(false)
   const [facilityDescription, setFacilityDescription] = useState('')
   const [periodNotes, setPeriodNotes] = useState<{ id: string; note: string }[]>([])
   const [quickEventInput, setQuickEventInput] = useState('')
@@ -717,6 +718,21 @@ export default function AdminSchedule() {
     showToast('Planungsregeln gespeichert')
   }
 
+  const buildWeekDates = () => {
+    const dates: string[] = []
+    const [sy, sm, sd] = periodStart.split('-').map(Number)
+    const [ey, em, ed] = periodEnd.split('-').map(Number)
+    const s = new Date(sy, sm - 1, sd)
+    const e = new Date(ey, em - 1, ed)
+    for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const y = d.getFullYear()
+      const mo = String(d.getMonth() + 1).padStart(2, '0')
+      const dy = String(d.getDate()).padStart(2, '0')
+      dates.push(`${y}-${mo}-${dy}`)
+    }
+    return dates
+  }
+
   const handleSaveSchedule = async () => {
     if (!generatedSchedule) return
     await fetch('/api/schedule-entries/save-week', {
@@ -724,28 +740,15 @@ export default function AdminSchedule() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         locationId,
-        weekDates: (() => {
-          const dates: string[] = []
-          // Use periodStart/periodEnd (= monthStart/monthEnd for month mode) so we
-          // never delete or overwrite entries outside the selected period.
-          const [sy, sm, sd] = periodStart.split('-').map(Number)
-          const [ey, em, ed] = periodEnd.split('-').map(Number)
-          const s = new Date(sy, sm - 1, sd)
-          const e = new Date(ey, em - 1, ed)
-          for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-            const y = d.getFullYear()
-            const mo = String(d.getMonth() + 1).padStart(2, '0')
-            const dy = String(d.getDate()).padStart(2, '0')
-            dates.push(`${y}-${mo}-${dy}`)
-          }
-          return dates
-        })(),
+        weekDates: buildWeekDates(),
         assignments: generatedSchedule,
         reasons: aiAssignmentReasons,
+        status: 'confirmed',
       }),
     })
     loadScheduleEntries()
     setSaved(true)
+    setIsDraft(false)
     showToast('Dienstplan gespeichert – für alle Mitarbeiter sichtbar')
 
     try {
@@ -761,6 +764,25 @@ export default function AdminSchedule() {
     } catch {
       // Benachrichtigungen sind ein Zusatznutzen – ein Fehler hier darf das Speichern nicht blockieren.
     }
+  }
+
+  const handleSaveDraft = async () => {
+    if (!generatedSchedule) return
+    await fetch('/api/schedule-entries/save-week', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        locationId,
+        weekDates: buildWeekDates(),
+        assignments: generatedSchedule,
+        reasons: aiAssignmentReasons,
+        status: 'planned',
+      }),
+    })
+    loadScheduleEntries()
+    setSaved(true)
+    setIsDraft(true)
+    showToast('Entwurf gespeichert – noch nicht veröffentlicht')
   }
 
   const handleExport = () => {
@@ -1008,9 +1030,17 @@ export default function AdminSchedule() {
                   </Button>
                 )}
                 {(aiDone || !!generatedSchedule) && (
-                  <Button variant="success" size="sm" onClick={handleSaveSchedule} className="gap-1">
-                    <Save size={14} />{saved ? 'Gespeichert!' : 'Speichern'}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    {isDraft && (
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">Entwurf</span>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={handleSaveDraft} className="gap-1 border border-gray-200">
+                      <Save size={14} /> Entwurf
+                    </Button>
+                    <Button variant="success" size="sm" onClick={handleSaveSchedule} className="gap-1">
+                      <Send size={14} />{saved && !isDraft ? 'Veröffentlicht!' : 'Veröffentlichen'}
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>

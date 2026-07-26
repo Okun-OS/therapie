@@ -432,9 +432,9 @@ export default function AdminOnboarding() {
 
           {state && (
             <div className="flex flex-wrap items-center gap-2 mt-1">
-              <Button onClick={() => { setActiveMethod('chat'); setChatOpen(true) }} variant="secondary" className="gap-2">
+              <Button onClick={() => { setActiveMethod('chat'); setChatOpen(true) }} variant={state.completed ? 'primary' : 'secondary'} className="gap-2">
                 <MessageCircle size={16} />
-                {state.completed ? 'Angaben ändern (KI-Chat)' : 'Im Gespräch weiter erzählen'}
+                {state.completed ? 'Einstellungen per KI bearbeiten' : 'Im Gespräch weiter erzählen'}
               </Button>
               <Button onClick={() => { setResetError(null); setResetStep(1) }} variant="ghost" className="gap-2 text-red-600 hover:bg-red-50">
                 <RotateCcw size={16} />
@@ -443,7 +443,7 @@ export default function AdminOnboarding() {
             </div>
           )}
           {state?.completed && (
-            <p className="text-xs text-gray-500 mt-2">Hat sich etwas geändert? Sag es im Chat – die KI passt nur die betroffenen Punkte an.</p>
+            <p className="text-xs text-gray-500 mt-2">Schichten, Regeln oder Arbeitszeiten ge&auml;ndert? Einfach im Chat beschreiben &ndash; die KI passt nur die betroffenen Punkte an.</p>
           )}
         </Card>
 

@@ -203,6 +203,7 @@ export async function saveScheduleForWeek(
   weekDates: string[],
   assignments: Record<string, Record<string, string | ScheduleAssignment>>,
   reasons?: Record<string, string>,
+  status = 'confirmed',
 ): Promise<void> {
   await prisma.scheduleEntry.deleteMany({ where: { locationId, date: { in: weekDates } } })
   const rows: {
@@ -219,7 +220,7 @@ export async function saveScheduleForWeek(
         shiftId: assignment.shiftId,
         date,
         locationId,
-        status: 'confirmed',
+        status,
         reason: reasons?.[`${employeeId}|${date}`],
         startTime: assignment.startTime,
         endTime: assignment.endTime,

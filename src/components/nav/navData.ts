@@ -119,7 +119,7 @@ const adminDock: DockItem[] = [
       title: 'Einstellungen',
       sections: [
         { items: [
-          { href: '/admin/onboarding', label: 'Standort-Onboarding', description: 'Schichten, Regeln & Arbeitszeiten', badge: 'KI', isGold: true, icon: '🏢' },
+          { href: '/admin/onboarding', label: 'Standorteinstellungen', description: 'Schichten, Regeln & Einstellungen per KI bearbeiten', badge: 'KI', isGold: true, icon: '🏢' },
           { href: '/admin/model',     label: 'Planungsmodell',      description: 'Regeln & Mindestbesetzung editieren', icon: '📋' },
           { href: '/company/support',  label: 'Support & Hilfe',     description: 'Hilfe & Kontakt',                   icon: '💬' },
         ]},
