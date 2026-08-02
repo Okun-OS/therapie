@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest) {
     const customerId = await resolveCustomerId(session)
     if (!customerId) return NextResponse.json({ error: 'Kein Mandant' }, { status: 403 })
 
-    const body = await req.json() as { arbeitstage?: string[] }
+    const body = await req.json() as { arbeitstage?: string[]; planungsRegeln?: { hart?: unknown[]; weich?: unknown[] } }
 
     const model = await getLocationModel(locationId)
     if (!model) return NextResponse.json({ error: 'Kein Planungsmodell vorhanden' }, { status: 404 })
@@ -50,6 +50,13 @@ export async function PATCH(req: NextRequest) {
       const hasSa = cleaned.includes('Sa')
       const hasSo = cleaned.includes('So')
       model.betriebsTyp = hasSa && hasSo ? '7_tage' : hasSa ? 'mon_sat' : 'mon_fri'
+    }
+
+    if (body.planungsRegeln !== undefined) {
+      model.planungsRegeln = {
+        hart: Array.isArray(body.planungsRegeln.hart) ? body.planungsRegeln.hart as typeof model.planungsRegeln.hart : model.planungsRegeln.hart,
+        weich: Array.isArray(body.planungsRegeln.weich) ? body.planungsRegeln.weich as typeof model.planungsRegeln.weich : model.planungsRegeln.weich,
+      }
     }
 
     await saveLocationModel(locationId, customerId, model)

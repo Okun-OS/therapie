@@ -11,13 +11,20 @@ export async function GET(req: NextRequest) {
   const session = requireRole(req)
   if (session instanceof NextResponse) return session
 
-  const customerId = session.role === 'okun' ? undefined : await resolveCustomerId(session)
-  if (session.role !== 'okun' && !customerId) {
-    return NextResponse.json({ employees: [] })
-  }
-  let employees = await listEmployees(customerId)
+  const locationId = req.nextUrl.searchParams.get('locationId') ?? undefined
 
-  // Bereichsleiter: scope to employees in their bereiche's locations
+  if (session.role === 'okun') {
+    // OKUN-Admins dürfen plattformweit lesen, aber immer auf locationId eingrenzen wenn angegeben
+    const employees = await listEmployees(undefined, locationId)
+    return NextResponse.json({ employees })
+  }
+
+  const customerId = await resolveCustomerId(session)
+  if (!customerId) return NextResponse.json({ employees: [] })
+
+  let employees = await listEmployees(customerId, locationId)
+
+  // Bereichsleiter: zusätzlich auf ihre Bereiche einschränken
   if (session.role === 'company') {
     const bereichIds = await resolveBereichIds(session)
     if (bereichIds.length > 0) {

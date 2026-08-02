@@ -12,7 +12,7 @@ import { useToast } from '@/lib/toast-context'
 import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing, TimeLog, Employee } from '@/lib/types'
 import {
   AlertCircle, CheckCircle, XCircle, Clock, Stethoscope, FileText, ChevronDown, ChevronUp,
-  MessageSquare, ShieldCheck, ShieldX, Pencil, CalendarPlus, AlertTriangle,
+  MessageSquare, ShieldCheck, ShieldX, Pencil, CalendarPlus, AlertTriangle, Printer,
 } from 'lucide-react'
 import { formatDate, formatTime } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -441,6 +441,13 @@ export default function AdminTimeTracking() {
                             ))}
                           </div>
                         )}
+                        <button
+                          onClick={() => window.open(`/print/time-document?employeeId=${closing.employeeId}&year=${closing.year}&month=${closing.month}`, '_blank')}
+                          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-navy transition-colors"
+                        >
+                          <Printer size={12} />
+                          Stundennachweis PDF
+                        </button>
                         {closing.status !== 'freigegeben' && (
                           <>
                             <div>
@@ -458,6 +465,13 @@ export default function AdminTimeTracking() {
                                 Freigeben
                               </Button>
                             </div>
+                            <button
+                              onClick={() => window.open(`/print/time-document?employeeId=${closing.employeeId}&year=${closing.year}&month=${closing.month}`, '_blank')}
+                              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-navy transition-colors"
+                            >
+                              <Printer size={12} />
+                              Stundennachweis drucken / PDF
+                            </button>
                           </>
                         )}
                       </div>

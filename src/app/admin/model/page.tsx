@@ -1,22 +1,13 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useToast } from '@/lib/toast-context'
 import {
-  ShieldAlert,
-  Heart,
-  Plus,
-  Trash2,
-  Loader2,
-  Clock,
-  Users,
-  MessageCircle,
-  Save,
-  Brain,
-  CalendarDays,
+  ShieldAlert, Heart, Plus, Trash2, Loader2, Clock, Users, MessageCircle,
+  Save, Brain, CalendarDays, Pencil, Check, X, Send, Bot, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import type { LocationModel, HarteRegel, WeicheRegel, WochentagKuerzel } from '@/lib/company-model-types'
 import Link from 'next/link'
@@ -29,7 +20,6 @@ const QUELLE_LABELS: Record<string, string> = {
   betriebsvereinbarung: 'Betriebsvereinbarung',
   unternehmen: 'Unternehmen',
 }
-
 const QUELLE_VARIANTS: Record<string, 'default' | 'warning' | 'danger' | 'success'> = {
   gesetz: 'danger',
   tarifvertrag: 'warning',
@@ -45,6 +35,18 @@ interface DbShift {
   minStaff: number
 }
 
+interface ShiftEdit {
+  name: string
+  startTime: string
+  endTime: string
+  minStaff: number
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export default function AdminModelPage() {
   const { showToast } = useToast()
   const [model, setModel] = useState<LocationModel | null>(null)
@@ -55,6 +57,24 @@ export default function AdminModelPage() {
   const [ruleText, setRuleText] = useState('')
   const [addingRule, setAddingRule] = useState(false)
   const [savingDays, setSavingDays] = useState(false)
+
+  // Shift editing
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null)
+  const [shiftEditDraft, setShiftEditDraft] = useState<ShiftEdit>({ name: '', startTime: '', endTime: '', minStaff: 1 })
+  const [savingShift, setSavingShift] = useState(false)
+  const [deletingShiftId, setDeletingShiftId] = useState<string | null>(null)
+
+  // New shift form
+  const [showNewShift, setShowNewShift] = useState(false)
+  const [newShift, setNewShift] = useState<ShiftEdit>({ name: '', startTime: '06:00', endTime: '14:00', minStaff: 1 })
+  const [addingShift, setAddingShift] = useState(false)
+
+  // Shift AI chat
+  const [shiftChatOpen, setShiftChatOpen] = useState(false)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
     const [modelRes, shiftsRes] = await Promise.all([
@@ -68,19 +88,43 @@ export default function AdminModelPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
 
-  const handleDeleteHardRule = (ruleId: string) => {
-    setModel(prev => prev ? {
-      ...prev,
-      planungsRegeln: { ...prev.planungsRegeln, hart: prev.planungsRegeln.hart.filter(r => r.id !== ruleId) },
-    } : prev)
+  // ── Regeln ────────────────────────────────────────────────────────────────
+
+  const persistRules = async (updated: LocationModel) => {
+    try {
+      const res = await fetch('/api/location-model', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planungsRegeln: updated.planungsRegeln }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      showToast('Speichern fehlgeschlagen', 'error')
+    }
   }
 
-  const handleDeleteSoftRule = (ruleId: string) => {
-    setModel(prev => prev ? {
-      ...prev,
-      planungsRegeln: { ...prev.planungsRegeln, weich: prev.planungsRegeln.weich.filter(r => r.id !== ruleId) },
-    } : prev)
+  const handleDeleteHardRule = async (ruleId: string) => {
+    if (!model) return
+    const updated = {
+      ...model,
+      planungsRegeln: { ...model.planungsRegeln, hart: model.planungsRegeln.hart.filter(r => r.id !== ruleId) },
+    }
+    setModel(updated)
+    await persistRules(updated)
+    showToast('Regel entfernt', 'success')
+  }
+
+  const handleDeleteSoftRule = async (ruleId: string) => {
+    if (!model) return
+    const updated = {
+      ...model,
+      planungsRegeln: { ...model.planungsRegeln, weich: model.planungsRegeln.weich.filter(r => r.id !== ruleId) },
+    }
+    setModel(updated)
+    await persistRules(updated)
+    showToast('Regel entfernt', 'success')
   }
 
   const handleAddRule = async () => {
@@ -104,13 +148,15 @@ export default function AdminModelPage() {
     }
   }
 
+  // ── Arbeitstage ───────────────────────────────────────────────────────────
+
   const handleDayToggle = async (day: WochentagKuerzel) => {
     if (!model || savingDays) return
     const current: WochentagKuerzel[] = model.schichtmodell?.arbeitstage ?? ['Mo', 'Di', 'Mi', 'Do', 'Fr']
     const next = current.includes(day)
       ? current.filter(d => d !== day)
       : [...current, day].sort((a, b) => ALL_DAYS.indexOf(a) - ALL_DAYS.indexOf(b))
-    if (next.length === 0) return // must keep at least one
+    if (next.length === 0) return
     const optimistic = { ...model, schichtmodell: { ...model.schichtmodell, arbeitstage: next } }
     setModel(optimistic)
     setSavingDays(true)
@@ -123,12 +169,14 @@ export default function AdminModelPage() {
       if (!res.ok) throw new Error()
       showToast('Arbeitstage gespeichert', 'success')
     } catch {
-      setModel(model) // revert
+      setModel(model)
       showToast('Speichern fehlgeschlagen', 'error')
     } finally {
       setSavingDays(false)
     }
   }
+
+  // ── Mindestbesetzung ──────────────────────────────────────────────────────
 
   const hasMinEdits = Object.keys(minEdits).length > 0
 
@@ -154,6 +202,109 @@ export default function AdminModelPage() {
     }
   }
 
+  // ── Schicht bearbeiten ────────────────────────────────────────────────────
+
+  const startEditShift = (s: DbShift) => {
+    setEditingShiftId(s.id)
+    setShiftEditDraft({ name: s.name, startTime: s.startTime, endTime: s.endTime, minStaff: s.minStaff })
+  }
+
+  const handleSaveShiftEdit = async () => {
+    if (!editingShiftId) return
+    setSavingShift(true)
+    try {
+      const res = await fetch(`/api/shifts/${editingShiftId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(shiftEditDraft),
+      })
+      if (!res.ok) throw new Error()
+      setShifts(prev => prev.map(s => s.id === editingShiftId ? { ...s, ...shiftEditDraft } : s))
+      setEditingShiftId(null)
+      setMinEdits(prev => { const n = { ...prev }; delete n[editingShiftId]; return n })
+      showToast('Schicht gespeichert', 'success')
+    } catch {
+      showToast('Speichern fehlgeschlagen', 'error')
+    } finally {
+      setSavingShift(false)
+    }
+  }
+
+  const handleDeleteShift = async (id: string) => {
+    setDeletingShiftId(id)
+    try {
+      const res = await fetch(`/api/shifts/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      setShifts(prev => prev.filter(s => s.id !== id))
+      showToast('Schicht gelöscht', 'success')
+    } catch {
+      showToast('Löschen fehlgeschlagen', 'error')
+    } finally {
+      setDeletingShiftId(null)
+    }
+  }
+
+  const handleAddShift = async () => {
+    if (!newShift.name.trim() || addingShift) return
+    setAddingShift(true)
+    try {
+      const locationId = (await fetch('/api/location-model').then(r => r.json()))
+      const res = await fetch('/api/shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newShift,
+          type: 'standard',
+          locationId: locationId.model?.locationId,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setShifts(prev => [...prev, data.shift])
+      setNewShift({ name: '', startTime: '06:00', endTime: '14:00', minStaff: 1 })
+      setShowNewShift(false)
+      showToast('Schicht hinzugefügt', 'success')
+    } catch {
+      showToast('Schicht konnte nicht hinzugefügt werden', 'error')
+    } finally {
+      setAddingShift(false)
+    }
+  }
+
+  // ── Schicht-Chat ──────────────────────────────────────────────────────────
+
+  const handleChatSend = async () => {
+    if (!chatInput.trim() || chatLoading) return
+    const userMsg: ChatMessage = { role: 'user', content: chatInput.trim() }
+    const history = [...chatMessages, userMsg]
+    setChatMessages(history)
+    setChatInput('')
+    setChatLoading(true)
+    try {
+      const shiftSummary = shifts.map(s => `${s.name} (${s.startTime}–${s.endTime}, min. ${s.minStaff} MA)`).join(', ')
+      const res = await fetch('/api/admin/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: history,
+          system: `Du bist ein Planungsassistent. Aktuelle Schichten: ${shiftSummary}.
+Hilf beim Anpassen von Schichten und Mindestbesetzung.
+Antworte auf Deutsch, kurz und konkret.
+Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, was er tun soll, oder frage nach fehlenden Details.`,
+        }),
+      })
+      const data = await res.json()
+      const reply = data.content ?? data.message ?? 'Keine Antwort'
+      setChatMessages(prev => [...prev, { role: 'assistant', content: reply }])
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Fehler beim Senden. Bitte nochmal versuchen.' }])
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[300px]">
@@ -172,10 +323,7 @@ export default function AdminModelPage() {
             Führe zuerst das Standort-Onboarding durch, damit ein Planungsmodell erstellt wird.
           </p>
           <Link href="/admin/onboarding">
-            <Button className="gap-2">
-              <MessageCircle size={16} />
-              Zum Onboarding
-            </Button>
+            <Button className="gap-2"><MessageCircle size={16} />Zum Onboarding</Button>
           </Link>
         </Card>
       </div>
@@ -192,8 +340,7 @@ export default function AdminModelPage() {
         </div>
         <Link href="/admin/onboarding">
           <Button variant="secondary" size="sm" className="gap-1.5">
-            <MessageCircle size={14} />
-            Onboarding-Chat
+            <MessageCircle size={14} />Onboarding-Chat
           </Button>
         </Link>
       </div>
@@ -218,9 +365,7 @@ export default function AdminModelPage() {
                 className={[
                   'w-10 h-10 rounded-xl text-sm font-semibold transition-all select-none',
                   active
-                    ? isWeekend
-                      ? 'bg-brand text-white shadow-sm shadow-brand/30'
-                      : 'bg-navy text-white'
+                    ? isWeekend ? 'bg-brand text-white shadow-sm shadow-brand/30' : 'bg-navy text-white'
                     : 'bg-gray-100 text-gray-400 hover:bg-gray-200',
                   savingDays ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
                 ].join(' ')}
@@ -230,11 +375,10 @@ export default function AdminModelPage() {
             )
           })}
         </div>
-        <p className="text-xs text-gray-400 mt-2">
-          Nur markierte Tage werden beim Dienstplan verplant.
-        </p>
+        <p className="text-xs text-gray-400 mt-2">Nur markierte Tage werden beim Dienstplan verplant.</p>
       </Card>
 
+      {/* Mindestbesetzung-Änderungs-Banner */}
       {hasMinEdits && (
         <div className="flex items-center justify-between gap-3 bg-brand/10 border border-brand/20 rounded-xl px-4 py-3">
           <p className="text-sm text-navy font-medium">Mindestbesetzung wurde geändert.</p>
@@ -246,18 +390,167 @@ export default function AdminModelPage() {
       )}
 
       {/* Schichten & Mindestbesetzung */}
-      {shifts.length > 0 && (
-        <Card padding="lg">
-          <div className="flex items-center gap-2 mb-3">
-            <Clock size={14} className="text-gray-400" />
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Schichten &amp; Mindestbesetzung</p>
+      <Card padding="lg">
+        <div className="flex items-center gap-2 mb-3">
+          <Clock size={14} className="text-gray-400" />
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Schichten &amp; Mindestbesetzung</p>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setShiftChatOpen(o => !o)}
+              className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-brand transition-colors"
+              title="KI-Chat für Schichten"
+            >
+              <Bot size={13} />
+              KI-Assistent
+              {shiftChatOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+            </button>
+            <button
+              onClick={() => setShowNewShift(o => !o)}
+              className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-navy transition-colors"
+            >
+              <Plus size={13} />
+              Neue Schicht
+            </button>
           </div>
+        </div>
+
+        {/* Schicht-Chat */}
+        {shiftChatOpen && (
+          <div className="mb-4 border border-gray-100 rounded-xl overflow-hidden">
+            <div className="bg-gray-50 px-3 py-2 border-b border-gray-100 flex items-center gap-1.5">
+              <Bot size={12} className="text-brand" />
+              <p className="text-[11px] font-semibold text-gray-600">KI-Assistent für Schichten</p>
+              <p className="text-[10px] text-gray-400 ml-1">Erkläre deine Schichten — die KI hilft beim Anpassen</p>
+            </div>
+            <div className="max-h-48 overflow-y-auto px-3 py-2 space-y-2 bg-white">
+              {chatMessages.length === 0 && (
+                <p className="text-xs text-gray-400 italic py-2">
+                  Beschreibe deine Schichten oder Änderungswünsche, z.&nbsp;B. &quot;Wir haben Früh-, Spät- und Nachtdienst von 6–14, 14–22 und 22–6 Uhr, je 2 Personen Minimum.&quot;
+                </p>
+              )}
+              {chatMessages.map((m, i) => (
+                <div key={i} className={`flex gap-1.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                    m.role === 'user' ? 'bg-navy text-white' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {m.content}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex gap-1.5 justify-start">
+                  <div className="bg-gray-100 rounded-xl px-3 py-2">
+                    <Loader2 size={12} className="animate-spin text-gray-400" />
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+            <div className="border-t border-gray-100 flex gap-2 px-3 py-2 bg-white">
+              <input
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleChatSend()}
+                placeholder="Schichten beschreiben oder ändern…"
+                className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20"
+              />
+              <button
+                onClick={handleChatSend}
+                disabled={chatLoading || !chatInput.trim()}
+                className="p-1.5 rounded-lg bg-navy text-white hover:bg-navy/90 disabled:opacity-40 transition-colors"
+              >
+                <Send size={13} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Neue Schicht Form */}
+        {showNewShift && (
+          <div className="mb-3 border border-dashed border-brand/30 rounded-xl bg-brand/5 p-3 space-y-2">
+            <p className="text-xs font-semibold text-brand">Neue Schicht</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={newShift.name}
+                onChange={e => setNewShift(p => ({ ...p, name: e.target.value }))}
+                placeholder="Name (z.B. Frühschicht)"
+                className="col-span-2 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20"
+              />
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-gray-500 w-8">Von</label>
+                <input type="time" value={newShift.startTime} onChange={e => setNewShift(p => ({ ...p, startTime: e.target.value }))}
+                  className="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-gray-500 w-8">Bis</label>
+                <input type="time" value={newShift.endTime} onChange={e => setNewShift(p => ({ ...p, endTime: e.target.value }))}
+                  className="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Users size={12} className="text-gray-400" />
+                <label className="text-xs text-gray-500">Min.</label>
+                <input type="number" min={1} max={50} value={newShift.minStaff} onChange={e => setNewShift(p => ({ ...p, minStaff: parseInt(e.target.value) || 1 }))}
+                  className="w-16 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-center focus:outline-none focus:ring-2 focus:ring-brand/20" />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" variant="ghost" onClick={() => setShowNewShift(false)} className="gap-1"><X size={12} />Abbrechen</Button>
+              <Button size="sm" onClick={handleAddShift} disabled={!newShift.name.trim() || addingShift} className="gap-1">
+                {addingShift ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                Hinzufügen
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {shifts.length === 0 && !showNewShift ? (
+          <p className="text-sm text-gray-400 italic">Noch keine Schichten angelegt.</p>
+        ) : (
           <div className="rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
             {shifts.map(s => {
-              const current = minEdits[s.id] ?? s.minStaff
-              const edited = current !== s.minStaff
+              const isEditing = editingShiftId === s.id
+              const isDeleting = deletingShiftId === s.id
+              if (isEditing) {
+                return (
+                  <div key={s.id} className="px-3 py-3 bg-brand/5 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        value={shiftEditDraft.name}
+                        onChange={e => setShiftEditDraft(p => ({ ...p, name: e.target.value }))}
+                        placeholder="Name"
+                        className="col-span-2 text-sm border border-brand/30 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20"
+                      />
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-gray-500 w-8">Von</label>
+                        <input type="time" value={shiftEditDraft.startTime} onChange={e => setShiftEditDraft(p => ({ ...p, startTime: e.target.value }))}
+                          className="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-gray-500 w-8">Bis</label>
+                        <input type="time" value={shiftEditDraft.endTime} onChange={e => setShiftEditDraft(p => ({ ...p, endTime: e.target.value }))}
+                          className="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Users size={12} className="text-gray-400" />
+                        <label className="text-xs text-gray-500">Min.</label>
+                        <input type="number" min={1} max={50} value={shiftEditDraft.minStaff} onChange={e => setShiftEditDraft(p => ({ ...p, minStaff: parseInt(e.target.value) || 1 }))}
+                          className="w-16 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-center focus:outline-none focus:ring-2 focus:ring-brand/20" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setEditingShiftId(null)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100">
+                        <X size={12} />Abbrechen
+                      </button>
+                      <button onClick={handleSaveShiftEdit} disabled={savingShift} className="flex items-center gap-1 text-xs text-white bg-navy rounded-lg px-3 py-1 hover:bg-navy/90 disabled:opacity-50">
+                        {savingShift ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                        Speichern
+                      </button>
+                    </div>
+                  </div>
+                )
+              }
               return (
-                <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
+                <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 group">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-navy truncate">{s.name}</p>
                     <p className="text-xs text-gray-400">{s.startTime} – {s.endTime}</p>
@@ -268,17 +561,32 @@ export default function AdminModelPage() {
                       type="number"
                       min={1}
                       max={50}
-                      value={current}
+                      value={minEdits[s.id] ?? s.minStaff}
                       onChange={e => setMinEdits(prev => ({ ...prev, [s.id]: Math.max(1, parseInt(e.target.value) || 1) }))}
-                      className={`w-14 text-center text-sm border rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors ${edited ? 'border-brand bg-brand/5 font-semibold text-brand' : 'border-gray-200 text-navy'}`}
+                      className={`w-14 text-center text-sm border rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors ${(minEdits[s.id] ?? s.minStaff) !== s.minStaff ? 'border-brand bg-brand/5 font-semibold text-brand' : 'border-gray-200 text-navy'}`}
                     />
+                    <button
+                      onClick={() => startEditShift(s)}
+                      className="p-1.5 rounded-lg text-gray-300 hover:text-navy hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Schicht bearbeiten"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteShift(s.id)}
+                      disabled={isDeleting}
+                      className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Schicht löschen"
+                    >
+                      {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                    </button>
                   </div>
                 </div>
               )
             })}
           </div>
-        </Card>
-      )}
+        )}
+      </Card>
 
       {/* Harte Regeln */}
       <Card padding="lg">
@@ -329,19 +637,12 @@ export default function AdminModelPage() {
             className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 placeholder:text-gray-300"
             disabled={addingRule}
           />
-          <Button
-            size="sm"
-            onClick={handleAddRule}
-            disabled={!ruleText.trim() || addingRule}
-            className="gap-1.5 flex-shrink-0"
-          >
+          <Button size="sm" onClick={handleAddRule} disabled={!ruleText.trim() || addingRule} className="gap-1.5 flex-shrink-0">
             {addingRule ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
             {addingRule ? 'KI...' : 'Hinzufügen'}
           </Button>
         </div>
-        <p className="text-xs text-gray-400 mt-1.5">
-          Die KI erkennt automatisch, ob es eine harte oder weiche Regel ist.
-        </p>
+        <p className="text-xs text-gray-400 mt-1.5">Die KI erkennt automatisch, ob es eine harte oder weiche Regel ist.</p>
       </Card>
     </div>
   )

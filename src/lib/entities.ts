@@ -93,8 +93,11 @@ export function toCustomer(row: any): Customer {
 /** customerId scopt auf den Mandanten des anfragenden Nutzers; undefined liefert
  * plattformweit ALLE Mitarbeiter und darf daher nur von der 'okun'-Rolle verwendet
  * werden (siehe requireRole-Aufrufer). */
-export async function listEmployees(customerId?: string): Promise<Employee[]> {
-  const rows = await prisma.employee.findMany({ where: customerId ? { customerId } : {} })
+export async function listEmployees(customerId?: string, locationId?: string): Promise<Employee[]> {
+  const where: Record<string, string> = {}
+  if (customerId) where.customerId = customerId
+  if (locationId) where.locationId = locationId
+  const rows = await prisma.employee.findMany({ where })
   return rows.map(toEmployee)
 }
 

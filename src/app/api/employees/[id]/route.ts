@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getEmployeeById, updateEmployee, deleteEmployee } from '@/lib/entities'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
 
@@ -18,6 +18,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
+
+  // Ownership-Check: Nicht-OKUN-Rollen dürfen nur eigene Mitarbeiter bearbeiten
+  if (session.role !== 'okun') {
+    const customerId = await resolveCustomerId(session)
+    const existing = await getEmployeeById(params.id)
+    if (!existing) return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
+    if (existing.customerId !== customerId) return NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 })
+  }
 
   const body = await req.json()
 
