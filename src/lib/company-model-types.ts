@@ -208,6 +208,14 @@ export interface PlanEintrag {
   startzeit?: string
   endzeit?: string
   hinweis?: string
+  // §66 assignment role within the shift (e.g. "Springer", "Gruppenleitung")
+  role?: string
+  // §67 how the assignment was created: 'solver' | 'manual' | 're-optimize' | 'frozen'
+  source?: 'solver' | 'manual' | 're-optimize' | 'frozen'
+  // §67 previous assignment that this entry replaced (for change minimization diff)
+  changedFrom?: { schichtId: string; datum: string }
+  // §68 natural-language explanation of why this employee was assigned here
+  whyAssigned?: string
 }
 
 export interface PlanDecision {
@@ -224,7 +232,26 @@ export interface GenerierterPlan {
     erstelltAm: string
     solver: string
     regelmodellVersion: string
+    solverSeed?: number
   }
+  // §68: per-day/employee explanations for unassigned slots
+  whyNotAssigned?: Array<{
+    mitarbeiterId: string
+    datum: string
+    grund: string
+  }>
+}
+
+// §13: PlanningSnapshot — immutable snapshot of a completed planning session
+export type PlanningSnapshot = {
+  sessionId: string
+  locationId: string
+  customerId: string
+  zeitraumVon: string
+  zeitraumBis: string
+  plan: GenerierterPlan
+  bewertung: PlanBewertung
+  createdAt: string
 }
 
 export type FreigabeEmpfehlung = 'freigeben' | 'optimieren' | 'ueberarbeiten'
@@ -255,6 +282,27 @@ export interface PlanBewertung {
   optimierungsVorschlaege: OptimierungsVorschlag[]
   freigabeEmpfehlung: FreigabeEmpfehlung
   zusammenfassung: string
+}
+
+// ─── §34 Legal Jurisdiction ───────────────────────────────────────────────────
+// Enum of supported legal jurisdictions for labor law compliance.
+// Configurable per location; determines which statutory defaults apply.
+
+export type LegalJurisdiction =
+  | 'DE_ARBZG'         // German Arbeitszeitgesetz (default)
+  | 'DE_BW'            // Baden-Württemberg (state-specific additions)
+  | 'DE_BAY'           // Bavaria
+  | 'DE_NRW'           // North Rhine-Westphalia
+  | 'AT_ARBZG'         // Austrian Arbeitszeitgesetz
+  | 'CH_OR'            // Swiss Code of Obligations
+  | 'CUSTOM'           // Customer-defined rules only
+
+export interface LegalPolicy {
+  jurisdiction: LegalJurisdiction
+  // Override individual statutory limits (leave null to use jurisdiction defaults)
+  maxWeeklyHoursOverride?: number    // e.g. 40 for company policy stricter than law
+  minRestHoursOverride?: number
+  maxConsecutiveDaysOverride?: number
 }
 
 // ─── Planning Policy ─────────────────────────────────────────────────────────

@@ -721,6 +721,7 @@ model PlanningSession {
   freigabeEmpfehlung String?
   bewertungSnap      Json?
   solverDiagnosis    String?
+  solverSeed         Int?
   iterationen        PlanningIteration[]
   createdAt          DateTime            @default(now())
   completedAt        DateTime?
@@ -1049,6 +1050,43 @@ model EmployeeRequest {
   @@index([employeeId])
   @@index([locationId])
   @@index([customerId])
+}
+
+// ── §31 ShiftDemand — configurable per-shift staffing targets ────────────────
+
+model ShiftDemand {
+  id         String   @id @default(cuid())
+  locationId String
+  shiftId    String
+  date       String?  // null = recurring rule
+  dayOfWeek  Int?     // 0=Sun…6=Sat; null = all days
+  minStaff   Int      @default(1)
+  maxStaff   Int?
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([locationId])
+}
+
+// ── §62 PlanChange — dispatcher learning: track manual plan edits ──────────────
+
+model PlanChange {
+  id         String   @id @default(cuid())
+  locationId String
+  customerId String
+  sessionId  String?  // planning session that generated the original plan
+  employeeId String
+  date       String
+  oldShiftId String?
+  newShiftId String?
+  changeType String   // assign | remove | swap
+  changedBy  String
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  @@index([locationId])
+  @@index([employeeId])
 }
 
 // ── Workflow Engine — Requirement Learning Queue ───────────────────────────────

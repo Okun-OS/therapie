@@ -20,6 +20,7 @@ import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName
 import { getPublicHolidayName } from '@/lib/holidays'
 import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, PlanningUnit, TaskBlock } from '@/lib/types'
 import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
+import type { PlanBewertung } from '@/lib/company-model-types'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Send, Sun, Moon, MoonStar, Briefcase,
   CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle, LayoutGrid, Users, Plus, Trash2,
@@ -97,7 +98,7 @@ const SOLVER_STEPS = [
   'Finalisiere Dienstplan...',
 ]
 
-type Tab = 'plan' | 'fairness' | 'wishes'
+type Tab = 'plan' | 'fairness' | 'wishes' | 'diagnose'
 
 export default function AdminSchedule() {
   const { user } = useAuth()
@@ -117,8 +118,8 @@ export default function AdminSchedule() {
   const [solverDecisions, setAiDecisions] = useState<{ type: string; message: string }[]>([])
   const [aiAssignmentReasons, setAiAssignmentReasons] = useState<Record<string, string>>({})
   const [planSessionId, setPlanSessionId] = useState<string | null>(null)
-  const [planBewertung, setPlanBewertung] = useState<Record<string, unknown> | null>(null)
-  const [planAlternativen, setPlanAlternativen] = useState<{ variante: string; week: Record<string, Record<string, ScheduleAssignment>>; bewertung: Record<string, unknown> }[] | null>(null)
+  const [planBewertung, setPlanBewertung] = useState<PlanBewertung | null>(null)
+  const [planAlternativen, setPlanAlternativen] = useState<{ variante: string; week: Record<string, Record<string, ScheduleAssignment>>; bewertung: PlanBewertung }[] | null>(null)
   const [selectedVariante, setSelectedVariante] = useState<string>('ausgewogen')
   const [explainEntry, setExplainEntry] = useState<{ employeeId: string; employeeName: string; shiftName: string; dateStr: string; reason: string | null; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null>(null)
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
@@ -561,9 +562,9 @@ export default function AdminSchedule() {
 
       // Store session id, bewertung and alternatives
       if (data.sessionId) setPlanSessionId(data.sessionId as string)
-      if (data.bewertung) setPlanBewertung(data.bewertung as Record<string, unknown>)
+      if (data.bewertung) setPlanBewertung(data.bewertung as PlanBewertung)
       if (data.alternativen) {
-        setPlanAlternativen(data.alternativen as { variante: string; week: Record<string, Record<string, ScheduleAssignment>>; bewertung: Record<string, unknown> }[])
+        setPlanAlternativen(data.alternativen as { variante: string; week: Record<string, Record<string, ScheduleAssignment>>; bewertung: PlanBewertung }[])
       }
 
       type NewDecision = { typ: string; beschreibung: string; betroffeneMitarbeiter?: string[]; betroffenesDatum?: string }
@@ -737,7 +738,7 @@ export default function AdminSchedule() {
     if (!generatedSchedule) return
 
     // §69: Block publish when plan has critical violations (unless forced)
-    const empfehlung = planBewertung?.freigabeEmpfehlung as string | undefined
+    const empfehlung = planBewertung?.freigabeEmpfehlung
     if (empfehlung === 'ueberarbeiten' && !forcePublish) {
       const confirmed = window.confirm(
         'Dieser Dienstplan enthält kritische Verletzungen. Die Freigabe-Empfehlung lautet: Überarbeiten.\n\nTrotzdem veröffentlichen?'
@@ -920,15 +921,16 @@ export default function AdminSchedule() {
             { key: 'plan', label: 'Dienstplan', badge: 0 },
             { key: 'fairness', label: 'Fairness', badge: unfairCount },
             { key: 'wishes', label: 'Wünsche', badge: pendingWishes },
+            ...(aiError || aiErrorCode ? [{ key: 'diagnose' as const, label: 'Diagnose', badge: 1 }] : []),
           ] as const).map(({ key, label, badge }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all ${tab === key ? 'bg-navy text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all ${tab === key ? 'bg-navy text-white' : key === 'diagnose' ? 'text-red-600 hover:bg-red-50' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               {label}
               {badge > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${tab === key ? 'bg-brand text-navy' : badge > 2 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'}`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${tab === key ? 'bg-brand text-navy' : key === 'diagnose' ? 'bg-red-100 text-red-600' : badge > 2 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'}`}>
                   {badge}
                 </span>
               )}
@@ -1199,9 +1201,9 @@ export default function AdminSchedule() {
                     <CheckCircle size={24} className="text-green-600 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="font-bold text-green-700">Dienstplan erstellt!</p>
-                      {planBewertung && (
+                      {planBewertung !== null && (
                         <p className="text-sm text-green-600">
-                          Gesamtscore: <span className="font-semibold">{Math.round((planBewertung.gesamtScore as number) ?? 0)}/100</span>
+                          Gesamtscore: <span className="font-semibold">{Math.round(planBewertung.gesamtScore ?? 0)}/100</span>
                           {' · '}
                           <span className={`font-semibold ${planBewertung.freigabeEmpfehlung === 'freigeben' ? 'text-green-700' : planBewertung.freigabeEmpfehlung === 'optimieren' ? 'text-amber-700' : 'text-red-700'}`}>
                             {planBewertung.freigabeEmpfehlung === 'freigeben' ? 'Freigabe empfohlen' : planBewertung.freigabeEmpfehlung === 'optimieren' ? 'Optimierung möglich' : 'Überarbeitung erforderlich'}
@@ -1215,23 +1217,38 @@ export default function AdminSchedule() {
                   </div>
 
                   {/* §37: Bewertung 5-category breakdown */}
-                  {Array.isArray(planBewertung?.kategorien) && (
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      {(planBewertung.kategorien as { name: string; score: number; maxScore: number; verletzungen?: { beschreibung: string; schwere: string }[] }[]).map(kat => (
-                        <div key={kat.name} className="bg-white rounded-xl p-2.5 border border-gray-100">
-                          <p className="text-[10px] text-gray-500 font-medium truncate">{kat.name}</p>
-                          <p className="text-lg font-bold text-navy">{Math.round(kat.score)}<span className="text-xs text-gray-400">/{kat.maxScore}</span></p>
-                          {kat.verletzungen && kat.verletzungen.length > 0 && (
-                            <div className="mt-1 space-y-0.5">
-                              {kat.verletzungen.slice(0, 2).map((v, i) => (
-                                <p key={i} className={`text-[9px] leading-tight ${v.schwere === 'hart' ? 'text-red-600 font-semibold' : 'text-amber-600'}`}>
-                                  {v.beschreibung}
-                                </p>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                  {planBewertung !== null && (
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                      {([
+                        { key: 'regelkonformitaet', label: 'Regelkonform.' },
+                        { key: 'abdeckung', label: 'Abdeckung' },
+                        { key: 'wunscherfuellung', label: 'Wünsche' },
+                        { key: 'fairness', label: 'Fairness' },
+                        { key: 'qualitaet', label: 'Qualität' },
+                      ] as const).map(({ key, label }) => {
+                        const score = Math.round(planBewertung.kategorien[key] ?? 0)
+                        const color = score >= 80 ? 'text-green-700' : score >= 60 ? 'text-amber-700' : 'text-red-700'
+                        return (
+                          <div key={key} className="bg-white rounded-xl p-2.5 border border-gray-100">
+                            <p className="text-[10px] text-gray-500 font-medium truncate">{label}</p>
+                            <p className={`text-lg font-bold ${color}`}>{score}<span className="text-xs text-gray-400">/100</span></p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {/* §37b: Violation summary */}
+                  {planBewertung !== null && planBewertung.verletzungen.length > 0 && (
+                    <div className="space-y-1">
+                      {planBewertung.verletzungen
+                        .filter(v => v.schwere === 'kritisch' || v.schwere === 'hoch')
+                        .slice(0, 3)
+                        .map((v, i) => (
+                          <div key={i} className={`flex items-start gap-2 text-xs px-2.5 py-1.5 rounded-lg ${v.schwere === 'kritisch' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
+                            <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />
+                            <span>{v.beschreibung}</span>
+                          </div>
+                        ))}
                     </div>
                   )}
 
@@ -1731,6 +1748,77 @@ export default function AdminSchedule() {
             </div>
           </div>
         )}
+
+        {/* ── §36 DIAGNOSE TAB ─────────────────────────────────── */}
+        {tab === 'diagnose' && (
+          <div className="space-y-4">
+            <Card>
+              <div className="flex items-start gap-3">
+                <AlertTriangle size={22} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold text-red-700 text-base">Planung fehlgeschlagen</p>
+                  {aiErrorCode && (
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">{aiErrorCode}</p>
+                  )}
+                  {aiError && (
+                    <p className="text-sm text-red-600 mt-2 leading-relaxed">{aiError}</p>
+                  )}
+                </div>
+              </div>
+            </Card>
+
+            {/* Mögliche Ursachen */}
+            <Card>
+              <p className="text-sm font-bold text-navy mb-3">Häufige Ursachen für &quot;Kein gültiger Plan&quot;</p>
+              <div className="space-y-2">
+                {[
+                  { icon: CalendarOff, title: 'Zu viele Abwesenheiten', desc: 'Alle oder fast alle Mitarbeiter haben für denselben Zeitraum Urlaub oder sind abwesend beantragt.' },
+                  { icon: Users, title: 'Zu wenige Mitarbeiter', desc: 'Die Mindestbesetzung aller Schichten kann mit den verfügbaren Mitarbeitern nicht erreicht werden.' },
+                  { icon: AlertTriangle, title: 'Zu strenge Regeln', desc: 'Die Kombination aus max. Wochenstunden, Ruhezeiten und Folgetage-Limit lässt keine gültige Zuteilung zu.' },
+                  { icon: Briefcase, title: 'Keine Schichten konfiguriert', desc: 'Für diesen Standort sind noch keine Dienste eingerichtet. Das Onboarding muss abgeschlossen werden.' },
+                ].map(({ icon: Icon, title, desc }) => (
+                  <div key={title} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                      <Icon size={14} className="text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-navy">{title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Lösungsvorschläge */}
+            <Card>
+              <p className="text-sm font-bold text-navy mb-3">Mögliche Lösungen</p>
+              <ol className="text-xs text-gray-600 space-y-2 list-decimal list-inside">
+                <li>Urlaubsanträge für den Zeitraum prüfen und ggf. ablehnen oder verschieben</li>
+                <li>Planungsregeln (Max. Wochenstunden, Ruhezeit) vorübergehend lockern</li>
+                <li>Einen kürzeren Planungszeitraum wählen</li>
+                <li>Mindestbesetzung der Schichten reduzieren</li>
+                <li>Weitere Mitarbeiter hinzufügen oder deren Verfügbarkeit anpassen</li>
+              </ol>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="border border-gray-200"
+                  onClick={() => { setTab('plan'); setAiError(null); setAiErrorCode(null) }}
+                >
+                  Zurück zum Plan
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => { setTab('plan'); setAiError(null); setAiErrorCode(null); setShowPlanPanel(true) }}
+                >
+                  Erneut versuchen
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Planungschat Modal */}
@@ -1910,6 +1998,25 @@ export default function AdminSchedule() {
                 {explainEntry.reason ?? 'Für diese Zuweisung liegt keine gespeicherte Planungsbegründung vor (z. B. weil sie manuell erstellt oder bearbeitet wurde).'}
               </p>
             </div>
+            {/* §39: show relevant violations for this employee/date from bewertung */}
+            {planBewertung !== null && (() => {
+              const relevant = planBewertung.verletzungen
+                .filter(v => v.betrifft?.includes(explainEntry.employeeId) || v.betrifft?.includes(explainEntry.dateStr))
+              if (relevant.length === 0) return null
+              return (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">Hinweise für diese Zuweisung</p>
+                  <div className="space-y-1.5">
+                    {relevant.map((v, i) => (
+                      <div key={i} className={`flex items-start gap-2 text-xs px-2.5 py-1.5 rounded-lg ${v.schwere === 'kritisch' ? 'bg-red-50 text-red-700' : v.schwere === 'hoch' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-600'}`}>
+                        <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" />
+                        <span>{v.beschreibung}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
             <div className="pt-1 border-t border-gray-100 flex justify-between items-center">
               <button
                 onClick={() => setManualPickerCell({ empId: explainEntry.employeeId, dateStr: explainEntry.dateStr })}

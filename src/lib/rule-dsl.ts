@@ -216,3 +216,80 @@ export function optimizationRules(ruleSet: CanonicalRuleSet): CanonicalRule[] {
 export function rulesByType(ruleSet: CanonicalRuleSet, type: RuleType): CanonicalRule[] {
   return ruleSet.rules.filter(r => r.type === type)
 }
+
+// ─── §29 Rule Explanation Generator ──────────────────────────────────────────
+// Produces a human-readable plain-German explanation for any CanonicalRule,
+// filling in parameter values where available.
+
+const RULE_TYPE_TEMPLATES: Record<RuleType, (params?: RuleParams) => string> = {
+  MIN_STAFFING: (p) => {
+    const pp = p as RuleParamsMinStaffing | undefined
+    return `Jede Schicht benötigt mindestens ${pp?.minCount ?? '?'} Mitarbeiter gleichzeitig.`
+  },
+  MAX_WEEKLY_HOURS: (p) => {
+    const pp = p as RuleParamsHours | undefined
+    return `Kein Mitarbeiter darf mehr als ${pp?.hours ?? 48} Stunden pro Woche arbeiten.`
+  },
+  MIN_REST_PERIOD: (p) => {
+    const pp = p as RuleParamsHours | undefined
+    return `Zwischen zwei Diensten muss eine Ruhezeit von mindestens ${pp?.hours ?? 11} Stunden liegen.`
+  },
+  MAX_CONSECUTIVE_DAYS: (p) => {
+    const pp = p as RuleParamsHours | undefined
+    return `Maximal ${pp?.hours ?? 6} Arbeitstage hintereinander ohne freien Tag.`
+  },
+  REQUIRED_SKILL: (p) => {
+    const pp = p as RuleParamsSkill | undefined
+    return `Die Schicht${pp?.shiftId ? ` „${pp.shiftId}"` : ''} erfordert die Qualifikation „${pp?.skill ?? '?'}".`
+  },
+  NO_WORK_ON_VACATION: () => 'Mitarbeiter dürfen an genehmigten Urlaubstagen nicht eingeplant werden.',
+  NO_WORK_ON_ABSENCE: () => 'Mitarbeiter dürfen bei genehmigter Abwesenheit nicht eingeplant werden.',
+  SHIFT_TYPE_ELIGIBLE: () => 'Mitarbeiter werden nur Schichttypen zugewiesen, für die sie freigegeben sind.',
+  MAX_WEEKLY_WORKING_DAYS: (p) => {
+    const pp = p as RuleParamsHours | undefined
+    return `Pro Kalenderwoche darf ein Mitarbeiter höchstens ${pp?.hours ?? 5} Tage arbeiten.`
+  },
+  WISH_FULFILLMENT: () => 'Dienstwünsche der Mitarbeiter werden, soweit möglich, berücksichtigt.',
+  WISH_FREE_DAY: () => 'Wunschfreie Tage werden, soweit möglich, eingehalten.',
+  WEEKEND_CAP: (p) => {
+    const pp = p as RuleParamsWeekendCap | undefined
+    return `Pro Monat darf ein Mitarbeiter höchstens ${pp?.maxPerMonth ?? 2} Wochenenddienste übernehmen.`
+  },
+  FAIR_NIGHT_SHIFTS: () => 'Nachtdienste werden gleichmäßig unter allen geeigneten Mitarbeitern verteilt.',
+  FAIR_LATE_SHIFTS: () => 'Spätdienste werden gleichmäßig unter allen geeigneten Mitarbeitern verteilt.',
+  FAIR_WEEKEND_SHIFTS: () => 'Wochenenddienste werden fair auf alle Mitarbeiter aufgeteilt.',
+  BALANCE_WORKLOAD: () => 'Die Gesamtarbeitszeit wird möglichst gleichmäßig auf alle Mitarbeiter verteilt.',
+  OVERTIME_REDUCE: () => 'Mitarbeiter mit Überstunden erhalten in diesem Zeitraum weniger Dienste.',
+  OVERTIME_COMPENSATE: () => 'Mitarbeiter mit Minusstunden erhalten in diesem Zeitraum mehr Dienste.',
+  MINIMIZE_UNDERSTAFFING: () => 'Unterbesetzte Schichten werden so weit wie möglich vermieden.',
+  MAXIMIZE_COVERAGE: () => 'Die Schichtabdeckung wird über das Mindestmaß hinaus maximiert.',
+  MINIMIZE_SPLIT_DAYS: () => 'Arbeitstage werden möglichst als zusammenhängende Blöcke geplant.',
+}
+
+/**
+ * Returns a plain-German one-sentence explanation for the given rule,
+ * filling in parameter values where available.
+ */
+export function explainRule(rule: CanonicalRule): string {
+  const template = RULE_TYPE_TEMPLATES[rule.type]
+  if (!template) return rule.description
+  const base = template(rule.params)
+  const sourceLabel =
+    rule.source === 'law' ? ' (Arbeitszeitgesetz)'
+    : rule.source === 'tariff' ? ' (Tarifvertrag)'
+    : rule.source === 'agreement' ? ' (Betriebsvereinbarung)'
+    : ''
+  return base + sourceLabel
+}
+
+/**
+ * Generates explanations for all rules in a rule set.
+ */
+export function explainRuleSet(ruleSet: CanonicalRuleSet): Array<{ id: string; type: RuleType; severity: RuleSeverity; explanation: string }> {
+  return ruleSet.rules.map(r => ({
+    id: r.id,
+    type: r.type,
+    severity: r.severity,
+    explanation: explainRule(r),
+  }))
+}

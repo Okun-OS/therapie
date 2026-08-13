@@ -91,6 +91,7 @@ export async function buildRuleModel(
     wishes,
     recentEntries,
     employeeRequests,
+    futureRequests,
   ] = await Promise.all([
     prisma.locationPlanningRules.findUnique({ where: { locationId } }),
     prisma.shift.findMany({ where: { locationId } }),
@@ -129,12 +130,25 @@ export async function buildRuleModel(
       where: {
         locationId,
         status: 'approved',
-        type: { in: ['vacation', 'absence', 'day_off_wish'] },
+        type: { in: ['vacation', 'absence', 'day_off_wish', 'shift_wish'] },
         OR: [
           ...arbeitstage.map(d => ({ date: d })),
           ...arbeitstage.map(d => ({ dateFrom: { lte: d }, dateTo: { gte: d } })),
         ],
       },
+    }),
+    // §15 rolling horizon: load next period's approved absences as future context
+    prisma.employeeRequest.findMany({
+      where: {
+        locationId,
+        status: 'approved',
+        type: { in: ['vacation', 'absence'] },
+        OR: [
+          { dateFrom: { gte: bis } },
+          { date: { gt: bis } },
+        ],
+      },
+      take: 50,
     }),
   ])
 
@@ -310,20 +324,50 @@ export async function buildRuleModel(
         }),
     ].filter(d => arbeitstage.includes(d))
 
-    const explicitWishes: PlanungsWunsch[] = wishes
-      .filter(w => w.employeeId === emp.id)
-      .map(w => {
-        const matchedShift = schichten.find(
-          s => s.name.toLowerCase() === (w.preferredShiftType ?? '').toLowerCase()
-            || s.id === w.preferredShiftType,
-        )
-        return {
-          datum: w.date,
-          schichtId: matchedShift?.id ?? w.preferredShiftType ?? '',
-          typ: (w.preferredShiftType === 'frei' ? 'wunschfrei' : 'wunsch') as 'wunsch' | 'wunschfrei',
-          prioritaet: w.importance === 'urgent' ? 1 : w.importance === 'important' ? 2 : 3,
-        }
-      })
+    // §20/§21: map importance to prioritaet (critical→1 / high→2 / normal→3)
+    const importanceToPrioraet = (imp: string): 1 | 2 | 3 =>
+      imp === 'critical' || imp === 'urgent' ? 1 : imp === 'high' || imp === 'important' ? 2 : 3
+
+    const explicitWishes: PlanungsWunsch[] = [
+      // WishSubmission single-date wishes
+      ...wishes
+        .filter(w => w.employeeId === emp.id)
+        .map(w => {
+          const matchedShift = schichten.find(
+            s => s.name.toLowerCase() === (w.preferredShiftType ?? '').toLowerCase()
+              || s.id === w.preferredShiftType,
+          )
+          return {
+            datum: w.date,
+            schichtId: matchedShift?.id ?? w.preferredShiftType ?? '',
+            typ: (w.preferredShiftType === 'frei' ? 'wunschfrei' : 'wunsch') as 'wunsch' | 'wunschfrei',
+            prioritaet: importanceToPrioraet(w.importance),
+          }
+        }),
+      // §19: EmployeeRequest shift_wish with date ranges → expand into per-day wishes
+      ...empReqs
+        .filter(r => r.type === 'shift_wish' && r.shiftId)
+        .flatMap(r => {
+          const daysToExpand: string[] = []
+          if (r.date) {
+            daysToExpand.push(r.date)
+          } else if (r.dateFrom && r.dateTo) {
+            const s = new Date(r.dateFrom)
+            const e = new Date(r.dateTo)
+            for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+              daysToExpand.push(d.toISOString().slice(0, 10))
+            }
+          }
+          return daysToExpand
+            .filter(d => arbeitstage.includes(d))
+            .map(d => ({
+              datum: d,
+              schichtId: r.shiftId!,
+              typ: 'wunsch' as const,
+              prioritaet: importanceToPrioraet(r.priority),
+            }))
+        }),
+    ]
 
     // Translate persistent shiftPreference into low-priority soft wishes (priority 3)
     // for each planning day, unless the employee already has an explicit wish that day.
@@ -409,6 +453,22 @@ export async function buildRuleModel(
     }
   })
 
+  // §15 rolling horizon: build future-context hint string for solver
+  const futureContextParts: string[] = []
+  if (futureRequests && futureRequests.length > 0) {
+    const empById = new Map(employees.map(e => [e.id, e.name]))
+    for (const r of futureRequests.slice(0, 10)) {
+      const empName = empById.get(r.employeeId) ?? r.employeeId
+      const from = r.dateFrom ?? r.date ?? '?'
+      const to = r.dateTo ?? r.date ?? from
+      futureContextParts.push(`${empName} ab ${from}${to !== from ? ` bis ${to}` : ''} ${r.type === 'vacation' ? 'Urlaub' : 'abwesend'}`)
+    }
+  }
+  const rollingHorizon = futureContextParts.length > 0
+    ? `Geplante Abwesenheiten nach diesem Zeitraum: ${futureContextParts.join('; ')}.`
+    : undefined
+  const effectiveKontext = [kontext, rollingHorizon].filter(Boolean).join(' ') || undefined
+
   return {
     sessionId,
     locationId,
@@ -420,7 +480,7 @@ export async function buildRuleModel(
     weicheRegeln,
     fairness,
     mitarbeiter,
-    kontext,
+    kontext: effectiveKontext,
     vorherigeBewertung,
     existingSchedule,
     frozenDates,

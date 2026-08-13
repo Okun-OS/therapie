@@ -4,6 +4,15 @@ import { solvePlan } from '@/lib/planning-solver'
 import { verifyPlan } from '@/lib/plan-verifier'
 import type { GenerierterPlan, PlanBewertung, FreigabeEmpfehlung, PlanVariante } from '@/lib/company-model-types'
 
+// §50: structured observability logging — one JSON line per planning run event
+function planLog(event: string, data: Record<string, unknown>) {
+  try {
+    console.info(JSON.stringify({ ts: new Date().toISOString(), event, ...data }))
+  } catch {
+    // never let logging break planning
+  }
+}
+
 export interface PlanningResult {
   sessionId: string
   finalPlan: GenerierterPlan
@@ -33,6 +42,7 @@ export async function runPlanningBackground(
   includeAlternativen?: boolean,
 ): Promise<void> {
   try {
+    planLog('planning.start', { sessionId, locationId, von, bis })
     await prisma.planningSession.update({ where: { id: sessionId }, data: { status: 'running' } })
 
     // ── Step 0: Auto-generate overtimeDecisions from PlanningPolicy + hoursBalance ──
@@ -105,6 +115,14 @@ export async function runPlanningBackground(
     const start = Date.now()
     let bewertung = verifyPlan(plan, ruleModel)
     const durationMs = Date.now() - start
+    planLog('planning.verify', {
+      sessionId,
+      durationMs,
+      gesamtScore: bewertung.gesamtScore,
+      freigabeEmpfehlung: bewertung.freigabeEmpfehlung,
+      verletzungen: bewertung.verletzungen.length,
+      critical: bewertung.verletzungen.filter(v => v.schwere === 'kritisch').length,
+    })
 
     // ── Step 4b: Apply PlanningPolicy score override ───────────────────────────
     const policy = await prisma.planningPolicy.findUnique({ where: { locationId } })
@@ -152,6 +170,8 @@ export async function runPlanningBackground(
       },
     })
 
+    const solverSeedValue = typeof plan.metadaten?.solverSeed === 'number' ? plan.metadaten.solverSeed : null
+
     await prisma.planningSession.update({
       where: { id: sessionId },
       data: {
@@ -161,11 +181,14 @@ export async function runPlanningBackground(
         freigabeEmpfehlung: bewertung.freigabeEmpfehlung,
         bewertungSnap: { bewertung, alternativen } as object,
         completedAt: new Date(),
+        ...(solverSeedValue !== null ? { solverSeed: solverSeedValue } : {}),
       },
     })
+    planLog('planning.complete', { sessionId, gesamtScore: bewertung.gesamtScore, solverSeed: solverSeedValue })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     const isInfeasible = message.toLowerCase().includes('infeasib') || message.toLowerCase().includes('kein gültiger plan')
+    planLog('planning.error', { sessionId, isInfeasible, message })
     await prisma.planningSession.update({
       where: { id: sessionId },
       data: {
@@ -314,6 +337,8 @@ export async function runPlanningSession(
       },
     })
 
+    const planSeedValue = typeof plan.metadaten?.solverSeed === 'number' ? plan.metadaten.solverSeed : null
+
     await prisma.planningSession.update({
       where: { id: session.id },
       data: {
@@ -323,6 +348,7 @@ export async function runPlanningSession(
         freigabeEmpfehlung: bewertung.freigabeEmpfehlung,
         bewertungSnap: { bewertung, alternativen } as object,
         completedAt: new Date(),
+        ...(planSeedValue !== null ? { solverSeed: planSeedValue } : {}),
       },
     })
 

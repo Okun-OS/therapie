@@ -319,7 +319,9 @@ def solve(rule_model: dict) -> dict:
             model.add(sum(X[e, di, si] for e in range(n_emp)) + shortage >= min_staff)
             cost.append(10_000 * shortage)
 
-    # C2: Unfulfilled shift wishes
+    # C2: Unfulfilled shift wishes (§20/§21: prioritaet → cost weight)
+    # prioritaet 1 (critical) → 4× base; 2 (high) → 2× base; 3 (normal) → 1× base
+    PRIO_MULT = {1: 4, 2: 2, 3: 1}
     for ei, emp in enumerate(employees):
         blocked = (
             set(emp.get("urlaubAn", []))
@@ -334,9 +336,12 @@ def solve(rule_model: dict) -> dict:
             di = day_idx.get(day)
             si = shift_idx.get(w.get("schichtId", ""))
             if di is not None and si is not None:
+                prio = int(w.get("prioritaet", 3))
+                mult = PRIO_MULT.get(prio, 1)
+                effective_weight = wish_weight * mult
                 not_assigned = model.new_bool_var(f"nowish_{ei}_{di}")
                 model.add(not_assigned == 1 - X[ei, di, si])
-                cost.append(wish_weight * not_assigned)
+                cost.append(effective_weight * not_assigned)
 
     # C3: Hours below weekly target (per employee per week)
     for ei, emp in enumerate(employees):
@@ -422,10 +427,16 @@ def solve(rule_model: dict) -> dict:
         model.minimize(sum(cost))
 
     # ── Solve ─────────────────────────────────────────────────────────────────
+    import random as _random
+    solver_seed = rule_model.get("solverSeed")  # §44: explicit seed for replay
+    if solver_seed is None:
+        solver_seed = _random.randint(0, 2**31 - 1)
+
     solver_inst = cp_model.CpSolver()
     solver_inst.parameters.max_time_in_seconds = 25.0
     solver_inst.parameters.num_workers = 4
     solver_inst.parameters.log_search_progress = False
+    solver_inst.parameters.random_seed = solver_seed
 
     log.info(
         "[solver] %d employees × %d shifts × %d days",
@@ -443,22 +454,67 @@ def solve(rule_model: dict) -> dict:
     # ── Extract solution ───────────────────────────────────────────────────────
     eintraege: list[dict] = []
     decisions: list[dict] = []
+    why_not_assigned: list[dict] = []  # §68
 
     if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        # Build wish lookup for per-assignment explanations (§68)
+        wish_lookup: dict[tuple[int, str], str] = {}  # (ei, day) → schichtId
+        for ei, emp in enumerate(employees):
+            for w in emp.get("wuensche", []):
+                if w.get("typ") == "wunsch":
+                    wish_lookup[(ei, w["datum"])] = w.get("schichtId", "")
+
         for ei, emp in enumerate(employees):
             unit_id = (emp.get("einheiten") or [None])[0]
+            blocked: set[str] = (
+                set(emp.get("urlaubAn", []))
+                | set(emp.get("nichtVerfuegbarAn", []))
+                | {w["datum"] for w in emp.get("wuensche", []) if w.get("typ") == "wunschfrei"}
+            )
             for di, day in enumerate(days):
-                for si, shift in enumerate(shifts):
+                assigned_si = None
+                for si in range(n_shifts):
                     if solver_inst.boolean_value(X[ei, di, si]):
-                        eintraege.append(
-                            {
-                                "mitarbeiterId": emp["id"],
-                                "datum": day,
-                                "schichtId": shift["id"],
-                                "einheitId": unit_id,
-                                "istVertretung": False,
-                            }
-                        )
+                        assigned_si = si
+                        break
+
+                if assigned_si is not None:
+                    shift = shifts[assigned_si]
+                    # §68: generate whyAssigned explanation
+                    why_parts: list[str] = []
+                    wished_shift_id = wish_lookup.get((ei, day))
+                    if wished_shift_id == shift["id"]:
+                        why_parts.append("Wunschdienst erfüllt")
+                    target_mins = int(emp.get("wochenstundenSoll", 40) * 60)
+                    if target_mins > 0:
+                        why_parts.append("Stundenziel")
+                    existing_shift = existing_lookup.get((emp["id"], day))
+                    if existing_shift == shift["id"]:
+                        why_parts.append("unveränderter Bestandsplan")
+                    elif existing_shift:
+                        why_parts.append("geänderter Bestandsplan")
+                    if not why_parts:
+                        why_parts.append("Mindestbesetzung")
+                    why_assigned = "; ".join(why_parts)
+
+                    eintraege.append(
+                        {
+                            "mitarbeiterId": emp["id"],
+                            "datum": day,
+                            "schichtId": shift["id"],
+                            "einheitId": unit_id,
+                            "istVertretung": False,
+                            "source": "solver",
+                            "whyAssigned": why_assigned,
+                        }
+                    )
+                elif day not in blocked:
+                    # §68: explain why not assigned on a work day
+                    why_not_assigned.append({
+                        "mitarbeiterId": emp["id"],
+                        "datum": day,
+                        "grund": "Kein Dienst zugewiesen (Stundenziel erreicht oder keine passende Schicht verfügbar)",
+                    })
 
         for di, day in enumerate(days):
             for si, shift in enumerate(shifts):
@@ -496,10 +552,12 @@ def solve(rule_model: dict) -> dict:
     return {
         "eintraege": eintraege,
         "decisions": decisions,
+        "whyNotAssigned": why_not_assigned,  # §68
         "metadaten": {
             "erstelltAm": datetime.utcnow().isoformat() + "Z",
             "solver": solver_tag,
             "regelmodellVersion": "1.0",
+            "solverSeed": solver_seed,  # §44
         },
     }
 

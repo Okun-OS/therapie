@@ -63,7 +63,9 @@ export default function EmployeeSchedule() {
   const [selectedEntry, setSelectedEntry] = useState<ScheduleEntry | null>(null)
   const [swapEntry, setSwapEntry] = useState<ScheduleEntry | null>(null)
   const [wishModal, setWishModal] = useState(false)
-  const [wish, setWish] = useState({ type: '', date: '', reason: '', importance: 'normal' })
+  const [wish, setWish] = useState({ type: '', date: '', dateFrom: '', dateTo: '', reason: '', importance: 'normal', mode: 'single' as 'single' | 'range' })
+  const [planningProfile, setPlanningProfile] = useState<{ shiftPreference: string } | null>(null)
+  const [prefSaving, setPrefSaving] = useState(false)
   const [calendarModal, setCalendarModal] = useState(false)
   const [calView, setCalView] = useState<CalView>('week')
   const [swaps, setSwaps] = useState<SwapRequest[]>([])
@@ -83,6 +85,11 @@ export default function EmployeeSchedule() {
     if (!user?.employeeId) return
     fetch(`/api/swap-requests?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setSwaps(d.requests))
     fetch(`/api/wish-submissions?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setMyWishes(d.wishes))
+    // §61: load persistent planning profile
+    fetch(`/api/employee-planning-profile?employeeId=${user.employeeId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.profile) setPlanningProfile({ shiftPreference: d.profile.shiftPreference ?? 'keine' }) })
+      .catch(() => {})
   }, [user?.employeeId])
 
   const employee = EMPLOYEES.find(e => e.id === user?.employeeId)
@@ -151,11 +158,41 @@ export default function EmployeeSchedule() {
   }
 
   const handleWishSubmit = async () => {
-    if (!wish.type || !wish.date) {
-      showToast('Bitte Diensttyp und Datum auswählen', 'error')
+    if (!wish.type) {
+      showToast('Bitte Diensttyp auswählen', 'error')
+      return
+    }
+    if (wish.mode === 'single' && !wish.date) {
+      showToast('Bitte Datum auswählen', 'error')
+      return
+    }
+    if (wish.mode === 'range' && (!wish.dateFrom || !wish.dateTo)) {
+      showToast('Bitte Zeitraum (Von – Bis) auswählen', 'error')
       return
     }
     if (!employee?.locationId) return
+
+    // §59: range wishes → EmployeeRequest with dateFrom/dateTo
+    if (wish.mode === 'range') {
+      await fetch('/api/employee-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: employee.id,
+          locationId: employee.locationId,
+          customerId: employee.customerId ?? '',
+          type: wish.type === 'free' || wish.type === 'no_early_after_late' ? 'day_off_wish' : 'shift_wish',
+          dateFrom: wish.dateFrom,
+          dateTo: wish.dateTo,
+          reason: wish.reason || undefined,
+          priority: wish.importance === 'urgent' ? 'critical' : wish.importance === 'important' ? 'high' : 'normal',
+        }),
+      })
+      showToast('Wunsch gespeichert', 'success')
+      setWishModal(false)
+      setWish({ type: '', date: '', dateFrom: '', dateTo: '', reason: '', importance: 'normal', mode: 'single' })
+      return
+    }
 
     const validShiftTypes: ShiftType[] = ['early', 'late', 'mid', 'frei']
     const preferredShiftType = wish.type === 'free' ? 'frei'
@@ -179,8 +216,24 @@ export default function EmployeeSchedule() {
 
     showToast('Wunsch gespeichert', 'success')
     setWishModal(false)
-    setWish({ type: '', date: '', reason: '', importance: 'normal' })
+    setWish({ type: '', date: '', dateFrom: '', dateTo: '', reason: '', importance: 'normal', mode: 'single' })
     setMyWishes(prev => [submission, ...prev])
+  }
+
+  const handleSavePref = async (shiftPreference: string) => {
+    if (!user?.employeeId || prefSaving) return
+    setPrefSaving(true)
+    try {
+      await fetch('/api/employee-planning-profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: user.employeeId, shiftPreference }),
+      })
+      setPlanningProfile(p => p ? { ...p, shiftPreference } : { shiftPreference })
+      showToast('Präferenz gespeichert', 'success')
+    } finally {
+      setPrefSaving(false)
+    }
   }
 
   const handleAcceptSwap = async (id: string) => {
@@ -588,6 +641,32 @@ export default function EmployeeSchedule() {
 
         {/* ── WISHES TAB ───────────────────────────────────────── */}
         {tab === 'wishes' && (
+          <>
+          {/* §61: Persistent shift preference */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Dauerhafte Schichtpräferenz</CardTitle>
+            </CardHeader>
+            <p className="text-xs text-gray-500 mb-3">Diese Präferenz gilt für alle zukünftigen Planungsläufe als weicher Wunsch (Priorität: niedrig).</p>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { value: 'keine', label: 'Keine' },
+                { value: 'frueh', label: 'Frühdienst' },
+                { value: 'spaet', label: 'Spätdienst' },
+                { value: 'nacht', label: 'Nachtdienst' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleSavePref(opt.value)}
+                  disabled={prefSaving}
+                  className={`py-2.5 rounded-xl text-xs font-semibold border-2 transition-all ${(planningProfile?.shiftPreference ?? 'keine') === opt.value ? 'bg-navy text-white border-navy' : 'border-gray-100 text-gray-500 hover:bg-gray-50'}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Dienstwünsche</CardTitle>
@@ -679,6 +758,7 @@ export default function EmployeeSchedule() {
               )}
             </div>
           </Card>
+          </>
         )}
       </div>
 
@@ -824,6 +904,21 @@ export default function EmployeeSchedule() {
       {/* ── Wish Modal ────────────────────────────────────────── */}
       <Modal open={wishModal} onClose={() => setWishModal(false)} title="Dienstwunsch abgeben">
         <div className="space-y-4">
+          {/* §59: single-date vs date-range toggle */}
+          <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+            <button
+              onClick={() => setWish(w => ({ ...w, mode: 'single' }))}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${wish.mode === 'single' ? 'bg-white text-navy shadow-sm' : 'text-gray-500'}`}
+            >
+              Einzelner Tag
+            </button>
+            <button
+              onClick={() => setWish(w => ({ ...w, mode: 'range' }))}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${wish.mode === 'range' ? 'bg-white text-navy shadow-sm' : 'text-gray-500'}`}
+            >
+              Zeitraum
+            </button>
+          </div>
           <Select
             label="Gewünschter Dienst"
             value={wish.type}
@@ -836,12 +931,29 @@ export default function EmployeeSchedule() {
             <option value="free">Freier Tag</option>
             <option value="no_early_after_late">Kein Frühdienst nach Spätdienst</option>
           </Select>
-          <Input
-            label="Datum"
-            type="date"
-            value={wish.date}
-            onChange={e => setWish(w => ({ ...w, date: e.target.value }))}
-          />
+          {wish.mode === 'single' ? (
+            <Input
+              label="Datum"
+              type="date"
+              value={wish.date}
+              onChange={e => setWish(w => ({ ...w, date: e.target.value }))}
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Von"
+                type="date"
+                value={wish.dateFrom}
+                onChange={e => setWish(w => ({ ...w, dateFrom: e.target.value }))}
+              />
+              <Input
+                label="Bis"
+                type="date"
+                value={wish.dateTo}
+                onChange={e => setWish(w => ({ ...w, dateTo: e.target.value }))}
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-semibold text-navy mb-1.5">Priorität</label>
             <div className="grid grid-cols-3 gap-2">
@@ -875,7 +987,13 @@ export default function EmployeeSchedule() {
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setWishModal(false)}>Abbrechen</Button>
-            <Button className="flex-1" onClick={handleWishSubmit} disabled={!wish.type || !wish.date}>Absenden</Button>
+            <Button
+              className="flex-1"
+              onClick={handleWishSubmit}
+              disabled={!wish.type || (wish.mode === 'single' ? !wish.date : !wish.dateFrom || !wish.dateTo)}
+            >
+              Absenden
+            </Button>
           </div>
         </div>
       </Modal>
