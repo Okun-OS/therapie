@@ -55,6 +55,7 @@ export interface SchichtDefinition {
   uebernacht: boolean
   minBesetzungGesamt: number
   aufgaben: string[]
+  erforderlicheQualifikationen?: string[]
 }
 
 export interface PausenRegelung {

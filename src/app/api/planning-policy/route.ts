@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
       defaultOvertimeHandling: 'normal',
       minAutoApproveScore: 80,
       failFastOnInfeasible: true,
+      requestDeadline: null,
     })
   }
 
@@ -44,11 +45,13 @@ export async function PUT(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { locationId, defaultOvertimeHandling, minAutoApproveScore, failFastOnInfeasible } = body
+  const { locationId, defaultOvertimeHandling, minAutoApproveScore, failFastOnInfeasible, requestDeadline } = body
 
   if (!locationId) {
     return NextResponse.json({ error: 'locationId fehlt' }, { status: 400 })
   }
+
+  const deadlineDate = requestDeadline ? new Date(requestDeadline) : undefined
 
   const policy = await prisma.planningPolicy.upsert({
     where: { locationId },
@@ -58,11 +61,13 @@ export async function PUT(req: NextRequest) {
       defaultOvertimeHandling: defaultOvertimeHandling ?? 'normal',
       minAutoApproveScore: minAutoApproveScore ?? 80,
       failFastOnInfeasible: failFastOnInfeasible ?? true,
+      requestDeadline: deadlineDate ?? null,
     },
     update: {
       ...(defaultOvertimeHandling !== undefined && { defaultOvertimeHandling }),
       ...(minAutoApproveScore !== undefined && { minAutoApproveScore }),
       ...(failFastOnInfeasible !== undefined && { failFastOnInfeasible }),
+      ...(requestDeadline !== undefined && { requestDeadline: deadlineDate ?? null }),
     },
   })
 

@@ -409,17 +409,18 @@ model Bereich {
 // echte Nutzung der Anwendung ("keine Demo-Daten mehr").
 
 model Shift {
-  id         String   @id @default(cuid())
-  name       String
-  type       String
-  startTime  String
-  endTime    String
-  color      String
-  bgColor    String
-  minStaff   Int      @default(1)
-  locationId String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  name                   String
+  type                   String
+  startTime              String
+  endTime                String
+  color                  String
+  bgColor                String
+  minStaff               Int      @default(1)
+  locationId             String
+  requiredQualifications String[] @default([])
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }
 
 model ScheduleEntry {
@@ -998,15 +999,17 @@ model AdminAuditLog {
 // One record per location; upserted by PUT /api/planning-policy.
 
 model PlanningPolicy {
-  locationId              String   @id
+  locationId              String    @id
   customerId              String
   // How to treat employees with excess hours before the planning run
-  defaultOvertimeHandling String   @default("normal")  // reduce | normal | compensate
+  defaultOvertimeHandling String    @default("normal")  // reduce | normal | compensate
   // Minimum quality score required for automatic approval (0–100)
-  minAutoApproveScore     Float    @default(80)
+  minAutoApproveScore     Float     @default(80)
   // Abort the run immediately when the solver reports INFEASIBLE (vs. partial plan)
-  failFastOnInfeasible    Boolean  @default(true)
-  updatedAt               DateTime @updatedAt
+  failFastOnInfeasible    Boolean   @default(true)
+  // Deadline by which employees must submit their wishes; after this the scheduler locks input
+  requestDeadline         DateTime?
+  updatedAt               DateTime  @updatedAt
 
   @@index([customerId])
 }

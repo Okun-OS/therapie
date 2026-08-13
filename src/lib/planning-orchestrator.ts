@@ -32,10 +32,36 @@ export async function runPlanningSession(
   })
 
   try {
+    // ── Step 0: Auto-generate overtimeDecisions from PlanningPolicy + hoursBalance ──
+    // When no manual overtimeDecisions are passed, use the location's defaultOvertimeHandling
+    // from PlanningPolicy together with each employee's current hoursBalance to decide
+    // whether to reduce, compensate, or use normal target hours for this planning run.
+    let effectiveOvertimeDecisions = overtimeDecisions
+    if (!effectiveOvertimeDecisions) {
+      const policy = await prisma.planningPolicy.findUnique({ where: { locationId } })
+      const defaultMode = (policy?.defaultOvertimeHandling ?? 'normal') as 'reduce' | 'normal' | 'compensate'
+      if (defaultMode !== 'normal') {
+        const employees = await prisma.employee.findMany({
+          where: { locationId, active: true },
+          select: { id: true, hoursBalance: true },
+        })
+        effectiveOvertimeDecisions = Object.fromEntries(
+          employees
+            .filter(e => {
+              // Only auto-apply when the sign matches the policy direction
+              if (defaultMode === 'reduce') return e.hoursBalance > 0        // has surplus → reduce
+              if (defaultMode === 'compensate') return e.hoursBalance < 0   // has deficit → compensate
+              return false
+            })
+            .map(e => [e.id, defaultMode]),
+        )
+      }
+    }
+
     // ── Step 1: Build rule model from DB ────────────────────────────────────────
     const ruleModel = await buildRuleModel(
       locationId, customerId, von, bis,
-      session.id, kontext, undefined, overtimeDecisions,
+      session.id, kontext, undefined, effectiveOvertimeDecisions,
     )
     await prisma.planningSession.update({
       where: { id: session.id },

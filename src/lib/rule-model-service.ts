@@ -170,6 +170,7 @@ export async function buildRuleModel(
       uebernacht: s.endTime < s.startTime,
       minBesetzungGesamt: s.minStaff,
       aufgaben: [],
+      erforderlicheQualifikationen: s.requiredQualifications ?? [],
     }))
   } else if ((standort?.schichtmodell.schichten ?? []).length > 0) {
     schichten = standort!.schichtmodell.schichten

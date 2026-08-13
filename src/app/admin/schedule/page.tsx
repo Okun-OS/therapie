@@ -111,10 +111,10 @@ export default function AdminSchedule() {
   const [aiRunning, setAiRunning] = useState(false)
   const [aiStep, setAiStep] = useState(0)
   const [aiDone, setAiDone] = useState(false)
-  const [useFairnessAI, setUseFairnessAI] = useState(true)
+  const [useFairnessOpt, setUseFairnessAI] = useState(true)
   const [generatedSchedule, setGeneratedSchedule] = useState<Record<string, Record<string, ScheduleAssignment>> | null>(null)
   const [aiReasoning, setAiReasoning] = useState<string | null>(null)
-  const [aiDecisions, setAiDecisions] = useState<{ type: string; message: string }[]>([])
+  const [solverDecisions, setAiDecisions] = useState<{ type: string; message: string }[]>([])
   const [aiAssignmentReasons, setAiAssignmentReasons] = useState<Record<string, string>>({})
   const [explainEntry, setExplainEntry] = useState<{ employeeId: string; employeeName: string; shiftName: string; dateStr: string; reason: string | null; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null>(null)
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
@@ -1108,9 +1108,9 @@ export default function AdminSchedule() {
                     <label className="flex items-center gap-2 cursor-pointer">
                       <div
                         onClick={() => setUseFairnessAI(v => !v)}
-                        className={`relative w-10 h-5 rounded-full transition-colors ${useFairnessAI ? 'bg-brand' : 'bg-gray-300'}`}
+                        className={`relative w-10 h-5 rounded-full transition-colors ${useFairnessOpt ? 'bg-brand' : 'bg-gray-300'}`}
                       >
-                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${useFairnessAI ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${useFairnessOpt ? 'translate-x-5' : 'translate-x-0.5'}`} />
                       </div>
                       <span className="text-xs font-medium text-gray-600 flex items-center gap-1">
                         <Scale size={12} className="text-purple-500" />
@@ -1449,18 +1449,18 @@ export default function AdminSchedule() {
             )}
 
             {/* AI Reasoning Panel */}
-            {aiDone && (aiReasoning || aiDecisions.length > 0 || aiWarnings.length > 0) && (
+            {aiDone && (aiReasoning || solverDecisions.length > 0 || aiWarnings.length > 0) && (
               <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-purple-600" />
-                  <p className="text-sm font-bold text-purple-800">KI-Begründung</p>
+                  <p className="text-sm font-bold text-purple-800">Planungsbegründung</p>
                 </div>
                 {aiReasoning && (
                   <p className="text-sm text-purple-700">{aiReasoning}</p>
                 )}
-                {aiDecisions.length > 0 && (
+                {solverDecisions.length > 0 && (
                   <div className="space-y-1.5">
-                    {aiDecisions.map((d, i) => (
+                    {solverDecisions.map((d, i) => (
                       <div key={i} className={`flex items-start gap-2 px-3 py-2 rounded-xl text-xs ${d.type === 'conflict' ? 'bg-red-50 text-red-700' : d.type === 'warning' ? 'bg-amber-50 text-amber-700' : 'bg-white text-gray-700'}`}>
                         {d.type === 'conflict' && <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />}
                         {d.type === 'warning' && <Info size={12} className="flex-shrink-0 mt-0.5" />}
@@ -1765,9 +1765,9 @@ export default function AdminSchedule() {
                 <span className="text-sm text-gray-700">Fairness-Engine</span>
                 <div
                   onClick={() => setUseFairnessAI(v => !v)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${useFairnessAI ? 'bg-brand' : 'bg-gray-300'}`}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${useFairnessOpt ? 'bg-brand' : 'bg-gray-300'}`}
                 >
-                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${useFairnessAI ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${useFairnessOpt ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </div>
               </label>
             </div>
@@ -1817,9 +1817,9 @@ export default function AdminSchedule() {
               </div>
             )}
             <div>
-              <p className="text-xs font-semibold text-gray-500 mb-1">KI-Begründung</p>
+              <p className="text-xs font-semibold text-gray-500 mb-1">Planungsbegründung</p>
               <p className="text-sm text-gray-600 leading-relaxed">
-                {explainEntry.reason ?? 'Für diese Zuweisung liegt keine gespeicherte KI-Begründung vor (z. B. weil sie manuell erstellt oder bearbeitet wurde).'}
+                {explainEntry.reason ?? 'Für diese Zuweisung liegt keine gespeicherte Planungsbegründung vor (z. B. weil sie manuell erstellt oder bearbeitet wurde).'}
               </p>
             </div>
             <div className="pt-1 border-t border-gray-100 flex justify-between items-center">

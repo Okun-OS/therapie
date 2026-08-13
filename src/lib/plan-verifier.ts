@@ -162,6 +162,25 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
     }
   }
 
+  // Qualification check — employee must have all qualifications the shift requires
+  for (const e of plan.eintraege) {
+    const schicht = schichten.find(s => s.id === e.schichtId)
+    const emp = mitarbeiter.find(m => m.id === e.mitarbeiterId)
+    if (!schicht || !emp) continue
+    const required = schicht.erforderlicheQualifikationen ?? []
+    if (required.length === 0) continue
+    const empQuals = new Set(emp.qualifikationen ?? [])
+    const missing = required.filter(q => !empQuals.has(q))
+    if (missing.length > 0) {
+      verletzungen.push({
+        schwere: 'kritisch',
+        regelId: 'hr-qualifikation',
+        beschreibung: `${emp.name} fehlt Qualifikation für Schicht „${schicht.name}" am ${e.datum}: ${missing.join(', ')}`,
+        betrifft: [emp.id, e.schichtId, e.datum],
+      })
+    }
+  }
+
   // Staffing coverage
   const byDayShift = new Map<string, number>()
   for (const e of plan.eintraege) {
@@ -221,7 +240,28 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
   const regelkonformitaet = Math.max(0, 100 - criticalCount * 30 - highCount * 10)
   const abdeckung = totalSlots > 0 ? Math.round((1 - understaffedSlots / totalSlots) * 100) : 100
   const wunscherfuellung  = wishCount > 0 ? Math.round(wishesMet / wishCount * 100) : 100
-  const fairness = 80 // CP-SAT's objective already optimises fairness; we trust it
+
+  // Deterministic fairness: measure weekend-shift range and night/late-shift range across employees
+  const fairness = (() => {
+    if (mitarbeiter.length < 2) return 100
+    const weekendCounts = mitarbeiter.map(emp => {
+      const entries = byEmp.get(emp.id) ?? []
+      return entries.filter(e => { const d = new Date(e.datum).getDay(); return d === 0 || d === 6 }).length
+    })
+    const nightShiftIds = new Set(schichten.filter(s => s.typ === 'nacht').map(s => s.id))
+    const latShiftIds   = new Set(schichten.filter(s => s.typ === 'spaet').map(s => s.id))
+    const nightCounts = mitarbeiter.map(emp => (byEmp.get(emp.id) ?? []).filter(e => nightShiftIds.has(e.schichtId)).length)
+    const lateCounts  = mitarbeiter.map(emp => (byEmp.get(emp.id) ?? []).filter(e => latShiftIds.has(e.schichtId)).length)
+    const range = (arr: number[]) => arr.length < 2 ? 0 : Math.max(...arr) - Math.min(...arr)
+    const weRange    = range(weekendCounts)
+    const nightRange = range(nightCounts)
+    const lateRange  = range(lateCounts)
+    const totalPlanDays = mitarbeiter.reduce((s, emp) => s + (byEmp.get(emp.id) ?? []).length, 0)
+    const avgPerEmp = totalPlanDays / mitarbeiter.length || 1
+    const penalty = (weRange * 20 + nightRange * 15 + lateRange * 10) / avgPerEmp
+    return Math.max(0, Math.min(100, Math.round(100 - penalty)))
+  })()
+
   const qualitaet = Math.round((regelkonformitaet + abdeckung + wunscherfuellung) / 3)
   const gesamtScore = Math.round(
     regelkonformitaet * 0.4 + abdeckung * 0.3 + wunscherfuellung * 0.15 + fairness * 0.15,

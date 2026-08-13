@@ -151,6 +151,18 @@ def solve(rule_model: dict) -> dict:
     for emp in employees:
         emp_streaks.append(_streak_before_period(emp, days[0]) if days else 0)
 
+    # ── Existing schedule (for change minimization + freeze) ─────────────────
+    # existing_schedule: list of {mitarbeiterId, datum, schichtId}
+    # frozen_dates: set of "YYYY-MM-DD" strings whose assignments are locked
+    existing_entries: list[dict] = rule_model.get("existingSchedule") or []
+    frozen_dates: set[str] = set(rule_model.get("frozenDates") or [])
+    # Build lookup: (empId, date) → shiftId
+    existing_lookup: dict[tuple[str, str], str] = {
+        (e["mitarbeiterId"], e["datum"]): e["schichtId"]
+        for e in existing_entries
+        if e.get("mitarbeiterId") and e.get("datum") and e.get("schichtId")
+    }
+
     # ── CP-SAT model ─────────────────────────────────────────────────────────
     model = cp_model.CpModel()
 
@@ -185,6 +197,32 @@ def solve(rule_model: dict) -> dict:
                 for si, shift in enumerate(shifts):
                     if shift.get("typ") not in avail_types:
                         model.add(X[ei, di, si] == 0)
+
+    # H8: Qualification requirements — employee must possess all required qualifications
+    for si, shift in enumerate(shifts):
+        required_quals: list[str] = shift.get("erforderlicheQualifikationen") or []
+        if not required_quals:
+            continue
+        for ei, emp in enumerate(employees):
+            emp_quals: set[str] = set(emp.get("qualifikationen") or [])
+            if not all(q in emp_quals for q in required_quals):
+                # Employee lacks at least one required qualification → block all days
+                for di in range(n_days):
+                    model.add(X[ei, di, si] == 0)
+
+    # H9: Frozen dates — lock existing assignments on frozen days
+    for ei, emp in enumerate(employees):
+        for di, day in enumerate(days):
+            if day not in frozen_dates:
+                continue
+            existing_shift_id = existing_lookup.get((emp["id"], day))
+            if existing_shift_id and existing_shift_id in shift_idx:
+                # Force this exact assignment
+                si = shift_idx[existing_shift_id]
+                model.add(X[ei, di, si] == 1)
+            else:
+                # Employee had no assignment on this frozen day → keep them free
+                model.add(sum(X[ei, di, s] for s in range(n_shifts)) == 0)
 
     # H3: Legal max weekly hours
     for ei in range(n_emp):
@@ -351,6 +389,22 @@ def solve(rule_model: dict) -> dict:
                 penalty = 3 * load
                 for di in range(n_days):
                     cost.append(penalty * X[ei, di, si])
+
+    # C8: Change minimization — penalise deviations from the existing schedule
+    # Only applies on non-frozen days (frozen days are already hard-locked by H9).
+    if existing_lookup:
+        emp_id_idx: dict[str, int] = {emp["id"]: ei for ei, emp in enumerate(employees)}
+        for (emp_id, day), old_shift_id in existing_lookup.items():
+            if day not in day_idx or day in frozen_dates:
+                continue
+            ei = emp_id_idx.get(emp_id)
+            si = shift_idx.get(old_shift_id)
+            if ei is None or si is None:
+                continue
+            di = day_idx[day]
+            changed = model.new_bool_var(f"chg_{ei}_{di}")
+            model.add(changed == 1 - X[ei, di, si])
+            cost.append(200 * changed)  # 200 per changed assignment
 
     if cost:
         model.minimize(sum(cost))
