@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { getOrGenerateLocationModel } from '@/lib/company-model-service'
-import { runPlanningSession } from '@/lib/planning-orchestrator'
+import { runPlanningSession, runPlanningBackground } from '@/lib/planning-orchestrator'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(req: NextRequest) {
@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const body = await req.json()
-  const { locationId, von, bis, kontext, overtimeDecisions } = body
+  const { locationId, von, bis, kontext, overtimeDecisions, async: asyncMode, includeAlternativen } = body
 
   if (!locationId || !von || !bis) {
     return NextResponse.json({ error: 'locationId, von und bis sind erforderlich' }, { status: 400 })
@@ -29,14 +29,39 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Generate/refresh the per-location model in the background (used by future calls for richer rule data)
+  // Generate/refresh the per-location model in the background
   getOrGenerateLocationModel(locationId, customerId).catch(err =>
     console.error('[solve-schedule] LocationModel generation failed:', err)
   )
 
+  // ── Async mode: return sessionId immediately, run planning in background ──────
+  if (asyncMode) {
+    const planSession = await prisma.planningSession.create({
+      data: {
+        locationId,
+        customerId,
+        zeitraumVon: von,
+        zeitraumBis: bis,
+        status: 'queued',
+        ruleModelSnap: {},
+      },
+    })
+
+    void runPlanningBackground(
+      planSession.id, locationId, customerId, von, bis,
+      kontext, overtimeDecisions, includeAlternativen,
+    )
+
+    return NextResponse.json({ sessionId: planSession.id, status: 'queued' })
+  }
+
+  // ── Synchronous mode: run planning and return full results ───────────────────
   let result
   try {
-    result = await runPlanningSession(locationId, customerId, von, bis, kontext, overtimeDecisions)
+    result = await runPlanningSession(
+      locationId, customerId, von, bis,
+      kontext, overtimeDecisions, includeAlternativen,
+    )
   } catch (err) {
     console.error('[solve-schedule] Planning session failed:', err)
     const message = err instanceof Error ? err.message : 'Unbekannter Planungsfehler'
@@ -63,6 +88,24 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Build alternativenWeek maps
+  const alternativen = result.alternativen?.map(alt => {
+    const altWeek: typeof week = {}
+    for (const eintrag of alt.plan.eintraege) {
+      if (!altWeek[eintrag.mitarbeiterId]) altWeek[eintrag.mitarbeiterId] = {}
+      const shift = shiftMap.get(eintrag.schichtId)
+      altWeek[eintrag.mitarbeiterId][eintrag.datum] = {
+        shiftId: eintrag.schichtId,
+        note: eintrag.hinweis ?? shift?.name,
+        status: 'planned',
+        gruppe: eintrag.einheitId,
+        funktion: eintrag.funktion,
+        isSubstitution: eintrag.istVertretung,
+      }
+    }
+    return { variante: alt.variante, week: altWeek, bewertung: alt.bewertung }
+  })
+
   return NextResponse.json({
     week,
     decisions: result.finalPlan.decisions,
@@ -70,5 +113,6 @@ export async function POST(req: NextRequest) {
     sessionId: result.sessionId,
     iterationen: result.iterationen,
     gesamtScore: result.gesamtScore,
+    alternativen,
   })
 }

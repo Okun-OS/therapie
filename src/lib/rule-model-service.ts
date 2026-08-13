@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { getLocationModel } from '@/lib/company-model-service'
+import { compileRuleSet } from '@/lib/rule-compiler'
+import type { CanonicalRule, CanonicalRuleSet } from '@/lib/rule-dsl'
 import type {
   PlanningRuleModel,
   PlanungsMitarbeiter,
@@ -66,6 +68,8 @@ export async function buildRuleModel(
   kontext?: string,
   vorherigeBewertung?: string,
   overtimeDecisions?: Record<string, 'reduce' | 'normal' | 'compensate'>,
+  existingSchedule?: Array<{ mitarbeiterId: string; datum: string; schichtId: string }>,
+  frozenDates?: string[],
 ): Promise<PlanningRuleModel> {
   // Fetch the per-location model to resolve which days to plan.
   // Falls back gracefully to defaults when no LocationModel has been generated yet.
@@ -178,37 +182,44 @@ export async function buildRuleModel(
 
   // Hard rules: use stored rules from the location model only when they are
   // non-empty — an empty array silently disables all constraints, so fall back
-  // to the DB PlanningRules (or statutory defaults) in that case.
+  // to the Rule Compiler with DB-derived values (or statutory defaults).
   const storedHarteRegeln = standort?.planungsRegeln?.hart ?? []
-  const harteRegeln: HarteRegel[] = storedHarteRegeln.length > 0 ? storedHarteRegeln : [
-    {
-      id: 'hr-maxwochenstunden',
-      kategorie: 'arbeitszeit',
-      beschreibung: `Maximal ${planningRules?.maxWeeklyHours ?? 40} Stunden pro Woche`,
-      typ: 'max_wochenstunden',
-      wert: planningRules?.maxWeeklyHours ?? 40,
-      einheit: 'stunden',
-      quelle: 'gesetz',
-    },
-    {
-      id: 'hr-ruhezeit',
-      kategorie: 'ruhezeit',
-      beschreibung: `Mindestens ${planningRules?.restHours ?? 11} Stunden Ruhezeit zwischen Diensten`,
-      typ: 'min_ruhezeit',
-      wert: planningRules?.restHours ?? 11,
-      einheit: 'stunden',
-      quelle: 'gesetz',
-    },
-    {
-      id: 'hr-maxfolgetage',
-      kategorie: 'folgetag',
-      beschreibung: `Maximal ${planningRules?.maxConsecutiveDays ?? 5} aufeinanderfolgende Arbeitstage`,
-      typ: 'max_folgetage',
-      wert: planningRules?.maxConsecutiveDays ?? 5,
-      einheit: 'tage',
-      quelle: 'gesetz',
-    },
-  ]
+  let harteRegeln: HarteRegel[]
+  if (storedHarteRegeln.length > 0) {
+    harteRegeln = storedHarteRegeln
+  } else {
+    const canonicalFallback: CanonicalRuleSet = {
+      locationId,
+      rules: [
+        {
+          id: 'hr-maxwochenstunden',
+          type: 'MAX_WEEKLY_HOURS',
+          severity: 'HARD',
+          description: `Maximal ${planningRules?.maxWeeklyHours ?? 40} Stunden pro Woche`,
+          params: { hours: planningRules?.maxWeeklyHours ?? 40 },
+          source: 'law',
+        } satisfies CanonicalRule,
+        {
+          id: 'hr-ruhezeit',
+          type: 'MIN_REST_PERIOD',
+          severity: 'HARD',
+          description: `Mindestens ${planningRules?.restHours ?? 11} Stunden Ruhezeit zwischen Diensten`,
+          params: { hours: planningRules?.restHours ?? 11 },
+          source: 'law',
+        } satisfies CanonicalRule,
+        {
+          id: 'hr-maxfolgetage',
+          type: 'MAX_CONSECUTIVE_DAYS',
+          severity: 'HARD',
+          description: `Maximal ${planningRules?.maxConsecutiveDays ?? 5} aufeinanderfolgende Arbeitstage`,
+          params: { hours: planningRules?.maxConsecutiveDays ?? 5 },
+          source: 'law',
+        } satisfies CanonicalRule,
+      ],
+    }
+    const { hart: compiledHart } = compileRuleSet(canonicalFallback)
+    harteRegeln = compiledHart
+  }
 
   const weicheRegeln: WeicheRegel[] = standort?.planungsRegeln.weich ?? [
     {
@@ -411,5 +422,7 @@ export async function buildRuleModel(
     mitarbeiter,
     kontext,
     vorherigeBewertung,
+    existingSchedule,
+    frozenDates,
   }
 }

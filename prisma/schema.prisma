@@ -709,18 +709,21 @@ model LocationRuleModelRecord {
 }
 
 model PlanningSession {
-  id            String              @id @default(cuid())
-  locationId    String
-  customerId    String
-  zeitraumVon   String
-  zeitraumBis   String
-  status        String              @default("pending")
-  ruleModelSnap Json
-  finalPlan     Json?
-  finalScore    Float?
-  iterationen   PlanningIteration[]
-  createdAt     DateTime            @default(now())
-  completedAt   DateTime?
+  id                 String              @id @default(cuid())
+  locationId         String
+  customerId         String
+  zeitraumVon        String
+  zeitraumBis        String
+  status             String              @default("pending")
+  ruleModelSnap      Json
+  finalPlan          Json?
+  finalScore         Float?
+  freigabeEmpfehlung String?
+  bewertungSnap      Json?
+  solverDiagnosis    String?
+  iterationen        PlanningIteration[]
+  createdAt          DateTime            @default(now())
+  completedAt        DateTime?
 }
 
 model PlanningIteration {

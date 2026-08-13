@@ -258,3 +258,112 @@ describe('Dynamic fairness score', () => {
     expect(unbalanced.kategorien.fairness).toBeLessThan(100)
   })
 })
+
+// ─── Scenario 1: 3+ employees, 7 days, valid plan — no critical violations ─────
+
+describe('Scenario 1 — Valid plan with multiple employees', () => {
+  it('produces no critical violations for a straightforward 3-employee 7-day plan', () => {
+    const frueh = mkSchicht('frueh')
+    const emp1 = mkEmp('emp1')
+    const emp2 = mkEmp('emp2')
+    const emp3 = mkEmp('emp3')
+    const model = mkModel([emp1, emp2, emp3], [frueh], WEEK)
+    // Each employee works 5 days out of 7 — no rest violations, no overtime
+    const plan = mkPlan([
+      ...['2024-01-08', '2024-01-09', '2024-01-10', '2024-01-11', '2024-01-12'].map(d => mkEntry('emp1', d, 'frueh')),
+      ...['2024-01-08', '2024-01-09', '2024-01-10', '2024-01-11', '2024-01-12'].map(d => mkEntry('emp2', d, 'frueh')),
+      ...['2024-01-08', '2024-01-09', '2024-01-10', '2024-01-11', '2024-01-12'].map(d => mkEntry('emp3', d, 'frueh')),
+    ])
+    const result = verifyPlan(plan, model)
+    const critical = result.verletzungen.filter(v => v.schwere === 'kritisch')
+    expect(critical).toHaveLength(0)
+    expect(['freigeben', 'optimieren']).toContain(result.freigabeEmpfehlung)
+  })
+
+  it('plan is staffed — coverage score is 100 when every day has assigned employees', () => {
+    const frueh = mkSchicht('frueh', '06:00', '14:00', { minBesetzung: 1 })
+    const emp1 = mkEmp('emp1')
+    const model = mkModel([emp1], [frueh], WEEK.slice(0, 5))
+    const plan = mkPlan(WEEK.slice(0, 5).map(d => mkEntry('emp1', d, 'frueh')))
+    const result = verifyPlan(plan, model)
+    expect(result.kategorien.abdeckung).toBe(100)
+  })
+})
+
+// ─── Scenario 4: Two employees want same weekend off — fairness considered ─────
+
+describe('Scenario 4 — Conflicting weekend-off wishes', () => {
+  it('when both want the same weekend off, one unfulfilled wish is recorded but no critical violation', () => {
+    const frueh = mkSchicht('frueh')
+    const saturday = '2024-01-13'
+    const emp1 = mkEmp('emp1', {
+      wuensche: [{ datum: saturday, schichtId: '', typ: 'wunschfrei', prioritaet: 2 }],
+    })
+    const emp2 = mkEmp('emp2', {
+      wuensche: [{ datum: saturday, schichtId: '', typ: 'wunschfrei', prioritaet: 2 }],
+    })
+    const model = mkModel([emp1, emp2], [frueh], WEEK)
+    // One employee must cover Saturday — emp2 is assigned
+    const plan = mkPlan([
+      ...['2024-01-08', '2024-01-09', '2024-01-10', '2024-01-11', '2024-01-12'].map(d => mkEntry('emp1', d, 'frueh')),
+      ...['2024-01-08', '2024-01-09', '2024-01-10', '2024-01-11', '2024-01-12', saturday].map(d => mkEntry('emp2', d, 'frueh')),
+    ])
+    const result = verifyPlan(plan, model)
+    const critViolations = result.verletzungen.filter(v => v.schwere === 'kritisch')
+    expect(critViolations).toHaveLength(0)
+    // At least one wunschfrei violation for the employee who had to work Saturday
+    expect(result.verletzungen.some(v => v.regelId === 'wr-wunschfrei')).toBe(true)
+    const wunschViol = result.verletzungen.filter(v => v.regelId === 'wr-wunschfrei')
+    // Only one employee's wish was violated (emp2 was assigned, emp1 got the day off)
+    expect(wunschViol).toHaveLength(1)
+  })
+})
+
+// ─── Scenario 6: Streak tracking via letzteSchichten ─────────────────────────
+
+describe('Scenario 6 — Consecutive-day streak from letzteSchichten', () => {
+  it('detects max-consecutive-days violation when letzteSchichten seeds a streak that extends into the plan', () => {
+    const frueh = mkSchicht('frueh')
+    // Employee worked 4 days right before the planning period (2024-01-04 to 2024-01-07)
+    const emp = mkEmp('emp1', {
+      letzteSchichten: [
+        { datum: '2024-01-04', schichtId: 'frueh' },
+        { datum: '2024-01-05', schichtId: 'frueh' },
+        { datum: '2024-01-06', schichtId: 'frueh' },
+        { datum: '2024-01-07', schichtId: 'frueh' },
+      ],
+    })
+    const model = mkModel([emp], [frueh], WEEK, [
+      ...LEGAL_RULES.map(r => r.typ === 'max_folgetage' ? { ...r, wert: 5 } : r),
+    ])
+    // Assign emp the first 2 days of the period → total streak = 4 + 2 = 6 > 5
+    const plan = mkPlan([
+      mkEntry('emp1', '2024-01-08', 'frueh'),
+      mkEntry('emp1', '2024-01-09', 'frueh'),
+    ])
+    const result = verifyPlan(plan, model)
+    expect(result.verletzungen.some(v => v.regelId === 'hr-maxfolgetage')).toBe(true)
+  })
+
+  it('no streak violation when letzteSchichten is short enough', () => {
+    const frueh = mkSchicht('frueh')
+    // Only 2 prior consecutive days
+    const emp = mkEmp('emp1', {
+      letzteSchichten: [
+        { datum: '2024-01-06', schichtId: 'frueh' },
+        { datum: '2024-01-07', schichtId: 'frueh' },
+      ],
+    })
+    const model = mkModel([emp], [frueh], WEEK, [
+      ...LEGAL_RULES.map(r => r.typ === 'max_folgetage' ? { ...r, wert: 5 } : r),
+    ])
+    // 2 prior + 3 in period = 5 total — exactly at the limit
+    const plan = mkPlan([
+      mkEntry('emp1', '2024-01-08', 'frueh'),
+      mkEntry('emp1', '2024-01-09', 'frueh'),
+      mkEntry('emp1', '2024-01-10', 'frueh'),
+    ])
+    const result = verifyPlan(plan, model)
+    expect(result.verletzungen.some(v => v.regelId === 'hr-maxfolgetage')).toBe(false)
+  })
+})

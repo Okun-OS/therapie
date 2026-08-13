@@ -141,8 +141,27 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
       }
     }
 
-    // Max consecutive days
-    let consec = 1
+    // Max consecutive days — seed from letzteSchichten if available
+    const historicDates = new Set((emp.letzteSchichten ?? []).map(ls => ls.datum))
+    const firstPlanDay = entries[0]?.datum
+    let consecSeed = 0
+    if (firstPlanDay) {
+      let check = new Date(firstPlanDay)
+      check.setDate(check.getDate() - 1)
+      while (historicDates.has(check.toISOString().slice(0, 10)) && consecSeed < 60) {
+        consecSeed++
+        check.setDate(check.getDate() - 1)
+      }
+    }
+    let consec = 1 + consecSeed
+    if (entries.length > 0 && consecSeed > 0 && consec > maxConsecDays) {
+      verletzungen.push({
+        schwere: 'hoch',
+        regelId: 'hr-maxfolgetage',
+        beschreibung: `${emp.name}: ${consec} aufeinanderfolgende Arbeitstage inkl. Vorzeitraum (max. ${maxConsecDays})`,
+        betrifft: [emp.id],
+      })
+    }
     for (let i = 1; i < entries.length; i++) {
       const prev = new Date(entries[i - 1].datum)
       const curr = new Date(entries[i].datum)

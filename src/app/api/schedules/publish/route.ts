@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { notifyEmployee } from '@/lib/notify'
 import { requireRole } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
 
 interface PublishRequest {
   locationName: string
   periodLabel: string
   assignments: Record<string, Record<string, string>>
+  sessionId?: string      // optional — enables publishing gate check
+  forcePublish?: boolean  // allow admin override when freigabeEmpfehlung === 'ueberarbeiten'
 }
 
 export async function POST(req: NextRequest) {
@@ -19,9 +22,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
 
-  const { locationName, periodLabel, assignments } = body
+  const { locationName, periodLabel, assignments, sessionId, forcePublish } = body
   if (!assignments || typeof assignments !== 'object') {
     return NextResponse.json({ error: 'assignments sind erforderlich' }, { status: 400 })
+  }
+
+  // ── Publishing gate: block plans with critical violations unless forced ────────
+  if (sessionId && !forcePublish) {
+    const planningSession = await prisma.planningSession.findUnique({
+      where: { id: sessionId },
+      select: { freigabeEmpfehlung: true, solverDiagnosis: true },
+    })
+    if (planningSession?.freigabeEmpfehlung === 'ueberarbeiten') {
+      return NextResponse.json(
+        {
+          error: 'Dieser Dienstplan enthält kritische Verletzungen und kann nicht veröffentlicht werden. Bitte den Plan überarbeiten oder die Freigabe erzwingen.',
+          code: 'CRITICAL_VIOLATIONS',
+          freigabeEmpfehlung: 'ueberarbeiten',
+        },
+        { status: 422 },
+      )
+    }
   }
 
   const employeeIds = Object.keys(assignments)

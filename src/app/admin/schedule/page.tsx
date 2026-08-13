@@ -88,12 +88,12 @@ function calcShiftHours(startTime: string, endTime: string, breakThresholdMinute
   if (mins >= breakThresholdMinutes) mins -= breakDeductionMinutes
   return Math.round(mins * 10 / 60) / 10
 }
-const AI_STEPS = [
-  'Analysiere Verfügbarkeiten...',
-  'Berechne Fairness-Scores...',
-  'Löse Wunsch-Konflikte auf...',
-  'Optimiere Dienstverteilung...',
-  'Prüfe Ruhezeiten & Regeln...',
+const SOLVER_STEPS = [
+  'Lade Mitarbeiter & Schichten...',
+  'Baue Regelmodell auf...',
+  'Starte CP-SAT Solver...',
+  'Optimiere Zuweisung...',
+  'Prüfe Constraints & Verletzungen...',
   'Finalisiere Dienstplan...',
 ]
 
@@ -116,6 +116,10 @@ export default function AdminSchedule() {
   const [aiReasoning, setAiReasoning] = useState<string | null>(null)
   const [solverDecisions, setAiDecisions] = useState<{ type: string; message: string }[]>([])
   const [aiAssignmentReasons, setAiAssignmentReasons] = useState<Record<string, string>>({})
+  const [planSessionId, setPlanSessionId] = useState<string | null>(null)
+  const [planBewertung, setPlanBewertung] = useState<Record<string, unknown> | null>(null)
+  const [planAlternativen, setPlanAlternativen] = useState<{ variante: string; week: Record<string, Record<string, ScheduleAssignment>>; bewertung: Record<string, unknown> }[] | null>(null)
+  const [selectedVariante, setSelectedVariante] = useState<string>('ausgewogen')
   const [explainEntry, setExplainEntry] = useState<{ employeeId: string; employeeName: string; shiftName: string; dateStr: string; reason: string | null; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null>(null)
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
   const [fallback, setFallback] = useState<{ date: string; shiftId: string; message: string } | null>(null)
@@ -508,13 +512,17 @@ export default function AdminSchedule() {
     setAiWarnings([])
     setFallback(null)
     setFallbackHandled(false)
+    setPlanSessionId(null)
+    setPlanBewertung(null)
+    setPlanAlternativen(null)
+    setSelectedVariante('ausgewogen')
     const effectiveKontext = kontextOverride !== undefined ? kontextOverride : lastUsedKontext
     const effectiveDecisions = decisionsOverride !== undefined ? decisionsOverride : lastOvertimeDecisions
 
     // Animate progress steps while waiting for the real API
     let step = 0
     const interval = setInterval(() => {
-      step = Math.min(step + 1, AI_STEPS.length - 2) // stop one before last
+      step = Math.min(step + 1, SOLVER_STEPS.length - 2) // stop one before last
       setAiStep(step)
     }, 900)
 
@@ -542,7 +550,7 @@ export default function AdminSchedule() {
       const data: Record<string, unknown> = await newRes.json()
 
       clearInterval(interval)
-      setAiStep(AI_STEPS.length - 1)
+      setAiStep(SOLVER_STEPS.length - 1)
 
       const transposed: Record<string, Record<string, ScheduleAssignment>> = {}
       for (const [empId, dates] of Object.entries(data.week as Record<string, Record<string, ScheduleAssignment>> ?? {})) {
@@ -550,6 +558,13 @@ export default function AdminSchedule() {
       }
 
       setGeneratedSchedule(transposed)
+
+      // Store session id, bewertung and alternatives
+      if (data.sessionId) setPlanSessionId(data.sessionId as string)
+      if (data.bewertung) setPlanBewertung(data.bewertung as Record<string, unknown>)
+      if (data.alternativen) {
+        setPlanAlternativen(data.alternativen as { variante: string; week: Record<string, Record<string, ScheduleAssignment>>; bewertung: Record<string, unknown> }[])
+      }
 
       type NewDecision = { typ: string; beschreibung: string; betroffeneMitarbeiter?: string[]; betroffenesDatum?: string }
       type OldDecision = { type: string; message: string; employeeId?: string; date?: string }
@@ -718,8 +733,19 @@ export default function AdminSchedule() {
     return dates
   }
 
-  const handleSaveSchedule = async () => {
+  const handleSaveSchedule = async (forcePublish = false) => {
     if (!generatedSchedule) return
+
+    // §69: Block publish when plan has critical violations (unless forced)
+    const empfehlung = planBewertung?.freigabeEmpfehlung as string | undefined
+    if (empfehlung === 'ueberarbeiten' && !forcePublish) {
+      const confirmed = window.confirm(
+        'Dieser Dienstplan enthält kritische Verletzungen. Die Freigabe-Empfehlung lautet: Überarbeiten.\n\nTrotzdem veröffentlichen?'
+      )
+      if (!confirmed) return
+      return handleSaveSchedule(true)
+    }
+
     await fetch('/api/schedule-entries/save-week', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -744,6 +770,8 @@ export default function AdminSchedule() {
           locationName: location?.name ?? 'deinem Standort',
           periodLabel: `${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`,
           assignments: generatedSchedule,
+          sessionId: planSessionId ?? undefined,
+          forcePublish: forcePublish || undefined,
         }),
       })
     } catch {
@@ -1022,7 +1050,7 @@ export default function AdminSchedule() {
                     <Button variant="ghost" size="sm" onClick={handleSaveDraft} className="gap-1 border border-gray-200">
                       <Save size={14} /> Entwurf
                     </Button>
-                    <Button variant="success" size="sm" onClick={handleSaveSchedule} className="gap-1">
+                    <Button variant="success" size="sm" onClick={() => handleSaveSchedule()} className="gap-1">
                       <Send size={14} />{saved && !isDraft ? 'Veröffentlicht!' : 'Veröffentlichen'}
                     </Button>
                   </div>
@@ -1128,9 +1156,9 @@ export default function AdminSchedule() {
               ) : aiRunning ? (
                 <div className="text-center py-2">
                   <Loader size={28} className="mx-auto text-purple-600 animate-spin mb-3" />
-                  <p className="text-sm font-semibold text-purple-700">{AI_STEPS[Math.min(aiStep, AI_STEPS.length - 1)]}</p>
+                  <p className="text-sm font-semibold text-purple-700">{SOLVER_STEPS[Math.min(aiStep, SOLVER_STEPS.length - 1)]}</p>
                   <div className="flex justify-center gap-1 mt-3">
-                    {AI_STEPS.map((_, i) => (
+                    {SOLVER_STEPS.map((_, i) => (
                       <div key={i} className={`h-1.5 rounded-full transition-all ${i <= aiStep ? 'w-8 bg-purple-500' : 'w-3 bg-purple-200'}`} />
                     ))}
                   </div>
@@ -1165,17 +1193,77 @@ export default function AdminSchedule() {
                   </div>
                 )
               ) : (
-                <div className="flex items-center gap-3">
-                  <CheckCircle size={24} className="text-green-600 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-bold text-green-700">KI-Dienstplan erstellt!</p>
-                    <p className="text-sm text-green-600">
-                      Fairness-optimiert · Wünsche berücksichtigt · Schulden ausgeglichen.
-                    </p>
+                <div className="space-y-3">
+                  {/* Header row */}
+                  <div className="flex items-center gap-3">
+                    <CheckCircle size={24} className="text-green-600 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-bold text-green-700">Dienstplan erstellt!</p>
+                      {planBewertung && (
+                        <p className="text-sm text-green-600">
+                          Gesamtscore: <span className="font-semibold">{Math.round((planBewertung.gesamtScore as number) ?? 0)}/100</span>
+                          {' · '}
+                          <span className={`font-semibold ${planBewertung.freigabeEmpfehlung === 'freigeben' ? 'text-green-700' : planBewertung.freigabeEmpfehlung === 'optimieren' ? 'text-amber-700' : 'text-red-700'}`}>
+                            {planBewertung.freigabeEmpfehlung === 'freigeben' ? 'Freigabe empfohlen' : planBewertung.freigabeEmpfehlung === 'optimieren' ? 'Optimierung möglich' : 'Überarbeitung erforderlich'}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setFallback(null); setFallbackHandled(false); setSaved(false); setPlanBewertung(null); setPlanAlternativen(null); setPlanSessionId(null) }} className="text-gray-500">
+                      Zurück
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setFallback(null); setFallbackHandled(false); setSaved(false) }} className="text-gray-500">
-                    Zurück
-                  </Button>
+
+                  {/* §37: Bewertung 5-category breakdown */}
+                  {Array.isArray(planBewertung?.kategorien) && (
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      {(planBewertung.kategorien as { name: string; score: number; maxScore: number; verletzungen?: { beschreibung: string; schwere: string }[] }[]).map(kat => (
+                        <div key={kat.name} className="bg-white rounded-xl p-2.5 border border-gray-100">
+                          <p className="text-[10px] text-gray-500 font-medium truncate">{kat.name}</p>
+                          <p className="text-lg font-bold text-navy">{Math.round(kat.score)}<span className="text-xs text-gray-400">/{kat.maxScore}</span></p>
+                          {kat.verletzungen && kat.verletzungen.length > 0 && (
+                            <div className="mt-1 space-y-0.5">
+                              {kat.verletzungen.slice(0, 2).map((v, i) => (
+                                <p key={i} className={`text-[9px] leading-tight ${v.schwere === 'hart' ? 'text-red-600 font-semibold' : 'text-amber-600'}`}>
+                                  {v.beschreibung}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* §63: Plan alternatives picker */}
+                  {planAlternativen && planAlternativen.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1.5">Plan-Variante wählen:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { key: 'ausgewogen', label: 'Ausgewogen', week: generatedSchedule },
+                          ...planAlternativen.map(a => ({ key: a.variante, label: a.variante === 'mitarbeiterfreundlich' ? 'Mitarbeiterfreundlich' : 'Maximal fair', week: a.week, bewertung: a.bewertung })),
+                        ].map(opt => (
+                          <button
+                            key={opt.key}
+                            onClick={() => {
+                              if (opt.week) {
+                                setGeneratedSchedule(opt.week as Record<string, Record<string, ScheduleAssignment>>)
+                                setSelectedVariante(opt.key)
+                                const alt = planAlternativen.find(a => a.variante === opt.key)
+                                if (alt) setPlanBewertung(alt.bewertung)
+                              } else {
+                                setSelectedVariante('ausgewogen')
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${selectedVariante === opt.key ? 'bg-navy text-white border-navy' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

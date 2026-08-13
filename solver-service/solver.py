@@ -103,6 +103,18 @@ def solve(rule_model: dict) -> dict:
     hard_rules: list[dict] = rule_model.get("harteRegeln", [])
     fairness: dict         = rule_model.get("fairness", {})
 
+    # Plan variant cost-weight modifiers
+    plan_variante = rule_model.get("planVariante", "ausgewogen")
+    if plan_variante == "mitarbeiterfreundlich":
+        wish_weight = 1000   # doubled: prioritise employee wishes
+        fairness_mult = 0.5  # halved: relax fairness pressure
+    elif plan_variante == "maximal_fair":
+        wish_weight = 250    # halved: individual wishes matter less
+        fairness_mult = 2.0  # doubled: enforce tight fairness
+    else:  # "ausgewogen" (default)
+        wish_weight = 500
+        fairness_mult = 1.0
+
     def _rule(typ: str, default: float) -> float:
         return next(
             (r.get("wert", default) for r in hard_rules if r.get("typ") == typ),
@@ -324,7 +336,7 @@ def solve(rule_model: dict) -> dict:
             if di is not None and si is not None:
                 not_assigned = model.new_bool_var(f"nowish_{ei}_{di}")
                 model.add(not_assigned == 1 - X[ei, di, si])
-                cost.append(500 * not_assigned)
+                cost.append(wish_weight * not_assigned)
 
     # C3: Hours below weekly target (per employee per week)
     for ei, emp in enumerate(employees):
@@ -362,7 +374,7 @@ def solve(rule_model: dict) -> dict:
             model.add(min_we <= we)
         we_range = model.new_int_var(0, len(weekend_indices), "we_range")
         model.add(we_range == max_we - min_we)
-        cost.append(300 * we_range)
+        cost.append(int(300 * fairness_mult) * we_range)
 
     # C6: Night / late shift fairness
     for typ_name in ("nacht", "spaet"):
@@ -377,7 +389,7 @@ def solve(rule_model: dict) -> dict:
             model.add(min_t <= cnt)
         t_range = model.new_int_var(0, n_days, f"range_{typ_name}")
         model.add(t_range == max_t - min_t)
-        cost.append(150 * t_range)
+        cost.append(int(150 * fairness_mult) * t_range)
 
     # C7: Belastungshistorie — reduce burden on already-loaded employees
     for ei, emp in enumerate(employees):
