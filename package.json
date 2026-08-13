@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "prisma migrate deploy; next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -28,7 +30,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20",
+    "@types/node": "^20.19.43",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/web-push": "^3.6.4",
@@ -37,6 +39,7 @@
     "eslint-config-next": "14.2.35",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }
