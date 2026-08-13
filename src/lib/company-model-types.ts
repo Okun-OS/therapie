@@ -250,3 +250,45 @@ export interface PlanBewertung {
   freigabeEmpfehlung: FreigabeEmpfehlung
   zusammenfassung: string
 }
+
+// ─── Planning Policy ─────────────────────────────────────────────────────────
+// Human-readable admin configuration that governs how the solver is run.
+
+export interface PlanningPolicy {
+  locationId: string
+  // How to handle employees with excess hours before the planning run
+  defaultOvertimeHandling: 'reduce' | 'normal' | 'compensate'
+  // Minimum acceptable quality score for auto-approval
+  minAutoApproveScore: number
+  // Whether to skip planning when staffing is provably infeasible
+  failFastOnInfeasible: boolean
+  updatedAt: string
+}
+
+// ─── Employee Requests ────────────────────────────────────────────────────────
+// Structured employee requests that the solver considers.
+
+export type EmployeeRequestType =
+  | 'shift_wish'        // wants a specific shift
+  | 'day_off_wish'      // wants a day off (wunschfrei)
+  | 'vacation'          // approved vacation (hard block)
+  | 'absence'           // approved absence (hard block)
+  | 'overtime_reduce'   // wants fewer hours this period
+  | 'overtime_compensate' // wants more hours this period
+
+export type EmployeeRequestStatus = 'pending' | 'approved' | 'rejected' | 'expired'
+export type EmployeeRequestPriority = 'low' | 'normal' | 'high' | 'critical'
+
+export interface EmployeeRequest {
+  id: string
+  employeeId: string
+  type: EmployeeRequestType
+  status: EmployeeRequestStatus
+  priority: EmployeeRequestPriority
+  date?: string            // for day-specific requests
+  dateRange?: { from: string; to: string }
+  shiftId?: string         // for shift_wish
+  reason?: string
+  submittedAt: string
+  respondedAt?: string
+}

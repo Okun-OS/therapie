@@ -410,13 +410,13 @@ def solve(rule_model: dict) -> dict:
                         }
                     )
     else:
+        diagnosis = _diagnose_infeasibility(
+            employees, shifts, days, max_consec_days, min_rest_hours, max_weekly_hours,
+        )
         decisions.append(
             {
-                "typ": "solver_fehler",
-                "beschreibung": (
-                    f"CP-SAT Status: {status_name}. Kein zulässiger Plan gefunden. "
-                    "Bitte Verfügbarkeiten, Stundenlimits und Ruhezeiten prüfen."
-                ),
+                "typ": "infeasible",
+                "beschreibung": diagnosis,
             }
         )
 
@@ -436,6 +436,80 @@ def solve(rule_model: dict) -> dict:
             "regelmodellVersion": "1.0",
         },
     }
+
+
+def _diagnose_infeasibility(
+    employees: list[dict],
+    shifts: list[dict],
+    days: list[str],
+    max_consec_days: int,
+    min_rest_hours: float,
+    max_weekly_hours: float,
+) -> str:
+    """
+    Heuristic diagnosis of why CP-SAT could not find a feasible plan.
+    Checks the most common root causes in order of likelihood.
+    """
+    total_required_per_day = sum(max(1, s.get("minBesetzungGesamt", 1)) for s in shifts)
+    n_emp = len(employees)
+
+    issues: list[str] = []
+
+    # Check per-day availability vs. required staffing
+    critical_days: list[str] = []
+    for day in days:
+        available = 0
+        for emp in employees:
+            blocked: set[str] = (
+                set(emp.get("urlaubAn", []))
+                | set(emp.get("nichtVerfuegbarAn", []))
+                | {w["datum"] for w in emp.get("wuensche", []) if w.get("typ") == "wunschfrei"}
+            )
+            if day not in blocked:
+                available += 1
+        if available < total_required_per_day:
+            critical_days.append(f"{day} ({available}/{total_required_per_day} verfügbar)")
+
+    if critical_days:
+        sample = critical_days[:3]
+        rest = len(critical_days) - len(sample)
+        suffix = f" und {rest} weitere" if rest > 0 else ""
+        issues.append(
+            f"Zu wenige Mitarbeiter verfügbar an: {', '.join(sample)}{suffix}."
+        )
+
+    # Check if weekly hours budget is sufficient to cover all required shifts
+    if not issues:
+        total_shift_mins_per_week = sum(_shift_dur(s) * max(1, s.get("minBesetzungGesamt", 1)) for s in shifts)
+        # Estimate: 5 plan-days per week
+        plan_days_count = len(days)
+        weeks_estimate = max(1, plan_days_count / 5)
+        total_emp_mins = sum(int(emp.get("wochenstundenSoll", max_weekly_hours) * 60) * weeks_estimate for emp in employees)
+        if total_emp_mins < total_shift_mins_per_week * weeks_estimate * 0.9:
+            issues.append(
+                f"Gesamtstundenkapazität der Mitarbeiter reicht möglicherweise nicht für alle Schichten aus "
+                f"({int(total_emp_mins / 60)}h verfügbar, ~{int(total_shift_mins_per_week * weeks_estimate / 60)}h benötigt)."
+            )
+
+    # Check if consecutive-day rule is too restrictive given staffing needs
+    if not issues and n_emp > 0:
+        min_needed_per_emp = total_required_per_day / n_emp
+        if min_needed_per_emp > max_consec_days:
+            issues.append(
+                f"Maximale Folgetage ({max_consec_days}) könnte zu restriktiv sein: "
+                f"bei {n_emp} Mitarbeitern und {total_required_per_day} benötigten Stellen je Tag "
+                f"müsste im Schnitt jeder {min_needed_per_emp:.1f} Tage am Stück arbeiten."
+            )
+
+    if not issues:
+        issues.append(
+            f"Kein zulässiger Plan gefunden (CP-SAT INFEASIBLE). "
+            f"Mögliche Ursachen: zu viele Überschneidungen zwischen Urlauben/Abwesenheiten, "
+            f"Ruhezeitanforderungen ({min_rest_hours}h) oder Wochenstundenlimit ({max_weekly_hours}h). "
+            f"Bitte Zeitraum, Verfügbarkeiten oder Mindestbesetzungen anpassen."
+        )
+
+    return " ".join(issues)
 
 
 def _empty_result(reason: str) -> dict:

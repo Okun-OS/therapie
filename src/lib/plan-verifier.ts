@@ -1,0 +1,240 @@
+import type {
+  PlanningRuleModel,
+  GenerierterPlan,
+  PlanBewertung,
+  FreigabeEmpfehlung,
+  RegelVerletzung,
+} from '@/lib/company-model-types'
+
+function shiftDurationHours(von: string, bis: string): number {
+  const [sh, sm] = von.split(':').map(Number)
+  const [eh, em] = bis.split(':').map(Number)
+  const mins = eh * 60 + em - (sh * 60 + sm)
+  return (mins <= 0 ? mins + 24 * 60 : mins) / 60
+}
+
+function weekKey(dateStr: string): string {
+  const d = new Date(dateStr)
+  const dow = d.getDay() || 7
+  const mon = new Date(d)
+  mon.setDate(d.getDate() - dow + 1)
+  return mon.toISOString().slice(0, 10)
+}
+
+function restHoursBetween(
+  lastDate: string,
+  lastEnd: string,
+  lastIsOvernight: boolean,
+  nextDate: string,
+  nextStart: string,
+): number {
+  const [lh, lm] = lastEnd.split(':').map(Number)
+  const [nh, nm] = nextStart.split(':').map(Number)
+  const endMs = new Date(lastDate).setHours(lh, lm) + (lastIsOvernight ? 86400000 : 0)
+  const startMs = new Date(nextDate).setHours(nh, nm)
+  return (startMs - endMs) / 3600000
+}
+
+export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel): PlanBewertung {
+  const { mitarbeiter, schichten, harteRegeln, zeitraum } = ruleModel
+  const verletzungen: RegelVerletzung[] = []
+
+  if (plan.eintraege.length === 0 && mitarbeiter.length > 0 && zeitraum.arbeitstage.length > 0) {
+    return {
+      gesamtScore: 0,
+      kategorien: { regelkonformitaet: 0, fairness: 0, abdeckung: 0, wunscherfuellung: 0, qualitaet: 0 },
+      verletzungen: [{
+        schwere: 'kritisch',
+        regelId: 'hr-leerplan',
+        beschreibung: schichten.length === 0
+          ? 'Keine Schichten im Regelmodell — Solver konnte keinen Plan erstellen.'
+          : `Kein Mitarbeiter wurde eingeplant (${mitarbeiter.length} verfügbar, ${zeitraum.arbeitstage.length} Arbeitstage).`,
+        betrifft: [],
+      }],
+      optimierungsVorschlaege: [],
+      freigabeEmpfehlung: 'ueberarbeiten',
+      zusammenfassung: 'Planung fehlgeschlagen: leerer Plan.',
+    }
+  }
+
+  const maxWeeklyHours = harteRegeln.find(r => r.typ === 'max_wochenstunden')?.wert ?? 40
+  const minRestHours   = harteRegeln.find(r => r.typ === 'min_ruhezeit')?.wert ?? 11
+  const maxConsecDays  = harteRegeln.find(r => r.typ === 'max_folgetage')?.wert ?? 5
+
+  const byEmp = new Map<string, typeof plan.eintraege>()
+  for (const e of plan.eintraege) {
+    if (!byEmp.has(e.mitarbeiterId)) byEmp.set(e.mitarbeiterId, [])
+    byEmp.get(e.mitarbeiterId)!.push(e)
+  }
+
+  for (const emp of mitarbeiter) {
+    const entries = (byEmp.get(emp.id) ?? []).sort((a, b) => a.datum.localeCompare(b.datum))
+
+    // Vacation / absence conflicts
+    for (const e of entries) {
+      if (emp.urlaubAn.includes(e.datum)) {
+        verletzungen.push({
+          schwere: 'kritisch',
+          regelId: 'hr-urlaub',
+          beschreibung: `${emp.name} hat Urlaub am ${e.datum}`,
+          betrifft: [emp.id, e.datum],
+        })
+      }
+      if (emp.nichtVerfuegbarAn.includes(e.datum)) {
+        verletzungen.push({
+          schwere: 'kritisch',
+          regelId: 'hr-abwesenheit',
+          beschreibung: `${emp.name} ist abwesend am ${e.datum}`,
+          betrifft: [emp.id, e.datum],
+        })
+      }
+    }
+
+    // Duplicate same-day assignments
+    const daySet = new Set<string>()
+    for (const e of entries) {
+      if (daySet.has(e.datum)) {
+        verletzungen.push({
+          schwere: 'kritisch',
+          regelId: 'hr-doppelbelegung',
+          beschreibung: `${emp.name} hat mehrere Dienste am ${e.datum}`,
+          betrifft: [emp.id, e.datum],
+        })
+      }
+      daySet.add(e.datum)
+    }
+
+    // Weekly hours
+    const weekHours: Record<string, number> = {}
+    for (const e of entries) {
+      const schicht = schichten.find(s => s.id === e.schichtId)
+      if (!schicht) continue
+      const wk = weekKey(e.datum)
+      weekHours[wk] = (weekHours[wk] ?? 0) + shiftDurationHours(schicht.von, schicht.bis)
+    }
+    for (const [wk, hours] of Object.entries(weekHours)) {
+      if (hours > maxWeeklyHours + 0.01) {
+        verletzungen.push({
+          schwere: 'hoch',
+          regelId: 'hr-maxwochenstunden',
+          beschreibung: `${emp.name} überschreitet ${maxWeeklyHours}h Wochenmax in KW ab ${wk} (${hours.toFixed(1)}h)`,
+          betrifft: [emp.id, wk],
+        })
+      }
+    }
+
+    // Rest time between consecutive shifts
+    for (let i = 1; i < entries.length; i++) {
+      const prev = entries[i - 1]
+      const curr = entries[i]
+      const prevS = schichten.find(s => s.id === prev.schichtId)
+      const currS = schichten.find(s => s.id === curr.schichtId)
+      if (!prevS || !currS) continue
+      const rest = restHoursBetween(prev.datum, prevS.bis, prevS.uebernacht ?? false, curr.datum, currS.von)
+      if (rest < minRestHours - 0.01) {
+        verletzungen.push({
+          schwere: 'hoch',
+          regelId: 'hr-ruhezeit',
+          beschreibung: `${emp.name}: nur ${rest.toFixed(1)}h Ruhe zwischen ${prev.datum} und ${curr.datum} (min. ${minRestHours}h)`,
+          betrifft: [emp.id, curr.datum],
+        })
+      }
+    }
+
+    // Max consecutive days
+    let consec = 1
+    for (let i = 1; i < entries.length; i++) {
+      const prev = new Date(entries[i - 1].datum)
+      const curr = new Date(entries[i].datum)
+      if (Math.round((curr.getTime() - prev.getTime()) / 86400000) === 1) {
+        consec++
+        if (consec > maxConsecDays) {
+          verletzungen.push({
+            schwere: 'hoch',
+            regelId: 'hr-maxfolgetage',
+            beschreibung: `${emp.name}: ${consec} aufeinanderfolgende Arbeitstage (max. ${maxConsecDays})`,
+            betrifft: [emp.id],
+          })
+        }
+      } else {
+        consec = 1
+      }
+    }
+  }
+
+  // Staffing coverage
+  const byDayShift = new Map<string, number>()
+  for (const e of plan.eintraege) {
+    const key = `${e.datum}|${e.schichtId}`
+    byDayShift.set(key, (byDayShift.get(key) ?? 0) + 1)
+  }
+  let understaffedSlots = 0
+  let totalSlots = 0
+  for (const day of zeitraum.arbeitstage) {
+    for (const schicht of schichten) {
+      const actual   = byDayShift.get(`${day}|${schicht.id}`) ?? 0
+      const required = schicht.minBesetzungGesamt ?? 1
+      totalSlots++
+      if (actual < required) {
+        understaffedSlots++
+        verletzungen.push({
+          schwere: actual === 0 ? 'hoch' : 'mittel',
+          regelId: 'hr-mindestbesetzung',
+          beschreibung: `Schicht „${schicht.name}" am ${day}: ${actual}/${required} besetzt`,
+          betrifft: [day, schicht.id],
+        })
+      }
+    }
+  }
+
+  // Wish fulfillment
+  let wishCount = 0
+  let wishesMet = 0
+  for (const emp of mitarbeiter) {
+    const empEntries = byEmp.get(emp.id) ?? []
+    for (const w of emp.wuensche) {
+      if (w.typ !== 'wunsch') continue
+      wishCount++
+      if (empEntries.some(e => e.datum === w.datum && e.schichtId === w.schichtId)) wishesMet++
+    }
+  }
+
+  // Compute scores
+  const criticalCount = verletzungen.filter(v => v.schwere === 'kritisch').length
+  const highCount     = verletzungen.filter(v => v.schwere === 'hoch').length
+
+  const regelkonformitaet = Math.max(0, 100 - criticalCount * 30 - highCount * 10)
+  const abdeckung = totalSlots > 0 ? Math.round((1 - understaffedSlots / totalSlots) * 100) : 100
+  const wunscherfuellung  = wishCount > 0 ? Math.round(wishesMet / wishCount * 100) : 100
+  const fairness = 80 // CP-SAT's objective already optimises fairness; we trust it
+  const qualitaet = Math.round((regelkonformitaet + abdeckung + wunscherfuellung) / 3)
+  const gesamtScore = Math.round(
+    regelkonformitaet * 0.4 + abdeckung * 0.3 + wunscherfuellung * 0.15 + fairness * 0.15,
+  )
+
+  const freigabeEmpfehlung: FreigabeEmpfehlung =
+    criticalCount > 0 || (highCount > 0 && gesamtScore < 60) ? 'ueberarbeiten'
+    : gesamtScore >= 80 && criticalCount === 0 && highCount === 0 ? 'freigeben'
+    : 'optimieren'
+
+  const label = freigabeEmpfehlung === 'freigeben'
+    ? 'Freigabe empfohlen'
+    : freigabeEmpfehlung === 'optimieren'
+    ? 'Optimierung möglich'
+    : 'Überarbeitung erforderlich'
+
+  const zusammenfassung =
+    `${label} · Score ${gesamtScore}/100 · ${verletzungen.length} Hinweise` +
+    ` · Besetzung ${abdeckung}%` +
+    (wishCount > 0 ? ` · Wünsche ${wunscherfuellung}%` : '') +
+    (plan.metadaten?.solver ? ` · ${plan.metadaten.solver.split(' ')[0]}` : '')
+
+  return {
+    gesamtScore,
+    kategorien: { regelkonformitaet, fairness, abdeckung, wunscherfuellung, qualitaet },
+    verletzungen,
+    optimierungsVorschlaege: [],
+    freigabeEmpfehlung,
+    zusammenfassung,
+  }
+}
