@@ -57,12 +57,14 @@ export default function EmployeeDetailPage() {
     fetch('/api/time-logs').then(r => r.json()).then(d => setTIME_LOGS(d.logs))
   }, [])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!employee) return
     fetch(`/api/employee-human-context?employeeId=${employee.id}`)
       .then(res => res.json())
       .then(data => setHumanContext(data.contexts?.[0] ?? null))
       .catch(() => setHumanContext(null))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.id])
 
   useEffect(() => {

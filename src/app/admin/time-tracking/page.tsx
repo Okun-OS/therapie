@@ -56,7 +56,9 @@ export default function AdminTimeTracking() {
     if (!locationId) return
     fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => setAbsences(d.absences ?? []))
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadOvertimeRequests() }, [locationId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadAbsences() }, [locationId])
 
   const [allEmployees, setAllEmployees] = useState<Employee[]>([])

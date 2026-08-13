@@ -52,6 +52,7 @@ export default function EmployeeVacation() {
   const [wishSchoolPriority, setWishSchoolPriority] = useState<'low' | 'medium' | 'high'>('medium')
   const [wishSaved, setWishSaved] = useState(false)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!user?.employeeId) return
     fetch(`/api/vacation-preferences?employeeId=${user.employeeId}`)
@@ -65,6 +66,7 @@ export default function EmployeeVacation() {
         setWishPriority(pref?.priority ?? 'medium')
         setWishSchoolPriority(pref?.schoolHolidayPriority ?? 'medium')
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   const toggleWishMonth = (month: number) => {

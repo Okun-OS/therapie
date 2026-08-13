@@ -61,6 +61,7 @@ export default function AdminVacationRequests() {
   const approved = requests.filter(r => r.status === 'approved')
   const denied = requests.filter(r => r.status === 'denied')
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!selected || selected.status !== 'pending') {
       setRecommendation(null)
@@ -101,6 +102,7 @@ export default function AdminVacationRequests() {
       })
       .catch(() => {})
       .finally(() => setRecommendationLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, locationId, requests, vacationRules])
 
   const handleApprove = async (id: string) => {

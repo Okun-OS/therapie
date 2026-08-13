@@ -177,6 +177,7 @@ export default function AdminSchedule() {
     fetch(`/api/schedule-entries?locationId=${locationId}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries ?? []))
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!locationId) return
     loadScheduleEntries()

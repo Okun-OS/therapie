@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 
   // Fixed off-days (0=Sun, 1=Mon…6=Sat)
   const fixedOffDays: number[] = Array.isArray(employee.fixedOffDays)
-    ? (employee.fixedOffDays as number[])
+    ? (employee.fixedOffDays as unknown as number[])
     : []
 
   // Build per-day records

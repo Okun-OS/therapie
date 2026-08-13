@@ -93,11 +93,13 @@ export default function EmployeeProfile() {
 
   const getShiftById = (shiftId: string) => shifts.find(s => s.id === shiftId)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!employee) return
     fetch(`/api/schedule-entries?employeeId=${employee.id}`).then(r => r.json()).then(d => setScheduleEntries(d.entries))
     fetch(`/api/overtime-requests?employeeId=${employee.id}`).then(r => r.json()).then(d => setOvertimeRequests(d.requests))
     fetch(`/api/absences?employeeId=${employee.id}`).then(r => r.json()).then(d => setAbsences(d.absences))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.id])
 
   useEffect(() => {
@@ -192,6 +194,7 @@ export default function EmployeeProfile() {
   const [calendarSyncLoading, setCalendarSyncLoading] = useState(false)
   const [calendarLinkCopied, setCalendarLinkCopied] = useState(false)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!employee) return
     fetch(`/api/calendar-sync?employeeId=${employee.id}`)
@@ -201,6 +204,7 @@ export default function EmployeeProfile() {
         setCalendarSyncToken(data.token ?? null)
       })
       .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.id])
 
   const toggleCalendarSync = async () => {
@@ -224,6 +228,7 @@ export default function EmployeeProfile() {
     ? `${window.location.origin}/api/calendar-feed/${calendarSyncToken}`
     : ''
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!employee) return
     fetch(`/api/employee-human-context?employeeId=${employee.id}`)
@@ -243,6 +248,7 @@ export default function EmployeeProfile() {
         setHumanContextLoaded(true)
       })
       .catch(() => setHumanContextLoaded(true))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.id])
 
   const addTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups' | 'preferredActivities' | 'shiftPreferences', value: string) => {

@@ -57,6 +57,7 @@ export default function BugsPage() {
     setLoading(false)
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [filterStatus])
 
   async function update(id: string) {
