@@ -118,8 +118,6 @@ export default function AdminSchedule() {
   const [aiAssignmentReasons, setAiAssignmentReasons] = useState<Record<string, string>>({})
   const [explainEntry, setExplainEntry] = useState<{ employeeId: string; employeeName: string; shiftName: string; dateStr: string; reason: string | null; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null>(null)
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
-  const [aiDecisionQuestion, setAiDecisionQuestion] = useState<string | null>(null)
-  const [decisionLoading, setDecisionLoading] = useState(false)
   const [fallback, setFallback] = useState<{ date: string; shiftId: string; message: string } | null>(null)
   const [fallbackLoading, setFallbackLoading] = useState(false)
   const [fallbackHandled, setFallbackHandled] = useState(false)
@@ -283,7 +281,7 @@ export default function AdminSchedule() {
       d.setDate(d.getDate() + direction * 7)
     }
     setCurrentDate(d)
-    setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setFallback(null); setFallbackHandled(false); setSaved(false)
+    setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setFallback(null); setFallbackHandled(false); setSaved(false)
   }
 
   useEffect(() => {
@@ -497,7 +495,7 @@ export default function AdminSchedule() {
     return entry?.reason ?? null
   }
 
-  const runAI = async (confirmedDecisionQuestion?: string, kontextOverride?: string, decisionsOverride?: Record<string, 'reduce' | 'normal' | 'compensate'>) => {
+  const runAI = async (kontextOverride?: string, decisionsOverride?: Record<string, 'reduce' | 'normal' | 'compensate'>) => {
     setAiRunning(true)
     setAiDone(false)
     setAiStep(0)
@@ -508,7 +506,6 @@ export default function AdminSchedule() {
     setAiDecisions([])
     setAiAssignmentReasons({})
     setAiWarnings([])
-    setAiDecisionQuestion(null)
     setFallback(null)
     setFallbackHandled(false)
     const effectiveKontext = kontextOverride !== undefined ? kontextOverride : lastUsedKontext
@@ -525,7 +522,6 @@ export default function AdminSchedule() {
       const von = solverFrom
       const bis = solverTo
 
-      // Try new Solver-Evaluator-Orchestrator endpoint first
       const newRes = await fetch('/api/ai/solve-schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -576,7 +572,6 @@ export default function AdminSchedule() {
       })
       setAiAssignmentReasons(reasonsByEntry)
       setAiWarnings(((data.warnings ?? []) as string[]).map((w: string) => sanitizeAiText(w)))
-      setAiDecisionQuestion(confirmedDecisionQuestion ? null : (data.decisionQuestion ? sanitizeAiText(data.decisionQuestion as string) : null))
       if (data.fallback) {
         const fb = data.fallback as { date: string; shiftId: string; message: string }
         setFallback({ date: fb.date, shiftId: fb.shiftId, message: sanitizeAiText(fb.message) })
@@ -641,23 +636,7 @@ export default function AdminSchedule() {
     setLastUsedKontext(k)
     setLastOvertimeDecisions(planCtx.overtimeDecisions)
     setShowPlanPanel(false)
-    runAI(undefined, k, planCtx.overtimeDecisions)
-  }
-
-  const handleDecisionYes = async () => {
-    if (!aiDecisionQuestion) return
-    setDecisionLoading(true)
-    try {
-      await runAI(aiDecisionQuestion)
-      showToast('Optimierte Version erstellt')
-    } finally {
-      setDecisionLoading(false)
-    }
-  }
-
-  const handleDecisionNo = () => {
-    setAiDecisionQuestion(null)
-    showToast('Planung bleibt unverändert')
+    runAI(k, planCtx.overtimeDecisions)
   }
 
   const handleCreateSubstitution = async () => {
@@ -941,7 +920,7 @@ export default function AdminSchedule() {
                   onClick={() => {
                     setPeriodMode(opt.key)
                     if (opt.key === 'month') { setPickerYear(currentDate.getFullYear()); setMonthPickerOpen(true) }
-                    setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setFallback(null); setFallbackHandled(false); setSaved(false)
+                    setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setFallback(null); setFallbackHandled(false); setSaved(false)
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${periodMode === opt.key ? 'bg-navy text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                 >
@@ -1005,7 +984,7 @@ export default function AdminSchedule() {
                             onClick={() => {
                               setCurrentDate(new Date(pickerYear, i, 1))
                               setMonthPickerOpen(false)
-                              setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setFallback(null); setFallbackHandled(false); setSaved(false)
+                              setGeneratedSchedule(null); setAiDone(false); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setFallback(null); setFallbackHandled(false); setSaved(false)
                             }}
                             className={`py-1.5 rounded-xl text-xs font-semibold transition-all ${isSelected ? 'bg-navy text-white' : 'hover:bg-gray-100 text-gray-700'}`}
                           >
@@ -1194,7 +1173,7 @@ export default function AdminSchedule() {
                       Fairness-optimiert · Wünsche berücksichtigt · Schulden ausgeglichen.
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setAiDecisionQuestion(null); setFallback(null); setFallbackHandled(false); setSaved(false) }} className="text-gray-500">
+                  <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setFallback(null); setFallbackHandled(false); setSaved(false) }} className="text-gray-500">
                     Zurück
                   </Button>
                 </div>
@@ -1519,26 +1498,6 @@ export default function AdminSchedule() {
                   ))}
                 </div>
                 <p className="text-[10px] text-amber-600 mt-1.5">Schätzung basierend auf geplanten Schichten. Exakte Berechnung nach Zeiterfassung.</p>
-              </div>
-            )}
-
-            {aiDone && aiDecisionQuestion && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
-                <div className="flex items-start gap-2">
-                  <Info size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm font-semibold text-amber-800">{aiDecisionQuestion}</p>
-                </div>
-                <p className="text-xs text-amber-700">
-                  Falls Ja: Die KI erstellt automatisch eine optimierte Version. Falls Nein: Die Planung bleibt unverändert. Weitere Rückfragen erfolgen danach nicht.
-                </p>
-                <div className="flex gap-2">
-                  <Button size="sm" loading={decisionLoading} onClick={handleDecisionYes} className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500">
-                    Ja, optimieren
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={handleDecisionNo} className="border border-amber-200 text-amber-700 hover:bg-amber-100">
-                    Nein, danke
-                  </Button>
-                </div>
               </div>
             )}
 
