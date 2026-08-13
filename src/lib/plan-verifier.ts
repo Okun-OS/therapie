@@ -187,15 +187,30 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
     }
   }
 
-  // Wish fulfillment
+  // Wish fulfillment (wunsch = specific shift desired; wunschfrei = day off desired)
   let wishCount = 0
   let wishesMet = 0
   for (const emp of mitarbeiter) {
     const empEntries = byEmp.get(emp.id) ?? []
     for (const w of emp.wuensche) {
-      if (w.typ !== 'wunsch') continue
-      wishCount++
-      if (empEntries.some(e => e.datum === w.datum && e.schichtId === w.schichtId)) wishesMet++
+      if (w.typ === 'wunsch') {
+        wishCount++
+        if (empEntries.some(e => e.datum === w.datum && e.schichtId === w.schichtId)) wishesMet++
+      } else if (w.typ === 'wunschfrei') {
+        // Employee requested the day off — count only if they were actually assigned
+        const assignedOnDay = empEntries.some(e => e.datum === w.datum)
+        wishCount++
+        if (!assignedOnDay) {
+          wishesMet++
+        } else {
+          verletzungen.push({
+            schwere: 'niedrig',
+            regelId: 'wr-wunschfrei',
+            beschreibung: `${emp.name} wünschte frei am ${w.datum}, wurde aber eingeplant`,
+            betrifft: [emp.id, w.datum],
+          })
+        }
+      }
     }
   }
 

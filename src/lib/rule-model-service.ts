@@ -86,6 +86,7 @@ export async function buildRuleModel(
     absences,
     wishes,
     recentEntries,
+    employeeRequests,
   ] = await Promise.all([
     prisma.locationPlanningRules.findUnique({ where: { locationId } }),
     prisma.shift.findMany({ where: { locationId } }),
@@ -119,6 +120,17 @@ export async function buildRuleModel(
         },
       },
       orderBy: { date: 'desc' },
+    }),
+    prisma.employeeRequest.findMany({
+      where: {
+        locationId,
+        status: 'approved',
+        type: { in: ['vacation', 'absence', 'day_off_wish'] },
+        OR: [
+          ...arbeitstage.map(d => ({ date: d })),
+          ...arbeitstage.map(d => ({ dateFrom: { lte: d }, dateTo: { gte: d } })),
+        ],
+      },
     }),
   ])
 
@@ -228,33 +240,65 @@ export async function buildRuleModel(
 
   // Build employee data
   const mitarbeiter: PlanungsMitarbeiter[] = employees.map(emp => {
-    const urlaubAn = vacationRequests
-      .filter(v => v.employeeId === emp.id)
-      .flatMap(v => {
-        const days: string[] = []
-        const s = new Date(v.startDate)
-        const e = new Date(v.endDate)
-        for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-          days.push(d.toISOString().slice(0, 10))
-        }
-        return days
-      })
-      .filter(d => arbeitstage.includes(d))
+    const empReqs = employeeRequests.filter(r => r.employeeId === emp.id)
 
-    const nichtVerfuegbar = absences
-      .filter(a => a.employeeId === emp.id)
-      .flatMap(a => {
-        const days: string[] = []
-        const s = new Date(a.startDate)
-        const e = new Date(a.endDate)
-        for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-          days.push(d.toISOString().slice(0, 10))
-        }
-        return days
-      })
-      .filter(d => arbeitstage.includes(d))
+    const urlaubAn = [
+      ...vacationRequests
+        .filter(v => v.employeeId === emp.id)
+        .flatMap(v => {
+          const days: string[] = []
+          const s = new Date(v.startDate)
+          const e = new Date(v.endDate)
+          for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+            days.push(d.toISOString().slice(0, 10))
+          }
+          return days
+        }),
+      // EmployeeRequest vacation also blocks the employee
+      ...empReqs
+        .filter(r => r.type === 'vacation')
+        .flatMap(r => {
+          if (r.date) return [r.date]
+          if (!r.dateFrom || !r.dateTo) return []
+          const days: string[] = []
+          const s = new Date(r.dateFrom)
+          const e = new Date(r.dateTo)
+          for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+            days.push(d.toISOString().slice(0, 10))
+          }
+          return days
+        }),
+    ].filter(d => arbeitstage.includes(d))
 
-    const empWishes: PlanungsWunsch[] = wishes
+    const nichtVerfuegbar = [
+      ...absences
+        .filter(a => a.employeeId === emp.id)
+        .flatMap(a => {
+          const days: string[] = []
+          const s = new Date(a.startDate)
+          const e = new Date(a.endDate)
+          for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+            days.push(d.toISOString().slice(0, 10))
+          }
+          return days
+        }),
+      // EmployeeRequest absence and approved day-off wishes also block the employee
+      ...empReqs
+        .filter(r => r.type === 'absence' || r.type === 'day_off_wish')
+        .flatMap(r => {
+          if (r.date) return [r.date]
+          if (!r.dateFrom || !r.dateTo) return []
+          const days: string[] = []
+          const s = new Date(r.dateFrom)
+          const e = new Date(r.dateTo)
+          for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+            days.push(d.toISOString().slice(0, 10))
+          }
+          return days
+        }),
+    ].filter(d => arbeitstage.includes(d))
+
+    const explicitWishes: PlanungsWunsch[] = wishes
       .filter(w => w.employeeId === emp.id)
       .map(w => {
         const matchedShift = schichten.find(
@@ -264,10 +308,29 @@ export async function buildRuleModel(
         return {
           datum: w.date,
           schichtId: matchedShift?.id ?? w.preferredShiftType ?? '',
-          typ: (w.importance === 'frei' ? 'wunschfrei' : 'wunsch') as 'wunsch' | 'wunschfrei',
-          prioritaet: w.importance === 'high' ? 1 : w.importance === 'normal' ? 2 : 3,
+          typ: (w.preferredShiftType === 'frei' ? 'wunschfrei' : 'wunsch') as 'wunsch' | 'wunschfrei',
+          prioritaet: w.importance === 'urgent' ? 1 : w.importance === 'important' ? 2 : 3,
         }
       })
+
+    // Translate persistent shiftPreference into low-priority soft wishes (priority 3)
+    // for each planning day, unless the employee already has an explicit wish that day.
+    const empProfile = profileByEmp.get(emp.id)
+    const persistentPref = empProfile?.shiftPreference ?? 'keine'
+    const persistentWishes: PlanungsWunsch[] = []
+    if (persistentPref !== 'keine') {
+      const prefSchicht = schichten.find(s => s.typ === persistentPref)
+      if (prefSchicht) {
+        const explicitDays = new Set(explicitWishes.map(w => w.datum))
+        for (const day of arbeitstage) {
+          if (!explicitDays.has(day)) {
+            persistentWishes.push({ datum: day, schichtId: prefSchicht.id, typ: 'wunsch', prioritaet: 3 })
+          }
+        }
+      }
+    }
+
+    const empWishes = [...explicitWishes, ...persistentWishes]
 
     const empRecent = recentEntries.filter(e => e.employeeId === emp.id)
 
@@ -297,13 +360,12 @@ export async function buildRuleModel(
       einheiten.forEach(e => { if (!empEinheiten.includes(e.id)) empEinheiten.push(e.id) })
     }
 
-    const profile = profileByEmp.get(emp.id)
-    const profileText = profile ? [
-      profile.shiftPreference !== 'keine' ? `bevorzugt ${profile.shiftPreference}` : null,
-      profile.weekendRule ?? null,
-      profile.planningNote ?? null,
-      (profile.childPickupTimes as {day: string; beforeTime: string}[]).length > 0
-        ? `Kinderabholung: ${(profile.childPickupTimes as {day: string; beforeTime: string}[]).map(c => `${c.day} bis ${c.beforeTime}`).join(', ')}`
+    const profileText = empProfile ? [
+      empProfile.shiftPreference !== 'keine' ? `bevorzugt ${empProfile.shiftPreference}` : null,
+      empProfile.weekendRule ?? null,
+      empProfile.planningNote ?? null,
+      (empProfile.childPickupTimes as {day: string; beforeTime: string}[]).length > 0
+        ? `Kinderabholung: ${(empProfile.childPickupTimes as {day: string; beforeTime: string}[]).map(c => `${c.day} bis ${c.beforeTime}`).join(', ')}`
         : null,
     ].filter(Boolean).join('; ') : null
 

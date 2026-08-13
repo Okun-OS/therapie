@@ -457,7 +457,7 @@ export default function EmployeeDetailPage() {
               <div className="divide-y divide-gray-50">
                 {scheduleEntries.map(entry => {
                   const shift = locationShifts.find(s => s.id === entry.shiftId)
-                  const shiftTypeLabel = { early: 'Frühdienst', late: 'Spätdienst', mid: 'Mitteldienst', night: 'Nachtdienst' }
+                  const shiftTypeLabel: Record<string, string> = { early: 'Frühdienst', late: 'Spätdienst', mid: 'Mitteldienst', night: 'Nachtdienst', frei: 'Freier Tag' }
                   return (
                     <div key={entry.id} className="flex items-center gap-4 p-4">
                       <div className="w-28 text-xs font-medium text-navy flex-shrink-0">

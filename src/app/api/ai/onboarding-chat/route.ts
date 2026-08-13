@@ -196,6 +196,7 @@ const SHIFT_TYPE_DEFAULTS: Record<ShiftType, { color: string; bgColor: string }>
   mid: { color: '#C89C5B', bgColor: '#F8EFE2' },
   late: { color: '#3A3F42', bgColor: '#E8ECEF' },
   night: { color: '#26292B', bgColor: '#C9D0D4' },
+  frei: { color: '#6B7280', bgColor: '#F3F4F6' },
 }
 
 export async function POST(req: NextRequest) {
@@ -375,7 +376,7 @@ export async function POST(req: NextRequest) {
             if (typeof entry !== 'object' || !entry) continue
             const { name, type, startTime, endTime, minStaff } = entry as Record<string, unknown>
             if (typeof name !== 'string' || !name.trim() || typeof startTime !== 'string' || typeof endTime !== 'string') continue
-            const shiftType: ShiftType = (['early', 'mid', 'late', 'night'] as const).includes(type as ShiftType) ? type as ShiftType : 'mid'
+            const shiftType: ShiftType = (['early', 'mid', 'late', 'night'] as string[]).includes(type as string) ? type as ShiftType : 'mid'
             const match = existingShifts.find(s => s.name.trim().toLowerCase() === name.trim().toLowerCase())
             if (match) {
               await updateShift(match.id, {

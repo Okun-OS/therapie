@@ -1,0 +1,70 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { requireRole, resolveCustomerId } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+
+// GET /api/planning-policy?locationId=xxx
+export async function GET(req: NextRequest) {
+  const session = requireRole(req, ['admin', 'company'])
+  if (session instanceof NextResponse) return session
+
+  const locationId = req.nextUrl.searchParams.get('locationId')
+  if (!locationId) {
+    return NextResponse.json({ error: 'locationId fehlt' }, { status: 400 })
+  }
+
+  const customerId = await resolveCustomerId(session)
+  if (!customerId) {
+    return NextResponse.json({ error: 'Kein Mandant zugeordnet' }, { status: 403 })
+  }
+
+  const policy = await prisma.planningPolicy.findUnique({ where: { locationId } })
+
+  if (!policy || policy.customerId !== customerId) {
+    // Return default policy if none exists yet
+    return NextResponse.json({
+      locationId,
+      customerId,
+      defaultOvertimeHandling: 'normal',
+      minAutoApproveScore: 80,
+      failFastOnInfeasible: true,
+    })
+  }
+
+  return NextResponse.json(policy)
+}
+
+// PUT /api/planning-policy
+export async function PUT(req: NextRequest) {
+  const session = requireRole(req, ['admin', 'company'])
+  if (session instanceof NextResponse) return session
+
+  const customerId = await resolveCustomerId(session)
+  if (!customerId) {
+    return NextResponse.json({ error: 'Kein Mandant zugeordnet' }, { status: 403 })
+  }
+
+  const body = await req.json()
+  const { locationId, defaultOvertimeHandling, minAutoApproveScore, failFastOnInfeasible } = body
+
+  if (!locationId) {
+    return NextResponse.json({ error: 'locationId fehlt' }, { status: 400 })
+  }
+
+  const policy = await prisma.planningPolicy.upsert({
+    where: { locationId },
+    create: {
+      locationId,
+      customerId,
+      defaultOvertimeHandling: defaultOvertimeHandling ?? 'normal',
+      minAutoApproveScore: minAutoApproveScore ?? 80,
+      failFastOnInfeasible: failFastOnInfeasible ?? true,
+    },
+    update: {
+      ...(defaultOvertimeHandling !== undefined && { defaultOvertimeHandling }),
+      ...(minAutoApproveScore !== undefined && { minAutoApproveScore }),
+      ...(failFastOnInfeasible !== undefined && { failFastOnInfeasible }),
+    },
+  })
+
+  return NextResponse.json(policy)
+}

@@ -289,6 +289,45 @@ describe('verifyPlan', () => {
       const result = verifyPlan(plan, model)
       expect(result.kategorien.wunscherfuellung).toBe(0)
     })
+
+    it('counts wunschfrei as fulfilled when employee has no assignment that day', () => {
+      const frueh = makeSchicht('frueh', '06:00', '14:00')
+      // Two-day period: employee works Mon, wishes free Tue
+      const emp = makeEmp('emp1', {
+        wuensche: [{ datum: '2024-01-09', schichtId: '', typ: 'wunschfrei', prioritaet: 1 }],
+      })
+      const model = makeModel([emp], [frueh], ['2024-01-08', '2024-01-09'])
+      // Only assigned Mon — Tue wish for free day is honored
+      const result = verifyPlan(makePlan([makeEintrag('emp1', '2024-01-08', 'frueh')]), model)
+      expect(result.kategorien.wunscherfuellung).toBe(100)
+      expect(result.verletzungen.find(v => v.regelId === 'wr-wunschfrei')).toBeUndefined()
+    })
+
+    it('raises niedrig violation and lowers score when wunschfrei is not respected', () => {
+      const frueh = makeSchicht('frueh', '06:00', '14:00')
+      const emp = makeEmp('emp1', {
+        wuensche: [{ datum: '2024-01-08', schichtId: '', typ: 'wunschfrei', prioritaet: 1 }],
+      })
+      const model = makeModel([emp], [frueh], ['2024-01-08'])
+      const plan = makePlan([makeEintrag('emp1', '2024-01-08', 'frueh')])
+      const result = verifyPlan(plan, model)
+      expect(result.kategorien.wunscherfuellung).toBe(0)
+      const v = result.verletzungen.find(v => v.regelId === 'wr-wunschfrei')
+      expect(v).toBeDefined()
+      expect(v!.schwere).toBe('niedrig')
+    })
+
+    it('plan remains valid (no critical violation) when wunschfrei cannot be honored', () => {
+      const frueh = makeSchicht('frueh', '06:00', '14:00')
+      const emp = makeEmp('emp1', {
+        wuensche: [{ datum: '2024-01-08', schichtId: '', typ: 'wunschfrei', prioritaet: 3 }],
+      })
+      const model = makeModel([emp], [frueh], ['2024-01-08'])
+      const plan = makePlan([makeEintrag('emp1', '2024-01-08', 'frueh')])
+      const result = verifyPlan(plan, model)
+      // wunschfrei violation is niedrig, not kritisch — plan is usable
+      expect(result.verletzungen.filter(v => v.schwere === 'kritisch')).toHaveLength(0)
+    })
   })
 
   // ── Score calculation ───────────────────────────────────────────────────────

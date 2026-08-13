@@ -157,9 +157,11 @@ export default function EmployeeSchedule() {
     }
     if (!employee?.locationId) return
 
-    const validShiftTypes: ShiftType[] = ['early', 'late', 'mid']
-    const preferredShiftType = (validShiftTypes as string[]).includes(wish.type) ? (wish.type as ShiftType) : 'mid'
-    const specialNote = wish.type === 'free' ? 'Freier Tag gewünscht. ' : wish.type === 'no_early_after_late' ? 'Kein Frühdienst nach Spätdienst gewünscht. ' : ''
+    const validShiftTypes: ShiftType[] = ['early', 'late', 'mid', 'frei']
+    const preferredShiftType = wish.type === 'free' ? 'frei'
+      : (validShiftTypes as string[]).includes(wish.type) ? (wish.type as ShiftType)
+      : 'mid'
+    const specialNote = wish.type === 'no_early_after_late' ? 'Kein Frühdienst nach Spätdienst gewünscht. ' : ''
 
     const submission = await fetch('/api/wish-submissions', {
       method: 'POST',
@@ -620,7 +622,7 @@ export default function EmployeeSchedule() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-navy">
-                            {w.preferredShiftType === 'early' ? 'Frühdienst' : w.preferredShiftType === 'late' ? 'Spätdienst' : 'Mitteldienst'}
+                            {w.preferredShiftType === 'early' ? 'Frühdienst' : w.preferredShiftType === 'late' ? 'Spätdienst' : w.preferredShiftType === 'frei' ? 'Freier Tag' : 'Mitteldienst'}
                             {' '}am {formatDate(w.date)}
                           </p>
                           <p className="text-xs text-gray-500">{getDayName(w.date)}</p>

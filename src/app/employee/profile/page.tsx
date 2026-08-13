@@ -149,6 +149,35 @@ export default function EmployeeProfile() {
 
   const isDirty = JSON.stringify(prefs) !== JSON.stringify(savedPrefs)
 
+  // ── Dauerhafter Planungs-Wunsch (shiftPreference) ────────────────────────────
+  const [shiftPref, setShiftPref] = useState<'frueh' | 'spaet' | 'nacht' | 'keine'>('keine')
+  const [shiftPrefSaved, setShiftPrefSaved] = useState(false)
+  const [shiftPrefDirty, setShiftPrefDirty] = useState(false)
+  const [shiftPrefOriginal, setShiftPrefOriginal] = useState<'frueh' | 'spaet' | 'nacht' | 'keine'>('keine')
+
+  useEffect(() => {
+    fetch('/api/employee/preferences')
+      .then(r => r.json())
+      .then(d => {
+        const v = (d.shiftPreference ?? 'keine') as typeof shiftPref
+        setShiftPref(v)
+        setShiftPrefOriginal(v)
+      })
+      .catch(() => {})
+  }, [])
+
+  const saveShiftPref = async () => {
+    await fetch('/api/employee/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shiftPreference: shiftPref }),
+    })
+    setShiftPrefOriginal(shiftPref)
+    setShiftPrefDirty(false)
+    setShiftPrefSaved(true)
+    setTimeout(() => setShiftPrefSaved(false), 2000)
+  }
+
   const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], preferredGroups: [] as string[], preferredActivities: [] as string[], shiftPreferences: [] as string[], agreements: '' }
   const [humanContext, setHumanContext] = useState(initialHumanContext)
   const [savedHumanContext, setSavedHumanContext] = useState(initialHumanContext)
@@ -508,6 +537,46 @@ export default function EmployeeProfile() {
             <Button onClick={handleSave} size="lg" className={`w-full gap-2 transition-all ${saved ? 'bg-green-500 hover:bg-green-600' : ''}`}>
               <Save size={18} />
               {saved ? 'Gespeichert!' : 'Präferenzen speichern'}
+            </Button>
+          </div>
+        </Card>
+
+        {/* Dauerhafter Dienstwunsch — fließt direkt in den Solver */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Mein Dienstwunsch</CardTitle>
+            <Badge variant="info">fließt in Planung ein</Badge>
+          </CardHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-gray-500">
+              Teile uns deinen generellen Wunsch mit. Der Solver berücksichtigt dies als
+              dauerhafte Präferenz — falls es mit anderen Anforderungen vereinbar ist.
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {([
+                { value: 'frueh',  label: 'Frühdienst',   icon: '🌅' },
+                { value: 'spaet',  label: 'Spätdienst',   icon: '🌆' },
+                { value: 'nacht',  label: 'Nachtdienst',  icon: '🌙' },
+                { value: 'keine',  label: 'Egal',          icon: '🔄' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setShiftPref(opt.value); setShiftPrefDirty(opt.value !== shiftPrefOriginal) }}
+                  className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 text-xs font-semibold transition-all ${shiftPref === opt.value ? 'bg-navy text-white border-navy' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                >
+                  <span className="text-lg">{opt.icon}</span>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <Button
+              onClick={saveShiftPref}
+              size="sm"
+              disabled={!shiftPrefDirty}
+              className={`w-full gap-2 transition-all ${shiftPrefSaved ? 'bg-green-500 hover:bg-green-600' : ''}`}
+            >
+              <Save size={16} />
+              {shiftPrefSaved ? 'Gespeichert!' : 'Wunsch speichern'}
             </Button>
           </div>
         </Card>

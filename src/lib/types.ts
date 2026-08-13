@@ -1,5 +1,5 @@
 export type Role = 'employee' | 'admin' | 'company' | 'okun'
-export type ShiftType = 'early' | 'late' | 'mid' | 'night'
+export type ShiftType = 'early' | 'late' | 'mid' | 'night' | 'frei'
 export type RequestStatus = 'pending' | 'approved' | 'denied'
 export type SwapStatus = 'pending' | 'accepted' | 'declined' | 'cancelled'
 export type WishStatus = 'pending' | 'fulfilled' | 'not_fulfilled'

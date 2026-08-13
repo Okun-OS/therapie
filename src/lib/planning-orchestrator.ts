@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { buildRuleModel } from '@/lib/rule-model-service'
 import { solvePlan } from '@/lib/planning-solver'
 import { verifyPlan } from '@/lib/plan-verifier'
-import type { GenerierterPlan, PlanBewertung } from '@/lib/company-model-types'
+import type { GenerierterPlan, PlanBewertung, FreigabeEmpfehlung } from '@/lib/company-model-types'
 
 export interface PlanningResult {
   sessionId: string
@@ -58,8 +58,25 @@ export async function runPlanningSession(
 
     // ── Step 3: Deterministic verification — no LLM ─────────────────────────────
     const start = Date.now()
-    const bewertung = verifyPlan(plan, ruleModel)
+    let bewertung = verifyPlan(plan, ruleModel)
     const durationMs = Date.now() - start
+
+    // ── Step 3b: Apply PlanningPolicy (minAutoApproveScore override) ────────────
+    const policy = await prisma.planningPolicy.findUnique({ where: { locationId } })
+    if (policy && bewertung.freigabeEmpfehlung === 'freigeben') {
+      const threshold = policy.minAutoApproveScore
+      if (bewertung.gesamtScore < threshold) {
+        const overrideEmpfehlung: FreigabeEmpfehlung = bewertung.gesamtScore >= threshold * 0.85 ? 'optimieren' : 'ueberarbeiten'
+        bewertung = {
+          ...bewertung,
+          freigabeEmpfehlung: overrideEmpfehlung,
+          zusammenfassung: bewertung.zusammenfassung.replace(
+            'Freigabe empfohlen',
+            overrideEmpfehlung === 'optimieren' ? 'Optimierung möglich' : 'Überarbeitung erforderlich',
+          ) + ` (Policy: min. ${threshold} Punkte)`,
+        }
+      }
+    }
 
     // ── Step 4: Persist results ─────────────────────────────────────────────────
     await prisma.planningIteration.create({
