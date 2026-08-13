@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   const shifts = await prisma.shift.findMany({ where: { locationId } })
   const shiftMap = new Map(shifts.map(s => [s.id, s]))
 
-  const week: Record<string, Record<string, { shiftId: string; note?: string; status: string; gruppe?: string; funktion?: string; isSubstitution?: boolean }>> = {}
+  const week: Record<string, Record<string, { shiftId: string; note?: string; status: string; gruppe?: string; funktion?: string; isSubstitution?: boolean; whyAssigned?: string }>> = {}
   for (const eintrag of result.finalPlan.eintraege) {
     if (!week[eintrag.mitarbeiterId]) week[eintrag.mitarbeiterId] = {}
     const shift = shiftMap.get(eintrag.schichtId)
@@ -85,6 +85,8 @@ export async function POST(req: NextRequest) {
       gruppe: eintrag.einheitId,
       funktion: eintrag.funktion,
       isSubstitution: eintrag.istVertretung,
+      // §39: per-entry solver explanation for the admin explain modal
+      whyAssigned: eintrag.whyAssigned,
     }
   }
 

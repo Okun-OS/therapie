@@ -479,6 +479,23 @@ export default function AdminSchedule() {
     .filter(a => a.locationId === locationId && a.verificationStatus !== 'abgelehnt' && a.startDate <= periodEnd && a.endDate >= periodStart)
     .map(a => ({ employeeId: a.employeeId, employeeName: a.employeeName, startDate: a.startDate, endDate: a.endDate, type: a.type }))
 
+  // §60: per-entry wish fulfillment map for schedule grid ✓/✕ indicators
+  const wishFulfillmentMap = useMemo(() => {
+    if (!generatedSchedule) return {} as Record<string, boolean>
+    const map: Record<string, boolean> = {}
+    wishSubmissions.forEach(w => {
+      const assignment = generatedSchedule[w.employeeId]?.[w.date]
+      const key = `${w.employeeId}|${w.date}`
+      if (w.preferredShiftType === 'frei') {
+        map[key] = !assignment
+      } else {
+        const shift = assignment ? locationShifts.find(s => s.id === assignment.shiftId) : null
+        map[key] = !!shift && shift.type === w.preferredShiftType
+      }
+    })
+    return map
+  }, [wishSubmissions, generatedSchedule, locationShifts])
+
   const getDisplayAssignment = (empId: string, dateStr: string): { shift: Shift; startTime: string; endTime: string; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null => {
     if (generatedSchedule) {
       const assignment = generatedSchedule[empId]?.[dateStr]
@@ -581,6 +598,14 @@ export default function AdminSchedule() {
       setAiReasoning(reasoning ? sanitizeAiText(reasoning) : null)
       setAiDecisions(decisions.map(d => ({ ...d, message: sanitizeAiText(d.message) })))
       const reasonsByEntry: Record<string, string> = {}
+      // §39: populate from solver-generated whyAssigned per entry
+      Object.entries(data.week as Record<string, Record<string, { whyAssigned?: string }>> ?? {}).forEach(([empId, dateMap]) => {
+        Object.entries(dateMap).forEach(([date, entry]) => {
+          if (entry.whyAssigned) {
+            reasonsByEntry[`${empId}|${date}`] = entry.whyAssigned
+          }
+        })
+      })
       decisions.forEach(d => {
         if (d.type === 'assignment' && d.employeeId && d.date) {
           reasonsByEntry[`${d.employeeId}|${d.date}`] = sanitizeAiText(d.message)
@@ -1502,15 +1527,23 @@ export default function AdminSchedule() {
                                             {assignment.funktion && (
                                               <span className="text-[9px] leading-tight truncate max-w-full italic" style={{ color: assignment.shift.color, opacity: 0.6 }}>{assignment.funktion}</span>
                                             )}
+                                            {(`${emp.id}|${dateStr}` in wishFulfillmentMap) && (
+                                              <span className={`text-[9px] font-bold leading-none ${wishFulfillmentMap[`${emp.id}|${dateStr}`] ? 'text-green-500' : 'text-red-400'}`} title={wishFulfillmentMap[`${emp.id}|${dateStr}`] ? 'Wunsch erfüllt' : 'Wunsch nicht erfüllt'}>
+                                                {wishFulfillmentMap[`${emp.id}|${dateStr}`] ? '✓' : '✕'}
+                                              </span>
+                                            )}
                                           </div>
                                         ) : (
                                           <button
                                             onClick={() => setManualPickerCell({ empId: emp.id, dateStr })}
-                                            className="w-full flex items-center justify-center h-9 rounded-lg transition-colors hover:bg-gray-50 text-gray-200 hover:text-brand group"
+                                            className="w-full flex items-center justify-center h-9 rounded-lg transition-colors hover:bg-gray-50 text-gray-200 hover:text-brand group relative"
                                             title="Schicht manuell zuweisen"
                                           >
                                             <span className="text-xs group-hover:hidden">—</span>
                                             <Plus size={14} className="hidden group-hover:block" />
+                                            {wishFulfillmentMap[`${emp.id}|${dateStr}`] === true && (
+                                              <span className="absolute top-0.5 right-0.5 text-[9px] font-bold text-green-500" title="Freiwunsch erfüllt">✓</span>
+                                            )}
                                           </button>
                                         )}
                                       </td>
