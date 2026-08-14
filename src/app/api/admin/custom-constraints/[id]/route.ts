@@ -7,7 +7,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } },
 ) {
-  const session = requireRole(req, ['admin', 'company', 'okun'])
+  const session = requireRole(req, ['admin', 'okun'])
   if (session instanceof NextResponse) return session
 
   const existing = await prisma.customConstraint.findUnique({ where: { id: params.id } })
@@ -42,7 +42,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } },
 ) {
-  const session = requireRole(req, ['admin', 'company', 'okun'])
+  const session = requireRole(req, ['admin', 'okun'])
   if (session instanceof NextResponse) return session
 
   const existing = await prisma.customConstraint.findUnique({ where: { id: params.id } })

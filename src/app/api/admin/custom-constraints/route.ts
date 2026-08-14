@@ -5,7 +5,7 @@ import Anthropic from '@anthropic-ai/sdk'
 
 // GET  /api/admin/custom-constraints  — list for location
 export async function GET(req: NextRequest) {
-  const session = requireRole(req, ['admin', 'company', 'okun'])
+  const session = requireRole(req, ['admin', 'okun'])
   if (session instanceof NextResponse) return session
 
   const locationId = await resolveLocationId(session)
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/admin/custom-constraints  — generate code for a natural-language rule
 export async function POST(req: NextRequest) {
-  const session = requireRole(req, ['admin', 'company', 'okun'])
+  const session = requireRole(req, ['admin', 'okun'])
   if (session instanceof NextResponse) return session
 
   const locationId = await resolveLocationId(session)
