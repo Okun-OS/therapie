@@ -8,7 +8,7 @@ import { useToast } from '@/lib/toast-context'
 import {
   ShieldAlert, Heart, Plus, Trash2, Loader2, Clock, Users, MessageCircle,
   Save, Brain, CalendarDays, Pencil, Check, X, Send, Bot, ChevronDown, ChevronUp,
-  Code2, Zap, XCircle,
+  Code2, Zap, XCircle, AlertTriangle, RotateCcw,
 } from 'lucide-react'
 import type { LocationModel, HarteRegel, WeicheRegel, WochentagKuerzel } from '@/lib/company-model-types'
 import Link from 'next/link'
@@ -94,6 +94,18 @@ export default function AdminModelPage() {
   const [ccGenerating, setCcGenerating] = useState(false)
   const [ccActioning, setCcActioning] = useState<string | null>(null)
   const [ccExpandedId, setCcExpandedId] = useState<string | null>(null)
+
+  // Reset / Neustart
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetScope, setResetScope] = useState({
+    planungsmodell: true,
+    planungsrichtlinien: true,
+    customConstraints: true,
+    schichten: false,
+    onboarding: false,
+  })
+  const [resetConfirmText, setResetConfirmText] = useState('')
+  const [resetting, setResetting] = useState(false)
 
   const load = useCallback(async () => {
     const [modelRes, shiftsRes, ccRes] = await Promise.all([
@@ -372,6 +384,30 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
       showToast('Aktion fehlgeschlagen', 'error')
     } finally {
       setCcActioning(null)
+    }
+  }
+
+  // ── Zurücksetzen ──────────────────────────────────────────────────────────
+
+  const handleReset = async () => {
+    if (resetConfirmText !== 'ZURÜCKSETZEN' || resetting) return
+    setResetting(true)
+    try {
+      const res = await fetch('/api/admin/location-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...resetScope, confirm: resetConfirmText }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      showToast('Standort-Planungsdaten zurückgesetzt', 'success')
+      setResetOpen(false)
+      setResetConfirmText('')
+      setLoading(true)
+      await load()
+    } catch {
+      showToast('Zurücksetzen fehlgeschlagen', 'error')
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -832,6 +868,73 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                 </div>
               )
             })}
+          </div>
+        )}
+      </Card>
+
+      {/* Zurücksetzen & Neustart */}
+      <Card padding="lg" className="border-red-100">
+        <div className="flex items-center gap-2 mb-2">
+          <RotateCcw size={14} className="text-red-400" />
+          <p className="text-xs font-semibold text-red-400 uppercase tracking-wide">Zurücksetzen &amp; Neustart</p>
+        </div>
+        <p className="text-xs text-gray-400 leading-relaxed mb-3">
+          Setzt die Planungskonfiguration dieses Standorts zurück, um mit dem neuen Regelsystem frisch zu starten.
+          Dienstpläne, Zeiterfassung, Urlaube und Mitarbeiter bleiben unberührt.
+        </p>
+        {!resetOpen ? (
+          <Button variant="secondary" size="sm" onClick={() => setResetOpen(true)} className="gap-1.5 text-red-500 border-red-200 hover:bg-red-50">
+            <RotateCcw size={13} />Standort zurücksetzen…
+          </Button>
+        ) : (
+          <div className="border border-red-200 rounded-xl bg-red-50/40 p-3 space-y-3">
+            <div className="space-y-1.5">
+              {([
+                ['planungsmodell', 'Planungsmodell', 'KI-generiertes Modell mit harten & weichen Regeln'],
+                ['planungsrichtlinien', 'Planungsrichtlinien', 'Überstunden-Handling, Fristen, Solver-Parameter'],
+                ['customConstraints', 'Custom-Regeln', 'Alle KI-generierten Zusatz-Constraints'],
+                ['schichten', 'Schichten & Mindestbesetzung', 'Achtung: bestehende Dienstplan-Einträge verlieren ihre Schicht-Zuordnung'],
+                ['onboarding', 'Onboarding-Status', 'Der Einrichtungs-Chat startet komplett neu'],
+              ] as const).map(([key, label, hint]) => (
+                <label key={key} className="flex items-start gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={resetScope[key]}
+                    onChange={e => setResetScope(p => ({ ...p, [key]: e.target.checked }))}
+                    className="mt-0.5 accent-red-500"
+                  />
+                  <span className="text-xs">
+                    <span className="font-medium text-navy">{label}</span>
+                    <span className={`block ${key === 'schichten' ? 'text-red-400' : 'text-gray-400'}`}>{hint}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div className="flex items-start gap-2 text-[11px] text-red-500 bg-red-50 border border-red-100 rounded-lg px-2.5 py-2">
+              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+              <span>Diese Aktion kann nicht rückgängig gemacht werden. Tippe <b>ZURÜCKSETZEN</b> zur Bestätigung.</span>
+            </div>
+            <input
+              type="text"
+              value={resetConfirmText}
+              onChange={e => setResetConfirmText(e.target.value)}
+              placeholder="ZURÜCKSETZEN"
+              className="w-full text-sm border border-red-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-300/40 placeholder:text-red-200"
+            />
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => { setResetOpen(false); setResetConfirmText('') }} className="gap-1">
+                <X size={12} />Abbrechen
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleReset}
+                disabled={resetConfirmText !== 'ZURÜCKSETZEN' || resetting || !Object.values(resetScope).some(Boolean)}
+                className="gap-1.5 bg-red-600 hover:bg-red-700 text-white border-0"
+              >
+                {resetting ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+                Endgültig zurücksetzen
+              </Button>
+            </div>
           </div>
         )}
       </Card>
