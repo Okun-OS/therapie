@@ -1103,3 +1103,21 @@ model WorkflowLearning {
   status         String   @default("pending")
   createdAt      DateTime @default(now())
 }
+
+// ── §70 Custom Constraint Generator ──────────────────────────────────────────
+
+model CustomConstraint {
+  id          String   @id @default(cuid())
+  locationId  String
+  customerId  String
+  name        String
+  description String
+  code        String
+  status      String   @default("pending")
+  errorLog    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([locationId])
+  @@index([customerId])
+}

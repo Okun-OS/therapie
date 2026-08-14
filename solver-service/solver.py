@@ -92,6 +92,68 @@ def _streak_before_period(emp: dict, first_plan_day: str) -> int:
     return streak
 
 
+# ─── §70 Custom constraint executor ──────────────────────────────────────────
+
+def _execute_custom_constraints(
+    constraints: list[dict],
+    model,
+    X: dict,
+    employees: list[dict],
+    shifts: list[dict],
+    days: list[str],
+    day_idx: dict,
+    shift_idx: dict,
+    n_emp: int,
+    n_days: int,
+    n_shifts: int,
+) -> None:
+    """
+    Execute admin-authored custom constraints in a restricted namespace.
+    Each constraint is a Python snippet that may call model.add(...) using the
+    pre-bound variables. Errors are caught per-constraint so one bad snippet
+    does not break the whole solve.
+    """
+    if not constraints:
+        return
+
+    safe_builtins = {
+        "range": range,
+        "len": len,
+        "enumerate": enumerate,
+        "sum": sum,
+        "int": int,
+        "min": min,
+        "max": max,
+        "list": list,
+        "dict": dict,
+        "set": set,
+        "zip": zip,
+        "any": any,
+        "all": all,
+        "abs": abs,
+    }
+
+    ns = {
+        "__builtins__": safe_builtins,
+        "model": model,
+        "X": X,
+        "employees": employees,
+        "shifts": shifts,
+        "days": days,
+        "day_idx": day_idx,
+        "shift_idx": shift_idx,
+        "n_emp": n_emp,
+        "n_days": n_days,
+        "n_shifts": n_shifts,
+    }
+
+    for c in constraints:
+        try:
+            exec(c["code"], ns)  # noqa: S102
+        except Exception as exc:
+            log.warning("[solver] custom constraint %r skipped: %s", c.get("name", c.get("id")), exc)
+
+
 # ─── Main solver ───────────────────────────────────────────────────────────────
 
 def solve(rule_model: dict) -> dict:
@@ -235,6 +297,13 @@ def solve(rule_model: dict) -> dict:
             else:
                 # Employee had no assignment on this frozen day → keep them free
                 model.add(sum(X[ei, di, s] for s in range(n_shifts)) == 0)
+
+    # §70: Custom constraints generated via natural-language → code pipeline
+    _execute_custom_constraints(
+        rule_model.get("customConstraints") or [],
+        model, X, employees, shifts, days, day_idx, shift_idx,
+        n_emp, n_days, n_shifts,
+    )
 
     # H3: Legal max weekly hours
     for ei in range(n_emp):

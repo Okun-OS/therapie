@@ -12,6 +12,7 @@ import type {
   PlanungsEinheit,
   SchichtDefinition,
   FairnessKonfig,
+  CustomConstraintEntry,
 } from '@/lib/company-model-types'
 
 const DAY_NAME_TO_DOW: Record<string, number> = {
@@ -92,6 +93,7 @@ export async function buildRuleModel(
     recentEntries,
     employeeRequests,
     futureRequests,
+    activeCustomConstraints,
   ] = await Promise.all([
     prisma.locationPlanningRules.findUnique({ where: { locationId } }),
     prisma.shift.findMany({ where: { locationId } }),
@@ -149,6 +151,11 @@ export async function buildRuleModel(
         ],
       },
       take: 50,
+    }),
+    // §70 custom constraints: active only
+    prisma.customConstraint.findMany({
+      where: { locationId, status: 'active' },
+      select: { id: true, name: true, description: true, code: true },
     }),
   ])
 
@@ -469,6 +476,13 @@ export async function buildRuleModel(
     : undefined
   const effectiveKontext = [kontext, rollingHorizon].filter(Boolean).join(' ') || undefined
 
+  const customConstraints: CustomConstraintEntry[] = activeCustomConstraints.map(c => ({
+    id: c.id,
+    name: c.name,
+    description: c.description,
+    code: c.code,
+  }))
+
   return {
     sessionId,
     locationId,
@@ -484,5 +498,6 @@ export async function buildRuleModel(
     vorherigeBewertung,
     existingSchedule,
     frozenDates,
+    customConstraints: customConstraints.length > 0 ? customConstraints : undefined,
   }
 }

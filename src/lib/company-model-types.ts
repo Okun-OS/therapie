@@ -179,6 +179,13 @@ export interface PlanungsMitarbeiter {
 
 export type PlanVariante = 'ausgewogen' | 'mitarbeiterfreundlich' | 'maximal_fair'
 
+export interface CustomConstraintEntry {
+  id: string
+  name: string
+  description: string
+  code: string
+}
+
 export interface PlanningRuleModel {
   sessionId: string
   locationId: string
@@ -195,6 +202,7 @@ export interface PlanningRuleModel {
   existingSchedule?: Array<{ mitarbeiterId: string; datum: string; schichtId: string }>
   frozenDates?: string[]
   planVariante?: PlanVariante
+  customConstraints?: CustomConstraintEntry[]
 }
 
 export interface PlanEintrag {

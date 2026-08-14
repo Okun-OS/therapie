@@ -8,6 +8,7 @@ import { useToast } from '@/lib/toast-context'
 import {
   ShieldAlert, Heart, Plus, Trash2, Loader2, Clock, Users, MessageCircle,
   Save, Brain, CalendarDays, Pencil, Check, X, Send, Bot, ChevronDown, ChevronUp,
+  Code2, Zap, XCircle,
 } from 'lucide-react'
 import type { LocationModel, HarteRegel, WeicheRegel, WochentagKuerzel } from '@/lib/company-model-types'
 import Link from 'next/link'
@@ -47,6 +48,16 @@ interface ChatMessage {
   content: string
 }
 
+interface CustomConstraintRow {
+  id: string
+  name: string
+  description: string
+  code: string
+  status: string
+  errorLog?: string | null
+  createdAt: string
+}
+
 export default function AdminModelPage() {
   const { showToast } = useToast()
   const [model, setModel] = useState<LocationModel | null>(null)
@@ -76,14 +87,24 @@ export default function AdminModelPage() {
   const [chatLoading, setChatLoading] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
+  // Custom constraints (§70)
+  const [customConstraints, setCustomConstraints] = useState<CustomConstraintRow[]>([])
+  const [ccName, setCcName] = useState('')
+  const [ccDescription, setCcDescription] = useState('')
+  const [ccGenerating, setCcGenerating] = useState(false)
+  const [ccActioning, setCcActioning] = useState<string | null>(null)
+  const [ccExpandedId, setCcExpandedId] = useState<string | null>(null)
+
   const load = useCallback(async () => {
-    const [modelRes, shiftsRes] = await Promise.all([
+    const [modelRes, shiftsRes, ccRes] = await Promise.all([
       fetch('/api/location-model'),
       fetch('/api/shifts'),
+      fetch('/api/admin/custom-constraints'),
     ])
-    const [modelData, shiftsData] = await Promise.all([modelRes.json(), shiftsRes.json()])
+    const [modelData, shiftsData, ccData] = await Promise.all([modelRes.json(), shiftsRes.json(), ccRes.json()])
     setModel(modelData.model ?? null)
     setShifts((shiftsData.shifts as DbShift[]) ?? [])
+    setCustomConstraints((ccData.constraints as CustomConstraintRow[]) ?? [])
     setLoading(false)
   }, [])
 
@@ -300,6 +321,57 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
       setChatMessages(prev => [...prev, { role: 'assistant', content: 'Fehler beim Senden. Bitte nochmal versuchen.' }])
     } finally {
       setChatLoading(false)
+    }
+  }
+
+  // ── Custom Constraints ────────────────────────────────────────────────────
+
+  const handleGenerateConstraint = async () => {
+    if (!ccName.trim() || !ccDescription.trim() || ccGenerating) return
+    setCcGenerating(true)
+    try {
+      const res = await fetch('/api/admin/custom-constraints', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: ccName.trim(), description: ccDescription.trim() }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      setCustomConstraints(prev => [data.constraint, ...prev])
+      setCcName('')
+      setCcDescription('')
+      setCcExpandedId(data.constraint.id)
+      showToast('Code generiert — bitte prüfen und aktivieren', 'success')
+    } catch {
+      showToast('Generierung fehlgeschlagen', 'error')
+    } finally {
+      setCcGenerating(false)
+    }
+  }
+
+  const handleCcAction = async (id: string, action: 'active' | 'rejected' | 'delete') => {
+    setCcActioning(id)
+    try {
+      if (action === 'delete') {
+        const res = await fetch(`/api/admin/custom-constraints/${id}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error()
+        setCustomConstraints(prev => prev.filter(c => c.id !== id))
+        showToast('Gelöscht', 'success')
+      } else {
+        const res = await fetch(`/api/admin/custom-constraints/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: action }),
+        })
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        setCustomConstraints(prev => prev.map(c => c.id === id ? { ...c, status: data.constraint.status } : c))
+        showToast(action === 'active' ? 'Aktiviert' : 'Abgelehnt', 'success')
+      }
+    } catch {
+      showToast('Aktion fehlgeschlagen', 'error')
+    } finally {
+      setCcActioning(null)
     }
   }
 
@@ -643,6 +715,125 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
           </Button>
         </div>
         <p className="text-xs text-gray-400 mt-1.5">Die KI erkennt automatisch, ob es eine harte oder weiche Regel ist.</p>
+      </Card>
+
+      {/* Custom Constraints §70 */}
+      <Card padding="lg">
+        <div className="flex items-center gap-2 mb-3">
+          <Code2 size={14} className="text-purple-400" />
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Custom-Regeln</p>
+          <span className="text-xs text-gray-400">({customConstraints.filter(c => c.status === 'active').length} aktiv)</span>
+          <span className="ml-auto text-[10px] text-purple-400 font-medium bg-purple-50 px-2 py-0.5 rounded-full">KI-generiert</span>
+        </div>
+        <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+          Beschreibe eine komplexe Planungsregel in natürlicher Sprache. Die KI generiert daraus CP-SAT-Constraint-Code,
+          den du vor der Aktivierung prüfen kannst.
+        </p>
+
+        {/* Generator form */}
+        <div className="space-y-2 mb-4">
+          <input
+            type="text"
+            value={ccName}
+            onChange={e => setCcName(e.target.value)}
+            placeholder='Regelname (z.B. "Keine zwei Nachtdienste hintereinander")'
+            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400/30 placeholder:text-gray-300"
+            disabled={ccGenerating}
+          />
+          <textarea
+            value={ccDescription}
+            onChange={e => setCcDescription(e.target.value)}
+            placeholder='Beschreibe die Regel genau, z.B. "Kein Mitarbeiter soll mehr als 2 Nachtdienste in Folge haben. Nach 2 Nachtdiensten muss mindestens ein freier Tag folgen."'
+            rows={3}
+            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400/30 placeholder:text-gray-300 resize-none"
+            disabled={ccGenerating}
+          />
+          <Button
+            size="sm"
+            onClick={handleGenerateConstraint}
+            disabled={!ccName.trim() || !ccDescription.trim() || ccGenerating}
+            className="gap-1.5 bg-purple-600 hover:bg-purple-700 text-white border-0"
+          >
+            {ccGenerating ? <Loader2 size={13} className="animate-spin" /> : <Brain size={13} />}
+            {ccGenerating ? 'KI generiert Code…' : 'Code generieren'}
+          </Button>
+        </div>
+
+        {/* Constraint list */}
+        {customConstraints.length > 0 && (
+          <div className="space-y-2">
+            {customConstraints.map(c => {
+              const isExpanded = ccExpandedId === c.id
+              const isActioning = ccActioning === c.id
+              const statusColors: Record<string, string> = {
+                active: 'text-green-600 bg-green-50',
+                rejected: 'text-red-500 bg-red-50',
+                pending: 'text-amber-600 bg-amber-50',
+              }
+              const statusLabels: Record<string, string> = {
+                active: 'Aktiv',
+                rejected: 'Abgelehnt',
+                pending: 'Warte auf Prüfung',
+              }
+              return (
+                <div key={c.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50/50">
+                    <button
+                      onClick={() => setCcExpandedId(isExpanded ? null : c.id)}
+                      className="flex-1 flex items-center gap-2 text-left min-w-0"
+                    >
+                      <Code2 size={13} className="text-purple-400 flex-shrink-0" />
+                      <span className="text-sm font-medium text-navy truncate">{c.name}</span>
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${statusColors[c.status] ?? 'text-gray-500 bg-gray-100'}`}>
+                        {statusLabels[c.status] ?? c.status}
+                      </span>
+                      {isExpanded ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
+                    </button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {c.status !== 'active' && (
+                        <button
+                          onClick={() => handleCcAction(c.id, 'active')}
+                          disabled={isActioning}
+                          title="Aktivieren"
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-green-600 hover:bg-green-50 transition-colors"
+                        >
+                          {isActioning ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+                        </button>
+                      )}
+                      {c.status !== 'rejected' && (
+                        <button
+                          onClick={() => handleCcAction(c.id, 'rejected')}
+                          disabled={isActioning}
+                          title="Ablehnen"
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-colors"
+                        >
+                          <XCircle size={13} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleCcAction(c.id, 'delete')}
+                        disabled={isActioning}
+                        title="Löschen"
+                        className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="border-t border-gray-100 bg-gray-950 px-3 py-3">
+                      <p className="text-[10px] text-gray-400 mb-1.5 font-mono uppercase tracking-wide">Python CP-SAT Code</p>
+                      <pre className="text-[11px] text-green-300 font-mono whitespace-pre-wrap leading-relaxed overflow-x-auto">{c.code}</pre>
+                      {c.errorLog && (
+                        <p className="text-[10px] text-red-400 mt-2 font-mono">{c.errorLog}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </Card>
     </div>
   )
