@@ -26,8 +26,10 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/personnel-risk':     'Personalrisiko',
   '/admin/controlling':        'KI-Controlling',
   '/admin/reports':            'Berichte',
-  '/admin/onboarding':         'Standort-Onboarding',
-  '/admin/assistant':          'OKUN Assistent',
+  '/admin/onboarding':                  'Standort-Onboarding',
+  '/admin/employee-requests':           'Dienstwünsche & Anträge',
+  '/admin/settings/planning-policy':    'Planungsrichtlinien',
+  '/admin/assistant':                   'OKUN Assistent',
   '/admin/payroll':            'Lohnabrechnung',
   '/admin/surcharges':         'Zuschlags-Engine',
   // Employee
