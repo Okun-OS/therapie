@@ -72,7 +72,7 @@ Generiere den CP-SAT Python-Code für diese Planungsregel.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-opus-4-7',
+      model: 'claude-opus-5',
       max_tokens: 1024,
       thinking: { type: 'adaptive' },
       system: systemPrompt,
