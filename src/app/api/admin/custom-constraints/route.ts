@@ -51,6 +51,7 @@ Verfügbare Variablen im Ausführungskontext:
 - employees: list[dict]  — Liste der Mitarbeiter; jeder hat: id, name, einheiten, wochenstundenSoll, qualifikationen, verfuegbareSchichtTypen
 - shifts: list[dict]  — Liste der Schichten; jede hat: id, name, typ, von, bis, minBesetzungGesamt
 - days: list[str]  — Planungstage als "YYYY-MM-DD"
+- weekdays: list[int]  — Wochentag je Planungstag (0=Montag … 6=Sonntag), parallel zu days
 - day_idx: dict[str, int]  — Tag-String → Index in days
 - shift_idx: dict[str, int]  — Schicht-ID → Index in shifts
 - n_emp, n_days, n_shifts: int  — Dimensionen

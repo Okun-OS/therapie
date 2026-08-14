@@ -133,6 +133,10 @@ def _execute_custom_constraints(
         "abs": abs,
     }
 
+    # Weekday per plan day (0=Mo … 6=So) — generated code cannot import datetime,
+    # so recurring day-of-week rules need this precomputed list.
+    weekdays = [date.fromisoformat(d).weekday() for d in days]
+
     ns = {
         "__builtins__": safe_builtins,
         "model": model,
@@ -140,6 +144,7 @@ def _execute_custom_constraints(
         "employees": employees,
         "shifts": shifts,
         "days": days,
+        "weekdays": weekdays,
         "day_idx": day_idx,
         "shift_idx": shift_idx,
         "n_emp": n_emp,
