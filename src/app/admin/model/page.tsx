@@ -466,6 +466,27 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
     }
   }
 
+  // ── Planungsmodell aus Onboarding generieren ─────────────────────────────
+
+  const [generatingModel, setGeneratingModel] = useState(false)
+
+  const handleGenerateModel = async () => {
+    if (generatingModel) return
+    setGeneratingModel(true)
+    try {
+      const res = await fetch('/api/location-model/generate', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Generierung fehlgeschlagen')
+      showToast('Planungsmodell erstellt', 'success')
+      setLoading(true)
+      await load()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Generierung fehlgeschlagen', 'error')
+    } finally {
+      setGeneratingModel(false)
+    }
+  }
+
   // ── Zurücksetzen ──────────────────────────────────────────────────────────
 
   const handleReset = async () => {
@@ -506,12 +527,19 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
         <Card padding="lg" className="text-center py-12">
           <Brain size={36} className="mx-auto text-gray-300 mb-3" />
           <p className="font-semibold text-navy mb-1">Kein Planungsmodell vorhanden</p>
-          <p className="text-sm text-gray-500 mb-5">
-            Führe zuerst das Standort-Onboarding durch, damit ein Planungsmodell erstellt wird.
+          <p className="text-sm text-gray-500 mb-5 max-w-md mx-auto">
+            Wenn du das Standort-Onboarding bereits durchgeführt hast, kannst du das Planungsmodell
+            hier direkt aus den Onboarding-Daten erstellen lassen — inklusive Etagen, Gruppen und Regeln.
           </p>
-          <Link href="/admin/onboarding">
-            <Button className="gap-2"><MessageCircle size={16} />Zum Onboarding</Button>
-          </Link>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <Button onClick={handleGenerateModel} disabled={generatingModel} className="gap-2">
+              {generatingModel ? <Loader2 size={16} className="animate-spin" /> : <Brain size={16} />}
+              {generatingModel ? 'KI erstellt Planungsmodell…' : 'Planungsmodell jetzt generieren'}
+            </Button>
+            <Link href="/admin/onboarding">
+              <Button variant="secondary" className="gap-2"><MessageCircle size={16} />Zum Onboarding</Button>
+            </Link>
+          </div>
         </Card>
       </div>
     )

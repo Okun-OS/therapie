@@ -1,6 +1,28 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/prisma'
-import type { CompanyModel, StandortModell, LocationModel } from '@/lib/company-model-types'
+import type { CompanyModel, StandortModell, LocationModel, PlanungsEinheit } from '@/lib/company-model-types'
+import { upsertPlanningUnit } from '@/lib/schedule-entities'
+
+// §71: mirror the generated planungsEinheiten into real PlanningUnit rows so
+// the solver's group planning, the units editor and the schedule views all see
+// the same structure. Etagen first so groups can resolve their parent.
+async function syncPlanningUnitsFromModel(locationId: string, einheiten: PlanungsEinheit[]): Promise<void> {
+  if (!einheiten || einheiten.length === 0) return
+  const dbIdByModelId = new Map<string, string>()
+  const sorted = [...einheiten].sort(
+    (a, b) => (a.typ === 'etage' ? 0 : 1) - (b.typ === 'etage' ? 0 : 1),
+  )
+  for (const e of sorted) {
+    if (!e.name?.trim()) continue
+    const unit = await upsertPlanningUnit(locationId, {
+      name: e.name.trim(),
+      type: e.typ,
+      minStaff: e.mindestbesetzung ?? 1,
+      parentId: e.etageId ? dbIdByModelId.get(e.etageId) ?? null : undefined,
+    })
+    dbIdByModelId.set(e.id, unit.id)
+  }
+}
 
 const client = new Anthropic()
 
@@ -217,11 +239,12 @@ Erstelle das LocationModel als JSON mit genau diesem Schema:
     {
       "id": "einheit-1",
       "name": "...",
-      "typ": "gruppe|bereich|station|tour|objekt|fahrzeug|raum",
+      "typ": "gruppe|etage|bereich|station|tour|objekt|fahrzeug|raum",
       "mindestbesetzung": 2,
       "maximalbesetzung": 5,
       "erforderlicheQualifikationen": [],
-      "aufgaben": []
+      "aufgaben": [],
+      "etageId": "einheit-0"
     }
   ],
   "schichtmodell": {
@@ -279,6 +302,8 @@ Erstelle das LocationModel als JSON mit genau diesem Schema:
   }
 }
 
+WICHTIG zu planungsEinheiten: Wenn der Standort mehrere Etagen/Ebenen/Bereiche mit Gruppen hat (z.B. Kita mit "Oben" und "Unten"), lege JEDE Etage als eigene Einheit mit typ "etage" an und gib bei JEDER Gruppe über "etageId" die id ihrer Etage an. mindestbesetzung bedeutet: bei Gruppen die Personen pro Tag, bei Etagen die Personen je Früh-/Spätdienst (Auf-/Zuschluss). "etageId" nur bei Gruppen setzen, die zu einer Etage gehören.
+
 Leite alle Werte ausschließlich aus den Onboarding-Daten ab. Erfinde keine Regeln oder Strukturen, die nicht explizit erwähnt wurden.`
 
   const response = await client.messages.create({
@@ -296,6 +321,10 @@ Leite alle Werte ausschließlich aus den Onboarding-Daten ab. Erfinde keine Rege
 
   const model = JSON.parse(jsonMatch[0]) as LocationModel
   await saveLocationModel(locationId, customerId, model)
+  // §71: turn the described structure into real system data (Etagen/Gruppen)
+  await syncPlanningUnitsFromModel(locationId, model.planungsEinheiten ?? []).catch(err =>
+    console.error('[company-model-service] planning unit sync failed:', err),
+  )
   return model
 }
 
