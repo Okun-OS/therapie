@@ -120,6 +120,7 @@ const adminDock: DockItem[] = [
       title: 'Einstellungen',
       sections: [
         { items: [
+          { href: '/admin/setup',                   label: 'Einrichtung',            description: 'Standort in 5 Schritten konfigurieren', badge: 'NEU', icon: '🚀' },
           { href: '/admin/onboarding',              label: 'Standorteinstellungen', description: 'Schichten, Regeln & Einstellungen per KI bearbeiten', badge: 'KI', isGold: true, icon: '🏢' },
           { href: '/admin/model',                   label: 'Planungsmodell',         description: 'Regeln & Mindestbesetzung editieren',                 icon: '📋' },
           { href: '/admin/settings/planning-policy', label: 'Planungsrichtlinien',   description: 'Überstunden, Fristen & Solver-Parameter',             icon: '⚙️' },

@@ -28,6 +28,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/reports':            'Berichte',
   '/admin/onboarding':                  'Standort-Onboarding',
   '/admin/employee-requests':           'Dienstwünsche & Anträge',
+  '/admin/setup':                       'Standort einrichten',
   '/admin/settings/planning-policy':    'Planungsrichtlinien',
   '/admin/assistant':                   'OKUN Assistent',
   '/admin/payroll':            'Lohnabrechnung',

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveLocationId, resolveCustomerId } from '@/lib/session'
-import { getLocationModel, saveLocationModel } from '@/lib/company-model-service'
+import { getLocationModel, saveLocationModel, normalizeLocationModel } from '@/lib/company-model-service'
 import type { WochentagKuerzel } from '@/lib/company-model-types'
 import { prisma } from '@/lib/prisma'
 
@@ -36,8 +36,20 @@ export async function PATCH(req: NextRequest) {
 
     const body = await req.json() as { arbeitstage?: string[]; planungsRegeln?: { hart?: unknown[]; weich?: unknown[] } }
 
-    const model = await getLocationModel(locationId)
-    if (!model) return NextResponse.json({ error: 'Kein Planungsmodell vorhanden' }, { status: 404 })
+    // §78 wizard: create a minimal DETERMINISTIC model when none exists yet —
+    // no LLM involved, just an empty shell so arbeitstage/settings can be saved.
+    let model = await getLocationModel(locationId)
+    if (!model) {
+      const location = await prisma.location.findUnique({ where: { id: locationId } })
+      model = normalizeLocationModel({
+        locationId,
+        locationName: location?.name ?? 'Standort',
+        customerId,
+        betriebsTyp: 'mon_fri',
+        bundesland: location?.bundesland ?? undefined,
+        schichtmodell: { arbeitstage: ['Mo', 'Di', 'Mi', 'Do', 'Fr'], schichten: [] },
+      })
+    }
 
     if (body.arbeitstage !== undefined) {
       const valid: WochentagKuerzel[] = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
