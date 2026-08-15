@@ -122,7 +122,13 @@ export default function SetupWizardPage() {
   }
   const deleteShift = async (id: string) => {
     const res = await fetch(`/api/shifts/${id}`, { method: 'DELETE' })
-    if (res.ok) setShifts(prev => prev.filter(s => s.id !== id))
+    if (res.ok) {
+      setShifts(prev => prev.filter(s => s.id !== id))
+      showToast('Dienst gelöscht', 'success')
+    } else {
+      const d = await res.json().catch(() => ({}))
+      showToast(d.error ?? 'Löschen fehlgeschlagen', 'error')
+    }
   }
 
   // ── Schritt 3: Struktur ───────────────────────────────────────────────────
@@ -439,8 +445,11 @@ export default function SetupWizardPage() {
         <Card padding="lg">
           <p className="text-sm font-semibold text-navy mb-1">Welche Dienste gibt es?</p>
           <p className="text-xs text-gray-400 mb-4">
-            Trage exakt die Dienste ein, die es wirklich gibt. Teilzeitkräfte bekommen automatisch angepasste Zeiten
-            innerhalb des Dienstes (Frühdienst: Beginn fix, Spät-/Tagdienst: Ende fix).
+            Trage exakt die Dienste ein, die es wirklich gibt — als <b>Zeitrahmen</b>. Flexible Zeiten sind eingebaut:
+            Bei einem <b>Frühdienst</b> ist der Beginn fix, das Ende ergibt sich aus den Stunden der Person; bei einem{' '}
+            <b>Spät-/Tagdienst</b> ist das Ende fix und der Beginn individuell. Beispiel Spätdienst „bis 17:00, Beginn je
+            nach Stunden": frühesten möglichen Beginn als „Von" eintragen, 17:00 als „Bis" — den Rest rechnet der Planer
+            pro Person automatisch.
           </p>
           <div className="space-y-1.5 mb-4">
             {shifts.map(s => (
@@ -462,12 +471,12 @@ export default function SetupWizardPage() {
                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20" />
             </div>
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase">Von</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase">Von (frühester Beginn)</label>
               <input type="time" value={newShift.startTime} onChange={e => setNewShift(p => ({ ...p, startTime: e.target.value }))}
                 className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 block" />
             </div>
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase">Bis</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase">Bis (spätestes Ende)</label>
               <input type="time" value={newShift.endTime} onChange={e => setNewShift(p => ({ ...p, endTime: e.target.value }))}
                 className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 block" />
             </div>

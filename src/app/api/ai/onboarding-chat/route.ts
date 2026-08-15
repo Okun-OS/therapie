@@ -54,8 +54,8 @@ Die 13 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reih
 1. Standort verstehen: Art des Standorts (Kita, Wohngruppe, Pflege, Jugendhilfe, Behindertenhilfe, ambulante Dienste, ...).
 2. Organisationsstruktur: Gruppen, Bereiche, Teams, Abteilungen, Wohnbereiche, Funktionsräume.
 3. Mitarbeiterstruktur: Rollen wie Leitung, Teamleitung, Springer, Auszubildende, Praktikanten, Verwaltung.
-4. Arbeitszeiten: Öffnungszeiten, Dienstmodelle (Früh/Spät/Nacht/24h), Bereitschaft, Wochenenden, Feiertage. DIESE PHASE IST NICHT ABGESCHLOSSEN, bevor der Nutzer mindestens eine konkrete, benannte Schicht mit Uhrzeiten genannt hat (z.B. "Frühschicht von 07:00 bis 14:00 Uhr", "Spätdienst 12:00 bis 18:00 Uhr") – frage aktiv danach, falls noch keine genannt wurde, auch wenn der Nutzer nur allgemein von "Früh- und Spätdienst" spricht. Sobald eine konkrete Schicht mit Uhrzeiten genannt wird, rufe IMMER ZUSÄTZLICH das Tool "upsert_shifts" auf (nicht optional) und übergib die VOLLSTÄNDIGE, aktuelle Liste aller bisher im Gespräch genannten benannten Schichten (nicht nur die neue) – das legt echte Dienstplan-Schichten im System an bzw. aktualisiert sie. Ohne mindestens eine angelegte Schicht kann das System danach keinen Dienstplan erstellen. Nenne der Person nie eine Schicht zweimal mit unterschiedlichem Namen, sondern aktualisiere bei Korrekturen ("der Frühdienst startet jetzt schon um 06:30") dieselbe Schicht per gleichem Namen.
-5. Dienstplanlogik: Mindestbesetzung, benötigte Qualifikationen, gesetzliche Vorgaben, feste/flexible Schichtmodelle. Sobald der Nutzer konkrete Zahlen zu Planungsregeln nennt (z.B. "maximal 40 Stunden pro Woche", "mindestens 11 Stunden Ruhezeit zwischen zwei Diensten", "maximal 5 Tage in Folge", "maximal 2 Wochenenddienste im Monat", "Wunschdienste sollen berücksichtigt werden", "wir führen ein Stundenkonto zum Ausgleich von Mehr-/Minderstunden"), rufe ZUSÄTZLICH das Tool "upsert_planning_rules" auf und übergib nur die tatsächlich genannten Felder – das legt diese Regeln als echte Systemkonfiguration an, die bei jeder Dienstplanerstellung automatisch angewendet wird. Mindestbesetzung pro Schicht wird stattdessen direkt am jeweiligen Schicht-Eintrag über "upsert_shifts" (Feld "minStaff") gespeichert.
+4. Arbeitszeiten: Öffnungszeiten, Dienstmodelle (Früh/Spät/Nacht/24h), Bereitschaft, Wochenenden, Feiertage. Frage aktiv nach konkreten, benannten Schichten MIT Uhrzeiten (z.B. "Frühdienst 07:00–14:00") und halte sie wortgetreu im Feld "arbeitszeiten" fest — angelegt werden Schichten später vom Menschen im Einrichtungs-Wizard, auf Basis genau dieser Angaben.
+5. Dienstplanlogik: Mindestbesetzung, benötigte Qualifikationen, gesetzliche Vorgaben, feste/flexible Schichtmodelle. Halte alle genannten Zahlen und Regeln wortgetreu in "dienstplanlogik" bzw. "individuelleRegeln" fest — sie werden später im Einrichtungs-Wizard als geprüfte Vorschläge übernommen.
 6. Pausenlogik: automatisch geplant oder selbst verwaltet, Dauer, früheste/späteste Lage, feste Regeln.
 7. Wiederkehrende Aufgaben: z.B. Bürozeit, Dokumentation, Teamsitzung, Elterngespräche, Übergaben.
 8. Individuelle Regeln: freie Beschreibung von Besonderheiten (z.B. "Gruppe Rot braucht morgens zwei Fachkräfte"). Speichere jede Regel als eigenen, klar formulierten Satz in "individuelleRegeln".
@@ -68,9 +68,9 @@ Die 13 Phasen, die du im Laufe des Gesprächs abdecken musst (du darfst die Reih
 Regeln:
 1. Sprich den Nutzer mit "Du" an, freundlich, kompetent, professionell.
 2. Stelle pro Nachricht nur ein bis zwei zusammenhängende Fragen, keine Frageblöcke.
-3. Rufe bei jeder neuen Information das Tool "update_location_onboarding" auf. Felder, die du dabei aktualisierst, MÜSSEN den vollständigen, aktuellen Stand enthalten (bereits Bekanntes + Neues), niemals nur das Neue. Trage in "completedPhases" alle Phasen-Keys ein, die inhaltlich ausreichend abgedeckt sind (phase1 … phase13). Rufe zusätzlich "upsert_shifts" auf, sobald konkrete, benannte Schichten mit Uhrzeiten genannt werden (siehe Phase 4), und "upsert_planning_rules", sobald konkrete Planungsregeln genannt werden (siehe Phase 5).
+3. Rufe bei jeder neuen Information das Tool "update_location_onboarding" auf. Felder, die du dabei aktualisierst, MÜSSEN den vollständigen, aktuellen Stand enthalten (bereits Bekanntes + Neues), niemals nur das Neue. Trage in "completedPhases" alle Phasen-Keys ein, die inhaltlich ausreichend abgedeckt sind (phase1 … phase13).
 4. Antworte IMMER zusätzlich mit einem kurzen Text, auch wenn du das Tool aufrufst.
-5. Der Chat darf erst enden bzw. "completed" darf erst auf true gesetzt werden, wenn alle 13 Phasen abgedeckt sind, mindestens eine Schicht über "upsert_shifts" angelegt wurde UND der Nutzer der Abschluss-Zusammenfassung ausdrücklich zugestimmt hat. Das System lehnt einen Abschluss ohne mindestens eine angelegte Schicht automatisch ab – frage in diesem Fall aktiv nach konkreten Schichten, statt "completed" zu setzen.
+5. Der Chat darf erst enden bzw. "completed" darf erst auf true gesetzt werden, wenn alle 13 Phasen abgedeckt sind UND der Nutzer der Abschluss-Zusammenfassung ausdrücklich zugestimmt hat. Weise am Ende darauf hin, dass die Einrichtung (Schichten, Gruppen, Regeln) im Einrichtungs-Wizard unter "Einstellungen → Einrichtung" mit einem Klick aus diesen Angaben vorgeschlagen und übernommen wird.
 6. Falls der Nutzer bereits abgeschlossene Angaben später ändert ("Lernfähigkeit", z.B. "wir eröffnen ab nächstem Monat eine weitere Gruppe" oder "der Frühdienst startet jetzt schon um 06:30 Uhr"), erkenne das und aktualisiere die betroffenen Felder bzw. Schichten, ohne von vorne zu beginnen.
 7. Erfinde niemals Angaben, die nicht genannt wurden.
 8. Schreibe ausschließlich auf Deutsch.
@@ -291,9 +291,9 @@ export async function POST(req: NextRequest) {
         bereitsAngelegteSchichten: existingShifts.map(s => ({ name: s.name, type: s.type, startTime: s.startTime, endTime: s.endTime, minStaff: s.minStaff })),
         planungsregeln: planningRules,
         bereitsAngelegtePlanungseinheiten: existingPlanningUnits.map(u => ({ name: u.name, type: u.type, description: u.description })),
-      }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Noch offene Phasen: ${ONBOARDING_PHASES.filter(p => !(existing?.completedPhases ?? []).includes(p.key)).map(p => p.label).join(', ') || 'keine – alle Phasen abgedeckt'}.\n\nWICHTIG: Es sind aktuell ${existingShifts.length} Schicht(en) im System angelegt. ${existingShifts.length === 0 ? 'Phase 4 ist damit NICHT abgeschlossen – frage aktiv nach mindestens einer konkreten, benannten Schicht mit Uhrzeiten und rufe "upsert_shifts" auf, bevor du den Abschluss vorschlägst. Das System lehnt "completed: true" ohne mindestens eine Schicht automatisch ab.' : 'Phase 4 kann als abgedeckt gelten.'}\n\nPlanungseinheiten: Sobald der Nutzer konkrete Namen für Gruppen, Bereiche, Objekte, Touren, Fahrzeuge, Maschinen, Räume oder Stationen nennt, rufe IMMER ZUSÄTZLICH "upsert_planning_units" auf. Erfinde NIEMALS eigene Einheitennamen. Es sind aktuell ${existingPlanningUnits.length} Planungseinheit(en) im System angelegt.`
+      }, null, 2)}\n\nBaue darauf auf, frage nicht erneut nach bereits Bekanntem. Noch offene Phasen: ${ONBOARDING_PHASES.filter(p => !(existing?.completedPhases ?? []).includes(p.key)).map(p => p.label).join(', ') || 'keine – alle Phasen abgedeckt'}.\n\nZur Info (nur Kontext, du legst selbst NICHTS an): ${existingShifts.length} Schicht(en) und ${existingPlanningUnits.length} Planungseinheit(en) sind bereits im System konfiguriert.`
       systemPrompt = LOCATION_SYSTEM_PROMPT
-      tools = [LOCATION_TOOL, SHIFTS_TOOL, PLANNING_RULES_TOOL, PLANNING_UNITS_TOOL, WORKFLOW_STATUS_TOOL]
+      tools = [LOCATION_TOOL, WORKFLOW_STATUS_TOOL]
     }
 
     const response = await client.messages.create({
@@ -354,122 +354,18 @@ export async function POST(req: NextRequest) {
             completedPhases: Array.isArray(input.completedPhases) ? input.completedPhases as string[] : undefined,
             completed: typeof input.completed === 'boolean' ? input.completed : undefined,
           })
-          if (isNowCompleted && customerId) {
-            if (isOrganization) {
+          if (isNowCompleted && customerId && isOrganization) {
               generateCompanyModelFromOnboarding(customerId).catch(err =>
                 console.error('CompanyModel-Generierung nach Onboarding fehlgeschlagen:', err)
               )
-            } else {
-              generateLocationModelFromOnboarding(scope, customerId).catch(err =>
-                console.error('LocationModel-Generierung nach Onboarding fehlgeschlagen:', err)
-              )
-            }
           }
           if (typeof input.pausenlogik === 'string' && input.pausenlogik.trim() !== (existingPausenlogik ?? '').trim()) {
             await resetBreakRulesExtraction(scope)
           }
         }
       }
-      if (block.type === 'tool_use' && block.name === 'upsert_shifts' && !isOrganization) {
-        const input = block.input as { shifts?: unknown }
-        if (Array.isArray(input.shifts)) {
-          const existingShifts = await listShiftsByLocation(scope)
-          for (const entry of input.shifts) {
-            if (typeof entry !== 'object' || !entry) continue
-            const { name, type, startTime, endTime, minStaff } = entry as Record<string, unknown>
-            if (typeof name !== 'string' || !name.trim() || typeof startTime !== 'string' || typeof endTime !== 'string') continue
-            const shiftType: ShiftType = (['early', 'mid', 'late', 'night'] as string[]).includes(type as string) ? type as ShiftType : 'mid'
-            const match = existingShifts.find(s => s.name.trim().toLowerCase() === name.trim().toLowerCase())
-            if (match) {
-              await updateShift(match.id, {
-                type: shiftType,
-                startTime,
-                endTime,
-                ...(typeof minStaff === 'number' ? { minStaff } : {}),
-              })
-            } else {
-              const defaults = SHIFT_TYPE_DEFAULTS[shiftType]
-              await addShift({
-                name: name.trim(),
-                type: shiftType,
-                startTime,
-                endTime,
-                color: defaults.color,
-                bgColor: defaults.bgColor,
-                minStaff: typeof minStaff === 'number' ? minStaff : 1,
-                locationId: scope,
-              })
-            }
-          }
-        }
-      }
-      if (block.type === 'tool_use' && block.name === 'upsert_planning_units' && !isOrganization) {
-        const input = block.input as { units?: unknown }
-        if (Array.isArray(input.units)) {
-          // §71: two passes — Etagen/parents first, then children with resolved parentId
-          const entries = input.units
-            .filter((e): e is Record<string, unknown> => typeof e === 'object' && !!e)
-            .filter(e => typeof e.name === 'string' && (e.name as string).trim())
-          const parentIdByName = new Map<string, string>()
-          const sorted = [...entries].sort((a, b) =>
-            (a.type === 'etage' ? 0 : 1) - (b.type === 'etage' ? 0 : 1))
-          for (const entry of sorted) {
-            const { name, type, description, capacity, address, notes, parent, minStaff } = entry
-            const unitType = typeof type === 'string' ? type : 'bereich'
-            const parentName = typeof parent === 'string' ? parent.trim().toLowerCase() : ''
-            const unit = await upsertPlanningUnit(scope, {
-              name: (name as string).trim(),
-              type: unitType,
-              description: typeof description === 'string' ? description : undefined,
-              capacity: typeof capacity === 'number' ? capacity : undefined,
-              address: typeof address === 'string' ? address : undefined,
-              notes: typeof notes === 'string' ? notes : undefined,
-              minStaff: typeof minStaff === 'number' ? minStaff : undefined,
-              parentId: parentName ? parentIdByName.get(parentName) ?? undefined : undefined,
-            })
-            parentIdByName.set(unit.name.trim().toLowerCase(), unit.id)
-          }
-        }
-      }
-      if (block.type === 'tool_use' && block.name === 'upsert_planning_rules' && !isOrganization) {
-        const input = block.input as Record<string, unknown>
-        const update: Partial<{
-          maxWeeklyHours: number
-          restHours: number
-          maxConsecutiveDays: number
-          fridayLateMax: number
-          mondayEarlyMax: number
-          fridayEarlyMax: number
-          weekendMax: number
-          considerWishes: boolean
-          balanceHoursAccount: boolean
-        }> = {}
-        for (const key of ['maxWeeklyHours', 'restHours', 'maxConsecutiveDays', 'fridayLateMax', 'mondayEarlyMax', 'fridayEarlyMax', 'weekendMax'] as const) {
-          if (typeof input[key] === 'number') update[key] = input[key] as number
-        }
-        for (const key of ['considerWishes', 'balanceHoursAccount'] as const) {
-          if (typeof input[key] === 'boolean') update[key] = input[key] as boolean
-        }
-        if (Object.keys(update).length > 0) {
-          await upsertPlanningRules(scope, update)
-        }
-      }
     }
 
-    if (!isOrganization) {
-      const [shiftCount, latestOnboarding] = await Promise.all([
-        prisma.shift.count({ where: { locationId: scope } }),
-        prisma.locationOnboarding.findUnique({ where: { locationId: scope } }),
-      ])
-      const wasMarkedDone = latestOnboarding && (latestOnboarding.completed || latestOnboarding.completedPhases.includes('phase4'))
-      if (shiftCount === 0 && wasMarkedDone) {
-        savedState = await upsertLocationOnboarding(scope, {
-          completedPhases: latestOnboarding!.completedPhases.filter(p => p !== 'phase4'),
-          completed: false,
-        })
-        reply += '\n\nEin Hinweis: Bevor der Standort abgeschlossen werden kann, brauche ich noch mindestens eine konkrete, benannte Schicht mit Uhrzeiten (z.B. "Frühschicht von 07:00 bis 14:00 Uhr") – ohne diese Information kann das System noch keinen Dienstplan erstellen. Welche Schichten gibt es bei euch?'
-      }
-    }
 
     if (!reply.trim()) {
       reply = 'Danke, das habe ich gespeichert!'
@@ -532,25 +428,6 @@ export async function POST(req: NextRequest) {
       }
     } catch (saveErr) {
       console.error('onboarding-chat: failed to save chat history', saveErr)
-    }
-
-    // §74 self-heal: onboarding is completed but no Planungsmodell exists
-    // (e.g. the completion-turn generation failed silently or the model was
-    // reset) → regenerate in the background on any later chat interaction.
-    if (!isOrganization && customerId) {
-      try {
-        const [ob, modelExists] = await Promise.all([
-          prisma.locationOnboarding.findUnique({ where: { locationId: scope }, select: { completed: true } }),
-          prisma.locationRuleModelRecord.findUnique({ where: { locationId: scope }, select: { id: true } }),
-        ])
-        if (ob?.completed && !modelExists) {
-          generateLocationModelFromOnboarding(scope, customerId).catch(err =>
-            console.error('LocationModel-Selbstheilung fehlgeschlagen:', err),
-          )
-        }
-      } catch (healErr) {
-        console.error('onboarding-chat: self-heal check failed', healErr)
-      }
     }
 
     return NextResponse.json({ reply, state: savedState })

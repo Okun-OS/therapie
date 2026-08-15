@@ -43,7 +43,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 
   if (session.role === 'admin') {
-    if (shift.locationId !== session.locationId) {
+    // resolveLocationId statt session.locationId: das Cookie-Feld kann bei
+    // älteren Sessions leer sein → Löschen schlug still mit 403 fehl
+    const { resolveLocationId } = await import('@/lib/session')
+    const ownLocationId = await resolveLocationId(session)
+    if (shift.locationId !== ownLocationId) {
       return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
     }
   } else if (session.role === 'company') {
