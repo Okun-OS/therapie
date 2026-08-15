@@ -185,10 +185,43 @@ export async function getOrGenerateCompanyModel(customerId: string): Promise<Com
 
 // ── Per-location model (primary unit for solver configuration) ───────────────
 
+// §74: LLM-generated JSON can miss sections; older rows may predate newer
+// fields. Normalize on every read so the UI and solver never hit undefined.
+export function normalizeLocationModel(raw: unknown): LocationModel {
+  const m = (raw ?? {}) as Partial<LocationModel> & Record<string, unknown>
+  const regeln = (m.planungsRegeln ?? {}) as Partial<LocationModel['planungsRegeln']>
+  const schicht = (m.schichtmodell ?? {}) as Partial<LocationModel['schichtmodell']>
+  return {
+    ...m,
+    planungsEinheiten: Array.isArray(m.planungsEinheiten) ? m.planungsEinheiten : [],
+    schichtmodell: {
+      ...schicht,
+      arbeitstage: Array.isArray(schicht.arbeitstage) ? schicht.arbeitstage : [],
+      schichten: Array.isArray(schicht.schichten) ? schicht.schichten : [],
+    } as LocationModel['schichtmodell'],
+    planungsRegeln: {
+      hart: Array.isArray(regeln.hart) ? regeln.hart : [],
+      weich: Array.isArray(regeln.weich) ? regeln.weich : [],
+    },
+    fairnessKonfig: (m.fairnessKonfig ?? {
+      wochenendArbeit: false,
+      wochenendLimitProMonat: 2,
+      nachtdienstFair: true,
+      schichttypFairness: true,
+      belastungsgleichverteilung: true,
+    }) as LocationModel['fairnessKonfig'],
+    vertretungsKonfig: (m.vertretungsKonfig ?? {
+      eskalationsReihenfolge: ['gruppe', 'standort', 'organisation'],
+      qualifikationsPflicht: false,
+      maxWartezeitMinuten: 120,
+    }) as LocationModel['vertretungsKonfig'],
+  } as LocationModel
+}
+
 export async function getLocationModel(locationId: string): Promise<LocationModel | null> {
   const record = await prisma.locationRuleModelRecord.findUnique({ where: { locationId } })
   if (!record) return null
-  return record.ruleModel as unknown as LocationModel
+  return normalizeLocationModel(record.ruleModel)
 }
 
 export async function saveLocationModel(locationId: string, customerId: string, model: LocationModel): Promise<void> {
@@ -319,7 +352,7 @@ Leite alle Werte ausschließlich aus den Onboarding-Daten ab. Erfinde keine Rege
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('KI hat kein gültiges LocationModel-JSON zurückgegeben')
 
-  const model = JSON.parse(jsonMatch[0]) as LocationModel
+  const model = normalizeLocationModel(JSON.parse(jsonMatch[0]))
   await saveLocationModel(locationId, customerId, model)
   // §71: turn the described structure into real system data (Etagen/Gruppen)
   await syncPlanningUnitsFromModel(locationId, model.planungsEinheiten ?? []).catch(err =>
