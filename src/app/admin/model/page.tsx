@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useToast } from '@/lib/toast-context'
 import {
-  ShieldAlert, Heart, Plus, Trash2, Loader2, Clock, Users, MessageCircle,
+  ShieldAlert, Plus, Trash2, Loader2, Clock, Users, MessageCircle,
   Save, Brain, CalendarDays, Pencil, Check, X, Send, Bot, ChevronDown, ChevronUp,
   Code2, Zap, XCircle, AlertTriangle, RotateCcw, Layers,
 } from 'lucide-react'
-import type { LocationModel, HarteRegel, WeicheRegel, WochentagKuerzel } from '@/lib/company-model-types'
+import type { LocationModel, HarteRegel, WochentagKuerzel } from '@/lib/company-model-types'
 import Link from 'next/link'
 
 const ALL_DAYS: WochentagKuerzel[] = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
@@ -74,8 +74,6 @@ export default function AdminModelPage() {
   const [loading, setLoading] = useState(true)
   const [minEdits, setMinEdits] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
-  const [ruleText, setRuleText] = useState('')
-  const [addingRule, setAddingRule] = useState(false)
   const [savingDays, setSavingDays] = useState(false)
 
   // Shift editing
@@ -170,38 +168,6 @@ export default function AdminModelPage() {
     setModel(updated)
     await persistRules(updated)
     showToast('Regel entfernt', 'success')
-  }
-
-  const handleDeleteSoftRule = async (ruleId: string) => {
-    if (!model) return
-    const updated = {
-      ...model,
-      planungsRegeln: { ...model.planungsRegeln, weich: model.planungsRegeln.weich.filter(r => r.id !== ruleId) },
-    }
-    setModel(updated)
-    await persistRules(updated)
-    showToast('Regel entfernt', 'success')
-  }
-
-  const handleAddRule = async () => {
-    if (!ruleText.trim() || addingRule) return
-    setAddingRule(true)
-    try {
-      const res = await fetch('/api/location-model/add-rule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: ruleText.trim() }),
-      })
-      if (!res.ok) throw new Error(await res.text())
-      const data = await res.json()
-      setModel(data.model)
-      setRuleText('')
-      showToast('Regel hinzugefügt', 'success')
-    } catch {
-      showToast('Regel konnte nicht hinzugefügt werden', 'error')
-    } finally {
-      setAddingRule(false)
-    }
   }
 
   // ── Arbeitstage ───────────────────────────────────────────────────────────
@@ -930,15 +896,21 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
         </div>
       </Card>
 
-      {/* Harte Regeln */}
+      {/* Basiswerte — nur das gesetzlich/vertraglich Unverhinderbare bleibt
+          als Parameter; alle individuellen Regeln laufen als Code (§75) */}
       <Card padding="lg">
         <div className="flex items-center gap-2 mb-3">
           <ShieldAlert size={14} className="text-red-400" />
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Harte Regeln</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Basiswerte (Gesetz &amp; Vertrag)</p>
           <span className="text-xs text-gray-400">({model.planungsRegeln.hart.length})</span>
         </div>
+        <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+          Diese Grundwerte (Wochenstunden-Maximum, Ruhezeit, max. Folgetage) führt der Solver direkt als mathematische
+          Beschränkungen aus — editierbar unter <Link href="/admin/settings/planning-policy" className="text-brand hover:underline">Planungsrichtlinien</Link>.
+          Alle individuellen Regeln deines Standorts werden unten als <b>Custom-Regeln</b> in echten Code übersetzt.
+        </p>
         {model.planungsRegeln.hart.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">Keine harten Regeln definiert.</p>
+          <p className="text-sm text-gray-400 italic">Standardwerte aktiv (40h / 11h Ruhezeit / max. 5 Folgetage).</p>
         ) : (
           <div className="space-y-1.5">
             {model.planungsRegeln.hart.map(r => (
@@ -946,45 +918,6 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
             ))}
           </div>
         )}
-      </Card>
-
-      {/* Weiche Regeln */}
-      <Card padding="lg">
-        <div className="flex items-center gap-2 mb-3">
-          <Heart size={14} className="text-brand" />
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Weiche Regeln</p>
-          <span className="text-xs text-gray-400">({model.planungsRegeln.weich.length})</span>
-        </div>
-        {model.planungsRegeln.weich.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">Keine weichen Regeln definiert.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {model.planungsRegeln.weich.map(r => (
-              <SoftRuleRow key={r.id} regel={r} onDelete={() => handleDeleteSoftRule(r.id)} />
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Regel hinzufügen */}
-      <Card padding="lg">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Regel hinzufügen</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={ruleText}
-            onChange={e => setRuleText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !addingRule && handleAddRule()}
-            placeholder='z. B. „Max. 2 Spätdienste pro Mitarbeiter pro Woche"'
-            className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 placeholder:text-gray-300"
-            disabled={addingRule}
-          />
-          <Button size="sm" onClick={handleAddRule} disabled={!ruleText.trim() || addingRule} className="gap-1.5 flex-shrink-0">
-            {addingRule ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-            {addingRule ? 'KI...' : 'Hinzufügen'}
-          </Button>
-        </div>
-        <p className="text-xs text-gray-400 mt-1.5">Die KI erkennt automatisch, ob es eine harte oder weiche Regel ist.</p>
       </Card>
 
       {/* Custom Constraints §70 */}
@@ -1040,12 +973,14 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                 rejected: 'text-red-500 bg-red-50',
                 pending: 'text-amber-600 bg-amber-50',
                 error: 'text-red-600 bg-red-100',
+                generating: 'text-blue-600 bg-blue-50 animate-pulse',
               }
               const statusLabels: Record<string, string> = {
                 active: 'Aktiv',
                 rejected: 'Abgelehnt',
                 pending: 'Warte auf Prüfung',
                 error: 'Generierung fehlgeschlagen',
+                generating: 'Wird generiert…',
               }
               return (
                 <div key={c.id} className="border border-gray-100 rounded-xl overflow-hidden">
@@ -1204,30 +1139,3 @@ function HardRuleRow({ regel, onDelete }: { regel: HarteRegel; onDelete: () => v
   )
 }
 
-function SoftRuleRow({ regel, onDelete }: { regel: WeicheRegel; onDelete: () => void }) {
-  const pct = Math.round(regel.gewicht * 100)
-  return (
-    <div className="flex items-start gap-2 group rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-navy leading-snug">{regel.beschreibung}</p>
-        <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-[10px] text-gray-400">{regel.kategorie}</span>
-          <span className="text-[10px] text-gray-400">·</span>
-          <div className="flex items-center gap-1">
-            <div className="w-16 h-1.5 rounded-full bg-gray-200 overflow-hidden">
-              <div className="h-full bg-brand rounded-full" style={{ width: `${pct}%` }} />
-            </div>
-            <span className="text-[10px] text-gray-400">{pct}%</span>
-          </div>
-        </div>
-      </div>
-      <button
-        onClick={onDelete}
-        className="flex-shrink-0 p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-        title="Regel entfernen"
-      >
-        <Trash2 size={13} />
-      </button>
-    </div>
-  )
-}

@@ -474,7 +474,38 @@ Leite alle Werte ausschließlich aus den Onboarding-Daten ab. Erfinde keine Rege
   if (!jsonMatch) throw new Error('KI hat kein gültiges LocationModel-JSON zurückgegeben')
 
   const model = normalizeLocationModel(JSON.parse(jsonMatch[0]))
+
+  // §75 consistent architecture: only the unavoidable base parameters stay as
+  // parameters (the solver core executes them directly); EVERYTHING else is
+  // programmed as CP-SAT code via the custom-constraint pipeline.
+  const BASE_TYPES = new Set(['max_wochenstunden', 'min_ruhezeit', 'max_folgetage'])
+  const baseRules = model.planungsRegeln.hart.filter(r => r.typ && BASE_TYPES.has(r.typ))
+  const nonBaseDescriptions = [
+    ...model.planungsRegeln.hart.filter(r => !r.typ || !BASE_TYPES.has(r.typ)).map(r => r.beschreibung),
+    ...model.planungsRegeln.weich.map(r => r.beschreibung),
+  ].filter(d => d && d.trim().length > 0)
+
+  // Base values become real system configuration (LocationPlanningRules is
+  // what the solver reads) — the model keeps only these for display.
+  const baseValue = (typ: string) => baseRules.find(r => r.typ === typ)?.wert
+  await prisma.locationPlanningRules.upsert({
+    where: { locationId },
+    create: {
+      locationId,
+      maxWeeklyHours: Math.round(baseValue('max_wochenstunden') ?? 40),
+      restHours: Math.round(baseValue('min_ruhezeit') ?? 11),
+      maxConsecutiveDays: Math.round(baseValue('max_folgetage') ?? 5),
+    },
+    update: {
+      ...(baseValue('max_wochenstunden') !== undefined ? { maxWeeklyHours: Math.round(baseValue('max_wochenstunden')!) } : {}),
+      ...(baseValue('min_ruhezeit') !== undefined ? { restHours: Math.round(baseValue('min_ruhezeit')!) } : {}),
+      ...(baseValue('max_folgetage') !== undefined ? { maxConsecutiveDays: Math.round(baseValue('max_folgetage')!) } : {}),
+    },
+  }).catch(err => console.error('[company-model-service] planning rules sync failed:', err))
+
+  model.planungsRegeln = { hart: baseRules, weich: [] }
   await saveLocationModel(locationId, customerId, model)
+
   // §71/§74: turn the described structure into real system data
   await syncPlanningUnitsFromModel(locationId, model.planungsEinheiten ?? []).catch(err =>
     console.error('[company-model-service] planning unit sync failed:', err),
@@ -482,10 +513,14 @@ Leite alle Werte ausschließlich aus den Onboarding-Daten ab. Erfinde keine Rege
   await syncShiftsFromModel(locationId, model.schichtmodell?.schichten ?? []).catch(err =>
     console.error('[company-model-service] shift sync failed:', err),
   )
-  // §74: program the onboarding "individuelle Regeln" as real CP-SAT custom
-  // constraints (status pending — admin reviews & activates on /admin/model).
-  // Fire-and-forget: one Claude call per rule, results appear shortly after.
-  const regeln = locationOnboarding?.individuelleRegeln ?? []
+
+  // §74/§75: program ALL non-base rules (individuelle Regeln + alles, was die
+  // KI als hart/weich beschrieben hat) as real CP-SAT custom constraints.
+  // Placeholder rows appear in the UI immediately (status 'generating').
+  const regeln = Array.from(new Set([
+    ...(locationOnboarding?.individuelleRegeln ?? []),
+    ...nonBaseDescriptions,
+  ].map(r => r.trim()).filter(Boolean)))
   if (regeln.length > 0) {
     void import('@/lib/custom-constraint-generator').then(({ generateConstraintsFromRules }) =>
       generateConstraintsFromRules(locationId, customerId, regeln).then(r =>

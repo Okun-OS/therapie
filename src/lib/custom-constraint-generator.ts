@@ -69,9 +69,11 @@ export async function generateConstraintCode(name: string, description: string):
   return code
 }
 
-// §74: batch — turn the onboarding "individuelle Regeln" into pending
-// CustomConstraints (admin reviews & activates on /admin/model).
-// Dedup by description so regeneration never duplicates.
+// §74: batch — turn onboarding rules into CustomConstraints. For visibility
+// the rows are created IMMEDIATELY with status 'generating' (the admin sees
+// them appear in the UI right away), then each row is updated to 'pending'
+// (with code), deleted (SKIP: not a planning constraint) or 'error' (with
+// the message). Dedup by description so regeneration never duplicates.
 export async function generateConstraintsFromRules(
   locationId: string,
   customerId: string,
@@ -86,42 +88,46 @@ export async function generateConstraintsFromRules(
   })
   const known = new Set(existing.map(c => c.description.trim().toLowerCase()))
 
+  // Phase 1: create visible placeholders for all new rules
+  const placeholders: { id: string; desc: string }[] = []
   for (const rule of rules) {
     const desc = rule.trim()
     if (!desc || known.has(desc.toLowerCase())) continue
+    known.add(desc.toLowerCase())
+    const row = await prisma.customConstraint.create({
+      data: {
+        locationId,
+        customerId,
+        name: desc.length > 60 ? `${desc.slice(0, 57)}…` : desc,
+        description: desc,
+        code: '',
+        status: 'generating',
+      },
+    }).catch(() => null)
+    if (row) placeholders.push({ id: row.id, desc })
+  }
+
+  // Phase 2: generate code per rule and resolve each placeholder
+  for (const { id, desc } of placeholders) {
     try {
       const code = await generateConstraintCode(desc.slice(0, 80), desc)
       if (!code) {
+        // Not a planning constraint — remove the placeholder again
+        await prisma.customConstraint.delete({ where: { id } }).catch(() => {})
         result.skipped++
         continue
       }
-      await prisma.customConstraint.create({
-        data: {
-          locationId,
-          customerId,
-          name: desc.length > 60 ? `${desc.slice(0, 57)}…` : desc,
-          description: desc,
-          code,
-          status: 'pending',
-        },
+      await prisma.customConstraint.update({
+        where: { id },
+        data: { code, status: 'pending' },
       })
-      known.add(desc.toLowerCase())
       result.created++
     } catch (err) {
       console.error('[custom-constraint-generator] rule failed:', desc, err)
-      // Visible failure row instead of silent log — admin sees it in the UI
-      await prisma.customConstraint.create({
-        data: {
-          locationId,
-          customerId,
-          name: desc.length > 60 ? `${desc.slice(0, 57)}…` : desc,
-          description: desc,
-          code: '',
-          status: 'error',
-          errorLog: (err instanceof Error ? err.message : String(err)).slice(0, 500),
-        },
+      await prisma.customConstraint.update({
+        where: { id },
+        data: { status: 'error', errorLog: (err instanceof Error ? err.message : String(err)).slice(0, 500) },
       }).catch(() => {})
-      known.add(desc.toLowerCase())
       result.failed++
     }
   }

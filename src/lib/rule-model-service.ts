@@ -213,14 +213,12 @@ export async function buildRuleModel(
     schichten = standort!.schichtmodell.schichten
   }
 
-  // Hard rules: use stored rules from the location model only when they are
-  // non-empty — an empty array silently disables all constraints, so fall back
-  // to the Rule Compiler with DB-derived values (or statutory defaults).
-  const storedHarteRegeln = standort?.planungsRegeln?.hart ?? []
+  // §75: base parameters come EXCLUSIVELY from LocationPlanningRules — the
+  // single editable source of truth (synced from onboarding generation,
+  // editable via Planungsrichtlinien). Model-JSON rule texts are display-only;
+  // everything individual runs through the custom-constraint code pipeline.
   let harteRegeln: HarteRegel[]
-  if (storedHarteRegeln.length > 0) {
-    harteRegeln = storedHarteRegeln
-  } else {
+  {
     const canonicalFallback: CanonicalRuleSet = {
       locationId,
       rules: [
