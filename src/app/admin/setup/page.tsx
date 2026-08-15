@@ -18,7 +18,7 @@ import type { WochentagKuerzel } from '@/lib/company-model-types'
 
 interface WizShift { id: string; name: string; type?: string; startTime: string; endTime: string; minStaff: number }
 interface WizUnit { id: string; name: string; type: string; parentId: string | null; minStaff: number }
-interface WizEmployee { id: string; name: string; gruppe?: string }
+interface WizEmployee { id: string; name: string; gruppe?: string | null }
 interface Proposal {
   arbeitstage?: string[]
   schichten: { name: string; von: string; bis: string; minStaff?: number }[]
@@ -30,8 +30,8 @@ interface Proposal {
 
 const STEPS = [
   { key: 'betrieb', label: 'Betriebsform', icon: CalendarDays },
-  { key: 'dienste', label: 'Dienste', icon: Clock },
   { key: 'struktur', label: 'Struktur', icon: Layers },
+  { key: 'dienste', label: 'Dienste', icon: Clock },
   { key: 'team', label: 'Team', icon: Users },
   { key: 'regeln', label: 'Regeln', icon: ShieldAlert },
 ]
@@ -322,6 +322,10 @@ export default function SetupWizardPage() {
 
   const etagen = units.filter(u => u.type === 'etage')
   const gruppen = units.filter(u => u.type !== 'etage')
+  // Klartext, was die Etagen-Besetzung konkret bedeutet (Schritt 2 ↔ 3 verzahnt)
+  const etagenSummary = etagen.length > 0
+    ? etagen.map(e => `${e.name}: je ${e.minStaff} Person${e.minStaff === 1 ? '' : 'en'} im Früh- und im Spätdienst`).join(' · ')
+    : ''
   const ohneStammgruppe = employees.filter(e => !e.gruppe?.trim()).length
   const currentForm = BETRIEBSFORMEN.find(b => b.tage.length === arbeitstage.length && b.tage.every(t => arbeitstage.includes(t)))
 
@@ -470,7 +474,7 @@ export default function SetupWizardPage() {
         </Card>
       )}
 
-      {step === 1 && (
+      {step === 2 && (
         <Card padding="lg">
           <p className="text-sm font-semibold text-navy mb-1">Welche Dienste gibt es?</p>
           <p className="text-xs text-gray-400 mb-4">
@@ -556,9 +560,9 @@ export default function SetupWizardPage() {
                 </>
               )}
               <div>
-                <label className="text-[10px] font-semibold text-gray-400 uppercase">Min.</label>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase" title="Mindestbesetzung im ganzen Haus">Min. gesamt</label>
                 <input type="number" min={0} max={50} value={newShift.minStaff} onChange={e => setNewShift(p => ({ ...p, minStaff: Math.max(0, parseInt(e.target.value) || 0) }))}
-                  className="w-16 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-center block" />
+                  className="w-20 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-center block" />
               </div>
               <Button size="sm" onClick={async () => { setAddingShift(true); if (await addShift()) setNewShift(p => ({ ...p, name: '' })); setAddingShift(false) }}
                 disabled={!newShift.name.trim() || addingShift} className="gap-1">
@@ -569,32 +573,79 @@ export default function SetupWizardPage() {
               Nur die <span className="text-brand font-semibold">fett markierte</span> Zeit ist verbindlich. Die andere Seite
               ist der Rahmen — wie lange jemand tatsächlich bleibt, ergibt sich aus seinen Wochenstunden (inkl. Pause).
             </p>
+            <div className="flex items-start gap-2 text-[11px] text-navy bg-brand/5 border border-brand/20 rounded-lg px-2.5 py-2">
+              <Layers size={13} className="flex-shrink-0 mt-0.5 text-brand" />
+              <span>
+                <b>&bdquo;Min. gesamt&ldquo; gilt fürs ganze Haus.</b> Brauchst du <b>pro Etage oder Bereich</b> eine eigene
+                Besetzung (z.&nbsp;B. je Etage ein Frühdienst und ein Spätdienst), stellst du das im nächsten Schritt
+                &bdquo;Struktur&ldquo; direkt bei der Etage ein — das ist die stärkere Regel und wird zusätzlich eingehalten.
+                {etagenSummary && <><br /><span className="text-gray-500">Aktuell konfiguriert: {etagenSummary}</span></>}
+              </span>
+            </div>
           </div>
         </Card>
       )}
 
-      {step === 2 && (
+      {step === 1 && (
         <Card padding="lg">
           <p className="text-sm font-semibold text-navy mb-1">Gibt es Etagen, Bereiche oder Gruppen?</p>
-          <p className="text-xs text-gray-400 mb-4">
-            Optional. Mit Struktur stellt der Dienstplan sicher, dass jede Gruppe täglich besetzt ist und jede Etage
-            Früh- und Spätdienst hat. Ohne Gruppen einfach weiter zu Schritt 4.
+          <p className="text-xs text-gray-400 mb-3">
+            Hier legst du fest, was <b>je Etage</b> und <b>je Gruppe</b> besetzt sein muss — unabhängig davon, wie viele
+            Personen insgesamt im Haus sind. Ohne Etagen/Gruppen einfach weiter zu Schritt 4.
           </p>
+          <div className="text-[11px] text-navy bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-2 mb-4 space-y-1">
+            <p><b>🏢 Etage</b> — die Zahl bedeutet: so viele Personen <b>je Früh- und je Spätdienst auf dieser Etage</b>.
+              Bei „1&ldquo; heißt das: jede Etage hat jeden Tag einen eigenen Frühdienst und einen eigenen Spätdienst.</p>
+            <p><b>👥 Gruppe</b> — die Zahl bedeutet: so viele Personen <b>pro Tag in dieser Gruppe</b> (Kernzeit-Besetzung,
+              verteilt über die Dienste).</p>
+          </div>
+          {etagenSummary && (
+            <p className="text-[11px] text-gray-500 mb-3">Ergibt aktuell: {etagenSummary}</p>
+          )}
           {units.length > 0 && (
             <div className="rounded-xl border border-gray-100 divide-y divide-gray-100 mb-4">
               {[...etagen, ...gruppen.filter(g => !g.parentId)].map(top => {
                 const children = top.type === 'etage' ? gruppen.filter(g => g.parentId === top.id) : []
-                return [top, ...children].map(u => (
-                  <div key={u.id} className={`flex items-center gap-2 px-3 py-2 group ${u.type === 'etage' ? 'bg-gray-50/60' : ''}`}>
-                    <span className={`text-sm ${u.id !== top.id ? 'pl-5' : ''} ${u.type === 'etage' ? 'font-semibold' : ''} text-navy`}>
-                      {u.type === 'etage' ? '🏢 ' : '👥 '}{u.name}
-                    </span>
-                    <span className="ml-auto text-[10px] text-gray-400">{u.type === 'etage' ? `Früh/Spät je ${u.minStaff}` : `${u.minStaff}/Tag`}</span>
-                    <button onClick={() => deleteUnit(u.id)} className="p-1 rounded-lg text-gray-400 hover:text-red-600 transition-opacity">
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))
+                return [top, ...children].map(u => {
+                  // §83 Zuordnung sichtbar machen: welche Mitarbeiter stehen in dieser Gruppe?
+                  const members = u.type === 'etage'
+                    ? []
+                    : employees.filter(e => (e.gruppe ?? '').trim().toLowerCase() === u.name.trim().toLowerCase())
+                  return (
+                    <div key={u.id} className={u.type === 'etage' ? 'bg-gray-50/60' : ''}>
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <span className={`text-sm ${u.id !== top.id ? 'pl-5' : ''} ${u.type === 'etage' ? 'font-semibold' : ''} text-navy`}>
+                          {u.type === 'etage' ? '🏢 ' : '👥 '}{u.name}
+                        </span>
+                        <span className="ml-auto text-[10px] text-gray-500">{u.type === 'etage' ? `${u.minStaff} je Früh- und Spätdienst` : `${u.minStaff} pro Tag`}</span>
+                        <button onClick={() => deleteUnit(u.id)} className="p-1 rounded-lg text-gray-400 hover:text-red-600">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                      {u.type !== 'etage' && (
+                        <div className={`px-3 pb-2 ${u.id !== top.id ? 'pl-10' : 'pl-8'}`}>
+                          {members.length === 0 ? (
+                            <span className="text-[11px] text-amber-600">
+                              Noch niemand zugeordnet — im <Link href="/admin/employees" className="underline">Mitarbeiterprofil</Link> die Gruppe &bdquo;{u.name}&ldquo; wählen
+                            </span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {members.map(m => (
+                                <span key={m.id} className="text-[11px] bg-white border border-gray-200 rounded-full px-2 py-0.5 text-gray-600">
+                                  {m.name}
+                                </span>
+                              ))}
+                              <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${members.length < u.minStaff ? 'text-red-600 bg-red-50' : 'text-gray-400'}`}>
+                                {members.length} von mind. {u.minStaff}
+                                {members.length < u.minStaff ? ' — zu wenig für tägliche Besetzung' : ''}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
               })}
             </div>
           )}
@@ -623,9 +674,9 @@ export default function SetupWizardPage() {
               </div>
             )}
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase">{newUnit.type === 'etage' ? 'Früh/Spät' : 'Pro Tag'}</label>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase">{newUnit.type === 'etage' ? 'Je Früh-/Spätdienst' : 'Personen pro Tag'}</label>
               <input type="number" min={0} max={50} value={newUnit.minStaff} onChange={e => setNewUnit(p => ({ ...p, minStaff: Math.max(0, parseInt(e.target.value) || 0) }))}
-                className="w-16 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-center block" />
+                className="w-28 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-center block" />
             </div>
             <Button size="sm" onClick={async () => { if (await addUnit()) setNewUnit(p => ({ ...p, name: '' })) }} disabled={!newUnit.name.trim()} className="gap-1">
               <Plus size={13} />Anlegen

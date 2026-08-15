@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { setShiftMinStaff, updateShift, deleteShift } from '@/lib/schedule-entities'
-import { requireRole, resolveCustomerId } from '@/lib/session'
-import { listLocations } from '@/lib/entities'
+import { requireRole } from '@/lib/session'
+import { allowedLocationScope } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
+
+// §82: one guard for both PATCH and DELETE — PATCH had NO ownership check at
+// all, so any admin could rename/re-time another tenant's shift by id.
+async function guardShift(session: Parameters<typeof allowedLocationScope>[0], id: string) {
+  const shift = await prisma.shift.findUnique({ where: { id }, select: { locationId: true } })
+  if (!shift) return { error: NextResponse.json({ error: 'Schicht nicht gefunden' }, { status: 404 }) }
+  const scope = await allowedLocationScope(session)
+  if (scope.kind !== 'all' && !scope.ids.includes(shift.locationId)) {
+    return { error: NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 }) }
+  }
+  return { shift }
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
+
+  const guard = await guardShift(session, params.id)
+  if (guard.error) return guard.error
 
   const body = await req.json()
   const { name, type, startTime, endTime, color, bgColor, minStaff } = body
@@ -37,29 +52,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
-  const shift = await prisma.shift.findUnique({ where: { id: params.id }, select: { locationId: true } })
-  if (!shift) {
-    return NextResponse.json({ error: 'Schicht nicht gefunden' }, { status: 404 })
-  }
+  const guard = await guardShift(session, params.id)
+  if (guard.error) return guard.error
 
-  if (session.role === 'admin') {
-    // resolveLocationId statt session.locationId: das Cookie-Feld kann bei
-    // älteren Sessions leer sein → Löschen schlug still mit 403 fehl
-    const { resolveLocationId } = await import('@/lib/session')
-    const ownLocationId = await resolveLocationId(session)
-    if (shift.locationId !== ownLocationId) {
-      return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
-    }
-  } else if (session.role === 'company') {
-    const customerId = await resolveCustomerId(session)
-    const locations = await listLocations(customerId)
-    const locationIds = locations.map(l => l.id)
-    if (!locationIds.includes(shift.locationId)) {
-      return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
-    }
+  const deleted = await deleteShift(params.id)
+  if (!deleted) {
+    return NextResponse.json({ error: 'Schicht konnte nicht gelöscht werden' }, { status: 500 })
   }
-  // 'okun' role: allow any
-
-  await deleteShift(params.id)
   return NextResponse.json({ ok: true })
 }

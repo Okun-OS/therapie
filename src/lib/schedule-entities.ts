@@ -153,8 +153,19 @@ export async function updateShift(shiftId: string, fields: Partial<{
   return row ? toShift(row) : null
 }
 
-export async function deleteShift(shiftId: string): Promise<void> {
-  await prisma.shift.delete({ where: { id: shiftId } }).catch(() => null)
+export async function deleteShift(shiftId: string): Promise<boolean> {
+  // §82: report the real outcome — swallowing the error made the API answer
+  // "ok" while the row survived, so the UI showed a success toast and the
+  // shift reappeared on the next load.
+  try {
+    await prisma.shift.delete({ where: { id: shiftId } })
+    return true
+  } catch (err) {
+    const code = (err as { code?: string })?.code
+    if (code === 'P2025') return true // bereits gelöscht — Ziel erreicht
+    console.error('[deleteShift] failed', shiftId, err)
+    return false
+  }
 }
 
 export async function getScheduleByEmployee(employeeId: string): Promise<ScheduleEntry[]> {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listShiftsByLocation, addShift } from '@/lib/schedule-entities'
-import { requireRole, resolveLocationId, resolveCustomerId } from '@/lib/session'
-import { listLocations } from '@/lib/entities'
+import { requireRole } from '@/lib/session'
+import { allowedLocationScope, locationFilter } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 
 // §81: shifts are ALWAYS scoped to the caller's own location(s). The old
@@ -13,35 +13,18 @@ export async function GET(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const requested = req.nextUrl.searchParams.get('locationId')
+  const allowed = await locationFilter(session, requested)
+  if (allowed instanceof NextResponse) return allowed
 
-  if (session.role === 'okun') {
-    const shifts = requested
-      ? await listShiftsByLocation(requested)
-      : (await prisma.shift.findMany()).map(s => s)
-    return NextResponse.json({ shifts })
+  // allowed === undefined → nur okun ohne expliziten Standort: plattformweit
+  if (allowed === undefined) {
+    return NextResponse.json({ shifts: await prisma.shift.findMany() })
   }
-
-  if (session.role === 'company') {
-    const customerId = await resolveCustomerId(session)
-    const locations = await listLocations(customerId)
-    const ownIds = locations.map(l => l.id)
-    if (requested) {
-      if (!ownIds.includes(requested)) {
-        return NextResponse.json({ error: 'Keine Berechtigung für diesen Standort' }, { status: 403 })
-      }
-      return NextResponse.json({ shifts: await listShiftsByLocation(requested) })
-    }
-    const rows = await prisma.shift.findMany({ where: { locationId: { in: ownIds } } })
-    return NextResponse.json({ shifts: rows })
+  if (allowed.length === 1) {
+    return NextResponse.json({ shifts: await listShiftsByLocation(allowed[0]) })
   }
-
-  // admin + employee: only their own location, ever
-  const ownLocationId = await resolveLocationId(session)
-  if (!ownLocationId) return NextResponse.json({ shifts: [] })
-  if (requested && requested !== ownLocationId) {
-    return NextResponse.json({ error: 'Keine Berechtigung für diesen Standort' }, { status: 403 })
-  }
-  return NextResponse.json({ shifts: await listShiftsByLocation(ownLocationId) })
+  const rows = await prisma.shift.findMany({ where: { locationId: { in: allowed } } })
+  return NextResponse.json({ shifts: rows })
 }
 
 export async function POST(req: NextRequest) {
@@ -54,18 +37,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'name, type, startTime, endTime und locationId sind erforderlich' }, { status: 400 })
   }
 
-  // §81: creation is scoped too — admin only at own location, company only at own customer
-  if (session.role === 'admin') {
-    const ownLocationId = await resolveLocationId(session)
-    if (locationId !== ownLocationId) {
-      return NextResponse.json({ error: 'Keine Berechtigung für diesen Standort' }, { status: 403 })
-    }
-  } else if (session.role === 'company') {
-    const customerId = await resolveCustomerId(session)
-    const locations = await listLocations(customerId)
-    if (!locations.some(l => l.id === locationId)) {
-      return NextResponse.json({ error: 'Keine Berechtigung für diesen Standort' }, { status: 403 })
-    }
+  // §81: creation is scoped too — never trust a client-supplied locationId
+  const scope = await allowedLocationScope(session)
+  if (scope.kind !== 'all' && !scope.ids.includes(locationId)) {
+    return NextResponse.json({ error: 'Keine Berechtigung für diesen Standort' }, { status: 403 })
   }
 
   // Default colors — UI forms don't send them; without defaults the create

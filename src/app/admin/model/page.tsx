@@ -262,7 +262,7 @@ export default function AdminModelPage() {
       if (!res.ok) throw new Error()
       const data = await res.json()
       if (data.deleted > 0) {
-        setShifts(prev => prev.filter(s => !(data.names as string[]).includes(s.name)))
+        setShifts(prev => prev.filter(s => !(data.ids as string[]).includes(s.id)))
         showToast(`${data.deleted} ungenutzte Schicht(en) gelöscht`, 'success')
       } else {
         showToast('Keine ungenutzten Schichten gefunden', 'success')

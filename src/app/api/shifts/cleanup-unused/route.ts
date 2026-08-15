@@ -37,5 +37,5 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  return NextResponse.json({ deleted: unused.length, names: unused.map(s => s.name) })
+  return NextResponse.json({ deleted: unused.length, ids: unused.map(s => s.id), names: unused.map(s => s.name) })
 }
