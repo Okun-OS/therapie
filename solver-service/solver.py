@@ -207,6 +207,32 @@ def solve(rule_model: dict) -> dict:
     if n_emp == 0 or n_days == 0 or n_shifts == 0:
         return _empty_result("Leere Eingabe (keine Mitarbeiter, Tage oder Schichten)")
 
+    # ── §72 Break rules → NET working minutes ────────────────────────────────
+    # Presence above the threshold contains an unpaid break; all hour math
+    # (legal max, weekly targets) uses NET minutes. Additionally each employee
+    # is capped at their personal daily target (weekly hours / days per week),
+    # so part-timers get shorter presence windows inside the same shift.
+    pausen = rule_model.get("pausenRegeln") or {}
+    br_threshold = int(pausen.get("thresholdMinutes", 360))
+    br_deduct = int(pausen.get("deductionMinutes", 30))
+
+    def _net_of_gross(gross: int) -> int:
+        return gross - br_deduct if gross >= br_threshold else gross
+
+    eff_min: dict[tuple[int, int], int] = {}       # net working minutes per (emp, shift)
+    presence_min: dict[tuple[int, int], int] = {}  # actual presence incl. break
+    for _ei, _emp in enumerate(employees):
+        _dpw = _emp.get("arbeitstageProWoche") or 0
+        _weekly = float(_emp.get("wochenstundenSoll", 40) or 0)
+        _daily_net = int(round(_weekly / _dpw * 60)) if _dpw > 0 and _weekly > 0 else None
+        for _si, _s in enumerate(shifts):
+            _gross = _shift_dur(_s)
+            _shift_net = _net_of_gross(_gross)
+            _net = min(_shift_net, _daily_net) if _daily_net else _shift_net
+            eff_min[_ei, _si] = _net
+            _pres = _net + br_deduct if _net + br_deduct >= br_threshold else _net
+            presence_min[_ei, _si] = min(_pres, _gross)
+
     day_idx:   dict[str, int] = {d: i for i, d in enumerate(days)}
     shift_idx: dict[str, int] = {s["id"]: i for i, s in enumerate(shifts)}
     day_set:   set[str]       = set(days)
@@ -341,12 +367,12 @@ def solve(rule_model: dict) -> dict:
         G=G, gruppen=gruppen, n_groups=n_groups,
     )
 
-    # H3: Legal max weekly hours
+    # H3: Legal max weekly hours (NET working minutes, §72)
     for ei in range(n_emp):
         for d_indices in weeks.values():
             model.add(
                 sum(
-                    X[ei, di, si] * _shift_dur(shifts[si])
+                    X[ei, di, si] * eff_min[ei, si]
                     for di in d_indices
                     for si in range(n_shifts)
                 )
@@ -448,12 +474,12 @@ def solve(rule_model: dict) -> dict:
                 model.add(not_assigned == 1 - X[ei, di, si])
                 cost.append(effective_weight * not_assigned)
 
-    # C3: Hours below weekly target (per employee per week)
+    # C3: Hours below weekly target (per employee per week, NET minutes §72)
     for ei, emp in enumerate(employees):
         target_min = int(emp.get("wochenstundenSoll", 40) * 60)
         for d_indices in weeks.values():
             actual = sum(
-                X[ei, di, si] * _shift_dur(shifts[si])
+                X[ei, di, si] * eff_min[ei, si]
                 for di in d_indices
                 for si in range(n_shifts)
             )
@@ -461,12 +487,12 @@ def solve(rule_model: dict) -> dict:
             model.add(below >= target_min - actual)
             cost.append(20 * below)
 
-    # C4: Hours above weekly target (slight overtime penalty)
+    # C4: Hours above weekly target (slight overtime penalty, NET minutes §72)
     for ei, emp in enumerate(employees):
         target_min = int(emp.get("wochenstundenSoll", 40) * 60)
         for d_indices in weeks.values():
             actual = sum(
-                X[ei, di, si] * _shift_dur(shifts[si])
+                X[ei, di, si] * eff_min[ei, si]
                 for di in d_indices
                 for si in range(n_shifts)
             )
@@ -512,26 +538,44 @@ def solve(rule_model: dict) -> dict:
                 for di in range(n_days):
                     cost.append(penalty * X[ei, di, si])
 
-    # C9 (§71): Group coverage — every gruppe needs minStaff people in every
-    # shift, drawn from the employees standing in that group that day.
-    # Soft with the same heavy penalty as shift understaffing (always solvable).
+    # C9 (§71/§72): coverage on two levels, matching Kita reality:
+    # a) every GRUPPE needs minStaff people standing in it per DAY (core-time
+    #    coverage — members may be spread across Früh/Tag/Spät shifts)
+    # b) every ETAGE needs minStaff people per Früh- and Spät-shift (someone
+    #    opens and closes each floor), drawn from its child groups.
+    # Both soft with the heavy understaffing penalty (always solvable).
     if group_active:
         for d in range(n_days):
-            for si in range(n_shifts):
-                for gi, grp in enumerate(gruppen):
-                    min_staff_g = int(grp.get("mindestbesetzung", 1) or 0)
-                    if min_staff_g <= 0:
-                        continue
+            for gi, grp in enumerate(gruppen):
+                min_staff_g = int(grp.get("mindestbesetzung", 1) or 0)
+                if min_staff_g <= 0:
+                    continue
+                short_g = model.new_int_var(0, min_staff_g, f"gshort_{d}_{gi}")
+                model.add(sum(G[e, d, gi] for e in range(n_emp)) + short_g >= min_staff_g)
+                cost.append(10_000 * short_g)
+
+        etagen_units = [u for u in (rule_model.get("einheiten") or []) if u.get("typ") == "etage"]
+        open_close_shifts = [si for si, s in enumerate(shifts) if s.get("typ") in ("frueh", "spaet")]
+        for et in etagen_units:
+            et_min = int(et.get("mindestbesetzung", 0) or 0)
+            if et_min <= 0:
+                continue
+            child_gis = [gi for gi, g in enumerate(gruppen) if g.get("etageId") == et.get("id")]
+            if not child_gis:
+                continue
+            for d in range(n_days):
+                for si in open_close_shifts:
                     covered = []
                     for e in range(n_emp):
-                        z = model.new_bool_var(f"z_{e}_{d}_{si}_{gi}")
-                        model.add(z <= X[e, d, si])
-                        model.add(z <= G[e, d, gi])
-                        model.add(z >= X[e, d, si] + G[e, d, gi] - 1)
-                        covered.append(z)
-                    short_g = model.new_int_var(0, min_staff_g, f"gshort_{d}_{si}_{gi}")
-                    model.add(sum(covered) + short_g >= min_staff_g)
-                    cost.append(10_000 * short_g)
+                        for gi in child_gis:
+                            z = model.new_bool_var(f"ez_{e}_{d}_{si}_{gi}")
+                            model.add(z <= X[e, d, si])
+                            model.add(z <= G[e, d, gi])
+                            model.add(z >= X[e, d, si] + G[e, d, gi] - 1)
+                            covered.append(z)
+                    short_e = model.new_int_var(0, et_min, f"eshort_{d}_{si}_{et['id']}")
+                    model.add(sum(covered) + short_e >= et_min)
+                    cost.append(10_000 * short_e)
 
     # C10 (§71): Stammgruppen-Treue — leaving the home group costs 300/day,
     # crossing to another Etage costs 800/day. Employees without a home group
@@ -669,6 +713,22 @@ def solve(rule_model: dict) -> dict:
                     }
                     if role:
                         entry["role"] = role
+
+                    # §72: individual presence window when the employee's daily
+                    # target is shorter than the shift. Früh keeps its start
+                    # (opening), Spät keeps its end (closing), Tagdienst starts
+                    # later and stays until close.
+                    pres = presence_min[ei, assigned_si]
+                    gross = _shift_dur(shift)
+                    if pres < gross and not shift.get("uebernacht", False):
+                        start_m = _mins(shift["von"])
+                        end_m = _mins(shift["bis"])
+                        if shift.get("typ") == "frueh":
+                            new_start, new_end = start_m, start_m + pres
+                        else:
+                            new_start, new_end = end_m - pres, end_m
+                        entry["startzeit"] = f"{new_start // 60:02d}:{new_start % 60:02d}"
+                        entry["endzeit"] = f"{new_end // 60:02d}:{new_end % 60:02d}"
                     eintraege.append(entry)
                 elif day not in blocked:
                     # §68: explain why not assigned on a work day

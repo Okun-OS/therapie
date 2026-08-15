@@ -6,11 +6,21 @@ import type {
   RegelVerletzung,
 } from '@/lib/company-model-types'
 
-function shiftDurationHours(von: string, bis: string): number {
+// §72: NET working hours of one plan entry — individual presence window
+// (startzeit/endzeit trims) minus the unpaid break above the threshold.
+function entryNetHours(
+  entry: { startzeit?: string; endzeit?: string },
+  schicht: { von: string; bis: string },
+  pausen: { thresholdMinutes: number; deductionMinutes: number },
+): number {
+  const von = entry.startzeit ?? schicht.von
+  const bis = entry.endzeit ?? schicht.bis
   const [sh, sm] = von.split(':').map(Number)
   const [eh, em] = bis.split(':').map(Number)
-  const mins = eh * 60 + em - (sh * 60 + sm)
-  return (mins <= 0 ? mins + 24 * 60 : mins) / 60
+  let mins = eh * 60 + em - (sh * 60 + sm)
+  if (mins <= 0) mins += 24 * 60
+  if (mins >= pausen.thresholdMinutes) mins -= pausen.deductionMinutes
+  return mins / 60
 }
 
 function weekKey(dateStr: string): string {
@@ -60,6 +70,7 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
   const maxWeeklyHours = harteRegeln.find(r => r.typ === 'max_wochenstunden')?.wert ?? 40
   const minRestHours   = harteRegeln.find(r => r.typ === 'min_ruhezeit')?.wert ?? 11
   const maxConsecDays  = harteRegeln.find(r => r.typ === 'max_folgetage')?.wert ?? 5
+  const pausen = ruleModel.pausenRegeln ?? { thresholdMinutes: 360, deductionMinutes: 30 }
 
   const byEmp = new Map<string, typeof plan.eintraege>()
   for (const e of plan.eintraege) {
@@ -110,7 +121,7 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
       const schicht = schichten.find(s => s.id === e.schichtId)
       if (!schicht) continue
       const wk = weekKey(e.datum)
-      weekHours[wk] = (weekHours[wk] ?? 0) + shiftDurationHours(schicht.von, schicht.bis)
+      weekHours[wk] = (weekHours[wk] ?? 0) + entryNetHours(e, schicht, pausen)
     }
     for (const [wk, hours] of Object.entries(weekHours)) {
       if (hours > maxWeeklyHours + 0.01) {

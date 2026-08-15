@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   const shifts = await prisma.shift.findMany({ where: { locationId } })
   const shiftMap = new Map(shifts.map(s => [s.id, s]))
 
-  const week: Record<string, Record<string, { shiftId: string; note?: string; status: string; gruppe?: string; funktion?: string; isSubstitution?: boolean; whyAssigned?: string; role?: string }>> = {}
+  const week: Record<string, Record<string, { shiftId: string; note?: string; status: string; gruppe?: string; funktion?: string; isSubstitution?: boolean; whyAssigned?: string; role?: string; startTime?: string; endTime?: string }>> = {}
   for (const eintrag of result.finalPlan.eintraege) {
     if (!week[eintrag.mitarbeiterId]) week[eintrag.mitarbeiterId] = {}
     const shift = shiftMap.get(eintrag.schichtId)
@@ -89,6 +89,9 @@ export async function POST(req: NextRequest) {
       whyAssigned: eintrag.whyAssigned,
       // §71: 'Springer' when assigned outside the home group
       role: eintrag.role,
+      // §72: individual presence window (part-time trims within the shift)
+      startTime: eintrag.startzeit,
+      endTime: eintrag.endzeit,
     }
   }
 

@@ -167,7 +167,7 @@ const PLANNING_RULES_TOOL = {
 
 const PLANNING_UNITS_TOOL = {
   name: 'upsert_planning_units',
-  description: 'Legt benannte Planungseinheiten dieses Standorts als echte Systemdaten an bzw. aktualisiert sie. Rufe dieses Tool auf, sobald der Nutzer konkrete Namen für Gruppen, Bereiche, Objekte, Touren, Fahrzeuge, Maschinen, Räume, Stationen o.ä. nennt. Immer die VOLLSTÄNDIGE, aktuelle Liste aller bisher genannten Einheiten übergeben (kumulativ). Erfinde niemals Einheitennamen – nur tatsächlich genannte.',
+  description: 'Legt benannte Planungseinheiten dieses Standorts als echte Systemdaten an bzw. aktualisiert sie. Rufe dieses Tool auf, sobald der Nutzer konkrete Namen für Gruppen, Etagen/Stockwerke, Bereiche, Objekte, Touren, Fahrzeuge, Maschinen, Räume, Stationen o.ä. nennt. WICHTIG bei mehrstöckigen Einrichtungen (z.B. Kita mit Etagen): Etagen als eigene Einheiten mit type "etage" anlegen und bei jeder Gruppe über "parent" den Etagennamen angeben — der Dienstplan-Solver besetzt dann jede Gruppe täglich und jede Etage mit Früh-/Spätdienst. Bei Gruppen zusätzlich minStaff (Mindestbesetzung pro Tag) erfragen und setzen. Immer die VOLLSTÄNDIGE, aktuelle Liste aller bisher genannten Einheiten übergeben (kumulativ), Etagen VOR ihren Gruppen. Erfinde niemals Einheitennamen – nur tatsächlich genannte.',
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -176,10 +176,12 @@ const PLANNING_UNITS_TOOL = {
         items: {
           type: 'object',
           properties: {
-            name: { type: 'string', description: 'z.B. "Gruppe Sonnenschein", "Objekt Musterstraße 12", "Tour A"' },
-            type: { type: 'string', enum: ['gruppe', 'bereich', 'objekt', 'tour', 'fahrzeug', 'maschine', 'raum', 'station', 'aufgabenblock', 'sonstiges'], description: 'Art der Planungseinheit' },
+            name: { type: 'string', description: 'z.B. "Igelgruppe", "Erdgeschoss", "Objekt Musterstraße 12", "Tour A"' },
+            type: { type: 'string', enum: ['gruppe', 'etage', 'bereich', 'objekt', 'tour', 'fahrzeug', 'maschine', 'raum', 'station', 'aufgabenblock', 'sonstiges'], description: 'Art der Planungseinheit. "etage" für Stockwerke/Ebenen, die Gruppen enthalten.' },
+            parent: { type: 'string', description: 'Name der übergeordneten Etage/Ebene (nur bei Gruppen in mehrstöckigen Einrichtungen), z.B. "Erdgeschoss"' },
+            minStaff: { type: 'number', description: 'Mindestbesetzung: bei Gruppen Personen pro Tag, bei Etagen Personen je Früh-/Spätdienst (Standard 1)' },
             description: { type: 'string', description: 'Optionale Beschreibung' },
-            capacity: { type: 'number', description: 'Kapazität / Belegungsgröße, falls genannt' },
+            capacity: { type: 'number', description: 'Kapazität / Belegungsgröße (z.B. Kinderzahl), falls genannt' },
             address: { type: 'string', description: 'Adresse (z.B. bei Reinigungsobjekten), falls genannt' },
             notes: { type: 'string', description: 'Sonstige Hinweise zur Einheit' },
           },
@@ -404,19 +406,28 @@ export async function POST(req: NextRequest) {
       if (block.type === 'tool_use' && block.name === 'upsert_planning_units' && !isOrganization) {
         const input = block.input as { units?: unknown }
         if (Array.isArray(input.units)) {
-          for (const entry of input.units) {
-            if (typeof entry !== 'object' || !entry) continue
-            const { name, type, description, capacity, address, notes } = entry as Record<string, unknown>
-            if (typeof name !== 'string' || !name.trim()) continue
+          // §71: two passes — Etagen/parents first, then children with resolved parentId
+          const entries = input.units
+            .filter((e): e is Record<string, unknown> => typeof e === 'object' && !!e)
+            .filter(e => typeof e.name === 'string' && (e.name as string).trim())
+          const parentIdByName = new Map<string, string>()
+          const sorted = [...entries].sort((a, b) =>
+            (a.type === 'etage' ? 0 : 1) - (b.type === 'etage' ? 0 : 1))
+          for (const entry of sorted) {
+            const { name, type, description, capacity, address, notes, parent, minStaff } = entry
             const unitType = typeof type === 'string' ? type : 'bereich'
-            await upsertPlanningUnit(scope, {
-              name: name.trim(),
+            const parentName = typeof parent === 'string' ? parent.trim().toLowerCase() : ''
+            const unit = await upsertPlanningUnit(scope, {
+              name: (name as string).trim(),
               type: unitType,
               description: typeof description === 'string' ? description : undefined,
               capacity: typeof capacity === 'number' ? capacity : undefined,
               address: typeof address === 'string' ? address : undefined,
               notes: typeof notes === 'string' ? notes : undefined,
+              minStaff: typeof minStaff === 'number' ? minStaff : undefined,
+              parentId: parentName ? parentIdByName.get(parentName) ?? undefined : undefined,
             })
+            parentIdByName.set(unit.name.trim().toLowerCase(), unit.id)
           }
         }
       }

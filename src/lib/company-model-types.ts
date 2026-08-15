@@ -207,6 +207,9 @@ export interface PlanningRuleModel {
   frozenDates?: string[]
   planVariante?: PlanVariante
   customConstraints?: CustomConstraintEntry[]
+  // §72 break rules: presence time above threshold contains an unpaid break,
+  // so net working time = presence − deduction. Solver uses NET for all hour math.
+  pausenRegeln?: { thresholdMinutes: number; deductionMinutes: number }
 }
 
 export interface PlanEintrag {

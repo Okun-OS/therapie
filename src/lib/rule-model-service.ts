@@ -315,7 +315,21 @@ export async function buildRuleModel(
         }),
     ].filter(d => arbeitstage.includes(d))
 
+    // §72 fixed off-days: 'Di' etc. (or numeric day strings) → block those weekdays
+    const fixedOffDows = new Set(
+      (emp.fixedOffDays ?? [])
+        .map(d => DAY_NAME_TO_DOW[d] ?? (Number.isFinite(Number(d)) ? Number(d) : undefined))
+        .filter((n): n is number => n !== undefined),
+    )
+    const fixedOffDates = fixedOffDows.size > 0
+      ? arbeitstage.filter(day => {
+          const [y, m, dd] = day.split('-').map(Number)
+          return fixedOffDows.has(new Date(y, m - 1, dd).getDay())
+        })
+      : []
+
     const nichtVerfuegbar = [
+      ...fixedOffDates,
       ...absences
         .filter(a => a.employeeId === emp.id)
         .flatMap(a => {
@@ -516,5 +530,9 @@ export async function buildRuleModel(
     existingSchedule,
     frozenDates,
     customConstraints: customConstraints.length > 0 ? customConstraints : undefined,
+    pausenRegeln: {
+      thresholdMinutes: planningRules?.breakThresholdMinutes ?? 360,
+      deductionMinutes: planningRules?.breakDeductionMinutes ?? 30,
+    },
   }
 }

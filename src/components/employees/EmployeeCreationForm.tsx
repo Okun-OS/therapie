@@ -72,6 +72,27 @@ export function EmployeeCreationForm({
     fetch('/api/roles').then(r => r.json()).then(d => setRoles(d.roles ?? [])).catch(() => {})
   }, [open])
 
+  // §71: offer the location's real Gruppen as Stammgruppen-Auswahl so the
+  // employee↔group link never breaks on typos
+  const [gruppenOptions, setGruppenOptions] = useState<string[]>([])
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(d => {
+        const locId = d.user?.locationId
+        if (!locId) return
+        return fetch(`/api/planning-units?locationId=${locId}`)
+          .then(r => r.json())
+          .then(pd => setGruppenOptions(
+            ((pd.units ?? []) as { name: string; type: string }[])
+              .filter(u => u.type === 'gruppe')
+              .map(u => u.name),
+          ))
+      })
+      .catch(() => {})
+  }, [open])
+
   useEffect(() => {
     if (isEditMode) return
     const email = draft.email?.trim()
@@ -193,7 +214,17 @@ export function EmployeeCreationForm({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Gruppe" value={draft.gruppe ?? ''} onChange={e => update('gruppe', e.target.value)} />
+          {gruppenOptions.length > 0 ? (
+            <Select label="Gruppe (Stammgruppe)" value={draft.gruppe ?? ''} onChange={e => update('gruppe', e.target.value || undefined)}>
+              <option value="">Keine / Springer</option>
+              {gruppenOptions.map(g => <option key={g} value={g}>{g}</option>)}
+              {draft.gruppe && !gruppenOptions.includes(draft.gruppe) && (
+                <option value={draft.gruppe}>{draft.gruppe} (nicht mehr vorhanden)</option>
+              )}
+            </Select>
+          ) : (
+            <Input label="Gruppe" value={draft.gruppe ?? ''} onChange={e => update('gruppe', e.target.value)} />
+          )}
           <Input label="Bereich" value={draft.bereich ?? ''} onChange={e => update('bereich', e.target.value)} />
         </div>
 
