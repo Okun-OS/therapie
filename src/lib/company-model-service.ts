@@ -2,108 +2,6 @@ import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/prisma'
 import type { CompanyModel, StandortModell, LocationModel, PlanungsEinheit } from '@/lib/company-model-types'
 
-// §71/§76: mirror the generated planungsEinheiten into real PlanningUnit rows.
-// Matching ignores filler words ("Bereich Oben" ≙ "Oben" ≙ "Etage Oben") so a
-// regeneration NEVER duplicates existing units — it updates them in place.
-function normalizeUnitName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\b(bereich|etage|ebene|stockwerk|gruppe)\b/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-async function syncPlanningUnitsFromModel(locationId: string, einheiten: PlanungsEinheit[]): Promise<void> {
-  if (!einheiten || einheiten.length === 0) return
-  const existing = await prisma.planningUnit.findMany({ where: { locationId } })
-  const byNorm = new Map(existing.map(u => [normalizeUnitName(u.name), u]))
-  const dbIdByModelId = new Map<string, string>()
-  const sorted = [...einheiten].sort(
-    (a, b) => (a.typ === 'etage' ? 0 : 1) - (b.typ === 'etage' ? 0 : 1),
-  )
-  for (const e of sorted) {
-    const name = e.name?.trim()
-    if (!name) continue
-    const norm = normalizeUnitName(name) || name.toLowerCase()
-    const parentId = e.etageId !== undefined ? dbIdByModelId.get(e.etageId ?? '') ?? null : undefined
-    const found = byNorm.get(norm)
-    if (found) {
-      const updated = await prisma.planningUnit.update({
-        where: { id: found.id },
-        data: {
-          type: e.typ,
-          minStaff: e.mindestbesetzung ?? found.minStaff,
-          ...(parentId !== undefined ? { parentId } : {}),
-        },
-      }).catch(() => found)
-      dbIdByModelId.set(e.id, updated.id)
-    } else {
-      const created = await prisma.planningUnit.create({
-        data: {
-          locationId,
-          name,
-          type: e.typ,
-          minStaff: e.mindestbesetzung ?? 1,
-          parentId: parentId ?? null,
-          sortOrder: existing.length + dbIdByModelId.size + 1,
-        },
-      }).catch(() => null)
-      if (created) {
-        byNorm.set(norm, created)
-        dbIdByModelId.set(e.id, created.id)
-      }
-    }
-  }
-}
-
-// §74: mirror the generated schichten into real Shift rows (upsert by name)
-// so a full location reset + regeneration rebuilds the working configuration.
-// Existing shifts with other names are left untouched (admin deletes manually).
-const SCHICHT_TYP_TO_SHIFT_TYPE: Record<string, string> = {
-  frueh: 'early', spaet: 'late', nacht: 'night', mittel: 'mid',
-}
-const SHIFT_TYPE_COLORS: Record<string, { color: string; bgColor: string }> = {
-  early: { color: '#0E6B6F', bgColor: '#E5FAFA' },
-  mid: { color: '#C89C5B', bgColor: '#F8EFE2' },
-  late: { color: '#3A3F42', bgColor: '#E8ECEF' },
-  night: { color: '#26292B', bgColor: '#C9D0D4' },
-}
-
-async function syncShiftsFromModel(
-  locationId: string,
-  schichten: LocationModel['schichtmodell']['schichten'],
-): Promise<void> {
-  if (!schichten || schichten.length === 0) return
-  const existing = await prisma.shift.findMany({ where: { locationId } })
-  // §76: NEVER invent shifts. When the location already has shifts (from the
-  // onboarding chat or manual setup), only exact name matches get their times
-  // updated. Creation happens solely on bootstrap (zero shifts, e.g. after a
-  // full reset) — LLM-halluzinierte Schichten landen nie in den Systemdaten.
-  const bootstrap = existing.length === 0
-  const byName = new Map(existing.map(s => [s.name.trim().toLowerCase(), s]))
-  for (const s of schichten) {
-    if (!s.name?.trim() || !s.von || !s.bis) continue
-    const type = SCHICHT_TYP_TO_SHIFT_TYPE[s.typ] ?? 'mid'
-    const colors = SHIFT_TYPE_COLORS[type] ?? SHIFT_TYPE_COLORS.mid
-    const found = byName.get(s.name.trim().toLowerCase())
-    if (found) {
-      await prisma.shift.update({
-        where: { id: found.id },
-        data: { startTime: s.von, endTime: s.bis, minStaff: s.minBesetzungGesamt ?? found.minStaff },
-      }).catch(() => {})
-    } else if (bootstrap) {
-      await prisma.shift.create({
-        data: {
-          locationId, name: s.name.trim(), type,
-          startTime: s.von, endTime: s.bis,
-          minStaff: s.minBesetzungGesamt ?? 1,
-          color: colors.color, bgColor: colors.bgColor,
-        },
-      }).catch(() => {})
-    }
-  }
-}
-
 const client = new Anthropic()
 
 export async function getCompanyModel(customerId: string): Promise<CompanyModel | null> {
@@ -524,34 +422,8 @@ Leite alle Werte ausschließlich aus den Onboarding-Daten ab. Erfinde keine Rege
     ...model.planungsRegeln.weich.map(r => r.beschreibung),
   ].filter(d => d && d.trim().length > 0)
 
-  // Base values become real system configuration (LocationPlanningRules is
-  // what the solver reads) — the model keeps only these for display.
-  const baseValue = (typ: string) => baseRules.find(r => r.typ === typ)?.wert
-  await prisma.locationPlanningRules.upsert({
-    where: { locationId },
-    create: {
-      locationId,
-      maxWeeklyHours: Math.round(baseValue('max_wochenstunden') ?? 40),
-      restHours: Math.round(baseValue('min_ruhezeit') ?? 11),
-      maxConsecutiveDays: Math.round(baseValue('max_folgetage') ?? 5),
-    },
-    update: {
-      ...(baseValue('max_wochenstunden') !== undefined ? { maxWeeklyHours: Math.round(baseValue('max_wochenstunden')!) } : {}),
-      ...(baseValue('min_ruhezeit') !== undefined ? { restHours: Math.round(baseValue('min_ruhezeit')!) } : {}),
-      ...(baseValue('max_folgetage') !== undefined ? { maxConsecutiveDays: Math.round(baseValue('max_folgetage')!) } : {}),
-    },
-  }).catch(err => console.error('[company-model-service] planning rules sync failed:', err))
-
   model.planungsRegeln = { hart: baseRules, weich: [] }
   await saveLocationModel(locationId, customerId, model)
-
-  // §71/§74: turn the described structure into real system data
-  await syncPlanningUnitsFromModel(locationId, model.planungsEinheiten ?? []).catch(err =>
-    console.error('[company-model-service] planning unit sync failed:', err),
-  )
-  await syncShiftsFromModel(locationId, model.schichtmodell?.schichten ?? []).catch(err =>
-    console.error('[company-model-service] shift sync failed:', err),
-  )
 
   // §74/§75: program ALL non-base rules (individuelle Regeln + alles, was die
   // KI als hart/weich beschrieben hat) as real CP-SAT custom constraints.

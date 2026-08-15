@@ -166,23 +166,19 @@ export async function buildRuleModel(
   })
   const profileByEmp = new Map(planningProfiles.map(p => [p.employeeId, p]))
 
-  // Build einheiten — DB units take priority (§71: the Etagen/Gruppen editor
-  // is the source of truth); CompanyModel einheiten are the legacy fallback.
+  // §77: einheiten come EXCLUSIVELY from the Etagen/Gruppen editor (DB) —
+  // human-entered structured data. LLM-generated model einheiten are never
+  // used for planning (they may contain invented or duplicated units).
   const dbUnits = await prisma.planningUnit.findMany({ where: { locationId }, orderBy: { sortOrder: 'asc' } })
-  let einheiten: PlanungsEinheit[]
-  if (dbUnits.length > 0) {
-    einheiten = dbUnits.map(u => ({
-      id: u.id,
-      name: u.name,
-      typ: u.type as PlanungsEinheit['typ'],
-      mindestbesetzung: u.minStaff ?? 1,
-      erforderlicheQualifikationen: [],
-      aufgaben: [],
-      etageId: u.parentId ?? undefined,
-    }))
-  } else {
-    einheiten = standort?.planungsEinheiten ?? []
-  }
+  const einheiten: PlanungsEinheit[] = dbUnits.map(u => ({
+    id: u.id,
+    name: u.name,
+    typ: u.type as PlanungsEinheit['typ'],
+    mindestbesetzung: u.minStaff ?? 1,
+    erforderlicheQualifikationen: [],
+    aufgaben: [],
+    etageId: u.parentId ?? undefined,
+  }))
 
   // §71 Stammgruppen-Auflösung: Employee.gruppe hält Unit-ID oder -Name
   const gruppenUnits = einheiten.filter(e => e.typ === 'gruppe')
@@ -192,26 +188,19 @@ export async function buildRuleModel(
     unitLookup.set(u.name.toLowerCase(), u.id)
   })
 
-  // Build schichten — DB shifts take priority because the frontend resolves
-  // shift display by DB UUID. CompanyModel schichten use AI-generated IDs like
-  // "frueh" which never match, so they are used only as a last-resort fallback
-  // when no DB shifts exist yet.
-  let schichten: SchichtDefinition[] = []
-  if (dbShifts.length > 0) {
-    schichten = dbShifts.map(s => ({
-      id: s.id,               // real DB UUID — frontend uses this
-      name: s.name,
-      typ: toSchichtTyp(s.name),
-      von: s.startTime,
-      bis: s.endTime,
-      uebernacht: s.endTime < s.startTime,
-      minBesetzungGesamt: s.minStaff,
-      aufgaben: [],
-      erforderlicheQualifikationen: s.requiredQualifications ?? [],
-    }))
-  } else if ((standort?.schichtmodell.schichten ?? []).length > 0) {
-    schichten = standort!.schichtmodell.schichten
-  }
+  // §77: schichten come EXCLUSIVELY from the Shift table (human-entered via
+  // Editor/Onboarding-Bestätigung). LLM model schichten are never planned.
+  const schichten: SchichtDefinition[] = dbShifts.map(s => ({
+    id: s.id,               // real DB UUID — frontend uses this
+    name: s.name,
+    typ: toSchichtTyp(s.name),
+    von: s.startTime,
+    bis: s.endTime,
+    uebernacht: s.endTime < s.startTime,
+    minBesetzungGesamt: s.minStaff,
+    aufgaben: [],
+    erforderlicheQualifikationen: s.requiredQualifications ?? [],
+  }))
 
   // §75: base parameters come EXCLUSIVELY from LocationPlanningRules — the
   // single editable source of truth (synced from onboarding generation,

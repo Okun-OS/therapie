@@ -252,6 +252,28 @@ export default function AdminModelPage() {
     }
   }
 
+  // §77: one-click cleanup of never-used shifts (LLM/onboarding leftovers)
+  const [cleaningShifts, setCleaningShifts] = useState(false)
+  const handleCleanupShifts = async () => {
+    if (cleaningShifts) return
+    setCleaningShifts(true)
+    try {
+      const res = await fetch('/api/shifts/cleanup-unused', { method: 'POST' })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      if (data.deleted > 0) {
+        setShifts(prev => prev.filter(s => !(data.names as string[]).includes(s.name)))
+        showToast(`${data.deleted} ungenutzte Schicht(en) gelöscht`, 'success')
+      } else {
+        showToast('Keine ungenutzten Schichten gefunden', 'success')
+      }
+    } catch {
+      showToast('Aufräumen fehlgeschlagen', 'error')
+    } finally {
+      setCleaningShifts(false)
+    }
+  }
+
   const handleDeleteShift = async (id: string) => {
     setDeletingShiftId(id)
     try {
@@ -520,13 +542,14 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
           <Brain size={36} className="mx-auto text-gray-300 mb-3" />
           <p className="font-semibold text-navy mb-1">Kein Planungsmodell vorhanden</p>
           <p className="text-sm text-gray-500 mb-5 max-w-md mx-auto">
-            Wenn du das Standort-Onboarding bereits durchgeführt hast, kannst du das Planungsmodell
-            hier direkt aus den Onboarding-Daten erstellen lassen — inklusive Etagen, Gruppen und Regeln.
+            Schichten, Etagen &amp; Gruppen und Besetzungen legst du in den Editoren dieser Seite selbst an —
+            die KI schreibt keine Systemdaten mehr. Aus dem Onboarding-Text kann sie Regel-Vorschläge
+            erzeugen, die du vor der Aktivierung prüfst.
           </p>
           <div className="flex items-center justify-center gap-2 flex-wrap">
             <Button onClick={handleGenerateModel} disabled={generatingModel} className="gap-2">
               {generatingModel ? <Loader2 size={16} className="animate-spin" /> : <Brain size={16} />}
-              {generatingModel ? 'KI erstellt Planungsmodell…' : 'Planungsmodell jetzt generieren'}
+              {generatingModel ? 'KI analysiert Onboarding…' : 'Onboarding analysieren (Vorschläge)'}
             </Button>
             <Link href="/admin/onboarding">
               <Button variant="secondary" className="gap-2"><MessageCircle size={16} />Zum Onboarding</Button>
@@ -554,7 +577,7 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
             className={`gap-1.5 ${confirmRegen ? 'border-amber-400 text-amber-700 bg-amber-50' : ''}`}
           >
             {generatingModel ? <Loader2 size={14} className="animate-spin" /> : <Brain size={14} />}
-            {generatingModel ? 'KI generiert…' : confirmRegen ? 'Wirklich überschreiben? Erneut klicken' : 'Neu aus Onboarding generieren'}
+            {generatingModel ? 'KI analysiert…' : confirmRegen ? 'Sicher? Erneut klicken' : 'Regel-Vorschläge aus Onboarding'}
           </Button>
           <Link href="/admin/onboarding">
             <Button variant="secondary" size="sm" className="gap-1.5">
@@ -629,6 +652,15 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
             >
               <Plus size={13} />
               Neue Schicht
+            </button>
+            <button
+              onClick={handleCleanupShifts}
+              disabled={cleaningShifts}
+              title="Löscht alle Schichten, die in keinem Dienstplan verwendet werden"
+              className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-red-500 transition-colors"
+            >
+              {cleaningShifts ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              Ungenutzte löschen
             </button>
           </div>
         </div>
