@@ -452,7 +452,11 @@ def solve(rule_model: dict) -> dict:
 
     # C2: Unfulfilled shift wishes (§20/§21: prioritaet → cost weight)
     # prioritaet 1 (critical) → 4× base; 2 (high) → 2× base; 3 (normal) → 1× base
+    # §73: among equal-priority wishes for the SAME slot the earlier submission
+    # gets a small bonus (first come, first served) — always below one priority
+    # step, so priority still dominates.
     PRIO_MULT = {1: 4, 2: 2, 3: 1}
+    wish_tuples: list[dict] = []
     for ei, emp in enumerate(employees):
         blocked = (
             set(emp.get("urlaubAn", []))
@@ -467,12 +471,27 @@ def solve(rule_model: dict) -> dict:
             di = day_idx.get(day)
             si = shift_idx.get(w.get("schichtId", ""))
             if di is not None and si is not None:
-                prio = int(w.get("prioritaet", 3))
-                mult = PRIO_MULT.get(prio, 1)
-                effective_weight = wish_weight * mult
-                not_assigned = model.new_bool_var(f"nowish_{ei}_{di}")
-                model.add(not_assigned == 1 - X[ei, di, si])
-                cost.append(effective_weight * not_assigned)
+                wish_tuples.append({
+                    "ei": ei, "di": di, "si": si,
+                    "prio": int(w.get("prioritaet", 3)),
+                    "ts": w.get("eingereichtAm") or "9999-12-31T23:59:59Z",
+                })
+
+    # Rank wishes per slot by submission time: rank 0 → +90, 1 → +60, 2 → +30
+    slot_groups: dict[tuple[int, int], list[dict]] = {}
+    for wt in wish_tuples:
+        slot_groups.setdefault((wt["di"], wt["si"]), []).append(wt)
+    for group in slot_groups.values():
+        group.sort(key=lambda w: w["ts"])
+        for rank, wt in enumerate(group):
+            wt["bonus"] = max(0, 90 - 30 * rank) if len(group) > 1 else 0
+
+    for wt in wish_tuples:
+        mult = PRIO_MULT.get(wt["prio"], 1)
+        effective_weight = wish_weight * mult + wt.get("bonus", 0)
+        not_assigned = model.new_bool_var(f"nowish_{wt['ei']}_{wt['di']}_{wt['si']}")
+        model.add(not_assigned == 1 - X[wt["ei"], wt["di"], wt["si"]])
+        cost.append(effective_weight * not_assigned)
 
     # C3: Hours below weekly target (per employee per week, NET minutes §72)
     for ei, emp in enumerate(employees):

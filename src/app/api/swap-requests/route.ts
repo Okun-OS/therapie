@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSwapRequestsByEmployee, addSwapRequest } from '@/lib/schedule-entities'
 import { requireRole } from '@/lib/session'
+import { notifyEmployee } from '@/lib/notify'
 
 export async function GET(req: NextRequest) {
   const session = requireRole(req)
@@ -30,5 +31,15 @@ export async function POST(req: NextRequest) {
     targetEmployeeId, targetEmployeeName, targetDate, targetShiftId,
     message, locationId,
   })
+
+  // §73: the target employee gets an actionable notification
+  await notifyEmployee(targetEmployeeId, {
+    type: 'swap_request',
+    title: 'Schichttausch-Anfrage',
+    body: `${requesterName} möchte mit dir tauschen: dein Dienst am ${targetDate} gegen ${requesterDate}.${message ? ` Nachricht: „${message}"` : ''} Bitte bestätige oder lehne ab.`,
+    requestId: request.id,
+    url: '/employee/schedule',
+  }).catch(() => {})
+
   return NextResponse.json({ request })
 }

@@ -375,6 +375,7 @@ export async function buildRuleModel(
             schichtId: matchedShift?.id ?? w.preferredShiftType ?? '',
             typ: (w.preferredShiftType === 'frei' ? 'wunschfrei' : 'wunsch') as 'wunsch' | 'wunschfrei',
             prioritaet: importanceToPrioraet(w.importance),
+            eingereichtAm: w.submittedAt,
           }
         }),
       // §19: EmployeeRequest shift_wish with date ranges → expand into per-day wishes

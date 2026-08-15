@@ -236,6 +236,65 @@ export default function EmployeeSchedule() {
     }
   }
 
+  // §73: wish-conflict actions — contact the colleague / request a swap
+  const [contactModal, setContactModal] = useState<{ toId: string; toName: string } | null>(null)
+  const [contactText, setContactText] = useState('')
+  const [contactSending, setContactSending] = useState(false)
+
+  const handleContactSend = async () => {
+    if (!contactModal || !contactText.trim() || contactSending) return
+    setContactSending(true)
+    try {
+      const res = await fetch('/api/employee/contact-colleague', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toEmployeeId: contactModal.toId, message: contactText.trim() }),
+      })
+      if (!res.ok) throw new Error()
+      showToast(`Nachricht an ${contactModal.toName} gesendet`, 'success')
+      setContactModal(null)
+      setContactText('')
+    } catch {
+      showToast('Nachricht konnte nicht gesendet werden', 'error')
+    } finally {
+      setContactSending(false)
+    }
+  }
+
+  const handleConflictSwap = async (w: WishSubmission) => {
+    const ci = w.conflictInfo
+    if (!ci?.winnerId || !ci.date || !ci.shiftId || !employee) return
+    const myEntry = getEntry(ci.date)
+    if (!myEntry) {
+      showToast('Du hast an diesem Tag keinen Dienst zum Tauschen', 'error')
+      return
+    }
+    try {
+      const res = await fetch('/api/swap-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterId: employee.id,
+          requesterName: employee.name,
+          requesterDate: ci.date,
+          requesterShiftId: myEntry.shiftId,
+          targetEmployeeId: ci.winnerId,
+          targetEmployeeName: ci.conflictedWith[0] ?? '',
+          targetDate: ci.date,
+          targetShiftId: ci.shiftId,
+          message: `Tausch-Anfrage wegen Dienstwunsch am ${ci.date}`,
+          locationId: employee.locationId,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setSwaps(prev => [data.request, ...prev])
+      showToast(`Tausch-Anfrage an ${ci.conflictedWith[0] ?? 'Kollegen'} gesendet`, 'success')
+    } catch {
+      showToast('Tausch-Anfrage fehlgeschlagen', 'error')
+    }
+  }
+
   const handleAcceptSwap = async (id: string) => {
     await fetch(`/api/swap-requests/${id}`, {
       method: 'PATCH',
@@ -735,13 +794,26 @@ export default function EmployeeSchedule() {
                         </p>
                         <p className="text-xs text-red-600">{w.conflictInfo.reason}</p>
                         {w.conflictInfo.conflictedWith.length > 0 && (
-                          <button
-                            onClick={() => window.open(`mailto:?subject=${encodeURIComponent('Dienstwunsch besprechen')}&body=${encodeURIComponent(`Hallo,\nkönnen wir unseren Dienstwunsch für den ${w.date} besprechen?`)}`, '_blank')}
-                            className="mt-2 inline-flex items-center gap-1.5 text-xs text-blue-600 hover:underline font-medium"
-                          >
-                            <MessageSquare size={12} />
-                            {w.conflictInfo.conflictedWith[0]} direkt kontaktieren
-                          </button>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {w.conflictInfo.winnerId && (
+                              <button
+                                onClick={() => setContactModal({ toId: w.conflictInfo!.winnerId, toName: w.conflictInfo!.conflictedWith[0] })}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1.5 hover:bg-blue-100 transition-colors"
+                              >
+                                <MessageSquare size={12} />
+                                {w.conflictInfo.conflictedWith[0]} kontaktieren
+                              </button>
+                            )}
+                            {w.conflictInfo.winnerId && w.conflictInfo.date && w.conflictInfo.shiftId && (
+                              <button
+                                onClick={() => handleConflictSwap(w)}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-navy bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 transition-colors"
+                              >
+                                <ArrowLeftRight size={12} />
+                                Schichttausch anfragen
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}
@@ -761,6 +833,28 @@ export default function EmployeeSchedule() {
           </>
         )}
       </div>
+
+      {/* ── §73 Kollegen-Kontakt Modal ─────────────────────────── */}
+      <Modal open={!!contactModal} onClose={() => { setContactModal(null); setContactText('') }} title={contactModal ? `Nachricht an ${contactModal.toName}` : ''}>
+        <div className="space-y-3">
+          <p className="text-xs text-gray-500">
+            Deine Nachricht wird {contactModal?.toName} als Benachrichtigung in der App (und per Push/E-Mail) zugestellt.
+          </p>
+          <Textarea
+            label="Nachricht"
+            value={contactText}
+            onChange={e => setContactText(e.target.value)}
+            rows={4}
+            placeholder="z.B. Hallo! Wir hatten beide denselben Dienstwunsch — können wir kurz sprechen, ob wir tauschen?"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => { setContactModal(null); setContactText('') }}>Abbrechen</Button>
+            <Button size="sm" onClick={handleContactSend} disabled={!contactText.trim() || contactSending} className="gap-1.5">
+              {contactSending ? 'Wird gesendet…' : 'Senden'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* ── Shift Detail Modal ─────────────────────────────────── */}
       <Modal open={!!selectedEntry} onClose={() => setSelectedEntry(null)} title="Dienstdetails">

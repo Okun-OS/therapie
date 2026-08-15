@@ -297,6 +297,11 @@ export interface WishSubmission {
     conflictedWith: string[]  // names of employees who also requested this slot
     reason: string            // human-readable resolution explanation
     winnerId: string
+    // §73 extras for the employee conflict actions (contact / swap request)
+    date?: string
+    shiftId?: string
+    shiftName?: string
+    notifiedAt?: string
   }
 }
 

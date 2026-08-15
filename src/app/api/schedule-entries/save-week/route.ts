@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { saveScheduleForWeek } from '@/lib/schedule-entities'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
+import { processWishConflicts } from '@/lib/wish-conflict-service'
 
 export async function POST(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company'])
@@ -52,5 +53,11 @@ export async function POST(req: NextRequest) {
   }
 
   await saveScheduleForWeek(locationId, weekDates, assignments, reasons, status ?? 'confirmed')
+
+  // §73: notify employees whose wish lost against a colleague's identical wish
+  await processWishConflicts(locationId, weekDates, assignments).catch(err =>
+    console.error('[save-week] wish conflict processing failed:', err),
+  )
+
   return NextResponse.json({ success: true })
 }

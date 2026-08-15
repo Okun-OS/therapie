@@ -157,6 +157,9 @@ export interface PlanungsWunsch {
   schichtId: string
   typ: 'wunsch' | 'wunschfrei'
   prioritaet: 1 | 2 | 3
+  // §73 first-come tie-break: ISO timestamp of submission — among equal-priority
+  // wishes for the same slot, the earlier submission wins
+  eingereichtAm?: string
 }
 
 export interface PlanungsMitarbeiter {
