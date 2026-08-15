@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAbsencesByLocation, getAbsencesByEmployee, listAllAbsences, addAbsence } from '@/lib/time-tracking-entities'
+import { getAbsencesByLocation, getAbsencesByEmployee, addAbsence } from '@/lib/time-tracking-entities'
 import { requireRole } from '@/lib/session'
+import { locationFilter, assertEmployeeAccess } from '@/lib/scope'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
   const session = requireRole(req)
@@ -9,13 +11,21 @@ export async function GET(req: NextRequest) {
   const locationId = req.nextUrl.searchParams.get('locationId')
   const employeeId = req.nextUrl.searchParams.get('employeeId')
 
-  const absences = employeeId
-    ? await getAbsencesByEmployee(employeeId)
-    : locationId
-    ? await getAbsencesByLocation(locationId)
-    : await listAllAbsences()
-
-  return NextResponse.json({ absences })
+  // §81 scope guard
+  if (employeeId) {
+    const denied = await assertEmployeeAccess(session, employeeId)
+    if (denied) return denied
+    return NextResponse.json({ absences: await getAbsencesByEmployee(employeeId) })
+  }
+  const allowed = await locationFilter(session, locationId)
+  if (allowed instanceof NextResponse) return allowed
+  if (locationId) {
+    return NextResponse.json({ absences: await getAbsencesByLocation(locationId) })
+  }
+  const rows = await prisma.absence.findMany({
+    where: allowed ? { locationId: { in: allowed } } : {},
+  })
+  return NextResponse.json({ absences: rows })
 }
 
 export async function POST(req: NextRequest) {

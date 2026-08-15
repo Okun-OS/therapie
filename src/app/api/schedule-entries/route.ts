@@ -3,10 +3,10 @@ import {
   getScheduleByEmployee,
   getScheduleByLocationAndWeek,
   getAllEntriesForLocation,
-  listAllScheduleEntries,
 } from '@/lib/schedule-entities'
 import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/session'
+import { locationFilter, assertEmployeeAccess } from '@/lib/scope'
 
 export async function GET(req: NextRequest) {
   const session = requireRole(req)
@@ -18,6 +18,16 @@ export async function GET(req: NextRequest) {
   const dateFrom = req.nextUrl.searchParams.get('dateFrom')
   const dateTo = req.nextUrl.searchParams.get('dateTo')
 
+  // §81 scope guard — never return foreign locations' data
+  if (employeeId) {
+    const denied = await assertEmployeeAccess(session, employeeId)
+    if (denied) return denied
+    return NextResponse.json({ entries: await getScheduleByEmployee(employeeId) })
+  }
+
+  const allowed = await locationFilter(session, locationId)
+  if (allowed instanceof NextResponse) return allowed
+
   if (locationId && dateFrom && dateTo) {
     const rows = await prisma.scheduleEntry.findMany({
       where: { locationId, date: { gte: dateFrom, lte: dateTo } },
@@ -26,13 +36,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ entries: rows })
   }
 
-  const entries = employeeId
-    ? await getScheduleByEmployee(employeeId)
-    : locationId && weekStart
-    ? await getScheduleByLocationAndWeek(locationId, weekStart)
-    : locationId
-    ? await getAllEntriesForLocation(locationId)
-    : await listAllScheduleEntries()
+  if (locationId) {
+    const entries = weekStart
+      ? await getScheduleByLocationAndWeek(locationId, weekStart)
+      : await getAllEntriesForLocation(locationId)
+    return NextResponse.json({ entries })
+  }
 
-  return NextResponse.json({ entries })
+  const rows = await prisma.scheduleEntry.findMany({
+    where: allowed ? { locationId: { in: allowed } } : {},
+    orderBy: [{ date: 'asc' }, { employeeId: 'asc' }],
+  })
+  return NextResponse.json({ entries: rows })
 }
