@@ -1,26 +1,58 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/prisma'
 import type { CompanyModel, StandortModell, LocationModel, PlanungsEinheit } from '@/lib/company-model-types'
-import { upsertPlanningUnit } from '@/lib/schedule-entities'
 
-// §71: mirror the generated planungsEinheiten into real PlanningUnit rows so
-// the solver's group planning, the units editor and the schedule views all see
-// the same structure. Etagen first so groups can resolve their parent.
+// §71/§76: mirror the generated planungsEinheiten into real PlanningUnit rows.
+// Matching ignores filler words ("Bereich Oben" ≙ "Oben" ≙ "Etage Oben") so a
+// regeneration NEVER duplicates existing units — it updates them in place.
+function normalizeUnitName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\b(bereich|etage|ebene|stockwerk|gruppe)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 async function syncPlanningUnitsFromModel(locationId: string, einheiten: PlanungsEinheit[]): Promise<void> {
   if (!einheiten || einheiten.length === 0) return
+  const existing = await prisma.planningUnit.findMany({ where: { locationId } })
+  const byNorm = new Map(existing.map(u => [normalizeUnitName(u.name), u]))
   const dbIdByModelId = new Map<string, string>()
   const sorted = [...einheiten].sort(
     (a, b) => (a.typ === 'etage' ? 0 : 1) - (b.typ === 'etage' ? 0 : 1),
   )
   for (const e of sorted) {
-    if (!e.name?.trim()) continue
-    const unit = await upsertPlanningUnit(locationId, {
-      name: e.name.trim(),
-      type: e.typ,
-      minStaff: e.mindestbesetzung ?? 1,
-      parentId: e.etageId ? dbIdByModelId.get(e.etageId) ?? null : undefined,
-    })
-    dbIdByModelId.set(e.id, unit.id)
+    const name = e.name?.trim()
+    if (!name) continue
+    const norm = normalizeUnitName(name) || name.toLowerCase()
+    const parentId = e.etageId !== undefined ? dbIdByModelId.get(e.etageId ?? '') ?? null : undefined
+    const found = byNorm.get(norm)
+    if (found) {
+      const updated = await prisma.planningUnit.update({
+        where: { id: found.id },
+        data: {
+          type: e.typ,
+          minStaff: e.mindestbesetzung ?? found.minStaff,
+          ...(parentId !== undefined ? { parentId } : {}),
+        },
+      }).catch(() => found)
+      dbIdByModelId.set(e.id, updated.id)
+    } else {
+      const created = await prisma.planningUnit.create({
+        data: {
+          locationId,
+          name,
+          type: e.typ,
+          minStaff: e.mindestbesetzung ?? 1,
+          parentId: parentId ?? null,
+          sortOrder: existing.length + dbIdByModelId.size + 1,
+        },
+      }).catch(() => null)
+      if (created) {
+        byNorm.set(norm, created)
+        dbIdByModelId.set(e.id, created.id)
+      }
+    }
   }
 }
 
@@ -43,6 +75,11 @@ async function syncShiftsFromModel(
 ): Promise<void> {
   if (!schichten || schichten.length === 0) return
   const existing = await prisma.shift.findMany({ where: { locationId } })
+  // §76: NEVER invent shifts. When the location already has shifts (from the
+  // onboarding chat or manual setup), only exact name matches get their times
+  // updated. Creation happens solely on bootstrap (zero shifts, e.g. after a
+  // full reset) — LLM-halluzinierte Schichten landen nie in den Systemdaten.
+  const bootstrap = existing.length === 0
   const byName = new Map(existing.map(s => [s.name.trim().toLowerCase(), s]))
   for (const s of schichten) {
     if (!s.name?.trim() || !s.von || !s.bis) continue
@@ -54,7 +91,7 @@ async function syncShiftsFromModel(
         where: { id: found.id },
         data: { startTime: s.von, endTime: s.bis, minStaff: s.minBesetzungGesamt ?? found.minStaff },
       }).catch(() => {})
-    } else {
+    } else if (bootstrap) {
       await prisma.shift.create({
         data: {
           locationId, name: s.name.trim(), type,
@@ -456,7 +493,9 @@ Erstelle das LocationModel als JSON mit genau diesem Schema:
   }
 }
 
-WICHTIG zu planungsEinheiten: Wenn der Standort mehrere Etagen/Ebenen/Bereiche mit Gruppen hat (z.B. Kita mit "Oben" und "Unten"), lege JEDE Etage als eigene Einheit mit typ "etage" an und gib bei JEDER Gruppe über "etageId" die id ihrer Etage an. mindestbesetzung bedeutet: bei Gruppen die Personen pro Tag, bei Etagen die Personen je Früh-/Spätdienst (Auf-/Zuschluss). "etageId" nur bei Gruppen setzen, die zu einer Etage gehören.
+WICHTIG zu planungsEinheiten: Wenn der Standort mehrere Etagen/Ebenen/Bereiche mit Gruppen hat (z.B. Kita mit "Oben" und "Unten"), lege JEDE Etage als eigene Einheit mit typ "etage" an und gib bei JEDER Gruppe über "etageId" die id ihrer Etage an. Lege jede reale Einheit GENAU EINMAL an — niemals eine Etage zusätzlich als "bereich" duplizieren. mindestbesetzung bedeutet: bei Gruppen die Personen pro Tag, bei Etagen die Personen je Früh-/Spätdienst (Auf-/Zuschluss). Setze mindestbesetzung NUR auf einen Wert, der sich aus dem Text ergibt (z.B. "je zwei Erzieher pro Gruppe" → 2, "je Etage immer 2 Kräfte" → 2); wenn nichts genannt ist, setze 1. "etageId" nur bei Gruppen setzen, die zu einer Etage gehören.
+
+WICHTIG zu schichten: Übernimm AUSSCHLIESSLICH Schichten, die im Onboarding wörtlich mit Namen und Uhrzeiten genannt sind. Erfinde NIEMALS zusätzliche Schichten, Kürzel oder Varianten — im Zweifel lieber weniger Schichten. minBesetzungGesamt nur setzen, wenn der Text eine Besetzungszahl für diese Schicht nennt, sonst 1.
 
 Leite alle Werte ausschließlich aus den Onboarding-Daten ab. Erfinde keine Regeln oder Strukturen, die nicht explizit erwähnt wurden.`
 

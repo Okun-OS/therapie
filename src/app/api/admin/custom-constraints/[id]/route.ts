@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
+import { generateConstraintCode } from '@/lib/custom-constraint-generator'
 
 // PUT /api/admin/custom-constraints/[id]  — update status or code
 export async function PUT(
@@ -18,7 +19,32 @@ export async function PUT(
     if (existing.customerId !== customerId) return NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 })
   }
 
-  const body = await req.json() as { status?: string; code?: string; errorLog?: string | null }
+  const body = await req.json() as { status?: string; code?: string; errorLog?: string | null; action?: string }
+
+  // §76: retry a failed/stranded generation for this single rule
+  if (body.action === 'regenerate') {
+    try {
+      const code = await generateConstraintCode(existing.name, existing.description)
+      if (!code) {
+        const updated = await prisma.customConstraint.update({
+          where: { id: params.id },
+          data: { status: 'rejected', errorLog: 'Von der KI als nicht planbare Regel eingestuft.' },
+        })
+        return NextResponse.json({ constraint: updated })
+      }
+      const updated = await prisma.customConstraint.update({
+        where: { id: params.id },
+        data: { code, status: 'pending', errorLog: null },
+      })
+      return NextResponse.json({ constraint: updated })
+    } catch (err) {
+      const updated = await prisma.customConstraint.update({
+        where: { id: params.id },
+        data: { status: 'error', errorLog: (err instanceof Error ? err.message : String(err)).slice(0, 500) },
+      })
+      return NextResponse.json({ constraint: updated })
+    }
+  }
 
   const allowed = ['pending', 'active', 'rejected']
   if (body.status && !allowed.includes(body.status)) {

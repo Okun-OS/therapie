@@ -350,7 +350,7 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
     }
   }
 
-  const handleCcAction = async (id: string, action: 'active' | 'rejected' | 'delete') => {
+  const handleCcAction = async (id: string, action: 'active' | 'rejected' | 'delete' | 'regenerate') => {
     setCcActioning(id)
     try {
       if (action === 'delete') {
@@ -358,6 +358,17 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
         if (!res.ok) throw new Error()
         setCustomConstraints(prev => prev.filter(c => c.id !== id))
         showToast('Gelöscht', 'success')
+      } else if (action === 'regenerate') {
+        setCustomConstraints(prev => prev.map(c => c.id === id ? { ...c, status: 'generating' } : c))
+        const res = await fetch(`/api/admin/custom-constraints/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'regenerate' }),
+        })
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        setCustomConstraints(prev => prev.map(c => c.id === id ? { ...c, ...data.constraint } : c))
+        showToast(data.constraint.status === 'pending' ? 'Code generiert — bitte prüfen' : 'Generierung erneut fehlgeschlagen', data.constraint.status === 'pending' ? 'success' : 'error')
       } else {
         const res = await fetch(`/api/admin/custom-constraints/${id}`, {
           method: 'PUT',
@@ -997,6 +1008,16 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                       {isExpanded ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
                     </button>
                     <div className="flex items-center gap-1 flex-shrink-0">
+                      {(c.status === 'error' || c.status === 'generating') && (
+                        <button
+                          onClick={() => handleCcAction(c.id, 'regenerate')}
+                          disabled={isActioning}
+                          title="Generierung neu versuchen"
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                          {isActioning ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+                        </button>
+                      )}
                       {c.status !== 'active' && c.code && (
                         <button
                           onClick={() => handleCcAction(c.id, 'active')}

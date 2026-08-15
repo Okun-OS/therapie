@@ -11,6 +11,17 @@ export async function GET(req: NextRequest) {
   const locationId = await resolveLocationId(session)
   if (!locationId) return NextResponse.json({ error: 'Standort nicht gefunden' }, { status: 404 })
 
+  // §76: recover stranded rows — a server restart (deploy) kills the batch,
+  // leaving rows stuck at 'generating'. Mark them as error with a retry hint.
+  const staleCutoff = new Date(Date.now() - 10 * 60 * 1000)
+  await prisma.customConstraint.updateMany({
+    where: { locationId, status: 'generating', updatedAt: { lt: staleCutoff } },
+    data: {
+      status: 'error',
+      errorLog: 'Generierung abgebrochen (z.B. durch Server-Neustart) — bitte über den Neu-Versuchen-Button erneut anstoßen.',
+    },
+  }).catch(() => {})
+
   const constraints = await prisma.customConstraint.findMany({
     where: { locationId },
     orderBy: { createdAt: 'desc' },
