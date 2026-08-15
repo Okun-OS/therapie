@@ -617,6 +617,12 @@ export default function SetupWizardPage() {
                         <span className={`text-sm ${u.id !== top.id ? 'pl-5' : ''} ${u.type === 'etage' ? 'font-semibold' : ''} text-navy`}>
                           {u.type === 'etage' ? '🏢 ' : '👥 '}{u.name}
                         </span>
+                        {/* §83: leere Etage = fast immer eine Altlast (z.B. „Oben" neben „Bereich Oben") */}
+                        {u.type === 'etage' && gruppen.filter(g => g.parentId === u.id).length === 0 && (
+                          <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                            keine Gruppen — vermutlich überflüssig
+                          </span>
+                        )}
                         <span className="ml-auto text-[10px] text-gray-500">{u.type === 'etage' ? `${u.minStaff} je Früh- und Spätdienst` : `${u.minStaff} pro Tag`}</span>
                         <button onClick={() => deleteUnit(u.id)} className="p-1 rounded-lg text-gray-400 hover:text-red-600">
                           <Trash2 size={12} />
