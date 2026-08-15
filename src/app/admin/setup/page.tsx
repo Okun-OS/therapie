@@ -36,6 +36,15 @@ const STEPS = [
   { key: 'regeln', label: 'Regeln', icon: ShieldAlert },
 ]
 
+// §83: Employee.gruppe hält je nach Herkunft den Gruppennamen oder die Unit-ID.
+// Beides akzeptieren, damit die Zuordnung in echten Bestandsdaten sichtbar wird.
+const normKey = (v?: string | null) => (v ?? '').trim().toLowerCase()
+function matchesUnit(emp: { gruppe?: string | null }, unit: { id: string; name: string }): boolean {
+  const g = normKey(emp.gruppe)
+  if (!g) return false
+  return g === normKey(unit.name) || g === normKey(unit.id)
+}
+
 const BETRIEBSFORMEN: { label: string; hint: string; tage: WochentagKuerzel[] }[] = [
   { label: 'Montag – Freitag', hint: 'Klassischer Wochenbetrieb (Kita, Praxis, Büro)', tage: ['Mo', 'Di', 'Mi', 'Do', 'Fr'] },
   { label: 'Montag – Samstag', hint: '6-Tage-Betrieb (Handel, Gastronomie)', tage: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] },
@@ -322,6 +331,10 @@ export default function SetupWizardPage() {
 
   const etagen = units.filter(u => u.type === 'etage')
   const gruppen = units.filter(u => u.type !== 'etage')
+  // §83: Mitarbeiter ↔ Gruppe zuverlässig verknüpfen (Name ODER ID, normalisiert)
+  const zugeordnet = employees.filter(e => gruppen.some(g => matchesUnit(e, g)))
+  const ohneGruppe = employees.filter(e => !(e.gruppe ?? '').trim())
+  const unpassend = employees.filter(e => (e.gruppe ?? '').trim() && !gruppen.some(g => matchesUnit(e, g)))
   // Klartext, was die Etagen-Besetzung konkret bedeutet (Schritt 2 ↔ 3 verzahnt)
   const etagenSummary = etagen.length > 0
     ? etagen.map(e => `${e.name}: je ${e.minStaff} Person${e.minStaff === 1 ? '' : 'en'} im Früh- und im Spätdienst`).join(' · ')
@@ -336,6 +349,7 @@ export default function SetupWizardPage() {
         <p className="text-sm text-gray-500">
           Fünf Schritte zur fertigen Dienstplanung. Alles, was du hier einträgst, gilt exakt so — nichts wird automatisch verändert.
         </p>
+        <p className="text-[10px] text-gray-300 mt-1">Version {process.env.NEXT_PUBLIC_BUILD_ID}</p>
       </div>
 
       {/* Stepper */}
@@ -602,15 +616,33 @@ export default function SetupWizardPage() {
           {etagenSummary && (
             <p className="text-[11px] text-gray-500 mb-3">Ergibt aktuell: {etagenSummary}</p>
           )}
+          {gruppen.length > 0 && employees.length > 0 && (
+            <div className="text-[11px] mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className={zugeordnet.length === employees.length ? 'text-green-600' : 'text-navy'}>
+                <b>{zugeordnet.length} von {employees.length}</b> Mitarbeitern einer Gruppe zugeordnet
+              </span>
+              {ohneGruppe.length > 0 && (
+                <span className="text-amber-700">
+                  {ohneGruppe.length} ohne Gruppe: {ohneGruppe.slice(0, 4).map(e => e.name).join(', ')}{ohneGruppe.length > 4 ? ' …' : ''}
+                </span>
+              )}
+              {unpassend.length > 0 && (
+                <span className="text-red-600">
+                  {unpassend.length} mit unbekannter Gruppe ({Array.from(new Set(unpassend.map(e => (e.gruppe ?? '').trim()))).slice(0, 3).join(', ')})
+                </span>
+              )}
+              <Link href="/admin/employees" className="text-brand hover:underline">Zuordnung bearbeiten →</Link>
+            </div>
+          )}
           {units.length > 0 && (
             <div className="rounded-xl border border-gray-100 divide-y divide-gray-100 mb-4">
               {[...etagen, ...gruppen.filter(g => !g.parentId)].map(top => {
                 const children = top.type === 'etage' ? gruppen.filter(g => g.parentId === top.id) : []
                 return [top, ...children].map(u => {
                   // §83 Zuordnung sichtbar machen: welche Mitarbeiter stehen in dieser Gruppe?
-                  const members = u.type === 'etage'
-                    ? []
-                    : employees.filter(e => (e.gruppe ?? '').trim().toLowerCase() === u.name.trim().toLowerCase())
+                  // Robust: Employee.gruppe enthält je nach Herkunft den NAMEN
+                  // (Formular, Import) oder die Unit-ID (ältere KI-Läufe).
+                  const members = u.type === 'etage' ? [] : employees.filter(e => matchesUnit(e, u))
                   return (
                     <div key={u.id} className={u.type === 'etage' ? 'bg-gray-50/60' : ''}>
                       <div className="flex items-center gap-2 px-3 py-2">

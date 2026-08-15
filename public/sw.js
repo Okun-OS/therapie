@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'okun-v2'
+const CACHE_VERSION = 'okun-v3'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`
 
@@ -72,19 +72,21 @@ self.addEventListener('fetch', event => {
     return
   }
 
-  // HTML pages: stale-while-revalidate, fall back to offline page
+  // HTML pages: NETWORK-FIRST. Nach einem Deploy zählt sofort der neue Stand;
+  // der Cache ist ausschließlich Offline-Fallback. (Vorher: stale-while-
+  // revalidate — das lieferte nach jedem Deploy erst die ALTE Seite aus.)
   event.respondWith(
-    caches.match(request).then(cached => {
-      const network = fetch(request).then(response => {
+    fetch(request)
+      .then(response => {
         if (response.ok) {
           const clone = response.clone()
           caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, clone))
         }
         return response
-      }).catch(() => null)
-
-      return cached || network.then(r => r || caches.match('/offline'))
-    })
+      })
+      .catch(() =>
+        caches.match(request).then(cached => cached || caches.match('/offline'))
+      )
   )
 })
 
