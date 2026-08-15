@@ -469,6 +469,21 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
   // ── Planungsmodell aus Onboarding generieren ─────────────────────────────
 
   const [generatingModel, setGeneratingModel] = useState(false)
+  const [confirmRegen, setConfirmRegen] = useState(false)
+
+  // Two-step confirm: first click arms, second click regenerates (overwrites
+  // the model + re-syncs Einheiten/Schichten/Custom-Regeln from onboarding —
+  // Dienstpläne, Mitarbeiter und manuell angelegte Schichten bleiben erhalten)
+  const handleRegenerateClick = () => {
+    if (generatingModel) return
+    if (!confirmRegen) {
+      setConfirmRegen(true)
+      setTimeout(() => setConfirmRegen(false), 5000)
+      return
+    }
+    setConfirmRegen(false)
+    void handleGenerateModel()
+  }
 
   const handleGenerateModel = async () => {
     if (generatingModel) return
@@ -553,11 +568,23 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
           <h1 className="font-bold text-navy text-xl">{model.locationName}</h1>
           <p className="text-sm text-gray-500">{model.betriebsTyp?.replace('_', '/')} · {model.bundesland ?? 'Bundesland nicht angegeben'}</p>
         </div>
-        <Link href="/admin/onboarding">
-          <Button variant="secondary" size="sm" className="gap-1.5">
-            <MessageCircle size={14} />Onboarding-Chat
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleRegenerateClick}
+            disabled={generatingModel}
+            className={`gap-1.5 ${confirmRegen ? 'border-amber-400 text-amber-700 bg-amber-50' : ''}`}
+          >
+            {generatingModel ? <Loader2 size={14} className="animate-spin" /> : <Brain size={14} />}
+            {generatingModel ? 'KI generiert…' : confirmRegen ? 'Wirklich überschreiben? Erneut klicken' : 'Neu aus Onboarding generieren'}
           </Button>
-        </Link>
+          <Link href="/admin/onboarding">
+            <Button variant="secondary" size="sm" className="gap-1.5">
+              <MessageCircle size={14} />Onboarding-Chat
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Arbeitstage */}
