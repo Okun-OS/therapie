@@ -447,9 +447,9 @@ export default function SetupWizardPage() {
           <p className="text-xs text-gray-400 mb-4">
             Trage exakt die Dienste ein, die es wirklich gibt — als <b>Zeitrahmen</b>. Flexible Zeiten sind eingebaut:
             Bei einem <b>Frühdienst</b> ist der Beginn fix, das Ende ergibt sich aus den Stunden der Person; bei einem{' '}
-            <b>Spät-/Tagdienst</b> ist das Ende fix und der Beginn individuell. Beispiel Spätdienst „bis 17:00, Beginn je
-            nach Stunden": frühesten möglichen Beginn als „Von" eintragen, 17:00 als „Bis" — den Rest rechnet der Planer
-            pro Person automatisch.
+            <b>Spät-/Tagdienst</b> ist das Ende fix und der Beginn individuell. Beispiel Spätdienst &bdquo;bis 17:00,
+            Beginn je nach Stunden&ldquo;: frühesten möglichen Beginn als &bdquo;Von&ldquo; eintragen, 17:00 als
+            &bdquo;Bis&ldquo; — den Rest rechnet der Planer pro Person automatisch.
           </p>
           <div className="space-y-1.5 mb-4">
             {shifts.map(s => (
