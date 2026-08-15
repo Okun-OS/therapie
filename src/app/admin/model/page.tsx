@@ -818,7 +818,7 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                     />
                     <button
                       onClick={() => startEditShift(s)}
-                      className="p-1.5 rounded-lg text-gray-300 hover:text-navy hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-navy hover:bg-gray-100 transition-colors"
                       title="Schicht bearbeiten"
                     >
                       <Pencil size={13} />
@@ -826,7 +826,7 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                     <button
                       onClick={() => handleDeleteShift(s.id)}
                       disabled={isDeleting}
-                      className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                       title="Schicht löschen"
                     >
                       {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
@@ -881,7 +881,7 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                       <button
                         onClick={() => handleDeleteUnit(u.id)}
                         disabled={isDeleting}
-                        className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                         title="Einheit löschen"
                       >
                         {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
@@ -1074,7 +1074,7 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                         onClick={() => handleCcAction(c.id, 'delete')}
                         disabled={isActioning}
                         title="Löschen"
-                        className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -1183,7 +1183,7 @@ function HardRuleRow({ regel, onDelete }: { regel: HarteRegel; onDelete: () => v
       </div>
       <button
         onClick={onDelete}
-        className="flex-shrink-0 p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+        className="flex-shrink-0 p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
         title="Regel entfernen"
       >
         <Trash2 size={13} />

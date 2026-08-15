@@ -16,7 +16,7 @@ import {
 import Link from 'next/link'
 import type { WochentagKuerzel } from '@/lib/company-model-types'
 
-interface WizShift { id: string; name: string; startTime: string; endTime: string; minStaff: number }
+interface WizShift { id: string; name: string; type?: string; startTime: string; endTime: string; minStaff: number }
 interface WizUnit { id: string; name: string; type: string; parentId: string | null; minStaff: number }
 interface WizEmployee { id: string; name: string; gruppe?: string }
 interface Proposal {
@@ -101,10 +101,32 @@ export default function SetupWizardPage() {
   }
 
   // ── Schritt 2: Dienste ────────────────────────────────────────────────────
-  const [newShift, setNewShift] = useState({ name: '', startTime: '07:00', endTime: '15:30', minStaff: 1 })
+  // §80 Zeitanker: 'early' = Beginn fix (Ende ergibt sich aus den Stunden),
+  // 'late' = Ende fix (Beginn ergibt sich). Nur die verankerte Zeit ist Pflicht;
+  // die andere Seite ist der Rahmen und wird sinnvoll vorbelegt.
+  const [newShift, setNewShift] = useState({
+    name: '', anchor: 'early' as 'early' | 'late', startTime: '07:00', endTime: '15:30', minStaff: 1,
+  })
   const [addingShift, setAddingShift] = useState(false)
-  const addShift = async (data?: { name: string; startTime: string; endTime: string; minStaff?: number }) => {
-    const payload = data ?? newShift
+
+  const shiftMinutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+  const fmtTime = (mins: number) => {
+    const m = ((mins % 1440) + 1440) % 1440
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+  }
+  // Rahmen (9h) für die nicht-verankerte Seite: großzügig genug für Vollzeit,
+  // der Solver kürzt pro Person auf deren Tagessoll
+  const FRAME_MIN = 9 * 60
+  const setAnchor = (anchor: 'early' | 'late') => setNewShift(p => ({
+    ...p,
+    anchor,
+    ...(anchor === 'early'
+      ? { endTime: fmtTime(shiftMinutes(p.startTime) + FRAME_MIN) }
+      : { startTime: fmtTime(shiftMinutes(p.endTime) - FRAME_MIN) }),
+  }))
+
+  const addShift = async (data?: { name: string; startTime: string; endTime: string; minStaff?: number; type?: string }) => {
+    const payload = data ?? { ...newShift, type: newShift.anchor }
     if (!payload.name.trim() || !locationId) return false
     if (shifts.some(s => s.name.trim().toLowerCase() === payload.name.trim().toLowerCase())) {
       showToast(`„${payload.name}" existiert bereits`, 'error')
@@ -113,9 +135,16 @@ export default function SetupWizardPage() {
     const res = await fetch('/api/shifts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, minStaff: payload.minStaff ?? 1, type: 'standard', locationId }),
+      body: JSON.stringify({
+        name: payload.name, startTime: payload.startTime, endTime: payload.endTime,
+        minStaff: payload.minStaff ?? 1, type: payload.type ?? 'mid', locationId,
+      }),
     })
-    if (!res.ok) return false
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      showToast(d.error ?? 'Dienst konnte nicht angelegt werden', 'error')
+      return false
+    }
     const d = await res.json()
     setShifts(prev => [...prev, d.shift])
     return true
@@ -445,50 +474,101 @@ export default function SetupWizardPage() {
         <Card padding="lg">
           <p className="text-sm font-semibold text-navy mb-1">Welche Dienste gibt es?</p>
           <p className="text-xs text-gray-400 mb-4">
-            Trage exakt die Dienste ein, die es wirklich gibt — als <b>Zeitrahmen</b>. Flexible Zeiten sind eingebaut:
-            Bei einem <b>Frühdienst</b> ist der Beginn fix, das Ende ergibt sich aus den Stunden der Person; bei einem{' '}
-            <b>Spät-/Tagdienst</b> ist das Ende fix und der Beginn individuell. Beispiel Spätdienst &bdquo;bis 17:00,
-            Beginn je nach Stunden&ldquo;: frühesten möglichen Beginn als &bdquo;Von&ldquo; eintragen, 17:00 als
-            &bdquo;Bis&ldquo; — den Rest rechnet der Planer pro Person automatisch.
+            Trage exakt die Dienste ein, die es wirklich gibt. Du gibst nur die Zeit an, die <b>wirklich feststeht</b> —
+            ob das der Beginn oder das Ende ist, wählst du je Dienst.
           </p>
           <div className="space-y-1.5 mb-4">
             {shifts.map(s => (
               <div key={s.id} className="flex items-center gap-3 border border-gray-100 rounded-xl px-3 py-2 group">
                 <span className="text-sm font-medium text-navy flex-1">{s.name}</span>
-                <span className="text-xs text-gray-500">{s.startTime} – {s.endTime}</span>
+                <span className="text-xs text-gray-500">
+                  {s.type === 'early' ? (
+                    <>ab <b className="text-navy">{s.startTime}</b> <span className="text-gray-400">(bis max. {s.endTime})</span></>
+                  ) : s.type === 'late' ? (
+                    <><span className="text-gray-400">(ab frühestens {s.startTime})</span> bis <b className="text-navy">{s.endTime}</b></>
+                  ) : (
+                    <>{s.startTime} – {s.endTime}</>
+                  )}
+                </span>
                 <span className="text-[10px] text-gray-400">min. {s.minStaff}</span>
-                <button onClick={() => deleteShift(s.id)} className="p-1 rounded-lg text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => deleteShift(s.id)} className="p-1 rounded-lg text-gray-400 hover:text-red-600 transition-opacity">
                   <Trash2 size={13} />
                 </button>
               </div>
             ))}
             {shifts.length === 0 && <p className="text-sm text-gray-400 italic">Noch keine Dienste angelegt.</p>}
           </div>
-          <div className="flex flex-wrap items-end gap-2 border-t border-gray-100 pt-3">
-            <div className="flex-1 min-w-[140px]">
-              <label className="text-[10px] font-semibold text-gray-400 uppercase">Name</label>
-              <input value={newShift.name} onChange={e => setNewShift(p => ({ ...p, name: e.target.value }))} placeholder="z.B. Frühdienst"
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20" />
-            </div>
+          <div className="border-t border-gray-100 pt-3 space-y-3">
             <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase">Von (frühester Beginn)</label>
-              <input type="time" value={newShift.startTime} onChange={e => setNewShift(p => ({ ...p, startTime: e.target.value }))}
-                className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 block" />
+              <label className="text-[10px] font-semibold text-gray-400 uppercase block mb-1.5">Welche Zeit steht fest?</label>
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  ['early', 'Der Beginn', 'z.B. Frühdienst: startet immer 06:00, Ende je nach Stunden'],
+                  ['late', 'Das Ende', 'z.B. Spätdienst: endet immer 17:00, Beginn je nach Stunden'],
+                ] as const).map(([val, label, hint]) => (
+                  <button
+                    key={val}
+                    onClick={() => setAnchor(val)}
+                    className={`text-left border rounded-xl px-3 py-2 flex-1 min-w-[200px] transition-all ${
+                      newShift.anchor === val ? 'border-brand bg-brand/5 ring-2 ring-brand/20' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <p className="text-xs font-semibold text-navy">{label} steht fest</p>
+                    <p className="text-[10px] text-gray-400 leading-tight mt-0.5">{hint}</p>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase">Bis (spätestes Ende)</label>
-              <input type="time" value={newShift.endTime} onChange={e => setNewShift(p => ({ ...p, endTime: e.target.value }))}
-                className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 block" />
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase">Name</label>
+                <input value={newShift.name} onChange={e => setNewShift(p => ({ ...p, name: e.target.value }))}
+                  placeholder={newShift.anchor === 'early' ? 'z.B. Frühdienst' : 'z.B. Spätdienst'}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+              </div>
+              {newShift.anchor === 'early' ? (
+                <>
+                  <div>
+                    <label className="text-[10px] font-semibold text-brand uppercase">Beginn (fest)</label>
+                    <input type="time" value={newShift.startTime}
+                      onChange={e => setNewShift(p => ({ ...p, startTime: e.target.value, endTime: fmtTime(shiftMinutes(e.target.value) + FRAME_MIN) }))}
+                      className="text-sm border-2 border-brand/40 rounded-lg px-2 py-1 block font-semibold" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase">Ende spätestens</label>
+                    <input type="time" value={newShift.endTime} onChange={e => setNewShift(p => ({ ...p, endTime: e.target.value }))}
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 block text-gray-500" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase">Beginn frühestens</label>
+                    <input type="time" value={newShift.startTime} onChange={e => setNewShift(p => ({ ...p, startTime: e.target.value }))}
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 block text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-brand uppercase">Ende (fest)</label>
+                    <input type="time" value={newShift.endTime}
+                      onChange={e => setNewShift(p => ({ ...p, endTime: e.target.value, startTime: fmtTime(shiftMinutes(e.target.value) - FRAME_MIN) }))}
+                      className="text-sm border-2 border-brand/40 rounded-lg px-2 py-1 block font-semibold" />
+                  </div>
+                </>
+              )}
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase">Min.</label>
+                <input type="number" min={0} max={50} value={newShift.minStaff} onChange={e => setNewShift(p => ({ ...p, minStaff: Math.max(0, parseInt(e.target.value) || 0) }))}
+                  className="w-16 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-center block" />
+              </div>
+              <Button size="sm" onClick={async () => { setAddingShift(true); if (await addShift()) setNewShift(p => ({ ...p, name: '' })); setAddingShift(false) }}
+                disabled={!newShift.name.trim() || addingShift} className="gap-1">
+                {addingShift ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}Anlegen
+              </Button>
             </div>
-            <div>
-              <label className="text-[10px] font-semibold text-gray-400 uppercase">Min.</label>
-              <input type="number" min={0} max={50} value={newShift.minStaff} onChange={e => setNewShift(p => ({ ...p, minStaff: Math.max(0, parseInt(e.target.value) || 0) }))}
-                className="w-16 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-center block" />
-            </div>
-            <Button size="sm" onClick={async () => { setAddingShift(true); if (await addShift()) setNewShift(p => ({ ...p, name: '' })); setAddingShift(false) }}
-              disabled={!newShift.name.trim() || addingShift} className="gap-1">
-              {addingShift ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}Anlegen
-            </Button>
+            <p className="text-[11px] text-gray-400">
+              Nur die <span className="text-brand font-semibold">fett markierte</span> Zeit ist verbindlich. Die andere Seite
+              ist der Rahmen — wie lange jemand tatsächlich bleibt, ergibt sich aus seinen Wochenstunden (inkl. Pause).
+            </p>
           </div>
         </Card>
       )}
@@ -510,7 +590,7 @@ export default function SetupWizardPage() {
                       {u.type === 'etage' ? '🏢 ' : '👥 '}{u.name}
                     </span>
                     <span className="ml-auto text-[10px] text-gray-400">{u.type === 'etage' ? `Früh/Spät je ${u.minStaff}` : `${u.minStaff}/Tag`}</span>
-                    <button onClick={() => deleteUnit(u.id)} className="p-1 rounded-lg text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => deleteUnit(u.id)} className="p-1 rounded-lg text-gray-400 hover:text-red-600 transition-opacity">
                       <Trash2 size={12} />
                     </button>
                   </div>

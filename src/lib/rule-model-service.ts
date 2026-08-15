@@ -49,6 +49,18 @@ function getWorkdays(von: string, bis: string, arbeitstage: string[]): string[] 
   return days
 }
 
+// §80: the shift's explicit DB type is the source of truth for the time
+// anchor (frueh = start fixed, everything else = end fixed). Guessing from the
+// name broke shifts like "Tagdienst 40h (7:00)" — a fixed START that was
+// treated as end-anchored. Name parsing stays only as a fallback for legacy
+// rows created before the type was set explicitly.
+const DB_TYPE_TO_SCHICHT_TYP: Record<string, SchichtTyp> = {
+  early: 'frueh',
+  late: 'spaet',
+  night: 'nacht',
+  mid: 'mittel',
+}
+
 function toSchichtTyp(schichtName: string): SchichtTyp {
   const n = schichtName.toLowerCase()
   if (n.includes('früh') || n.includes('frueh') || n.includes('morgen')) return 'frueh'
@@ -193,7 +205,7 @@ export async function buildRuleModel(
   const schichten: SchichtDefinition[] = dbShifts.map(s => ({
     id: s.id,               // real DB UUID — frontend uses this
     name: s.name,
-    typ: toSchichtTyp(s.name),
+    typ: DB_TYPE_TO_SCHICHT_TYP[s.type] ?? toSchichtTyp(s.name),
     von: s.startTime,
     bis: s.endTime,
     uebernacht: s.endTime < s.startTime,
