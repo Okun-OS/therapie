@@ -534,6 +534,25 @@ export async function POST(req: NextRequest) {
       console.error('onboarding-chat: failed to save chat history', saveErr)
     }
 
+    // §74 self-heal: onboarding is completed but no Planungsmodell exists
+    // (e.g. the completion-turn generation failed silently or the model was
+    // reset) → regenerate in the background on any later chat interaction.
+    if (!isOrganization && customerId) {
+      try {
+        const [ob, modelExists] = await Promise.all([
+          prisma.locationOnboarding.findUnique({ where: { locationId: scope }, select: { completed: true } }),
+          prisma.locationRuleModelRecord.findUnique({ where: { locationId: scope }, select: { id: true } }),
+        ])
+        if (ob?.completed && !modelExists) {
+          generateLocationModelFromOnboarding(scope, customerId).catch(err =>
+            console.error('LocationModel-Selbstheilung fehlgeschlagen:', err),
+          )
+        }
+      } catch (healErr) {
+        console.error('onboarding-chat: self-heal check failed', healErr)
+      }
+    }
+
     return NextResponse.json({ reply, state: savedState })
   } catch (err: unknown) {
     console.error('onboarding-chat', err)

@@ -325,6 +325,17 @@ Leite alle Werte ausschließlich aus den Onboarding-Daten ab. Erfinde keine Rege
   await syncPlanningUnitsFromModel(locationId, model.planungsEinheiten ?? []).catch(err =>
     console.error('[company-model-service] planning unit sync failed:', err),
   )
+  // §74: program the onboarding "individuelle Regeln" as real CP-SAT custom
+  // constraints (status pending — admin reviews & activates on /admin/model).
+  // Fire-and-forget: one Claude call per rule, results appear shortly after.
+  const regeln = locationOnboarding?.individuelleRegeln ?? []
+  if (regeln.length > 0) {
+    void import('@/lib/custom-constraint-generator').then(({ generateConstraintsFromRules }) =>
+      generateConstraintsFromRules(locationId, customerId, regeln).then(r =>
+        console.log(`[company-model-service] custom constraints from onboarding: ${r.created} erstellt, ${r.skipped} übersprungen, ${r.failed} fehlgeschlagen`),
+      ),
+    ).catch(err => console.error('[company-model-service] constraint batch failed:', err))
+  }
   return model
 }
 
