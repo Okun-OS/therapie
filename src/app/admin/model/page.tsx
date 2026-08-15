@@ -1012,11 +1012,13 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                 active: 'text-green-600 bg-green-50',
                 rejected: 'text-red-500 bg-red-50',
                 pending: 'text-amber-600 bg-amber-50',
+                error: 'text-red-600 bg-red-100',
               }
               const statusLabels: Record<string, string> = {
                 active: 'Aktiv',
                 rejected: 'Abgelehnt',
                 pending: 'Warte auf Prüfung',
+                error: 'Generierung fehlgeschlagen',
               }
               return (
                 <div key={c.id} className="border border-gray-100 rounded-xl overflow-hidden">
@@ -1033,7 +1035,7 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                       {isExpanded ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
                     </button>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      {c.status !== 'active' && (
+                      {c.status !== 'active' && c.code && (
                         <button
                           onClick={() => handleCcAction(c.id, 'active')}
                           disabled={isActioning}

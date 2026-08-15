@@ -24,6 +24,49 @@ async function syncPlanningUnitsFromModel(locationId: string, einheiten: Planung
   }
 }
 
+// §74: mirror the generated schichten into real Shift rows (upsert by name)
+// so a full location reset + regeneration rebuilds the working configuration.
+// Existing shifts with other names are left untouched (admin deletes manually).
+const SCHICHT_TYP_TO_SHIFT_TYPE: Record<string, string> = {
+  frueh: 'early', spaet: 'late', nacht: 'night', mittel: 'mid',
+}
+const SHIFT_TYPE_COLORS: Record<string, { color: string; bgColor: string }> = {
+  early: { color: '#0E6B6F', bgColor: '#E5FAFA' },
+  mid: { color: '#C89C5B', bgColor: '#F8EFE2' },
+  late: { color: '#3A3F42', bgColor: '#E8ECEF' },
+  night: { color: '#26292B', bgColor: '#C9D0D4' },
+}
+
+async function syncShiftsFromModel(
+  locationId: string,
+  schichten: LocationModel['schichtmodell']['schichten'],
+): Promise<void> {
+  if (!schichten || schichten.length === 0) return
+  const existing = await prisma.shift.findMany({ where: { locationId } })
+  const byName = new Map(existing.map(s => [s.name.trim().toLowerCase(), s]))
+  for (const s of schichten) {
+    if (!s.name?.trim() || !s.von || !s.bis) continue
+    const type = SCHICHT_TYP_TO_SHIFT_TYPE[s.typ] ?? 'mid'
+    const colors = SHIFT_TYPE_COLORS[type] ?? SHIFT_TYPE_COLORS.mid
+    const found = byName.get(s.name.trim().toLowerCase())
+    if (found) {
+      await prisma.shift.update({
+        where: { id: found.id },
+        data: { startTime: s.von, endTime: s.bis, minStaff: s.minBesetzungGesamt ?? found.minStaff },
+      }).catch(() => {})
+    } else {
+      await prisma.shift.create({
+        data: {
+          locationId, name: s.name.trim(), type,
+          startTime: s.von, endTime: s.bis,
+          minStaff: s.minBesetzungGesamt ?? 1,
+          color: colors.color, bgColor: colors.bgColor,
+        },
+      }).catch(() => {})
+    }
+  }
+}
+
 const client = new Anthropic()
 
 export async function getCompanyModel(customerId: string): Promise<CompanyModel | null> {
@@ -432,9 +475,12 @@ Leite alle Werte ausschließlich aus den Onboarding-Daten ab. Erfinde keine Rege
 
   const model = normalizeLocationModel(JSON.parse(jsonMatch[0]))
   await saveLocationModel(locationId, customerId, model)
-  // §71: turn the described structure into real system data (Etagen/Gruppen)
+  // §71/§74: turn the described structure into real system data
   await syncPlanningUnitsFromModel(locationId, model.planungsEinheiten ?? []).catch(err =>
     console.error('[company-model-service] planning unit sync failed:', err),
+  )
+  await syncShiftsFromModel(locationId, model.schichtmodell?.schichten ?? []).catch(err =>
+    console.error('[company-model-service] shift sync failed:', err),
   )
   // §74: program the onboarding "individuelle Regeln" as real CP-SAT custom
   // constraints (status pending — admin reviews & activates on /admin/model).

@@ -573,8 +573,11 @@ def solve(rule_model: dict) -> dict:
                 model.add(sum(G[e, d, gi] for e in range(n_emp)) + short_g >= min_staff_g)
                 cost.append(10_000 * short_g)
 
+        # Coverage per SHIFT TYPE (frueh/spaet), not per individual shift: a
+        # location may define several Früh variants — any of them opens the
+        # floor. Per-shift demands would both over-constrain and blow up the
+        # model (memory!) on locations with many shift variants.
         etagen_units = [u for u in (rule_model.get("einheiten") or []) if u.get("typ") == "etage"]
-        open_close_shifts = [si for si, s in enumerate(shifts) if s.get("typ") in ("frueh", "spaet")]
         for et in etagen_units:
             et_min = int(et.get("mindestbesetzung", 0) or 0)
             if et_min <= 0:
@@ -582,17 +585,21 @@ def solve(rule_model: dict) -> dict:
             child_gis = [gi for gi, g in enumerate(gruppen) if g.get("etageId") == et.get("id")]
             if not child_gis:
                 continue
-            for d in range(n_days):
-                for si in open_close_shifts:
+            for typ_name in ("frueh", "spaet"):
+                type_sis = [si for si, s in enumerate(shifts) if s.get("typ") == typ_name]
+                if not type_sis:
+                    continue
+                for d in range(n_days):
                     covered = []
                     for e in range(n_emp):
+                        works_type = sum(X[e, d, si] for si in type_sis)  # 0/1 (H1)
                         for gi in child_gis:
-                            z = model.new_bool_var(f"ez_{e}_{d}_{si}_{gi}")
-                            model.add(z <= X[e, d, si])
+                            z = model.new_bool_var(f"ez_{e}_{d}_{typ_name}_{gi}")
+                            model.add(z <= works_type)
                             model.add(z <= G[e, d, gi])
-                            model.add(z >= X[e, d, si] + G[e, d, gi] - 1)
+                            model.add(z >= works_type + G[e, d, gi] - 1)
                             covered.append(z)
-                    short_e = model.new_int_var(0, et_min, f"eshort_{d}_{si}_{et['id']}")
+                    short_e = model.new_int_var(0, et_min, f"eshort_{d}_{typ_name}_{et['id']}")
                     model.add(sum(covered) + short_e >= et_min)
                     cost.append(10_000 * short_e)
 
@@ -642,7 +649,10 @@ def solve(rule_model: dict) -> dict:
 
     solver_inst = cp_model.CpSolver()
     solver_inst.parameters.max_time_in_seconds = 25.0
-    solver_inst.parameters.num_workers = 4
+    # Memory guard: large models (month horizon × many shifts × groups) with 4
+    # workers exceeded small container limits (OOM → HTTP 502 in production).
+    model_size = n_emp * n_days * n_shifts
+    solver_inst.parameters.num_workers = 2 if model_size > 4000 else 4
     solver_inst.parameters.log_search_progress = False
     solver_inst.parameters.random_seed = solver_seed
 

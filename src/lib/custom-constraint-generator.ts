@@ -39,8 +39,8 @@ export async function generateConstraintCode(name: string, description: string):
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY nicht konfiguriert')
   const client = new Anthropic({ apiKey })
 
-  const message = await client.messages.create({
-    model: 'claude-opus-5',
+  const request = (model: string) => client.messages.create({
+    model,
     max_tokens: 1024,
     thinking: { type: 'adaptive' },
     system: CONSTRAINT_SYSTEM_PROMPT,
@@ -49,6 +49,15 @@ export async function generateConstraintCode(name: string, description: string):
       content: `Regel: ${name}\nBeschreibung: ${description}\n\nGeneriere den CP-SAT Python-Code für diese Planungsregel (oder SKIP).`,
     }],
   })
+
+  // Fallback: not every API key has access to the newest model tier
+  let message
+  try {
+    message = await request('claude-opus-5')
+  } catch (err) {
+    console.warn('[custom-constraint-generator] claude-opus-5 failed, falling back:', err instanceof Error ? err.message : err)
+    message = await request('claude-opus-4-7')
+  }
 
   const code = message.content
     .filter(b => b.type === 'text')
@@ -100,6 +109,19 @@ export async function generateConstraintsFromRules(
       result.created++
     } catch (err) {
       console.error('[custom-constraint-generator] rule failed:', desc, err)
+      // Visible failure row instead of silent log — admin sees it in the UI
+      await prisma.customConstraint.create({
+        data: {
+          locationId,
+          customerId,
+          name: desc.length > 60 ? `${desc.slice(0, 57)}…` : desc,
+          description: desc,
+          code: '',
+          status: 'error',
+          errorLog: (err instanceof Error ? err.message : String(err)).slice(0, 500),
+        },
+      }).catch(() => {})
+      known.add(desc.toLowerCase())
       result.failed++
     }
   }
