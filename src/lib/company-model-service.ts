@@ -185,32 +185,110 @@ export async function getOrGenerateCompanyModel(customerId: string): Promise<Com
 
 // ── Per-location model (primary unit for solver configuration) ───────────────
 
-// §74: LLM-generated JSON can miss sections; older rows may predate newer
-// fields. Normalize on every read so the UI and solver never hit undefined.
+// §74: LLM-generated JSON can miss sections OR carry wrong types (e.g.
+// betriebsTyp as object → ".replace is not a function" crashed /admin/model
+// in production). Normalize AND type-coerce on every read so the UI and
+// solver never hit undefined or non-primitive values in rendered fields.
+function asStr(v: unknown, fallback = ''): string {
+  if (typeof v === 'string') return v
+  if (typeof v === 'number') return String(v)
+  if (v && typeof v === 'object') {
+    const inner = Object.values(v).find(x => typeof x === 'string')
+    if (typeof inner === 'string') return inner
+  }
+  return fallback
+}
+
+function asNum(v: unknown, fallback: number): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v))) return Number(v)
+  if (v && typeof v === 'object') {
+    const inner = Object.values(v).find(x => typeof x === 'number' && Number.isFinite(x))
+    if (typeof inner === 'number') return inner
+  }
+  return fallback
+}
+
 export function normalizeLocationModel(raw: unknown): LocationModel {
   const m = (raw ?? {}) as Partial<LocationModel> & Record<string, unknown>
-  const regeln = (m.planungsRegeln ?? {}) as Partial<LocationModel['planungsRegeln']>
-  const schicht = (m.schichtmodell ?? {}) as Partial<LocationModel['schichtmodell']>
+  const regeln = (m.planungsRegeln ?? {}) as Partial<LocationModel['planungsRegeln']> & Record<string, unknown>
+  const schicht = (m.schichtmodell ?? {}) as Partial<LocationModel['schichtmodell']> & Record<string, unknown>
+
+  const hart = ((Array.isArray(regeln.hart) ? regeln.hart : []) as unknown[])
+    .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+    .map((r, i) => ({
+      id: asStr(r.id, `hr-${i}`),
+      kategorie: asStr(r.kategorie, 'arbeitszeit'),
+      beschreibung: asStr(r.beschreibung),
+      typ: asStr(r.typ) || undefined,
+      wert: r.wert === undefined ? undefined : asNum(r.wert, NaN),
+      einheit: asStr(r.einheit) || undefined,
+      quelle: asStr(r.quelle, 'unternehmen'),
+    }))
+    .map(r => ({ ...r, wert: Number.isNaN(r.wert as number) ? undefined : r.wert }))
+
+  const weich = ((Array.isArray(regeln.weich) ? regeln.weich : []) as unknown[])
+    .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+    .map((r, i) => ({
+      id: asStr(r.id, `wr-${i}`),
+      kategorie: asStr(r.kategorie, 'fairness'),
+      beschreibung: asStr(r.beschreibung),
+      gewicht: (() => {
+        const g = asNum(r.gewicht, 0.5)
+        return g > 1 ? Math.min(1, g / 100) : g  // 80 → 0.8
+      })(),
+    }))
+
+  const einheiten = ((Array.isArray(m.planungsEinheiten) ? m.planungsEinheiten : []) as unknown[])
+    .filter((e): e is Record<string, unknown> => !!e && typeof e === 'object')
+    .map((e, i) => ({
+      id: asStr(e.id, `einheit-${i}`),
+      name: asStr(e.name, `Einheit ${i + 1}`),
+      typ: asStr(e.typ, 'gruppe'),
+      mindestbesetzung: asNum(e.mindestbesetzung, 1),
+      maximalbesetzung: e.maximalbesetzung === undefined ? undefined : asNum(e.maximalbesetzung, 0) || undefined,
+      erforderlicheQualifikationen: Array.isArray(e.erforderlicheQualifikationen)
+        ? (e.erforderlicheQualifikationen as unknown[]).filter((q): q is string => typeof q === 'string') : [],
+      aufgaben: Array.isArray(e.aufgaben)
+        ? (e.aufgaben as unknown[]).filter((a): a is string => typeof a === 'string') : [],
+      etageId: asStr(e.etageId) || undefined,
+    })) as LocationModel['planungsEinheiten']
+
+  const schichten = ((Array.isArray(schicht.schichten) ? schicht.schichten : []) as unknown[])
+    .filter((s): s is Record<string, unknown> => !!s && typeof s === 'object')
+    .map((s, i) => ({
+      ...s,
+      id: asStr(s.id, `schicht-${i}`),
+      name: asStr(s.name, `Schicht ${i + 1}`),
+      typ: asStr(s.typ, 'mittel'),
+      von: asStr(s.von, '08:00'),
+      bis: asStr(s.bis, '16:00'),
+      uebernacht: s.uebernacht === true,
+      minBesetzungGesamt: asNum(s.minBesetzungGesamt, 1),
+    })) as LocationModel['schichtmodell']['schichten']
+
   return {
     ...m,
-    planungsEinheiten: Array.isArray(m.planungsEinheiten) ? m.planungsEinheiten : [],
+    locationName: asStr(m.locationName, 'Standort'),
+    betriebsTyp: asStr(m.betriebsTyp, 'mon_fri'),
+    bundesland: asStr(m.bundesland) || undefined,
+    planungsEinheiten: einheiten,
     schichtmodell: {
       ...schicht,
-      arbeitstage: Array.isArray(schicht.arbeitstage) ? schicht.arbeitstage : [],
-      schichten: Array.isArray(schicht.schichten) ? schicht.schichten : [],
+      arbeitstage: Array.isArray(schicht.arbeitstage)
+        ? (schicht.arbeitstage as unknown[]).filter((d): d is string => typeof d === 'string')
+        : [],
+      schichten,
     } as LocationModel['schichtmodell'],
-    planungsRegeln: {
-      hart: Array.isArray(regeln.hart) ? regeln.hart : [],
-      weich: Array.isArray(regeln.weich) ? regeln.weich : [],
-    },
-    fairnessKonfig: (m.fairnessKonfig ?? {
+    planungsRegeln: { hart, weich } as LocationModel['planungsRegeln'],
+    fairnessKonfig: (m.fairnessKonfig && typeof m.fairnessKonfig === 'object' ? m.fairnessKonfig : {
       wochenendArbeit: false,
       wochenendLimitProMonat: 2,
       nachtdienstFair: true,
       schichttypFairness: true,
       belastungsgleichverteilung: true,
     }) as LocationModel['fairnessKonfig'],
-    vertretungsKonfig: (m.vertretungsKonfig ?? {
+    vertretungsKonfig: (m.vertretungsKonfig && typeof m.vertretungsKonfig === 'object' ? m.vertretungsKonfig : {
       eskalationsReihenfolge: ['gruppe', 'standort', 'organisation'],
       qualifikationsPflicht: false,
       maxWartezeitMinuten: 120,
