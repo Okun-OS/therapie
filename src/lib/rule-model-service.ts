@@ -166,19 +166,31 @@ export async function buildRuleModel(
   })
   const profileByEmp = new Map(planningProfiles.map(p => [p.employeeId, p]))
 
-  // Build einheiten from CompanyModel or DB
-  let einheiten: PlanungsEinheit[] = standort?.planungsEinheiten ?? []
-  if (einheiten.length === 0) {
-    const dbUnits = await prisma.planningUnit.findMany({ where: { locationId }, orderBy: { sortOrder: 'asc' } })
+  // Build einheiten — DB units take priority (§71: the Etagen/Gruppen editor
+  // is the source of truth); CompanyModel einheiten are the legacy fallback.
+  const dbUnits = await prisma.planningUnit.findMany({ where: { locationId }, orderBy: { sortOrder: 'asc' } })
+  let einheiten: PlanungsEinheit[]
+  if (dbUnits.length > 0) {
     einheiten = dbUnits.map(u => ({
       id: u.id,
       name: u.name,
       typ: u.type as PlanungsEinheit['typ'],
-      mindestbesetzung: u.capacity ?? 1,
+      mindestbesetzung: u.minStaff ?? 1,
       erforderlicheQualifikationen: [],
       aufgaben: [],
+      etageId: u.parentId ?? undefined,
     }))
+  } else {
+    einheiten = standort?.planungsEinheiten ?? []
   }
+
+  // §71 Stammgruppen-Auflösung: Employee.gruppe hält Unit-ID oder -Name
+  const gruppenUnits = einheiten.filter(e => e.typ === 'gruppe')
+  const unitLookup = new Map<string, string>()
+  gruppenUnits.forEach(u => {
+    unitLookup.set(u.id, u.id)
+    unitLookup.set(u.name.toLowerCase(), u.id)
+  })
 
   // Build schichten — DB shifts take priority because the frontend resolves
   // shift display by DB UUID. CompanyModel schichten use AI-generated IDs like
@@ -443,10 +455,15 @@ export async function buildRuleModel(
       wochenstundenSoll = baseWeeklyHours + dailyHours
     }
 
+    const stammEinheitId = emp.gruppe
+      ? unitLookup.get(emp.gruppe) ?? unitLookup.get(emp.gruppe.toLowerCase())
+      : undefined
+
     return {
       id: emp.id,
       name: emp.name,
       einheiten: empEinheiten,
+      stammEinheitId,
       verfuegbareSchichtTypen: (emp.workDays?.length ? ['frueh', 'spaet', 'mittel'] : ['frueh', 'spaet', 'nacht', 'mittel']) as SchichtTyp[],
       wochenstundenSoll,
       arbeitstageProWoche: emp.workDaysPerWeek ?? 5,

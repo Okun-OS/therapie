@@ -8,7 +8,7 @@ import { useToast } from '@/lib/toast-context'
 import {
   ShieldAlert, Heart, Plus, Trash2, Loader2, Clock, Users, MessageCircle,
   Save, Brain, CalendarDays, Pencil, Check, X, Send, Bot, ChevronDown, ChevronUp,
-  Code2, Zap, XCircle, AlertTriangle, RotateCcw,
+  Code2, Zap, XCircle, AlertTriangle, RotateCcw, Layers,
 } from 'lucide-react'
 import type { LocationModel, HarteRegel, WeicheRegel, WochentagKuerzel } from '@/lib/company-model-types'
 import Link from 'next/link'
@@ -58,6 +58,15 @@ interface CustomConstraintRow {
   createdAt: string
 }
 
+interface PlanningUnitRow {
+  id: string
+  name: string
+  type: string
+  parentId: string | null
+  minStaff: number
+  sortOrder: number
+}
+
 export default function AdminModelPage() {
   const { showToast } = useToast()
   const [model, setModel] = useState<LocationModel | null>(null)
@@ -95,6 +104,15 @@ export default function AdminModelPage() {
   const [ccActioning, setCcActioning] = useState<string | null>(null)
   const [ccExpandedId, setCcExpandedId] = useState<string | null>(null)
 
+  // Etagen & Gruppen (§71)
+  const [units, setUnits] = useState<PlanningUnitRow[]>([])
+  const [newUnitName, setNewUnitName] = useState('')
+  const [newUnitType, setNewUnitType] = useState<'etage' | 'gruppe'>('gruppe')
+  const [newUnitParent, setNewUnitParent] = useState('')
+  const [newUnitMinStaff, setNewUnitMinStaff] = useState(1)
+  const [addingUnit, setAddingUnit] = useState(false)
+  const [unitActioning, setUnitActioning] = useState<string | null>(null)
+
   // Reset / Neustart
   const [resetOpen, setResetOpen] = useState(false)
   const [resetScope, setResetScope] = useState({
@@ -117,6 +135,11 @@ export default function AdminModelPage() {
     setModel(modelData.model ?? null)
     setShifts((shiftsData.shifts as DbShift[]) ?? [])
     setCustomConstraints((ccData.constraints as CustomConstraintRow[]) ?? [])
+    if (modelData.model?.locationId) {
+      const unitsRes = await fetch(`/api/planning-units?locationId=${modelData.model.locationId}`)
+      const unitsData = await unitsRes.json()
+      setUnits((unitsData.units as PlanningUnitRow[]) ?? [])
+    }
     setLoading(false)
   }, [])
 
@@ -384,6 +407,62 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
       showToast('Aktion fehlgeschlagen', 'error')
     } finally {
       setCcActioning(null)
+    }
+  }
+
+  // ── Etagen & Gruppen ──────────────────────────────────────────────────────
+
+  const handleAddUnit = async () => {
+    if (!newUnitName.trim() || addingUnit || !model?.locationId) return
+    setAddingUnit(true)
+    try {
+      const res = await fetch('/api/planning-units', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          locationId: model.locationId,
+          name: newUnitName.trim(),
+          type: newUnitType,
+          parentId: newUnitType === 'gruppe' && newUnitParent ? newUnitParent : null,
+          minStaff: newUnitMinStaff,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setUnits(prev => [...prev.filter(u => u.id !== data.unit.id), data.unit])
+      setNewUnitName('')
+      showToast(newUnitType === 'etage' ? 'Etage angelegt' : 'Gruppe angelegt', 'success')
+    } catch {
+      showToast('Anlegen fehlgeschlagen', 'error')
+    } finally {
+      setAddingUnit(false)
+    }
+  }
+
+  const handleUnitMinStaff = async (id: string, minStaff: number) => {
+    setUnits(prev => prev.map(u => u.id === id ? { ...u, minStaff } : u))
+    try {
+      await fetch('/api/planning-units', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, minStaff }),
+      })
+    } catch {
+      showToast('Speichern fehlgeschlagen', 'error')
+    }
+  }
+
+  const handleDeleteUnit = async (id: string) => {
+    setUnitActioning(id)
+    try {
+      const res = await fetch(`/api/planning-units?id=${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      setUnits(prev => prev.filter(u => u.id !== id).map(u => u.parentId === id ? { ...u, parentId: null } : u))
+      showToast('Einheit gelöscht', 'success')
+    } catch {
+      showToast('Löschen fehlgeschlagen', 'error')
+    } finally {
+      setUnitActioning(null)
     }
   }
 
@@ -694,6 +773,106 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
             })}
           </div>
         )}
+      </Card>
+
+      {/* Etagen & Gruppen §71 */}
+      <Card padding="lg">
+        <div className="flex items-center gap-2 mb-3">
+          <Layers size={14} className="text-gray-400" />
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Etagen &amp; Gruppen</p>
+          <span className="text-xs text-gray-400">({units.length})</span>
+        </div>
+        <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+          Bilde die Struktur deines Standorts ab (z.&nbsp;B. Etagen mit Gruppen in einer Kita). Der Dienstplan stellt dann sicher,
+          dass jede Gruppe in jeder Schicht besetzt ist — Mitarbeiter bleiben bevorzugt in ihrer Stammgruppe und springen
+          nur bei Bedarf in andere Gruppen oder Etagen ein. Die Stammgruppe wird im Mitarbeiterprofil über das Feld
+          &bdquo;Gruppe&ldquo; zugeordnet (Name oder ID der Gruppe).
+        </p>
+
+        {units.length > 0 && (
+          <div className="rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-100 mb-3">
+            {[...units.filter(u => u.type === 'etage'), ...units.filter(u => u.type !== 'etage' && !u.parentId)].map(top => {
+              const children = top.type === 'etage' ? units.filter(u => u.parentId === top.id) : []
+              const rows = [top, ...children]
+              return rows.map(u => {
+                const isChild = u.id !== top.id
+                const isDeleting = unitActioning === u.id
+                return (
+                  <div key={u.id} className={`flex items-center gap-2 px-3 py-2 group ${u.type === 'etage' ? 'bg-gray-50/60' : ''}`}>
+                    <span className={`text-sm ${isChild ? 'pl-5' : ''} ${u.type === 'etage' ? 'font-semibold text-navy' : 'text-navy'}`}>
+                      {u.type === 'etage' ? '🏢 ' : '👥 '}{u.name}
+                    </span>
+                    <span className="text-[10px] text-gray-400">{u.type === 'etage' ? 'Etage' : 'Gruppe'}</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      {u.type !== 'etage' && (
+                        <div className="flex items-center gap-1" title="Mindestbesetzung je Schicht">
+                          <Users size={11} className="text-gray-400" />
+                          <input
+                            type="number" min={0} max={50} value={u.minStaff}
+                            onChange={e => handleUnitMinStaff(u.id, Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-12 text-center text-xs border border-gray-200 rounded-lg px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          />
+                        </div>
+                      )}
+                      <button
+                        onClick={() => handleDeleteUnit(u.id)}
+                        disabled={isDeleting}
+                        className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Einheit löschen"
+                      >
+                        {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })
+            })}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={newUnitType}
+            onChange={e => setNewUnitType(e.target.value as 'etage' | 'gruppe')}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20"
+          >
+            <option value="gruppe">Gruppe</option>
+            <option value="etage">Etage</option>
+          </select>
+          <input
+            value={newUnitName}
+            onChange={e => setNewUnitName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAddUnit()}
+            placeholder={newUnitType === 'etage' ? 'z.B. Erdgeschoss' : 'z.B. Igelgruppe'}
+            className="flex-1 min-w-[140px] text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20 placeholder:text-gray-300"
+          />
+          {newUnitType === 'gruppe' && units.some(u => u.type === 'etage') && (
+            <select
+              value={newUnitParent}
+              onChange={e => setNewUnitParent(e.target.value)}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20"
+            >
+              <option value="">Keine Etage</option>
+              {units.filter(u => u.type === 'etage').map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          )}
+          {newUnitType === 'gruppe' && (
+            <div className="flex items-center gap-1" title="Mindestbesetzung je Schicht">
+              <Users size={12} className="text-gray-400" />
+              <input
+                type="number" min={0} max={50} value={newUnitMinStaff}
+                onChange={e => setNewUnitMinStaff(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-14 text-center text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20"
+              />
+            </div>
+          )}
+          <Button size="sm" onClick={handleAddUnit} disabled={!newUnitName.trim() || addingUnit} className="gap-1">
+            {addingUnit ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+            Anlegen
+          </Button>
+        </div>
       </Card>
 
       {/* Harte Regeln */}

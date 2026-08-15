@@ -106,6 +106,9 @@ def _execute_custom_constraints(
     n_emp: int,
     n_days: int,
     n_shifts: int,
+    G: dict | None = None,
+    gruppen: list[dict] | None = None,
+    n_groups: int = 0,
 ) -> None:
     """
     Execute admin-authored custom constraints in a restricted namespace.
@@ -150,6 +153,9 @@ def _execute_custom_constraints(
         "n_emp": n_emp,
         "n_days": n_days,
         "n_shifts": n_shifts,
+        "G": G or {},
+        "gruppen": gruppen or [],
+        "n_groups": n_groups,
     }
 
     for c in constraints:
@@ -252,6 +258,30 @@ def solve(rule_model: dict) -> dict:
         for s in range(n_shifts)
     }
 
+    # ── §71 Group assignment layer (Kita/Etagen/Gruppen) ─────────────────────
+    # Active only when the model defines units of typ "gruppe". Adds a second
+    # decision: which group an employee staffs on each working day.
+    gruppen: list[dict] = [
+        u for u in (rule_model.get("einheiten") or []) if u.get("typ") == "gruppe"
+    ]
+    group_active = len(gruppen) > 0
+    n_groups = len(gruppen)
+    G: dict[tuple[int, int, int], cp_model.BoolVarT] = {}
+    if group_active:
+        G = {
+            (e, d, g): model.new_bool_var(f"g_{e}_{d}_{g}")
+            for e in range(n_emp)
+            for d in range(n_days)
+            for g in range(n_groups)
+        }
+        # Working that day ⇔ standing in exactly one group
+        for e in range(n_emp):
+            for d in range(n_days):
+                model.add(
+                    sum(G[e, d, g] for g in range(n_groups))
+                    == sum(X[e, d, s] for s in range(n_shifts))
+                )
+
     # ── HARD CONSTRAINTS ─────────────────────────────────────────────────────
 
     # H1: At most one shift per employee per day
@@ -308,6 +338,7 @@ def solve(rule_model: dict) -> dict:
         rule_model.get("customConstraints") or [],
         model, X, employees, shifts, days, day_idx, shift_idx,
         n_emp, n_days, n_shifts,
+        G=G, gruppen=gruppen, n_groups=n_groups,
     )
 
     # H3: Legal max weekly hours
@@ -481,6 +512,46 @@ def solve(rule_model: dict) -> dict:
                 for di in range(n_days):
                     cost.append(penalty * X[ei, di, si])
 
+    # C9 (§71): Group coverage — every gruppe needs minStaff people in every
+    # shift, drawn from the employees standing in that group that day.
+    # Soft with the same heavy penalty as shift understaffing (always solvable).
+    if group_active:
+        for d in range(n_days):
+            for si in range(n_shifts):
+                for gi, grp in enumerate(gruppen):
+                    min_staff_g = int(grp.get("mindestbesetzung", 1) or 0)
+                    if min_staff_g <= 0:
+                        continue
+                    covered = []
+                    for e in range(n_emp):
+                        z = model.new_bool_var(f"z_{e}_{d}_{si}_{gi}")
+                        model.add(z <= X[e, d, si])
+                        model.add(z <= G[e, d, gi])
+                        model.add(z >= X[e, d, si] + G[e, d, gi] - 1)
+                        covered.append(z)
+                    short_g = model.new_int_var(0, min_staff_g, f"gshort_{d}_{si}_{gi}")
+                    model.add(sum(covered) + short_g >= min_staff_g)
+                    cost.append(10_000 * short_g)
+
+    # C10 (§71): Stammgruppen-Treue — leaving the home group costs 300/day,
+    # crossing to another Etage costs 800/day. Employees without a home group
+    # (Springer) float freely at no cost.
+    if group_active:
+        etage_of: dict[str, str | None] = {g["id"]: g.get("etageId") for g in gruppen}
+        for ei, emp in enumerate(employees):
+            stamm = emp.get("stammEinheitId")
+            if not stamm or stamm not in etage_of:
+                continue
+            stamm_etage = etage_of.get(stamm)
+            for gi, grp in enumerate(gruppen):
+                if grp["id"] == stamm:
+                    continue
+                w = 300
+                if stamm_etage and grp.get("etageId") and grp.get("etageId") != stamm_etage:
+                    w = 800
+                for d in range(n_days):
+                    cost.append(w * G[ei, d, gi])
+
     # C8: Change minimization — penalise deviations from the existing schedule
     # Only applies on non-frozen days (frozen days are already hard-locked by H9).
     if existing_lookup:
@@ -539,7 +610,8 @@ def solve(rule_model: dict) -> dict:
                     wish_lookup[(ei, w["datum"])] = w.get("schichtId", "")
 
         for ei, emp in enumerate(employees):
-            unit_id = (emp.get("einheiten") or [None])[0]
+            unit_id_default = (emp.get("einheiten") or [None])[0]
+            stamm_id = emp.get("stammEinheitId")
             blocked: set[str] = (
                 set(emp.get("urlaubAn", []))
                 | set(emp.get("nichtVerfuegbarAn", []))
@@ -554,8 +626,23 @@ def solve(rule_model: dict) -> dict:
 
                 if assigned_si is not None:
                     shift = shifts[assigned_si]
+                    # §71: resolve assigned group for this day
+                    unit_id = unit_id_default
+                    role = None
+                    springer_note = None
+                    if group_active:
+                        for gi in range(n_groups):
+                            if solver_inst.boolean_value(G[ei, di, gi]):
+                                unit_id = gruppen[gi]["id"]
+                                if stamm_id and unit_id != stamm_id:
+                                    role = "Springer"
+                                    springer_note = f'Springer in „{gruppen[gi]["name"]}"'
+                                break
+
                     # §68: generate whyAssigned explanation
                     why_parts: list[str] = []
+                    if springer_note:
+                        why_parts.append(springer_note)
                     wished_shift_id = wish_lookup.get((ei, day))
                     if wished_shift_id == shift["id"]:
                         why_parts.append("Wunschdienst erfüllt")
@@ -571,17 +658,18 @@ def solve(rule_model: dict) -> dict:
                         why_parts.append("Mindestbesetzung")
                     why_assigned = "; ".join(why_parts)
 
-                    eintraege.append(
-                        {
-                            "mitarbeiterId": emp["id"],
-                            "datum": day,
-                            "schichtId": shift["id"],
-                            "einheitId": unit_id,
-                            "istVertretung": False,
-                            "source": "solver",
-                            "whyAssigned": why_assigned,
-                        }
-                    )
+                    entry = {
+                        "mitarbeiterId": emp["id"],
+                        "datum": day,
+                        "schichtId": shift["id"],
+                        "einheitId": unit_id,
+                        "istVertretung": False,
+                        "source": "solver",
+                        "whyAssigned": why_assigned,
+                    }
+                    if role:
+                        entry["role"] = role
+                    eintraege.append(entry)
                 elif day not in blocked:
                     # §68: explain why not assigned on a work day
                     why_not_assigned.append({

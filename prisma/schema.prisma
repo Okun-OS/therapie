@@ -652,6 +652,10 @@ model PlanningUnit {
   address     String?
   notes       String?
   sortOrder   Int      @default(0)
+  // §71 hierarchy: a "gruppe" points at its "etage" (or other parent unit)
+  parentId    String?
+  // §71 minimum staff that must cover this unit in every shift it is open
+  minStaff    Int      @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

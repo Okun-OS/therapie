@@ -368,6 +368,8 @@ function toPlanningUnit(row: any): PlanningUnit {
     address: row.address ?? undefined,
     notes: row.notes ?? undefined,
     sortOrder: row.sortOrder,
+    parentId: row.parentId ?? null,
+    minStaff: row.minStaff ?? 1,
   }
 }
 
@@ -384,6 +386,8 @@ export async function upsertPlanningUnit(locationId: string, entry: {
   address?: string
   notes?: string
   sortOrder?: number
+  parentId?: string | null
+  minStaff?: number
 }): Promise<PlanningUnit> {
   const existing = await prisma.planningUnit.findFirst({ where: { locationId, name: { equals: entry.name, mode: 'insensitive' } } })
   if (existing) {
@@ -396,17 +400,42 @@ export async function upsertPlanningUnit(locationId: string, entry: {
         address: entry.address ?? existing.address,
         notes: entry.notes ?? existing.notes,
         sortOrder: entry.sortOrder ?? existing.sortOrder,
+        parentId: entry.parentId !== undefined ? entry.parentId : existing.parentId,
+        minStaff: entry.minStaff ?? existing.minStaff,
       },
     })
     return toPlanningUnit(row)
   }
   const row = await prisma.planningUnit.create({
-    data: { locationId, name: entry.name, type: entry.type ?? 'bereich', description: entry.description, capacity: entry.capacity, address: entry.address, notes: entry.notes, sortOrder: entry.sortOrder ?? 0 },
+    data: {
+      locationId, name: entry.name, type: entry.type ?? 'bereich',
+      description: entry.description, capacity: entry.capacity, address: entry.address,
+      notes: entry.notes, sortOrder: entry.sortOrder ?? 0,
+      parentId: entry.parentId ?? null, minStaff: entry.minStaff ?? 1,
+    },
   })
   return toPlanningUnit(row)
 }
 
+export async function updatePlanningUnitById(id: string, patch: {
+  name?: string
+  parentId?: string | null
+  minStaff?: number
+}): Promise<PlanningUnit | null> {
+  const row = await prisma.planningUnit.update({
+    where: { id },
+    data: {
+      ...(patch.name !== undefined ? { name: patch.name } : {}),
+      ...(patch.parentId !== undefined ? { parentId: patch.parentId } : {}),
+      ...(patch.minStaff !== undefined ? { minStaff: Math.max(0, Math.min(50, patch.minStaff)) } : {}),
+    },
+  }).catch(() => null)
+  return row ? toPlanningUnit(row) : null
+}
+
 export async function deletePlanningUnit(id: string): Promise<void> {
+  // §71: children of a deleted Etage keep working as top-level groups
+  await prisma.planningUnit.updateMany({ where: { parentId: id }, data: { parentId: null } })
   await prisma.planningUnit.delete({ where: { id } }).catch(() => null)
 }
 

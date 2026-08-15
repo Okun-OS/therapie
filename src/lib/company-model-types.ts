@@ -23,7 +23,7 @@ export type BetriebsTyp =
   | 'bedarfsgesteuert'
   | 'bereitschaft'
 
-export type EinheitTyp = 'gruppe' | 'bereich' | 'station' | 'tour' | 'objekt' | 'fahrzeug' | 'raum'
+export type EinheitTyp = 'gruppe' | 'bereich' | 'station' | 'tour' | 'objekt' | 'fahrzeug' | 'raum' | 'etage'
 
 export type SchichtTyp =
   | 'frueh'
@@ -44,6 +44,8 @@ export interface PlanungsEinheit {
   maximalbesetzung?: number
   erforderlicheQualifikationen: string[]
   aufgaben: string[]
+  // §71 hierarchy: for typ 'gruppe' the parent Etage/Bereich unit id
+  etageId?: string
 }
 
 export interface SchichtDefinition {
@@ -161,6 +163,8 @@ export interface PlanungsMitarbeiter {
   id: string
   name: string
   einheiten: string[]
+  // §71 home group: preferred unit; assignments elsewhere count as "Springer"
+  stammEinheitId?: string
   verfuegbareSchichtTypen: SchichtTyp[]
   wochenstundenSoll: number
   arbeitstageProWoche: number

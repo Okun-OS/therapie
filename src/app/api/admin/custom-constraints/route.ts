@@ -55,6 +55,9 @@ Verfügbare Variablen im Ausführungskontext:
 - day_idx: dict[str, int]  — Tag-String → Index in days
 - shift_idx: dict[str, int]  — Schicht-ID → Index in shifts
 - n_emp, n_days, n_shifts: int  — Dimensionen
+- gruppen: list[dict]  — Planungseinheiten vom Typ "gruppe" (leer, wenn keine Gruppenplanung aktiv); jede hat: id, name, mindestbesetzung, etageId
+- G: dict[(ei, di, gi), BoolVar]  — Gruppenzuweisung: Mitarbeiter ei steht an Tag di in Gruppe gi (nur wenn gruppen nicht leer)
+- n_groups: int  — Anzahl Gruppen
 
 Wichtige Regeln für den generierten Code:
 1. Füge KEINE Importe hinzu und definiere KEINE Funktionen — nur direkte Statements

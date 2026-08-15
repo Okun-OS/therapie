@@ -94,6 +94,10 @@ export interface PlanningUnit {
   address?: string
   notes?: string
   sortOrder: number
+  // §71 hierarchy: a "gruppe" points at its parent "etage" unit
+  parentId?: string | null
+  // §71 minimum staff per shift for this unit
+  minStaff?: number
 }
 
 export interface LocationPlanningRules {

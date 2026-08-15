@@ -48,6 +48,8 @@ interface ScheduleAssignment {
   isSubstitution?: boolean
   substitutionFor?: string
   taskBlocks?: TaskBlock[]
+  // §71: 'Springer' when the solver placed the employee outside their home group
+  role?: string
 }
 
 interface PlanningRules {
@@ -186,6 +188,7 @@ export default function AdminSchedule() {
     fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => setABSENCES(d.absences ?? []))
     fetch(`/api/wish-submissions?locationId=${locationId}`).then(r => r.json()).then(d => setWishSubmissions(d.submissions ?? []))
     fetch(`/api/planning-units?locationId=${locationId}`).then(r => r.json()).then(d => setPlanningUnits(d.units ?? []))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationId])
 
   // getAllEntriesForFairness(locationId) im mock-data kombinierte historische
@@ -497,13 +500,13 @@ export default function AdminSchedule() {
     return map
   }, [wishSubmissions, generatedSchedule, locationShifts])
 
-  const getDisplayAssignment = (empId: string, dateStr: string): { shift: Shift; startTime: string; endTime: string; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null => {
+  const getDisplayAssignment = (empId: string, dateStr: string): { shift: Shift; startTime: string; endTime: string; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[]; role?: string } | null => {
     if (generatedSchedule) {
       const assignment = generatedSchedule[empId]?.[dateStr]
       if (!assignment) return null
       const shift = locationShifts.find(s => s.id === assignment.shiftId)
       if (!shift) return null
-      return { shift, startTime: assignment.startTime ?? shift.startTime, endTime: assignment.endTime ?? shift.endTime, gruppe: assignment.gruppe, funktion: assignment.funktion, isSubstitution: assignment.isSubstitution, substitutionFor: assignment.substitutionFor, taskBlocks: assignment.taskBlocks }
+      return { shift, startTime: assignment.startTime ?? shift.startTime, endTime: assignment.endTime ?? shift.endTime, gruppe: assignment.gruppe, funktion: assignment.funktion, isSubstitution: assignment.isSubstitution, substitutionFor: assignment.substitutionFor, taskBlocks: assignment.taskBlocks, role: assignment.role }
     }
     const entry = existingEntries.find(e => e.employeeId === empId && e.date === dateStr)
     if (!entry) return null
@@ -511,6 +514,27 @@ export default function AdminSchedule() {
     if (!shift) return null
     return { shift, startTime: entry.startTime ?? shift.startTime, endTime: entry.endTime ?? shift.endTime, gruppe: entry.gruppe, funktion: entry.funktion, isSubstitution: entry.isSubstitution, substitutionFor: entry.substitutionFor, taskBlocks: entry.taskBlocks }
   }
+
+  // §71: resolve unit ids → names + map employees to their Etage for filtering
+  const unitNameById = useMemo(() => new Map(planningUnits.map(u => [u.id, u.name])), [planningUnits])
+  const etagen = useMemo(() => planningUnits.filter(u => u.type === 'etage'), [planningUnits])
+  const [etageFilter, setEtageFilter] = useState('')
+  const etageOfEmployee = useMemo(() => {
+    const unitByKey = new Map<string, PlanningUnit>()
+    planningUnits.forEach(u => { unitByKey.set(u.id, u); unitByKey.set(u.name.toLowerCase(), u) })
+    const map = new Map<string, string | null>()
+    employees.forEach(e => {
+      const unit = e.gruppe ? (unitByKey.get(e.gruppe) ?? unitByKey.get(e.gruppe.toLowerCase())) : undefined
+      map.set(e.id, unit?.parentId ?? (unit?.type === 'etage' ? unit.id : null))
+    })
+    return map
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planningUnits, employees])
+  const visibleEmployees = useMemo(
+    () => etageFilter ? employees.filter(e => etageOfEmployee.get(e.id) === etageFilter) : employees,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [employees, etageFilter, etageOfEmployee],
+  )
 
   const getDisplayReason = (empId: string, dateStr: string): string | null => {
     if (generatedSchedule) return aiAssignmentReasons[`${empId}|${dateStr}`] ?? null
@@ -1053,6 +1077,19 @@ export default function AdminSchedule() {
                 )}
               </div>
               <div className="flex gap-2">
+                {etagen.length > 0 && (
+                  <select
+                    value={etageFilter}
+                    onChange={e => setEtageFilter(e.target.value)}
+                    className="text-xs font-semibold border border-gray-200 rounded-xl px-2.5 py-1.5 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand/20"
+                    title="Nach Etage filtern"
+                  >
+                    <option value="">Alle Etagen</option>
+                    {etagen.map(et => (
+                      <option key={et.id} value={et.id}>{et.name}</option>
+                    ))}
+                  </select>
+                )}
                 {planningUnits.length > 0 && (
                   <div className="flex rounded-xl border border-gray-200 overflow-hidden">
                     <button onClick={() => setScheduleView('mitarbeiter')} className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold transition-all ${scheduleView === 'mitarbeiter' ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
@@ -1361,7 +1398,7 @@ export default function AdminSchedule() {
                                   const dateStr = toDateString(day)
                                   const assigned = employees.filter(emp => {
                                     const a = getDisplayAssignment(emp.id, dateStr)
-                                    return a?.gruppe === unit.name
+                                    return a?.gruppe === unit.name || a?.gruppe === unit.id
                                   })
                                   return (
                                     <td key={dateStr} className="p-1.5 align-top">
@@ -1446,7 +1483,7 @@ export default function AdminSchedule() {
                       <tbody>
                         {(() => {
                           const groups = new Map<string, Employee[]>()
-                          for (const emp of employees) {
+                          for (const emp of visibleEmployees) {
                             const key = emp.gruppe || ''
                             if (!groups.has(key)) groups.set(key, [])
                             groups.get(key)!.push(emp)
@@ -1462,7 +1499,7 @@ export default function AdminSchedule() {
                                 <tr key={`group-${groupKey}`} className="bg-navy/5 border-t border-gray-100">
                                   <td colSpan={week.length + 2} className="px-4 py-1.5">
                                     <span className="text-[10px] font-bold text-navy/60 uppercase tracking-widest">
-                                      {groupKey || 'Ohne Bereich'}
+                                      {unitNameById.get(groupKey) ?? (groupKey || 'Ohne Bereich')}
                                     </span>
                                   </td>
                                 </tr>
@@ -1515,15 +1552,18 @@ export default function AdminSchedule() {
                                             onClick={() => setManualPickerCell({ empId: emp.id, dateStr })}
                                             className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity relative"
                                             style={{ backgroundColor: assignment.shift.bgColor }}
-                                            title={[assignment.gruppe, assignment.funktion, assignment.isSubstitution ? `Vertretung${assignment.substitutionFor ? `: ${assignment.substitutionFor}` : ''}` : null].filter(Boolean).join(' · ') || undefined}
+                                            title={[unitNameById.get(assignment.gruppe ?? '') ?? assignment.gruppe, assignment.role === 'Springer' ? 'Springer (außerhalb Stammgruppe)' : null, assignment.funktion, assignment.isSubstitution ? `Vertretung${assignment.substitutionFor ? `: ${assignment.substitutionFor}` : ''}` : null].filter(Boolean).join(' · ') || undefined}
                                           >
                                             {assignment.isSubstitution && (
                                               <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
                                             )}
+                                            {assignment.role === 'Springer' && (
+                                              <span className="absolute top-0.5 left-0.5 text-[8px] font-bold leading-none text-purple-600 bg-purple-100 rounded px-0.5" title="Springer: außerhalb der Stammgruppe eingesetzt">S</span>
+                                            )}
                                             <Icon size={12} style={{ color: assignment.shift.color }} />
                                             <span className="text-[10px] font-semibold" style={{ color: assignment.shift.color }}>{assignment.startTime}–{assignment.endTime}</span>
                                             {assignment.gruppe && (
-                                              <span className="text-[9px] leading-tight truncate max-w-full" style={{ color: assignment.shift.color, opacity: 0.75 }}>{assignment.gruppe}</span>
+                                              <span className="text-[9px] leading-tight truncate max-w-full" style={{ color: assignment.shift.color, opacity: 0.75 }}>{unitNameById.get(assignment.gruppe) ?? assignment.gruppe}</span>
                                             )}
                                             {assignment.funktion && (
                                               <span className="text-[9px] leading-tight truncate max-w-full italic" style={{ color: assignment.shift.color, opacity: 0.6 }}>{assignment.funktion}</span>
