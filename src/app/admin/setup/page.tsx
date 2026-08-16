@@ -863,7 +863,7 @@ export default function SetupWizardPage() {
           <div className="border-t border-gray-100 pt-4">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Individuelle Regeln (eine pro Zeile)</p>
             <p className="text-[11px] text-gray-400 mb-2">
-              Werden in CP-SAT-Code übersetzt und erscheinen unter <Link href="/admin/model" className="text-brand hover:underline">Planungsmodell → Custom-Regeln</Link> zur Prüfung ({constraintCount} vorhanden).
+              Werden in CP-SAT-Code übersetzt. <b>Wichtig:</b> Sie wirken erst, wenn du sie unter <Link href="/admin/model" className="text-brand hover:underline">Einstellungen → Regeln &amp; Wartung → Custom-Regeln</Link> prüfst und mit ⚡ aktivierst ({constraintCount} vorhanden).
             </p>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {REGEL_VORLAGEN.map(v => (
