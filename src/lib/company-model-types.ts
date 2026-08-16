@@ -258,6 +258,22 @@ export interface GenerierterPlan {
     datum: string
     grund: string
   }>
+  // §96: Soll/Ist der Wochenstunden — Abweichungen werden benannt statt
+  // durch gekürzte Dienstzeiten kaschiert.
+  stundenbilanz?: Array<{
+    mitarbeiterId: string
+    woche: string
+    sollStunden: number
+    istStunden: number
+    abweichungStunden: number
+  }>
+  // §96: welche individuellen Regeln tatsächlich angewendet wurden
+  regelReport?: Array<{
+    id?: string
+    name: string
+    angewendet: boolean
+    fehler?: string
+  }>
 }
 
 // §13: PlanningSnapshot — immutable snapshot of a completed planning session

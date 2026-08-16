@@ -12,6 +12,7 @@ import { useToast } from '@/lib/toast-context'
 import {
   CalendarDays, Clock, Layers, Users, ShieldAlert, Sparkles, Check,
   ChevronRight, ChevronLeft, Loader2, Plus, Trash2, ExternalLink, Pencil,
+  Zap, XCircle, Code2, ChevronDown, ChevronUp, RotateCcw,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { WochentagKuerzel } from '@/lib/company-model-types'
@@ -19,6 +20,8 @@ import type { WochentagKuerzel } from '@/lib/company-model-types'
 interface WizShift { id: string; name: string; type?: string; startTime: string; endTime: string; minStaff: number }
 interface WizUnit { id: string; name: string; type: string; parentId: string | null; minStaff: number }
 interface WizEmployee { id: string; name: string; gruppe?: string | null }
+// §95: Code-Regeln werden im Wizard selbst geprüft und aktiviert.
+interface WizConstraint { id: string; name: string; description: string; code: string; status: string; errorLog?: string | null }
 interface Proposal {
   arbeitstage?: string[]
   schichten: { name: string; von: string; bis: string; minStaff?: number }[]
@@ -70,6 +73,15 @@ const REGEL_VORLAGEN: { titel: string; text: string }[] = [
   },
 ]
 
+// §95: Status der Code-Regeln in Klartext — der Wizard zeigt sie direkt an.
+const CC_BADGE: Record<string, { label: string; cls: string }> = {
+  active: { label: 'Aktiv', cls: 'text-green-600 bg-green-50' },
+  pending: { label: 'Bitte prüfen', cls: 'text-amber-600 bg-amber-50' },
+  rejected: { label: 'Abgelehnt', cls: 'text-gray-500 bg-gray-100' },
+  error: { label: 'Fehlgeschlagen', cls: 'text-red-600 bg-red-50' },
+  generating: { label: 'Wird erstellt…', cls: 'text-blue-600 bg-blue-50 animate-pulse' },
+}
+
 const BETRIEBSFORMEN: { label: string; hint: string; tage: WochentagKuerzel[] }[] = [
   { label: 'Montag – Freitag', hint: 'Klassischer Wochenbetrieb (Kita, Praxis, Büro)', tage: ['Mo', 'Di', 'Mi', 'Do', 'Fr'] },
   { label: 'Montag – Samstag', hint: '6-Tage-Betrieb (Handel, Gastronomie)', tage: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] },
@@ -87,7 +99,7 @@ export default function SetupWizardPage() {
   const [units, setUnits] = useState<WizUnit[]>([])
   const [employees, setEmployees] = useState<WizEmployee[]>([])
   const [baseRules, setBaseRules] = useState({ maxWeeklyHours: 40, restHours: 11, maxConsecutiveDays: 5 })
-  const [constraintCount, setConstraintCount] = useState(0)
+  const [constraints, setConstraints] = useState<WizConstraint[]>([])
 
   const load = useCallback(async () => {
     const me = await fetch('/api/auth/me').then(r => r.json()).catch(() => null)
@@ -113,7 +125,7 @@ export default function SetupWizardPage() {
         maxConsecutiveDays: rulesRes.rules.maxConsecutiveDays ?? 5,
       })
     }
-    setConstraintCount(((ccRes.constraints ?? []) as { status: string }[]).filter(c => c.status === 'active' || c.status === 'pending').length)
+    setConstraints((ccRes.constraints ?? []) as WizConstraint[])
     setLoading(false)
   }, [])
   useEffect(() => { load() }, [load])
@@ -282,13 +294,70 @@ export default function SetupWizardPage() {
           body: JSON.stringify({ name: line.length > 60 ? `${line.slice(0, 57)}…` : line, description: line }),
         })
         const d = await res.json().catch(() => ({}))
-        if (res.ok) { results.push({ text: line, ok: true, info: 'Code erstellt — zur Prüfung' }); setConstraintCount(c => c + 1) }
-        else results.push({ text: line, ok: false, info: d.error ?? 'Fehlgeschlagen' })
+        if (res.ok && d.constraint) {
+          results.push({ text: line, ok: true, info: 'Code erstellt — unten prüfen und aktivieren' })
+          // §95: direkt in die Prüfliste im Wizard einreihen, aufgeklappt
+          setConstraints(prev => [d.constraint as WizConstraint, ...prev])
+          setCcExpandedId((d.constraint as WizConstraint).id)
+        } else results.push({ text: line, ok: false, info: d.error ?? 'Fehlgeschlagen' })
       } catch { results.push({ text: line, ok: false, info: 'Netzwerkfehler' }) }
       setRuleResults([...results])
     }
     setSubmittingRules(false)
     setRulesText('')
+  }
+
+  // §95: Prüfen und Aktivieren passiert im Wizard selbst — kein Sprung in ein
+  // anderes Menü. Der Bestätigungsschritt bleibt bewusst erhalten: erzeugter
+  // Code geht nie ungesehen in die Planung.
+  const [ccExpandedId, setCcExpandedId] = useState<string | null>(null)
+  const [ccActioning, setCcActioning] = useState<string | null>(null)
+  const [ccBulk, setCcBulk] = useState(false)
+
+  const ccAction = async (id: string, action: 'active' | 'rejected' | 'delete' | 'regenerate') => {
+    setCcActioning(id)
+    try {
+      if (action === 'delete') {
+        const res = await fetch(`/api/admin/custom-constraints/${id}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error()
+        setConstraints(prev => prev.filter(c => c.id !== id))
+        showToast('Regel gelöscht', 'success')
+        return
+      }
+      const body = action === 'regenerate' ? { action: 'regenerate' } : { status: action }
+      if (action === 'regenerate') setConstraints(prev => prev.map(c => c.id === id ? { ...c, status: 'generating' } : c))
+      const res = await fetch(`/api/admin/custom-constraints/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error()
+      const d = await res.json()
+      setConstraints(prev => prev.map(c => c.id === id ? { ...c, ...(d.constraint as WizConstraint) } : c))
+      if (action === 'active') showToast('Regel aktiv — sie wirkt ab dem nächsten Dienstplan', 'success')
+      else if (action === 'rejected') showToast('Regel abgelehnt — sie wird nicht angewendet', 'success')
+    } catch {
+      showToast('Aktion fehlgeschlagen', 'error')
+    } finally { setCcActioning(null) }
+  }
+
+  const activateAllPending = async () => {
+    const offen = constraints.filter(c => c.status === 'pending' && c.code)
+    if (offen.length === 0) return
+    setCcBulk(true)
+    let ok = 0
+    for (const c of offen) {
+      try {
+        const res = await fetch(`/api/admin/custom-constraints/${c.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'active' }),
+        })
+        if (res.ok) { ok++; setConstraints(prev => prev.map(x => x.id === c.id ? { ...x, status: 'active' } : x)) }
+      } catch { /* nächste Regel */ }
+    }
+    setCcBulk(false)
+    showToast(`${ok} von ${offen.length} Regeln aktiviert`, ok === offen.length ? 'success' : 'error')
   }
 
   // ── KI-Ausfüllhilfe ───────────────────────────────────────────────────────
@@ -399,6 +468,9 @@ export default function SetupWizardPage() {
     : ''
   const ohneStammgruppe = employees.filter(e => !e.gruppe?.trim()).length
   const currentForm = BETRIEBSFORMEN.find(b => b.tage.length === arbeitstage.length && b.tage.every(t => arbeitstage.includes(t)))
+  // §95: Zähler für die Prüfliste im Regeln-Schritt
+  const ccAktiv = constraints.filter(c => c.status === 'active').length
+  const ccOffen = constraints.filter(c => c.status === 'pending' && !!c.code).length
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
@@ -863,7 +935,7 @@ export default function SetupWizardPage() {
           <div className="border-t border-gray-100 pt-4">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Individuelle Regeln (eine pro Zeile)</p>
             <p className="text-[11px] text-gray-400 mb-2">
-              Werden in CP-SAT-Code übersetzt. <b>Wichtig:</b> Sie wirken erst, wenn du sie unter <Link href="/admin/model" className="text-brand hover:underline">Einstellungen → Regeln &amp; Wartung → Custom-Regeln</Link> prüfst und mit ⚡ aktivierst ({constraintCount} vorhanden).
+              Werden in Rechenregeln übersetzt. Du prüfst und aktivierst sie gleich hier unten — erst dann wirken sie im Dienstplan.
             </p>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {REGEL_VORLAGEN.map(v => (
@@ -887,13 +959,89 @@ export default function SetupWizardPage() {
             <Button size="sm" onClick={() => submitRules()} disabled={submittingRules || !rulesText.trim()} className="gap-1.5 mt-2">
               {submittingRules ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}Als Code-Regeln erstellen
             </Button>
-            {ruleResults.length > 0 && (
+            {ruleResults.filter(r => !r.ok).length > 0 && (
               <div className="mt-3 space-y-1">
-                {ruleResults.map((r, i) => (
-                  <p key={i} className={`text-xs ${r.ok ? 'text-green-600' : 'text-red-500'}`}>
-                    {r.ok ? '✓' : '✕'} {r.text.slice(0, 70)} — {r.info}
-                  </p>
+                {ruleResults.filter(r => !r.ok).map((r, i) => (
+                  <p key={i} className="text-xs text-red-500">✕ {r.text.slice(0, 70)} — {r.info}</p>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* §95 Prüfen & Aktivieren — direkt im Wizard */}
+          <div className="border-t border-gray-100 mt-5 pt-4">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Deine Regeln prüfen</p>
+              <span className="text-[11px] text-gray-400">
+                {ccAktiv} aktiv{ccOffen > 0 ? ` · ${ccOffen} offen` : ''}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-400 mb-3">
+              Nur <b>aktive</b> Regeln fließen in die Dienstplanung ein. Auf eine Regel klicken zeigt die erzeugte Rechenvorschrift.
+            </p>
+
+            {ccOffen > 0 && (
+              <Button size="sm" onClick={activateAllPending} disabled={ccBulk} className="gap-1.5 mb-3">
+                {ccBulk ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+                Alle {ccOffen} offenen Regeln aktivieren
+              </Button>
+            )}
+
+            {constraints.length === 0 ? (
+              <p className="text-xs text-gray-400">Noch keine individuellen Regeln angelegt.</p>
+            ) : (
+              <div className="space-y-2">
+                {constraints.map(c => {
+                  const offen = ccExpandedId === c.id
+                  const busy = ccActioning === c.id
+                  const badge = CC_BADGE[c.status] ?? { label: c.status, cls: 'text-gray-500 bg-gray-100' }
+                  return (
+                    <div key={c.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50/50">
+                        <button onClick={() => setCcExpandedId(offen ? null : c.id)} className="flex-1 flex items-center gap-2 text-left min-w-0">
+                          <Code2 size={13} className="text-purple-400 flex-shrink-0" />
+                          <span className="text-sm text-navy truncate">{c.name}</span>
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${badge.cls}`}>{badge.label}</span>
+                          {offen ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
+                        </button>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {(c.status === 'error' || c.status === 'generating') && (
+                            <button onClick={() => ccAction(c.id, 'regenerate')} disabled={busy} title="Neu erzeugen"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                              {busy ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+                            </button>
+                          )}
+                          {c.status !== 'active' && !!c.code && (
+                            <button onClick={() => ccAction(c.id, 'active')} disabled={busy} title="Aktivieren"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors">
+                              {busy ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+                            </button>
+                          )}
+                          {c.status !== 'rejected' && (
+                            <button onClick={() => ccAction(c.id, 'rejected')} disabled={busy} title="Ablehnen"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-colors">
+                              <XCircle size={13} />
+                            </button>
+                          )}
+                          <button onClick={() => ccAction(c.id, 'delete')} disabled={busy} title="Löschen"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                      {offen && (
+                        <div className="border-t border-gray-100">
+                          <p className="text-[11px] text-gray-500 px-3 py-2">{c.description}</p>
+                          <div className="bg-gray-950 px-3 py-3">
+                            <p className="text-[10px] text-gray-400 mb-1.5 font-mono uppercase tracking-wide">Erzeugte Rechenvorschrift</p>
+                            <pre className="text-[11px] text-green-300 font-mono whitespace-pre-wrap leading-relaxed overflow-x-auto">{c.code || '—'}</pre>
+                            {c.errorLog && <p className="text-[10px] text-red-400 mt-2 font-mono">{c.errorLog}</p>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

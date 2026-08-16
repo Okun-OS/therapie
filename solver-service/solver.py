@@ -110,15 +110,19 @@ def _execute_custom_constraints(
     gruppen: list[dict] | None = None,
     n_groups: int = 0,
     weeks: list[list[int]] | None = None,
-) -> None:
+) -> list[dict]:
     """
     Execute admin-authored custom constraints in a restricted namespace.
     Each constraint is a Python snippet that may call model.add(...) using the
     pre-bound variables. Errors are caught per-constraint so one bad snippet
     does not break the whole solve.
+
+    §96: returns a report per constraint (applied / failed). A rule that fails
+    silently is worse than no rule at all — the planner believes it is in force.
+    The caller surfaces failures with the plan.
     """
     if not constraints:
-        return
+        return []
 
     safe_builtins = {
         "range": range,
@@ -163,11 +167,21 @@ def _execute_custom_constraints(
         "weeks": weeks or [],
     }
 
+    report: list[dict] = []
     for c in constraints:
+        name = c.get("name") or c.get("id") or "Regel"
         try:
             exec(c["code"], ns)  # noqa: S102
+            report.append({"id": c.get("id"), "name": name, "angewendet": True})
         except Exception as exc:
-            log.warning("[solver] custom constraint %r skipped: %s", c.get("name", c.get("id")), exc)
+            log.warning("[solver] custom constraint %r skipped: %s", name, exc)
+            report.append({
+                "id": c.get("id"),
+                "name": name,
+                "angewendet": False,
+                "fehler": f"{type(exc).__name__}: {exc}"[:300],
+            })
+    return report
 
 
 # ─── Main solver ───────────────────────────────────────────────────────────────
@@ -212,11 +226,15 @@ def solve(rule_model: dict) -> dict:
     if n_emp == 0 or n_days == 0 or n_shifts == 0:
         return _empty_result("Leere Eingabe (keine Mitarbeiter, Tage oder Schichten)")
 
-    # ── §72 Break rules → NET working minutes ────────────────────────────────
+    # ── §72/§96 Break rules → NET working minutes ────────────────────────────
     # Presence above the threshold contains an unpaid break; all hour math
-    # (legal max, weekly targets) uses NET minutes. Additionally each employee
-    # is capped at their personal daily target (weekly hours / days per week),
-    # so part-timers get shorter presence windows inside the same shift.
+    # (legal max, weekly targets) uses NET minutes.
+    #
+    # §96: A shift has FIXED times. Earlier versions shortened a shift to hit a
+    # part-timer's daily target exactly, which produced times no company has
+    # ("06:00–10:48", "08:36–15:30"). Part-time is expressed by working fewer
+    # DAYS or by shifts the company actually defined — never by inventing a
+    # window. eff_min therefore depends on the shift alone.
     pausen = rule_model.get("pausenRegeln") or {}
     br_threshold = int(pausen.get("thresholdMinutes", 360))
     br_deduct = int(pausen.get("deductionMinutes", 30))
@@ -224,19 +242,10 @@ def solve(rule_model: dict) -> dict:
     def _net_of_gross(gross: int) -> int:
         return gross - br_deduct if gross >= br_threshold else gross
 
-    eff_min: dict[tuple[int, int], int] = {}       # net working minutes per (emp, shift)
-    presence_min: dict[tuple[int, int], int] = {}  # actual presence incl. break
-    for _ei, _emp in enumerate(employees):
-        _dpw = _emp.get("arbeitstageProWoche") or 0
-        _weekly = float(_emp.get("wochenstundenSoll", 40) or 0)
-        _daily_net = int(round(_weekly / _dpw * 60)) if _dpw > 0 and _weekly > 0 else None
+    eff_min: dict[tuple[int, int], int] = {}  # net working minutes per (emp, shift)
+    for _ei in range(len(employees)):
         for _si, _s in enumerate(shifts):
-            _gross = _shift_dur(_s)
-            _shift_net = _net_of_gross(_gross)
-            _net = min(_shift_net, _daily_net) if _daily_net else _shift_net
-            eff_min[_ei, _si] = _net
-            _pres = _net + br_deduct if _net + br_deduct >= br_threshold else _net
-            presence_min[_ei, _si] = min(_pres, _gross)
+            eff_min[_ei, _si] = _net_of_gross(_shift_dur(_s))
 
     day_idx:   dict[str, int] = {d: i for i, d in enumerate(days)}
     shift_idx: dict[str, int] = {s["id"]: i for i, s in enumerate(shifts)}
@@ -365,7 +374,7 @@ def solve(rule_model: dict) -> dict:
                 model.add(sum(X[ei, di, s] for s in range(n_shifts)) == 0)
 
     # §70: Custom constraints generated via natural-language → code pipeline
-    _execute_custom_constraints(
+    constraint_report = _execute_custom_constraints(
         rule_model.get("customConstraints") or [],
         model, X, employees, shifts, days, day_idx, shift_idx,
         n_emp, n_days, n_shifts,
@@ -512,7 +521,10 @@ def solve(rule_model: dict) -> dict:
             model.add(below >= target_min - actual)
             cost.append(20 * below)
 
-    # C4: Hours above weekly target (slight overtime penalty, NET minutes §72)
+    # C4: Hours above weekly target (NET minutes §72)
+    # §96: weighted ABOVE the shortfall penalty. With fixed shift lengths a
+    # contract like 35 h rarely divides evenly; overshooting the contract is
+    # the worse of the two errors, so the solver now prefers to stay under.
     for ei, emp in enumerate(employees):
         target_min = int(emp.get("wochenstundenSoll", 40) * 60)
         for d_indices in weeks.values():
@@ -523,7 +535,7 @@ def solve(rule_model: dict) -> dict:
             )
             above = model.new_int_var(0, max_weekly_mins, f"above_{ei}")
             model.add(above >= actual - target_min)
-            cost.append(5 * above)
+            cost.append(30 * above)
 
     # C5: Weekend distribution fairness
     if len(weekend_indices) >= 2 and n_emp >= 2:
@@ -766,21 +778,8 @@ def solve(rule_model: dict) -> dict:
                     if role:
                         entry["role"] = role
 
-                    # §72: individual presence window when the employee's daily
-                    # target is shorter than the shift. Früh keeps its start
-                    # (opening), Spät keeps its end (closing), Tagdienst starts
-                    # later and stays until close.
-                    pres = presence_min[ei, assigned_si]
-                    gross = _shift_dur(shift)
-                    if pres < gross and not shift.get("uebernacht", False):
-                        start_m = _mins(shift["von"])
-                        end_m = _mins(shift["bis"])
-                        if shift.get("typ") == "frueh":
-                            new_start, new_end = start_m, start_m + pres
-                        else:
-                            new_start, new_end = end_m - pres, end_m
-                        entry["startzeit"] = f"{new_start // 60:02d}:{new_start % 60:02d}"
-                        entry["endzeit"] = f"{new_end // 60:02d}:{new_end % 60:02d}"
+                    # §96: keine erfundenen Zeiten — der Eintrag übernimmt die
+                    # definierten Zeiten des Dienstes unverändert.
                     eintraege.append(entry)
                 elif day not in blocked:
                     # §68: explain why not assigned on a work day
@@ -816,6 +815,60 @@ def solve(rule_model: dict) -> dict:
             }
         )
 
+    # ── §96 Regeln, die nicht angewendet werden konnten ──────────────────────
+    # Eine aktive Regel, die im Solver scheitert, muss auffallen: sonst hält der
+    # Planer sie für wirksam, während der Plan sie ignoriert.
+    for rep in constraint_report:
+        if not rep.get("angewendet"):
+            decisions.append({
+                "typ": "regel_fehlgeschlagen",
+                "beschreibung": (
+                    f'Die aktive Regel „{rep["name"]}" konnte NICHT angewendet werden '
+                    f'({rep.get("fehler", "unbekannter Fehler")}). '
+                    "Der Plan wurde ohne diese Regel erstellt — bitte die Regel prüfen "
+                    "und neu erzeugen lassen."
+                ),
+            })
+
+    # ── §96 Stundenbilanz: Soll gegen Ist, offen ausgewiesen ─────────────────
+    # Feste Dienstzeiten bedeuten, dass sich nicht jedes Vertragsmodell exakt
+    # treffen lässt (35 Std. bei 8-Std.-Diensten = 4 Tage à 32 Std.). Statt die
+    # Zeiten passend zu rechnen, wird die Abweichung benannt.
+    stundenbilanz: list[dict] = []
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for ei, emp in enumerate(employees):
+            target_min = int(float(emp.get("wochenstundenSoll", 40) or 0) * 60)
+            if target_min <= 0:
+                continue
+            for wk, d_indices in weeks.items():
+                ist = sum(
+                    eff_min[ei, si]
+                    for di in d_indices
+                    for si in range(n_shifts)
+                    if solver_inst.boolean_value(X[ei, di, si])
+                )
+                diff = ist - target_min
+                stundenbilanz.append({
+                    "mitarbeiterId": emp["id"],
+                    "woche": wk,
+                    "sollStunden": round(target_min / 60, 2),
+                    "istStunden": round(ist / 60, 2),
+                    "abweichungStunden": round(diff / 60, 2),
+                })
+                # Nur echte Abweichungen melden (> 30 Minuten)
+                if abs(diff) > 30:
+                    richtung = "über" if diff > 0 else "unter"
+                    decisions.append({
+                        "typ": "stundenabweichung",
+                        "beschreibung": (
+                            f'{emp.get("name", emp["id"])}: {round(ist / 60, 1)} statt '
+                            f'{round(target_min / 60, 1)} Std. in Woche {wk} '
+                            f"({abs(round(diff / 60, 1))} Std. {richtung} Vertrag). "
+                            "Dienstzeiten bleiben unverändert — für einen genauen Treffer "
+                            "einen passenden Teilzeit-Dienst anlegen oder die Arbeitstage anpassen."
+                        ),
+                    })
+
     obj_str = (
         f"{solver_inst.objective_value:.0f}"
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
@@ -827,6 +880,8 @@ def solve(rule_model: dict) -> dict:
         "eintraege": eintraege,
         "decisions": decisions,
         "whyNotAssigned": why_not_assigned,  # §68
+        "stundenbilanz": stundenbilanz,      # §96
+        "regelReport": constraint_report,    # §96: welche Regeln wirklich griffen
         "metadaten": {
             "erstelltAm": datetime.utcnow().isoformat() + "Z",
             "solver": solver_tag,
