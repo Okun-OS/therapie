@@ -4,6 +4,8 @@ POST /solve   → accepts PlanningRuleModel JSON, returns GenerierterPlan JSON
 GET  /health  → liveness probe
 """
 
+import os
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -33,39 +35,57 @@ async def solve_endpoint(request: Request) -> JSONResponse:
     return JSONResponse(content=result)
 
 
-def _pick_host() -> str:
+def _make_socket(port: int) -> "socket.socket":
     """
-    §90 Bindeadresse robust wählen.
+    §92 Bindung selbst vornehmen statt uvicorn raten zu lassen.
 
-    Railways privates Netzwerk (*.railway.internal) und der Plattform-
-    Healthcheck sprechen Dienste über IPv6 an. Bindet der Server nur auf
-    "0.0.0.0" (IPv4), schlagen beide fehl. "::" bedient dual-stack — ist in der
-    Umgebung aber kein IPv6 verfügbar, kann der Server GAR NICHT starten.
-    Deshalb: IPv6 testen und nur dann verwenden, sonst auf IPv4 zurückfallen.
+    Railways privates Netz (*.railway.internal) und der Plattform-Healthcheck
+    sprechen Dienste über IPv6 an; "0.0.0.0" allein reicht dort nicht. Ein
+    hartes Binden auf "::" lässt den Dienst aber in Umgebungen OHNE IPv6 gar
+    nicht starten (uvicorn beendet sich mit Code 3). Deshalb: erst dual-stack
+    versuchen, bei Misserfolg sauber auf IPv4 zurückfallen — der Dienst startet
+    dadurch in JEDER Umgebung.
     """
-    import os
     import socket
 
     explicit = os.environ.get("HOST")
     if explicit:
-        return explicit
+        family = socket.AF_INET6 if ":" in explicit else socket.AF_INET
+        sock = socket.socket(family, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((explicit, port))
+        sock.listen(2048)
+        sock.set_inheritable(True)
+        print(f"[solver] bound (HOST={explicit}) on port {port}", flush=True)
+        return sock
 
     try:
-        probe = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            probe.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+            sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)  # auch IPv4 bedienen
         except OSError:
-            pass  # manche Systeme erlauben das Umschalten nicht — trotzdem versuchen
-        probe.bind(("::", 0))
-        probe.close()
-        return "::"
-    except OSError:
-        return "0.0.0.0"
+            pass
+        sock.bind(("::", port))
+        sock.listen(2048)
+        sock.set_inheritable(True)
+        print(f"[solver] bound dual-stack [::]:{port}", flush=True)
+        return sock
+    except OSError as exc:
+        print(f"[solver] IPv6 nicht verfuegbar ({exc}) - fallback auf IPv4", flush=True)
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("0.0.0.0", port))
+    sock.listen(2048)
+    sock.set_inheritable(True)
+    print(f"[solver] bound IPv4 0.0.0.0:{port}", flush=True)
+    return sock
 
 
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8080))
-    host = _pick_host()
-    print(f"[solver] starting on {host}:{port}", flush=True)
-    uvicorn.run(app, host=host, port=port)
+    listen_sock = _make_socket(port)
+    server = uvicorn.Server(uvicorn.Config(app, log_level="info"))
+    server.run(sockets=[listen_sock])
