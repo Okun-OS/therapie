@@ -83,9 +83,27 @@ def _make_socket(port: int) -> "socket.socket":
     return sock
 
 
+def _read_port() -> int:
+    """
+    §93 PORT tolerant lesen. Ist die Variable nicht gesetzt oder enthaelt sie
+    etwas Unbrauchbares (z.B. den nicht aufgeloesten Platzhalter "$PORT" aus
+    einem Start-Befehl ohne Shell), wird 8080 verwendet — der Dienst startet
+    dann trotzdem, statt in einer Absturzschleife zu enden.
+    """
+    raw = os.environ.get("PORT", "")
+    try:
+        value = int(str(raw).strip())
+        if 1 <= value <= 65535:
+            return value
+    except (TypeError, ValueError):
+        pass
+    if raw:
+        print(f"[solver] PORT={raw!r} unbrauchbar - verwende 8080", flush=True)
+    return 8080
+
+
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 8080))
+    port = _read_port()
     listen_sock = _make_socket(port)
     server = uvicorn.Server(uvicorn.Config(app, log_level="info"))
     server.run(sockets=[listen_sock])
