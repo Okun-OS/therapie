@@ -45,6 +45,31 @@ function matchesUnit(emp: { gruppe?: string | null }, unit: { id: string; name: 
   return g === normKey(unit.name) || g === normKey(unit.id)
 }
 
+// §94: Vorlagen für häufige Regeln — anklicken statt frei formulieren.
+// Bewusst so formuliert, wie der Code-Generator sie zuverlässig übersetzt.
+const REGEL_VORLAGEN: { titel: string; text: string }[] = [
+  {
+    titel: 'Max. 1 Früh- und 1 Spätdienst pro Woche',
+    text: 'Jeder Mitarbeiter hat pro Woche höchstens einen Frühdienst und höchstens einen Spätdienst; alle übrigen Dienste sind Tagdienste.',
+  },
+  {
+    titel: 'Kein Frühdienst nach Spätdienst',
+    text: 'Nach einem Spätdienst darf am nächsten Tag kein Frühdienst folgen.',
+  },
+  {
+    titel: 'Nicht zwei Spätdienste hintereinander',
+    text: 'Kein Mitarbeiter hat an zwei aufeinanderfolgenden Tagen einen Spätdienst.',
+  },
+  {
+    titel: 'Bestimmte Person immer Frühdienst',
+    text: 'Anna Beispiel arbeitet ausschließlich im Frühdienst.',
+  },
+  {
+    titel: 'Mittwochs mehr Besetzung',
+    text: 'Mittwochs müssen mindestens 4 Mitarbeiter im Frühdienst sein (Teambesprechung).',
+  },
+]
+
 const BETRIEBSFORMEN: { label: string; hint: string; tage: WochentagKuerzel[] }[] = [
   { label: 'Montag – Freitag', hint: 'Klassischer Wochenbetrieb (Kita, Praxis, Büro)', tage: ['Mo', 'Di', 'Mi', 'Do', 'Fr'] },
   { label: 'Montag – Samstag', hint: '6-Tage-Betrieb (Handel, Gastronomie)', tage: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] },
@@ -840,6 +865,18 @@ export default function SetupWizardPage() {
             <p className="text-[11px] text-gray-400 mb-2">
               Werden in CP-SAT-Code übersetzt und erscheinen unter <Link href="/admin/model" className="text-brand hover:underline">Planungsmodell → Custom-Regeln</Link> zur Prüfung ({constraintCount} vorhanden).
             </p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {REGEL_VORLAGEN.map(v => (
+                <button
+                  key={v.titel}
+                  onClick={() => setRulesText(t => (t.trim() ? t.replace(/\n*$/, '\n') : '') + v.text)}
+                  title={v.text}
+                  className="text-[11px] border border-gray-200 rounded-full px-2.5 py-1 text-gray-600 hover:border-brand hover:text-brand transition-colors"
+                >
+                  + {v.titel}
+                </button>
+              ))}
+            </div>
             <textarea
               value={rulesText}
               onChange={e => setRulesText(e.target.value)}

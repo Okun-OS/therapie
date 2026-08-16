@@ -14,6 +14,7 @@ Verfügbare Variablen im Ausführungskontext:
 - shifts: list[dict]  — Liste der Schichten; jede hat: id, name, typ, von, bis, minBesetzungGesamt
 - days: list[str]  — Planungstage als "YYYY-MM-DD"
 - weekdays: list[int]  — Wochentag je Planungstag (0=Montag … 6=Sonntag), parallel zu days
+- weeks: list[list[int]]  — Tages-Indizes nach Kalenderwoche gruppiert, z.B. [[0,1,2,3,4],[5,6,...]]. Für alle Regeln der Form "pro Woche höchstens X" IMMER über weeks iterieren (Datumsrechnung ist in der Sandbox nicht möglich).
 - day_idx: dict[str, int]  — Tag-String → Index in days
 - shift_idx: dict[str, int]  — Schicht-ID → Index in shifts
 - n_emp, n_days, n_shifts: int  — Dimensionen
@@ -29,6 +30,11 @@ Wichtige Regeln für den generierten Code:
 5. Fange potenzielle KeyErrors ab, wenn du auf Schicht-IDs oder Tage zugreifst (mit shift_idx.get(), day_idx.get())
 6. Halte den Code so knapp wie möglich — maximal 20 Zeilen
 7. Kommentiere den Code kurz auf Deutsch
+8. Muster für "pro Woche höchstens N Dienste vom Typ X":
+   typ_sis = [si for si, s in enumerate(shifts) if s.get("typ") == "frueh"]
+   for ei in range(n_emp):
+       for week_days in weeks:
+           model.add(sum(X[ei, di, si] for di in week_days for si in typ_sis) <= 1)
 
 Wenn die Regel KEINE planbare Dienstplan-Beschränkung ist (z.B. eine organisatorische Notiz, Pausenregelung, Zuständigkeit ohne Planungsbezug oder etwas, das das System bereits über Standardfelder abdeckt wie Wochenstunden oder feste freie Tage), antworte EXAKT mit dem Wort SKIP.
 

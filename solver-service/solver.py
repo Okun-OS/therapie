@@ -109,6 +109,7 @@ def _execute_custom_constraints(
     G: dict | None = None,
     gruppen: list[dict] | None = None,
     n_groups: int = 0,
+    weeks: list[list[int]] | None = None,
 ) -> None:
     """
     Execute admin-authored custom constraints in a restricted namespace.
@@ -156,6 +157,10 @@ def _execute_custom_constraints(
         "G": G or {},
         "gruppen": gruppen or [],
         "n_groups": n_groups,
+        # §94: Tage nach Kalenderwochen gruppiert — Voraussetzung für Regeln wie
+        # "höchstens ein Frühdienst pro Woche". Ohne das müsste der generierte
+        # Code Datumsangaben parsen, was in der Sandbox nicht möglich ist.
+        "weeks": weeks or [],
     }
 
     for c in constraints:
@@ -365,6 +370,7 @@ def solve(rule_model: dict) -> dict:
         model, X, employees, shifts, days, day_idx, shift_idx,
         n_emp, n_days, n_shifts,
         G=G, gruppen=gruppen, n_groups=n_groups,
+        weeks=list(weeks.values()),
     )
 
     # H3: Legal max weekly hours (NET working minutes, §72)
