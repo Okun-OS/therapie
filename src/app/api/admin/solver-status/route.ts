@@ -23,13 +23,25 @@ export async function GET(req: NextRequest) {
     ziel = `${u.protocol}//${u.hostname}${u.port ? ':' + u.port : ''}`
   } catch { /* unveränderte Anzeige */ }
 
+  // §89: Öffentliche Railway-Adresse ist die häufigste Ursache für 502 bei
+  // langen Berechnungen — der Edge-Proxy kappt die Verbindung, obwohl der
+  // Dienst läuft. Intern (…​.railway.internal) gibt es diese Grenze nicht.
+  const istOeffentlich = /\.up\.railway\.app/i.test(url)
+  const proxyHinweis = istOeffentlich
+    ? 'Achtung: Es wird die ÖFFENTLICHE Adresse verwendet. Anfragen laufen dann über den Railway-Proxy, der längere Berechnungen abbricht (Ergebnis: HTTP 502, obwohl der Dienst läuft). Besser die interne Adresse eintragen: http://<service-name>.railway.internal:8080'
+    : ''
+
   const t0 = Date.now()
   try {
     const resp = await fetch(`${url}/health`, { signal: AbortSignal.timeout(8_000) })
     const dauer = Date.now() - t0
     if (resp.ok) {
-      return NextResponse.json({ ok: true, configured: true, ziel, status: resp.status, dauerMs: dauer,
-        hinweis: 'Der Rechendienst antwortet. Die Dienstplanung sollte funktionieren.' })
+      return NextResponse.json({
+        ok: !istOeffentlich, configured: true, ziel, status: resp.status, dauerMs: dauer, oeffentlich: istOeffentlich,
+        hinweis: istOeffentlich
+          ? `Der Dienst antwortet (${dauer} ms), aber ${proxyHinweis}`
+          : 'Der Rechendienst antwortet. Die Dienstplanung sollte funktionieren.',
+      })
     }
     return NextResponse.json({
       ok: false, configured: true, ziel, status: resp.status, dauerMs: dauer,
