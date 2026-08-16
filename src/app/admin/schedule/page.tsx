@@ -126,6 +126,9 @@ export default function AdminSchedule() {
   const [explainEntry, setExplainEntry] = useState<{ employeeId: string; employeeName: string; shiftName: string; dateStr: string; reason: string | null; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null>(null)
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
   const [fallback, setFallback] = useState<{ date: string; shiftId: string; message: string } | null>(null)
+  // §88 Diagnose des Rechendienstes
+  const [solverStatus, setSolverStatus] = useState<{ ok: boolean; ziel?: string; hinweis?: string } | null>(null)
+  const [checkingSolver, setCheckingSolver] = useState(false)
   const [fallbackLoading, setFallbackLoading] = useState(false)
   const [fallbackHandled, setFallbackHandled] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
@@ -1251,10 +1254,30 @@ export default function AdminSchedule() {
                       <p className="font-bold text-red-700">Fehler beim Erstellen</p>
                       <p className="text-sm text-red-600">{aiError}</p>
                       <p className="text-xs text-gray-500 mt-1">Versuche es erneut oder wähle einen kürzeren Zeitraum.</p>
+                      {/* §88: Bei Rechendienst-Problemen direkt prüfen können */}
+                      {solverStatus && (
+                        <p className={`text-xs mt-2 ${solverStatus.ok ? 'text-green-700' : 'text-red-700'}`}>
+                          {solverStatus.ok ? '✓ ' : '✕ '}
+                          Rechendienst {solverStatus.ziel ? `(${solverStatus.ziel})` : ''}: {solverStatus.hinweis}
+                        </p>
+                      )}
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => { setAiError(null); setAiErrorCode(null); runAI() }} className="text-gray-500">
-                      Erneut
-                    </Button>
+                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      <Button variant="ghost" size="sm" onClick={() => { setAiError(null); setAiErrorCode(null); runAI() }} className="text-gray-500">
+                        Erneut
+                      </Button>
+                      <Button variant="ghost" size="sm" disabled={checkingSolver} onClick={async () => {
+                        setCheckingSolver(true)
+                        try {
+                          const r = await fetch('/api/admin/solver-status').then(x => x.json())
+                          setSolverStatus(r)
+                        } catch {
+                          setSolverStatus({ ok: false, hinweis: 'Prüfung nicht möglich.' })
+                        } finally { setCheckingSolver(false) }
+                      }} className="text-gray-500 whitespace-nowrap">
+                        {checkingSolver ? 'Prüfe…' : 'Rechendienst prüfen'}
+                      </Button>
+                    </div>
                   </div>
                 )
               ) : (

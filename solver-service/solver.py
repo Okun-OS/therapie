@@ -649,10 +649,18 @@ def solve(rule_model: dict) -> dict:
 
     solver_inst = cp_model.CpSolver()
     solver_inst.parameters.max_time_in_seconds = 25.0
-    # Memory guard: large models (month horizon × many shifts × groups) with 4
-    # workers exceeded small container limits (OOM → HTTP 502 in production).
-    model_size = n_emp * n_days * n_shifts
-    solver_inst.parameters.num_workers = 2 if model_size > 4000 else 4
+    # §88 Speicher-Schutz: Jeder Worker hält eine eigene Kopie des Modells. In
+    # kleinen Containern führte das bei großen Modellen zum OOM-Kill — der
+    # Dienst war danach weg und das Gateway meldete dauerhaft HTTP 502.
+    # Modellgröße berücksichtigt auch die Gruppen-Ebene (G-Variablen).
+    model_size = n_emp * n_days * (n_shifts + (n_groups if group_active else 0))
+    if model_size > 12000:
+        solver_inst.parameters.num_workers = 1
+        solver_inst.parameters.max_time_in_seconds = 20.0
+    elif model_size > 4000:
+        solver_inst.parameters.num_workers = 2
+    else:
+        solver_inst.parameters.num_workers = 4
     solver_inst.parameters.log_search_progress = False
     solver_inst.parameters.random_seed = solver_seed
 

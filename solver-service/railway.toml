@@ -1,7 +1,14 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "Dockerfile"
-watchPatterns = ["solver-service/**"]
+# Beide Schreibweisen: greift sowohl bei Service-Root "/" als auch "/solver-service"
+watchPatterns = ["solver-service/**", "**/*.py", "requirements.txt", "Dockerfile"]
 
 [deploy]
+# §88: Ohne Healthcheck bemerkt Railway einen abgestürzten Solver nicht und das
+# Gateway antwortet dauerhaft mit 502. Mit Healthcheck wird ein Container, der
+# nicht antwortet, als ungesund erkannt und ersetzt.
+healthcheckPath = "/health"
+healthcheckTimeout = 120
 restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
