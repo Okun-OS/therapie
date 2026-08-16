@@ -5,10 +5,10 @@ dockerfilePath = "Dockerfile"
 watchPatterns = ["solver-service/**", "**/*.py", "requirements.txt", "Dockerfile"]
 
 [deploy]
-# §88: Ohne Healthcheck bemerkt Railway einen abgestürzten Solver nicht und das
-# Gateway antwortet dauerhaft mit 502. Mit Healthcheck wird ein Container, der
-# nicht antwortet, als ungesund erkannt und ersetzt.
-healthcheckPath = "/health"
-healthcheckTimeout = 120
+# §90: healthcheckPath bewusst NICHT gesetzt. Der Versuch aus §88 ließ zwei
+# Deploys an "Healthcheck failure" scheitern, weil der Dienst nur auf IPv4
+# lauschte. Die Bindung ist jetzt dual-stack (main.py) — der Healthcheck kann
+# nachgezogen werden, sobald ein Deploy damit nachweislich grün ist. Bis dahin
+# gilt: lieber ein laufender Dienst ohne Healthcheck als ein blockierter Deploy.
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
