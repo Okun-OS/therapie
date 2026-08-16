@@ -127,7 +127,7 @@ export default function AdminSchedule() {
   const [aiWarnings, setAiWarnings] = useState<string[]>([])
   const [fallback, setFallback] = useState<{ date: string; shiftId: string; message: string } | null>(null)
   // §88 Diagnose des Rechendienstes
-  const [solverStatus, setSolverStatus] = useState<{ ok: boolean; ziel?: string; hinweis?: string } | null>(null)
+  const [solverStatus, setSolverStatus] = useState<{ ok: boolean; ziel?: string; hinweis?: string; alternativen?: { url: string; ok: boolean; info: string }[] } | null>(null)
   const [checkingSolver, setCheckingSolver] = useState(false)
   const [fallbackLoading, setFallbackLoading] = useState(false)
   const [fallbackHandled, setFallbackHandled] = useState(false)
@@ -1256,10 +1256,17 @@ export default function AdminSchedule() {
                       <p className="text-xs text-gray-500 mt-1">Versuche es erneut oder wähle einen kürzeren Zeitraum.</p>
                       {/* §88: Bei Rechendienst-Problemen direkt prüfen können */}
                       {solverStatus && (
-                        <p className={`text-xs mt-2 ${solverStatus.ok ? 'text-green-700' : 'text-red-700'}`}>
-                          {solverStatus.ok ? '✓ ' : '✕ '}
-                          Rechendienst {solverStatus.ziel ? `(${solverStatus.ziel})` : ''}: {solverStatus.hinweis}
-                        </p>
+                        <div className="mt-2 space-y-1">
+                          <p className={`text-xs ${solverStatus.ok ? 'text-green-700' : 'text-red-700'}`}>
+                            {solverStatus.ok ? '✓ ' : '✕ '}
+                            Rechendienst {solverStatus.ziel ? `(${solverStatus.ziel})` : ''}: {solverStatus.hinweis}
+                          </p>
+                          {solverStatus.alternativen?.map(a => (
+                            <p key={a.url} className={`text-xs ${a.ok ? 'text-green-700 font-semibold' : 'text-gray-500'}`}>
+                              {a.ok ? '✓' : '✕'} {a.url} — {a.info}
+                            </p>
+                          ))}
+                        </div>
                       )}
                     </div>
                     <div className="flex flex-col gap-1.5 flex-shrink-0">

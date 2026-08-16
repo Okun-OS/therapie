@@ -50,10 +50,42 @@ export async function GET(req: NextRequest) {
         : `Unerwartete Antwort (HTTP ${resp.status}). Bitte das Log des Solver-Service in Railway prüfen.`,
     })
   } catch (err) {
+    // §91: Wenn die konfigurierte Adresse tot ist, gleich mitprüfen, welche
+    // Alternative erreichbar wäre — sonst rät der Nutzer im Dunkeln.
+    const alternativen = await probiereAlternativen(url)
     return NextResponse.json({
       ok: false, configured: true, ziel, dauerMs: Date.now() - t0,
       fehler: err instanceof Error ? err.message : String(err),
-      hinweis: 'Keine Verbindung möglich. Prüfe, ob SOLVER_SERVICE_URL auf den richtigen internen Host und Port zeigt (der Dienst lauscht auf $PORT, Standard 8080) und ob der Service in Railway läuft.',
+      alternativen,
+      hinweis: alternativen.find(a => a.ok)
+        ? `Die eingetragene Adresse antwortet nicht — ABER ${alternativen.find(a => a.ok)!.url} ist erreichbar. Trage genau diese als SOLVER_SERVICE_URL beim App-Service ein.`
+        : 'Keine Verbindung möglich — auch nicht über die interne Adresse. Das deutet darauf hin, dass der Solver-Service in Railway gerade kein laufendes Deployment hat. Dort prüfen: Gibt es ein Deployment mit Status ACTIVE? Falls das neueste FAILED ist, das letzte erfolgreiche erneut ausrollen.',
     })
   }
+}
+
+// §91: Kandidaten für die Solver-Adresse durchprobieren.
+async function probiereAlternativen(configured: string): Promise<{ url: string; ok: boolean; info: string }[]> {
+  const kandidaten = new Set<string>()
+
+  // Aus öffentlicher Railway-Adresse die interne ableiten:
+  // https://<name>-production.up.railway.app → http://<name>.railway.internal:8080
+  const m = configured.match(/https?:\/\/([a-z0-9-]+?)(?:-production)?\.up\.railway\.app/i)
+  if (m) kandidaten.add(`http://${m[1]}.railway.internal:8080`)
+
+  // Umgekehrt: aus interner Adresse die öffentliche ableiten
+  const mi = configured.match(/https?:\/\/([a-z0-9-]+)\.railway\.internal/i)
+  if (mi) kandidaten.add(`https://${mi[1]}-production.up.railway.app`)
+
+  const ergebnisse: { url: string; ok: boolean; info: string }[] = []
+  for (const kandidat of Array.from(kandidaten)) {
+    if (kandidat === configured) continue
+    try {
+      const r = await fetch(`${kandidat}/health`, { signal: AbortSignal.timeout(6_000) })
+      ergebnisse.push({ url: kandidat, ok: r.ok, info: r.ok ? 'erreichbar' : `HTTP ${r.status}` })
+    } catch (e) {
+      ergebnisse.push({ url: kandidat, ok: false, info: e instanceof Error ? e.message : 'nicht erreichbar' })
+    }
+  }
+  return ergebnisse
 }
