@@ -10,14 +10,23 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 import uvicorn
 
-from solver import solve
+from solver import solve, capabilities
 
 app = FastAPI(title="Therapie Constraint Solver", version="1.0.0")
 
 
+# §97: Version und Fähigkeiten mitliefern. Wird nur die App ausgerollt und der
+# Rechendienst nicht, laufen beide auseinander — generierter Regel-Code nutzt
+# dann Variablen, die die alte Version nicht kennt, und die Regel bleibt ohne
+# Wirkung. Über diese Angaben erkennt die App das und sagt es deutlich.
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok"}
+    return {"status": "ok", **capabilities()}
+
+
+@app.get("/version")
+async def version() -> dict:
+    return capabilities()
 
 
 @app.post("/solve")

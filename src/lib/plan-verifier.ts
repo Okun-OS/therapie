@@ -280,6 +280,20 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
     }
   }
 
+  // §97: Veralteter Rechendienst — individuelle Regeln können wirkungslos sein,
+  // ohne dass ein Fehler auftaucht. Das ist der gefährlichste Zustand überhaupt,
+  // weil der Plan völlig unauffällig aussieht.
+  for (const d of plan.decisions ?? []) {
+    if (d.typ === 'solver_veraltet') {
+      verletzungen.push({
+        schwere: 'kritisch',
+        regelId: 'sv-veraltet',
+        beschreibung: d.beschreibung,
+        betrifft: [],
+      })
+    }
+  }
+
   // §96: Abweichungen zwischen Vertrags- und Planstunden benennen. Sie sind
   // nicht automatisch ein Fehler (feste Dienstzeiten gehen selten exakt auf),
   // aber sie gehören in die Bewertung statt unter den Tisch.

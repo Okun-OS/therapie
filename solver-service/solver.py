@@ -94,6 +94,35 @@ def _streak_before_period(emp: dict, first_plan_day: str) -> int:
 
 # ─── §70 Custom constraint executor ──────────────────────────────────────────
 
+# §97: Fähigkeiten dieses Rechendienstes. Die App vergleicht sie mit dem, was
+# sie erwartet — läuft eine veraltete Version, fällt das sofort auf, statt dass
+# Regeln stillschweigend wirkungslos bleiben.
+#
+# SOLVER_VERSION bei jeder Änderung erhöhen, die den Regel-Code betrifft.
+# SANDBOX_VARS listet die Variablen, die generierter Regel-Code verwenden darf.
+SOLVER_VERSION = 97
+SANDBOX_VARS = [
+    "model", "X", "employees", "shifts", "days", "weekdays", "weeks",
+    "day_idx", "shift_idx", "n_emp", "n_days", "n_shifts",
+    "G", "gruppen", "n_groups",
+]
+SOLVER_FEATURES = [
+    "weeks",            # §94 Kalenderwochen für "pro Woche höchstens N"
+    "gruppen",          # §71 Gruppen-/Etagenebene
+    "regel-report",     # §96 gescheiterte Regeln werden gemeldet
+    "feste-zeiten",     # §96 keine gekürzten Dienstfenster mehr
+    "stundenbilanz",    # §96 Soll/Ist der Wochenstunden
+]
+
+
+def capabilities() -> dict:
+    return {
+        "solverVersion": SOLVER_VERSION,
+        "sandboxVars": SANDBOX_VARS,
+        "features": SOLVER_FEATURES,
+    }
+
+
 def _execute_custom_constraints(
     constraints: list[dict],
     model,

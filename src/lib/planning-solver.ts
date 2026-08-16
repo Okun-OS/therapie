@@ -1,4 +1,5 @@
 import type { PlanningRuleModel, GenerierterPlan } from '@/lib/company-model-types'
+import { checkCapabilities } from '@/lib/solver-capabilities'
 
 export async function solvePlan(ruleModel: PlanningRuleModel): Promise<GenerierterPlan> {
   const solverUrl = process.env.SOLVER_SERVICE_URL
@@ -72,5 +73,38 @@ export async function solvePlan(ruleModel: PlanningRuleModel): Promise<Generiert
     throw new Error(infeasibleDecision.beschreibung)
   }
 
+  // §97: Läuft der Rechendienst in einer älteren Fassung als die App, können
+  // individuelle Regeln wirkungslos bleiben, ohne dass irgendwo ein Fehler
+  // auftaucht — genau so entstand ein Plan mit drei Spätdiensten trotz aktiver
+  // Regel. Der Abgleich hängt sich deshalb als deutlicher Hinweis an den Plan.
+  if ((ruleModel.customConstraints?.length ?? 0) > 0) {
+    const pruefung = checkCapabilities(await ladeCapabilities(solverUrl))
+    if (!pruefung.ok) {
+      plan.decisions = [
+        {
+          typ: 'solver_veraltet',
+          beschreibung:
+            `Achtung: ${ruleModel.customConstraints!.length} individuelle Regel(n) waren aktiv, ` +
+            `aber sie sind möglicherweise wirkungslos geblieben. ${pruefung.hinweis}`,
+        },
+        ...(plan.decisions ?? []),
+      ]
+    }
+  }
+
   return plan
+}
+
+// §97: Version/Fähigkeiten des Rechendienstes abfragen. Antwortet er nicht oder
+// ohne Versionsangabe, gilt er als veraltet — dann ist Schweigen das Risiko.
+async function ladeCapabilities(solverUrl: string): Promise<{ solverVersion?: number; features?: string[] } | null> {
+  for (const pfad of ['/version', '/health']) {
+    try {
+      const r = await fetch(`${solverUrl}${pfad}`, { signal: AbortSignal.timeout(5_000) })
+      if (!r.ok) continue
+      const daten = await r.json() as { solverVersion?: number; features?: string[] }
+      if (typeof daten?.solverVersion === 'number') return daten
+    } catch { /* nächster Pfad */ }
+  }
+  return null
 }

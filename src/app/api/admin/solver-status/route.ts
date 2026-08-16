@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/session'
+import { checkCapabilities, REQUIRED_SOLVER_VERSION } from '@/lib/solver-capabilities'
 
 // §88: Diagnose für den Rechendienst. Zeigt, ob und wie er erreichbar ist —
 // damit bei "HTTP 502" nicht geraten werden muss, woran es liegt.
@@ -36,11 +37,22 @@ export async function GET(req: NextRequest) {
     const resp = await fetch(`${url}/health`, { signal: AbortSignal.timeout(8_000) })
     const dauer = Date.now() - t0
     if (resp.ok) {
+      // §97: Antworten allein genügt nicht — die Version muss zur App passen.
+      // Ein veralteter Dienst rechnet fröhlich weiter und ignoriert dabei die
+      // individuellen Regeln, ohne dass irgendwo ein Fehler erscheint.
+      const caps = await resp.json().catch(() => null)
+      const version = checkCapabilities(caps)
       return NextResponse.json({
-        ok: !istOeffentlich, configured: true, ziel, status: resp.status, dauerMs: dauer, oeffentlich: istOeffentlich,
-        hinweis: istOeffentlich
+        ok: !istOeffentlich && version.ok,
+        configured: true, ziel, status: resp.status, dauerMs: dauer, oeffentlich: istOeffentlich,
+        solverVersion: version.laufendeVersion,
+        benoetigteVersion: REQUIRED_SOLVER_VERSION,
+        versionOk: version.ok,
+        hinweis: !version.ok
+          ? version.hinweis
+          : istOeffentlich
           ? `Der Dienst antwortet (${dauer} ms), aber ${proxyHinweis}`
-          : 'Der Rechendienst antwortet. Die Dienstplanung sollte funktionieren.',
+          : `Der Rechendienst antwortet und ist aktuell (Version ${version.laufendeVersion}). Die Dienstplanung sollte funktionieren.`,
       })
     }
     return NextResponse.json({
