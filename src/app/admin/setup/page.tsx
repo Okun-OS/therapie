@@ -68,6 +68,14 @@ const REGEL_VORLAGEN: { titel: string; text: string }[] = [
     text: 'Anna Beispiel arbeitet ausschließlich im Frühdienst.',
   },
   {
+    titel: 'Leitung nicht in die Gruppen einteilen',
+    text: 'Franka Beispiel ist die Leitung und wird keiner Gruppe zugeteilt; sie zählt nicht zur Gruppenbesetzung.',
+  },
+  {
+    titel: 'Person hat nur einen festen Dienst',
+    text: 'Franka Beispiel arbeitet ausschließlich den Leitungsdienst und keinen Früh- oder Spätdienst.',
+  },
+  {
     titel: 'Mittwochs mehr Besetzung',
     text: 'Mittwochs müssen mindestens 4 Mitarbeiter im Frühdienst sein (Teambesprechung).',
   },

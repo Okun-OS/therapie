@@ -35,6 +35,22 @@ Wichtige Regeln für den generierten Code:
    for ei in range(n_emp):
        for week_days in weeks:
            model.add(sum(X[ei, di, si] for di in week_days for si in typ_sis) <= 1)
+9. Muster für "Person X wird keiner Gruppe zugeteilt" (z.B. Leitung, Verwaltung,
+   Hauswirtschaft — sie zählen nicht zur Gruppenbesetzung):
+   for ei, emp in enumerate(employees):
+       if "franka" in emp.get("name", "").lower():
+           for di in range(n_days):
+               for gi in range(n_groups):
+                   model.add(G[ei, di, gi] == 0)
+10. Muster für "Person X arbeitet ausschließlich Dienst Y" (alle anderen Dienste
+   werden ausgeschlossen; der eigene Dienst wird dadurch NICHT erzwungen):
+   ziel_sis = [si for si, s in enumerate(shifts) if "leitung" in s.get("name", "").lower()]
+   for ei, emp in enumerate(employees):
+       if "franka" in emp.get("name", "").lower():
+           for di in range(n_days):
+               for si in range(n_shifts):
+                   if si not in ziel_sis:
+                       model.add(X[ei, di, si] == 0)
 
 Wenn die Regel KEINE planbare Dienstplan-Beschränkung ist (z.B. eine organisatorische Notiz, Pausenregelung, Zuständigkeit ohne Planungsbezug oder etwas, das das System bereits über Standardfelder abdeckt wie Wochenstunden oder feste freie Tage), antworte EXAKT mit dem Wort SKIP.
 

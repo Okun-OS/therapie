@@ -307,6 +307,7 @@ def solve(rule_model: dict) -> dict:
     group_active = len(gruppen) > 0
     n_groups = len(gruppen)
     G: dict[tuple[int, int, int], cp_model.BoolVarT] = {}
+    group_gap_cost: list = []  # §96: Kosten für Arbeit ohne Gruppenzuordnung
     if group_active:
         G = {
             (e, d, g): model.new_bool_var(f"g_{e}_{d}_{g}")
@@ -314,13 +315,21 @@ def solve(rule_model: dict) -> dict:
             for d in range(n_days)
             for g in range(n_groups)
         }
-        # Working that day ⇔ standing in exactly one group
+        # §96: Wer arbeitet, steht in HÖCHSTENS einer Gruppe — früher war es
+        # "in genau einer". Damit war jede Kraft ohne Gruppe unplanbar: Leitung,
+        # Verwaltung oder Hauswirtschaft gehören zum Haus, aber nicht in die
+        # Gruppenbesetzung. Eine Regel wie "die Leitung wird keiner Gruppe
+        # zugeteilt" hätte sie sonst vom Dienst ganz ausgeschlossen.
+        # Ohne Gruppe zu arbeiten kostet etwas (soft), damit die Gruppenzuteilung
+        # der Normalfall bleibt und nur bewusst gesetzte Regeln davon abweichen.
         for e in range(n_emp):
             for d in range(n_days):
-                model.add(
-                    sum(G[e, d, g] for g in range(n_groups))
-                    == sum(X[e, d, s] for s in range(n_shifts))
-                )
+                arbeitet = sum(X[e, d, s] for s in range(n_shifts))
+                in_gruppe = sum(G[e, d, g] for g in range(n_groups))
+                model.add(in_gruppe <= arbeitet)
+                ohne_gruppe = model.new_bool_var(f"nogrp_{e}_{d}")
+                model.add(ohne_gruppe >= arbeitet - in_gruppe)
+                group_gap_cost.append(500 * ohne_gruppe)
 
     # ── HARD CONSTRAINTS ─────────────────────────────────────────────────────
 
@@ -456,6 +465,7 @@ def solve(rule_model: dict) -> dict:
 
     # ── SOFT OBJECTIVE (minimize total cost) ──────────────────────────────────
     cost: list = []
+    cost.extend(group_gap_cost)  # §96: Arbeit ohne Gruppenzuordnung
 
     # C1: Understaffing — heavy penalty (soft, not hard → always find a plan)
     for di in range(n_days):

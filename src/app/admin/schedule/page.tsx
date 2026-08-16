@@ -18,6 +18,7 @@ import { useToast } from '@/lib/toast-context'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import { getPublicHolidayName } from '@/lib/holidays'
+import { displayColors, SHIFT_PALETTE } from '@/lib/shift-colors'
 import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, PlanningUnit, TaskBlock } from '@/lib/types'
 import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import type { PlanBewertung } from '@/lib/company-model-types'
@@ -533,6 +534,34 @@ export default function AdminSchedule() {
     return map
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planningUnits, employees])
+  // §96: Gruppen etagenweise ordnen. Alphabetisch sortiert lagen Gruppen
+  // verschiedener Etagen durcheinander ("Bärenbande, Glühwürmchen, Igel …") —
+  // im Plan sieht man dann nicht mehr, wer zusammen auf einer Etage arbeitet.
+  // Reihenfolge: Etage (in ihrer angelegten Reihenfolge), darin die Gruppen.
+  const gruppenOrdnung = useMemo(() => {
+    const unitByKey = new Map<string, PlanningUnit>()
+    planningUnits.forEach(u => { unitByKey.set(u.id, u); unitByKey.set(u.name.toLowerCase(), u) })
+    const etageRank = new Map<string, number>()
+    planningUnits.filter(u => u.type === 'etage').forEach((u, i) => etageRank.set(u.id, i))
+
+    const rang = (groupKey: string): [number, number, string] => {
+      if (!groupKey) return [9999, 9999, '']            // "Ohne Bereich" immer zuletzt
+      const unit = unitByKey.get(groupKey) ?? unitByKey.get(groupKey.toLowerCase())
+      if (!unit) return [9998, 0, groupKey]
+      if (unit.type === 'etage') return [etageRank.get(unit.id) ?? 9000, -1, unit.name]
+      const et = unit.parentId ? etageRank.get(unit.parentId) : undefined
+      // Gruppen ohne Etage hinter allen Etagen, aber vor "Ohne Bereich"
+      return [et ?? 9500, 0, unit.name]
+    }
+    const etageOfKey = (groupKey: string): { id: string; name: string } | null => {
+      const unit = groupKey ? (unitByKey.get(groupKey) ?? unitByKey.get(groupKey.toLowerCase())) : undefined
+      if (!unit || unit.type === 'etage' || !unit.parentId) return null
+      const et = planningUnits.find(u => u.id === unit.parentId)
+      return et ? { id: et.id, name: et.name } : null
+    }
+    return { rang, etageOfKey }
+  }, [planningUnits])
+
   const visibleEmployees = useMemo(
     () => etageFilter ? employees.filter(e => etageOfEmployee.get(e.id) === etageFilter) : employees,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1378,6 +1407,23 @@ export default function AdminSchedule() {
               )}
             </div>
 
+            {/* §96 Legende: welche Farbe steht für welche Dienstart */}
+            {locationShifts.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-2 pl-1">
+                {(['early', 'mid', 'late', 'night'] as const)
+                  .filter(t => locationShifts.some(s => s.type === t))
+                  .map(t => (
+                    <span key={t} className="inline-flex items-center gap-1.5">
+                      <span
+                        className="w-3 h-3 rounded border"
+                        style={{ backgroundColor: SHIFT_PALETTE[t].bgColor, borderColor: SHIFT_PALETTE[t].color }}
+                      />
+                      <span className="text-[11px] text-gray-500">{SHIFT_PALETTE[t].label}</span>
+                    </span>
+                  ))}
+              </div>
+            )}
+
             {/* Schedule Grid */}
             {scheduleView === 'einheiten' && planningUnits.length > 0 ? (
               <div className="space-y-3">
@@ -1519,11 +1565,31 @@ export default function AdminSchedule() {
                             groups.get(key)!.push(emp)
                           }
                           const hasGroups = Array.from(groups.keys()).some(k => k !== '')
-                          const sortedKeys = Array.from(groups.keys()).sort((a, b) => a === '' ? 1 : b === '' ? -1 : a.localeCompare(b, 'de'))
+                          // §96: erst nach Etage, dann nach Gruppenname — nicht quer alphabetisch
+                          const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+                            const [ea, ga, na] = gruppenOrdnung.rang(a)
+                            const [eb, gb, nb] = gruppenOrdnung.rang(b)
+                            return ea - eb || ga - gb || na.localeCompare(nb, 'de')
+                          })
                           let rowIdx = 0
+                          let letzteEtageId: string | null | undefined = undefined
                           return sortedKeys.flatMap(groupKey => {
                             const groupEmps = groups.get(groupKey)!
                             const rows = []
+                            // §96: Etagen-Überschrift, sobald eine neue Etage beginnt
+                            const etage = gruppenOrdnung.etageOfKey(groupKey)
+                            if (hasGroups && etage && etage.id !== letzteEtageId) {
+                              letzteEtageId = etage.id
+                              rows.push(
+                                <tr key={`etage-${etage.id}`} className="bg-navy/90">
+                                  <td colSpan={week.length + 2} className="px-4 py-1.5">
+                                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">
+                                      {etage.name}
+                                    </span>
+                                  </td>
+                                </tr>
+                              )
+                            }
                             if (hasGroups) {
                               rows.push(
                                 <tr key={`group-${groupKey}`} className="bg-navy/5 border-t border-gray-100">
@@ -1573,6 +1639,8 @@ export default function AdminSchedule() {
                                     const isOutsidePeriod2 = dateStr < periodStart || dateStr > periodEnd
                                     const hideCell2 = isNonWorkDay2 || isOutsidePeriod2
                                     const Icon = assignment ? (SHIFT_ICONS[assignment.shift.type] ?? DEFAULT_SHIFT_ICON) : null
+                                    // §96: klar unterscheidbare Farben je Dienstart
+                                    const farbe = assignment ? displayColors(assignment.shift) : null
                                     return (
                                       <td key={dateStr} className={`p-1.5 text-center ${hideCell2 ? 'bg-gray-50/50' : ''}`}>
                                         {hideCell2 ? (
@@ -1581,7 +1649,7 @@ export default function AdminSchedule() {
                                           <div
                                             onClick={() => setManualPickerCell({ empId: emp.id, dateStr })}
                                             className="rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity relative"
-                                            style={{ backgroundColor: assignment.shift.bgColor }}
+                                            style={{ backgroundColor: farbe!.bgColor }}
                                             title={[unitNameById.get(assignment.gruppe ?? '') ?? assignment.gruppe, assignment.role === 'Springer' ? 'Springer (außerhalb Stammgruppe)' : null, assignment.funktion, assignment.isSubstitution ? `Vertretung${assignment.substitutionFor ? `: ${assignment.substitutionFor}` : ''}` : null].filter(Boolean).join(' · ') || undefined}
                                           >
                                             {assignment.isSubstitution && (
@@ -1590,10 +1658,10 @@ export default function AdminSchedule() {
                                             {assignment.role === 'Springer' && (
                                               <span className="absolute top-0.5 left-0.5 text-[8px] font-bold leading-none text-purple-600 bg-purple-100 rounded px-0.5" title="Springer: außerhalb der Stammgruppe eingesetzt">S</span>
                                             )}
-                                            <Icon size={12} style={{ color: assignment.shift.color }} />
-                                            <span className="text-[10px] font-semibold" style={{ color: assignment.shift.color }}>{assignment.startTime}–{assignment.endTime}</span>
+                                            <Icon size={12} style={{ color: farbe!.color }} />
+                                            <span className="text-[10px] font-semibold" style={{ color: farbe!.color }}>{assignment.startTime}–{assignment.endTime}</span>
                                             {assignment.gruppe && (
-                                              <span className="text-[9px] leading-tight truncate max-w-full" style={{ color: assignment.shift.color, opacity: 0.75 }}>{unitNameById.get(assignment.gruppe) ?? assignment.gruppe}</span>
+                                              <span className="text-[9px] leading-tight truncate max-w-full" style={{ color: farbe!.color, opacity: 0.8 }}>{unitNameById.get(assignment.gruppe) ?? assignment.gruppe}</span>
                                             )}
                                             {assignment.funktion && (
                                               <span className="text-[9px] leading-tight truncate max-w-full italic" style={{ color: assignment.shift.color, opacity: 0.6 }}>{assignment.funktion}</span>

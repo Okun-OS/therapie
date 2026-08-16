@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { listShiftsByLocation, addShift } from '@/lib/schedule-entities'
 import { requireRole } from '@/lib/session'
 import { allowedLocationScope, locationFilter } from '@/lib/scope'
+import { paletteFor } from '@/lib/shift-colors'
 import { prisma } from '@/lib/prisma'
 
 // §81: shifts are ALWAYS scoped to the caller's own location(s). The old
@@ -44,15 +45,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Default colors — UI forms don't send them; without defaults the create
-  // failed with 500 (color/bgColor are required columns)
-  const DEFAULTS: Record<string, { color: string; bgColor: string }> = {
-    early: { color: '#0E6B6F', bgColor: '#E5FAFA' },
-    mid: { color: '#C89C5B', bgColor: '#F8EFE2' },
-    late: { color: '#3A3F42', bgColor: '#E8ECEF' },
-    night: { color: '#26292B', bgColor: '#C9D0D4' },
-    standard: { color: '#0E6B6F', bgColor: '#E5FAFA' },
-  }
-  const fallback = DEFAULTS[type as string] ?? DEFAULTS.standard
+  // failed with 500 (color/bgColor are required columns). §96: die Palette
+  // liegt zentral in shift-colors.ts, damit Plan und Anlage übereinstimmen.
+  const fallback = paletteFor(type as string)
 
   const shift = await addShift({
     name, type, startTime, endTime,
