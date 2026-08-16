@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { useToast } from '@/lib/toast-context'
 import {
   CalendarDays, Clock, Layers, Users, ShieldAlert, Sparkles, Check,
-  ChevronRight, ChevronLeft, Loader2, Plus, Trash2, ExternalLink,
+  ChevronRight, ChevronLeft, Loader2, Plus, Trash2, ExternalLink, Pencil,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { WochentagKuerzel } from '@/lib/company-model-types'
@@ -188,6 +188,39 @@ export default function SetupWizardPage() {
     setUnits(prev => [...prev.filter(u => u.id !== d.unit.id), d.unit])
     return d.unit as WizUnit
   }
+  // §85: bestehende Etagen/Gruppen bearbeiten (Name, Besetzung, Etage)
+  const [editUnitId, setEditUnitId] = useState<string | null>(null)
+  const [unitDraft, setUnitDraft] = useState<{ name: string; minStaff: number; parentId: string }>({ name: '', minStaff: 1, parentId: '' })
+
+  const startEditUnit = (u: WizUnit) => {
+    setEditUnitId(u.id)
+    setUnitDraft({ name: u.name, minStaff: u.minStaff, parentId: u.parentId ?? '' })
+  }
+
+  const saveUnit = async () => {
+    if (!editUnitId || !unitDraft.name.trim()) return
+    const target = units.find(u => u.id === editUnitId)
+    try {
+      const res = await fetch('/api/planning-units', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editUnitId,
+          name: unitDraft.name.trim(),
+          minStaff: unitDraft.minStaff,
+          ...(target?.type !== 'etage' ? { parentId: unitDraft.parentId || null } : {}),
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const d = await res.json()
+      setUnits(prev => prev.map(u => u.id === editUnitId ? { ...u, ...d.unit } : u))
+      setEditUnitId(null)
+      showToast('Gespeichert', 'success')
+    } catch {
+      showToast('Speichern fehlgeschlagen', 'error')
+    }
+  }
+
   const deleteUnit = async (id: string) => {
     const res = await fetch(`/api/planning-units?id=${id}`, { method: 'DELETE' })
     if (res.ok) setUnits(prev => prev.filter(u => u.id !== id).map(u => u.parentId === id ? { ...u, parentId: null } : u))
@@ -645,6 +678,35 @@ export default function SetupWizardPage() {
                   const members = u.type === 'etage' ? [] : employees.filter(e => matchesUnit(e, u))
                   return (
                     <div key={u.id} className={u.type === 'etage' ? 'bg-gray-50/60' : ''}>
+                      {editUnitId === u.id ? (
+                        <div className="flex flex-wrap items-end gap-2 px-3 py-2 bg-brand/5">
+                          <div className="flex-1 min-w-[140px]">
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase">Name</label>
+                            <input value={unitDraft.name} onChange={e => setUnitDraft(p => ({ ...p, name: e.target.value }))}
+                              className="w-full text-sm border border-brand/30 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+                          </div>
+                          {u.type !== 'etage' && etagen.length > 0 && (
+                            <div>
+                              <label className="text-[10px] font-semibold text-gray-400 uppercase">Etage</label>
+                              <select value={unitDraft.parentId} onChange={e => setUnitDraft(p => ({ ...p, parentId: e.target.value }))}
+                                className="text-sm border border-gray-200 rounded-lg px-2 py-1 block">
+                                <option value="">Keine</option>
+                                {etagen.map(et => <option key={et.id} value={et.id}>{et.name}</option>)}
+                              </select>
+                            </div>
+                          )}
+                          <div>
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase">
+                              {u.type === 'etage' ? 'Je Früh-/Spätdienst' : 'Personen pro Tag'}
+                            </label>
+                            <input type="number" min={0} max={50} value={unitDraft.minStaff}
+                              onChange={e => setUnitDraft(p => ({ ...p, minStaff: Math.max(0, parseInt(e.target.value) || 0) }))}
+                              className="w-24 text-sm border border-brand/30 rounded-lg px-2 py-1 text-center block" />
+                          </div>
+                          <Button size="sm" onClick={saveUnit} disabled={!unitDraft.name.trim()} className="gap-1"><Check size={13} />Speichern</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditUnitId(null)}>Abbrechen</Button>
+                        </div>
+                      ) : (
                       <div className="flex items-center gap-2 px-3 py-2">
                         <span className={`text-sm ${u.id !== top.id ? 'pl-5' : ''} ${u.type === 'etage' ? 'font-semibold' : ''} text-navy`}>
                           {u.type === 'etage' ? '🏢 ' : '👥 '}{u.name}
@@ -656,10 +718,14 @@ export default function SetupWizardPage() {
                           </span>
                         )}
                         <span className="ml-auto text-[10px] text-gray-500">{u.type === 'etage' ? `${u.minStaff} je Früh- und Spätdienst` : `${u.minStaff} pro Tag`}</span>
-                        <button onClick={() => deleteUnit(u.id)} className="p-1 rounded-lg text-gray-400 hover:text-red-600">
+                        <button onClick={() => startEditUnit(u)} title="Bearbeiten" className="p-1 rounded-lg text-gray-400 hover:text-navy">
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={() => deleteUnit(u.id)} title="Löschen" className="p-1 rounded-lg text-gray-400 hover:text-red-600">
                           <Trash2 size={12} />
                         </button>
                       </div>
+                      )}
                       {u.type !== 'etage' && (
                         <div className={`px-3 pb-2 ${u.id !== top.id ? 'pl-10' : 'pl-8'}`}>
                           {members.length === 0 ? (

@@ -119,11 +119,12 @@ const adminDock: DockItem[] = [
     panel: {
       title: 'Einstellungen',
       sections: [
+        // §87: EIN Einstiegspunkt für die Einrichtung. Der Wizard schreibt genau
+        // die Daten, die der Dienstplan liest. Die Detailseiten bleiben per Link
+        // aus dem Wizard erreichbar, aber nicht mehr als konkurrierende Reiter.
         { items: [
-          { href: '/admin/setup',                   label: 'Einrichtung',            description: 'Standort in 5 Schritten konfigurieren', badge: 'NEU', icon: '🚀' },
-          { href: '/admin/onboarding',              label: 'Standorteinstellungen', description: 'Schichten, Regeln & Einstellungen per KI bearbeiten', badge: 'KI', isGold: true, icon: '🏢' },
-          { href: '/admin/model',                   label: 'Planungsmodell',         description: 'Regeln & Mindestbesetzung editieren',                 icon: '📋' },
-          { href: '/admin/settings/planning-policy', label: 'Planungsrichtlinien',   description: 'Überstunden, Fristen & Solver-Parameter',             icon: '⚙️' },
+          { href: '/admin/setup',                   label: 'Einrichtung',            description: 'Betriebsform, Struktur, Dienste, Team & Regeln — alles an einem Ort', badge: 'START', icon: '🚀' },
+          { href: '/admin/model',                   label: 'Regeln & Wartung',       description: 'Code-Regeln prüfen, Standort zurücksetzen',           icon: '📋' },
           { href: '/company/support',               label: 'Support & Hilfe',        description: 'Hilfe & Kontakt',                                     icon: '💬' },
         ]},
       ],
