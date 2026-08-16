@@ -263,6 +263,62 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
     }
   }
 
+  // §96: Die eigenen Regeln des Unternehmens wurden bisher gar nicht geprüft.
+  // Genau deshalb konnte ein Plan „100 %" melden, in dem eine Person drei
+  // Spätdienste hatte, obwohl die Regel höchstens einen erlaubt. Der Solver
+  // erzwingt eine Regel zwar hart — aber nur, wenn sie überhaupt ankam.
+  for (const rep of plan.regelReport ?? []) {
+    if (!rep.angewendet) {
+      verletzungen.push({
+        schwere: 'kritisch',
+        regelId: `cc-${rep.id ?? rep.name}`,
+        beschreibung:
+          `Die eigene Regel „${rep.name}" konnte nicht angewendet werden` +
+          `${rep.fehler ? ` (${rep.fehler})` : ''} — der Plan hält sie NICHT ein.`,
+        betrifft: [],
+      })
+    }
+  }
+
+  // §96: Abweichungen zwischen Vertrags- und Planstunden benennen. Sie sind
+  // nicht automatisch ein Fehler (feste Dienstzeiten gehen selten exakt auf),
+  // aber sie gehören in die Bewertung statt unter den Tisch.
+  for (const b of plan.stundenbilanz ?? []) {
+    const abw = Math.abs(b.abweichungStunden)
+    if (abw <= 0.5) continue
+    const emp = mitarbeiter.find(m => m.id === b.mitarbeiterId)
+    verletzungen.push({
+      schwere: abw >= 5 ? 'hoch' : 'niedrig',
+      regelId: 'st-abweichung',
+      beschreibung:
+        `${emp?.name ?? b.mitarbeiterId}: ${b.istStunden} statt ${b.sollStunden} Std. ` +
+        `in der Woche ab ${b.woche} (${b.abweichungStunden > 0 ? '+' : ''}${b.abweichungStunden} Std.).`,
+      betrifft: [b.mitarbeiterId],
+    })
+  }
+
+  // §96: Sicherheitsnetz gegen erfundene Dienstzeiten. Ein Eintrag muss die
+  // Zeiten seines Dienstes tragen; alles andere ist ein Rechenfehler, der im
+  // Plan wie eine echte Schicht aussieht.
+  const schichtById = new Map(schichten.map(s => [s.id, s]))
+  for (const e of plan.eintraege) {
+    const s = schichtById.get(e.schichtId)
+    if (!s) continue
+    const start = e.startzeit ?? s.von
+    const ende = e.endzeit ?? s.bis
+    if (start !== s.von || ende !== s.bis) {
+      const emp = mitarbeiter.find(m => m.id === e.mitarbeiterId)
+      verletzungen.push({
+        schwere: 'hoch',
+        regelId: 'zt-abweichende-dienstzeit',
+        beschreibung:
+          `${emp?.name ?? e.mitarbeiterId} am ${e.datum}: ${start}–${ende} weicht von ` +
+          `„${s.name}" (${s.von}–${s.bis}) ab. Diese Dienstzeit gibt es nicht.`,
+        betrifft: [e.mitarbeiterId, e.datum],
+      })
+    }
+  }
+
   // Compute scores
   const criticalCount = verletzungen.filter(v => v.schwere === 'kritisch').length
   const highCount     = verletzungen.filter(v => v.schwere === 'hoch').length
