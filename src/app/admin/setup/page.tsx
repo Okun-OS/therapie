@@ -339,8 +339,18 @@ export default function SetupWizardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
+      const d = await res.json().catch(() => ({}))
+      // §98: Aktivierung wird abgelehnt, wenn die Regel beim Prüflauf abbricht.
+      // Den Grund im Klartext zeigen statt nur "Aktion fehlgeschlagen".
+      if (res.status === 422 && d.error) {
+        setConstraints(prev => prev.map(c => c.id === id
+          ? { ...c, status: 'error', errorLog: d.error as string }
+          : c))
+        setCcExpandedId(id)
+        showToast('Regel konnte nicht aktiviert werden — sie läuft nicht durch', 'error')
+        return
+      }
       if (!res.ok) throw new Error()
-      const d = await res.json()
       setConstraints(prev => prev.map(c => c.id === id ? { ...c, ...(d.constraint as WizConstraint) } : c))
       if (action === 'active') showToast('Regel aktiv — sie wirkt ab dem nächsten Dienstplan', 'success')
       else if (action === 'rejected') showToast('Regel abgelehnt — sie wird nicht angewendet', 'success')

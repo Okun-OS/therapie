@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 import uvicorn
 
-from solver import solve, capabilities
+from solver import solve, capabilities, validate_constraint_code
 
 app = FastAPI(title="Therapie Constraint Solver", version="1.0.0")
 
@@ -27,6 +27,16 @@ async def health() -> dict:
 @app.get("/version")
 async def version() -> dict:
     return capabilities()
+
+
+# §98: Regel-Code probeweise ausführen, bevor er gespeichert oder aktiviert wird.
+@app.post("/validate-constraint")
+async def validate_endpoint(request: Request) -> JSONResponse:
+    try:
+        body: dict = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON: {exc}") from exc
+    return JSONResponse(content=validate_constraint_code(body.get("code", "")))
 
 
 @app.post("/solve")

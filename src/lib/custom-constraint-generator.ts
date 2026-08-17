@@ -56,20 +56,31 @@ Wenn die Regel KEINE planbare Dienstplan-Beschränkung ist (z.B. eine organisato
 
 Antworte NUR mit dem Python-Code (oder SKIP), ohne Markdown-Fencing, ohne Erklärungen.`
 
-export async function generateConstraintCode(name: string, description: string): Promise<string | null> {
+export async function generateConstraintCode(
+  name: string,
+  description: string,
+  /** §98: Rückmeldung aus einem gescheiterten Prüflauf — der zweite Versuch kennt den Fehler. */
+  korrekturHinweis?: string,
+): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY nicht konfiguriert')
   const client = new Anthropic({ apiKey })
 
+  const auftrag = korrekturHinweis
+    ? `Regel: ${name}\nBeschreibung: ${description}\n\n` +
+      `Dein vorheriger Code wurde ausgeführt und ist FEHLGESCHLAGEN:\n${korrekturHinweis}\n\n` +
+      'Schreibe den Code neu, sodass dieser Fehler nicht mehr auftritt. Nur der Code, kein SKIP.'
+    : `Regel: ${name}\nBeschreibung: ${description}\n\nGeneriere den CP-SAT Python-Code für diese Planungsregel (oder SKIP).`
+
+  // §98: max_tokens war 1024 — zusammen mit dem adaptiven Denken reichte das
+  // nicht, der Code brach mitten in der Klammer ab ("'(' was never closed").
+  // Der Prüflauf fängt das jetzt zwar ab, aber es darf gar nicht erst passieren.
   const request = (model: string) => client.messages.create({
     model,
-    max_tokens: 1024,
+    max_tokens: 8192,
     thinking: { type: 'adaptive' },
     system: CONSTRAINT_SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: `Regel: ${name}\nBeschreibung: ${description}\n\nGeneriere den CP-SAT Python-Code für diese Planungsregel (oder SKIP).`,
-    }],
+    messages: [{ role: 'user', content: auftrag }],
   })
 
   // Fallback: not every API key has access to the newest model tier
@@ -89,6 +100,70 @@ export async function generateConstraintCode(name: string, description: string):
 
   if (!code || code === 'SKIP' || code.startsWith('SKIP')) return null
   return code
+}
+
+// §98: Regel-Code vom Rechendienst probeweise ausführen lassen.
+// Ohne diesen Schritt konnten Regeln gespeichert und aktiviert werden, die beim
+// echten Plan mit SyntaxError oder NameError abbrachen — sie standen auf "aktiv"
+// und bewirkten nichts.
+export interface ValidationResult {
+  ok: boolean
+  art?: string
+  fehler?: string
+  hinweis?: string
+  warnung?: string
+}
+
+export async function validateConstraintCode(code: string): Promise<ValidationResult> {
+  const url = process.env.SOLVER_SERVICE_URL
+  if (!url) {
+    // Ohne Rechendienst kann nicht ausgeführt werden — wenigstens die Syntax
+    // grob prüfen, statt blind zu speichern.
+    const offen = (code.match(/\(/g) ?? []).length - (code.match(/\)/g) ?? []).length
+    if (offen !== 0) {
+      return { ok: false, art: 'syntax', fehler: 'Klammern unausgeglichen — der Code ist unvollständig.' }
+    }
+    return { ok: true, art: 'ungeprueft', warnung: 'Rechendienst nicht erreichbar — die Regel wurde nicht ausgeführt.' }
+  }
+  try {
+    const r = await fetch(`${url}/validate-constraint`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (r.status === 404) {
+      return { ok: true, art: 'ungeprueft', warnung: 'Der Rechendienst ist veraltet und kann Regeln nicht prüfen. Bitte den Service "solver" in Railway neu ausrollen.' }
+    }
+    if (!r.ok) return { ok: true, art: 'ungeprueft', warnung: `Prüflauf nicht möglich (HTTP ${r.status}).` }
+    return await r.json() as ValidationResult
+  } catch (err) {
+    return { ok: true, art: 'ungeprueft', warnung: `Prüflauf nicht möglich (${err instanceof Error ? err.message : 'Fehler'}).` }
+  }
+}
+
+/**
+ * §98: Erzeugen UND prüfen. Scheitert der Prüflauf, bekommt das Modell die
+ * echte Fehlermeldung zurück und versucht es genau einmal erneut. Erst danach
+ * gilt eine Regel als fehlgeschlagen — dann aber mit klarem Grund.
+ */
+export async function generateVerifiedConstraintCode(
+  name: string,
+  description: string,
+): Promise<{ code: string | null; validation: ValidationResult; versuche: number }> {
+  let code = await generateConstraintCode(name, description)
+  if (!code) return { code: null, validation: { ok: true, art: 'skip' }, versuche: 1 }
+
+  let validation = await validateConstraintCode(code)
+  if (validation.ok) return { code, validation, versuche: 1 }
+
+  const hinweis = [validation.fehler, validation.hinweis].filter(Boolean).join('\n')
+  const zweiter = await generateConstraintCode(name, description, hinweis)
+  if (!zweiter) return { code, validation, versuche: 2 }
+
+  const validation2 = await validateConstraintCode(zweiter)
+  if (validation2.ok) return { code: zweiter, validation: validation2, versuche: 2 }
+  return { code: zweiter, validation: validation2, versuche: 2 }
 }
 
 // §74: batch — turn onboarding rules into CustomConstraints. For visibility

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
-import { generateConstraintCode } from '@/lib/custom-constraint-generator'
+import { generateVerifiedConstraintCode } from '@/lib/custom-constraint-generator'
 
 // GET  /api/admin/custom-constraints  — list for location
 export async function GET(req: NextRequest) {
@@ -49,7 +49,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const code = await generateConstraintCode(name.trim(), description.trim())
+    // §98: erzeugen UND probeweise ausführen. Eine Regel, die nicht läuft, darf
+    // nicht als prüfbereit gespeichert werden — sonst steht sie später auf
+    // "aktiv" und bewirkt nichts.
+    const { code, validation } = await generateVerifiedConstraintCode(name.trim(), description.trim())
     if (!code) {
       return NextResponse.json(
         { error: 'Die KI hat diese Regel als nicht planbar eingestuft (keine Dienstplan-Beschränkung).' },
@@ -64,11 +67,14 @@ export async function POST(req: NextRequest) {
         name: name.trim(),
         description: description.trim(),
         code,
-        status: 'pending',
+        status: validation.ok ? 'pending' : 'error',
+        errorLog: validation.ok
+          ? (validation.warnung ?? null)
+          : [validation.fehler, validation.hinweis].filter(Boolean).join(' — ').slice(0, 500),
       },
     })
 
-    return NextResponse.json({ constraint }, { status: 201 })
+    return NextResponse.json({ constraint, validation }, { status: 201 })
   } catch (err) {
     console.error('[custom-constraints] generation error', err)
     const msg = err instanceof Error && err.message.includes('ANTHROPIC_API_KEY') ? 'KI nicht konfiguriert' : 'KI-Fehler bei Code-Generierung'

@@ -100,7 +100,25 @@ def _streak_before_period(emp: dict, first_plan_day: str) -> int:
 #
 # SOLVER_VERSION bei jeder Änderung erhöhen, die den Regel-Code betrifft.
 # SANDBOX_VARS listet die Variablen, die generierter Regel-Code verwenden darf.
-SOLVER_VERSION = 97
+SOLVER_VERSION = 98
+
+# §98: Standardfunktionen, die Regel-Code verwenden darf.
+# Zu eng gefasst war die Sandbox selbst der Fehler: fehlte etwa str(), scheiterte
+# völlig korrekter Regel-Code mit "NameError: name 'str' is not defined".
+# Bewusst NICHT enthalten sind alle Wege nach draußen — kein open, eval, exec,
+# __import__, getattr/setattr, input, compile, globals/locals.
+SAFE_BUILTINS = {
+    # Zahlen & Text
+    "int": int, "float": float, "str": str, "bool": bool, "round": round, "abs": abs,
+    # Sammlungen
+    "list": list, "dict": dict, "set": set, "tuple": tuple, "frozenset": frozenset,
+    # Iteration
+    "range": range, "enumerate": enumerate, "zip": zip, "sorted": sorted,
+    "reversed": reversed, "filter": filter, "map": map,
+    # Aggregation & Prüfung
+    "sum": sum, "min": min, "max": max, "any": any, "all": all, "len": len,
+    "isinstance": isinstance, "divmod": divmod,
+}
 SANDBOX_VARS = [
     "model", "X", "employees", "shifts", "days", "weekdays", "weeks",
     "day_idx", "shift_idx", "n_emp", "n_days", "n_shifts",
@@ -120,7 +138,110 @@ def capabilities() -> dict:
         "solverVersion": SOLVER_VERSION,
         "sandboxVars": SANDBOX_VARS,
         "features": SOLVER_FEATURES,
+        "safeBuiltins": sorted(SAFE_BUILTINS.keys()),
     }
+
+
+def validate_constraint_code(code: str) -> dict:
+    """
+    §98: Regel-Code an einem kleinen Beispielplan WIRKLICH ausführen.
+
+    Vorher konnte eine Regel gespeichert und aktiviert werden, ohne je gelaufen
+    zu sein. Erst beim fertigen Dienstplan zeigte sich, dass sie mit SyntaxError
+    oder NameError abbrach — die Regel stand auf "aktiv" und tat nichts.
+
+    Geprüft wird gegen ein Miniatur-Modell mit denselben Variablennamen wie im
+    Echtbetrieb: 3 Mitarbeiter, 14 Tage (zwei Kalenderwochen), Früh/Tag/Spät,
+    zwei Gruppen auf zwei Etagen. Das deckt die üblichen Fehler ab, ohne den
+    echten Plan zu berühren.
+    """
+    from ortools.sat.python import cp_model
+
+    if not code or not code.strip():
+        return {"ok": False, "fehler": "Kein Code vorhanden.", "art": "leer"}
+
+    # 1) Syntax — fängt abgeschnittenen Code ab ("'(' was never closed")
+    try:
+        compile(code, "<regel>", "exec")
+    except SyntaxError as exc:
+        return {
+            "ok": False,
+            "art": "syntax",
+            "fehler": f"SyntaxError: {exc.msg} (Zeile {exc.lineno})",
+            "hinweis": "Der Code ist unvollständig oder fehlerhaft — vermutlich abgeschnitten.",
+        }
+
+    # 2) Ausführung gegen ein Beispielmodell — fängt NameError, TypeError, KeyError
+    model = cp_model.CpModel()
+    demo_shifts = [
+        {"id": "frueh", "name": "Frühdienst", "typ": "frueh", "von": "06:00", "bis": "14:30",
+         "uebernacht": False, "minBesetzungGesamt": 1, "erforderlicheQualifikationen": []},
+        {"id": "tag", "name": "Tagdienst", "typ": "mittel", "von": "07:00", "bis": "15:30",
+         "uebernacht": False, "minBesetzungGesamt": 1, "erforderlicheQualifikationen": []},
+        {"id": "spaet", "name": "Spätdienst", "typ": "spaet", "von": "08:30", "bis": "17:00",
+         "uebernacht": False, "minBesetzungGesamt": 1, "erforderlicheQualifikationen": []},
+    ]
+    demo_gruppen = [
+        {"id": "g1", "name": "Gruppe A", "typ": "gruppe", "mindestbesetzung": 2, "etageId": "e1"},
+        {"id": "g2", "name": "Gruppe B", "typ": "gruppe", "mindestbesetzung": 2, "etageId": "e2"},
+    ]
+    demo_emps = [
+        {"id": "m1", "name": "Beispiel Person", "einheiten": ["g1"], "stammEinheitId": "g1",
+         "wochenstundenSoll": 40, "arbeitstageProWoche": 5, "qualifikationen": [],
+         "verfuegbareSchichtTypen": ["frueh", "spaet", "mittel"], "nichtVerfuegbarAn": [],
+         "urlaubAn": [], "wuensche": [], "letzteSchichten": []},
+        {"id": "m2", "name": "Zweite Person", "einheiten": ["g2"], "stammEinheitId": "g2",
+         "wochenstundenSoll": 30, "arbeitstageProWoche": 4, "qualifikationen": [],
+         "verfuegbareSchichtTypen": ["frueh", "spaet", "mittel"], "nichtVerfuegbarAn": [],
+         "urlaubAn": [], "wuensche": [], "letzteSchichten": []},
+        {"id": "m3", "name": "Dritte Person", "einheiten": [], "stammEinheitId": None,
+         "wochenstundenSoll": 20, "arbeitstageProWoche": 3, "qualifikationen": [],
+         "verfuegbareSchichtTypen": ["frueh", "spaet", "mittel"], "nichtVerfuegbarAn": [],
+         "urlaubAn": [], "wuensche": [], "letzteSchichten": []},
+    ]
+    demo_days = [f"2026-01-{d:02d}" for d in range(5, 19)]  # zwei volle Kalenderwochen
+
+    n_e, n_d, n_s, n_g = len(demo_emps), len(demo_days), len(demo_shifts), len(demo_gruppen)
+    X = {(e, d, s): model.new_bool_var(f"x_{e}_{d}_{s}")
+         for e in range(n_e) for d in range(n_d) for s in range(n_s)}
+    G = {(e, d, g): model.new_bool_var(f"g_{e}_{d}_{g}")
+         for e in range(n_e) for d in range(n_d) for g in range(n_g)}
+
+    weeks_demo: dict[str, list[int]] = {}
+    for di, day in enumerate(demo_days):
+        weeks_demo.setdefault(_iso_week_key(day), []).append(di)
+
+    report = _execute_custom_constraints(
+        [{"id": "probe", "name": "Prüflauf", "code": code}],
+        model, X, demo_emps, demo_shifts, demo_days,
+        {d: i for i, d in enumerate(demo_days)},
+        {s["id"]: i for i, s in enumerate(demo_shifts)},
+        n_e, n_d, n_s,
+        G=G, gruppen=demo_gruppen, n_groups=n_g,
+        weeks=list(weeks_demo.values()),
+    )
+    eintrag = report[0] if report else {"angewendet": False, "fehler": "Kein Ergebnis"}
+    if not eintrag.get("angewendet"):
+        fehler = eintrag.get("fehler", "unbekannter Fehler")
+        hinweis = "Die Regel bricht beim Ausführen ab."
+        if "is not defined" in fehler:
+            hinweis = ("Der Code verwendet einen Namen, den die Regel-Umgebung nicht kennt. "
+                       f"Erlaubt sind: {', '.join(SANDBOX_VARS)} sowie "
+                       f"{', '.join(sorted(SAFE_BUILTINS.keys()))}.")
+        return {"ok": False, "art": "laufzeit", "fehler": fehler, "hinweis": hinweis}
+
+    # 3) Wirkt die Regel überhaupt? Eine Regel ohne einzige Beschränkung ist
+    #    fast immer ein Denkfehler (z.B. Name trifft niemanden).
+    if len(model.proto.constraints) == 0:
+        return {
+            "ok": True,
+            "art": "wirkungslos",
+            "warnung": ("Die Regel läuft fehlerfrei, erzeugt am Beispielplan aber keine einzige "
+                        "Einschränkung. Häufigste Ursache: ein Personen- oder Dienstname, den es "
+                        "so nicht gibt. Bitte Schreibweise prüfen."),
+        }
+
+    return {"ok": True, "art": "geprueft", "constraints": len(model.proto.constraints)}
 
 
 def _execute_custom_constraints(
@@ -153,22 +274,7 @@ def _execute_custom_constraints(
     if not constraints:
         return []
 
-    safe_builtins = {
-        "range": range,
-        "len": len,
-        "enumerate": enumerate,
-        "sum": sum,
-        "int": int,
-        "min": min,
-        "max": max,
-        "list": list,
-        "dict": dict,
-        "set": set,
-        "zip": zip,
-        "any": any,
-        "all": all,
-        "abs": abs,
-    }
+    safe_builtins = SAFE_BUILTINS
 
     # Weekday per plan day (0=Mo … 6=So) — generated code cannot import datetime,
     # so recurring day-of-week rules need this precomputed list.
