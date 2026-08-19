@@ -65,21 +65,21 @@ model EmployeeHumanContext {
 }
 
 model EmployeePlanningProfile {
-  employeeId          String   @id
+  employeeId         String   @id
   // Schicht-Präferenz für den Solver
-  shiftPreference     String   @default("keine")   // frueh | spaet | nacht | keine
+  shiftPreference    String   @default("keine") // frueh | spaet | nacht | keine
   // Kinder-Abholzeiten: [{day:"Mo", beforeTime:"15:30"}, ...]
-  childPickupTimes    Json     @default("[]")
+  childPickupTimes   Json     @default("[]")
   // Maximale aufeinanderfolgende Arbeitstage (0 = Unternehmensregel gilt)
-  maxConsecutiveDays  Int      @default(0)
+  maxConsecutiveDays Int      @default(0)
   // Wochenend-Freiheits-Vereinbarung (z.B. "jedes 2. Wochenende frei")
-  weekendRule         String?
+  weekendRule        String?
   // Zusätzliche Planungsnotiz (dauerhaft, nicht pro Lauf)
-  planningNote        String?
+  planningNote       String?
   // Zuschlagsregelung
-  surchargeMode       String   @default("unternehmensregel")  // unternehmensregel | abweichungen | individuell
-  surchargeOverrides  Json?    // nur abweichende Felder vom Unternehmensstandard
-  updatedAt           DateTime @updatedAt
+  surchargeMode      String   @default("unternehmensregel") // unternehmensregel | abweichungen | individuell
+  surchargeOverrides Json? // nur abweichende Felder vom Unternehmensstandard
+  updatedAt          DateTime @updatedAt
 }
 
 model SubstitutionRequest {
@@ -247,24 +247,24 @@ model SchedulingPeriodNote {
 // Passwörter. employeeId/locationId/customerName verknüpfen den Account
 // optional mit den bestehenden mock-data Entitäten, ohne diese anzufassen.
 model User {
-  id              String   @id @default(cuid())
-  email           String   @unique
-  passwordHash    String
-  name            String
-  role            String
-  employeeId      String?
-  locationId      String?
-  customerId      String?
-  customerName    String?
-  totpSecret      String?
-  totpEnabled     Boolean  @default(false)
-  phone           String?
-  phoneVerified   Boolean  @default(false)
-  smsOtpEnabled   Boolean  @default(false)
-  bereichIds      String[] @default([])
-  avatarUrl       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  role          String
+  employeeId    String?
+  locationId    String?
+  customerId    String?
+  customerName  String?
+  totpSecret    String?
+  totpEnabled   Boolean  @default(false)
+  phone         String?
+  phoneVerified Boolean  @default(false)
+  smsOtpEnabled Boolean  @default(false)
+  bereichIds    String[] @default([])
+  avatarUrl     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model InvitationToken {
@@ -354,23 +354,23 @@ model Employee {
 }
 
 model Customer {
-  id                   String    @id @default(cuid())
-  name                 String
-  contactName          String
-  contactEmail         String
-  status               String
-  plan                 String
-  seatsLicensed        Int
-  seatsUsed            Int       @default(0)
-  locationsCount       Int       @default(0)
-  createdAt            String
-  renewalDate          String?
-  notes                String?
-  roles                String[]  @default([])
-  deletedAt            DateTime?
-  updatedAt            DateTime  @updatedAt
-  legalContractDate    String?
-  legalContractNotes   String?
+  id                 String    @id @default(cuid())
+  name               String
+  contactName        String
+  contactEmail       String
+  status             String
+  plan               String
+  seatsLicensed      Int
+  seatsUsed          Int       @default(0)
+  locationsCount     Int       @default(0)
+  createdAt          String
+  renewalDate        String?
+  notes              String?
+  roles              String[]  @default([])
+  deletedAt          DateTime?
+  updatedAt          DateTime  @updatedAt
+  legalContractDate  String?
+  legalContractNotes String?
 }
 
 model AuditLog {
@@ -494,7 +494,7 @@ model VacationRequest {
 }
 
 model SwapRequest {
-  id                 String    @id @default(cuid())
+  id                 String  @id @default(cuid())
   requesterId        String
   requesterName      String
   requesterDate      String
@@ -504,23 +504,23 @@ model SwapRequest {
   targetDate         String
   targetShiftId      String
   message            String?
-  status             String    @default("pending")
+  status             String  @default("pending")
   submittedAt        String
   respondedAt        String?
   locationId         String
 }
 
 model WishSubmission {
-  id                 String   @id @default(cuid())
+  id                 String  @id @default(cuid())
   employeeId         String
   employeeName       String
   locationId         String
   date               String
   preferredShiftType String
   reason             String?
-  importance         String   @default("normal")
+  importance         String  @default("normal")
   submittedAt        String
-  status             String   @default("pending")
+  status             String  @default("pending")
   conflictInfo       Json?
 }
 
@@ -589,7 +589,7 @@ model OrgSettings {
 }
 
 model OvertimeRequest {
-  id              String   @id @default(cuid())
+  id              String  @id @default(cuid())
   employeeId      String
   employeeName    String
   locationId      String
@@ -598,7 +598,7 @@ model OvertimeRequest {
   overtimeMinutes Int
   reason          String
   comment         String?
-  status          String   @default("pending")
+  status          String  @default("pending")
   approvedMinutes Int?
   adminComment    String?
   respondedAt     String?
@@ -607,7 +607,7 @@ model OvertimeRequest {
 }
 
 model Absence {
-  id                 String   @id @default(cuid())
+  id                 String  @id @default(cuid())
   employeeId         String
   employeeName       String
   locationId         String
@@ -616,8 +616,8 @@ model Absence {
   endDate            String
   days               Int
   note               String?
-  proofProvided      Boolean  @default(false)
-  verificationStatus String   @default("offen")
+  proofProvided      Boolean @default(false)
+  verificationStatus String  @default("offen")
   verifiedBy         String?
   verifiedAt         String?
   submittedAt        String
@@ -758,17 +758,17 @@ model PlanningRuleFeedback {
 // ── Zuschlags-Engine ──────────────────────────────────────────────────────────
 
 model SurchargeRuleSet {
-  id                  String               @id @default(cuid())
+  id                  String                @id @default(cuid())
   customerId          String
   locationId          String?
-  name                String               @default("Zuschlagsregelwerk")
+  name                String                @default("Zuschlagsregelwerk")
   defaultHourlyWage   Float?
-  onboardingCompleted Boolean              @default(false)
+  onboardingCompleted Boolean               @default(false)
   onboardingMessages  Json?
   rules               SurchargeRule[]
   wageConfigs         SurchargeWageConfig[]
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 }
 
 model SurchargeRule {
@@ -777,13 +777,13 @@ model SurchargeRule {
   ruleSet          SurchargeRuleSet @relation(fields: [ruleSetId], references: [id], onDelete: Cascade)
   name             String
   description      String?
-  type             String           // night|sunday|holiday|saturday|overtime|shift_24h|oncall_passive|oncall_active|custom
-  timeStart        String?          // HH:MM, null = full shift
-  timeEnd          String?          // HH:MM
-  daysOfWeek       Int[]            // 0=Sun…6=Sat, empty = all days
+  type             String // night|sunday|holiday|saturday|overtime|shift_24h|oncall_passive|oncall_active|custom
+  timeStart        String? // HH:MM, null = full shift
+  timeEnd          String? // HH:MM
+  daysOfWeek       Int[] // 0=Sun…6=Sat, empty = all days
   includeHolidays  Boolean          @default(false)
   excludeHolidays  Boolean          @default(false)
-  rateType         String           // percent | fixed_per_hour | fixed_per_shift
+  rateType         String // percent | fixed_per_hour | fixed_per_shift
   rateValue        Float
   priority         Int              @default(0)
   roundingMinutes  Int              @default(0)
@@ -797,10 +797,10 @@ model SurchargeWageConfig {
   id         String           @id @default(cuid())
   ruleSetId  String
   ruleSet    SurchargeRuleSet @relation(fields: [ruleSetId], references: [id], onDelete: Cascade)
-  employeeId String?          // null = location default
+  employeeId String? // null = location default
   hourlyWage Float
-  validFrom  String           // YYYY-MM-DD
-  validTo    String?          // YYYY-MM-DD, null = ongoing
+  validFrom  String // YYYY-MM-DD
+  validTo    String? // YYYY-MM-DD, null = ongoing
   createdAt  DateTime         @default(now())
 }
 
@@ -1010,7 +1010,7 @@ model PlanningPolicy {
   locationId              String    @id
   customerId              String
   // How to treat employees with excess hours before the planning run
-  defaultOvertimeHandling String    @default("normal")  // reduce | normal | compensate
+  defaultOvertimeHandling String    @default("normal") // reduce | normal | compensate
   // Minimum quality score required for automatic approval (0–100)
   minAutoApproveScore     Float     @default(80)
   // Abort the run immediately when the solver reports INFEASIBLE (vs. partial plan)
@@ -1028,14 +1028,14 @@ model PlanningPolicy {
 // covers vacations, absences, overtime adjustments and date-range requests.
 
 model EmployeeRequest {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   employeeId  String
   locationId  String
   customerId  String
   // Type of request (mirrors EmployeeRequestType in company-model-types.ts)
-  type        String   // shift_wish | day_off_wish | vacation | absence | overtime_reduce | overtime_compensate
-  status      String   @default("pending")   // pending | approved | rejected | expired
-  priority    String   @default("normal")    // low | normal | high | critical
+  type        String // shift_wish | day_off_wish | vacation | absence | overtime_reduce | overtime_compensate
+  status      String    @default("pending") // pending | approved | rejected | expired
+  priority    String    @default("normal") // low | normal | high | critical
   // Day-specific requests
   date        String?
   // Range requests (vacation, absence, consecutive days off)
@@ -1045,11 +1045,11 @@ model EmployeeRequest {
   shiftId     String?
   reason      String?
   // Audit
-  submittedAt  DateTime @default(now())
-  respondedAt  DateTime?
-  respondedBy  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  submittedAt DateTime  @default(now())
+  respondedAt DateTime?
+  respondedBy String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([employeeId])
   @@index([locationId])
@@ -1062,8 +1062,8 @@ model ShiftDemand {
   id         String   @id @default(cuid())
   locationId String
   shiftId    String
-  date       String?  // null = recurring rule
-  dayOfWeek  Int?     // 0=Sun…6=Sat; null = all days
+  date       String? // null = recurring rule
+  dayOfWeek  Int? // 0=Sun…6=Sat; null = all days
   minStaff   Int      @default(1)
   maxStaff   Int?
   note       String?
@@ -1079,12 +1079,12 @@ model PlanChange {
   id         String   @id @default(cuid())
   locationId String
   customerId String
-  sessionId  String?  // planning session that generated the original plan
+  sessionId  String? // planning session that generated the original plan
   employeeId String
   date       String
   oldShiftId String?
   newShiftId String?
-  changeType String   // assign | remove | swap
+  changeType String // assign | remove | swap
   changedBy  String
   reason     String?
   createdAt  DateTime @default(now())
@@ -1124,4 +1124,54 @@ model CustomConstraint {
 
   @@index([locationId])
   @@index([customerId])
+}
+
+// ── §100 Dateiablage ─────────────────────────────────────────────────────────
+// Fundament für Personalakte, Krankenscheine und Lohnbelege. Bis hierher gab es
+// im System überhaupt keine Möglichkeit, eine Datei abzulegen.
+//
+// Der Inhalt liegt standardmäßig in der Datenbank (Treiber "db"): Personalakten
+// sind klein, und der Dateispeicher von Railway ist nach jedem Neustart leer —
+// für Arbeitsverträge untauglich. Für größere Mengen kann später ein
+// S3-kompatibler Speicher dazukommen, ohne dass sich am Rest etwas ändert.
+
+model StoredFile {
+  id         String  @id @default(cuid())
+  customerId String
+  locationId String?
+
+  // Wem gehört die Datei: "employee" oder "location"
+  ownerType String
+  ownerId   String
+
+  // vertrag | zeugnis | bescheinigung | krankenschein | lohnabrechnung | sonstiges
+  kategorie String @default("sonstiges")
+
+  dateiname String
+  mimeType  String
+  groesse   Int
+
+  // Treiber "db": Inhalt hier. Treiber "s3": Schlüssel im Objektspeicher.
+  treiber          String  @default("db")
+  inhalt           Bytes?
+  objektSchluessel String?
+
+  // Steuert, ob der Mitarbeiter die Datei in seiner App sieht.
+  // Lohnabrechnung und Vertrag: ja. Interne Notizen: nein.
+  sichtbarFuerMitarbeiter Boolean @default(false)
+
+  hochgeladenVon     String
+  hochgeladenVonName String?
+  notiz              String?
+  gueltigVon         String?
+  gueltigBis         String?
+
+  createdAt DateTime  @default(now())
+  // Weiches Löschen: Personalunterlagen unterliegen Aufbewahrungsfristen,
+  // ein sofortiges Verschwinden wäre in vielen Fällen unzulässig.
+  deletedAt DateTime?
+
+  @@index([ownerType, ownerId])
+  @@index([customerId])
+  @@index([locationId])
 }

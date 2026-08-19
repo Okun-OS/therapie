@@ -16,6 +16,7 @@ import { Users, Plus, Search, Clock, TrendingUp, Palmtree, ChevronRight, Message
 import { Avatar } from '@/components/ui/Avatar'
 import type { Employee, OvertimeRequest, Absence } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
+import { Personalakte } from '@/components/employees/Personalakte'
 
 interface EmployeeHumanContext {
   strengths: string[]
@@ -501,6 +502,11 @@ export default function AdminEmployees() {
                   </div>
                 ))
               })()}
+            </div>
+
+            {/* §100 Personalakte: Vertrag, Zeugnisse, Bescheinigungen, Krankmeldungen */}
+            <div className="border border-gray-100 rounded-xl p-3">
+              <Personalakte ownerId={selectedEmployee.id} verwalten />
             </div>
 
             {selectedEmployee.preferences && (

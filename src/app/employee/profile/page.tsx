@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { useAuth } from '@/lib/auth-context'
 import { HumanContextChat } from '@/components/profile/HumanContextChat'
+import { Personalakte } from '@/components/employees/Personalakte'
 import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks, FileText, History, Calendar, Copy, Check } from 'lucide-react'
 import { formatDate, toDateString } from '@/lib/utils'
 import type { Employee, Location, ScheduleEntry, Shift, OvertimeRequest, Absence, MonthlyClosing } from '@/lib/types'
@@ -714,6 +715,13 @@ export default function EmployeeProfile() {
             setSavedHumanContext(next)
           }}
         />
+
+        {/* §100 Meine Unterlagen: Vertrag, Abrechnungen, eigene Krankmeldungen */}
+        {employee && (
+          <Card>
+            <Personalakte ownerId={employee.id} verwalten={false} titel="Meine Unterlagen" />
+          </Card>
+        )}
 
         {/* Security */}
         <Card>

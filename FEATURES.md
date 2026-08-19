@@ -27,10 +27,16 @@ aussieht.
 - [ ] **A2 Mitarbeiterprofil, Sicht des Mitarbeiters** — steht (781 Z.)
 - [ ] **A3 Einladung und Registrierung** — steht
 - [ ] **A4 Rollen und Rechte** — steht (Mitarbeiter / Admin / Unternehmen / OKUN)
-- [ ] **A5 Dateiablage** — **fehlt.** Kein Upload, kein Speicher, nirgends.
-      Fundament für A6, C4 und D3/D4. Offene Entscheidung: wohin die Dateien gehen.
-- [ ] **A6 Personalakte** — **fehlt.** Arbeitsvertrag, Zeugnisse, Bescheinigungen,
-      Krankenscheine. Hängt an A5.
+- [x] **A5 Dateiablage** — fertig und getestet. Inhalt liegt in der Datenbank
+      (Railways Dateispeicher ist nach jedem Neustart leer); ein S3-Speicher kann
+      später dazukommen, ohne dass sich am Rest etwas ändert. 10 MB je Datei,
+      nur PDF und Bilder. 19 Modultests, 18 Ende-zu-Ende-Checks am laufenden
+      System, 5 im Browser.
+- [x] **A6 Personalakte** — fertig und getestet. Arbeitsvertrag, Zeugnisse,
+      Bescheinigungen, Krankmeldungen. Vertrag und Lohnabrechnung sieht der
+      Mitarbeiter automatisch, alles Übrige nur nach ausdrücklicher Freigabe.
+      Der Mitarbeiter kann Krankmeldungen selbst einreichen, sich aber keinen
+      Vertrag in die Akte legen. Löschen ist weich (Aufbewahrungsfristen).
 
 ## B · Arbeitszeit
 
@@ -109,9 +115,10 @@ Siehe `PRODUKT-NOTIZEN.md`.
 
 | Zustand | Anzahl |
 |---|---|
-| steht, aber unbewiesen | 22 |
+| steht, aber unbewiesen | 20 |
+| abgehakt (getestet) | 2 |
 | teilweise | 2 |
-| fehlt | 11 |
+| fehlt | 9 |
 | bewusst nicht selbst | 1 |
 
 ## Vorschlag für die Reihenfolge
