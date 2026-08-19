@@ -1268,14 +1268,14 @@ export default function AdminSchedule() {
                   <div className="flex items-start gap-3">
                     <AlertTriangle size={24} className="text-amber-500 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <p className="font-bold text-amber-800">Unternehmens-Onboarding noch nicht abgeschlossen</p>
+                      <p className="font-bold text-amber-800">Standort noch nicht eingerichtet</p>
                       <p className="text-sm text-amber-700 mt-0.5">
-                        Die KI-Dienstplanung benötigt das abgeschlossene Unternehmens-Onboarding, damit sie dein Unternehmen, die Rollen und die grundlegenden Regeln kennt. Bitte schließe es zuerst ab.
+                        Für die Dienstplanung fehlen noch Grundlagen dieses Standorts: Betriebsform, Dienste, Struktur und Basisregeln. Der Einrichtungs-Assistent führt dich hindurch.
                       </p>
                     </div>
-                    <Link href="/company/onboarding">
+                    <Link href="/admin/setup">
                       <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white whitespace-nowrap flex-shrink-0 focus:ring-amber-500">
-                        Zum Onboarding
+                        Zur Einrichtung
                       </Button>
                     </Link>
                   </div>

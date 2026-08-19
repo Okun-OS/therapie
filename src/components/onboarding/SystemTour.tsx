@@ -306,16 +306,6 @@ const COMPANY_STEPS: TourStep[] = [
     spotlightSelector: '[data-tour="kpi-tiles"]',
   },
   {
-    emoji: '🤖',
-    title: 'KI für Ihr Unternehmen einrichten',
-    body: 'Der wichtigste Konfigurationsschritt.\n\nIm Unternehmens-Onboarding definieren Sie globale Regeln: Rollenmodell, unternehmensweite Regelungen, Führungsstruktur. Diese Regeln liest die KI bei jeder Dienstplan-Erstellung automatisch.',
-    tip: '„Noch nicht gestartet" bei einem Standort bedeutet: Die KI plant diesen Standort nur nach allgemeinen Regeln.',
-    path: '/company/onboarding',
-    spotlightSelector: '[data-tour="company-onboarding"]',
-    tryCta: 'KI-Onboarding starten',
-    tryPath: '/company/onboarding',
-  },
-  {
     emoji: '📅',
     title: 'Dienstpläne & Vertretungen',
     body: 'Alle Standortpläne auf einen Blick.\n\nDie Übersicht zeigt pro Standort und Wochentag wie viele Schichten besetzt sind. „Vollständig besetzt" (grün) = kein Handlungsbedarf.\n\nVertretungen zeigt alle offenen Ausfälle – inklusive „Org.-eskaliert".',

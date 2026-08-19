@@ -1182,3 +1182,61 @@ model StoredFile {
   @@index([customerId])
   @@index([locationId])
 }
+
+// ── §102 Lohn-Stammdaten am Mitarbeiter ──────────────────────────────────────
+// PayrollEntry verlangt Steuerklasse, Kinderfreibetraege, Versicherungsart,
+// Kirchensteuer, Bundesland und Lohn — beim Mitarbeiter stand davon nichts.
+// Jede Abrechnung haette diese Angaben neu gebraucht.
+//
+// Bewusst eine eigene Tabelle: Bankverbindung, Sozialversicherungs- und
+// Steuernummer sind besonders schutzwuerdig und haben nichts in derselben
+// Zeile wie der Anzeigename zu suchen. Nur Leitung, Unternehmen und der
+// Mitarbeiter selbst kommen heran.
+
+model EmployeePayrollProfile {
+  employeeId          String   @id
+  customerId          String?
+
+  // Zuordnung im Betrieb
+  personalnummer      String?
+  eintrittsdatum      String?
+  austrittsdatum      String?
+  befristetBis        String?
+  probezeitBis        String?
+
+  // Anschrift — steht auf jeder Lohnabrechnung
+  strasse             String?
+  plz                 String?
+  ort                 String?
+
+  // Steuer
+  steuerId            String?   // Steuerliche Identifikationsnummer (11-stellig)
+  steuerklasse        Int?      // 1–6
+  kinderfreibetraege  Float?    // z.B. 0, 0.5, 1, 1.5 …
+  konfession          String?   // keine | ev | rk | sonstige
+  bundesland          String?   // Kirchensteuersatz und Feiertage
+
+  // Sozialversicherung
+  sozialversicherungsnummer String?
+  versicherungsart    String?   // GKV | PKV
+  krankenkasse        String?
+  zusatzbeitrag       Float?    // Prozentpunkte der Krankenkasse
+  pkvBeitrag          Float?    // Monatsbeitrag bei privater Versicherung
+  rentenversicherungspflichtig Boolean @default(true)
+  schwerbehindert     Boolean   @default(false)
+
+  // Entgelt
+  lohnart             String?   // stunde | monat
+  stundenlohn         Float?
+  monatsgehalt        Float?
+
+  // Zahlung — Grundlage fuer die spaetere SEPA-Datei
+  iban                String?
+  bic                 String?
+  kontoinhaber        String?
+
+  notiz               String?
+  updatedAt           DateTime @updatedAt
+
+  @@index([customerId])
+}

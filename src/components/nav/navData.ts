@@ -142,64 +142,21 @@ const companyDock: DockItem[] = [
       title: 'Standorte',
       sections: [
         { items: [
-          { href: '/company/locations', label: 'Alle Standorte',  description: 'Übersicht & Vergleich',       icon: '📍' },
-          { href: '/company/bereiche',  label: 'Bereiche',        description: 'Organisationsstruktur & Bereichsleitung', icon: '🗂' },
-          { href: '/company/onboarding', label: 'KI-Onboarding', description: 'Neuen Standort einrichten', badge: 'KI', isGold: true, icon: '🤖' },
-          { href: '/company/model', label: 'Planungsmodell', description: 'Schichten, Regeln & Besetzung', icon: '📋' },
+          { href: '/company/locations', label: 'Alle Standorte', description: 'Standort öffnen und alles dazu sehen', icon: '📍' },
+          { href: '/company/bereiche',  label: 'Bereiche',       description: 'Organisationsstruktur & Bereichsleitung', icon: '🗂' },
         ]},
       ],
     },
   },
-  {
-    id: 'mitarbeiter', label: 'Mitarbeiter', icon: IcoMitarbeiter,
-    panel: {
-      title: 'Mitarbeiter',
-      sections: [
-        { items: [
-          { href: '/company/employees/[id]', label: 'Mitarbeiterprofile', description: 'Standortübergreifend', icon: '👤' },
-        ]},
-      ],
-    },
-  },
-  {
-    id: 'dienstplan', label: 'Dienstplanung', icon: IcoDienstplanung,
-    panel: {
-      title: 'Dienstplanung',
-      sections: [
-        { items: [
-          { href: '/company/schedule',       label: 'Alle Dienstpläne',     description: 'Standortübergreifende Ansicht', icon: '🗓' },
-          { href: '/company/vacation-plan',  label: 'Jahresurlaubsplanung', description: 'Unternehmensweite Übersicht',   icon: '📅' },
-          { href: '/company/substitutions',  label: 'Vertretungen',         description: 'Ausfallmanagement',             icon: '🔄' },
-        ]},
-      ],
-    },
-  },
+  { id: 'mitarbeiter', label: 'Mitarbeiter', icon: IcoMitarbeiter, href: '/company/employees' },
   {
     id: 'finanzen', label: 'Finanzen', icon: IcoFinanzen,
     panel: {
       title: 'Finanzen & Abrechnung',
       sections: [
         { items: [
-          { href: '/admin/payroll',    label: 'Lohnabrechnung',   description: 'Gehaltsabrechnungen aller Standorte',       badge: 'NEU', icon: '💰' },
-          { href: '/admin/surcharges', label: 'Zuschlags-Engine', description: 'Zuschläge, Prämien & Sonderzahlungen',       badge: 'NEU', icon: '⚡' },
-        ]},
-      ],
-    },
-  },
-  {
-    id: 'ki', label: 'KI & Analyse', icon: IcoKIAnalyse, isGold: true,
-    panel: {
-      title: 'KI & Analyse',
-      sections: [
-        { title: 'Intelligence', items: [
-          { href: '/company/workforce-score',    label: 'Workforce Score',    description: 'Unternehmensweite Performance', badge: 'KI', isGold: true, icon: '⚡' },
-          { href: '/company/workforce-insights', label: 'Workforce Insights', description: 'Tiefenanalyse',                  badge: 'KI', isGold: true, icon: '🔍' },
-          { href: '/company/fairness-engine',    label: 'Fairness Engine',    description: 'Gerechte Verteilung',             badge: 'KI', isGold: true, icon: '⚖️' },
-          { href: '/company/personnel-risk',     label: 'Personalrisiko',     description: 'Frühwarnsystem',                  badge: 'KI', isGold: true, icon: '🛡️' },
-          { href: '/company/controlling',        label: 'KI-Controlling',     description: 'Kennzahlen & Trends',             badge: 'KI', isGold: true, icon: '📈' },
-        ]},
-        { title: 'Berichte', items: [
-          { href: '/company/reports', label: 'Berichte & Export', description: 'Daten exportieren', icon: '📤' },
+          { href: '/admin/payroll',    label: 'Lohnabrechnung',   description: 'Abrechnungen aller Standorte', icon: '💰' },
+          { href: '/admin/surcharges', label: 'Zuschlags-Engine', description: 'Zuschläge, Prämien & Sonderzahlungen', icon: '⚡' },
         ]},
       ],
     },
@@ -211,12 +168,12 @@ const companyDock: DockItem[] = [
       sections: [
         { items: [
           { href: '/company/settings', label: 'Unternehmenseinstellungen', description: 'Globale Konfiguration', icon: '⚙️' },
+          { href: '/company/reports',  label: 'Berichte & Export',         description: 'Daten exportieren',      icon: '📤' },
           { href: '/company/support',  label: 'Support & Hilfe',           description: 'Hilfe & Kontakt',        icon: '💬' },
         ]},
       ],
     },
   },
-  { id: 'assistent', label: 'OKUN Assistent', icon: IcoOKUNAssistent, href: '/admin/assistant', isGold: true },
 ]
 
 // ── OKUN Platform ────────────────────────────────────────────────

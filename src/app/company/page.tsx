@@ -29,17 +29,11 @@ export default function CompanyDashboard() {
   const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
   const [TIME_LOGS, setTIME_LOGS] = useState<TimeLog[]>([])
 
-  // Beim ersten Login eines neuen Unternehmens ist das KI-Onboarding (Modul 02) noch
-  // nicht abgeschlossen – dann startet es automatisch statt des Dashboards,
-  // statt sich hinter einem Sidebar-Link zu verstecken.
-  useEffect(() => {
-    fetch('/api/onboarding')
-      .then(r => r.json())
-      .then(json => {
-        if (!json.organization?.completed) router.replace('/company/onboarding')
-      })
-      .catch(() => {})
-  }, [router])
+  // §105 Das KI-Onboarding auf Unternehmensebene ist entfallen. Es hat
+  // Unternehmens- und Standortdaten per Sprachmodell erfasst — dieselbe
+  // Aufgabe erledigen jetzt die Unternehmenseinstellungen und der
+  // Einrichtungs-Assistent am Standort, ohne Umweg über eine KI.
+  // Ein neues Unternehmen landet damit direkt im Dashboard.
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))

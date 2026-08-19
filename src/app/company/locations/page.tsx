@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -418,6 +420,13 @@ export default function CompanyLocations() {
             </div>
 
             <div className="flex flex-col gap-2">
+              {/* §104 Standort öffnen: dort liegt alles zu diesem Standort */}
+              <Link href={`/company/locations/${selectedStats.id}`} className="w-full">
+                <Button className="w-full gap-2">
+                  <Building2 size={15} />
+                  Standort öffnen
+                </Button>
+              </Link>
               {!selectedStats.admin && (
                 <Button
                   className="w-full gap-2"

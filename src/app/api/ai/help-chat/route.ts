@@ -42,7 +42,7 @@ OKUN Workforce hat vier Rollen:
 
 ### Unternehmensebene (company)
 - Übersicht (/company): Unternehmensweites Dashboard mit Kennzahlen aller Standorte
-- KI-Onboarding (/company/onboarding): Unternehmens- und Standortdaten per KI-Dialog einrichten
+- Einrichtungs-Assistent (/admin/setup): Betriebsform, Dienste, Struktur, Team und Regeln eines Standorts einrichten
 - Standorte (/company/locations): Alle Standorte verwalten und einsehen
 - Dienstpläne (/company/schedule): Dienstpläne aller Standorte im Überblick
 - Jahresurlaubsplanung (/company/vacation-plan): Unternehmensweite Urlaubsplanung erstellen

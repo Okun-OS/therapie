@@ -156,18 +156,30 @@ getestet ist** — nicht wenn es vorbereitet ist.
 - [x] **7 KI-Chat entfernt** — Komponente, Entwurfsmodul und KI-Route gelöscht
 
 ## Mitarbeiter-Ablauf
-- [ ] **8 Lohn-Stammdaten am Mitarbeiter** — Steuerklasse, Kinderfreibeträge,
-      Versicherung, Kirchensteuer, Bundesland, Lohn, Steuer-ID, SV-Nummer,
-      Krankenkasse, Bankverbindung, Adresse, Ein- und Austritt
-- [ ] **9 Anlegen auf Unternehmensebene** mit allen Angaben, danach Zuordnung
-      zu einem Standort
-- [ ] **10 Am Standort nur noch dienstplanbezogene Angaben** ändern
+- [x] **8 Lohn-Stammdaten am Mitarbeiter** — eigene, streng geschützte Tabelle:
+      Steuerklasse, Kinderfreibeträge, Konfession, Bundesland, Versicherungsart,
+      Krankenkasse mit Zusatzbeitrag, SV-Nummer, Steuer-ID, Lohnart mit Stunden-
+      oder Monatslohn, IBAN/BIC, Anschrift, Ein- und Austritt, Probezeit,
+      Befristung, Schwerbehinderung. Sie speisen die Abrechnung wirklich:
+      „Abrechnung vorbereiten" übernimmt sie und benennt, wo etwas fehlt.
+- [x] **9 Anlegen auf Unternehmensebene** — neue Seite mit Liste, Suche,
+      Standortfilter, Warnung bei Mitarbeitern ohne Standort, Anlegen samt
+      Einladung und anschließender Standortzuordnung per Klick
+- [x] **10 Am Standort nur noch dienstplanbezogene Angaben** — Gruppe, Bereich,
+      feste freie Tage, Qualifikationen. Lohn und Bank bleiben Sache des
+      Unternehmens; eine fremde Standortleitung kommt an beides nicht heran
 
 ## Unternehmensebene aufräumen
-- [ ] **11 Dienstplanung entfernen** (Dienstpläne, Urlaubsplanung, Vertretungen)
-- [ ] **12 Planungsmodell und Regeln entfernen**
-- [ ] **13 Scores und KI-Analyse entfernen** (Workforce Score, Insights,
-      Fairness Engine, Personalrisiko, KI-Controlling)
-- [ ] **14 Standort öffnen und dort alles sehen** — Dienstpläne, Urlaub,
-      Mitarbeiter, Regeln, Vertretungen, Auswertungen
-- [ ] **15 Unternehmensonboarding** prüfen und entfernen, wenn überflüssig
+- [x] **11 Dienstplanung aus der Unternehmens-Navigation entfernt** — erreichbar
+      über den jeweiligen Standort
+- [x] **12 Planungsmodell entfernt** (`/company/model` gelöscht, liefert 404)
+- [x] **13 Scores und KI-Analyse entfernt** — alle fünf Seiten gelöscht, im Test
+      alle mit 404 nachgewiesen; auf Standortebene bleiben sie erhalten
+- [x] **14 Standort öffnen und dort alles sehen** — neues Standort-Cockpit mit
+      Kennzahlen, offenen Punkten, Basiswerten, Struktur nach Etagen, Mitarbeiter-
+      liste und Wegen zu Dienstplan, Urlaub, Vertretungen, Regeln, Auswertungen
+- [x] **15 Unternehmensonboarding entfernt** — es erfasste Unternehmens- und
+      Standortdaten per Sprachmodell. Dieselbe Aufgabe erledigen jetzt die
+      Unternehmenseinstellungen und der Einrichtungs-Assistent am Standort.
+      Die Zwangsweiterleitung beim ersten Login ist ebenfalls weg, ebenso der
+      Tour-Schritt und alle Verweise darauf.

@@ -143,11 +143,6 @@ const COMPANY_BANNERS: Record<string, BannerConfig> = {
     text: 'Gruppieren Sie Standorte in Bereiche (z.B. „Nord", „Süd", „Kitas") und weisen Sie Bereichsleitungen zu. Bereiche ermöglichen Auswertungen auf Bereichsebene.',
     cta: 'Bereich anlegen',
   },
-  '/company/onboarding': {
-    title: 'KI auf Unternehmensebene',
-    text: 'Der globalste Konfigurationsschritt: Unternehmensweite Regeln die für alle Standorte gelten. Status je Standort zeigt ob die KI-Konfiguration vollständig ist.',
-    cta: 'KI konfigurieren',
-  },
   '/company/employees': {
     title: 'Standortübergreifend suchen',
     text: 'Suchen Sie Mitarbeitende über alle Standorte hinweg. Sehen Sie Profil, Stundenkonto, Resturlaub und Diensthistorie – ohne Standortwechsel.',
@@ -167,31 +162,6 @@ const COMPANY_BANNERS: Record<string, BannerConfig> = {
     title: 'Ausfälle unternehmensweit',
     text: '„Org.-eskaliert" = ein Standort konnte den Ausfall nicht selbst lösen. Die vier Kacheln oben zeigen: Offen / Dringend / Besetzt / Org.-eskaliert.',
     cta: 'Vertretungen prüfen',
-  },
-  '/company/workforce-score': {
-    title: 'Rangliste & Bonus konfigurieren',
-    text: 'Sehen Sie die unternehmensweite Leistungsrangliste (Bronze bis Diamant). Exklusiv auf GF-Ebene: Definieren Sie Bonus-Texte pro Level.',
-    cta: 'Bonustexte definieren',
-  },
-  '/company/workforce-insights': {
-    title: 'Performance im Detail',
-    text: 'Aggregierte KPIs über alle Standorte: Ø Workforce Score, Pünktlichkeit, Vertretungs-Erfolgsquote, Schicht-Level-Verteilung, Eskalationsstufen.',
-    cta: 'Insights erkunden',
-  },
-  '/company/fairness-engine': {
-    title: 'Fairness über alle Standorte',
-    text: '4-Wochen-Gedächtnis: Die Engine sieht WER schon zu viele Wochenenddienste hatte und gleicht automatisch aus. Ø Fairness-Score unter 60 = Handlungsbedarf.',
-    cta: 'Fairness prüfen',
-  },
-  '/company/personnel-risk': {
-    title: 'Frühwarnsystem Burnout & Fluktuation',
-    text: 'Unternehmensweite Risikokategorien: Burnout-Risiko (Überstunden + unfaire Pläne), Fluktuationsrisiko und Unterbesetzungsrisiko für die nächsten 21 Tage.',
-    cta: 'Risiken ansehen',
-  },
-  '/company/controlling': {
-    title: 'Ihr Management-Cockpit',
-    text: '15 Management-Kennzahlen – von Fairness-Score bis Dienstplanstabilität – auf einer Seite. Am Seitenende: Direktfragen an die KI.',
-    cta: 'Cockpit öffnen',
   },
   '/company/reports': {
     title: 'Daten für externe Auswertung',

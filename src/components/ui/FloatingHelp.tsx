@@ -36,11 +36,9 @@ const PAGE_LABELS: Record<string, string> = {
   '/employee/substitutions': 'Vertretungen',
   '/employee/workforce-score': 'Mein Level',
   '/company': 'Unternehmens-Dashboard',
-  '/company/onboarding': 'Unternehmens-Onboarding',
   '/company/locations': 'Standorte',
   '/company/schedule': 'Alle Dienstpläne',
   '/company/vacation-plan': 'Jahresurlaubsplanung',
-  '/company/controlling': 'KI-Controlling',
   '/company/settings': 'Einstellungen',
 }
 

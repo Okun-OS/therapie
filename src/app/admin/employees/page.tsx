@@ -17,6 +17,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import type { Employee, OvertimeRequest, Absence } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 import { Personalakte } from '@/components/employees/Personalakte'
+import { LohnStammdaten } from '@/components/employees/LohnStammdaten'
 
 interface EmployeeHumanContext {
   strengths: string[]
@@ -503,6 +504,9 @@ export default function AdminEmployees() {
                 ))
               })()}
             </div>
+
+            {/* §102 Lohn-Stammdaten — Grundlage jeder Abrechnung */}
+            <LohnStammdaten employeeId={selectedEmployee.id} />
 
             {/* §100 Personalakte: Vertrag, Zeugnisse, Bescheinigungen, Krankmeldungen */}
             <div className="border border-gray-100 rounded-xl p-3">
