@@ -42,7 +42,7 @@ const PRIORITY_LABELS: Record<string, string> = {
   low: 'Niedrig',
 }
 
-export default function EmployeeRequestsPage() {
+export function Dienstwuensche() {
   const { user } = useAuth()
   const locationId = user?.locationId
   const [requests, setRequests] = useState<EmployeeRequest[]>([])
@@ -180,3 +180,4 @@ export default function EmployeeRequestsPage() {
     </div>
   )
 }
+

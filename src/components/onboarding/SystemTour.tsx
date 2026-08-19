@@ -207,7 +207,7 @@ const ADMIN_STEPS: TourStep[] = [
     emoji: '⚖️',
     title: 'Fairness Engine',
     body: 'OKUN plant nicht nur schnell – es plant fair.\n\nWer hatte schon Frühdienst? Wer viele Wochenenddienste? Die Engine gleicht das automatisch aus – und zeigt dir sofort wer einen Score-Alarm hat.',
-    path: '/admin/fairness-engine',
+    path: '/admin/auswertungen',
     spotlightSelector: '[data-tour="fairness-score"]',
   },
   {

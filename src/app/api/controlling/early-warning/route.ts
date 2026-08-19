@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       type: warning.type,
       title: warning.title,
       body: warning.body,
-      url: '/admin/controlling',
+      url: '/admin/auswertungen',
     })
     created++
   }

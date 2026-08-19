@@ -19,16 +19,12 @@ OKUN Workforce hat vier Rollen:
 - Mitarbeiter (/admin/employees): Mitarbeiter per KI-Chat oder klassischem Formular anlegen; Arbeitszeitmodell, Qualifikationen, Besonderheiten erfassen
 - Dienstplan (/admin/schedule): KI-Dienstplan für beliebige Zeiträume erstellen; per Chat anpassen; Schichten publizieren
 - Kalender (/admin/calendar): Monatsübersicht aller Dienste
-- Urlaubsanträge (/admin/vacation-requests): Eingereichte Urlaubsanträge genehmigen/ablehnen mit KI-Empfehlung
-- Urlaubsplan (/admin/vacation-plan): Jahresurlaubsplanung per KI erstellen und freigeben
+- Urlaub & Wünsche (/admin/urlaub): Urlaubsanträge genehmigen, Jahresplanung, Dienstwünsche — auf einer Seite umschaltbar
 - Aufgaben (/admin/tasks): Aufgaben anlegen und verwalten
 - Zeiterfassung (/admin/time-tracking): Arbeitszeiterfassung aller Mitarbeiter prüfen, Überstunden genehmigen, Monatsabschluss durchführen
 - Vertretungen (/admin/substitutions): Schichtvertretungen per KI finden und organisieren
 - Workforce Score (/admin/workforce-score): Gamification-Score der Mitarbeiter einsehen
-- Workforce Insights (/admin/workforce-insights): KI-Analysen zu Mitarbeitereinsatz und -verhalten
-- Fairness Engine (/admin/fairness-engine): Fairness-Scores bei der Schichtzuteilung prüfen
-- Personalrisiko (/admin/personnel-risk): Risikobewertung für Personalengpässe
-- KI-Controlling (/admin/controlling): Dashboard mit Personalrisiken, Überstunden-Trends, Handlungsempfehlungen
+- Auswertungen (/admin/auswertungen): Team-Analyse, Verteilung, Personalrisiko und Kennzahlen auf einer Seite
 - Berichte (/admin/reports): Arbeitszeitberichte und Auswertungen
 - OKUN Assistent (/admin/assistant): Vollständiger KI-Assistent mit direktem Datenzugriff — kann Dienstpläne, Mitarbeiter, Urlaube und mehr direkt abfragen und ändern
 

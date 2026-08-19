@@ -183,3 +183,24 @@ getestet ist** — nicht wenn es vorbereitet ist.
       Unternehmenseinstellungen und der Einrichtungs-Assistent am Standort.
       Die Zwangsweiterleitung beim ersten Login ist ebenfalls weg, ebenso der
       Tour-Schritt und alle Verweise darauf.
+
+---
+
+# Aufräumen der Menüs (18.08.2026)
+
+- [x] **Standortebene: Dienstplanung von 7 auf 4** — Dienstplan, Kalender,
+      Urlaub & Wünsche, Vertretungen. Urlaubsanträge, Jahresplanung und
+      Dienstwünsche liegen jetzt auf einer Seite mit Umschaltung.
+- [x] **Standortebene: Auswertungen von 6 auf 3** — Workforce Insights,
+      Fairness, Personalrisiko und Controlling sind eine Seite mit vier
+      Ansichten; daneben nur noch Workforce Score und Berichte.
+- [x] **Irreführende KI-Marken entfernt** — Dienstplan, Urlaub und Vertretungen
+      trugen goldene „KI"-Abzeichen. Die Planung rechnet mit einem Solver, und
+      aus der Vertretung wurde die KI bewusst entfernt.
+- [x] **Doppeltes Icon behoben** — „KI & Analyse" und „OKUN Assistent" waren
+      beide derselbe goldene Stern. Auswertungen bekommen ein Diagramm-Symbol,
+      der Assistent ein Frage-Symbol.
+- [x] **Aufgabenkatalog in die Einstellungen** — er ist Konfiguration, keine
+      tägliche Planung.
+- [x] **Sieben Routen entfernt**, alle Verweise, Benachrichtigungs-Ziele,
+      Hilfetexte und Tour-Schritte mitgezogen.

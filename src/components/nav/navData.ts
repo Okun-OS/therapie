@@ -65,51 +65,41 @@ const employeeDock: DockItem[] = [
 // ── Admin (Standortleitung) ──────────────────────────────────────
 const adminDock: DockItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: IcoDashboard, href: '/admin' },
+  { id: 'mitarbeiter', label: 'Mitarbeiter', icon: IcoMitarbeiter, href: '/admin/employees' },
   {
-    id: 'mitarbeiter', label: 'Mitarbeiter', icon: IcoMitarbeiter,
-    panel: {
-      title: 'Mitarbeiter',
-      sections: [
-        { items: [
-          { href: '/admin/employees', label: 'Alle Mitarbeiter', description: 'Übersicht, Profile & Bearbeitung', icon: '👥' },
-        ]},
-      ],
-    },
-  },
-  {
+    // §106 Von sieben Menuepunkten auf vier. Zusammengelegt wurde, was
+    // dieselbe Frage beantwortet: Urlaub, Jahresplanung und Dienstwuensche
+    // liegen jetzt auf einer Seite.
+    //
+    // Die goldenen "KI"-Marken sind weg: die Dienstplanung rechnet mit einem
+    // Solver, und aus der Vertretung wurde die KI bewusst entfernt. Ein
+    // Abzeichen, das etwas verspricht, was nicht stattfindet, ist schaedlich.
     id: 'dienstplan', label: 'Dienstplanung', icon: IcoDienstplanung,
     panel: {
       title: 'Dienstplanung',
       sections: [
-        { title: 'Planung', items: [
-          { href: '/admin/schedule',  label: 'Dienstplan erstellen', description: 'KI-gestützte Wochenplanung', badge: 'KI', isGold: true, icon: '🗓' },
-          { href: '/admin/calendar',  label: 'Kalender',             description: 'Monatsübersicht',             icon: '📅' },
-        ]},
-        { title: 'Verwaltung', items: [
-          { href: '/admin/vacation-requests',  label: 'Urlaubsanträge',     description: 'Genehmigen & ablehnen',    badge: 'KI', isGold: true, icon: '🌴' },
-          { href: '/admin/employee-requests',  label: 'Dienstwünsche',       description: 'Schichtwünsche & Anträge', icon: '⭐' },
-          { href: '/admin/vacation-plan',      label: 'Urlaubsplan',         description: 'Jahresplanung',            badge: 'KI', isGold: true, icon: '📊' },
-          { href: '/admin/tasks',              label: 'Aufgaben',            description: 'To-dos & Checklisten',     icon: '✅' },
-          { href: '/admin/substitutions',      label: 'Vertretungen',        description: 'Ausfälle & Ersatz',        badge: 'KI', isGold: true, icon: '🔄' },
+        { items: [
+          { href: '/admin/schedule',       label: 'Dienstplan',       description: 'Wochenplanung erstellen und veröffentlichen', icon: '🗓' },
+          { href: '/admin/calendar',       label: 'Kalender',         description: 'Monatsübersicht',                            icon: '📅' },
+          { href: '/admin/urlaub',         label: 'Urlaub & Wünsche', description: 'Anträge, Jahresplanung, Dienstwünsche',      icon: '🌴' },
+          { href: '/admin/substitutions',  label: 'Vertretungen',     description: 'Ausfälle und Einspringen',                   icon: '🔄' },
         ]},
       ],
     },
   },
   { id: 'zeit', label: 'Zeiterfassung', icon: IcoZeitUrlaub, href: '/admin/time-tracking' },
   {
-    id: 'ki', label: 'KI & Analyse', icon: IcoKIAnalyse, isGold: true,
+    // §106 Fuenf Analyseseiten auf denselben Daten wurden eine Seite mit
+    // Umschaltung. Der Workforce Score gehoert fachlich zum Team und steht
+    // deshalb daneben, nicht darin.
+    id: 'auswertung', label: 'Auswertungen', icon: IcoKIAnalyse,
     panel: {
-      title: 'KI & Analyse',
+      title: 'Auswertungen',
       sections: [
-        { title: 'Intelligence', items: [
-          { href: '/admin/workforce-score',    label: 'Workforce Score',    description: 'Team-Performance',    badge: 'KI', isGold: true, icon: '⚡' },
-          { href: '/admin/workforce-insights', label: 'Workforce Insights', description: 'Tiefenanalyse',       badge: 'KI', isGold: true, icon: '🔍' },
-          { href: '/admin/fairness-engine',    label: 'Fairness Engine',    description: 'Gerechte Verteilung', badge: 'KI', isGold: true, icon: '⚖️' },
-          { href: '/admin/personnel-risk',     label: 'Personalrisiko',     description: 'Frühwarnsystem',      badge: 'KI', isGold: true, icon: '🛡️' },
-          { href: '/admin/controlling',        label: 'KI-Controlling',     description: 'Kennzahlen & Trends', badge: 'KI', isGold: true, icon: '📈' },
-        ]},
-        { title: 'Berichte', items: [
-          { href: '/admin/reports', label: 'Berichte & Export', description: 'Daten exportieren', icon: '📤' },
+        { items: [
+          { href: '/admin/auswertungen',    label: 'Team & Kennzahlen', description: 'Analyse, Verteilung, Risiko, Trends', icon: '📊' },
+          { href: '/admin/workforce-score', label: 'Workforce Score',   description: 'Punkte und Stufen des Teams',         icon: '⚡' },
+          { href: '/admin/reports',         label: 'Berichte & Export', description: 'Daten exportieren',                   icon: '📤' },
         ]},
       ],
     },
@@ -119,21 +109,18 @@ const adminDock: DockItem[] = [
     panel: {
       title: 'Einstellungen',
       sections: [
-        // §87: EIN Einstiegspunkt für die Einrichtung. Der Wizard schreibt genau
-        // die Daten, die der Dienstplan liest. Die Detailseiten bleiben per Link
-        // aus dem Wizard erreichbar, aber nicht mehr als konkurrierende Reiter.
         { items: [
-          { href: '/admin/setup',                   label: 'Einrichtung',            description: 'Betriebsform, Struktur, Dienste, Team & Regeln — alles an einem Ort', badge: 'START', icon: '🚀' },
-          { href: '/admin/model',                   label: 'Regeln & Wartung',       description: 'Code-Regeln prüfen, Standort zurücksetzen',           icon: '📋' },
-          { href: '/company/support',               label: 'Support & Hilfe',        description: 'Hilfe & Kontakt',                                     icon: '💬' },
+          { href: '/admin/setup',     label: 'Einrichtung',      description: 'Betriebsform, Struktur, Dienste, Team & Regeln', badge: 'START', icon: '🚀' },
+          { href: '/admin/model',     label: 'Regeln & Wartung', description: 'Regeln prüfen, Standort zurücksetzen',           icon: '📋' },
+          { href: '/admin/tasks',     label: 'Aufgabenkatalog',  description: 'To-dos und Checklisten für Dienste',             icon: '✅' },
+          { href: '/company/support', label: 'Support & Hilfe',  description: 'Hilfe & Kontakt',                                icon: '💬' },
         ]},
       ],
     },
   },
-  { id: 'assistent', label: 'OKUN Assistent', icon: IcoOKUNAssistent, href: '/admin/assistant', isGold: true, badge: 'NEU' },
+  { id: 'assistent', label: 'OKUN Assistent', icon: IcoOKUNAssistent, href: '/admin/assistant', isGold: true },
 ]
 
-// ── Company (Unternehmensebene) ──────────────────────────────────
 const companyDock: DockItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: IcoDashboard, href: '/company' },
   {

@@ -3,7 +3,7 @@ import {
   Sparkles, Settings, MapPin, Search, Sun, CalendarPlus,
   Calendar, CalendarX, CheckSquare, Repeat, BarChart2,
   TrendingUp, ShieldAlert, HelpCircle, UserCircle, Receipt,
-  Percent, Scale, Bot,
+  Percent, Scale, Bot, MessageCircleQuestion, BarChart3,
 } from 'lucide-react'
 
 interface IconProps {
@@ -25,7 +25,7 @@ export const IcoMitarbeiter         = navIcon(Users)
 export const IcoDienstplanung       = navIcon(CalendarDays)
 export const IcoZeitUrlaub          = navIcon(Clock)
 export const IcoFinanzen            = navIcon(DollarSign)
-export const IcoKIAnalyse           = navIcon(Sparkles, gold)
+export const IcoKIAnalyse           = navIcon(BarChart3)
 export const IcoEinstellungen       = navIcon(Settings)
 export const IcoStandorte           = navIcon(MapPin)
 export const IcoSuche               = navIcon(Search)
@@ -44,4 +44,6 @@ export const IcoLohnabrechnung      = navIcon(Receipt)
 export const IcoZuschlagsEngine     = navIcon(Percent)
 export const IcoFairnessEngine      = navIcon(Scale)
 export const IcoKIOnboarding        = navIcon(Bot)
-export const IcoOKUNAssistent       = navIcon(Sparkles, gold)
+// §106 Eigenes Icon: der Assistent hatte denselben goldenen Stern wie
+// die Auswertungen — zwei Menuepunkte, ein Symbol.
+export const IcoOKUNAssistent       = navIcon(MessageCircleQuestion, gold)

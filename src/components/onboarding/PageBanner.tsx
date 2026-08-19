@@ -54,26 +54,6 @@ const ADMIN_BANNERS: Record<string, BannerConfig> = {
     text: 'Die Rangliste zeigt Mitarbeitende nach ihrem Workforce Score – von Bronze bis Diamant. Der Score steigt durch Pünktlichkeit, Vertretungsbereitschaft und positive Zeiterfassung.',
     cta: 'Rangliste ansehen',
   },
-  '/admin/workforce-insights': {
-    title: 'Tiefenanalyse deines Teams',
-    text: 'Aggregierte KPIs: Pünktlichkeit, Vertretungs-Erfolgsquote, unterbesetzte Schichten, Abwesenheitsquote. Alle Werte werden automatisch aus Zeiterfassung und Dienstplan berechnet.',
-    cta: 'Insights entdecken',
-  },
-  '/admin/fairness-engine': {
-    title: 'Faire Verteilung für alle',
-    text: 'Die Engine analysiert die letzten 4 Wochen und zeigt Fairness-Warnungen pro Mitarbeiter. Spalten: Frühdienste, Spätdienste, Wochenenddienste, Folgetage. Rot = Grenzwert überschritten.',
-    cta: 'Fairness prüfen',
-  },
-  '/admin/personnel-risk': {
-    title: 'Frühwarnsystem für dein Team',
-    text: '3 Risikokategorien: Burnout-Risiko (Überstunden + unfaire Verteilung), Fluktuationsrisiko und Unterbesetzungsrisiko (freie Schichten in den nächsten 21 Tagen).',
-    cta: 'Risiken ansehen',
-  },
-  '/admin/controlling': {
-    title: 'Dein KI-Lagebericht',
-    text: 'Die KI fasst täglich die wichtigsten Ereignisse zusammen – kritische Alerts (rot), Warnungen (orange), positive Meldungen (grün). Darunter: KPIs und die heutige Personalübersicht.',
-    cta: 'Lagebericht lesen',
-  },
   '/admin/reports': {
     title: 'Daten exportieren',
     text: 'Exportiere Stunden- und Dienstplandaten als PDF oder Excel. Das Balkendiagramm zeigt Stunden pro Monat im Jahresüberblick.',
@@ -88,16 +68,6 @@ const ADMIN_BANNERS: Record<string, BannerConfig> = {
     title: 'Das Gehirn der KI',
     text: 'Alles was du hier eingibst, liest die KI bei jeder Dienstplan-Erstellung automatisch. Schichten, Regeln, Sonderzeiten, Personalstruktur – je genauer, desto besser der Plan.',
     cta: 'Beschreibung prüfen',
-  },
-  '/admin/vacation-requests': {
-    title: 'Urlaubsanträge verwalten',
-    text: 'Hier siehst du alle eingereichten Urlaubsanträge deiner Mitarbeitenden. Genehmige oder lehne Anträge direkt ab – die Mitarbeitenden werden sofort benachrichtigt.',
-    cta: 'Anträge prüfen',
-  },
-  '/admin/vacation-plan': {
-    title: 'Jahresurlaubsplan',
-    text: 'Übersicht aller geplanten Urlaubszeiträume für das laufende Jahr – geordnet nach Mitarbeitenden. Erkenne Engpässe frühzeitig und plane entsprechend.',
-    cta: 'Jahresplan ansehen',
   },
   '/admin/substitutions': {
     title: 'Vertretungen koordinieren',

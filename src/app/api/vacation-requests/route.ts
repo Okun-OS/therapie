@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       title: 'Neuer Urlaubsantrag',
       body: `${request.employeeName} hat einen Urlaubsantrag vom ${request.startDate} bis ${request.endDate} eingereicht.`,
       requestId: request.id,
-      url: '/admin/vacation-requests',
+      url: '/admin/urlaub',
     }).catch(() => null)
   }
 

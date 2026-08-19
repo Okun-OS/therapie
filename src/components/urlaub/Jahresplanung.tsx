@@ -57,7 +57,7 @@ const AI_STEPS = [
   'Finalisiere Urlaubsplan...',
 ]
 
-export default function VacationPlanPage() {
+export function Jahresplanung() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
@@ -702,3 +702,4 @@ export default function VacationPlanPage() {
     </>
   )
 }
+

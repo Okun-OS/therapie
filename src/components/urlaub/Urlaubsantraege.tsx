@@ -23,7 +23,7 @@ function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: strin
   return aStart <= bEnd && bStart <= aEnd
 }
 
-export default function AdminVacationRequests() {
+export function Urlaubsantraege() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const locationId = user?.locationId
@@ -339,3 +339,4 @@ export default function AdminVacationRequests() {
     </>
   )
 }
+

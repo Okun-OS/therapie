@@ -187,7 +187,7 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Urlaubsanträge</CardTitle>
-              <Link href="/admin/vacation-requests" className="text-xs text-brand font-semibold flex items-center gap-1 hover:underline">
+              <Link href="/admin/urlaub" className="text-xs text-brand font-semibold flex items-center gap-1 hover:underline">
                 Alle <ChevronRight size={12} />
               </Link>
             </CardHeader>
@@ -221,7 +221,7 @@ export default function AdminDashboard() {
             {[
               { href: '/admin/employees', icon: Users, label: 'Mitarbeiter', color: 'bg-blue-50 text-blue-600' },
               { href: '/admin/schedule', icon: Calendar, label: 'Dienstplan KI', color: 'bg-purple-50 text-purple-600' },
-              { href: '/admin/vacation-requests', icon: Palmtree, label: 'Urlaub prüfen', color: 'bg-amber-50 text-amber-600' },
+              { href: '/admin/urlaub', icon: Palmtree, label: 'Urlaub prüfen', color: 'bg-amber-50 text-amber-600' },
               { href: '/admin/reports', icon: TrendingUp, label: 'Berichte', color: 'bg-green-50 text-green-600' },
             ].map(({ href, icon: Icon, label, color }) => (
               <Link key={href} href={href}>
