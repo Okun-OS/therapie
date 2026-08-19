@@ -19,6 +19,7 @@ import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import { getPublicHolidayName } from '@/lib/holidays'
 import { displayColors, SHIFT_PALETTE } from '@/lib/shift-colors'
+import { AusfallDialog, type AusfallDaten } from '@/components/schedule/AusfallDialog'
 import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, PlanningUnit, TaskBlock } from '@/lib/types'
 import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import type { PlanBewertung } from '@/lib/company-model-types'
@@ -142,6 +143,8 @@ export default function AdminSchedule() {
     ruleNames: string[]
   }[] | null>(null)
   const [manualPickerCell, setManualPickerCell] = useState<{ empId: string; dateStr: string } | null>(null)
+  // §101 Dienstausfall statt KI-Chat
+  const [ausfall, setAusfall] = useState<AusfallDaten | null>(null)
   const [customTimeShiftId, setCustomTimeShiftId] = useState('')
   const [customStartTime, setCustomStartTime] = useState('')
   const [customEndTime, setCustomEndTime] = useState('')
@@ -2219,6 +2222,21 @@ export default function AdminSchedule() {
       </Modal>
 
       {/* Manual Shift Picker Modal */}
+      {/* §101 Dienstausfall */}
+      <AusfallDialog
+        daten={ausfall}
+        kollegen={employees
+          .filter(e => e.locationId === locationId)
+          .map(e => ({ id: e.id, name: e.name, gruppe: e.gruppe }))}
+        onClose={() => setAusfall(null)}
+        onErledigt={() => {
+          if (!locationId) return
+          fetch(`/api/schedule-entries?locationId=${locationId}`)
+            .then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries ?? []))
+            .catch(() => {})
+        }}
+      />
+
       <Modal open={!!manualPickerCell} onClose={() => { setManualPickerCell(null); setCustomTimeShiftId(''); setCustomStartTime(''); setCustomEndTime('') }} title="Schicht bearbeiten" size="sm">
         {manualPickerCell && (() => {
           const pickerEmp = employees.find(e => e.id === manualPickerCell.empId)
@@ -2231,12 +2249,34 @@ export default function AdminSchedule() {
                   <span className="font-semibold">{pickerEmp?.name}</span> · {formatDateShort(manualPickerCell.dateStr)}
                 </p>
                 {currentAssignment && (
-                  <button
-                    onClick={() => handleManualRemove(manualPickerCell.empId, manualPickerCell.dateStr)}
-                    className="flex items-center gap-1 text-xs text-red-500 font-semibold hover:text-red-700 transition-colors"
-                  >
-                    <X size={12} /> Dienst entfernen
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {/* §101 Ausfall: Dienst raus aus dem Plan UND Kollegen fragen */}
+                    <button
+                      onClick={() => {
+                        if (!locationId) return
+                        setAusfall({
+                          locationId,
+                          date: manualPickerCell.dateStr,
+                          startTime: currentAssignment.startTime,
+                          endTime: currentAssignment.endTime,
+                          shiftId: currentAssignment.shift.id,
+                          shiftName: currentAssignment.shift.name,
+                          originalEmployeeId: manualPickerCell.empId,
+                          originalEmployeeName: pickerEmp?.name,
+                        })
+                        setManualPickerCell(null)
+                      }}
+                      className="flex items-center gap-1 text-xs text-amber-600 font-semibold hover:text-amber-700 transition-colors"
+                    >
+                      <AlertTriangle size={12} /> Fällt aus
+                    </button>
+                    <button
+                      onClick={() => handleManualRemove(manualPickerCell.empId, manualPickerCell.dateStr)}
+                      className="flex items-center gap-1 text-xs text-red-500 font-semibold hover:text-red-700 transition-colors"
+                    >
+                      <X size={12} /> Dienst entfernen
+                    </button>
+                  </div>
                 )}
               </div>
 

@@ -79,9 +79,9 @@ aussieht.
 - [ ] **E2 Benachrichtigungen** — steht für Planveröffentlichung, Tauschanfragen,
       Urlaub, Zeiterfassung, Frühwarnung, Rundruf
 - [ ] **E3 Einspringen: Anfrage und Kandidatensuche** — steht (270 Z.)
-- [ ] **E4 Einspringen: Benachrichtigung der Infragekommenden** — **fehlt.**
-      In der Vertretungs-Route wird keine einzige Benachrichtigung ausgelöst.
-      Ohne das erfährt niemand von der Anfrage.
+- [x] **E4 Einspringen: Benachrichtigung der Infragekommenden** — fertig und
+      getestet. Ausfall am Dienst melden, Empfänger wählen, Postfach/Push/E-Mail;
+      danach Dienstanfrage oder direktes Besetzen. 16 Ende-zu-Ende-Checks.
 - [ ] **E5 Mitarbeiter-Chat** — **fehlt.** Es gibt nur Support-Tickets.
 
 ## F · Dienstplanung
@@ -134,3 +134,40 @@ Siehe `PRODUKT-NOTIZEN.md`.
 
 Innerhalb jedes Punktes gehört zum Schritt „verstehen" ausdrücklich, das
 Vorhandene **auszuprobieren** statt es anzunehmen.
+
+---
+
+# Aktueller Auftrag (18.08.2026)
+
+Alles aus den Ansagen des Inhabers. Wird hier abgehakt, sobald es **läuft und
+getestet ist** — nicht wenn es vorbereitet ist.
+
+## Dateiablage und Akte
+- [x] **1 Dateiablage** — siehe A5
+- [x] **2 Personalakte** — siehe A6
+
+## Vertretung / Dienstausfall
+- [x] **3 Dienst im Plan anklicken** → verschieben, löschen, **fällt aus**
+- [x] **4 Ausfall-Dialog** mit Grund und Empfängerwahl: alle, ausgewählte oder niemand
+- [x] **5 Mitarbeiter werden wirklich benachrichtigt** — Postfach, Push und E-Mail;
+      im Test 11 von 11 Kollegen, die ausgefallene Person ausgenommen
+- [x] **6 Dienstanfrage und Besetzen** — der Dienst kommt als Vertretung zurück
+      in den Plan, mit unveränderten Zeiten; doppelte Vergabe wird verhindert
+- [x] **7 KI-Chat entfernt** — Komponente, Entwurfsmodul und KI-Route gelöscht
+
+## Mitarbeiter-Ablauf
+- [ ] **8 Lohn-Stammdaten am Mitarbeiter** — Steuerklasse, Kinderfreibeträge,
+      Versicherung, Kirchensteuer, Bundesland, Lohn, Steuer-ID, SV-Nummer,
+      Krankenkasse, Bankverbindung, Adresse, Ein- und Austritt
+- [ ] **9 Anlegen auf Unternehmensebene** mit allen Angaben, danach Zuordnung
+      zu einem Standort
+- [ ] **10 Am Standort nur noch dienstplanbezogene Angaben** ändern
+
+## Unternehmensebene aufräumen
+- [ ] **11 Dienstplanung entfernen** (Dienstpläne, Urlaubsplanung, Vertretungen)
+- [ ] **12 Planungsmodell und Regeln entfernen**
+- [ ] **13 Scores und KI-Analyse entfernen** (Workforce Score, Insights,
+      Fairness Engine, Personalrisiko, KI-Controlling)
+- [ ] **14 Standort öffnen und dort alles sehen** — Dienstpläne, Urlaub,
+      Mitarbeiter, Regeln, Vertretungen, Auswertungen
+- [ ] **15 Unternehmensonboarding** prüfen und entfernen, wenn überflüssig

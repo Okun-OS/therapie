@@ -89,6 +89,13 @@ model SubstitutionRequest {
   date               String
   startTime          String
   endTime            String
+  // §101 Ausfall aus dem Dienstplan heraus: welcher Dienst ist ausgefallen und
+  // wer haette ihn gehabt. Ohne das ist eine Vertretungsanfrage ein loser
+  // Zettel ohne Bezug zum Plan.
+  scheduleEntryId    String?
+  originalEmployeeId String?
+  shiftId            String?
+  grund              String?
   qualification      String?
   priority           SubstitutionPriority    @default(normal)
   status             SubstitutionStatus      @default(open)

@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -7,11 +9,9 @@ import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
-import { SubstitutionChat } from '@/components/substitutions/SubstitutionChat'
-import type { SubstitutionDraft } from '@/lib/substitution-draft'
 import { ESCALATION_LABEL, PRIORITY_LABEL, type SubstitutionPriority } from '@/lib/substitution-constants'
 import { formatDate } from '@/lib/utils'
-import { UserPlus, MessageCircle, Calendar, Clock, TrendingUp, ChevronUp, CheckCircle2, XCircle, Hourglass, AlertTriangle } from 'lucide-react'
+import { UserPlus, CalendarDays, Calendar, Clock, TrendingUp, ChevronUp, CheckCircle2, XCircle, Hourglass, AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 interface Candidate {
@@ -75,7 +75,6 @@ export default function AdminSubstitutions() {
 
   const [requests, setRequests] = useState<SubRequest[]>([])
   const [loading, setLoading] = useState(true)
-  const [chatOpen, setChatOpen] = useState(false)
   const [escalatingId, setEscalatingId] = useState<string | null>(null)
 
   const loadRequests = async () => {
@@ -96,34 +95,6 @@ export default function AdminSubstitutions() {
     loadRequests()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationId])
-
-  const handleCreateFromChat = async (draft: SubstitutionDraft) => {
-    if (!draft.date || !draft.startTime || !draft.endTime) {
-      showToast('Anfrage konnte nicht erstellt werden', 'error')
-      return
-    }
-    try {
-      const res = await fetch('/api/substitutions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          locationId,
-          date: draft.date,
-          startTime: draft.startTime,
-          endTime: draft.endTime,
-          qualification: draft.qualification || undefined,
-          priority: (draft.priority ?? 'normal') as SubstitutionPriority,
-          note: draft.note || undefined,
-          createdBy: user?.id ?? 'adm1',
-        }),
-      })
-      if (!res.ok) throw new Error()
-      showToast('Vertretungsanfrage erstellt und Kandidaten benachrichtigt', 'success')
-      loadRequests()
-    } catch {
-      showToast('Anfrage konnte nicht erstellt werden', 'error')
-    }
-  }
 
   const handleEscalate = async (id: string) => {
     setEscalatingId(id)
@@ -178,10 +149,13 @@ export default function AdminSubstitutions() {
               <p className="text-xs text-green-700 font-medium">Besetzt</p>
             </div>
           </div>
-          <Button onClick={() => setChatOpen(true)} className="gap-2 self-stretch">
-            <MessageCircle size={16} />
-            Ausfall melden
-          </Button>
+          {/* §101 Ausfall wird am konkreten Dienst im Plan gemeldet, nicht im Chat */}
+          <Link href="/admin/schedule" className="self-stretch">
+            <Button className="gap-2 w-full">
+              <CalendarDays size={16} />
+              Ausfall im Dienstplan melden
+            </Button>
+          </Link>
         </div>
 
         <div className="space-y-3">
@@ -260,11 +234,6 @@ export default function AdminSubstitutions() {
         </div>
       </div>
 
-      <SubstitutionChat
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        onSave={handleCreateFromChat}
-      />
     </>
   )
 }
