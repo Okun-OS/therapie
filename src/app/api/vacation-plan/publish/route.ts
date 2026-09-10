@@ -4,6 +4,7 @@ import { formatDate, sanitizeAiText } from '@/lib/utils'
 import { listEmployees } from '@/lib/entities'
 import type { VacationRequest, VacationPlanConflict } from '@/lib/types'
 import { requireRole } from '@/lib/session'
+import { locationFilter } from '@/lib/scope'
 
 interface PublishRequest {
   requests: VacationRequest[]
@@ -23,6 +24,11 @@ export async function POST(req: NextRequest) {
   }
 
   const { requests, conflicts, locationId } = body
+  // §110 Standortprüfung: Die Rolle allein genügt nicht — eine Leitung darf nur
+  // den EIGENEN Standort verändern, nicht den eines fremden Kunden.
+  const erlaubt = await locationFilter(session, locationId)
+  if (erlaubt instanceof NextResponse) return erlaubt
+
   if (!Array.isArray(requests)) {
     return NextResponse.json({ error: 'requests sind erforderlich' }, { status: 400 })
   }

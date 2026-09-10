@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { notifyEmployee } from '@/lib/notify'
 import { formatDate } from '@/lib/utils'
 import { requireRole } from '@/lib/session'
+import { assertEmployeeAccess } from '@/lib/scope'
 
 interface NotifyRequest {
   employeeId: string
@@ -24,6 +25,12 @@ export async function POST(req: NextRequest) {
   }
 
   const { employeeId, requestId, status, startDate, endDate, reason } = body
+
+  // §110 Benachrichtigungen liessen sich fuer beliebige Personen ausloesen.
+  if (employeeId) {
+    const verweigert = await assertEmployeeAccess(session, employeeId)
+    if (verweigert) return verweigert
+  }
   if (!employeeId || !requestId || !status) {
     return NextResponse.json({ error: 'employeeId, requestId und status sind erforderlich' }, { status: 400 })
   }

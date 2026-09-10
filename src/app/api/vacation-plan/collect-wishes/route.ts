@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { listEmployees } from '@/lib/entities'
 import { notifyEmployee } from '@/lib/notify'
 import { requireRole } from '@/lib/session'
+import { locationFilter } from '@/lib/scope'
 
 export async function POST(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company'])
@@ -15,6 +16,11 @@ export async function POST(req: NextRequest) {
   }
 
   const { locationId } = body
+  // §110 Standortprüfung: Die Rolle allein genügt nicht — eine Leitung darf nur
+  // den EIGENEN Standort verändern, nicht den eines fremden Kunden.
+  const erlaubt = await locationFilter(session, locationId)
+  if (erlaubt instanceof NextResponse) return erlaubt
+
   if (!locationId) {
     return NextResponse.json({ error: 'locationId ist erforderlich' }, { status: 400 })
   }

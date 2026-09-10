@@ -53,12 +53,19 @@ aussieht.
 
 ## C · Abwesenheit
 
-- [ ] **C1 Urlaubsanträge** — steht (341 Z.)
-- [ ] **C2 Urlaubsjahresplanung** — steht (704 Z.)
-- [ ] **C3 Urlaubsregeln** — steht
-- [ ] **C4 Abwesenheiten** — teilweise. Erfassung steht; der Abgleich mit dem
-      Krankenschein fehlt (hängt an A5).
-- [ ] **C5 Schließzeiten** — steht
+- [x] **C1 Urlaubsanträge** — nachgewiesen: beantragen, abrufen, genehmigen.
+      Kein Antrag auf fremden Namen, keine Selbstgenehmigung, keine Bescheidung
+      durch eine fremde Leitung.
+- [x] **C2 Urlaubsjahresplanung** — nachgewiesen: Wunschsammlung starten,
+      eigene Urlaubswünsche hinterlegen; nicht für Kollegen, nicht am fremden Standort.
+- [x] **C3 Urlaubsregeln** — nachgewiesen. Nur die eigene Leitung setzt sie;
+      unvollständige Angaben werden verständlich abgelehnt statt mit HTTP 500.
+- [x] **C4 Abwesenheiten** — nachgewiesen: erfassen und korrigieren, nicht auf
+      fremden Namen, nicht durch eine fremde Leitung. Der Krankenschein selbst
+      liegt in der Personalakte (A6); die Verknüpfung von Schein und Fehlzeit
+      steht noch aus und ist als eigener Punkt vermerkt.
+- [x] **C5 Schließzeiten** — nachgewiesen: anlegen, löschen, Ende-vor-Beginn
+      wird abgewiesen; eine fremde Leitung kann weder lesen noch anlegen noch löschen.
 
 ## D · Lohn
 
@@ -221,6 +228,19 @@ Gefunden, weil geprüft statt geglaubt wurde — und jeweils sofort behoben.
   abrufen. Behoben: Kollegen zeigen nur noch Name, Funktion, Standort, Gruppe
   und Qualifikationen; die eigenen Daten bleiben vollständig.
 
+## Block C (10.09.)
+- **Acht Schnittstellen ohne Standortprüfung.** Eine fremde Leitung konnte die
+  Urlaubsregeln, Jahresplanung und Schließzeiten eines anderen Kunden ändern
+  und dessen Urlaubsanträge bescheiden. Alle geschlossen.
+- **Zugriffsprüfung nur im Lesen, nicht im Schreiben.** Bei `absences` und
+  `vacation-requests` stand sie im GET, fehlte aber im POST: Ein Mitarbeiter
+  konnte eine Krankmeldung und einen Urlaubsantrag auf den Namen einer
+  Kollegin einreichen.
+- **Drei Routen stürzten mit HTTP 500 und LEEREM Antworttext ab**, sobald ein
+  Feld fehlte oder unbekannt war — der Nutzer sah gar nichts. Urlaubsregeln
+  und Urlaubswünsche antworten jetzt mit Klartext; beim Urlaubsantrag ermittelt
+  der Server den Standortnamen selbst, statt ihn vom Aufrufer zu verlangen.
+
 ## Block B (10.09.)
 - **17 von 18 Zeiterfassungs-Schnittstellen ohne Zugriffsprüfung.** Jeder
   Angemeldete konnte für jede beliebige Person stempeln, Pausen buchen,
@@ -237,3 +257,8 @@ Gefunden, weil geprüft statt geglaubt wurde — und jeweils sofort behoben.
   lief doppelt und der Monatsabschluss stimmte nicht mehr. Wird abgewiesen.
 - **Der Mitarbeiter kam an sein eigenes Zeitprotokoll nicht heran** — die
   Rollenliste schloss ihn aus. Korrigiert.
+
+## Noch offen aus der Nachweis-Phase
+- [ ] **Krankenschein mit Fehlzeit verknüpfen** — die Datei liegt in der
+      Personalakte, die Abwesenheit im Kalender; beides ist noch nicht
+      miteinander verbunden.

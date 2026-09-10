@@ -38,6 +38,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Erforderliche Felder fehlen' }, { status: 400 })
   }
 
+  // §110: Die Zugriffspruefung stand nur im GET. Ein Mitarbeiter konnte damit
+  // eine Krankmeldung auf den Namen einer Kollegin erfassen.
+  const zugriffVerweigert = await assertEmployeeAccess(session, employeeId)
+  if (zugriffVerweigert) return zugriffVerweigert
+
   const absence = await addAbsence({ employeeId, employeeName, locationId, type, startDate, endDate, days, note, proofProvided: !!proofProvided })
   return NextResponse.json({ absence })
 }

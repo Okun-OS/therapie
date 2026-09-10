@@ -40,9 +40,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'employeeId, locationId, startDate und endDate sind erforderlich' }, { status: 400 })
   }
 
-  const [employee, location] = await Promise.all([getEmployeeById(employeeId), getLocationById(locationId)])
+  // §110 Die Zugriffspruefung stand nur im GET — ein Mitarbeiter konnte einen
+  // Urlaubsantrag auf den Namen einer Kollegin stellen.
+  const zugriffVerweigert = await assertEmployeeAccess(session, employeeId)
+  if (zugriffVerweigert) return zugriffVerweigert
 
-  const request = await addVacationRequest(body, employee, location?.state)
+  const [employee, location] = await Promise.all([getEmployeeById(employeeId), getLocationById(locationId)])
+  if (!location) {
+    return NextResponse.json({ error: 'Standort nicht gefunden' }, { status: 404 })
+  }
+
+  // §110 Fehlte der Standortname im Aufruf, brach die Route mit HTTP 500 und
+  // leerem Antworttext ab. Der Server kennt den Namen selbst — er wird nicht
+  // mehr vom Aufrufer erwartet und auch nicht von ihm bestimmt.
+  const request = await addVacationRequest(
+    { ...body, locationName: location.name, employeeName: employee?.name ?? body.employeeName },
+    employee,
+    location.state,
+  )
 
   if (location?.adminId) {
     await notifyEmployee(location.adminId, {

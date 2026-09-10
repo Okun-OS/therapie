@@ -42,6 +42,24 @@ export async function PUT(req: NextRequest) {
   const denied = await assertEmployeeAccess(session, body.employeeId)
   if (denied) return denied
 
-  const preference = await setVacationPreference(body)
-  return NextResponse.json({ preference })
+  // §110 Unbekannte Felder liessen die Route mit HTTP 500 und leerem
+  // Antworttext abstuerzen. Nur bekannte Angaben werden uebernommen.
+  try {
+    const preference = await setVacationPreference({
+      employeeId: body.employeeId,
+      hasChildren: !!body.hasChildren,
+      schoolHolidayPriority: body.schoolHolidayPriority ?? null,
+      preferredMonths: Array.isArray(body.preferredMonths) ? body.preferredMonths : [],
+      preferredPeriod: body.preferredPeriod ?? null,
+      notes: body.notes ?? null,
+      priority: body.priority ?? 'medium',
+    })
+    return NextResponse.json({ preference })
+  } catch (err) {
+    console.error('[vacation-preferences] Speichern fehlgeschlagen', err)
+    return NextResponse.json(
+      { error: 'Der Urlaubswunsch konnte nicht gespeichert werden. Bitte die Angaben prüfen.' },
+      { status: 400 },
+    )
+  }
 }

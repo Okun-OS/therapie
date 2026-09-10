@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listClosurePeriodsByLocation, addClosurePeriod, deleteClosurePeriod } from '@/lib/vacation-entities'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { locationFilter } from '@/lib/scope'
 import { listLocations } from '@/lib/entities'
 import { prisma } from '@/lib/prisma'
 
@@ -9,6 +10,11 @@ export async function GET(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const locationId = req.nextUrl.searchParams.get('locationId')
+
+  if (locationId) {
+    const erlaubtGet = await locationFilter(session, locationId)
+    if (erlaubtGet instanceof NextResponse) return erlaubtGet
+  }
   if (!locationId) {
     return NextResponse.json({ error: 'locationId ist erforderlich' }, { status: 400 })
   }
@@ -29,6 +35,10 @@ export async function POST(req: NextRequest) {
   if (endDate < startDate) {
     return NextResponse.json({ error: 'endDate darf nicht vor startDate liegen' }, { status: 400 })
   }
+
+  // §110 Eine fremde Leitung konnte an diesem Standort Schliesszeiten anlegen.
+  const erlaubt = await locationFilter(session, locationId)
+  if (erlaubt instanceof NextResponse) return erlaubt
 
   const closure = await addClosurePeriod({ locationId, name, startDate, endDate, createdBy: session.userId })
   return NextResponse.json({ closure })
