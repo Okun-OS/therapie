@@ -45,13 +45,25 @@ export async function locationFilter(
   return scope.ids
 }
 
-/** Verify the session may access data of a specific employee. */
+/**
+ * Verify the session may access data of a specific employee.
+ *
+ * §109: Für die Rolle "employee" gilt ausschließlich der eigene Datensatz.
+ * Vorher fiel ein Mitarbeiter in denselben Zweig wie eine Leitung — sein
+ * Standort-Bereich umfasst alle Kolleginnen und Kollegen, und damit durfte er
+ * deren Zeiten stempeln, ihr Stundenkonto lesen und ihre Zeitprotokolle
+ * abrufen. Diese Funktion ist die einzige Stelle, an der das entschieden wird;
+ * die Korrektur wirkt deshalb überall zugleich.
+ */
 export async function assertEmployeeAccess(
   session: SessionPayload,
   employeeId: string,
 ): Promise<NextResponse | null> {
   if (session.role === 'okun') return null
   if (session.employeeId === employeeId) return null
+  if (session.role === 'employee') {
+    return NextResponse.json({ error: 'Kein Zugriff auf Daten anderer Personen' }, { status: 403 })
+  }
   const employee = await prisma.employee.findUnique({
     where: { id: employeeId },
     select: { locationId: true },

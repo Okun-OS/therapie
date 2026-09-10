@@ -40,12 +40,16 @@ aussieht.
 
 ## B · Arbeitszeit
 
-- [ ] **B1 Zeiterfassung, Unternehmenssicht** — steht (677 Z.)
-- [ ] **B2 Zeiterfassung, Mitarbeitersicht** — steht (691 Z.)
-- [ ] **B3 Zeiterfassungsprotokolle und Druck** — steht
-- [ ] **B4 Freigabe und Monatsabschluss** — steht
-- [ ] **B5 Überstunden beantragen und genehmigen** — steht
-- [ ] **B6 Stundenkonto** — steht
+- [x] **B1 Zeiterfassung, Unternehmenssicht** — nachgewiesen. Leitung sieht die
+      Buchungen ihres Standorts, eine fremde Leitung keine.
+- [x] **B2 Zeiterfassung, Mitarbeitersicht** — nachgewiesen: ein- und ausstempeln,
+      Pause starten und beenden, laufende Erfassung abrufen.
+- [x] **B3 Zeiterfassungsprotokolle** — nachgewiesen. Der Mitarbeiter bekommt sein
+      eigenes Monatsprotokoll (kam vorher gar nicht heran), das eines Kollegen nicht.
+- [x] **B4 Freigabe und Monatsabschluss** — nachgewiesen: anlegen, abrufen, Freigaben.
+- [x] **B5 Überstunden** — nachgewiesen: beantragen, teilweise genehmigen. Keine
+      Selbstgenehmigung, keine Genehmigung durch eine fremde Leitung.
+- [x] **B6 Stundenkonto** — nachgewiesen. Eigenes abrufbar, fremdes gesperrt.
 
 ## C · Abwesenheit
 
@@ -204,3 +208,32 @@ getestet ist** — nicht wenn es vorbereitet ist.
       tägliche Planung.
 - [x] **Sieben Routen entfernt**, alle Verweise, Benachrichtigungs-Ziele,
       Hilfetexte und Tour-Schritte mitgezogen.
+
+---
+
+# Befunde aus der Nachweis-Phase
+
+Gefunden, weil geprüft statt geglaubt wurde — und jeweils sofort behoben.
+
+## Block A (18.08.)
+- **Kollegendaten offen**: Jeder Mitarbeiter konnte Stundenkonto,
+  Urlaubsanspruch, verbrauchte Urlaubstage und Wochenstunden aller Kollegen
+  abrufen. Behoben: Kollegen zeigen nur noch Name, Funktion, Standort, Gruppe
+  und Qualifikationen; die eigenen Daten bleiben vollständig.
+
+## Block B (10.09.)
+- **17 von 18 Zeiterfassungs-Schnittstellen ohne Zugriffsprüfung.** Jeder
+  Angemeldete konnte für jede beliebige Person stempeln, Pausen buchen,
+  Überstunden beantragen, Zeitbuchungen ändern, Monatsabschlüsse korrigieren
+  und freigeben — auch über Mandantengrenzen hinweg. Alle 18 abgesichert.
+- **`assertEmployeeAccess` war zu weit gefasst.** Ein Mitarbeiter fiel in
+  denselben Zweig wie eine Leitung und durfte damit auf alle Kolleginnen und
+  Kollegen seines Standorts zugreifen. Für die Rolle „employee" gilt jetzt
+  ausschließlich der eigene Datensatz. Eine Stelle, Wirkung überall.
+- **`notify-admin` nahm einen frei erfundenen Absendernamen** und eine
+  beliebige Standort-ID entgegen. Jetzt zählt nur, wer wirklich anfragt, und
+  der Standort muss zum Aufrufer gehören.
+- **Doppeltes Einstempeln** legte eine zweite laufende Erfassung an; die Zeit
+  lief doppelt und der Monatsabschluss stimmte nicht mehr. Wird abgewiesen.
+- **Der Mitarbeiter kam an sein eigenes Zeitprotokoll nicht heran** — die
+  Rollenliste schloss ihn aus. Korrigiert.

@@ -45,6 +45,17 @@ async function findShiftForEntry(employeeId: string, date: string) {
 }
 
 export async function recordClockIn(employeeId: string, date: string, locationId: string, clockIn: Date) {
+  // §109: Zweimal einstempeln, ohne dazwischen auszustempeln, erzeugte bisher
+  // eine zweite laufende Erfassung. Danach lief die Zeit doppelt und der
+  // Monatsabschluss stimmte nicht mehr.
+  const laufend = await prisma.timeClockEntry.findFirst({
+    where: { employeeId, clockOut: null },
+    orderBy: { clockIn: 'desc' },
+  })
+  if (laufend) {
+    throw new Error('Es läuft bereits eine Zeiterfassung. Bitte zuerst ausstempeln.')
+  }
+
   const created = await prisma.timeClockEntry.create({
     data: { employeeId, date, locationId, clockIn },
   })

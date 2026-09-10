@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { assertEmployeeAccess } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
-  const session = requireRole(req, ['admin', 'company', 'okun'])
+  // §109: Der Mitarbeiter kam an sein EIGENES Zeitprotokoll nicht heran.
+  // Die Zugriffsprüfung unten stellt sicher, dass er nur das eigene bekommt.
+  const session = requireRole(req, ['employee', 'admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
   const employeeId = req.nextUrl.searchParams.get('employeeId')
@@ -13,6 +16,11 @@ export async function GET(req: NextRequest) {
   if (!employeeId || !year || !month || month < 1 || month > 12) {
     return NextResponse.json({ error: 'employeeId, year, month sind erforderlich' }, { status: 400 })
   }
+
+  // §109 Zugriffsschutz: Zeitdaten gehören genau einer Person. Ein Mitarbeiter
+  // darf nur die eigenen bewegen, die Leitung nur die ihres Standorts.
+  const zugriffVerweigert = await assertEmployeeAccess(session, employeeId)
+  if (zugriffVerweigert) return zugriffVerweigert
 
   // Verify ownership (non-okun roles may only see own employees)
   const employee = await prisma.employee.findUnique({ where: { id: employeeId } })
