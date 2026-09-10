@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSwapRequestsByEmployee, addSwapRequest } from '@/lib/schedule-entities'
 import { requireRole } from '@/lib/session'
+import { assertEmployeeAccess } from '@/lib/scope'
 import { notifyEmployee } from '@/lib/notify'
 
 export async function GET(req: NextRequest) {
@@ -11,6 +12,10 @@ export async function GET(req: NextRequest) {
   if (!employeeId) {
     return NextResponse.json({ error: 'employeeId ist erforderlich' }, { status: 400 })
   }
+
+  // §111 Vorher liessen sich die Tauschanfragen jeder Person einsehen.
+  const zugriffVerweigert = await assertEmployeeAccess(session, employeeId)
+  if (zugriffVerweigert) return zugriffVerweigert
 
   const requests = await getSwapRequestsByEmployee(employeeId)
   return NextResponse.json({ requests })
@@ -25,6 +30,11 @@ export async function POST(req: NextRequest) {
   if (!requesterId || !requesterDate || !requesterShiftId || !targetEmployeeId || !targetDate || !targetShiftId || !locationId) {
     return NextResponse.json({ error: 'Erforderliche Felder fehlen' }, { status: 400 })
   }
+
+  // §111 Der Antragsteller kam aus dem Aufruf — damit liess sich eine
+  // Tauschanfrage im Namen einer Kollegin stellen.
+  const antragVerweigert = await assertEmployeeAccess(session, requesterId)
+  if (antragVerweigert) return antragVerweigert
 
   const request = await addSwapRequest({
     requesterId, requesterName, requesterDate, requesterShiftId,

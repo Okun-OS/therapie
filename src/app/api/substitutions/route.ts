@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createSubstitutionRequest } from '@/lib/substitution-service'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { locationFilter } from '@/lib/scope'
 
 export async function GET(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
   const locationId = req.nextUrl.searchParams.get('locationId')
+
+  // §111 Standortpruefung: Vorher liessen sich die Vertretungsanfragen jedes
+  // beliebigen Standorts abrufen.
+  if (locationId) {
+    const erlaubt = await locationFilter(session, locationId)
+    if (erlaubt instanceof NextResponse) return erlaubt
+  }
 
   // If a specific locationId is requested, use it directly
   if (locationId) {
@@ -56,6 +64,10 @@ export async function POST(req: NextRequest) {
   if (!locationId || !date || !startTime || !endTime || !createdBy) {
     return NextResponse.json({ error: 'locationId, date, startTime, endTime und createdBy sind erforderlich' }, { status: 400 })
   }
+
+  // §111 Eine fremde Leitung konnte an diesem Standort Anfragen anlegen.
+  const erlaubtPost = await locationFilter(session, locationId)
+  if (erlaubtPost instanceof NextResponse) return erlaubtPost
 
   const request = await createSubstitutionRequest({
     locationId,

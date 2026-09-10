@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { locationFilter } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 import { notifyEmployee } from '@/lib/notify'
 
@@ -8,6 +9,13 @@ export async function POST(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const { title, body, url, locationId: bodyLocationId } = await req.json()
+
+  // §111 Ein Rundruf ging an jeden angegebenen Standort — auch an den eines
+  // fremden Kunden.
+  if (bodyLocationId) {
+    const erlaubt = await locationFilter(session, bodyLocationId)
+    if (erlaubt instanceof NextResponse) return erlaubt
+  }
 
   if (!title?.trim() || !body?.trim()) {
     return NextResponse.json({ error: 'title und body sind erforderlich' }, { status: 400 })

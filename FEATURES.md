@@ -86,10 +86,14 @@ aussieht.
 
 ## E · Kommunikation
 
-- [ ] **E1 Push-Infrastruktur** — steht (web-push, VAPID)
-- [ ] **E2 Benachrichtigungen** — steht für Planveröffentlichung, Tauschanfragen,
-      Urlaub, Zeiterfassung, Frühwarnung, Rundruf
-- [ ] **E3 Einspringen: Anfrage und Kandidatensuche** — steht (270 Z.)
+- [x] **E1 Push-Infrastruktur** — nachgewiesen. Ein Gerät lässt sich nur für die
+      eigene Person anmelden; fremde Push-Nachrichten sind nicht mitlesbar.
+- [x] **E2 Benachrichtigungen** — nachgewiesen: eigenes Postfach lesen und
+      markieren, Rundruf am eigenen Standort. Fremde Postfächer, fremde
+      Nachrichten und Rundrufe an fremde Standorte sind gesperrt.
+- [x] **E3 Einspringen und Kandidatensuche** — nachgewiesen: Anfrage anlegen,
+      5 Kandidaten werden automatisch ermittelt. Keine Zusage im Namen anderer,
+      keine Eskalation durch eine fremde Leitung.
 - [x] **E4 Einspringen: Benachrichtigung der Infragekommenden** — fertig und
       getestet. Ausfall am Dienst melden, Empfänger wählen, Postfach/Push/E-Mail;
       danach Dienstanfrage oder direktes Besetzen. 16 Ende-zu-Ende-Checks.
@@ -227,6 +231,20 @@ Gefunden, weil geprüft statt geglaubt wurde — und jeweils sofort behoben.
   Urlaubsanspruch, verbrauchte Urlaubstage und Wochenstunden aller Kollegen
   abrufen. Behoben: Kollegen zeigen nur noch Name, Funktion, Standort, Gruppe
   und Qualifikationen; die eigenen Daten bleiben vollständig.
+
+## Block E (10.09.)
+- **Fremde Push-Nachrichten waren mitlesbar.** `push/subscribe` nahm eine
+  beliebige `employeeId` entgegen — man konnte das EIGENE Gerät als Empfänger
+  für die Meldungen einer Kollegin eintragen und ab dann alles mitlesen.
+  Der gravierendste Einzelfund dieser Prüfphase.
+- **Fremde Postfächer waren lesbar** und fremde Nachrichten ließen sich als
+  gelesen markieren — also im Postfach der anderen Person verstecken.
+- **Rundrufe gingen an jeden angegebenen Standort**, auch an den eines
+  fremden Kunden.
+- **Zusagen und Tauschanfragen im Namen anderer** waren möglich: sowohl das
+  Zusagen auf eine Vertretung als auch das Stellen einer Tauschanfrage nahmen
+  die handelnde Person aus dem Aufruf statt aus der Anmeldung.
+- Elf Schnittstellen abgesichert.
 
 ## Block C (10.09.)
 - **Acht Schnittstellen ohne Standortprüfung.** Eine fremde Leitung konnte die
