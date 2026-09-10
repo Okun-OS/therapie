@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
       // §120 Wer erst im Laufe des Jahres eingetreten ist, hat eine kleinere
       // anteilige Jahresgrenze fuer Einmalzahlungen.
       eintrittsMonat: eintrittsMonatImJahr(p?.eintrittsdatum, year),
+      eintrittsdatum: p?.eintrittsdatum, austrittsdatum: p?.austrittsdatum,
     }
   }))
 
@@ -104,6 +105,8 @@ export async function POST(req: NextRequest) {
   const veralteteMerkmale: { name: string; text: string }[] = []
   const ausgeglichen: { name: string; text: string; betrag: number }[] = []
   const verschoben: { name: string; text: string }[] = []
+  const nichtBeschaeftigt: string[] = []
+  const teilmonate: { name: string; svTage: number }[] = []
 
   for (const m of mitarbeiter) {
     const p = profilVon.get(m.id)
@@ -162,6 +165,13 @@ export async function POST(req: NextRequest) {
     }
 
     const grundlage = grundlagen.get(m.id)!
+
+    // §122 Wer in diesem Monat gar nicht beschaeftigt war, bekommt keine
+    // Abrechnung — weder vor dem Eintritt noch nach dem Austritt.
+    if (!grundlage.beschaeftigt) {
+      nichtBeschaeftigt.push(m.name)
+      continue
+    }
     // Fuer die Pflegeversicherung zaehlt, ob jemand Kinder hat — die Angabe am
     // Lohnprofil geht vor, sonst das Merkmal am Mitarbeiter.
     let ergebnis
@@ -181,6 +191,7 @@ export async function POST(req: NextRequest) {
       )
     }
     for (const w of ergebnis.warnings) hinweise.push({ name: m.name, text: w })
+    if (ergebnis.svTage < 30) teilmonate.push({ name: m.name, svTage: ergebnis.svTage })
 
     const stammFelder = {
       employeeName: m.name, locationId: m.locationId, customerId,
@@ -236,6 +247,12 @@ export async function POST(req: NextRequest) {
   if (veralteteMerkmale.length > 0) {
     teile.push(`${veralteteMerkmale.length} mit veraltetem ELStAM-Stand`)
   }
+  if (nichtBeschaeftigt.length > 0) {
+    teile.push(`${nichtBeschaeftigt.length} in diesem Monat nicht beschäftigt`)
+  }
+  if (teilmonate.length > 0) {
+    teile.push(`${teilmonate.length} Teilmonate`)
+  }
   if (verschoben.length > 0) {
     teile.push(`${verschoben.length} Korrekturen in den Folgemonat verschoben`)
   }
@@ -250,6 +267,8 @@ export async function POST(req: NextRequest) {
     gesperrt,
     unvollstaendig,
     veralteteMerkmale,
+    nichtBeschaeftigt,
+    teilmonate,
     ausgeglichen,
     verschoben,
     hinweise,

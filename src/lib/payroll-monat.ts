@@ -13,6 +13,7 @@
 
 import { prisma } from './prisma'
 import { voraussichtlicherJahreslohn } from './einmalbezug'
+import { svTageImMonat } from './teilmonat'
 import { calculatePayroll, type PayrollInput, type PayrollResult } from './payroll-engine'
 import {
   computeWithRules, DEFAULT_SURCHARGE_RULES,
@@ -44,6 +45,10 @@ export interface MonatsGrundlage {
   bisherBeitragspflichtig: number
   bisherigeEinmalzahlungen: number
   eintrittsMonat: number
+  /** §122 SV-Tage des Monats — weniger als 30 heißt Teilmonat */
+  svTage: number
+  /** War der Mitarbeiter in diesem Monat überhaupt beschäftigt? */
+  beschaeftigt: boolean
 }
 
 const leer = (): MonatsGrundlage => ({
@@ -56,6 +61,7 @@ const leer = (): MonatsGrundlage => ({
   sonstigeBezuege: 0, sonstigeBezuegeBeitragsfrei: 0,
   bisherSteuerBrutto: 0, bisherBeitragspflichtig: 0,
   bisherigeEinmalzahlungen: 0, eintrittsMonat: 1,
+  svTage: 30, beschaeftigt: true,
 })
 
 /** Erster und letzter Tag des Monats als YYYY-MM-DD. */
@@ -133,6 +139,9 @@ export interface MitarbeiterMonat {
   monatsgehalt?: number | null
   /** Erster Beschäftigungsmonat im Abrechnungsjahr — für die anteilige Jahresgrenze */
   eintrittsMonat?: number
+  /** §122 Ein- und Austritt — bestimmen die SV-Tage des Monats */
+  eintrittsdatum?: string | null
+  austrittsdatum?: string | null
 }
 
 /**
@@ -215,6 +224,12 @@ export async function monatsGrundlagen(
       frueherBonusse.filter(b => b.employeeId === m.employeeId)
         .reduce((s, b) => s + b.betrag, 0) * 100) / 100
     g.eintrittsMonat = m.eintrittsMonat ?? 1
+
+    // §122 Ein Teilmonat kürzt Gehalt und Bemessungsgrenzen. Wer im Monat gar
+    // nicht beschäftigt war, bekommt keine Abrechnung.
+    const teil = svTageImMonat(year, month, m.eintrittsdatum, m.austrittsdatum)
+    g.svTage = teil.svTage
+    g.beschaeftigt = teil.beschaeftigt
 
     const regeln = regelnJeStandort.get(m.locationId ?? '') ?? DEFAULT_SURCHARGE_RULES
     const satz = zuschlagsStundenlohn(m.lohnart, m.stundenlohn, m.monatsgehalt, m.weeklyHours)
@@ -324,6 +339,7 @@ export function abrechnungRechnen(
   const eingabe: PayrollInput = {
     jahr,
     monat,
+    svTage: g.svTage,
     sonstigeBezuege: g.sonstigeBezuege,
     sonstigeBezuegeBeitragsfrei: g.sonstigeBezuegeBeitragsfrei,
     bisherBeitragspflichtig: g.bisherBeitragspflichtig,
@@ -390,6 +406,7 @@ export function abrechnungsFelder(g: MonatsGrundlage, r: PayrollResult) {
     brutto: r.brutto,
     surchargesTotal: r.surchargesTotal,
     grundlage: r.grundlage,
+    svTage: r.svTage,
     beschaeftigungsart: r.beschaeftigungsart,
     pauschsteuerAG: r.pauschsteuerAG,
     sonstigeBezuege: r.sonstigeBezuege,

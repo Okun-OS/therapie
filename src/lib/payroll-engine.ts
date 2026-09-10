@@ -21,6 +21,7 @@ import { lohnjahrOderFehler, type Lohnjahr } from './lohnjahre'
 import { lohnsteuerBerechnen, istSachsen, pflegeMerkmale } from './lohnsteuer-pap'
 import { einmalbezugBeitraege } from './einmalbezug'
 import { artBestimmen, beitraegeNachArt, individuellBesteuert } from './beschaeftigungsart'
+import { anteiligeBbg, type TeilmonatErgebnis } from './teilmonat'
 
 // Kirchensteuer: 8 % in Bayern und Baden-Württemberg, sonst 9 %.
 // Die Feiertagslogik nutzt ausgeschriebene Ländernamen — beide Schreibweisen
@@ -123,6 +124,12 @@ export interface PayrollInput {
   bisherBeitragspflichtig?: number
   /** Erster Beschäftigungsmonat im Jahr — für die anteilige Jahresgrenze */
   eintrittsMonat?: number
+  /**
+   * §122 SV-Tage des Monats, 1–30. Weniger als 30 heißt Teilmonat: das
+   * Monatsgehalt wird anteilig gezahlt und die Beitragsbemessungsgrenzen
+   * gelten nur anteilig.
+   */
+  svTage?: number
   /** §121 Vereinbarte Beschäftigungsart: regulaer | minijob | kurzfristig */
   beschaeftigungsart?: string | null
   /** Minijob: Befreiung von der Rentenversicherungspflicht */
@@ -191,6 +198,8 @@ export interface PayrollResult {
   pvAG: number
   avAG: number
   totalAgCost: number       // brutto + all AG-Anteile (true labour cost)
+  /** §122 SV-Tage, auf denen gerechnet wurde — 30 heißt voller Monat */
+  svTage: number
   // §121 Welche Beschäftigungsart tatsächlich gegolten hat, und die Pauschsteuer
   // des Arbeitgebers beim Minijob (sie ist kein Abzug beim Arbeitnehmer).
   beschaeftigungsart: string
@@ -207,10 +216,24 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const jahr: Lohnjahr = lohnjahrOderFehler(input.jahr)
 
   // ─ 1. Brutto ──────────────────────────────────────────────────────────────
+  // §122 Ein Teilmonat kürzt das Monatsgehalt und die Bemessungsgrenzen.
+  // Stundenlöhner betrifft das nicht — sie werden ohnehin nach Stunden bezahlt.
+  const svTage = Math.max(0, Math.min(30, Math.round(input.svTage ?? 30)))
+  const teil: TeilmonatErgebnis = {
+    svTage, anteil: svTage / 30, vollerMonat: svTage >= 30,
+    beschaeftigt: svTage > 0,
+  }
+  if (svTage < 30) {
+    warnings.push(
+      `Teilmonat: gerechnet mit ${svTage} von 30 SV-Tagen. Monatsgehalt und `
+      + `Beitragsbemessungsgrenzen gelten anteilig.`,
+    )
+  }
+
   const totalHours = input.regularHours + input.overtimeHours
   let regularPay = 0
   if (input.monthlyWage != null) {
-    regularPay = input.monthlyWage
+    regularPay = round2(input.monthlyWage * teil.anteil)
   } else if (input.hourlyWage != null) {
     regularPay = input.hourlyWage * totalHours
   } else {
@@ -241,17 +264,25 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
 
   // §121 Welche Beschäftigungsart gilt wirklich? Der Übergangsbereich ist keine
   // Wahl, sondern folgt aus dem Entgelt.
-  const artErgebnis = artBestimmen(input.beschaeftigungsart, laufendesBrutto, jahr)
+  // §122 Klassifiziert wird nach dem REGELMÄSSIGEN Monatsentgelt, nicht nach dem
+  // gekürzten Betrag eines Teilmonats — sonst würde jemand mit 3.400 € Gehalt in
+  // seinem ersten halben Monat fälschlich zum Übergangsbereich gehören.
+  const regelmaessigesEntgelt = input.monthlyWage != null
+    ? input.monthlyWage
+    : laufendesBrutto
+  const artErgebnis = artBestimmen(input.beschaeftigungsart, regelmaessigesEntgelt, jahr)
   if (artErgebnis.hinweis) warnings.push(artErgebnis.hinweis)
   const art = artErgebnis.art
 
   // ─ 2. Sozialversicherung ──────────────────────────────────────────────────
   // Bemessungsgrundlage ist das SV-Brutto: beitragsfreie Zuschläge zählen nicht.
-  const rvBase = Math.min(svBrutto, jahr.bbgRvAvMonat)
+  const bbgRv = anteiligeBbg(jahr.bbgRvAvMonat, teil)
+  const bbgKv = anteiligeBbg(jahr.bbgKvPvMonat, teil)
+  const rvBase = Math.min(svBrutto, bbgRv)
   const rvAN = input.rvExempt ? 0 : rvBase * (jahr.rvSatz / 2)
   const rvAG = input.rvExempt ? 0 : rvBase * (jahr.rvSatz / 2)
 
-  const avBase = Math.min(svBrutto, jahr.bbgRvAvMonat)
+  const avBase = Math.min(svBrutto, bbgRv)
   const avAN = avBase * (jahr.avSatz / 2)
   const avAG = avBase * (jahr.avSatz / 2)
 
@@ -259,7 +290,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   // der Durchschnitt; der ist nur die Rückfallebene, wenn er nicht hinterlegt ist.
   const kvZusatz = (input.zusatzbeitragPercent ?? jahr.kvZusatzSatzDurchschnitt * 100) / 100
   const kvSatz = jahr.kvBasisSatz + kvZusatz
-  const kvBase = Math.min(svBrutto, jahr.bbgKvPvMonat)
+  const kvBase = Math.min(svBrutto, bbgKv)
   let kvAN = 0
   let kvAG = 0
   if (input.insuranceType === 'GKV') {
@@ -281,7 +312,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     kinderfreibetraege: input.childCount,
   })
   const sachsen = istSachsen(input.bundesland)
-  const pvBase = Math.min(svBrutto, jahr.bbgKvPvMonat)
+  const pvBase = Math.min(svBrutto, bbgKv)
   let pvAnSatz = sachsen ? jahr.pvSachsenAn : jahr.pvSatz / 2
   const pvAgSatz = sachsen ? jahr.pvSachsenAg : jahr.pvSatz / 2
   if (pvz === 1) pvAnSatz += jahr.pvZuschlagKinderlos
@@ -434,6 +465,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     kvAG: round2(agKv + (bonusSv?.kvAG ?? 0)),
     pvAG: round2(agPv + (bonusSv?.pvAG ?? 0)),
     avAG: round2(agAv + (bonusSv?.avAG ?? 0)),
+    svTage,
     beschaeftigungsart: art,
     pauschsteuerAG: sonderBeitraege?.pauschsteuerAG ?? 0,
     totalAgCost: round2(totalAgCost),

@@ -557,6 +557,35 @@ Zwei Entscheidungen, auf die es ankam:
 
 Nachweis: 35 Modultests, 22 Prüfungen am laufenden System.
 
+## Block D13 (10.09.) — Teilmonate
+
+Wer mitten im Monat kommt oder geht, hat bisher das volle Monatsgehalt bekommen,
+und die Beitragsbemessungsgrenzen galten für den ganzen Monat. Hat jeder Kunde,
+und es stimmte davon nichts.
+
+- [x] **SV-Tage statt Kalendertagen.** Die Sozialversicherung zählt anders: jeder
+      volle Monat hat 30 Tage — auch der Februar, auch der Januar. Der 31. zählt
+      nicht. Ein Teilmonat, der am Monatsende ausläuft, wird im Februar auf 30
+      aufgefüllt.
+- [x] **Die Probe, die alles zusammenhält:** zwei Teilmonate desselben Monats
+      müssen zusammen genau 30 ergeben. Der 1.–14. Februar sind 14 SV-Tage, der
+      15.–28. sind 16 — zusammen 30. Wer Kalendertage zählt, kommt auf 28 und
+      verbeitragt zu wenig. Am laufenden System nachgewiesen: zwei halbe Monate
+      ergeben zusammen wieder genau 3.400 € Brutto.
+- [x] Anteiliges Gehalt, anteilige Bemessungsgrenzen. Stundenlöhner bleiben
+      unberührt — sie werden ohnehin nach Stunden bezahlt.
+- [x] Wer im Monat gar nicht beschäftigt war, bekommt keine Abrechnung.
+- [x] Anteiliger Urlaubsanspruch nach §5 BUrlG mit der vorgeschriebenen
+      Aufrundung, Urlaubsabgeltung nach §7 Abs.4 und §11 BUrlG.
+
+**Dabei gefunden:** Die Beschäftigungsart wurde nach dem Monatsbetrag
+klassifiziert. Wer mit 3.400 € Gehalt am 25. anfängt, kommt auf rund 566 € im
+ersten Monat — und wäre damit fälschlich im Übergangsbereich gelandet, mit
+falschen Beiträgen. Klassifiziert wird jetzt nach dem **regelmäßigen** Entgelt.
+Eigens getestet.
+
+Nachweis: 27 Modultests, 14 Prüfungen am laufenden System.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

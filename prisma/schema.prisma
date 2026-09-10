@@ -1007,6 +1007,9 @@ model PayrollEntry {
   // Arbeitgebers beim Minijob — sie ist kein Abzug beim Arbeitnehmer.
   beschaeftigungsart String @default("regulaer")
   pauschsteuerAG     Float  @default(0)
+  // §122 SV-Tage des Monats — 30 heisst voller Monat. Steht am Eintrag, weil
+  // spaeter niemand mehr rekonstruieren kann, mit welchem Anteil gerechnet wurde.
+  svTage             Int    @default(30)
   // §119 Aufrollung: Differenzen aus rueckwirkend geaenderten Monaten werden
   // hier ausgeglichen. auszahlungsbetrag ist das, was wirklich ueberwiesen
   // wird — Netto plus Korrektur. SEPA, DATEV und der Beleg lesen dieses eine

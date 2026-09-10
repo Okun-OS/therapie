@@ -74,12 +74,22 @@ auf, lange bevor eine Behörde ins Spiel kommt. Das ist die Pflicht.
 - [ ] **Offen:** Zeitgrenzen der kurzfristigen Beschäftigung automatisch zählen
 - [ ] **Offen:** Minijobs an die Minijob-Zentrale melden — braucht Teil 5
 
-### 1.3 Ein- und Austritte innerhalb des Monats `[OKUN]` **M**
-- [ ] Anteiliges Entgelt bei Teilmonaten
-- [ ] Anteilige Beitragsbemessungsgrenzen (SV-Tage statt Kalendertage)
-- [ ] Urlaubsanspruch anteilig, Resturlaub bei Austritt
-- [ ] Urlaubsabgeltung als eigene Position
-- [ ] Rückrechnung bei rückwirkendem Austritt
+### 1.3 Ein- und Austritte innerhalb des Monats `[OKUN]` — ✅ **fertig 10.09.2026**
+- [x] SV-Tage statt Kalendertagen: jeder volle Monat hat 30, der 31. zählt
+      nicht, ein Februar-Teilmonat wird aufgefüllt. **Die Probe: zwei Teilmonate
+      desselben Monats ergeben zusammen genau 30** — sonst wird zu viel oder zu
+      wenig verbeitragt
+- [x] Anteiliges Monatsgehalt nach der Dreißigstel-Methode
+- [x] Anteilige Beitragsbemessungsgrenzen
+- [x] Wer im Monat gar nicht beschäftigt war, bekommt keine Abrechnung
+- [x] **Klassifiziert wird nach dem regelmäßigen Entgelt**, nicht nach dem
+      gekürzten Teilbetrag — sonst wäre jemand mit 3.400 € Gehalt in seinem
+      ersten halben Monat fälschlich im Übergangsbereich gelandet
+- [x] Anteiliger Urlaubsanspruch (§5 BUrlG) mit Aufrundung ab einem halben Tag
+- [x] Urlaubsabgeltung (§7 Abs.4, §11 BUrlG) als Betrag — erfasst wird sie als
+      Einmalzahlung, damit sie richtig besteuert wird
+- [x] Rückwirkender Austritt: über die Aufrollung abgedeckt
+- [x] 27 Modultests, 14 Prüfungen am laufenden System
 
 ### 1.4 Geldwerte Vorteile und Sachbezüge `[OKUN]` **M**
 - [ ] Firmenwagen: 1-Prozent-Regelung und Fahrten Wohnung–Arbeit

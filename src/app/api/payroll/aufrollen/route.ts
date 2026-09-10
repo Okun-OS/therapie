@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
           employeeId: x.id, weeklyHours: x.weeklyHours, locationId: x.locationId,
           bundesland: p?.bundesland, lohnart: p?.lohnart,
           stundenlohn: p?.stundenlohn, monatsgehalt: p?.monatsgehalt,
+          eintrittsdatum: p?.eintrittsdatum, austrittsdatum: p?.austrittsdatum,
         }
       })))
   }
