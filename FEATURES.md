@@ -159,7 +159,9 @@ Siehe `PRODUKT-NOTIZEN.md`.
 - [ ] **G1 DSGVO: Auskunft und Datenexport** — **fehlt.**
 - [ ] **G2 DSGVO: Löschkonzept** — teilweise. Beim Löschen des eigenen Kontos wird
       anonymisiert; ein durchgängiges Konzept mit Fristen fehlt.
-- [ ] **G3 Automatische Prüfung vor dem Ausrollen** — **fehlt.**
+- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 303 Nachweise im
+      Repo unter `pruefungen/`, ein Befehl (`npm run pruefen`), automatischer
+      Lauf bei jedem Push. Siehe Block G3 unten.
       `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
 - [x] **G4 Mandantentrennung** — nachgewiesen in allen geprüften Bereichen.
 - [x] **G5 Prüfprotokolle** — nachgewiesen (Schreiben in die Datenbank).
@@ -585,6 +587,31 @@ falschen Beiträgen. Klassifiziert wird jetzt nach dem **regelmäßigen** Entgel
 Eigens getestet.
 
 Nachweis: 27 Modultests, 14 Prüfungen am laufenden System.
+
+## Block G3 (10.09.) — Automatische Prüfung vor dem Ausrollen
+
+Bis heute lagen über 280 Prüfungen **nur im Arbeitsverzeichnis einer Sitzung.**
+Der wurde einmal komplett gelöscht — und damit war der einzige Beweis weg, dass
+die Lohnabrechnung stimmt. Für ein Programm, das Gehälter rechnet und bei jedem
+Push automatisch ausgerollt wird, war das untragbar.
+
+- [x] **Alle Nachweise im Repo** unter `pruefungen/`, mit einem Läufer, der sie
+      hintereinander ausführt und ein ehrliches Ergebnis liefert.
+- [x] **Ein Befehl:** `npm run pruefen`. Mit Filter: `npm run pruefen -- d9`.
+- [x] **Verständliche Voraussetzungsprüfung** — läuft das System nicht oder
+      fehlen die Testdaten, sagt der Läufer das im Klartext, statt mit
+      unverständlichen Fehlern abzubrechen.
+- [x] **Automatischer Lauf bei jedem Push** (`.github/workflows/pruefen.yml`):
+      Typen, Modultests, Bauen, dann die Nachweise gegen das gestartete System
+      mit eigener Datenbank.
+
+**Was der erste Lauf sofort gefunden hat:** Drei von zwölf Prüfungen sind
+fehlgeschlagen — nicht weil das Programm falsch war, sondern weil sie sich
+gegenseitig Zustand hinterließen. Einzeln bestanden alle, hintereinander nicht.
+Eine Prüfung, die nur einzeln besteht, ist kein Sicherheitsnetz. Jede Lohn-
+Prüfung stellt jetzt ihren Ausgangszustand selbst her (`zuruecksetzen`).
+
+Stand: **303 Checks in 12 Prüfungen, alle grün** — dazu 320 Modultests.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

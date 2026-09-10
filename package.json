@@ -9,6 +9,8 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "pruefen": "node pruefungen/lauf.mjs",
+    "pruefen:alles": "npm run test && npm run pruefen",
     "postinstall": "prisma generate",
     "seed": "npx tsx --env-file-if-exists=.env prisma/seed.ts"
   },

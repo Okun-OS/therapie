@@ -18,9 +18,9 @@ Zuletzt aktualisiert: **10.09.2026**
 |---|---|
 | **Baustelle** | Lohnabrechnung → eigene Komplettlösung |
 | **Meilenstein** | 1 von 4 — „Ein echter Kunde kann abgerechnet werden" |
-| **Zuletzt fertig** | Teilmonate bei Ein- und Austritt (Teil 1.3) |
-| **Als Nächstes** | Fahrplan Teil 6.1 — automatische Prüfung ins Repo |
-| **Danach** | Teil 2.2 Lohnsteuerbescheinigung · Teil 1.4–1.6 |
+| **Zuletzt fertig** | Automatische Prüfung im Repo (Teil 6.1) — `npm run pruefen` |
+| **Als Nächstes** | Fahrplan Teil 2.2 — Lohnsteuerbescheinigung |
+| **Danach** | Teil 1.4–1.6 geldwerte Vorteile, bAV, Pfändungen |
 
 Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 
@@ -36,7 +36,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 | **Lohn** (D) | 🔨 in Arbeit | Geldwerte Vorteile, bAV, Pfändungen |
 | **Kommunikation** (E) | ⚠️ E5 fehlt | Mitarbeiter-Chat |
 | **Dienstplanung** (F) | ⚠️ F5/F6 offen | Kundenmodul-Mechanik, Freischaltung je Kunde |
-| **Grundlagen & Betrieb** (G) | ⚠️ G1–G3 offen | **G3 zuerst** — automatische Prüfung |
+| **Grundlagen & Betrieb** (G) | ⚠️ G1/G2 offen | DSGVO: Auskunft und Löschkonzept |
 
 ✅ fertig · 🔨 in Arbeit · ⚠️ offen
 
@@ -47,10 +47,9 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 Nach Dringlichkeit, nicht nach Bereich.
 
 ### Dringend
-- [ ] **G3 Automatische Prüfung vor dem Ausrollen.** Über 220 Nachweise liegen
-      nur im Arbeitsverzeichnis. Das wurde in einer Sitzung schon einmal
-      komplett gelöscht. Bis das im Repo läuft, ist jede Änderung ein Risiko.
-      *(= Fahrplan Teil 6.1)*
+- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 303 Nachweise
+      liegen jetzt im Repo unter `pruefungen/`, ein Befehl prüft alles
+      (`npm run pruefen`), und bei jedem Push läuft es automatisch.
 
 ### Lohn — der aktuelle Schwerpunkt
 - [x] ~~Sonstige Bezüge (Weihnachts-/Urlaubsgeld, Boni)~~ — Teil 1.1 ✅
@@ -104,6 +103,7 @@ Ausführlich: `ABLAUFPLAN.md`
 | `ABLAUFPLAN.md` | was Daniel außerhalb des Codes erledigen muss |
 | `LOHN-ZERTIFIZIERUNG.md` | Zertifizierung, Kosten, Anfragelisten |
 | `PRODUKT-NOTIZEN.md` | Geschäftsmodell und Leitentscheidungen |
+| `pruefungen/README.md` | wie die Nachweise laufen und wie man neue schreibt |
 
 ---
 
