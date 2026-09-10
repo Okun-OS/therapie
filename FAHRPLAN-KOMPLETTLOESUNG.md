@@ -296,15 +296,18 @@ Die schwere Nummer. **Gilt ein Kalenderjahr und wird jedes Jahr wiederholt.**
 **Der Teil, der aus einem Programm ein Unternehmen macht.** Wer fremdes Geld
 rechnet, muss beweisen können, dass er es richtig gemacht hat.
 
-### 6.1 Automatische Prüfung vor jedem Ausrollen `[OKUN]` **M** — *dringend*
-Heute liegen über 200 Prüfungen nur im Arbeitsverzeichnis. **Das ist die größte
-offene Schwäche.** Der Arbeitsordner wurde in einer Sitzung schon einmal
-komplett gelöscht.
-
-- [ ] Alle Nachweis-Skripte ins Repository
-- [ ] Ein Befehl, der Datenbank aufsetzt, Testdaten lädt, alles durchprüft
-- [ ] Automatischer Lauf bei jeder Änderung
-- [ ] Kein Ausrollen ohne grünen Lauf
+### 6.1 Automatische Prüfung vor jedem Ausrollen `[OKUN]` — ✅ **fertig 10.09.2026**
+- [x] Alle Nachweise im Repository unter `pruefungen/`
+- [x] Ein Befehl: `npm run pruefen`, mit Filter für einzelne Bereiche
+- [x] Verständliche Meldung, wenn System oder Testdaten fehlen
+- [x] Automatischer Lauf bei jedem Push (`.github/workflows/pruefen.yml`):
+      Typen, Modultests, Bauen, Nachweise gegen das gestartete System
+- [x] **Der erste Lauf hat sofort etwas gefunden:** drei von zwölf Prüfungen
+      bestanden nur einzeln, nicht hintereinander — sie hinterließen sich
+      gegenseitig Zustand. Behoben.
+- [ ] **Offen `[DU]`:** Kein Ausrollen ohne grünen Lauf. Railway rollt heute bei
+      jedem Push aus, unabhängig vom Prüfergebnis. Das lässt sich in den
+      Railway-Einstellungen an den Prüflauf koppeln.
 
 ### 6.2 Revisionssicherheit `[OKUN]` **L**
 - [ ] Jede Abrechnung unveränderlich archivieren, sobald freigegeben
