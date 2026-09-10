@@ -489,4 +489,16 @@ export interface OrgSettings {
   defaultVacationDaysPerYear: number
   autoApproveVacationUnderDays: number
   notificationEmail: string
+  // §113/§114 Angaben des Arbeitgebers: Anschrift für die Entgeltabrechnung,
+  // Bankverbindung für die SEPA-Datei, Beraterdaten für den DATEV-Export.
+  strasse?: string | null
+  plz?: string | null
+  ort?: string | null
+  betriebsnummer?: string | null
+  steuernummer?: string | null
+  iban?: string | null
+  bic?: string | null
+  kontoinhaber?: string | null
+  datevBeraternummer?: string | null
+  datevMandantennummer?: string | null
 }

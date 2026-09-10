@@ -61,6 +61,50 @@ export default function CompanySettings() {
           </div>
         </Card>
 
+        {/* §113/§114 Ohne diese Angaben gibt es keine Entgeltabrechnung und
+            keine SEPA-Datei — deshalb stehen sie hier und nicht versteckt. */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Building2 size={16} className="text-navy" />
+              <CardTitle>Angaben für die Lohnabrechnung</CardTitle>
+            </div>
+          </CardHeader>
+          <p className="text-xs text-gray-400 mb-3">
+            Die Anschrift steht auf jeder Entgeltabrechnung. Die Bankverbindung
+            wird für die SEPA-Datei gebraucht, die Beraterdaten für den DATEV-Export.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <Input label="Straße und Hausnummer" value={form.strasse ?? ''}
+                onChange={e => setForm(f => ({ ...f, strasse: e.target.value }))} />
+            </div>
+            <Input label="PLZ" value={form.plz ?? ''}
+              onChange={e => setForm(f => ({ ...f, plz: e.target.value }))} />
+            <Input label="Ort" value={form.ort ?? ''}
+              onChange={e => setForm(f => ({ ...f, ort: e.target.value }))} />
+            <Input label="Betriebsnummer" placeholder="8-stellig, Agentur für Arbeit"
+              value={form.betriebsnummer ?? ''}
+              onChange={e => setForm(f => ({ ...f, betriebsnummer: e.target.value }))} />
+            <Input label="Steuernummer" value={form.steuernummer ?? ''}
+              onChange={e => setForm(f => ({ ...f, steuernummer: e.target.value }))} />
+            <div className="sm:col-span-2">
+              <Input label="IBAN des Unternehmens" placeholder="Von diesem Konto gehen die Gehälter ab"
+                value={form.iban ?? ''}
+                onChange={e => setForm(f => ({ ...f, iban: e.target.value }))} />
+            </div>
+            <Input label="BIC" value={form.bic ?? ''}
+              onChange={e => setForm(f => ({ ...f, bic: e.target.value }))} />
+            <Input label="Kontoinhaber" placeholder="falls abweichend vom Namen"
+              value={form.kontoinhaber ?? ''}
+              onChange={e => setForm(f => ({ ...f, kontoinhaber: e.target.value }))} />
+            <Input label="DATEV-Beraternummer" value={form.datevBeraternummer ?? ''}
+              onChange={e => setForm(f => ({ ...f, datevBeraternummer: e.target.value }))} />
+            <Input label="DATEV-Mandantennummer" value={form.datevMandantennummer ?? ''}
+              onChange={e => setForm(f => ({ ...f, datevMandantennummer: e.target.value }))} />
+          </div>
+        </Card>
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">

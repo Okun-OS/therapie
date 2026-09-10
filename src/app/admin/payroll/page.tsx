@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight, Download, Plus, Calculator,
   CheckCircle, AlertTriangle, Euro, Users,
 } from 'lucide-react'
+import { useToast } from '@/lib/toast-context'
 import { calculatePayroll } from '@/lib/payroll-engine'
 import type { PayrollInput, PayrollResult } from '@/lib/payroll-engine'
 
@@ -346,6 +347,8 @@ export default function PayrollPage() {
   const [entries, setEntries] = useState<PayrollEntryData[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(false)
+  const [aktion, setAktion] = useState<string | null>(null)
+  const { showToast } = useToast()
   const [showModal, setShowModal] = useState(false)
 
   const load = useCallback(async () => {
@@ -403,25 +406,68 @@ export default function PayrollPage() {
     a.click()
   }
 
-  function exportDATEV() {
-    const header = ['Personalnummer', 'Name', 'Jahr', 'Monat', 'Brutto', 'Netto', 'Lohnsteuer', 'RV-AN', 'KV-AN', 'PV-AN', 'AV-AN', 'AG-Gesamtkosten'].join(';')
-    const rows = entries.map(e => [
-      e.employeeId, e.employeeName, year, month,
-      e.brutto.toFixed(2).replace('.', ','),
-      e.netto.toFixed(2).replace('.', ','),
-      e.lohnsteuer.toFixed(2).replace('.', ','),
-      e.rvAN.toFixed(2).replace('.', ','),
-      e.kvAN.toFixed(2).replace('.', ','),
-      e.pvAN.toFixed(2).replace('.', ','),
-      e.avAN.toFixed(2).replace('.', ','),
-      e.totalAgCost.toFixed(2).replace('.', ','),
-    ].join(';'))
-    const csv = [header, ...rows].join('\r\n')
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `DATEV_Export_${year}_${String(month).padStart(2, '0')}.csv`
-    a.click()
+  // §114 Der frühere DATEV-Export entstand im Browser und enthielt nur Summen —
+  // keine Lohnarten, keine Berater- und Mandantennummer, als Personalnummer die
+  // interne Kennung. Damit konnte ein Steuerberater nichts anfangen. Jetzt
+  // erzeugt der Server die Datei aus den Lohn-Stammdaten.
+  async function dateiHolen(art: 'datev' | 'sepa') {
+    setAktion(art)
+    try {
+      const res = await fetch(`/api/payroll/export?art=${art}&year=${year}&month=${month}`)
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        showToast(d.error ?? 'Export fehlgeschlagen', 'error')
+        return
+      }
+      const uebersprungen = Number(res.headers.get('X-Okun-Uebersprungen') ?? 0)
+      const blob = await res.blob()
+      const name = res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1]
+        ?? `${art}-${year}-${month}`
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = name
+      a.click()
+      URL.revokeObjectURL(a.href)
+      showToast(
+        uebersprungen > 0
+          ? `${name} erstellt — ${uebersprungen} ohne gültige Bankverbindung übersprungen`
+          : `${name} erstellt`,
+        uebersprungen > 0 ? 'error' : 'success',
+      )
+    } catch {
+      showToast('Export fehlgeschlagen', 'error')
+    } finally { setAktion(null) }
+  }
+
+  // §113 Abrechnungen aus den Lohn-Stammdaten vorbereiten
+  async function vorbereiten() {
+    setAktion('vorbereiten')
+    try {
+      const res = await fetch('/api/payroll/vorbereiten', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, month }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(d.error ?? 'Vorbereiten fehlgeschlagen', 'error'); return }
+      showToast(d.hinweis ?? 'vorbereitet', (d.unvollstaendig?.length ?? 0) > 0 ? 'error' : 'success')
+      load()
+    } catch { showToast('Vorbereiten fehlgeschlagen', 'error') }
+    finally { setAktion(null) }
+  }
+
+  // §113 Belege erzeugen und den Mitarbeitern zustellen
+  async function belegeZustellen() {
+    setAktion('belege')
+    try {
+      const res = await fetch('/api/payroll/beleg', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, month }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(d.error ?? 'Erzeugen fehlgeschlagen', 'error'); return }
+      showToast(d.hinweis ?? 'zugestellt', (d.uebersprungen?.length ?? 0) > 0 ? 'error' : 'success')
+    } catch { showToast('Erzeugen fehlgeschlagen', 'error') }
+    finally { setAktion(null) }
   }
 
   const totalBrutto = entries.reduce((s, e) => s + e.brutto, 0)
@@ -480,8 +526,17 @@ export default function PayrollPage() {
               <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
                 <Download size={16} /> CSV Export
               </button>
-              <button onClick={exportDATEV} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                <Download size={16} /> DATEV Export
+              <button onClick={vorbereiten} disabled={!!aktion} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                <Calculator size={16} /> {aktion === 'vorbereiten' ? 'Wird vorbereitet…' : 'Abrechnung vorbereiten'}
+              </button>
+              <button onClick={belegeZustellen} disabled={!!aktion} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                <Users size={16} /> {aktion === 'belege' ? 'Wird zugestellt…' : 'Belege zustellen'}
+              </button>
+              <button onClick={() => dateiHolen('sepa')} disabled={!!aktion} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                <Euro size={16} /> {aktion === 'sepa' ? 'Wird erstellt…' : 'SEPA-Datei'}
+              </button>
+              <button onClick={() => dateiHolen('datev')} disabled={!!aktion} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                <Download size={16} /> {aktion === 'datev' ? 'Wird erstellt…' : 'DATEV-Export'}
               </button>
             </>
           )}

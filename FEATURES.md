@@ -72,17 +72,37 @@ aussieht.
 
 ## D · Lohn
 
-- [ ] **D1 Lohnberechnung** — steht, und zwar echt: §32a EStG,
-      Beitragsbemessungsgrenzen, Steuerklassen 1–6, GKV/PKV, Kirchensteuer, Soli.
-      Jahreswerte müssen jährlich nachgezogen werden.
-- [ ] **D2 Zuschlagsregeln** — steht (924 Z.)
-- [ ] **D3 Lohnabrechnung als Dokument** — **fehlt.** Es wird gerechnet, aber kein
-      Beleg erzeugt.
-- [ ] **D4 Zustellung an den Mitarbeiter** — **fehlt.** Im Mitarbeiterbereich gibt
-      es zum Lohn keine einzige Seite.
-- [ ] **D5 DATEV-Export** — **fehlt.**
-- [ ] **D6 Auszahlung per SEPA-Datei** — **fehlt.** Bewusst als Datei zum Upload
-      bei der Bank, nicht als eigene Zahlungsauslösung (erlaubnispflichtig, ZAG).
+- [x] **D1 Lohnberechnung** — nachgewiesen. Beim Nachrechnen kamen vier echte
+      Fehler heraus, alle behoben: der Grundfreibetrag wurde doppelt abgezogen
+      (einmal von Hand, einmal steckt er in §32a), Steuerklasse III rechnete mit
+      verdoppeltem Freibetrag statt nach dem Splittingverfahren, statt der
+      Vorsorgepauschale (§39b Abs.2) wurden die vollen Sozialabgaben abgesetzt,
+      und der Kinderfreibetrag minderte die Lohnsteuer, obwohl er nach §51a EStG
+      nur für Soli und Kirchensteuer zählt. Klassen V und VI folgen jetzt §39b
+      Abs.2 Satz 7. Der Zusatzbeitrag der jeweiligen Krankenkasse zählt statt
+      eines Durchschnitts. 33 Rechentests, dazu 15 Prüfungen am laufenden System.
+      Jahreswerte müssen jährlich nachgezogen werden (im Code markiert).
+- [x] **D2 Zuschlagsregeln** — nachgewiesen, mit dem größten Fund des Blocks:
+      Nacht-, Sonntags- und Feiertagszuschläge wurden voll versteuert, obwohl sie
+      nach §3b EStG steuerfrei sind. Das kostete den Mitarbeiter bares Geld. Jetzt
+      werden steuerfreier und beitragsfreier Anteil getrennt gerechnet (25 % / 50 %
+      / 125 % des Grundlohns, Steuerfreiheit bis 50 €/h Grundlohn, Beitragsfreiheit
+      nur bis 25 €/h) und auf Abrechnung, Beleg und DATEV-Datei getrennt
+      ausgewiesen. Samstagszuschläge bleiben steuerpflichtig — dafür gibt es keine
+      Vorschrift.
+- [x] **D3 Lohnabrechnung als Dokument** — fertig und getestet. `src/lib/lohnbeleg.ts`
+      erzeugt die Entgeltabrechnung als PDF mit allen Angaben nach §108 GewO und
+      Entgeltbescheinigungsverordnung; sie landet in der Personalakte.
+- [x] **D4 Zustellung an den Mitarbeiter** — fertig und getestet. Der Beleg liegt
+      für den Mitarbeiter sichtbar in seinen Unterlagen, er wird benachrichtigt,
+      und eine fremde Leitung kommt nicht heran.
+- [x] **D5 DATEV-Export** — fertig und getestet. CSV mit einer Zeile je Lohnart,
+      zugeordnet über die Personalnummer, Berater- und Mandantennummer im Kopf.
+      Keine behauptete Zertifizierung — eine strukturierte Übergabedatei.
+- [x] **D6 Auszahlung per SEPA-Datei** — fertig und getestet. pain.001.001.03 mit
+      geprüfter IBAN-Prüfsumme und stimmender Kontrollsumme. Bewusst als Datei zum
+      Upload bei der Bank, nicht als eigene Zahlungsauslösung (erlaubnispflichtig,
+      ZAG).
 - [ ] **D7 Meldewesen (SV-Meldungen, Lohnsteueranmeldung)** — **bewusst nicht
       selbst.** Braucht zertifizierte Übermittlung (ITSG, ELSTER). Läuft über
       Steuerberater oder DATEV — dafür D5.
@@ -138,10 +158,9 @@ Siehe `PRODUKT-NOTIZEN.md`.
 
 | Zustand | Anzahl |
 |---|---|
-| steht, aber unbewiesen | 20 |
-| abgehakt (getestet) | 2 |
-| teilweise | 2 |
-| fehlt | 9 |
+| abgehakt (getestet) | 54 |
+| teilweise | 1 |
+| fehlt | 5 |
 | bewusst nicht selbst | 1 |
 
 ## Vorschlag für die Reihenfolge
@@ -294,6 +313,35 @@ Gefunden, weil geprüft statt geglaubt wurde — und jeweils sofort behoben.
   lief doppelt und der Monatsabschluss stimmte nicht mehr. Wird abgewiesen.
 - **Der Mitarbeiter kam an sein eigenes Zeitprotokoll nicht heran** — die
   Rollenliste schloss ihn aus. Korrigiert.
+
+## Block D (10.09.)
+
+51 Prüfungen: 36 gegen Beleg, Zustellung, DATEV und SEPA, 15 gegen die
+Lohnberechnung selbst — dazu 33 Rechentests gegen den Gesetzestext.
+
+- **Fünf Fehler in der Lohnsteuer.** Der Grundfreibetrag wurde doppelt
+  abgezogen: einmal von Hand, und noch einmal, weil er in der Formel des
+  §32a EStG bereits steckt. Steuerklasse III rechnete mit einem verdoppelten
+  Freibetrag statt nach dem Splittingverfahren. Statt der Vorsorgepauschale
+  nach §39b Abs.2 wurden die vollen Sozialabgaben abgesetzt. Der
+  Kinderfreibetrag minderte die Lohnsteuer, obwohl er nach §51a EStG nur für
+  Soli und Kirchensteuer zählt. Und die Formel selbst war die von 2024, während
+  die Freibeträge daneben von 2025 stammten. Alles korrigiert und gegen den
+  Gesetzestext nachgerechnet.
+- **Steuerfreie Zuschläge wurden versteuert.** Nacht-, Sonntags- und
+  Feiertagszuschläge sind nach §3b EStG bis zu festen Sätzen steuerfrei — das
+  Programm hat sie voll versteuert und verbeitragt. Im Testfall waren das
+  25 EUR im Monat, die dem Mitarbeiter zustanden. Jetzt werden steuerfreier
+  und beitragsfreier Anteil getrennt gerechnet und getrennt ausgewiesen.
+- **„Vorbereiten" hat nie gerechnet.** Der Lauf übertrug nur die Stammdaten;
+  Brutto und Netto blieben null. Damit war der Beleg leer, die DATEV-Datei ohne
+  Lohnarten und die SEPA-Datei ohne Zahlung. Jetzt fließen Stunden aus der
+  Zeiterfassung, Urlaub und Krankheit aus den Abwesenheiten und die Zuschläge
+  aus dem Regelwerk des Kunden ein.
+- **Ein zweiter Lauf hätte Freigegebenes überschrieben.** Entwürfe werden neu
+  gerechnet, freigegebene Abrechnungen bleiben unangetastet.
+- **Der Zusatzbeitrag der Krankenkasse wurde ignoriert.** Gerechnet wurde mit
+  einem Durchschnittswert, obwohl der echte Satz am Mitarbeiter hinterlegt ist.
 
 ## Noch offen aus der Nachweis-Phase
 - [ ] **Krankenschein mit Fehlzeit verknüpfen** — die Datei liegt in der

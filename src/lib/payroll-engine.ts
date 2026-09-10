@@ -12,7 +12,8 @@
 
 // ── UPDATE_ANNUALLY ──────────────────────────────────────────────────────────
 
-const GRUNDFREIBETRAG = 12096              // §32a EStG 2025 (single)
+// Der Grundfreibetrag (2025: 12.096 €) steckt in der Formel von annualIncomeTax
+// und wird deshalb nirgends gesondert abgezogen.
 const WERBUNGSKOSTEN_PAUSCH = 1230         // §9a EStG 2025
 const SONDERAUSGABEN_PAUSCH = 36           // §10c EStG
 const ENTLASTUNGSBETRAG_ALLEIN = 4260      // §24b EStG 2025 (Steuerklasse 2)
@@ -31,30 +32,154 @@ const BBG_KV_MONTHLY = 5512.5             // Beitragsbemessungsgrenze KV/PV 2025
 const SOLI_FREIGRENZE_ANNUAL = 19950      // Soli exempt below this annual Lohnsteuer
 const SOLI_RATE = 0.055
 
-// Kirchensteuer by Bundesland code (8% in BY+BW, 9% elsewhere)
-const KIRCHENSTEUER_BY_BL: Record<string, number> = {
-  BY: 0.08, BW: 0.08,
-}
+// §39b Abs.2 Satz 5 Nr.3 Buchst. d: Mindestvorsorgepauschale
+const MINDESTVORSORGE_ANTEIL = 0.12
+const MINDESTVORSORGE_HOECHST = 1900       // Steuerklassen I, II, IV, V, VI
+const MINDESTVORSORGE_HOECHST_KL3 = 3000   // Steuerklasse III
+
+const RV_AN_RATE = RV_RATE / 2             // Teilbetrag RV der Vorsorgepauschale
+const KV_ERMAESSIGT_AN = 0.07              // halber ermäßigter Beitragssatz (14,0 %)
+
+// §32 Abs.6 EStG: Kinderfreibetrag + BEA-Freibetrag je Kind, beide Elternteile
+const KINDERFREIBETRAG_VOLL = 9600
+
+// Kirchensteuer: 8 % in Bayern und Baden-Württemberg, sonst 9 %.
+// Die Feiertagslogik nutzt ausgeschriebene Ländernamen — beide Schreibweisen
+// werden erkannt, damit nicht am Datenformat ein falscher Satz herauskommt.
+const KIRCHENSTEUER_ACHT_PROZENT = ['BY', 'Bayern', 'BW', 'Baden-Württemberg', 'Baden-Wuerttemberg']
 function kirchensteuerRate(bl?: string): number {
-  return KIRCHENSTEUER_BY_BL[bl ?? ''] ?? 0.09
+  return KIRCHENSTEUER_ACHT_PROZENT.includes(bl ?? '') ? 0.08 : 0.09
 }
 
-// ── Lohnsteuer (§32a EStG 2024/2025 progressive formula) ────────────────────
-
+// ── Lohnsteuer (§32a EStG 2025, Grundfreibetrag 12.096 €) ───────────────────
+//
+// Die Formel enthält den Grundfreibetrag bereits — er darf davor NICHT noch
+// einmal abgezogen werden.
 function annualIncomeTax(zvE: number): number {
   if (zvE <= 0) return 0
   const z = Math.floor(zvE)
-  if (z <= 11604) return 0
-  if (z <= 17005) {
-    const y = (z - 11604) / 10000
-    return Math.floor((922.98 * y + 1400) * y)
+  if (z <= 12096) return 0
+  if (z <= 17443) {
+    const y = (z - 12096) / 10000
+    return Math.floor((932.30 * y + 1400) * y)
   }
-  if (z <= 66760) {
-    const y = (z - 17005) / 10000
-    return Math.floor((181.19 * y + 2397) * y + 1025.38)
+  if (z <= 68480) {
+    const y = (z - 17443) / 10000
+    return Math.floor((176.64 * y + 2397) * y + 1015.13)
   }
-  if (z <= 277826) return Math.floor(0.42 * z - 10602.13)
-  return Math.floor(0.45 * z - 18936.88)
+  if (z <= 277825) return Math.floor(0.42 * z - 10911.92)
+  return Math.floor(0.45 * z - 19246.67)
+}
+
+/**
+ * Jahreslohnsteuer nach Steuerklasse.
+ *
+ * Klasse III rechnet nach dem Splittingverfahren (§32a Abs.5) — nicht mit einem
+ * verdoppelten Grundfreibetrag, das ergibt einen anderen Betrag.
+ * Klassen V und VI folgen §39b Abs.2 Satz 7: doppelter Unterschiedsbetrag
+ * zwischen dem 1,25fachen und dem 0,75fachen des zu versteuernden Betrags,
+ * mindestens 14 % davon.
+ */
+function jahresLohnsteuer(zvE: number, taxClass: number): number {
+  const z = Math.max(0, Math.floor(zvE))
+  if (z === 0) return 0
+  if (taxClass === 3) return 2 * annualIncomeTax(z / 2)
+  if (taxClass === 5 || taxClass === 6) {
+    const unterschied = 2 * (annualIncomeTax(1.25 * z) - annualIncomeTax(0.75 * z))
+    return Math.max(unterschied, Math.floor(0.14 * z))
+  }
+  return annualIncomeTax(z)
+}
+
+/**
+ * Vorsorgepauschale (§39b Abs.2 Satz 5 Nr.3 EStG).
+ *
+ * Beim Lohnsteuerabzug sind nicht die tatsächlichen Sozialabgaben abziehbar,
+ * sondern diese Pauschale. Wer stattdessen die vollen AN-Beiträge abzieht,
+ * kommt auf eine deutlich zu niedrige Lohnsteuer.
+ */
+function vorsorgepauschale(
+  input: PayrollInput,
+  jahresSteuerBrutto: number,
+  jahresSvBrutto: number,
+): number {
+  const rvBemessung = Math.min(jahresSvBrutto, BBG_RV_MONTHLY * 12)
+  const teilbetragRv = rvBemessung * RV_AN_RATE
+
+  const kvBemessung = Math.min(jahresSvBrutto, BBG_KV_MONTHLY * 12)
+  const zusatz = (input.zusatzbeitragPercent ?? KV_ZUSATZ_RATE * 100) / 100
+  const pvAnSatz = PV_RATE / 2 + (input.childCount === 0 ? PV_CHILDLESS_SURCHARGE : 0)
+
+  let teilbetragKvPv: number
+  if (input.insuranceType === 'GKV') {
+    teilbetragKvPv = kvBemessung * (KV_ERMAESSIGT_AN + zusatz / 2) + kvBemessung * pvAnSatz
+  } else {
+    // Bei privater Versicherung zählt der Basisbeitrag abzüglich AG-Zuschuss
+    const agZuschuss = kvBemessung * (KV_TOTAL_RATE / 2)
+    teilbetragKvPv = Math.max(0, (input.pkvMonthly ?? 0) * 12 - agZuschuss)
+  }
+
+  const hoechst = input.taxClass === 3 ? MINDESTVORSORGE_HOECHST_KL3 : MINDESTVORSORGE_HOECHST
+  const mindest = Math.min(jahresSteuerBrutto * MINDESTVORSORGE_ANTEIL, hoechst)
+
+  return teilbetragRv + Math.max(teilbetragKvPv, mindest)
+}
+
+// ── Steuerfreie Zuschläge (§3b EStG, §1 SvEV) ───────────────────────────────
+
+// Höchstsätze, bis zu denen ein Zuschlag steuerfrei bleibt
+const FREI_NACHT = 0.25       // Nachtarbeit 20:00–06:00 Uhr
+const FREI_SONNTAG = 0.50     // Sonntagsarbeit
+const FREI_FEIERTAG = 1.25    // Feiertagsarbeit
+// Samstagszuschläge sind NICHT steuerfrei — dafür gibt es keine Vorschrift.
+
+const GRUNDLOHN_GRENZE_STEUER = 50   // §3b Abs.2 Satz 1 EStG
+const GRUNDLOHN_GRENZE_SV = 25       // §1 Abs.1 Satz 1 Nr.1 SvEV
+
+/**
+ * Der steuer- und beitragsfreie Teil der Zuschläge.
+ *
+ * Steuerfrei ist immer nur der tatsächlich gezahlte Zuschlag, höchstens aber der
+ * gesetzliche Prozentsatz des Grundlohns. Wer mehr zahlt, zahlt den Rest
+ * versteuert — und wer über 25 €/h Grundlohn liegt, zahlt ab dort Beiträge,
+ * obwohl es steuerfrei bleibt. Beide Grenzen greifen unabhängig voneinander.
+ */
+function steuerfreieZuschlaege(
+  input: PayrollInput,
+  regularPay: number,
+): { steuerfrei: number; svfrei: number; hinweis?: string } {
+  const stunden = input.regularHours + input.overtimeHours
+  const grundlohn = input.grundlohnHourly
+    ?? input.hourlyWage
+    ?? (stunden > 0 ? regularPay / stunden : 0)
+
+  if (grundlohn <= 0) {
+    const gezahlt = (input.nightSurcharge ?? 0) + (input.sundaySurcharge ?? 0) + (input.holidaySurcharge ?? 0)
+    return {
+      steuerfrei: 0, svfrei: 0,
+      hinweis: gezahlt > 0
+        ? 'Ohne Grundlohn je Stunde lässt sich die Steuerfreiheit der Zuschläge (§3b EStG) '
+          + 'nicht bestimmen — sie werden vorsichtshalber voll versteuert.'
+        : undefined,
+    }
+  }
+
+  const posten: [number, number, number][] = [
+    // [gezahlter Zuschlag, Stunden, Höchstsatz]
+    [input.nightSurcharge ?? 0, input.nightHours, FREI_NACHT],
+    [input.sundaySurcharge ?? 0, input.sundayHours, FREI_SONNTAG],
+    [input.holidaySurcharge ?? 0, input.holidayHours, FREI_FEIERTAG],
+  ]
+
+  let steuerfrei = 0
+  let svfrei = 0
+  for (const [gezahlt, stundenzahl, satz] of posten) {
+    if (gezahlt <= 0 || stundenzahl <= 0) continue
+    steuerfrei += Math.min(gezahlt, Math.min(grundlohn, GRUNDLOHN_GRENZE_STEUER) * stundenzahl * satz)
+    svfrei += Math.min(gezahlt, Math.min(grundlohn, GRUNDLOHN_GRENZE_SV) * stundenzahl * satz)
+  }
+
+  return { steuerfrei: round2(steuerfrei), svfrei: round2(svfrei) }
 }
 
 // ── Main calculation ─────────────────────────────────────────────────────────
@@ -77,11 +202,14 @@ export interface PayrollInput {
   holidaySurcharge?: number
   saturdaySurcharge?: number
   overtimeSurcharge?: number
+  otherSurcharge?: number   // Zuschläge aus eigenen Regeln des Kunden
   // Tax/insurance
   taxClass: 1 | 2 | 3 | 4 | 5 | 6
   childCount: number        // Including half-children (0.5, 1, 1.5, ...)
   insuranceType: 'GKV' | 'PKV'
   pkvMonthly?: number       // Employee's PKV premium (for PKV workers)
+  zusatzbeitragPercent?: number  // Zusatzbeitrag der Krankenkasse in Prozentpunkten
+  grundlohnHourly?: number  // Grundlohn je Stunde — Maßstab der Steuerfreiheit (§3b EStG)
   churchTax: boolean
   bundesland?: string
 }
@@ -91,7 +219,13 @@ export interface PayrollResult {
   brutto: number
   regularPay: number
   overtimePay: number
-  surchargesTotal: number   // sum of all pre-tax surcharges
+  surchargesTotal: number   // sum of all surcharges
+  // §3b EStG: Zuschläge für Nacht-, Sonntags- und Feiertagsarbeit sind bis zu
+  // festen Grenzen steuerfrei — und bis 25 €/h Grundlohn auch beitragsfrei.
+  steuerfreieZuschlaege: number
+  svfreieZuschlaege: number
+  steuerBrutto: number      // Brutto, auf das Lohnsteuer erhoben wird
+  svBrutto: number          // Brutto, auf das Sozialabgaben erhoben werden
   // Social security (Arbeitnehmer)
   rvAN: number
   kvAN: number
@@ -134,9 +268,16 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     + (input.holidaySurcharge ?? 0)
     + (input.saturdaySurcharge ?? 0)
     + (input.overtimeSurcharge ?? 0)
+    + (input.otherSurcharge ?? 0)
 
   const overtimePay = (input.hourlyWage ?? 0) * input.overtimeHours
   const brutto = regularPay + surchargesTotal
+
+  // §3b EStG: der steuer- und beitragsfreie Anteil der Zuschläge
+  const frei = steuerfreieZuschlaege(input, regularPay)
+  if (frei.hinweis) warnings.push(frei.hinweis)
+  const steuerBrutto = Math.max(0, brutto - frei.steuerfrei)
+  const svBrutto = Math.max(0, brutto - frei.svfrei)
 
   // Minijob warning
   if (brutto > 0 && brutto <= 556) {
@@ -144,33 +285,36 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   }
 
   // ─ 2. Social security ─────────────────────────────────────────────────────
+  // Bemessungsgrundlage ist das SV-Brutto: beitragsfreie Zuschläge zählen nicht.
   // Rentenversicherung
-  const rvBase = Math.min(brutto, BBG_RV_MONTHLY)
+  const rvBase = Math.min(svBrutto, BBG_RV_MONTHLY)
   const rvAN = rvBase * (RV_RATE / 2)
   const rvAG = rvBase * (RV_RATE / 2)
 
   // Arbeitslosenversicherung
-  const avBase = Math.min(brutto, BBG_RV_MONTHLY)
+  const avBase = Math.min(svBrutto, BBG_RV_MONTHLY)
   const avAN = avBase * (AV_RATE / 2)
   const avAG = avBase * (AV_RATE / 2)
 
-  // Krankenversicherung
+  // Krankenversicherung — der Zusatzbeitrag der jeweiligen Kasse zählt, nicht
+  // der Durchschnitt; der ist nur die Rückfallebene, wenn er nicht hinterlegt ist.
+  const kvSatz = KV_BASE_RATE + (input.zusatzbeitragPercent ?? KV_ZUSATZ_RATE * 100) / 100
   let kvAN = 0
   let kvAG = 0
   if (input.insuranceType === 'GKV') {
-    const kvBase = Math.min(brutto, BBG_KV_MONTHLY)
-    kvAN = kvBase * (KV_TOTAL_RATE / 2)
-    kvAG = kvBase * (KV_TOTAL_RATE / 2)
+    const kvBase = Math.min(svBrutto, BBG_KV_MONTHLY)
+    kvAN = kvBase * (kvSatz / 2)
+    kvAG = kvBase * (kvSatz / 2)
   } else {
     // PKV: AG pays up to half of GKV equivalent, employee pays remainder of PKV premium
-    const kvBase = Math.min(brutto, BBG_KV_MONTHLY)
+    const kvBase = Math.min(svBrutto, BBG_KV_MONTHLY)
     kvAG = kvBase * (KV_TOTAL_RATE / 2)
     const pkv = input.pkvMonthly ?? 0
     kvAN = Math.max(0, pkv - kvAG) // employee pays PKV - AG subsidy
   }
 
   // Pflegeversicherung
-  const pvBase = Math.min(brutto, BBG_KV_MONTHLY)
+  const pvBase = Math.min(svBrutto, BBG_KV_MONTHLY)
   const pvChildlessSurcharge = input.childCount === 0 ? PV_CHILDLESS_SURCHARGE : 0
   const pvAN = pvBase * (PV_RATE / 2 + pvChildlessSurcharge)
   const pvAG = pvBase * (PV_RATE / 2)
@@ -178,68 +322,54 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const svTotal = rvAN + kvAN + pvAN + avAN
 
   // ─ 3. Lohnsteuer ──────────────────────────────────────────────────────────
-  // Annual gross for tax purposes
-  const jahresBrutto = brutto * 12
+  // Hochrechnung auf das Jahr (§39b Abs.2 EStG), dann zurück auf den Monat.
+  // Grundlage ist das Steuerbrutto — steuerfreie Zuschläge bleiben draußen.
+  const jahresBrutto = steuerBrutto * 12
 
-  // Standard deductions
-  let taxableAnnual = jahresBrutto - WERBUNGSKOSTEN_PAUSCH - SONDERAUSGABEN_PAUSCH
-  // Deduct AN-SV from taxable income (§3 Nr.62 EStG → SV is already included in SV
-  // contributions calculation, but for Lohnsteuer the SV deduction is complex;
-  // simplified: deduct AN-SV from pre-tax income annually)
-  const annualSv = svTotal * 12
-  taxableAnnual -= annualSv
-
-  // Apply Grundfreibetrag and Steuerklasse adjustments
-  switch (input.taxClass) {
-    case 1:
-    case 4:
-      taxableAnnual -= GRUNDFREIBETRAG
-      taxableAnnual -= input.childCount * 0 // Kinderfreibetrag is applied automatically in §32a
-      break
-    case 2:
-      taxableAnnual -= GRUNDFREIBETRAG + ENTLASTUNGSBETRAG_ALLEIN
-      break
-    case 3:
-      taxableAnnual -= GRUNDFREIBETRAG * 2  // doubled for married (higher earner)
-      break
-    case 5:
-      // Steuerklasse 5: no Grundfreibetrag, but minimum tax rule applies
-      // (other spouse claims class 3)
-      break
-    case 6:
-      // Steuerklasse 6: no deductions at all (second employer)
-      taxableAnnual = jahresBrutto
-      warnings.push('Steuerklasse 6: volle Besteuerung ohne Freibeträge.')
-      break
+  // Steuerklasse VI kennt keine Freibeträge (zweites Arbeitsverhältnis).
+  let taxableAnnual: number
+  if (input.taxClass === 6) {
+    taxableAnnual = jahresBrutto
+    warnings.push('Steuerklasse 6: volle Besteuerung ohne Freibeträge.')
+  } else {
+    taxableAnnual = jahresBrutto
+      - WERBUNGSKOSTEN_PAUSCH
+      - SONDERAUSGABEN_PAUSCH
+      - vorsorgepauschale(input, jahresBrutto, svBrutto * 12)
+    if (input.taxClass === 2) taxableAnnual -= ENTLASTUNGSBETRAG_ALLEIN
   }
 
-  // Kinderfreibetrag (in Steuerklassen 1,2,3,4 reduces zvE)
-  // §32 Abs.6: 3192 € per parent per child; in Kl.3: double
-  if (input.taxClass !== 5 && input.taxClass !== 6 && input.childCount > 0) {
-    const kfb = input.taxClass === 3
-      ? input.childCount * 3192 * 2
-      : input.childCount * 3192
-    taxableAnnual -= kfb
-  }
-
+  // Der Grundfreibetrag steckt in §32a — er wird hier NICHT zusätzlich abgezogen,
+  // und Klasse III rechnet über das Splittingverfahren.
   const zvE = Math.max(0, taxableAnnual)
-  const annualTax = annualIncomeTax(zvE)
+  const annualTax = jahresLohnsteuer(zvE, input.taxClass)
   const lohnsteuerMonthly = Math.round(annualTax / 12 * 100) / 100
 
-  // Solidaritätszuschlag
-  let soliMonthly = 0
-  if (annualTax > SOLI_FREIGRENZE_ANNUAL) {
-    soliMonthly = Math.round(lohnsteuerMonthly * SOLI_RATE * 100) / 100
-  } else if (annualTax > 0) {
-    // Gleitzone: 11.9% of the excess over Freigrenze (simplified)
-    const excess = annualTax - SOLI_FREIGRENZE_ANNUAL
-    soliMonthly = Math.round(Math.min(excess * 0.119, lohnsteuerMonthly * SOLI_RATE) / 12 * 100) / 100
+  // §51a EStG: Für Soli und Kirchensteuer zählt die Steuer MIT Kinderfreibetrag.
+  // Beim Lohnsteuerabzug selbst wirkt der Kinderfreibetrag nicht — dort ist das
+  // Kindergeld die Entlastung. Beides zu verrechnen wäre doppelt.
+  const kinderfreibetrag = input.childCount > 0
+    ? input.childCount * (input.taxClass === 3 ? KINDERFREIBETRAG_VOLL : KINDERFREIBETRAG_VOLL / 2)
+    : 0
+  const annualTax51a = kinderfreibetrag > 0
+    ? jahresLohnsteuer(Math.max(0, zvE - kinderfreibetrag), input.taxClass)
+    : annualTax
+
+  // Solidaritätszuschlag — die Freigrenze verdoppelt sich in Steuerklasse III
+  const soliFreigrenze = input.taxClass === 3 ? SOLI_FREIGRENZE_ANNUAL * 2 : SOLI_FREIGRENZE_ANNUAL
+  let soliAnnual = 0
+  if (annualTax51a > soliFreigrenze) {
+    // Milderungszone: der Zuschlag wächst mit 11,9 % des übersteigenden Betrags
+    // an, bis er 5,5 % erreicht (§4 SolzG).
+    soliAnnual = Math.min((annualTax51a - soliFreigrenze) * 0.119, annualTax51a * SOLI_RATE)
   }
+  const soliMonthly = Math.round(soliAnnual / 12 * 100) / 100
 
   // Kirchensteuer
   let kirchensteuerMonthly = 0
   if (input.churchTax) {
-    kirchensteuerMonthly = Math.round(lohnsteuerMonthly * kirchensteuerRate(input.bundesland) * 100) / 100
+    kirchensteuerMonthly =
+      Math.round(annualTax51a / 12 * kirchensteuerRate(input.bundesland) * 100) / 100
   }
 
   // ─ 4. Net ─────────────────────────────────────────────────────────────────
@@ -254,6 +384,10 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     regularPay: round2(regularPay),
     overtimePay: round2(overtimePay),
     surchargesTotal: round2(surchargesTotal),
+    steuerfreieZuschlaege: frei.steuerfrei,
+    svfreieZuschlaege: frei.svfrei,
+    steuerBrutto: round2(steuerBrutto),
+    svBrutto: round2(svBrutto),
     rvAN: round2(rvAN),
     kvAN: round2(kvAN),
     pvAN: round2(pvAN),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { allowedLocationScope } from '@/lib/scope'
+import { monatsGrundlagen, abrechnungRechnen, abrechnungsFelder } from '@/lib/payroll-monat'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,10 @@ export const dynamic = 'force-dynamic'
 // Ohne das müsste jemand Steuerklasse, Versicherung und Lohn bei jeder
 // Abrechnung neu eintippen — genau der Grund, warum die Stammdaten am
 // Mitarbeiter hängen und nicht am einzelnen Abrechnungslauf.
+//
+// §115 Vorbereiten heißt auch rechnen: Stunden aus der Zeiterfassung,
+// Abwesenheiten und Zuschläge fließen ein, Brutto und Netto stehen danach am
+// Entwurf. Eine Abrechnung ohne Beträge ist keine Abrechnung.
 export async function POST(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
@@ -37,15 +42,27 @@ export async function POST(req: NextRequest) {
 
   const mitarbeiter = await prisma.employee.findMany({
     where: { customerId, active: true, ...standortFilter },
-    select: { id: true, name: true, locationId: true },
+    select: { id: true, name: true, locationId: true, weeklyHours: true },
   })
   const profile = await prisma.employeePayrollProfile.findMany({
     where: { employeeId: { in: mitarbeiter.map(m => m.id) } },
   })
   const profilVon = new Map(profile.map(p => [p.employeeId, p]))
 
+  // Stunden, Abwesenheiten und Zuschläge des Monats — ein Durchlauf für alle
+  const grundlagen = await monatsGrundlagen(customerId, year, month, mitarbeiter.map(m => {
+    const p = profilVon.get(m.id)
+    return {
+      employeeId: m.id, weeklyHours: m.weeklyHours, locationId: m.locationId,
+      bundesland: p?.bundesland, lohnart: p?.lohnart,
+      stundenlohn: p?.stundenlohn, monatsgehalt: p?.monatsgehalt,
+    }
+  }))
+
   const angelegt: string[] = []
   const unvollstaendig: { name: string; fehlt: string[] }[] = []
+  const gesperrt: string[] = []
+  const hinweise: { name: string; text: string }[] = []
 
   for (const m of mitarbeiter) {
     const p = profilVon.get(m.id)
@@ -67,31 +84,52 @@ export async function POST(req: NextRequest) {
       continue
     }
 
+    // Eine bereits freigegebene Abrechnung wird nicht neu gerechnet — sonst
+    // ändert sich still, was jemand geprüft und unterschrieben hat.
+    const vorhanden = await prisma.payrollEntry.findUnique({
+      where: { employeeId_year_month: { employeeId: m.id, year, month } },
+      select: { id: true, status: true },
+    })
+    if (vorhanden && vorhanden.status !== 'draft') {
+      gesperrt.push(m.name)
+      continue
+    }
+
+    const grundlage = grundlagen.get(m.id)!
+    const { ergebnis } = abrechnungRechnen(p!, grundlage)
+    for (const w of ergebnis.warnings) hinweise.push({ name: m.name, text: w })
+
+    const stammFelder = {
+      employeeName: m.name, locationId: m.locationId, customerId,
+      hourlyWage: p!.stundenlohn ?? null,
+      monthlyWage: p!.monatsgehalt ?? null,
+      taxClass: p!.steuerklasse ?? 1,
+      childCount: p!.kinderfreibetraege ?? 0,
+      insuranceType: p!.versicherungsart ?? 'GKV',
+      pkv: p!.pkvBeitrag ?? null,
+      churchTax: !!p!.konfession && p!.konfession !== 'keine',
+      bundesland: p!.bundesland,
+    }
+    const gerechnet = abrechnungsFelder(grundlage, ergebnis)
+
     await prisma.payrollEntry.upsert({
       where: { employeeId_year_month: { employeeId: m.id, year, month } },
-      create: {
-        employeeId: m.id, employeeName: m.name, locationId: m.locationId, customerId,
-        year, month, status: 'draft',
-        hourlyWage: p!.stundenlohn ?? null,
-        monthlyWage: p!.monatsgehalt ?? null,
-        taxClass: p!.steuerklasse ?? 1,
-        childCount: p!.kinderfreibetraege ?? 0,
-        insuranceType: p!.versicherungsart ?? 'GKV',
-        pkv: p!.pkvBeitrag ?? null,
-        churchTax: !!p!.konfession && p!.konfession !== 'keine',
-        bundesland: p!.bundesland,
-      },
-      // Bereits geprüfte oder freigegebene Abrechnungen werden nicht überschrieben
-      update: {},
+      create: { employeeId: m.id, year, month, status: 'draft', ...stammFelder, ...gerechnet },
+      update: { ...stammFelder, ...gerechnet },
     })
     angelegt.push(m.name)
   }
 
+  const teile: string[] = []
+  if (angelegt.length > 0) teile.push(`${angelegt.length} Abrechnungen berechnet`)
+  if (gesperrt.length > 0) teile.push(`${gesperrt.length} bereits freigegeben und unverändert`)
+  if (unvollstaendig.length > 0) teile.push(`${unvollstaendig.length} ohne vollständige Lohn-Stammdaten`)
+
   return NextResponse.json({
     angelegt: angelegt.length,
+    gesperrt,
     unvollstaendig,
-    hinweis: unvollstaendig.length > 0
-      ? `${unvollstaendig.length} Mitarbeiter konnten nicht vorbereitet werden — bei ihnen fehlen Lohn-Stammdaten.`
-      : `${angelegt.length} Abrechnungen aus den Stammdaten vorbereitet.`,
+    hinweise,
+    hinweis: teile.length > 0 ? teile.join(' · ') + '.' : 'Keine Mitarbeiter zum Abrechnen gefunden.',
   })
 }

@@ -592,6 +592,21 @@ model OrgSettings {
   defaultVacationDaysPerYear   Int
   autoApproveVacationUnderDays Int
   notificationEmail            String
+
+  // §113 Angaben des Arbeitgebers. Die Anschrift steht nach §108 GewO auf jeder
+  // Entgeltabrechnung; Bankverbindung und Betriebsnummer werden fuer die
+  // SEPA-Datei und den DATEV-Export gebraucht.
+  strasse                      String?
+  plz                          String?
+  ort                          String?
+  betriebsnummer               String?   // Agentur fuer Arbeit, 8-stellig
+  steuernummer                 String?
+  iban                         String?
+  bic                          String?
+  kontoinhaber                 String?
+  datevBeraternummer           String?
+  datevMandantennummer         String?
+
   updatedAt                    DateTime @updatedAt
 }
 
@@ -890,6 +905,11 @@ model PayrollEntry {
   // Calculated results
   brutto          Float    @default(0)
   surchargesTotal Float    @default(0)
+  // §3b EStG: steuer- und beitragsfreier Anteil der Zuschläge
+  steuerfreieZuschlaege Float @default(0)
+  svfreieZuschlaege     Float @default(0)
+  steuerBrutto          Float @default(0)
+  svBrutto              Float @default(0)
   lohnsteuer      Float    @default(0)
   kirchensteuer   Float    @default(0)
   soli            Float    @default(0)
