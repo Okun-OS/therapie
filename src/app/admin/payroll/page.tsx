@@ -89,11 +89,13 @@ function EntryModal({
     bundesland: initialEntry?.bundesland ?? '',
   })
   const [result, setResult] = useState<PayrollResult | null>(null)
+  const [rechenFehler, setRechenFehler] = useState<string | null>(null)
   const [wageMode, setWageMode] = useState<'monthly' | 'hourly'>(initialEntry?.monthlyWage != null ? 'monthly' : 'hourly')
 
   function calc() {
     const input: PayrollInput = {
       ...form,
+      jahr: year,
       hourlyWage: wageMode === 'hourly' ? form.hourlyWage : undefined,
       monthlyWage: wageMode === 'monthly' ? form.monthlyWage : undefined,
       taxClass: (form.taxClass as TaxClass) ?? 1,
@@ -110,7 +112,15 @@ function EntryModal({
       sickDays: form.sickDays ?? 0,
       bundesland: form.bundesland || undefined,
     }
-    setResult(calculatePayroll(input))
+    // Fuer ein Jahr ohne geprueft hinterlegte Rechengroessen bricht der Kern ab.
+    // Das gehoert der Leitung gesagt und nicht in der Konsole versteckt.
+    try {
+      setResult(calculatePayroll(input))
+      setRechenFehler(null)
+    } catch (fehler) {
+      setResult(null)
+      setRechenFehler(fehler instanceof Error ? fehler.message : 'Berechnung nicht möglich.')
+    }
   }
 
   function handleSave() {
@@ -270,10 +280,18 @@ function EntryModal({
             <Calculator size={16} /> Berechnen
           </button>
 
+          {rechenFehler && (
+            <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+              <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-900">{rechenFehler}</p>
+            </div>
+          )}
+
           {/* Result */}
           {result && (
             <div className="rounded-2xl border border-teal-200 bg-teal-50 p-4 space-y-3">
               <p className="text-xs font-semibold text-teal-800 uppercase tracking-wide">Ergebnis</p>
+              <p className="text-[11px] text-teal-700">{result.grundlage}</p>
               {result.warnings.length > 0 && result.warnings.map((w, i) => (
                 <div key={i} className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-2">
                   <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />

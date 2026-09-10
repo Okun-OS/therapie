@@ -19,6 +19,7 @@
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "lohnsteuerrechner": "1.0.7",
     "lucide-react": "^0.390.0",
     "next": "^14.2.35",
     "pdf-lib": "^1.17.1",

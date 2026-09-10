@@ -924,6 +924,8 @@ model PayrollEntry {
   pvAG            Float    @default(0)
   avAG            Float    @default(0)
   totalAgCost     Float    @default(0)
+  // §116 Nach welchem Stand gerechnet wurde — steht auch auf dem Beleg
+  grundlage       String?
   // Meta
   approvedBy      String?
   approvedAt      String?
@@ -1244,6 +1246,10 @@ model EmployeePayrollProfile {
   pkvBeitrag          Float?    // Monatsbeitrag bei privater Versicherung
   rentenversicherungspflichtig Boolean @default(true)
   schwerbehindert     Boolean   @default(false)
+  // §116 Pflegeversicherung: der Zuschlag entfaellt dauerhaft mit dem ersten Kind,
+  // die Abschlaege gibt es nur fuer Kinder unter 25 und erst ab dem zweiten.
+  hatKinder           Boolean?
+  kinderUnter25       Int?
 
   // Entgelt
   lohnart             String?   // stunde | monat

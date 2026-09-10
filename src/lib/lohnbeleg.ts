@@ -51,6 +51,8 @@ export interface BelegAbrechnung {
   brutto: number
   surchargesTotal: number
   steuerfreieZuschlaege?: number
+  /** Woher die Rechengrößen stammen — gehört auf den Beleg, nicht nur ins Log. */
+  grundlage?: string
   steuerBrutto?: number
   svBrutto?: number
   regularHours: number
@@ -295,6 +297,13 @@ export async function erzeugeLohnbeleg(
   rechts(`${euro(abrechnung.totalAgCost)} EUR`, SP_BETRAG, 9, fett, grau)
 
   // ── Fuß ──────────────────────────────────────────────────────────────────
+  // §116 Die Rechtsgrundlage gehört auf den Beleg. Wer die Abrechnung prüft,
+  // muss ohne Rückfrage sehen, nach welchem Stand gerechnet wurde.
+  seite.drawText(
+    'Lohnsteuer nach dem amtlichen Programmablaufplan des BMF'
+    + (abrechnung.grundlage ? ` · ${abrechnung.grundlage.split(' · geprüft')[0]}` : ''),
+    { x: RAND, y: RAND - 2, size: 7, font: normal, color: grau },
+  )
   seite.drawText(
     'Erstellt mit OKUN Workforce. Diese Abrechnung ist maschinell erzeugt und ohne Unterschrift gültig.',
     { x: RAND, y: RAND - 12, size: 7, font: normal, color: grau },

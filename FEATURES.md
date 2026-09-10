@@ -72,16 +72,19 @@ aussieht.
 
 ## D · Lohn
 
-- [x] **D1 Lohnberechnung** — nachgewiesen. Beim Nachrechnen kamen vier echte
-      Fehler heraus, alle behoben: der Grundfreibetrag wurde doppelt abgezogen
-      (einmal von Hand, einmal steckt er in §32a), Steuerklasse III rechnete mit
-      verdoppeltem Freibetrag statt nach dem Splittingverfahren, statt der
-      Vorsorgepauschale (§39b Abs.2) wurden die vollen Sozialabgaben abgesetzt,
-      und der Kinderfreibetrag minderte die Lohnsteuer, obwohl er nach §51a EStG
-      nur für Soli und Kirchensteuer zählt. Klassen V und VI folgen jetzt §39b
-      Abs.2 Satz 7. Der Zusatzbeitrag der jeweiligen Krankenkasse zählt statt
-      eines Durchschnitts. 33 Rechentests, dazu 15 Prüfungen am laufenden System.
-      Jahreswerte müssen jährlich nachgezogen werden (im Code markiert).
+- [x] **D1 Lohnberechnung** — nachgewiesen, und inzwischen nicht mehr selbst
+      gerechnet. Erst kamen beim Nachrechnen fünf Fehler heraus (doppelter
+      Grundfreibetrag, Steuerklasse III ohne Splittingverfahren, volle
+      Sozialabgaben statt Vorsorgepauschale, Kinderfreibetrag in der Lohnsteuer
+      statt nur bei Soli und Kirchensteuer, Steuerformel von 2024 neben
+      Freibeträgen von 2025). Nach der Korrektur stimmte Steuerklasse I auf den
+      Cent — Klasse III lag immer noch 9 € daneben. Deshalb rechnet die
+      Lohnsteuer jetzt der **amtliche Programmablaufplan des BMF**, dieselbe
+      Vorschrift, die jede Lohnsoftware in Deutschland umsetzt (`lohnsteuer-pap.ts`).
+      Wir liefern die Eingaben und übernehmen das Ergebnis. Die Jahreswerte
+      stehen als Daten in `lohnjahre.ts` mit Quelle und Prüfvermerk — 2025 und
+      2026 sind eingetragen; für ein Jahr ohne geprüfte Werte wird die
+      Abrechnung **verweigert statt geschätzt**.
 - [x] **D2 Zuschlagsregeln** — nachgewiesen, mit dem größten Fund des Blocks:
       Nacht-, Sonntags- und Feiertagszuschläge wurden voll versteuert, obwohl sie
       nach §3b EStG steuerfrei sind. Das kostete den Mitarbeiter bares Geld. Jetzt
@@ -103,6 +106,11 @@ aussieht.
       geprüfter IBAN-Prüfsumme und stimmender Kontrollsumme. Bewusst als Datei zum
       Upload bei der Bank, nicht als eigene Zahlungsauslösung (erlaubnispflichtig,
       ZAG).
+
+  **Kein einziger externer Zugang nötig.** Gerechnet wird bei uns, DATEV und SEPA
+  sind Dateien zum Weitergeben, Feiertage rechnen wir selbst. Das Einzige, was
+  von außen kommt, ist einmal im Jahr der Programmablaufplan des BMF — ein
+  Download, kein Zugang.
 - [ ] **D7 Meldewesen (SV-Meldungen, Lohnsteueranmeldung)** — **bewusst nicht
       selbst.** Braucht zertifizierte Übermittlung (ITSG, ELSTER). Läuft über
       Steuerberater oder DATEV — dafür D5.
@@ -342,6 +350,51 @@ Lohnberechnung selbst — dazu 33 Rechentests gegen den Gesetzestext.
   gerechnet, freigegebene Abrechnungen bleiben unangetastet.
 - **Der Zusatzbeitrag der Krankenkasse wurde ignoriert.** Gerechnet wurde mit
   einem Durchschnittswert, obwohl der echte Satz am Mitarbeiter hinterlegt ist.
+
+## Block D, zweiter Durchgang (10.09.) — Lohnsteuer vom Amt statt selbst gebaut
+
+Nach der Korrektur der eigenen Steuerformel stimmte Steuerklasse I auf den Cent
+(395,83 €), Steuerklasse III aber immer noch nicht: 111,17 € statt 102,00 €.
+Eine Abweichung, die man einer Zahl nicht ansieht und die jeden Monat auf jeder
+Abrechnung stünde. Deshalb der Wechsel auf die amtliche Vorlage.
+
+- **Die Lohnsteuer rechnet jetzt der BMF-Programmablaufplan.** Kein API, keine
+  laufende Verbindung — eine Umsetzung der amtlichen Vorschrift als Bibliothek
+  (`lohnsteuerrechner`, MIT, eine Abhängigkeit). Vor der Aufnahme geprüft: keine
+  Installationsskripte, keine Netzaufrufe, kein `eval`. Der Rechenweg trägt die
+  Seitenverweise des Ablaufplans und die dort vorgeschriebenen Rundungsregeln.
+- **Unabhängig nachgerechnet, nicht geglaubt.** Ein Referenzfall wurde von Hand
+  aus den Konstanten des Ablaufplans hergeleitet (5.000 € · StKl I · 2026 →
+  9.430 € Jahressteuer → 785,83 € im Monat) und stimmt auf den Cent. Zusätzlich
+  ist der Tarif an seinen Bruchstellen nachgerechnet: Zone 2 endet exakt beim
+  Startwert von Zone 3.
+- **Die 2026er Werte sind damit belegt statt geraten** — Grundfreibetrag
+  12.348 €, Beitragsbemessungsgrenzen 8.450 € und 5.812,50 € im Monat,
+  Soli-Freigrenze 20.350 €. Vorher hätte ich die Tarifkoeffizienten raten müssen.
+- **Zwei Dinge, die vorher als „braucht einen Steuerberater" markiert waren,
+  gehen jetzt:** die abweichende Aufteilung der Pflegeversicherung in Sachsen
+  und der Beitragsabschlag ab dem zweiten Kind unter 25.
+- **Kinderlosenzuschlag und Kinderabschlag sind zwei verschiedene Dinge** und
+  wurden vorher aus der Zahl der Kinderfreibeträge abgeleitet — das ist falsch.
+  Der Zuschlag entfällt dauerhaft mit dem ersten Kind, die Abschläge gibt es nur
+  für Kinder unter 25. Beide Angaben stehen jetzt eigens am Lohnprofil.
+- **Jahre ohne geprüfte Rechengrößen werden abgewiesen**, mit einer Meldung, die
+  sagt was fehlt und wo es einzutragen ist — statt still mit falschen Werten zu
+  rechnen. Am laufenden System nachgewiesen.
+- **Auf dem Beleg steht jetzt, wonach gerechnet wurde**, und die Grundlage wird
+  an der Abrechnung gespeichert. Wer eine alte Abrechnung prüft, sieht den Stand
+  ohne Rückfrage.
+
+Nachweis: 19 Prüfungen gegen den Ablaufplan, 37 im Rechenkern, 39 am laufenden
+System für Beleg, Export und SEPA, 15 für die Lohnberechnung.
+
+## Offen und bewusst so
+- Der Zugriff auf **ELStAM** (Steuerklassen elektronisch von der Finanzverwaltung)
+  braucht einen zertifizierten Zugang. Bei uns trägt sie jemand ein — zulässig,
+  aber der Kunde steht dafür gerade. Gehört in seinen Vertrag.
+- **npm audit** meldet 12 Befunde, alle in `postcss` innerhalb von Next.js und
+  alle schon vor diesem Block vorhanden. Die Behebung hieße Next 16 — eigener
+  Vorgang, nicht nebenbei.
 
 ## Noch offen aus der Nachweis-Phase
 - [ ] **Krankenschein mit Fehlzeit verknüpfen** — die Datei liegt in der

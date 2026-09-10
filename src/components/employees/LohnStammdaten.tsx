@@ -23,6 +23,8 @@ interface Profil {
   steuerId?: string | null
   steuerklasse?: number | null
   kinderfreibetraege?: number | null
+  hatKinder?: boolean | null
+  kinderUnter25?: number | null
   konfession?: string | null
   bundesland?: string | null
   sozialversicherungsnummer?: string | null
@@ -217,6 +219,27 @@ export function LohnStammdaten({ employeeId }: { employeeId: string }) {
                 </>
               )}
             </div>
+            {/* §116 Pflegeversicherung: der Zuschlag entfällt dauerhaft mit dem
+                ersten Kind, die Abschläge gibt es nur für Kinder unter 25 und
+                erst ab dem zweiten. Aus den Kinderfreibeträgen lässt sich das
+                nicht ableiten — deshalb zwei eigene Angaben. */}
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-0.5">Hat Kinder</label>
+                <select value={profil.hatKinder == null ? '' : profil.hatKinder ? 'ja' : 'nein'}
+                  onChange={e => setzen('hatKinder', e.target.value === '' ? null : e.target.value === 'ja')}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20">
+                  <option value="">— wählen —</option>
+                  <option value="ja">ja</option>
+                  <option value="nein">nein</option>
+                </select>
+              </div>
+              <Feld label="Kinder unter 25" feld="kinderUnter25" typ="number" platzhalter="z.B. 2" />
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1">
+              Ohne Kinder fällt der Zuschlag zur Pflegeversicherung an. Ab dem zweiten
+              Kind unter 25 mindert jedes Kind den Beitrag.
+            </p>
             <div className="flex flex-wrap gap-4 mt-2">
               <label className="flex items-center gap-1.5 text-xs text-gray-600">
                 <input type="checkbox" checked={profil.rentenversicherungspflichtig !== false}

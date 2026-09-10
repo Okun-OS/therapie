@@ -2,17 +2,24 @@ import { describe, it, expect } from 'vitest'
 import { calculatePayroll, type PayrollInput } from '../payroll-engine'
 
 /**
- * §115 Diese Zahlen landen auf einer Lohnabrechnung, in der Buchhaltung des
+ * §116 Diese Zahlen landen auf einer Lohnabrechnung, in der Buchhaltung des
  * Steuerberaters und als Überweisung auf einem Konto. Deshalb wird hier gegen
  * die Vorgaben des Gesetzes gerechnet und nicht gegen das, was das Programm
  * gerade ausgibt.
  *
- * Nachgerechnet nach §32a EStG 2025 (Grundfreibetrag 12.096 €),
- * §39b Abs.2 EStG (Vorsorgepauschale) und §51a EStG (Kinderfreibetrag nur für
- * Soli und Kirchensteuer).
+ * Geprüft wird hier, was dieses Modul selbst verantwortet: Brutto, die
+ * Steuerfreiheit der Zuschläge nach §3b EStG, die Sozialabgaben und das Netto.
+ * Die Lohnsteuer kommt aus dem amtlichen Programmablaufplan und wird in
+ * `lohnsteuer-pap.test.ts` gegen dessen Referenzwerte geprüft — hier zählen nur
+ * die Zusammenhänge, die zwischen beiden Seiten stimmen müssen.
  */
 
+import { lohnjahr } from '../lohnjahre'
+
+const J2026 = lohnjahr(2026)!
+
 const basis: PayrollInput = {
+  jahr: 2026,
   monthlyWage: 3400,
   regularHours: 151.67, overtimeHours: 0,
   nightHours: 0, sundayHours: 0, holidayHours: 0, saturdayHours: 0,
@@ -37,40 +44,71 @@ describe('Sozialversicherung', () => {
   })
 
   it('belastet Kinderlose in der Pflegeversicherung zusätzlich', () => {
-    const ohneKind = calculatePayroll({ ...basis, childCount: 0 })
-    const mitKind = calculatePayroll({ ...basis, childCount: 1 })
+    const ohneKind = calculatePayroll({ ...basis, hasChildren: false })
+    const mitKind = calculatePayroll({ ...basis, hasChildren: true, childrenUnder25: 1 })
     expect(ohneKind.pvAN).toBeCloseTo(3400 * (0.018 + 0.006), 2)  // 81,60
     expect(mitKind.pvAN).toBeCloseTo(3400 * 0.018, 2)             // 61,20
     // Der Zuschlag trägt allein der Arbeitnehmer
     expect(ohneKind.pvAG).toBeCloseTo(mitKind.pvAG, 2)
   })
 
-  it('deckelt die Beiträge an den Beitragsbemessungsgrenzen', () => {
-    const hoch = calculatePayroll({ ...basis, monthlyWage: 12000 })
-    expect(hoch.rvAN).toBeCloseTo(8050 * 0.093, 2)
-    expect(hoch.kvAN).toBeCloseTo(5512.5 * 0.0815, 1)
+  it('deckelt die Beiträge an den Beitragsbemessungsgrenzen des Jahres', () => {
+    const hoch = calculatePayroll({ ...basis, monthlyWage: 12000, zusatzbeitragPercent: 1.7 })
+    expect(hoch.rvAN).toBeCloseTo(J2026.bbgRvAvMonat * 0.093, 2)
+    expect(hoch.kvAN).toBeCloseTo(J2026.bbgKvPvMonat * 0.0815, 2)
+  })
+
+  it('nimmt die Grenzen des abgerechneten Jahres, nicht die des laufenden', () => {
+    const hoch = { ...basis, monthlyWage: 12000, zusatzbeitragPercent: 1.7 }
+    const a = calculatePayroll({ ...hoch, jahr: 2025 })
+    const b = calculatePayroll({ ...hoch, jahr: 2026 })
+    expect(a.rvAN).toBeCloseTo(lohnjahr(2025)!.bbgRvAvMonat * 0.093, 2)
+    expect(b.rvAN).toBeGreaterThan(a.rvAN)
+  })
+
+  it('verweigert die Abrechnung für ein Jahr ohne geprüfte Werte', () => {
+    expect(() => calculatePayroll({ ...basis, jahr: 2030 })).toThrow(/2030/)
+  })
+
+  it('teilt die Pflegeversicherung in Sachsen anders auf', () => {
+    const nrw = calculatePayroll({ ...basis, bundesland: 'Nordrhein-Westfalen', hasChildren: true, childrenUnder25: 1 })
+    const sachsen = calculatePayroll({ ...basis, bundesland: 'Sachsen', hasChildren: true, childrenUnder25: 1 })
+    // Sachsen: Arbeitnehmer 2,3 %, Arbeitgeber 1,3 % statt je 1,8 %
+    expect(sachsen.pvAN).toBeGreaterThan(nrw.pvAN)
+    expect(sachsen.pvAG).toBeLessThan(nrw.pvAG)
+    expect(sachsen.pvAN + sachsen.pvAG).toBeCloseTo(nrw.pvAN + nrw.pvAG, 2)
+  })
+
+  it('mindert den Pflegebeitrag ab dem zweiten Kind unter 25', () => {
+    const einKind = calculatePayroll({ ...basis, hasChildren: true, childrenUnder25: 1 })
+    const dreiKinder = calculatePayroll({ ...basis, hasChildren: true, childrenUnder25: 3 })
+    // je Kind ab dem zweiten 0,25 Prozentpunkte, hier also 0,5
+    expect(einKind.pvAN - dreiKinder.pvAN).toBeCloseTo(3400 * 0.005, 2)
   })
 })
 
 describe('Lohnsteuer', () => {
-  it('zieht den Grundfreibetrag nicht doppelt ab', () => {
-    // Vorsorgepauschale: RV 40.800 · 9,3 % = 3.794,40
-    //   + KV 40.800 · (7 % + 0,85 %) = 3.202,80
-    //   + PV 40.800 · 2,4 % (kinderlos) = 979,20   → zusammen 7.976,40
-    // zvE = 40.800 − 1.230 − 36 − 7.976,40 = 31.557
-    // §32a: y = (31.557 − 17.443)/10.000 = 1,4114
-    //       (176,64 · 1,4114 + 2397) · 1,4114 + 1015,13 = 4.750
-    const r = calculatePayroll({ ...basis, zusatzbeitragPercent: 1.7 })
-    expect(r.lohnsteuerMonthly).toBeCloseTo(4750 / 12, 1)
+  it('übernimmt die Lohnsteuer des amtlichen Ablaufplans unverändert', () => {
+    // Derselbe Fall wie der Referenzfall in lohnsteuer-pap.test.ts, nur durch
+    // den ganzen Rechenkern hindurch — er darf das Ergebnis nicht verändern.
+    const r = calculatePayroll({ ...basis, monthlyWage: 5000, zusatzbeitragPercent: 2.5 })
+    expect(r.lohnsteuerMonthly).toBe(785.83)
   })
 
-  it('rechnet Steuerklasse III nach dem Splittingverfahren', () => {
-    // zvE 31.802 (höhere Mindestvorsorge-Grenze wirkt hier nicht)
-    // 2 · §32a(15.901) = 2 · 667 = 1.334
-    const r = calculatePayroll({
-      ...basis, taxClass: 3, childCount: 1, zusatzbeitragPercent: 1.7,
+  it('besteuert nur das Steuerbrutto, nicht das Gesamtbrutto', () => {
+    // Gleicher Auszahlungsbetrag, einmal als Grundlohn, einmal mit steuerfreiem
+    // Nachtzuschlag. Die Steuer muss im zweiten Fall niedriger sein.
+    const alsGrundlohn = calculatePayroll({
+      ...basis, monthlyWage: undefined, hourlyWage: 20,
+      regularHours: 30, nightHours: 0,
     })
-    expect(r.lohnsteuerMonthly).toBeCloseTo(1334 / 12, 1)
+    const mitZuschlag = calculatePayroll({
+      ...basis, monthlyWage: undefined, hourlyWage: 20,
+      regularHours: 24, nightHours: 24, nightSurcharge: 24 * 20 * 0.25,
+    })
+    expect(mitZuschlag.brutto).toBeCloseTo(alsGrundlohn.brutto, 2)
+    expect(mitZuschlag.lohnsteuerMonthly).toBeLessThanOrEqual(alsGrundlohn.lohnsteuerMonthly)
+    expect(mitZuschlag.netto).toBeGreaterThanOrEqual(alsGrundlohn.netto)
   })
 
   it('besteuert Klasse III milder als Klasse I bei gleichem Lohn', () => {

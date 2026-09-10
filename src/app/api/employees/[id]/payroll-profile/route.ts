@@ -17,6 +17,7 @@ const FELDER = {
   bundesland: true, sozialversicherungsnummer: true, versicherungsart: true,
   krankenkasse: true, zusatzbeitrag: true, pkvBeitrag: true,
   rentenversicherungspflichtig: true, schwerbehindert: true,
+  hatKinder: true, kinderUnter25: true,
   lohnart: true, stundenlohn: true, monatsgehalt: true,
   iban: true, bic: true, kontoinhaber: true, notiz: true, updatedAt: true,
 } as const
@@ -75,6 +76,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     pkvBeitrag: zahl(body.pkvBeitrag),
     rentenversicherungspflichtig: body.rentenversicherungspflichtig !== false,
     schwerbehindert: body.schwerbehindert === true,
+    // §116 Bewusst dreiwertig: "nicht angegeben" ist etwas anderes als "keine
+    // Kinder" — im zweiten Fall faellt der Zuschlag zur Pflegeversicherung an.
+    hatKinder: body.hatKinder === null || body.hatKinder === undefined || body.hatKinder === ''
+      ? null : body.hatKinder === true,
+    kinderUnter25: zahl(body.kinderUnter25),
     lohnart: text(body.lohnart),
     stundenlohn: zahl(body.stundenlohn),
     monatsgehalt: zahl(body.monatsgehalt),

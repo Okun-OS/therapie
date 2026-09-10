@@ -248,16 +248,23 @@ export interface AbrechnungsStammdaten {
   zusatzbeitrag?: number | null
   konfession?: string | null
   bundesland?: string | null
+  /** Hat Kinder — entscheidet über den Zuschlag zur Pflegeversicherung */
+  hatKinder?: boolean | null
+  /** Kinder unter 25 — ab dem zweiten mindert jedes den Pflegebeitrag */
+  kinderUnter25?: number | null
+  rentenversicherungspflichtig?: boolean | null
 }
 
 /** Aus Stammdaten und Monatsgrundlage die fertige Abrechnung rechnen. */
 export function abrechnungRechnen(
   stamm: AbrechnungsStammdaten,
   g: MonatsGrundlage,
+  jahr: number,
 ): { eingabe: PayrollInput; ergebnis: PayrollResult } {
   // Der Grundlohn je Stunde ist der Maßstab für die Steuerfreiheit der
   // Zuschläge — beim Monatsgehalt aus Gehalt und Wochenstunden abgeleitet.
   const eingabe: PayrollInput = {
+    jahr,
     hourlyWage: stamm.lohnart === 'stunde' ? (stamm.stundenlohn ?? undefined) : undefined,
     monthlyWage: stamm.lohnart === 'monat' ? (stamm.monatsgehalt ?? undefined) : undefined,
     regularHours: g.regularHours,
@@ -279,6 +286,9 @@ export function abrechnungRechnen(
     insuranceType: stamm.versicherungsart === 'PKV' ? 'PKV' : 'GKV',
     pkvMonthly: stamm.pkvBeitrag ?? undefined,
     zusatzbeitragPercent: stamm.zusatzbeitrag ?? undefined,
+    hasChildren: stamm.hatKinder ?? undefined,
+    childrenUnder25: stamm.kinderUnter25 ?? undefined,
+    rvExempt: stamm.rentenversicherungspflichtig === false,
     grundlohnHourly: g.zuschlagsStundenlohn ?? undefined,
     churchTax: !!stamm.konfession && stamm.konfession !== 'keine',
     bundesland: stamm.bundesland ?? undefined,
@@ -299,6 +309,7 @@ export function abrechnungsFelder(g: MonatsGrundlage, r: PayrollResult) {
     sickDays: Math.round(g.sickDays),
     brutto: r.brutto,
     surchargesTotal: r.surchargesTotal,
+    grundlage: r.grundlage,
     steuerfreieZuschlaege: r.steuerfreieZuschlaege,
     svfreieZuschlaege: r.svfreieZuschlaege,
     steuerBrutto: r.steuerBrutto,

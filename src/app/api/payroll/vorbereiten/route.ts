@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   const mitarbeiter = await prisma.employee.findMany({
     where: { customerId, active: true, ...standortFilter },
-    select: { id: true, name: true, locationId: true, weeklyHours: true },
+    select: { id: true, name: true, locationId: true, weeklyHours: true, hasChildren: true },
   })
   const profile = await prisma.employeePayrollProfile.findMany({
     where: { employeeId: { in: mitarbeiter.map(m => m.id) } },
@@ -96,7 +96,23 @@ export async function POST(req: NextRequest) {
     }
 
     const grundlage = grundlagen.get(m.id)!
-    const { ergebnis } = abrechnungRechnen(p!, grundlage)
+    // Fuer die Pflegeversicherung zaehlt, ob jemand Kinder hat — die Angabe am
+    // Lohnprofil geht vor, sonst das Merkmal am Mitarbeiter.
+    let ergebnis
+    try {
+      ergebnis = abrechnungRechnen(
+        { ...p!, hatKinder: p!.hatKinder ?? m.hasChildren },
+        grundlage,
+        year,
+      ).ergebnis
+    } catch (fehler) {
+      // Ein unbekanntes Abrechnungsjahr ist kein Serverfehler, sondern eine
+      // Sache, die jemand entscheiden muss.
+      return NextResponse.json(
+        { error: fehler instanceof Error ? fehler.message : 'Berechnung nicht moeglich' },
+        { status: 400 },
+      )
+    }
     for (const w of ergebnis.warnings) hinweise.push({ name: m.name, text: w })
 
     const stammFelder = {

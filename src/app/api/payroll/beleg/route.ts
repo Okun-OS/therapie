@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
           jahr: year, monat: month,
           brutto: a.brutto, surchargesTotal: a.surchargesTotal,
           steuerfreieZuschlaege: a.steuerfreieZuschlaege,
+          grundlage: a.grundlage ?? undefined,
           steuerBrutto: a.steuerBrutto, svBrutto: a.svBrutto,
           regularHours: a.regularHours, overtimeHours: a.overtimeHours,
           lohnsteuer: a.lohnsteuer, kirchensteuer: a.kirchensteuer, soli: a.soli,
