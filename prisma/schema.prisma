@@ -1003,6 +1003,10 @@ model PayrollEntry {
   totalAgCost     Float    @default(0)
   // §116 Nach welchem Stand gerechnet wurde — steht auch auf dem Beleg
   grundlage       String?
+  // §121 Welche Beschaeftigungsart tatsaechlich galt, und die Pauschsteuer des
+  // Arbeitgebers beim Minijob — sie ist kein Abzug beim Arbeitnehmer.
+  beschaeftigungsart String @default("regulaer")
+  pauschsteuerAG     Float  @default(0)
   // §119 Aufrollung: Differenzen aus rueckwirkend geaenderten Monaten werden
   // hier ausgeglichen. auszahlungsbetrag ist das, was wirklich ueberwiesen
   // wird — Netto plus Korrektur. SEPA, DATEV und der Beleg lesen dieses eine
@@ -1338,6 +1342,15 @@ model EmployeePayrollProfile {
   pkvBeitrag          Float?    // Monatsbeitrag bei privater Versicherung
   rentenversicherungspflichtig Boolean @default(true)
   schwerbehindert     Boolean   @default(false)
+  // §121 Beschaeftigungsart: regulaer | minijob | kurzfristig.
+  // Der Uebergangsbereich wird NICHT hier gefuehrt — er ergibt sich aus dem
+  // Entgelt und ist keine Vereinbarung, sondern Gesetz.
+  beschaeftigungsart  String?
+  /// Minijob: Befreiung von der Rentenversicherungspflicht auf Antrag
+  rvBefreiung         Boolean?
+  /// Minijob: 2 % Pauschsteuer statt individueller Besteuerung nach ELStAM
+  pauschalsteuer      Boolean?
+
   // §116 Pflegeversicherung: der Zuschlag entfaellt dauerhaft mit dem ersten Kind,
   // die Abschlaege gibt es nur fuer Kinder unter 25 und erst ab dem zweiten.
   hatKinder           Boolean?

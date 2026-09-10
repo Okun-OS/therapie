@@ -56,20 +56,23 @@ auf, lange bevor eine Behörde ins Spiel kommt. Das ist die Pflicht.
 - [x] Ein freigegebener Monat lässt sich nicht nachträglich ergänzen
 - [x] 21 Modultests, 29 Prüfungen am laufenden System
 
-### 1.2 Minijob und Übergangsbereich `[OKUN]` **L**
-Heute wird nur gewarnt. In Kita und Reha sind geringfügig Beschäftigte der
-Normalfall, nicht die Ausnahme.
-
-- [ ] Beschäftigungsart am Mitarbeiter (regulär / Minijob / kurzfristig / Übergangsbereich)
-- [ ] Minijob: Pauschalabgaben des Arbeitgebers, Rentenversicherungspflicht mit
-      Befreiungsmöglichkeit, Umlagen
-- [ ] **Minijobs melden an die Minijob-Zentrale (Knappschaft), nicht an die
-      Krankenkasse** — eigener Meldeweg
-- [ ] Übergangsbereich: die verminderte Beitragslast des Arbeitnehmers nach der
-      Formel des §20 Abs.2a SGB IV
-- [ ] Automatische Prüfung, ob jemand die Grenze überschreitet, mit Warnung
-- [ ] Kurzfristige Beschäftigung: Zeitgrenzen überwachen (Tage im Kalenderjahr)
-- [ ] Tests für jede Variante und die Grenzfälle genau an der Schwelle
+### 1.2 Minijob und Übergangsbereich `[OKUN]` — ✅ **fertig 10.09.2026**
+- [x] Beschäftigungsart am Lohnprofil (regulär / Minijob / kurzfristig). Der
+      **Übergangsbereich steht bewusst nicht zur Wahl** — er ergibt sich aus dem
+      Entgelt und ist Gesetz, keine Vereinbarung.
+- [x] Minijob: 15 % Rente und 13 % Kranken pauschal beim Arbeitgeber, 3,6 %
+      Eigenanteil beim Arbeitnehmer, Befreiung auf Antrag, 2 % Pauschsteuer
+- [x] Übergangsbereich nach §20 Abs.2a SGB IV mit beiden Bemessungsgrößen —
+      die Formel geht an beiden Enden exakt auf (Test)
+- [x] Kurzfristige Beschäftigung: beitragsfrei, mit Hinweis auf die Zeitgrenze
+- [x] **Die Geringfügigkeitsgrenze steht nicht als Zahl im Code**, sondern folgt
+      dem Mindestlohn (§8 Abs.1a SGB IV). Die Herleitung bestätigt sich selbst:
+      12,82 € Mindestlohn ergeben genau die amtlichen 556 € für 2025.
+- [x] Kein Sprung nach unten an der Schwelle — eigens getestet
+- [x] 35 Modultests, 22 Prüfungen am laufenden System
+- [ ] **Offen:** Umlagen U1/U2/U3 — gehören zum Beitragsnachweis (Teil 3.1)
+- [ ] **Offen:** Zeitgrenzen der kurzfristigen Beschäftigung automatisch zählen
+- [ ] **Offen:** Minijobs an die Minijob-Zentrale melden — braucht Teil 5
 
 ### 1.3 Ein- und Austritte innerhalb des Monats `[OKUN]` **M**
 - [ ] Anteiliges Entgelt bei Teilmonaten

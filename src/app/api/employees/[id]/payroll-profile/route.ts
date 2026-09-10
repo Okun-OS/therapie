@@ -18,6 +18,7 @@ const FELDER = {
   krankenkasse: true, zusatzbeitrag: true, pkvBeitrag: true,
   rentenversicherungspflichtig: true, schwerbehindert: true,
   hatKinder: true, kinderUnter25: true,
+  beschaeftigungsart: true, rvBefreiung: true, pauschalsteuer: true,
   elstamStand: true, elstamQuelle: true, elstamBestaetigtVon: true,
   freibetragMonat: true, hinzurechnungMonat: true, faktor: true,
   lohnart: true, stundenlohn: true, monatsgehalt: true,
@@ -83,6 +84,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     hatKinder: body.hatKinder === null || body.hatKinder === undefined || body.hatKinder === ''
       ? null : body.hatKinder === true,
     kinderUnter25: zahl(body.kinderUnter25),
+    // §121 Beschaeftigungsart: der Uebergangsbereich steht bewusst NICHT zur
+    // Wahl — er ergibt sich aus dem Entgelt.
+    beschaeftigungsart: ['regulaer', 'minijob', 'kurzfristig'].includes(String(body.beschaeftigungsart))
+      ? String(body.beschaeftigungsart) : null,
+    rvBefreiung: body.rvBefreiung === true,
+    pauschalsteuer: body.pauschalsteuer === true,
     // §117 Freibetraege und Faktor kommen aus ELStAM. Wer sie hier von Hand
     // eintraegt, setzt damit auch den Stand — sonst stuende ein neuer Wert mit
     // einem alten Datum da.

@@ -522,6 +522,41 @@ Nachweis: 21 Modultests, 29 Prüfungen am laufenden System. Im Testfall bleiben
 von 3.400 EUR Weihnachtsgeld **2.217,90 EUR netto** (463 EUR Steuer,
 719,10 EUR Beiträge).
 
+## Block D11 (10.09.) — Minijob, kurzfristig, Übergangsbereich
+
+In Kita und Reha sind geringfügig Beschäftigte der Normalfall. Bisher hat das
+Programm bei kleinen Beträgen nur gewarnt und ansonsten wie bei einem regulären
+Arbeitsverhältnis gerechnet — **falsch in beide Richtungen**: dem Minijobber
+wurden Beiträge abgezogen, die er nicht schuldet, und der Arbeitgeber zahlte
+nicht die Pauschalen, die er schuldet.
+
+- [x] **Minijob** — 15 % Rente und 13 % Kranken pauschal beim Arbeitgeber,
+      3,6 % Eigenanteil beim Arbeitnehmer (befreibar), 2 % Pauschsteuer statt
+      Besteuerung nach ELStAM. Nachgewiesen: von 500 € bleiben 482 €, den
+      Arbeitgeber kostet es 650 €.
+- [x] **Kurzfristige Beschäftigung** — beitragsfrei in allen Zweigen, aber
+      steuerpflichtig. Mit Hinweis auf die Zeitgrenze.
+- [x] **Übergangsbereich** nach §20 Abs.2a SGB IV — mit beiden Bemessungsgrößen:
+      der Gesamtbeitrag bemisst sich anders als der Arbeitnehmeranteil. Deshalb
+      trägt der Arbeitgeber an der Untergrenze alles allein. Bei 1.200 € zahlt
+      der Arbeitnehmer 180,77 € statt 246,60 €.
+- [x] **Er steht bewusst nicht zur Wahl.** Wer als „regulär" geführt wird und im
+      Bereich verdient, wird so gerechnet — das ist Gesetz, keine Vereinbarung.
+
+Zwei Entscheidungen, auf die es ankam:
+
+- **Die Geringfügigkeitsgrenze steht nicht als Zahl im Code.** Sie folgt seit
+  2022 dem Mindestlohn (§8 Abs.1a SGB IV) und wird daraus gerechnet. Die
+  Herleitung bestätigt sich selbst: 12,82 € Mindestlohn ergeben genau die
+  amtlichen 556 € für 2025. Damit kann sie nicht veralten, ohne dass es
+  auffällt — geprüft werden muss nur noch der Mindestlohn. Für 2026 ist er im
+  Prüfvermerk ausdrücklich als **ungeprüft** markiert.
+- **Kein Sprung an der Schwelle.** Ein Euro mehr Brutto darf nie weniger Netto
+  bedeuten. Eigens getestet, sowohl als Modultest als auch am laufenden System:
+  603 € → 581,29 € netto, 604 € → 603,70 € netto.
+
+Nachweis: 35 Modultests, 22 Prüfungen am laufenden System.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

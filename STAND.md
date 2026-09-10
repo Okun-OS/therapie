@@ -18,9 +18,9 @@ Zuletzt aktualisiert: **10.09.2026**
 |---|---|
 | **Baustelle** | Lohnabrechnung → eigene Komplettlösung |
 | **Meilenstein** | 1 von 4 — „Ein echter Kunde kann abgerechnet werden" |
-| **Zuletzt fertig** | Einmalzahlungen (Teil 1.1) — Weihnachtsgeld, Prämie, Abfindung |
-| **Als Nächstes** | Fahrplan Teil 1.2 — Minijob und Übergangsbereich |
-| **Danach** | Teil 1.3 Ein-/Austritte im Monat · Teil 6.1 automatische Prüfung |
+| **Zuletzt fertig** | Minijob, kurzfristige Beschäftigung, Übergangsbereich (Teil 1.2) |
+| **Als Nächstes** | Fahrplan Teil 1.3 — Ein- und Austritte innerhalb des Monats |
+| **Danach** | Teil 6.1 automatische Prüfung · Teil 2.2 Lohnsteuerbescheinigung |
 
 Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 
@@ -33,7 +33,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 | **Mitarbeiter & Stammdaten** (A) | ✅ fertig, nachgewiesen | — |
 | **Arbeitszeit** (B) | ✅ fertig, nachgewiesen | — |
 | **Abwesenheit** (C) | ✅ fertig, nachgewiesen | Krankenschein mit Fehlzeit verknüpfen |
-| **Lohn** (D) | 🔨 in Arbeit | Minijob und Übergangsbereich |
+| **Lohn** (D) | 🔨 in Arbeit | Ein-/Austritte im Monat |
 | **Kommunikation** (E) | ⚠️ E5 fehlt | Mitarbeiter-Chat |
 | **Dienstplanung** (F) | ⚠️ F5/F6 offen | Kundenmodul-Mechanik, Freischaltung je Kunde |
 | **Grundlagen & Betrieb** (G) | ⚠️ G1–G3 offen | **G3 zuerst** — automatische Prüfung |
@@ -54,7 +54,7 @@ Nach Dringlichkeit, nicht nach Bereich.
 
 ### Lohn — der aktuelle Schwerpunkt
 - [x] ~~Sonstige Bezüge (Weihnachts-/Urlaubsgeld, Boni)~~ — Teil 1.1 ✅
-- [ ] Minijob und Übergangsbereich — Teil 1.2
+- [x] ~~Minijob und Übergangsbereich~~ — Teil 1.2 ✅
 - [ ] Ein-/Austritte im Monat, Teilmonate — Teil 1.3
 - [ ] Geldwerte Vorteile, bAV, Pfändungen — Teil 1.4–1.6
 - [ ] Alles Weitere: siehe `FAHRPLAN-KOMPLETTLOESUNG.md`

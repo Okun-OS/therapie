@@ -306,6 +306,10 @@ export interface AbrechnungsStammdaten {
   freibetragMonat?: number | null
   hinzurechnungMonat?: number | null
   faktor?: number | null
+  /** §121 Vereinbarte Beschäftigungsart: regulaer | minijob | kurzfristig */
+  beschaeftigungsart?: string | null
+  rvBefreiung?: boolean | null
+  pauschalsteuer?: boolean | null
 }
 
 /** Aus Stammdaten und Monatsgrundlage die fertige Abrechnung rechnen. */
@@ -351,6 +355,9 @@ export function abrechnungRechnen(
     freibetragMonat: stamm.freibetragMonat ?? undefined,
     hinzurechnungMonat: stamm.hinzurechnungMonat ?? undefined,
     faktor: stamm.faktor ?? undefined,
+    beschaeftigungsart: stamm.beschaeftigungsart ?? undefined,
+    rvBefreiung: stamm.rvBefreiung ?? undefined,
+    pauschalsteuer: stamm.pauschalsteuer ?? undefined,
     grundlohnHourly: g.zuschlagsStundenlohn ?? undefined,
     jahresArbeitslohn: monat != null
       ? voraussichtlicherJahreslohn({
@@ -383,6 +390,8 @@ export function abrechnungsFelder(g: MonatsGrundlage, r: PayrollResult) {
     brutto: r.brutto,
     surchargesTotal: r.surchargesTotal,
     grundlage: r.grundlage,
+    beschaeftigungsart: r.beschaeftigungsart,
+    pauschsteuerAG: r.pauschsteuerAG,
     sonstigeBezuege: r.sonstigeBezuege,
     lohnsteuerSonstige: r.lohnsteuerSonstige,
     kirchensteuerSonstige: r.kirchensteuerSonstige,

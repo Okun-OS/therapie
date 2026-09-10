@@ -20,6 +20,7 @@
 import { lohnjahrOderFehler, type Lohnjahr } from './lohnjahre'
 import { lohnsteuerBerechnen, istSachsen, pflegeMerkmale } from './lohnsteuer-pap'
 import { einmalbezugBeitraege } from './einmalbezug'
+import { artBestimmen, beitraegeNachArt, individuellBesteuert } from './beschaeftigungsart'
 
 // Kirchensteuer: 8 % in Bayern und Baden-Württemberg, sonst 9 %.
 // Die Feiertagslogik nutzt ausgeschriebene Ländernamen — beide Schreibweisen
@@ -122,6 +123,12 @@ export interface PayrollInput {
   bisherBeitragspflichtig?: number
   /** Erster Beschäftigungsmonat im Jahr — für die anteilige Jahresgrenze */
   eintrittsMonat?: number
+  /** §121 Vereinbarte Beschäftigungsart: regulaer | minijob | kurzfristig */
+  beschaeftigungsart?: string | null
+  /** Minijob: Befreiung von der Rentenversicherungspflicht */
+  rvBefreiung?: boolean
+  /** Minijob: 2 % Pauschsteuer statt Besteuerung nach ELStAM */
+  pauschalsteuer?: boolean
   taxClass: 1 | 2 | 3 | 4 | 5 | 6
   childCount: number        // Zahl der Kinderfreibeträge laut ELStAM (0, 0.5, 1, …)
   /** Hat der Arbeitnehmer Kinder? Entscheidet über den Zuschlag zur Pflegeversicherung. */
@@ -184,6 +191,10 @@ export interface PayrollResult {
   pvAG: number
   avAG: number
   totalAgCost: number       // brutto + all AG-Anteile (true labour cost)
+  // §121 Welche Beschäftigungsart tatsächlich gegolten hat, und die Pauschsteuer
+  // des Arbeitgebers beim Minijob (sie ist kein Abzug beim Arbeitnehmer).
+  beschaeftigungsart: string
+  pauschsteuerAG: number
   // Meta
   /** Woher die Jahreswerte stammen — steht so auch im Prüfprotokoll. */
   grundlage: string
@@ -228,10 +239,11 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const steuerBrutto = Math.max(0, laufendesBrutto - frei.steuerfrei)
   const svBrutto = Math.max(0, laufendesBrutto - frei.svfrei)
 
-  // Minijob warning
-  if (brutto > 0 && brutto <= 556) {
-    warnings.push('Brutto unter 556 € – Minijob-Regelung prüfen (ggf. andere Beitragssätze).')
-  }
+  // §121 Welche Beschäftigungsart gilt wirklich? Der Übergangsbereich ist keine
+  // Wahl, sondern folgt aus dem Entgelt.
+  const artErgebnis = artBestimmen(input.beschaeftigungsart, laufendesBrutto, jahr)
+  if (artErgebnis.hinweis) warnings.push(artErgebnis.hinweis)
+  const art = artErgebnis.art
 
   // ─ 2. Sozialversicherung ──────────────────────────────────────────────────
   // Bemessungsgrundlage ist das SV-Brutto: beitragsfreie Zuschläge zählen nicht.
@@ -304,14 +316,43 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     )
   }
 
-  const svTotal = rvAN + kvAN + pvAN + avAN + (bonusSv?.svAN ?? 0)
+  // §121 Minijob, kurzfristige Beschäftigung und Übergangsbereich rechnen
+  // anders. Für sie ersetzt das Ergebnis die reguläre Beitragsrechnung.
+  const sonderBeitraege = beitraegeNachArt({
+    jahr: input.jahr,
+    entgelt: svBrutto,
+    art,
+    versicherung: input.insuranceType,
+    zusatzbeitragProzent: input.zusatzbeitragPercent,
+    bundesland: input.bundesland,
+    hatKinder: input.hasChildren,
+    kinderUnter25: input.childrenUnder25,
+    rvExempt: input.rvExempt,
+    rvBefreiung: input.rvBefreiung,
+  })
+  if (sonderBeitraege) warnings.push(...sonderBeitraege.hinweise)
+
+  const anRv = sonderBeitraege ? sonderBeitraege.rvAN : rvAN
+  const anKv = sonderBeitraege ? sonderBeitraege.kvAN : kvAN
+  const anPv = sonderBeitraege ? sonderBeitraege.pvAN : pvAN
+  const anAv = sonderBeitraege ? sonderBeitraege.avAN : avAN
+  const agRv = sonderBeitraege ? sonderBeitraege.rvAG : rvAG
+  const agKv = sonderBeitraege ? sonderBeitraege.kvAG : kvAG
+  const agPv = sonderBeitraege ? sonderBeitraege.pvAG : pvAG
+  const agAv = sonderBeitraege ? sonderBeitraege.avAG : avAG
+
+  const svTotal = anRv + anKv + anPv + anAv + (bonusSv?.svAN ?? 0)
 
   // ─ 3. Lohnsteuer nach dem amtlichen Programmablaufplan ────────────────────
   // Grundlage ist das Steuerbrutto — steuerfreie Zuschläge bleiben draußen.
   if (input.taxClass === 6) {
     warnings.push('Steuerklasse 6: volle Besteuerung ohne Freibeträge.')
   }
-  const steuer = lohnsteuerBerechnen({
+  // §121 Beim Minijob mit Pauschsteuer wird NICHT nach ELStAM besteuert — die
+  // 2 % des Arbeitgebers decken alles ab, auch Soli und Kirchensteuer. Der
+  // Verdienst taucht dann in der Steuererklärung gar nicht auf.
+  const individuell = individuellBesteuert(art, input.pauschalsteuer)
+  const steuer = individuell ? lohnsteuerBerechnen({
     jahr: input.jahr,
     steuerBruttoMonat: steuerBrutto,
     steuerklasse: input.taxClass,
@@ -330,7 +371,16 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     faktor: input.faktor,
     sonstigeBezuege,
     jahresArbeitslohn: input.jahresArbeitslohn ?? steuerBrutto * 12,
-  })
+  }) : {
+    lohnsteuer: 0, soli: 0, kirchensteuerBasis: 0,
+    lohnsteuerSonstige: 0, soliSonstige: 0, kirchensteuerBasisSonstige: 0,
+  }
+  if (!individuell) {
+    warnings.push(
+      'Minijob mit Pauschsteuer: Der Arbeitgeber trägt 2 % Pauschsteuer (§40a Abs.2 EStG). '
+      + 'Beim Arbeitnehmer wird keine Lohnsteuer einbehalten.',
+    )
+  }
 
   // Die Gesamtwerte enthalten die Einmalzahlung — abgezogen wird beides zusammen.
   const lohnsteuerMonthly = round2(steuer.lohnsteuer + steuer.lohnsteuerSonstige)
@@ -350,8 +400,9 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const netto = Math.max(0, brutto - totalDeductions)
 
   // ─ 5. Employer costs ──────────────────────────────────────────────────────
-  const totalAgCost = brutto + rvAG + kvAG + pvAG + avAG
+  const totalAgCost = brutto + agRv + agKv + agPv + agAv
     + (bonusSv?.svAG ?? 0)
+    + (sonderBeitraege?.pauschsteuerAG ?? 0)
 
   return {
     brutto: round2(brutto),
@@ -369,20 +420,22 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     soliSonstige: steuer.soliSonstige,
     svANSonstige: bonusSv?.svAN ?? 0,
     svAGSonstige: bonusSv?.svAG ?? 0,
-    rvAN: round2(rvAN + (bonusSv?.rvAN ?? 0)),
-    kvAN: round2(kvAN + (bonusSv?.kvAN ?? 0)),
-    pvAN: round2(pvAN + (bonusSv?.pvAN ?? 0)),
-    avAN: round2(avAN + (bonusSv?.avAN ?? 0)),
+    rvAN: round2(anRv + (bonusSv?.rvAN ?? 0)),
+    kvAN: round2(anKv + (bonusSv?.kvAN ?? 0)),
+    pvAN: round2(anPv + (bonusSv?.pvAN ?? 0)),
+    avAN: round2(anAv + (bonusSv?.avAN ?? 0)),
     svTotal: round2(svTotal),
     lohnsteuerMonthly: round2(lohnsteuerMonthly),
     kirchensteuerMonthly: round2(kirchensteuerMonthly),
     soliMonthly: round2(soliMonthly),
     totalDeductions: round2(totalDeductions),
     netto: round2(netto),
-    rvAG: round2(rvAG + (bonusSv?.rvAG ?? 0)),
-    kvAG: round2(kvAG + (bonusSv?.kvAG ?? 0)),
-    pvAG: round2(pvAG + (bonusSv?.pvAG ?? 0)),
-    avAG: round2(avAG + (bonusSv?.avAG ?? 0)),
+    rvAG: round2(agRv + (bonusSv?.rvAG ?? 0)),
+    kvAG: round2(agKv + (bonusSv?.kvAG ?? 0)),
+    pvAG: round2(agPv + (bonusSv?.pvAG ?? 0)),
+    avAG: round2(agAv + (bonusSv?.avAG ?? 0)),
+    beschaeftigungsart: art,
+    pauschsteuerAG: sonderBeitraege?.pauschsteuerAG ?? 0,
     totalAgCost: round2(totalAgCost),
     warnings,
   }

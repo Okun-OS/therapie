@@ -25,6 +25,9 @@ interface Profil {
   kinderfreibetraege?: number | null
   hatKinder?: boolean | null
   kinderUnter25?: number | null
+  beschaeftigungsart?: string | null
+  rvBefreiung?: boolean | null
+  pauschalsteuer?: boolean | null
   elstamStand?: string | null
   elstamQuelle?: string | null
   elstamBestaetigtVon?: string | null
@@ -278,6 +281,48 @@ export function LohnStammdaten({ employeeId }: { employeeId: string }) {
                 schwerbehindert (Zusatzurlaub)
               </label>
             </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Beschäftigungsart</p>
+            {/* §121 Minijob und kurzfristige Beschäftigung werden völlig anders
+                gerechnet. Der Übergangsbereich steht hier NICHT zur Wahl — er
+                ergibt sich aus dem Entgelt und ist Gesetz, keine Vereinbarung. */}
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-0.5">Art</label>
+                <select value={profil.beschaeftigungsart ?? 'regulaer'}
+                  onChange={e => setzen('beschaeftigungsart', e.target.value)}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20">
+                  <option value="regulaer">Reguläre Beschäftigung</option>
+                  <option value="minijob">Minijob (geringfügig entlohnt)</option>
+                  <option value="kurzfristig">Kurzfristige Beschäftigung</option>
+                </select>
+              </div>
+            </div>
+            {profil.beschaeftigungsart === 'minijob' && (
+              <div className="flex flex-wrap gap-4 mb-2">
+                <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                  <input type="checkbox" checked={profil.rvBefreiung === true}
+                    onChange={e => setzen('rvBefreiung', e.target.checked)}
+                    className="rounded border-gray-300" />
+                  von der Rentenversicherung befreit
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                  <input type="checkbox" checked={profil.pauschalsteuer === true}
+                    onChange={e => setzen('pauschalsteuer', e.target.checked)}
+                    className="rounded border-gray-300" />
+                  2 % Pauschsteuer (Arbeitgeber)
+                </label>
+              </div>
+            )}
+            {profil.beschaeftigungsart === 'kurzfristig' && (
+              <p className="text-[10px] text-amber-700 mb-2">
+                Beitragsfrei — aber die Zeitgrenze von drei Monaten oder 70 Arbeitstagen
+                im Kalenderjahr muss überwacht werden. Bei Überschreiten wird die
+                Beschäftigung rückwirkend beitragspflichtig.
+              </p>
+            )}
           </div>
 
           <div>

@@ -44,6 +44,14 @@ export interface Lohnjahr {
   /** Werbungskosten- und Sonderausgabenpauschbetrag (§9a, §10c EStG) */
   arbeitnehmerPauschbetrag: number
   sonderausgabenPauschbetrag: number
+  /**
+   * Gesetzlicher Mindestlohn je Stunde. Aus ihm folgt die
+   * Geringfügigkeitsgrenze — sie ist seit Oktober 2022 nicht mehr fest,
+   * sondern rechnet sich nach §8 Abs.1a SGB IV aus dem Mindestlohn.
+   */
+  mindestlohn: number
+  /** Obere Grenze des Übergangsbereichs (§20 Abs.2 SGB IV), seit 2023 fest */
+  uebergangsbereichObergrenze: number
   quelle: string
   geprueft: string
 }
@@ -64,8 +72,11 @@ const JAHRE: Record<number, Lohnjahr> = {
     pvSachsenAg: 0.013,
     arbeitnehmerPauschbetrag: 1230,
     sonderausgabenPauschbetrag: 36,
+    mindestlohn: 12.82,
+    uebergangsbereichObergrenze: 2000,
     quelle: 'BMF-Programmablaufplan 2025 (MPARA) und Sozialversicherungsrechengrößen-Verordnung 2025',
-    geprueft: '2026-09-10 · gegen den Programmablaufplan abgeglichen (Grundfreibetrag 12.096 €, Soli-Freigrenze 19.950 €)',
+    geprueft: '2026-09-10 · gegen den Programmablaufplan abgeglichen (Grundfreibetrag 12.096 €, Soli-Freigrenze 19.950 €). '
+      + 'Mindestlohn 12,82 € ergibt die Geringfügigkeitsgrenze 556 € — stimmt mit der amtlichen Grenze überein.',
   },
   2026: {
     jahr: 2026,
@@ -82,9 +93,41 @@ const JAHRE: Record<number, Lohnjahr> = {
     pvSachsenAg: 0.013,
     arbeitnehmerPauschbetrag: 1230,
     sonderausgabenPauschbetrag: 36,
+    mindestlohn: 13.90,
+    uebergangsbereichObergrenze: 2000,
     quelle: 'BMF-Programmablaufplan 2026 (MPARA) und Sozialversicherungsrechengrößen-Verordnung 2026',
-    geprueft: '2026-09-10 · gegen den Programmablaufplan abgeglichen (Grundfreibetrag 12.348 €, Soli-Freigrenze 20.350 €)',
+    geprueft: '2026-09-10 · gegen den Programmablaufplan abgeglichen (Grundfreibetrag 12.348 €, Soli-Freigrenze 20.350 €). '
+      + 'ACHTUNG: Der Mindestlohn 2026 (13,90 €) ist NICHT gegen eine amtliche Quelle geprüft — '
+      + 'aus ihm folgt die Geringfügigkeitsgrenze. Vor dem ersten Minijob bestätigen lassen.',
   },
+}
+
+/**
+ * Die Geringfügigkeitsgrenze nach §8 Abs.1a SGB IV.
+ *
+ * Sie ist seit Oktober 2022 keine feste Zahl mehr, sondern folgt dem
+ * Mindestlohn: das Monatsentgelt, das bei zehn Wochenstunden zum Mindestlohn
+ * erreicht wird. Die Vorschrift rechnet mit 13 Wochen je Quartal, also
+ * Mindestlohn × 130 ÷ 3, aufgerundet auf volle Euro.
+ *
+ * Deshalb steht hier die Formel und nicht die Zahl: so kann sie nicht veralten,
+ * ohne dass es auffällt — geprüft werden muss nur der Mindestlohn.
+ */
+export function geringfuegigkeitsgrenze(jahr: Lohnjahr): number {
+  return Math.ceil(jahr.mindestlohn * 130 / 3)
+}
+
+/**
+ * Der Faktor F des Übergangsbereichs (§20 Abs.2a SGB IV).
+ *
+ * 28 Prozent geteilt durch den durchschnittlichen Gesamtsozialversicherungs-
+ * beitragssatz des Jahres. Auch das eine Formel statt einer Zahl — der
+ * Gesamtsatz steht ohnehin schon oben.
+ */
+export function uebergangsbereichFaktor(jahr: Lohnjahr): number {
+  const gesamtsatz = jahr.rvSatz + jahr.avSatz
+    + jahr.kvBasisSatz + jahr.kvZusatzSatzDurchschnitt + jahr.pvSatz
+  return Math.round(0.28 / gesamtsatz * 10000) / 10000
 }
 
 /** Die bekannten Jahre, aufsteigend. */
