@@ -33,7 +33,42 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // §108: Ein Mitarbeiter braucht die Liste seiner Kollegen — für den
+  // Dienstplan, für Tauschanfragen, fürs Einspringen. Er bekam bisher aber
+  // deren VOLLE Daten mit: Stundenkonto, Urlaubsanspruch und verbrauchte
+  // Urlaubstage. Das sind Personaldaten und gehen einen Kollegen nichts an.
+  //
+  // Die eigenen Daten bleiben vollständig — die Mitarbeiter-App zeigt darüber
+  // das eigene Stundenkonto und den Resturlaub an.
+  if (session.role === 'employee') {
+    const gefiltert = employees.map(e =>
+      e.id === session.employeeId ? e : kollegenSicht(e),
+    )
+    return NextResponse.json({ employees: gefiltert })
+  }
+
   return NextResponse.json({ employees })
+}
+
+/**
+ * §108 Was ein Mitarbeiter über eine Kollegin wissen darf: wer sie ist, was sie
+ * kann und wo sie arbeitet. Nicht: was sie verdient, wie viel sie vorgearbeitet
+ * hat oder wie viel Urlaub ihr noch bleibt.
+ */
+function kollegenSicht(e: unknown): Record<string, unknown> {
+  const {
+    hoursBalance: _hb,
+    vacationDaysTotal: _vt,
+    vacationDaysUsed: _vu,
+    weeklyHours: _wh,
+    workDaysPerWeek: _wd,
+    preferences: _p,
+    birthDate: _bd,
+    phone: _ph,
+    employmentType: _et,
+    ...sichtbar
+  } = e as Record<string, unknown>
+  return sichtbar
 }
 
 export async function POST(req: NextRequest) {
