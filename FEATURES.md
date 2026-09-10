@@ -635,6 +635,67 @@ Nachweis: 15 Prüfungen am laufenden System, die den Beleg wirklich aufmachen
 (PDF entpacken und den sichtbaren Text lesen) statt nur zu prüfen, ob eine Datei
 ankommt.
 
+## Block D15 (10.09.) — Jahresabschluss
+
+Ohne ihn kann kein Kunde das Jahr abschließen. Das Jahresende ist in
+dreieinhalb Monaten.
+
+**Die Entscheidung, die die Bauweise bestimmt hat:** Rechtlich zählt die
+*elektronische* Lohnsteuerbescheinigung. Der Arbeitgeber übermittelt sie, der
+Mitarbeiter bekommt einen **Ausdruck** davon — und der trägt die Kennung der
+Übermittlung. Solange wir nicht selbst übermitteln (Fahrplan Teil 4), können wir
+keinen gültigen Ausdruck erzeugen. Wer es trotzdem täte, gäbe dem Kunden ein
+Papier in die Hand, das amtlich aussieht und keines ist.
+
+Deshalb entstehen zwei Dinge statt einer Fälschung:
+
+- [x] **Die vollständigen Jahreswerte für den Steuerberater** als CSV — er
+      übermittelt und erzeugt daraus die Bescheinigung. Mit Personalnummer,
+      Steuer-ID, Steuerklasse, allen Beträgen und den Hinweisen, die er braucht.
+- [x] **Eine Jahresübersicht für den Mitarbeiter** als PDF in der Personalakte.
+      Sie heißt so, wie sie ist, und sagt ausdrücklich: *„Diese Übersicht ist
+      KEINE Lohnsteuerbescheinigung."* Dazu, woher die amtliche kommt.
+
+Zwei Regeln, die falsch anzuwenden Geld kostet:
+
+- **Pauschal versteuerter Arbeitslohn wird nicht bescheinigt** (§40a EStG). Wer
+  als Minijobber mit der 2-Prozent-Pauschale abgerechnet wird, taucht mit diesem
+  Verdienst in seiner Steuererklärung gar nicht auf. Wer ihn trotzdem
+  bescheinigt, lässt ihn ein zweites Mal besteuern.
+- **Steuerfreie Zuschläge nach §3b bleiben aus dem Bruttoarbeitslohn heraus** —
+  sie werden nicht bescheinigt. Auf der Übersicht stehen sie trotzdem, getrennt,
+  damit der Mitarbeiter sein Geld wiederfindet.
+
+Dazu: unterjähriger Eintritt, und Lücken im Beschäftigungszeitraum werden als
+möglicher Großbuchstabe U gemeldet statt stillschweigend übergangen.
+
+Nachweis: 17 Modultests, 33 Prüfungen am laufenden System — darunter das
+Öffnen des PDF und die Prüfung, dass der Satz „KEINE Lohnsteuerbescheinigung"
+wirklich draufsteht.
+
+---
+
+# Die Übergangsversion ist vollständig
+
+Stand 10.09.2026. Was ein Kunde damit kann:
+
+| | |
+|---|---|
+| Rechnen | Lohnsteuer nach dem amtlichen Programmablaufplan, Sozialabgaben, §3b-Zuschläge, Einmalzahlungen, Minijob, Übergangsbereich, Teilmonate |
+| Nachführen | ELStAM-Änderungsliste einlesen, Stand überwachen |
+| Korrigieren | Rückwirkende Aufrollung mit Ausgleich im Folgemonat |
+| Zustellen | Beleg nach §108 GewO in die Personalakte, mit Benachrichtigung |
+| Weitergeben | DATEV-Datei je Lohnart an den Steuerberater |
+| Auszahlen | SEPA-Datei für die Bank des Kunden |
+| Abschließen | Jahreswerte für die Bescheinigung, Übersicht für den Mitarbeiter |
+
+**Gemeldet wird über den Steuerberater.** Das ist bewusst so, bis die
+Zertifizierung steht (Fahrplan Teil 4 und 5).
+
+**Nachweis: 351 Checks in 14 Prüfungen am laufenden System, 339 Modultests.**
+
+---
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

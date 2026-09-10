@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import {
   ChevronLeft, ChevronRight, Download, Plus, Calculator,
-  CheckCircle, AlertTriangle, Euro, Users, Upload, RotateCcw, Gift,
+  CheckCircle, AlertTriangle, Euro, Users, Upload, RotateCcw, Gift, FileText,
 } from 'lucide-react'
 import { ElstamImport } from '@/components/payroll/ElstamImport'
 import { Aufrollung } from '@/components/payroll/Aufrollung'
@@ -479,6 +479,45 @@ export default function PayrollPage() {
     finally { setAktion(null) }
   }
 
+  // §125 Jahresabschluss: Werte für den Steuerberater und Übersicht für die
+  // Mitarbeiter. Die amtliche Bescheinigung übermittelt der Berater — wir
+  // liefern ihm die Zahlen und dem Mitarbeiter eine ehrlich benannte Übersicht.
+  async function jahreswerteHolen() {
+    setAktion('jahreswerte')
+    try {
+      const res = await fetch(`/api/payroll/jahresabschluss?jahr=${year}&art=steuerberater`)
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        showToast(d.error ?? 'Export fehlgeschlagen', 'error')
+        return
+      }
+      const blob = await res.blob()
+      const name = res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1]
+        ?? `Jahreswerte-${year}.csv`
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = name
+      a.click()
+      URL.revokeObjectURL(a.href)
+      showToast(`${name} erstellt`, 'success')
+    } catch { showToast('Export fehlgeschlagen', 'error') }
+    finally { setAktion(null) }
+  }
+
+  async function jahresuebersichten() {
+    setAktion('jahresbeleg')
+    try {
+      const res = await fetch('/api/payroll/jahresabschluss', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jahr: year }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(d.error ?? 'Erzeugen fehlgeschlagen', 'error'); return }
+      showToast(d.hinweis ?? 'zugestellt', (d.uebersprungen?.length ?? 0) > 0 ? 'error' : 'success')
+    } catch { showToast('Erzeugen fehlgeschlagen', 'error') }
+    finally { setAktion(null) }
+  }
+
   // §113 Belege erzeugen und den Mitarbeitern zustellen
   async function belegeZustellen() {
     setAktion('belege')
@@ -572,6 +611,12 @@ export default function PayrollPage() {
           </button>
           <button onClick={() => setZeigeEinmal(v => !v)} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <Gift size={16} /> Einmalzahlungen
+          </button>
+          <button onClick={jahreswerteHolen} disabled={!!aktion} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
+            <FileText size={16} /> {aktion === 'jahreswerte' ? 'Wird erstellt…' : `Jahreswerte ${year}`}
+          </button>
+          <button onClick={jahresuebersichten} disabled={!!aktion} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50">
+            <Users size={16} /> {aktion === 'jahresbeleg' ? 'Wird zugestellt…' : 'Jahresübersichten'}
           </button>
         </div>
 

@@ -17,10 +17,15 @@ Zuletzt aktualisiert: **10.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Lohnabrechnung → eigene Komplettlösung |
-| **Meilenstein** | 1 von 4 — „Ein echter Kunde kann abgerechnet werden" |
-| **Zuletzt fertig** | Beleg und DATEV vollständig (Minijob, Teilmonat, AG-Anteile) |
-| **Als Nächstes** | Fahrplan Teil 2.2 — Lohnsteuerbescheinigung |
+| **Meilenstein** | **1 von 4 erreicht** — die Übergangsversion ist vollständig |
+| **Zuletzt fertig** | Jahresabschluss (Teil 2.2) — Werte für den Berater, Übersicht für den Mitarbeiter |
+| **Als Nächstes** | Meilenstein 2: Teil 3.1 Beitragsnachweis · Teil 2.3 Bescheinigungen |
 | **Danach** | Teil 1.4–1.6 geldwerte Vorteile, bAV, Pfändungen |
+
+> **Die Übergangsversion ist fertig.** Rechnen, Beleg zustellen, ELStAM
+> nachführen, rückwirkend korrigieren, DATEV an den Berater, SEPA an die Bank,
+> Jahr abschließen. Gemeldet wird über den Steuerberater — bis zur
+> Zertifizierung (Fahrplan Teil 4/5).
 
 Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 
@@ -33,7 +38,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 | **Mitarbeiter & Stammdaten** (A) | ✅ fertig, nachgewiesen | — |
 | **Arbeitszeit** (B) | ✅ fertig, nachgewiesen | — |
 | **Abwesenheit** (C) | ✅ fertig, nachgewiesen | Krankenschein mit Fehlzeit verknüpfen |
-| **Lohn** (D) | 🔨 in Arbeit | Geldwerte Vorteile, bAV, Pfändungen |
+| **Lohn** (D) | ✅ Übergangsversion fertig | Beitragsnachweis, Bescheinigungen |
 | **Kommunikation** (E) | ⚠️ E5 fehlt | Mitarbeiter-Chat |
 | **Dienstplanung** (F) | ⚠️ F5/F6 offen | Kundenmodul-Mechanik, Freischaltung je Kunde |
 | **Grundlagen & Betrieb** (G) | ⚠️ G1/G2 offen | DSGVO: Auskunft und Löschkonzept |
@@ -55,7 +60,10 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [x] ~~Sonstige Bezüge (Weihnachts-/Urlaubsgeld, Boni)~~ — Teil 1.1 ✅
 - [x] ~~Minijob und Übergangsbereich~~ — Teil 1.2 ✅
 - [x] ~~Ein-/Austritte im Monat, Teilmonate~~ — Teil 1.3 ✅
+- [x] ~~Beleg und DATEV vollständig~~ ✅
+- [x] ~~Jahresabschluss und Werte für die Lohnsteuerbescheinigung~~ — Teil 2.2 ✅
 - [ ] Geldwerte Vorteile, bAV, Pfändungen — Teil 1.4–1.6
+- [ ] Beitragsnachweis, AAG, DEÜV-Daten — Teil 3 (Meilenstein 2)
 - [ ] Alles Weitere: siehe `FAHRPLAN-KOMPLETTLOESUNG.md`
 
 ### Sonst offen

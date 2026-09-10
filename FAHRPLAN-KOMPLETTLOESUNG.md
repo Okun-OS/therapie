@@ -150,12 +150,20 @@ ein geprobter Vorgang sein, kein Ereignis.
       *(steht bereits — `lohnjahre.ts` verweigert ungeprüfte Jahre)*
 - [ ] Ein Testlauf über das ganze Vorjahr als Regressionsprüfung
 
-### 2.2 Lohnsteuerbescheinigung `[OKUN]` **M**
-- [ ] Jahreswerte je Mitarbeiter sammeln
-- [ ] Ausdruck für den Mitarbeiter nach amtlichem Muster
-- [ ] Datensatz für die elektronische Übermittlung vorbereiten
-      *(Übermittlung selbst erst in Teil 4)*
-- [ ] Besonderheiten: unterjähriger Eintritt, mehrere Verhältnisse
+### 2.2 Lohnsteuerbescheinigung `[OKUN]` — ✅ **fertig 10.09.2026**
+- [x] Jahreswerte je Mitarbeiter, aus den Monatsabrechnungen gebildet
+- [x] **Export für den Steuerberater** (CSV) mit allen Werten, die er für die
+      Übermittlung braucht — er bescheinigt, wir liefern die Zahlen
+- [x] **Jahresübersicht für den Mitarbeiter** als PDF in der Personalakte
+- [x] **Sie heißt bewusst nicht „Lohnsteuerbescheinigung"** und sagt das
+      ausdrücklich: der gültige Ausdruck trägt die Kennung der Übermittlung, und
+      die haben wir erst mit Teil 4. Ein Papier, das amtlich aussieht und keines
+      ist, wäre schlimmer als keines.
+- [x] **Pauschal versteuerter Arbeitslohn wird NICHT bescheinigt** (§40a EStG) —
+      sonst besteuert das Finanzamt ihn ein zweites Mal
+- [x] Steuerfreie Zuschläge (§3b) bleiben aus dem Bruttoarbeitslohn heraus
+- [x] Unterjähriger Eintritt, Lücken im Zeitraum (Hinweis auf Großbuchstabe U)
+- [x] 17 Modultests, 33 Prüfungen am laufenden System
 
 ### 2.3 Bescheinigungen für Behörden und Kassen `[OKUN]` **L**
 - [ ] Arbeitsbescheinigung nach §312 SGB III (Arbeitsagentur)
