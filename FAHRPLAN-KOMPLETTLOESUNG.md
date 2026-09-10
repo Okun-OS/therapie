@@ -5,6 +5,9 @@ Steuerberater für die Lohnabrechnung und kein zweites System.
 
 Erstellt am 10.09.2026. Arbeitsdokument — abhaken, ergänzen, korrigieren.
 
+> **Wo wir stehen, steht in `STAND.md`.** Diese Datei hier ist der Plan, nicht
+> der Fortschritt. Wer wissen will, was gerade dran ist, schaut dort.
+
 **Legende:**
 `[OKUN]` = programmiere ich · `[DU]` = nur du kannst das · `[BEIDE]` = zusammen
 Größe: **S** unter einem Tag · **M** ein bis drei Tage · **L** eine Woche ·

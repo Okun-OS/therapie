@@ -1,5 +1,9 @@
 # OKUN Workforce — Featureliste
 
+> **Wo wir gerade stehen, steht in `STAND.md`.** Diese Liste hier hält fest,
+> was fertig ist und wie es nachgewiesen wurde — sie ist das Gedächtnis, nicht
+> die Tagesordnung.
+
 Arbeitsliste. Jeder Punkt durchläuft: **besprechen → verstehen → implementieren
 → testen → abhaken.**
 
