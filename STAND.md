@@ -33,7 +33,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 | **Mitarbeiter & Stammdaten** (A) | ✅ fertig, nachgewiesen | — |
 | **Arbeitszeit** (B) | ✅ fertig, nachgewiesen | — |
 | **Abwesenheit** (C) | ✅ fertig, nachgewiesen | Krankenschein mit Fehlzeit verknüpfen |
-| **Lohn** (D) | 🔨 in Arbeit | Sonstige Bezüge |
+| **Lohn** (D) | 🔨 in Arbeit | Minijob und Übergangsbereich |
 | **Kommunikation** (E) | ⚠️ E5 fehlt | Mitarbeiter-Chat |
 | **Dienstplanung** (F) | ⚠️ F5/F6 offen | Kundenmodul-Mechanik, Freischaltung je Kunde |
 | **Grundlagen & Betrieb** (G) | ⚠️ G1–G3 offen | **G3 zuerst** — automatische Prüfung |
