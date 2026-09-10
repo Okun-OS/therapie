@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { saveScheduleForWeek } from '@/lib/schedule-entities'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { locationFilter } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 import { processWishConflicts } from '@/lib/wish-conflict-service'
 
@@ -9,6 +10,11 @@ export async function POST(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const { locationId, weekDates, assignments, reasons, status, sessionId } = await req.json()
+  // §112 Standortprüfung: Die Rolle allein genügt nicht — geprüft werden muss,
+  // ob dieser Standort überhaupt zum Aufrufer gehört.
+  const standortErlaubt = await locationFilter(session, locationId)
+  if (standortErlaubt instanceof NextResponse) return standortErlaubt
+
   if (!locationId || !Array.isArray(weekDates) || !assignments) {
     return NextResponse.json({ error: 'locationId, weekDates und assignments sind erforderlich' }, { status: 400 })
   }

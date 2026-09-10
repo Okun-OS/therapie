@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+import { locationFilter } from '@/lib/scope'
 import { listPlanningUnitsByLocation, upsertPlanningUnit, updatePlanningUnitById, deletePlanningUnit } from '@/lib/schedule-entities'
 
 export async function GET(req: NextRequest) {
@@ -7,6 +9,12 @@ export async function GET(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const locationId = req.nextUrl.searchParams.get('locationId')
+
+  // §112 Vorher liessen sich die Einheiten jedes Standorts abrufen.
+  if (locationId) {
+    const erlaubtGet = await locationFilter(session, locationId)
+    if (erlaubtGet instanceof NextResponse) return erlaubtGet
+  }
   if (!locationId) return NextResponse.json({ error: 'locationId erforderlich' }, { status: 400 })
 
   const units = await listPlanningUnitsByLocation(locationId)
@@ -25,6 +33,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { locationId, name, ...rest } = body
+
+  // §112 Eine fremde Leitung konnte an diesem Standort Einheiten anlegen.
+  const erlaubtPost = await locationFilter(session, locationId)
+  if (erlaubtPost instanceof NextResponse) return erlaubtPost
   if (!locationId || !name) return NextResponse.json({ error: 'locationId und name erforderlich' }, { status: 400 })
 
   const unit = await upsertPlanningUnit(locationId, { name, ...rest })
@@ -58,6 +70,16 @@ export async function DELETE(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const id = req.nextUrl.searchParams.get('id')
+
+  // §112 Loeschen war allein ueber die ID moeglich — auch an fremden Standorten.
+  if (id) {
+    const einheit = await prisma.planningUnit.findUnique({
+      where: { id }, select: { locationId: true },
+    })
+    if (!einheit) return NextResponse.json({ error: 'Einheit nicht gefunden' }, { status: 404 })
+    const erlaubtDel = await locationFilter(session, einheit.locationId)
+    if (erlaubtDel instanceof NextResponse) return erlaubtDel
+  }
   if (!id) return NextResponse.json({ error: 'id erforderlich' }, { status: 400 })
 
   await deletePlanningUnit(id)

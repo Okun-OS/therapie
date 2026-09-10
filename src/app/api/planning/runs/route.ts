@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { locationFilter } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 import { runPlanningBackground } from '@/lib/planning-orchestrator'
 
@@ -17,6 +18,11 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const locationId = searchParams.get('locationId') ?? session.locationId
+
+  if (locationId) {
+    const standortErlaubt = await locationFilter(session, locationId)
+    if (standortErlaubt instanceof NextResponse) return standortErlaubt
+  }
   const limit = Math.min(Number(searchParams.get('limit') ?? '20'), 50)
 
   const runs = await prisma.planningSession.findMany({
@@ -54,6 +60,12 @@ export async function POST(req: NextRequest) {
   if (!locationId || !von || !bis) {
     return NextResponse.json({ error: 'locationId, von und bis sind erforderlich' }, { status: 400 })
   }
+
+  // §112: Der Lauf wurde bisher fuer JEDEN angegebenen Standort gestartet — eine
+  // fremde Leitung konnte damit beim Wettbewerber einen Dienstplan rechnen
+  // lassen und ueber die Sitzungs-ID an dessen Personaldaten kommen.
+  const standortErlaubt = await locationFilter(session, locationId)
+  if (standortErlaubt instanceof NextResponse) return standortErlaubt
 
   const planSession = await prisma.planningSession.create({
     data: {

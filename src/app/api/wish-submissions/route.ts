@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getWishSubmissionsByEmployee, getWishSubmissionsByLocation, addWishSubmission } from '@/lib/schedule-entities'
 import { requireRole } from '@/lib/session'
+import { locationFilter, assertEmployeeAccess } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
@@ -11,6 +12,16 @@ export async function GET(req: NextRequest) {
   const locationId = req.nextUrl.searchParams.get('locationId')
   if (!employeeId && !locationId) {
     return NextResponse.json({ error: 'employeeId oder locationId ist erforderlich' }, { status: 400 })
+  }
+
+  // §112 Vorher liessen sich die Dienstwuensche jeder Person und jedes
+  // Standorts einsehen.
+  if (employeeId) {
+    const verweigert = await assertEmployeeAccess(session, employeeId)
+    if (verweigert) return verweigert
+  } else {
+    const erlaubt = await locationFilter(session, locationId!)
+    if (erlaubt instanceof NextResponse) return erlaubt
   }
 
   const wishes = employeeId ? await getWishSubmissionsByEmployee(employeeId) : await getWishSubmissionsByLocation(locationId!)
@@ -26,6 +37,10 @@ export async function POST(req: NextRequest) {
   if (!employeeId || !locationId || !date || !preferredShiftType || !importance) {
     return NextResponse.json({ error: 'Erforderliche Felder fehlen' }, { status: 400 })
   }
+
+  // §112 Ein Dienstwunsch liess sich auf fremden Namen eintragen.
+  const zugriffVerweigert = await assertEmployeeAccess(session, employeeId)
+  if (zugriffVerweigert) return zugriffVerweigert
 
   // Enforce request deadline if one is set for this location
   const policy = await prisma.planningPolicy.findUnique({ where: { locationId } })

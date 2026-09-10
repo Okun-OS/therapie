@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { locationFilter } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(
@@ -8,6 +9,15 @@ export async function GET(
 ) {
   const session = requireRole(req, ['admin', 'company'])
   if (session instanceof NextResponse) return session
+
+  // §112 Ein Planungslauf liess sich ueber seine ID abrufen, auch der eines
+  // fremden Kunden.
+  const lauf = await prisma.planningSession.findUnique({
+    where: { id: params.id }, select: { locationId: true },
+  })
+  if (!lauf) return NextResponse.json({ error: 'Planungslauf nicht gefunden' }, { status: 404 })
+  const erlaubt = await locationFilter(session, lauf.locationId)
+  if (erlaubt instanceof NextResponse) return erlaubt
 
   const customerId = await resolveCustomerId(session)
   if (!customerId) {

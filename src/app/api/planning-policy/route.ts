@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { locationFilter } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/planning-policy?locationId=xxx
@@ -8,6 +9,11 @@ export async function GET(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const locationId = req.nextUrl.searchParams.get('locationId')
+
+  if (locationId) {
+    const standortErlaubtGet = await locationFilter(session, locationId)
+    if (standortErlaubtGet instanceof NextResponse) return standortErlaubtGet
+  }
   if (!locationId) {
     return NextResponse.json({ error: 'locationId fehlt' }, { status: 400 })
   }
@@ -46,6 +52,10 @@ export async function PUT(req: NextRequest) {
 
   const body = await req.json()
   const { locationId, defaultOvertimeHandling, minAutoApproveScore, failFastOnInfeasible, requestDeadline } = body
+
+  // §112 Standortprüfung — die Rolle allein sagt nichts über die Zuständigkeit.
+  const standortErlaubt = await locationFilter(session, locationId)
+  if (standortErlaubt instanceof NextResponse) return standortErlaubt
 
   if (!locationId) {
     return NextResponse.json({ error: 'locationId fehlt' }, { status: 400 })

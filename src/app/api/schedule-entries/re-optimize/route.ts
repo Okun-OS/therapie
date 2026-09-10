@@ -13,6 +13,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { locationFilter } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 import { buildRuleModel } from '@/lib/rule-model-service'
 import { solvePlan } from '@/lib/planning-solver'
@@ -32,6 +33,10 @@ export async function POST(req: NextRequest) {
     bis: string
     reason?: string
   }
+
+  // §112 Standortprüfung — die Rolle allein sagt nichts über die Zuständigkeit.
+  const standortErlaubt = await locationFilter(session, locationId)
+  if (standortErlaubt instanceof NextResponse) return standortErlaubt
 
   if (!locationId || !von || !bis) {
     return NextResponse.json({ error: 'locationId, von und bis sind erforderlich' }, { status: 400 })

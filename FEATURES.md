@@ -23,10 +23,13 @@ aussieht.
 
 ## A · Mitarbeiter und Stammdaten
 
-- [ ] **A1 Mitarbeiter anlegen und verwalten** — steht (778 Z.)
-- [ ] **A2 Mitarbeiterprofil, Sicht des Mitarbeiters** — steht (781 Z.)
-- [ ] **A3 Einladung und Registrierung** — steht
-- [ ] **A4 Rollen und Rechte** — steht (Mitarbeiter / Admin / Unternehmen / OKUN)
+- [x] **A1 Mitarbeiter anlegen und verwalten** — nachgewiesen. Löschen ist der
+      Plattformverwaltung vorbehalten; die Standortleitung deaktiviert stattdessen.
+- [x] **A2 Mitarbeiterprofil** — nachgewiesen über die eigenen Daten, Unterlagen
+      und Kollegensicht.
+- [x] **A3 Einladung und Registrierung** — nachgewiesen: Einladung entsteht beim
+      Anlegen und ist über den Link abrufbar.
+- [x] **A4 Rollen und Rechte** — nachgewiesen an über dreißig Abschottungen.
 - [x] **A5 Dateiablage** — fertig und getestet. Inhalt liegt in der Datenbank
       (Railways Dateispeicher ist nach jedem Neustart leer); ein S3-Speicher kann
       später dazukommen, ohne dass sich am Rest etwas ändert. 10 MB je Datei,
@@ -104,10 +107,16 @@ aussieht.
 Sonderfall: wird pro Kunde von Hand programmiert, nicht vom Kunden eingerichtet.
 Siehe `PRODUKT-NOTIZEN.md`.
 
-- [ ] **F1 Rechenkern** — steht, am 17.08. in mehreren Punkten korrigiert
-- [ ] **F2 Plan erzeugen, bearbeiten, veröffentlichen** — steht
-- [ ] **F3 Wünsche und Konfliktlösung** — steht
-- [ ] **F4 Schichttausch** — steht
+- [x] **F1 Rechenkern** — nachgewiesen. Rechendienst erreichbar und auf passendem
+      Stand (Version 98); der Versionsabgleich greift.
+- [x] **F2 Plan erzeugen und speichern** — nachgewiesen: Lauf angenommen, Ergebnis
+      abgeschlossen, 54 Zuweisungen, alle mit den definierten Dienstzeiten.
+      Woche speichern und abrufen; alles gegen fremde Standorte gesperrt.
+- [x] **F3 Dienstwünsche** — nachgewiesen: eintragen und abrufen; kein Wunsch auf
+      fremden Namen, keine Einsicht in fremde Wünsche.
+- [x] **F4 Schichttausch** — nachgewiesen: Anfrage stellen, bestätigen, und die
+      Dienste sind danach WIRKLICH getauscht. Nur die angefragte Person darf
+      antworten; ein beantworteter Tausch lässt sich nicht erneut beantworten.
 - [ ] **F5 Kundenmodul-Mechanik** — Entwurf liegt unter
       `solver-service/rulepacks/`, nicht eingebunden, nicht aktiv
 - [ ] **F6 Freischaltung je Kunde** — **fehlt.** Dienstplanung soll gesperrt sein,
@@ -120,9 +129,8 @@ Siehe `PRODUKT-NOTIZEN.md`.
       anonymisiert; ein durchgängiges Konzept mit Fristen fehlt.
 - [ ] **G3 Automatische Prüfung vor dem Ausrollen** — **fehlt.**
       `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
-- [ ] **G4 Mandantentrennung** — steht, am 17.08. gehärtet (Dienste waren
-      standortübergreifend sichtbar)
-- [ ] **G5 Prüfprotokolle** — steht
+- [x] **G4 Mandantentrennung** — nachgewiesen in allen geprüften Bereichen.
+- [x] **G5 Prüfprotokolle** — nachgewiesen (Schreiben in die Datenbank).
 
 ---
 
@@ -231,6 +239,17 @@ Gefunden, weil geprüft statt geglaubt wurde — und jeweils sofort behoben.
   Urlaubsanspruch, verbrauchte Urlaubstage und Wochenstunden aller Kollegen
   abrufen. Behoben: Kollegen zeigen nur noch Name, Funktion, Standort, Gruppe
   und Qualifikationen; die eigenen Daten bleiben vollständig.
+
+## Block F (10.09.)
+- **Ein Planungslauf ließ sich an JEDEM Standort starten.** Eine fremde Leitung
+  konnte beim Wettbewerber einen Dienstplan rechnen lassen und über die
+  Sitzungs-ID an dessen Personaldaten kommen. Der gravierendste Fund in diesem
+  Block.
+- **Arbeitszeitregeln standen jedem Angemeldeten offen** — Höchststunden,
+  Ruhezeit und Folgetage ließen sich ohne Rollenprüfung ändern.
+- Zwölf Schnittstellen abgesichert: Planungsläufe, Planungssitzungen,
+  Arbeitszeitregeln, Planungsrichtlinie, Einheiten, Wochenspeicherung,
+  Nachoptimierung, Korrekturen und Dienstwünsche.
 
 ## Block E (10.09.)
 - **Fremde Push-Nachrichten waren mitlesbar.** `push/subscribe` nahm eine
