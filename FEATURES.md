@@ -613,6 +613,28 @@ Prüfung stellt jetzt ihren Ausgangszustand selbst her (`zuruecksetzen`).
 
 Stand: **303 Checks in 12 Prüfungen, alle grün** — dazu 320 Modultests.
 
+## Block D14 (10.09.) — Beleg und DATEV vollständig
+
+Beim Prüfen des eigenen Stands gefunden: Die Sonderformen wurden zwar richtig
+gerechnet, aber nirgends erklärt.
+
+- [x] **Der Beleg nennt SV-Tage und Beschäftigungsart.** Die SV-Tage sind nach
+      der Entgeltbescheinigungsverordnung ohnehin anzugeben — und ohne sie kann
+      niemand nachvollziehen, warum bei einem Teilmonat nur ein Teil kam.
+- [x] **Er erklärt, warum nichts abgeht.** Bei einem Minijob stand vorher nur
+      „Lohnsteuer 0,00 €". Jetzt steht dabei, dass der Arbeitgeber sie pauschal
+      trägt (§40a Abs.2 EStG) und dass der Verdienst nicht in die
+      Steuererklärung gehört. Dasselbe für kurzfristige Beschäftigung,
+      Übergangsbereich und Teilmonat — und **nur dann**, wenn es zutrifft.
+- [x] **Der DATEV-Export führt die Arbeitgeberanteile** als eigene Lohnarten
+      (6100–6130) und die Pauschsteuer (6200). Beim Minijob fehlten dem
+      Steuerberater vorher **sämtliche** Abgaben, obwohl die Pauschalen dort die
+      einzigen sind.
+
+Nachweis: 15 Prüfungen am laufenden System, die den Beleg wirklich aufmachen
+(PDF entpacken und den sichtbaren Text lesen) statt nur zu prüfen, ob eine Datei
+ankommt.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

@@ -96,6 +96,11 @@ export function datevZeilenAusAbrechnung(a: {
   auszahlungsbetrag?: number
   sonstigeBezuege?: number
   lohnsteuerSonstige?: number
+  /** §124 Arbeitgeberanteile — der Steuerberater muss sie buchen können */
+  rvAG?: number; kvAG?: number; pvAG?: number; avAG?: number
+  pauschsteuerAG?: number
+  beschaeftigungsart?: string
+  svTage?: number
 }): DatevZeile[] {
   const basis = {
     // Ohne Personalnummer nimmt der Steuerberater die interne Kennung —
@@ -151,6 +156,20 @@ export function datevZeilenAusAbrechnung(a: {
       betrag: korrektur,
     })
   }
+  // §124 Arbeitgeberanteile als eigene Lohnarten. Ohne sie kann der
+  // Steuerberater die Personalkosten nicht buchen — und beim Minijob fehlten
+  // ihm die Pauschalen ganz, obwohl sie dort die einzigen Abgaben sind.
+  const agAnteile: [string, string, number][] = [
+    ['6100', 'Rentenversicherung AG', a.rvAG ?? 0],
+    ['6110', 'Krankenversicherung AG', a.kvAG ?? 0],
+    ['6120', 'Pflegeversicherung AG', a.pvAG ?? 0],
+    ['6130', 'Arbeitslosenversicherung AG', a.avAG ?? 0],
+    ['6200', 'Pauschsteuer AG (§40a EStG)', a.pauschsteuerAG ?? 0],
+  ]
+  for (const [lohnart, bezeichnung, betrag] of agAnteile) {
+    if (betrag > 0) zeilen.push({ ...basis, lohnart, bezeichnung, betrag })
+  }
+
   zeilen.push({
     ...basis, lohnart: '9999', bezeichnung: 'Auszahlungsbetrag',
     betrag: a.auszahlungsbetrag ?? a.netto,

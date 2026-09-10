@@ -74,6 +74,10 @@ export async function GET(req: NextRequest) {
         auszahlungsbetrag: a.auszahlungsbetrag || a.netto,
         sonstigeBezuege: a.sonstigeBezuege,
         lohnsteuerSonstige: a.lohnsteuerSonstige,
+        rvAG: a.rvAG, kvAG: a.kvAG, pvAG: a.pvAG, avAG: a.avAG,
+        pauschsteuerAG: a.pauschsteuerAG,
+        beschaeftigungsart: a.beschaeftigungsart,
+        svTage: a.svTage,
       }))
     }
     const csv = datevCsv(

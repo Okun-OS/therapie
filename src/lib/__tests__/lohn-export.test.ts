@@ -158,6 +158,33 @@ describe('DATEV-Export', () => {
     expect(csv).toContain('09.2026')
   })
 
+  it('führt die Arbeitgeberanteile als eigene Lohnarten', () => {
+    const zeilen = datevZeilenAusAbrechnung({
+      ...abrechnung, rvAG: 316.2, kvAG: 289, pvAG: 61.2, avAG: 44.2,
+    })
+    const arten = zeilen.map(z => z.bezeichnung)
+    expect(arten).toContain('Rentenversicherung AG')
+    expect(arten).toContain('Krankenversicherung AG')
+  })
+
+  it('führt beim Minijob die Pauschalen — sonst fehlen dem Berater alle Abgaben', () => {
+    const minijob = datevZeilenAusAbrechnung({
+      ...abrechnung, brutto: 500, surchargesTotal: 0,
+      lohnsteuer: 0, kirchensteuer: 0, soli: 0,
+      rvAN: 18, kvAN: 0, pvAN: 0, avAN: 0,
+      rvAG: 75, kvAG: 65, pvAG: 0, avAG: 0,
+      pauschsteuerAG: 10, netto: 482, auszahlungsbetrag: 482,
+      beschaeftigungsart: 'minijob',
+    })
+    const zeile = (b: string) => minijob.find(z => z.bezeichnung === b)
+    expect(zeile('Rentenversicherung AG')?.betrag).toBe(75)
+    expect(zeile('Krankenversicherung AG')?.betrag).toBe(65)
+    expect(zeile('Pauschsteuer AG (§40a EStG)')?.betrag).toBe(10)
+    expect(zeile('Auszahlungsbetrag')?.betrag).toBe(482)
+    // Ohne Lohnsteuer darf auch keine Lohnsteuerzeile entstehen
+    expect(zeile('Lohnsteuer')).toBeUndefined()
+  })
+
   it('maskiert Anführungszeichen in Namen', () => {
     const csv = datevCsv({ jahr: 2026, monat: 9, mandantName: 'A"B' }, [])
     expect(csv).toContain('"A""B"')

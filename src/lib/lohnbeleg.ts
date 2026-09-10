@@ -61,6 +61,12 @@ export interface BelegAbrechnung {
   sonstigeBezuege?: number
   sonstigeBezuegeText?: string
   lohnsteuerSonstige?: number
+  /** §124 SV-Tage des Monats — nach der Entgeltbescheinigungsverordnung Pflicht */
+  svTage?: number
+  /** §124 Beschäftigungsart: regulaer | minijob | kurzfristig | uebergangsbereich */
+  beschaeftigungsart?: string
+  /** §124 Pauschsteuer des Arbeitgebers beim Minijob — kein Abzug beim Arbeitnehmer */
+  pauschsteuerAG?: number
   steuerBrutto?: number
   svBrutto?: number
   regularHours: number
@@ -79,6 +85,14 @@ export interface BelegAbrechnung {
   pvAG: number
   avAG: number
   totalAgCost: number
+}
+
+/** §124 Die Beschäftigungsart gehört auf den Beleg — sie erklärt die Abzüge. */
+const ART_TEXT: Record<string, string> = {
+  regulaer: 'regulär',
+  minijob: 'Minijob',
+  kurzfristig: 'kurzfristig',
+  uebergangsbereich: 'Übergangsbereich',
 }
 
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
@@ -186,6 +200,11 @@ export async function erzeugeLohnbeleg(
     ['Steuer-ID', arbeitnehmer.steuerId ?? '—'],
     ['SV-Nummer', arbeitnehmer.sozialversicherungsnummer ?? '—'],
     ['Krankenkasse', arbeitnehmer.versicherungsart === 'PKV' ? 'privat versichert' : (arbeitnehmer.krankenkasse ?? '—')],
+    // §124 Die SV-Tage sind nach der Entgeltbescheinigungsverordnung
+    // anzugeben — und ohne sie kann niemand nachvollziehen, warum bei einem
+    // Teilmonat nur ein Teil des Gehalts kam.
+    ['SV-Tage', String(abrechnung.svTage ?? 30)],
+    ['Beschäftigungsart', ART_TEXT[abrechnung.beschaeftigungsart ?? 'regulaer'] ?? 'regulär'],
   ]
   for (let i = 0; i < merkmale.length; i += 3) {
     const zeile = merkmale.slice(i, i + 3)
@@ -281,6 +300,37 @@ export async function erzeugeLohnbeleg(
   text('Summe der Abzüge', RAND, 10, fett)
   rechts(`- ${euro(abrechnung.totalDeductions)} EUR`, SP_BETRAG, 10, fett)
   y -= 16
+
+  // §124 Beim Minijob mit Pauschsteuer steht hier sonst nur „Lohnsteuer 0,00" —
+  // ohne jede Erklärung. Der Mitarbeiter soll wissen, warum nichts abgeht.
+  if ((abrechnung.pauschsteuerAG ?? 0) > 0) {
+    text(
+      `Die Lohnsteuer trägt der Arbeitgeber pauschal mit ${euro(abrechnung.pauschsteuerAG!)} EUR `
+      + `(§40a Abs.2 EStG). Dieser Verdienst gehört nicht in Ihre Steuererklärung.`,
+      RAND, 7, normal, grau,
+    )
+    y -= 12
+  } else if (abrechnung.beschaeftigungsart === 'kurzfristig') {
+    text(
+      'Kurzfristige Beschäftigung: in der Sozialversicherung beitragsfrei (§8 Abs.1 Nr.2 SGB IV).',
+      RAND, 7, normal, grau,
+    )
+    y -= 12
+  } else if (abrechnung.beschaeftigungsart === 'uebergangsbereich') {
+    text(
+      'Übergangsbereich: Ihr Beitragsanteil ist vermindert (§20 Abs.2a SGB IV) — '
+      + 'die Differenz trägt der Arbeitgeber.',
+      RAND, 7, normal, grau,
+    )
+    y -= 12
+  }
+  if ((abrechnung.svTage ?? 30) < 30) {
+    text(
+      `Teilmonat: abgerechnet für ${abrechnung.svTage} von 30 SV-Tagen.`,
+      RAND, 7, normal, grau,
+    )
+    y -= 12
+  }
 
   // §119 Weicht die Auszahlung vom Netto ab, muss der Mitarbeiter sehen warum.
   // Ein unerklärter Betrag auf dem Konto erzeugt genau die Rückfrage, die eine

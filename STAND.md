@@ -18,7 +18,7 @@ Zuletzt aktualisiert: **10.09.2026**
 |---|---|
 | **Baustelle** | Lohnabrechnung → eigene Komplettlösung |
 | **Meilenstein** | 1 von 4 — „Ein echter Kunde kann abgerechnet werden" |
-| **Zuletzt fertig** | Automatische Prüfung im Repo (Teil 6.1) — `npm run pruefen` |
+| **Zuletzt fertig** | Beleg und DATEV vollständig (Minijob, Teilmonat, AG-Anteile) |
 | **Als Nächstes** | Fahrplan Teil 2.2 — Lohnsteuerbescheinigung |
 | **Danach** | Teil 1.4–1.6 geldwerte Vorteile, bAV, Pfändungen |
 
