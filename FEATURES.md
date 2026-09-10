@@ -490,6 +490,38 @@ Nachweis: 15 Modultests, 40 Prüfungen am laufenden System — darunter der ganz
 Weg von der rückwirkenden Steuerklassenänderung über die Korrektur bis zum
 höheren Betrag in der SEPA-Datei.
 
+## Block D10 (10.09.) — Einmalzahlungen
+
+Weihnachtsgeld hat jeder Kunde, und bisher gab es dafür gar keinen Platz. Wer es
+zahlen wollte, konnte es nur als erhöhtes Monatsgehalt eintragen — dann stimmte
+weder die Steuer noch der Beitrag.
+
+- [x] **Einmalzahlungen** — Weihnachtsgeld, Urlaubsgeld, Prämien, Abfindungen.
+      Sie werden erfasst und beim nächsten Abrechnungslauf gerechnet; dieselbe
+      Reihenfolge wie bei allem anderen.
+- [x] **Besteuert nach §39b Abs.3 EStG** — die Steuer auf eine Einmalzahlung ist
+      der Unterschied zwischen der Jahressteuer mit und ohne sie. Der amtliche
+      Ablaufplan konnte das bereits, wir haben es nur nicht genutzt.
+- [x] **Verbeitragt an der anteiligen Jahresgrenze**, nicht an der Monatsgrenze.
+      Das ist der teuerste Fehler bei Einmalzahlungen: wer mit der Monatsgrenze
+      rechnet, verbeitragt bei Gutverdienern zu wenig — und das fällt erst bei
+      der Betriebsprüfung auf, Jahre später. Renten- und Krankenversicherung
+      werden an getrennten Grenzen gerechnet.
+- [x] **Die Märzklausel wird gemeldet, nicht geraten.** §23a Abs.4 SGB IV kann
+      eine Zahlung aus dem ersten Quartal dem Vorjahr zuordnen. Das braucht die
+      vollständigen Vorjahresdaten — solange die nicht sicher vorliegen, gibt es
+      eine Warnung statt einer stillen Annahme.
+- [x] **Abfindungen sind beitragsfrei**, aber steuerpflichtig — sie entschädigen
+      den Verlust des Arbeitsplatzes und sind kein Arbeitsentgelt.
+- [x] Getrennte Lohnarten im DATEV-Export, eigene Zeile auf dem Beleg, getrennt
+      ausgewiesene Steuer.
+- [x] Ein freigegebener Monat lässt sich nicht nachträglich um eine Zahlung
+      ergänzen — dafür gibt es die Aufrollung.
+
+Nachweis: 21 Modultests, 29 Prüfungen am laufenden System. Im Testfall bleiben
+von 3.400 EUR Weihnachtsgeld **2.217,90 EUR netto** (463 EUR Steuer,
+719,10 EUR Beiträge).
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

@@ -81,6 +81,16 @@ export async function POST(req: NextRequest) {
     korrekturHinweis.set(k.employeeId, bisher ? `${bisher}, ${text}` : text)
   }
 
+  // §120 Wofuer die Einmalzahlung stand — steht so auf dem Beleg.
+  const einmalzahlungen = await prisma.payrollBonus.findMany({
+    where: { customerId, jahr: year, monat: month, employeeId: { in: abrechnungen.map(a => a.employeeId) } },
+  })
+  const einmalHinweis = new Map<string, string>()
+  for (const b of einmalzahlungen) {
+    const bisher = einmalHinweis.get(b.employeeId)
+    einmalHinweis.set(b.employeeId, bisher ? `${bisher}, ${b.bezeichnung}` : b.bezeichnung)
+  }
+
   const erzeugt: { name: string; dateiId: string }[] = []
   const uebersprungen: { name: string; grund: string }[] = []
 
@@ -121,6 +131,9 @@ export async function POST(req: NextRequest) {
           korrekturNetto: a.korrekturNetto,
           auszahlungsbetrag: a.auszahlungsbetrag || a.netto,
           korrekturText: korrekturHinweis.get(a.employeeId),
+          sonstigeBezuege: a.sonstigeBezuege,
+          sonstigeBezuegeText: einmalHinweis.get(a.employeeId),
+          lohnsteuerSonstige: a.lohnsteuerSonstige,
           steuerBrutto: a.steuerBrutto, svBrutto: a.svBrutto,
           regularHours: a.regularHours, overtimeHours: a.overtimeHours,
           lohnsteuer: a.lohnsteuer, kirchensteuer: a.kirchensteuer, soli: a.soli,

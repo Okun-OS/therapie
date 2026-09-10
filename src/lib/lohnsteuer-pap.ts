@@ -59,6 +59,18 @@ export interface LohnsteuerEingabe {
   hinzurechnungMonat?: number
   /** Faktor laut ELStAM — nur Steuerklasse IV (Faktorverfahren, §39f EStG) */
   faktor?: number
+  /**
+   * §120 Einmalzahlungen dieses Monats in Euro (Weihnachtsgeld, Prämie …).
+   * Sie werden nach §39b Abs.3 EStG besteuert: die Steuer ist der Unterschied
+   * zwischen der Jahressteuer mit und ohne die Zahlung.
+   */
+  sonstigeBezuege?: number
+  /**
+   * Voraussichtlicher Jahresarbeitslohn OHNE die Einmalzahlung, in Euro,
+   * zuzüglich bereits gezahlter Einmalzahlungen dieses Jahres.
+   * Nur nötig, wenn `sonstigeBezuege` gesetzt ist.
+   */
+  jahresArbeitslohn?: number
 }
 
 export interface LohnsteuerErgebnis {
@@ -66,6 +78,10 @@ export interface LohnsteuerErgebnis {
   soli: number
   /** Bemessungsgrundlage der Kirchensteuer (§51a EStG) — mit Kinderfreibetrag */
   kirchensteuerBasis: number
+  /** §120 Steuer auf die Einmalzahlungen, getrennt vom laufenden Lohn */
+  lohnsteuerSonstige: number
+  soliSonstige: number
+  kirchensteuerBasisSonstige: number
 }
 
 /** Sachsen teilt die Pflegeversicherung anders auf als der Rest der Republik. */
@@ -126,6 +142,11 @@ export function lohnsteuerBerechnen(e: LohnsteuerEingabe): LohnsteuerErgebnis {
       KRV: e.rentenversicherungspflichtig === false ? 1 : 0,
       LZZFREIB: cent(e.freibetragMonat ?? 0),
       LZZHINZU: cent(e.hinzurechnungMonat ?? 0),
+      // §120 Ohne den voraussichtlichen Jahresarbeitslohn kann der Ablaufplan
+      // die Steuer auf eine Einmalzahlung nicht bilden — sie ist ja gerade der
+      // Unterschied zwischen der Jahressteuer mit und ohne sie.
+      SONSTB: cent(Math.max(0, e.sonstigeBezuege ?? 0)),
+      JRE4: cent(Math.max(0, e.jahresArbeitslohn ?? 0)),
       // Das Faktorverfahren gibt es nur in Steuerklasse IV. Ein Faktor an einer
       // anderen Klasse waere ein Datenfehler und wird deshalb nicht angewandt.
       ...(e.steuerklasse === 4 && e.faktor && e.faktor > 0
@@ -144,5 +165,8 @@ export function lohnsteuerBerechnen(e: LohnsteuerEingabe): LohnsteuerErgebnis {
     lohnsteuer: euro(ergebnis.LSTLZZ),
     soli: euro(ergebnis.SOLZLZZ),
     kirchensteuerBasis: euro(ergebnis.BK),
+    lohnsteuerSonstige: euro(ergebnis.STS),
+    soliSonstige: euro(ergebnis.SOLZS),
+    kirchensteuerBasisSonstige: euro(ergebnis.BKS),
   }
 }

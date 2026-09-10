@@ -41,20 +41,20 @@ Was fehlt, steht unten. Es ist viel — aber es ist endlich und benennbar.
 **Braucht keine Zertifizierung.** Jeder Punkt hier fällt bei einem echten Kunden
 auf, lange bevor eine Behörde ins Spiel kommt. Das ist die Pflicht.
 
-### 1.1 Sonstige Bezüge (Einmalzahlungen) `[OKUN]` **M**
-Weihnachtsgeld, Urlaubsgeld, Boni, Prämien. Werden anders besteuert als
-laufender Lohn — nach der Jahreslohnsteuer-Methode. Hat **jeder** Kunde.
-
-- [ ] Feld für Einmalzahlungen an der Abrechnung (Art, Betrag, Monat)
-- [ ] Voraussichtlichen Jahresarbeitslohn ermitteln (bereits gezahlte
-      Einmalzahlungen einrechnen)
-- [ ] `SONSTB` und `JRE4` an den Programmablaufplan durchreichen — **er kann das
-      bereits, wir nutzen es nur nicht**
-- [ ] Sozialversicherung: eigene Beitragsbemessung für Einmalzahlungen mit
-      anteiliger Jahres-Bemessungsgrenze (Märzklausel beachten)
-- [ ] Eigene Lohnart im DATEV-Export
-- [ ] Eigene Zeile auf dem Beleg
-- [ ] Tests gegen den Ablaufplan, Nachweis am laufenden System
+### 1.1 Sonstige Bezüge (Einmalzahlungen) `[OKUN]` — ✅ **fertig 10.09.2026**
+- [x] Eigene Tabelle für Einmalzahlungen (Art, Bezeichnung, Betrag, Monat)
+- [x] Voraussichtlicher Jahresarbeitslohn nach §39b Abs.3 EStG, inklusive
+      bereits gezahlter Einmalzahlungen
+- [x] `SONSTB` und `JRE4` an den Programmablaufplan durchgereicht — er konnte
+      es bereits, wir haben es nur nicht genutzt
+- [x] Sozialversicherung an der **anteiligen Jahresgrenze** statt der
+      Monatsgrenze, RV und KV getrennt. Märzklausel wird **gemeldet, nicht
+      geraten** (§23a Abs.4 SGB IV braucht die Vorjahresdaten)
+- [x] Abfindungen beitragsfrei, aber steuerpflichtig
+- [x] Eigene Lohnarten im DATEV-Export (0300, 5001)
+- [x] Eigene Zeile auf dem Beleg, Steuer darauf getrennt ausgewiesen
+- [x] Ein freigegebener Monat lässt sich nicht nachträglich ergänzen
+- [x] 21 Modultests, 29 Prüfungen am laufenden System
 
 ### 1.2 Minijob und Übergangsbereich `[OKUN]` **L**
 Heute wird nur gewarnt. In Kita und Reha sind geringfügig Beschäftigte der

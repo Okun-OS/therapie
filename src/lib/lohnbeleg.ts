@@ -57,6 +57,10 @@ export interface BelegAbrechnung {
   korrekturNetto?: number
   auszahlungsbetrag?: number
   korrekturText?: string
+  /** §120 Einmalzahlungen und die Steuer darauf */
+  sonstigeBezuege?: number
+  sonstigeBezuegeText?: string
+  lohnsteuerSonstige?: number
   steuerBrutto?: number
   svBrutto?: number
   regularHours: number
@@ -214,6 +218,14 @@ export async function erzeugeLohnbeleg(
     if (steuerfrei > 0) posten.push(['davon steuerfrei (§3b EStG)', steuerfrei])
   }
   if (abrechnung.overtimeHours > 0) posten.push(['davon Überstunden', 0, `${euro(abrechnung.overtimeHours)} Std.`])
+  // §120 Einmalzahlungen als eigene Zeile — sie werden anders besteuert, und
+  // der Mitarbeiter muss sehen, dass davon mehr Steuer abgeht als sonst.
+  if ((abrechnung.sonstigeBezuege ?? 0) > 0) {
+    posten.push([
+      abrechnung.sonstigeBezuegeText || 'Einmalzahlung',
+      abrechnung.sonstigeBezuege!,
+    ])
+  }
 
   for (const [label, betrag, zusatz] of posten) {
     text(label, RAND)
@@ -243,7 +255,10 @@ export async function erzeugeLohnbeleg(
   y -= 15
 
   const abzuege: [string, number][] = [
-    ['Lohnsteuer', abrechnung.lohnsteuer],
+    ['Lohnsteuer', abrechnung.lohnsteuer - (abrechnung.lohnsteuerSonstige ?? 0)],
+    ...((abrechnung.lohnsteuerSonstige ?? 0) > 0
+      ? [['Lohnsteuer auf Einmalzahlung', abrechnung.lohnsteuerSonstige!] as [string, number]]
+      : []),
     ['Kirchensteuer', abrechnung.kirchensteuer],
     ['Solidaritätszuschlag', abrechnung.soli],
     ['Rentenversicherung', abrechnung.rvAN],

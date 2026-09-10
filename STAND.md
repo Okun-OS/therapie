@@ -18,9 +18,9 @@ Zuletzt aktualisiert: **10.09.2026**
 |---|---|
 | **Baustelle** | Lohnabrechnung → eigene Komplettlösung |
 | **Meilenstein** | 1 von 4 — „Ein echter Kunde kann abgerechnet werden" |
-| **Zuletzt fertig** | Rückwirkende Aufrollung (D9) + drei Löcher in `/api/payroll` |
-| **Als Nächstes** | Fahrplan Teil 1.1 — Sonstige Bezüge (Weihnachtsgeld) |
-| **Danach** | Teil 1.2 Minijob · Teil 6.1 automatische Prüfung |
+| **Zuletzt fertig** | Einmalzahlungen (Teil 1.1) — Weihnachtsgeld, Prämie, Abfindung |
+| **Als Nächstes** | Fahrplan Teil 1.2 — Minijob und Übergangsbereich |
+| **Danach** | Teil 1.3 Ein-/Austritte im Monat · Teil 6.1 automatische Prüfung |
 
 Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 
@@ -53,7 +53,7 @@ Nach Dringlichkeit, nicht nach Bereich.
       *(= Fahrplan Teil 6.1)*
 
 ### Lohn — der aktuelle Schwerpunkt
-- [ ] Sonstige Bezüge (Weihnachts-/Urlaubsgeld, Boni) — Teil 1.1
+- [x] ~~Sonstige Bezüge (Weihnachts-/Urlaubsgeld, Boni)~~ — Teil 1.1 ✅
 - [ ] Minijob und Übergangsbereich — Teil 1.2
 - [ ] Ein-/Austritte im Monat, Teilmonate — Teil 1.3
 - [ ] Geldwerte Vorteile, bAV, Pfändungen — Teil 1.4–1.6

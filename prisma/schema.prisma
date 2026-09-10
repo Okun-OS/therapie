@@ -874,6 +874,40 @@ model TimesheetApproval {
 
 // ── Payroll Entries ───────────────────────────────────────────────────────────
 
+/// §120 Eine Einmalzahlung: Weihnachtsgeld, Urlaubsgeld, Praemie, Abfindung.
+///
+/// Sonstige Bezuege werden anders besteuert als laufender Lohn — nach der
+/// Jahreslohnsteuer-Methode (§39b Abs.3 EStG): die Steuer ist der Unterschied
+/// zwischen der Steuer auf den Jahreslohn MIT und OHNE die Zahlung. In der
+/// Sozialversicherung gilt die anteilige Jahres-Beitragsbemessungsgrenze
+/// statt der monatlichen.
+///
+/// Deshalb eine eigene Tabelle: eine Einmalzahlung ist ein Ereignis mit
+/// eigenem Grund und eigenem Datum, kein Feld an der Monatsabrechnung. In
+/// einem Monat koennen mehrere zusammenkommen.
+model PayrollBonus {
+  id           String   @id @default(cuid())
+  employeeId   String
+  employeeName String?
+  customerId   String
+  locationId   String?
+  jahr         Int
+  monat        Int
+  /// weihnachtsgeld | urlaubsgeld | praemie | abfindung | sonstiges
+  art          String
+  bezeichnung  String
+  betrag       Float
+  /// Abfindungen sind beitragsfrei und werden nach der Fuenftelregelung
+  /// besteuert — deshalb eigens gekennzeichnet.
+  beitragsfrei Boolean  @default(false)
+  notiz        String?
+  erstelltAm   DateTime @default(now())
+  erstelltVon  String?
+
+  @@index([customerId, jahr, monat])
+  @@index([employeeId, jahr])
+}
+
 /// §119 Eine rueckwirkende Aenderung an einem bereits freigegebenen Monat.
 ///
 /// Zwei Prinzipien treffen hier aufeinander und werden bewusst unterschiedlich
@@ -975,6 +1009,15 @@ model PayrollEntry {
   // Feld, damit sie nicht auseinanderlaufen koennen.
   korrekturNetto  Float    @default(0)
   auszahlungsbetrag Float  @default(0)
+  // §120 Einmalzahlungen des Monats und die Steuer darauf. Sie werden getrennt
+  // ausgewiesen, weil sie getrennt berechnet werden — und weil der
+  // Steuerberater sie getrennt braucht.
+  sonstigeBezuege       Float @default(0)
+  lohnsteuerSonstige    Float @default(0)
+  kirchensteuerSonstige Float @default(0)
+  soliSonstige          Float @default(0)
+  svANSonstige          Float @default(0)
+  svAGSonstige          Float @default(0)
   // Meta
   approvedBy      String?
   approvedAt      String?

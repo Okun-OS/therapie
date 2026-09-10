@@ -72,6 +72,8 @@ export async function GET(req: NextRequest) {
         ...a,
         personalnummer: profilVon.get(a.employeeId)?.personalnummer ?? null,
         auszahlungsbetrag: a.auszahlungsbetrag || a.netto,
+        sonstigeBezuege: a.sonstigeBezuege,
+        lohnsteuerSonstige: a.lohnsteuerSonstige,
       }))
     }
     const csv = datevCsv(

@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
     try {
       neu = abrechnungRechnen(
         { ...p, hatKinder: p.hatKinder ?? m.hasChildren },
-        grundlage, jahr,
+        grundlage, jahr, e.month,
       ).ergebnis
     } catch (fehler) {
       nichtRechenbar.push({

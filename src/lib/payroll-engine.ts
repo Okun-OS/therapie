@@ -19,6 +19,7 @@
 
 import { lohnjahrOderFehler, type Lohnjahr } from './lohnjahre'
 import { lohnsteuerBerechnen, istSachsen, pflegeMerkmale } from './lohnsteuer-pap'
+import { einmalbezugBeitraege } from './einmalbezug'
 
 // Kirchensteuer: 8 % in Bayern und Baden-Württemberg, sonst 9 %.
 // Die Feiertagslogik nutzt ausgeschriebene Ländernamen — beide Schreibweisen
@@ -109,6 +110,18 @@ export interface PayrollInput {
   // Tax/insurance
   /** Abrechnungsjahr — bestimmt Rechengrößen und Steuerformel. Pflicht. */
   jahr: number
+  /** Abrechnungsmonat 1–12 — nötig für die anteilige Jahresgrenze bei Einmalzahlungen */
+  monat?: number
+  /** §120 Einmalzahlungen dieses Monats (Weihnachtsgeld, Prämie, …) */
+  sonstigeBezuege?: number
+  /** Davon beitragsfrei (z. B. echte Abfindungen) */
+  sonstigeBezuegeBeitragsfrei?: number
+  /** Voraussichtlicher Jahresarbeitslohn ohne die Einmalzahlung */
+  jahresArbeitslohn?: number
+  /** Bisher beitragspflichtiges Entgelt des Jahres bis zum Vormonat */
+  bisherBeitragspflichtig?: number
+  /** Erster Beschäftigungsmonat im Jahr — für die anteilige Jahresgrenze */
+  eintrittsMonat?: number
   taxClass: 1 | 2 | 3 | 4 | 5 | 6
   childCount: number        // Zahl der Kinderfreibeträge laut ELStAM (0, 0.5, 1, …)
   /** Hat der Arbeitnehmer Kinder? Entscheidet über den Zuschlag zur Pflegeversicherung. */
@@ -143,6 +156,15 @@ export interface PayrollResult {
   svfreieZuschlaege: number
   steuerBrutto: number      // Brutto, auf das Lohnsteuer erhoben wird
   svBrutto: number          // Brutto, auf das Sozialabgaben erhoben werden
+  // §120 Einmalzahlungen und ihr Anteil an Steuer und Beitrag. Die Gesamtwerte
+  // unten enthalten sie bereits — das hier ist die Aufgliederung, die der
+  // Steuerberater und der Beleg brauchen.
+  sonstigeBezuege: number
+  lohnsteuerSonstige: number
+  kirchensteuerSonstige: number
+  soliSonstige: number
+  svANSonstige: number
+  svAGSonstige: number
   // Social security (Arbeitnehmer)
   rvAN: number
   kvAN: number
@@ -192,13 +214,19 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     + (input.otherSurcharge ?? 0)
 
   const overtimePay = (input.hourlyWage ?? 0) * input.overtimeHours
-  const brutto = regularPay + surchargesTotal
+  // §120 Einmalzahlungen gehören ins Gesamtbrutto, werden aber getrennt
+  // besteuert und getrennt verbeitragt.
+  const sonstigeBezuege = Math.max(0, input.sonstigeBezuege ?? 0)
+  const laufendesBrutto = regularPay + surchargesTotal
+  const brutto = laufendesBrutto + sonstigeBezuege
 
   // §3b EStG: der steuer- und beitragsfreie Anteil der Zuschläge
   const frei = steuerfreieZuschlaege(input, regularPay)
   if (frei.hinweis) warnings.push(frei.hinweis)
-  const steuerBrutto = Math.max(0, brutto - frei.steuerfrei)
-  const svBrutto = Math.max(0, brutto - frei.svfrei)
+  // Steuer- und Beitragsbrutto meinen den LAUFENDEN Lohn: die Einmalzahlung
+  // hat ihre eigene Bemessung und würde die Monatsgrenzen sonst verfälschen.
+  const steuerBrutto = Math.max(0, laufendesBrutto - frei.steuerfrei)
+  const svBrutto = Math.max(0, laufendesBrutto - frei.svfrei)
 
   // Minijob warning
   if (brutto > 0 && brutto <= 556) {
@@ -249,7 +277,34 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const pvAN = input.insuranceType === 'GKV' ? pvBase * Math.max(0, pvAnSatz) : 0
   const pvAG = input.insuranceType === 'GKV' ? pvBase * pvAgSatz : 0
 
-  const svTotal = rvAN + kvAN + pvAN + avAN
+  // §120 Beiträge auf die Einmalzahlung — anteilige Jahresgrenze statt Monatsgrenze
+  const beitragspflichtigerBonus = Math.max(
+    0, sonstigeBezuege - Math.max(0, input.sonstigeBezuegeBeitragsfrei ?? 0))
+  const bonusSv = beitragspflichtigerBonus > 0
+    ? einmalbezugBeitraege({
+        jahr: input.jahr,
+        monat: input.monat ?? 12,
+        betrag: beitragspflichtigerBonus,
+        bisherBeitragspflichtig: input.bisherBeitragspflichtig ?? 0,
+        laufendesEntgelt: svBrutto,
+        eintrittsMonat: input.eintrittsMonat,
+        versicherung: input.insuranceType,
+        zusatzbeitragProzent: input.zusatzbeitragPercent,
+        bundesland: input.bundesland,
+        hatKinder: input.hasChildren,
+        kinderUnter25: input.childrenUnder25,
+        rvExempt: input.rvExempt,
+      })
+    : null
+  if (bonusSv) warnings.push(...bonusSv.warnungen)
+  if (sonstigeBezuege > 0 && input.monat == null) {
+    warnings.push(
+      'Ohne Abrechnungsmonat lässt sich die anteilige Jahres-Beitragsbemessungsgrenze '
+      + 'für die Einmalzahlung nicht bilden — gerechnet wurde mit dem vollen Jahr.',
+    )
+  }
+
+  const svTotal = rvAN + kvAN + pvAN + avAN + (bonusSv?.svAN ?? 0)
 
   // ─ 3. Lohnsteuer nach dem amtlichen Programmablaufplan ────────────────────
   // Grundlage ist das Steuerbrutto — steuerfreie Zuschläge bleiben draußen.
@@ -273,14 +328,21 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     freibetragMonat: input.freibetragMonat,
     hinzurechnungMonat: input.hinzurechnungMonat,
     faktor: input.faktor,
+    sonstigeBezuege,
+    jahresArbeitslohn: input.jahresArbeitslohn ?? steuerBrutto * 12,
   })
 
-  const lohnsteuerMonthly = steuer.lohnsteuer
-  const soliMonthly = steuer.soli
+  // Die Gesamtwerte enthalten die Einmalzahlung — abgezogen wird beides zusammen.
+  const lohnsteuerMonthly = round2(steuer.lohnsteuer + steuer.lohnsteuerSonstige)
+  const soliMonthly = round2(steuer.soli + steuer.soliSonstige)
   // Der Ablaufplan liefert die Bemessungsgrundlage nach §51a EStG, also mit
   // Kinderfreibetrag. Der Landessatz kommt von uns — er steht nicht im Plan.
+  const kirchensteuerSatz = kirchensteuerRate(input.bundesland)
+  const kirchensteuerSonstige = input.churchTax
+    ? round2(steuer.kirchensteuerBasisSonstige * kirchensteuerSatz)
+    : 0
   const kirchensteuerMonthly = input.churchTax
-    ? round2(steuer.kirchensteuerBasis * kirchensteuerRate(input.bundesland))
+    ? round2(steuer.kirchensteuerBasis * kirchensteuerSatz + kirchensteuerSonstige)
     : 0
 
   // ─ 4. Net ─────────────────────────────────────────────────────────────────
@@ -289,6 +351,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
 
   // ─ 5. Employer costs ──────────────────────────────────────────────────────
   const totalAgCost = brutto + rvAG + kvAG + pvAG + avAG
+    + (bonusSv?.svAG ?? 0)
 
   return {
     brutto: round2(brutto),
@@ -300,20 +363,26 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     svfreieZuschlaege: frei.svfrei,
     steuerBrutto: round2(steuerBrutto),
     svBrutto: round2(svBrutto),
-    rvAN: round2(rvAN),
-    kvAN: round2(kvAN),
-    pvAN: round2(pvAN),
-    avAN: round2(avAN),
+    sonstigeBezuege: round2(sonstigeBezuege),
+    lohnsteuerSonstige: steuer.lohnsteuerSonstige,
+    kirchensteuerSonstige,
+    soliSonstige: steuer.soliSonstige,
+    svANSonstige: bonusSv?.svAN ?? 0,
+    svAGSonstige: bonusSv?.svAG ?? 0,
+    rvAN: round2(rvAN + (bonusSv?.rvAN ?? 0)),
+    kvAN: round2(kvAN + (bonusSv?.kvAN ?? 0)),
+    pvAN: round2(pvAN + (bonusSv?.pvAN ?? 0)),
+    avAN: round2(avAN + (bonusSv?.avAN ?? 0)),
     svTotal: round2(svTotal),
     lohnsteuerMonthly: round2(lohnsteuerMonthly),
     kirchensteuerMonthly: round2(kirchensteuerMonthly),
     soliMonthly: round2(soliMonthly),
     totalDeductions: round2(totalDeductions),
     netto: round2(netto),
-    rvAG: round2(rvAG),
-    kvAG: round2(kvAG),
-    pvAG: round2(pvAG),
-    avAG: round2(avAG),
+    rvAG: round2(rvAG + (bonusSv?.rvAG ?? 0)),
+    kvAG: round2(kvAG + (bonusSv?.kvAG ?? 0)),
+    pvAG: round2(pvAG + (bonusSv?.pvAG ?? 0)),
+    avAG: round2(avAG + (bonusSv?.avAG ?? 0)),
     totalAgCost: round2(totalAgCost),
     warnings,
   }

@@ -12,6 +12,7 @@
  */
 
 import { prisma } from './prisma'
+import { voraussichtlicherJahreslohn } from './einmalbezug'
 import { calculatePayroll, type PayrollInput, type PayrollResult } from './payroll-engine'
 import {
   computeWithRules, DEFAULT_SURCHARGE_RULES,
@@ -35,6 +36,14 @@ export interface MonatsGrundlage {
   otherSurcharge: number
   /** Stundensatz, mit dem die prozentualen Zuschläge gerechnet wurden. */
   zuschlagsStundenlohn: number | null
+  /** §120 Einmalzahlungen dieses Monats und ihr beitragsfreier Anteil */
+  sonstigeBezuege: number
+  sonstigeBezuegeBeitragsfrei: number
+  /** Jahreswerte, die die Steuer auf Einmalzahlungen braucht */
+  bisherSteuerBrutto: number
+  bisherBeitragspflichtig: number
+  bisherigeEinmalzahlungen: number
+  eintrittsMonat: number
 }
 
 const leer = (): MonatsGrundlage => ({
@@ -44,6 +53,9 @@ const leer = (): MonatsGrundlage => ({
   nightSurcharge: 0, saturdaySurcharge: 0, sundaySurcharge: 0,
   holidaySurcharge: 0, overtimeSurcharge: 0, otherSurcharge: 0,
   zuschlagsStundenlohn: null,
+  sonstigeBezuege: 0, sonstigeBezuegeBeitragsfrei: 0,
+  bisherSteuerBrutto: 0, bisherBeitragspflichtig: 0,
+  bisherigeEinmalzahlungen: 0, eintrittsMonat: 1,
 })
 
 /** Erster und letzter Tag des Monats als YYYY-MM-DD. */
@@ -119,6 +131,8 @@ export interface MitarbeiterMonat {
   lohnart?: string | null
   stundenlohn?: number | null
   monatsgehalt?: number | null
+  /** Erster Beschäftigungsmonat im Abrechnungsjahr — für die anteilige Jahresgrenze */
+  eintrittsMonat?: number
 }
 
 /**
@@ -139,6 +153,26 @@ export async function monatsGrundlagen(
 
   const { von, bis } = monatsGrenzen(year, month)
   const ids = mitarbeiter.map(m => m.employeeId)
+
+  // §120 Einmalzahlungen dieses Monats und die Jahreswerte, die ihre
+  // Besteuerung braucht: die Steuer auf eine Einmalzahlung ist der Unterschied
+  // zwischen der Jahressteuer mit und ohne sie.
+  const [bonusse, frueherImJahr, frueherBonusse] = await Promise.all([
+    prisma.payrollBonus.findMany({
+      where: { customerId, jahr: year, monat: month, employeeId: { in: mitarbeiter.map(m => m.employeeId) } },
+    }),
+    prisma.payrollEntry.findMany({
+      where: {
+        customerId, year, month: { lt: month },
+        employeeId: { in: mitarbeiter.map(m => m.employeeId) },
+      },
+      select: { employeeId: true, steuerBrutto: true, svBrutto: true, sonstigeBezuege: true },
+    }),
+    prisma.payrollBonus.findMany({
+      where: { customerId, jahr: year, monat: { lt: month }, employeeId: { in: mitarbeiter.map(m => m.employeeId) } },
+      select: { employeeId: true, betrag: true },
+    }),
+  ])
 
   const [zeiten, abwesenheiten] = await Promise.all([
     prisma.timeLog.findMany({
@@ -167,6 +201,21 @@ export async function monatsGrundlagen(
 
   for (const m of mitarbeiter) {
     const g = ergebnis.get(m.employeeId)!
+
+    const eigeneBonusse = bonusse.filter(b => b.employeeId === m.employeeId)
+    g.sonstigeBezuege = Math.round(eigeneBonusse.reduce((s, b) => s + b.betrag, 0) * 100) / 100
+    g.sonstigeBezuegeBeitragsfrei = Math.round(
+      eigeneBonusse.filter(b => b.beitragsfrei).reduce((s, b) => s + b.betrag, 0) * 100) / 100
+
+    const vormonate = frueherImJahr.filter(e => e.employeeId === m.employeeId)
+    g.bisherSteuerBrutto = Math.round(vormonate.reduce((s, e) => s + e.steuerBrutto, 0) * 100) / 100
+    g.bisherBeitragspflichtig = Math.round(
+      vormonate.reduce((s, e) => s + e.svBrutto + e.sonstigeBezuege, 0) * 100) / 100
+    g.bisherigeEinmalzahlungen = Math.round(
+      frueherBonusse.filter(b => b.employeeId === m.employeeId)
+        .reduce((s, b) => s + b.betrag, 0) * 100) / 100
+    g.eintrittsMonat = m.eintrittsMonat ?? 1
+
     const regeln = regelnJeStandort.get(m.locationId ?? '') ?? DEFAULT_SURCHARGE_RULES
     const satz = zuschlagsStundenlohn(m.lohnart, m.stundenlohn, m.monatsgehalt, m.weeklyHours)
     g.zuschlagsStundenlohn = satz != null ? Math.round(satz * 100) / 100 : null
@@ -264,11 +313,17 @@ export function abrechnungRechnen(
   stamm: AbrechnungsStammdaten,
   g: MonatsGrundlage,
   jahr: number,
+  monat?: number,
 ): { eingabe: PayrollInput; ergebnis: PayrollResult } {
   // Der Grundlohn je Stunde ist der Maßstab für die Steuerfreiheit der
   // Zuschläge — beim Monatsgehalt aus Gehalt und Wochenstunden abgeleitet.
   const eingabe: PayrollInput = {
     jahr,
+    monat,
+    sonstigeBezuege: g.sonstigeBezuege,
+    sonstigeBezuegeBeitragsfrei: g.sonstigeBezuegeBeitragsfrei,
+    bisherBeitragspflichtig: g.bisherBeitragspflichtig,
+    eintrittsMonat: g.eintrittsMonat,
     hourlyWage: stamm.lohnart === 'stunde' ? (stamm.stundenlohn ?? undefined) : undefined,
     monthlyWage: stamm.lohnart === 'monat' ? (stamm.monatsgehalt ?? undefined) : undefined,
     regularHours: g.regularHours,
@@ -297,6 +352,17 @@ export function abrechnungRechnen(
     hinzurechnungMonat: stamm.hinzurechnungMonat ?? undefined,
     faktor: stamm.faktor ?? undefined,
     grundlohnHourly: g.zuschlagsStundenlohn ?? undefined,
+    jahresArbeitslohn: monat != null
+      ? voraussichtlicherJahreslohn({
+          bisherSteuerBrutto: g.bisherSteuerBrutto,
+          // Der laufende Monat ohne Einmalzahlung ist die Hochrechnungsbasis
+          laufendesSteuerBrutto: stamm.lohnart === 'monat'
+            ? (stamm.monatsgehalt ?? 0)
+            : (stamm.stundenlohn ?? 0) * (g.regularHours + g.overtimeHours),
+          monat,
+          bisherigeEinmalzahlungen: g.bisherigeEinmalzahlungen,
+        })
+      : undefined,
     churchTax: !!stamm.konfession && stamm.konfession !== 'keine',
     bundesland: stamm.bundesland ?? undefined,
   }
@@ -317,6 +383,12 @@ export function abrechnungsFelder(g: MonatsGrundlage, r: PayrollResult) {
     brutto: r.brutto,
     surchargesTotal: r.surchargesTotal,
     grundlage: r.grundlage,
+    sonstigeBezuege: r.sonstigeBezuege,
+    lohnsteuerSonstige: r.lohnsteuerSonstige,
+    kirchensteuerSonstige: r.kirchensteuerSonstige,
+    soliSonstige: r.soliSonstige,
+    svANSonstige: r.svANSonstige,
+    svAGSonstige: r.svAGSonstige,
     steuerfreieZuschlaege: r.steuerfreieZuschlaege,
     svfreieZuschlaege: r.svfreieZuschlaege,
     steuerBrutto: r.steuerBrutto,

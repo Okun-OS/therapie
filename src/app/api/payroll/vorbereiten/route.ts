@@ -6,6 +6,15 @@ import { monatsGrundlagen, abrechnungRechnen, abrechnungsFelder } from '@/lib/pa
 import { elstamStandBewerten } from '@/lib/elstam'
 import { korrekturText } from '@/lib/aufrollung'
 
+/** Erster Beschaeftigungsmonat im Abrechnungsjahr — 1, wenn schon vorher dabei. */
+function eintrittsMonatImJahr(eintritt: string | null | undefined, jahr: number): number {
+  if (!eintritt || !/^\d{4}-\d{2}/.test(eintritt)) return 1
+  const [j, m] = eintritt.split('-').map(Number)
+  if (j < jahr) return 1
+  if (j > jahr) return 12
+  return Math.min(12, Math.max(1, m))
+}
+
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 
@@ -61,6 +70,9 @@ export async function POST(req: NextRequest) {
       employeeId: m.id, weeklyHours: m.weeklyHours, locationId: m.locationId,
       bundesland: p?.bundesland, lohnart: p?.lohnart,
       stundenlohn: p?.stundenlohn, monatsgehalt: p?.monatsgehalt,
+      // §120 Wer erst im Laufe des Jahres eingetreten ist, hat eine kleinere
+      // anteilige Jahresgrenze fuer Einmalzahlungen.
+      eintrittsMonat: eintrittsMonatImJahr(p?.eintrittsdatum, year),
     }
   }))
 
@@ -158,6 +170,7 @@ export async function POST(req: NextRequest) {
         { ...p!, hatKinder: p!.hatKinder ?? m.hasChildren },
         grundlage,
         year,
+        month,
       ).ergebnis
     } catch (fehler) {
       // Ein unbekanntes Abrechnungsjahr ist kein Serverfehler, sondern eine

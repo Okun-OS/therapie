@@ -5,10 +5,11 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import {
   ChevronLeft, ChevronRight, Download, Plus, Calculator,
-  CheckCircle, AlertTriangle, Euro, Users, Upload, RotateCcw,
+  CheckCircle, AlertTriangle, Euro, Users, Upload, RotateCcw, Gift,
 } from 'lucide-react'
 import { ElstamImport } from '@/components/payroll/ElstamImport'
 import { Aufrollung } from '@/components/payroll/Aufrollung'
+import { Einmalzahlungen } from '@/components/payroll/Einmalzahlungen'
 import { useToast } from '@/lib/toast-context'
 import { calculatePayroll } from '@/lib/payroll-engine'
 import type { PayrollInput, PayrollResult } from '@/lib/payroll-engine'
@@ -370,6 +371,7 @@ export default function PayrollPage() {
   const [aktion, setAktion] = useState<string | null>(null)
   const [zeigeElstam, setZeigeElstam] = useState(false)
   const [zeigeAufrollung, setZeigeAufrollung] = useState(false)
+  const [zeigeEinmal, setZeigeEinmal] = useState(false)
   const { showToast } = useToast()
   const [showModal, setShowModal] = useState(false)
 
@@ -568,6 +570,9 @@ export default function PayrollPage() {
           <button onClick={() => setZeigeAufrollung(v => !v)} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <RotateCcw size={16} /> Abrechnungen prüfen
           </button>
+          <button onClick={() => setZeigeEinmal(v => !v)} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <Gift size={16} /> Einmalzahlungen
+          </button>
         </div>
 
         {/* §117 Steuerklasse und Freibeträge kommen vom Finanzamt und ändern
@@ -578,6 +583,14 @@ export default function PayrollPage() {
             Normalfall, nicht der Randfall. Ohne Aufrollung bliebe die
             Abrechnung dauerhaft falsch. */}
         {zeigeAufrollung && <Aufrollung jahr={year} onFertig={load} />}
+
+        {/* §120 Weihnachtsgeld gehoert nicht ins Monatsgehalt — es wird anders
+            besteuert und an der anteiligen Jahresgrenze verbeitragt. */}
+        {zeigeEinmal && (
+          <Einmalzahlungen jahr={year} monat={month}
+            mitarbeiter={employees.map(e => ({ id: e.id, name: e.name }))}
+            onFertig={load} />
+        )}
 
         {/* Table */}
         {loading ? (

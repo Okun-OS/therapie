@@ -94,6 +94,8 @@ export function datevZeilenAusAbrechnung(a: {
   netto: number
   korrekturNetto?: number
   auszahlungsbetrag?: number
+  sonstigeBezuege?: number
+  lohnsteuerSonstige?: number
 }): DatevZeile[] {
   const basis = {
     // Ohne Personalnummer nimmt der Steuerberater die interne Kennung —
@@ -101,10 +103,16 @@ export function datevZeilenAusAbrechnung(a: {
     personalnummer: a.personalnummer?.trim() || a.employeeId.slice(-8),
     name: a.employeeName ?? '',
   }
+  // §120 Einmalzahlungen sind kein Grundentgelt — sie werden anders besteuert
+  // und anders verbeitragt und gehoeren deshalb auf eine eigene Lohnart.
+  const einmal = a.sonstigeBezuege ?? 0
   const zeilen: DatevZeile[] = [
     { ...basis, lohnart: '0100', bezeichnung: 'Grundentgelt',
-      betrag: a.brutto - a.surchargesTotal, anzahl: a.regularHours || undefined },
+      betrag: a.brutto - a.surchargesTotal - einmal, anzahl: a.regularHours || undefined },
   ]
+  if (einmal > 0) {
+    zeilen.push({ ...basis, lohnart: '0300', bezeichnung: 'Sonstige Bezüge', betrag: einmal })
+  }
   // Steuerfreie und steuerpflichtige Zuschläge gehören auf getrennte Lohnarten —
   // der Steuerberater müsste sie sonst von Hand auseinandersortieren.
   const steuerfrei = a.steuerfreieZuschlaege ?? 0
@@ -118,8 +126,10 @@ export function datevZeilenAusAbrechnung(a: {
   if (a.overtimeHours > 0) {
     zeilen.push({ ...basis, lohnart: '0110', bezeichnung: 'Überstunden', betrag: 0, anzahl: a.overtimeHours })
   }
+  const steuerSonstige = a.lohnsteuerSonstige ?? 0
   const abzuege: [string, string, number][] = [
-    ['5000', 'Lohnsteuer', a.lohnsteuer],
+    ['5000', 'Lohnsteuer', a.lohnsteuer - steuerSonstige],
+    ['5001', 'Lohnsteuer auf sonstige Bezüge', steuerSonstige],
     ['5010', 'Kirchensteuer', a.kirchensteuer],
     ['5020', 'Solidaritätszuschlag', a.soli],
     ['5100', 'Rentenversicherung AN', a.rvAN],
