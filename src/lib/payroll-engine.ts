@@ -121,6 +121,11 @@ export interface PayrollInput {
   zusatzbeitragPercent?: number  // Zusatzbeitrag der Krankenkasse in Prozentpunkten
   /** Nicht rentenversicherungspflichtig (z. B. berufsständisches Versorgungswerk) */
   rvExempt?: boolean
+  /** Freibetrag und Hinzurechnungsbetrag laut ELStAM, Monatsbetrag */
+  freibetragMonat?: number
+  hinzurechnungMonat?: number
+  /** Faktor laut ELStAM — nur Steuerklasse IV */
+  faktor?: number
   grundlohnHourly?: number  // Grundlohn je Stunde — Maßstab der Steuerfreiheit (§3b EStG)
   churchTax: boolean
   bundesland?: string
@@ -265,6 +270,9 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     hatKinder: input.hasChildren,
     kinderUnter25: input.childrenUnder25,
     rentenversicherungspflichtig: !input.rvExempt,
+    freibetragMonat: input.freibetragMonat,
+    hinzurechnungMonat: input.hinzurechnungMonat,
+    faktor: input.faktor,
   })
 
   const lohnsteuerMonthly = steuer.lohnsteuer

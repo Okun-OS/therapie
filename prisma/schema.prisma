@@ -1251,6 +1251,17 @@ model EmployeePayrollProfile {
   hatKinder           Boolean?
   kinderUnter25       Int?
 
+  // §117 ELStAM — die Merkmale, nach denen die Lohnsteuer gerechnet wird.
+  // Sie gehoeren dem Finanzamt, nicht uns: wir fuehren nur nach, was in der
+  // Aenderungsliste des Arbeitgebers steht. elstamStand sagt, von wann dieser
+  // Stand ist; ohne ihn wird vor jedem Abrechnungslauf gewarnt.
+  elstamStand         String?   // YYYY-MM-DD der zugrunde liegenden Liste
+  elstamQuelle        String?   // z.B. "Aenderungsliste 03/2026" oder "manuell"
+  elstamBestaetigtVon String?
+  freibetragMonat     Float?    // Freibetrag lt. ELStAM, Monatsbetrag
+  hinzurechnungMonat  Float?    // Hinzurechnungsbetrag lt. ELStAM, Monatsbetrag
+  faktor              Float?    // Faktorverfahren, nur Steuerklasse IV
+
   // Entgelt
   lohnart             String?   // stunde | monat
   stundenlohn         Float?

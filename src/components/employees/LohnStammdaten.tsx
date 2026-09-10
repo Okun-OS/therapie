@@ -25,6 +25,12 @@ interface Profil {
   kinderfreibetraege?: number | null
   hatKinder?: boolean | null
   kinderUnter25?: number | null
+  elstamStand?: string | null
+  elstamQuelle?: string | null
+  elstamBestaetigtVon?: string | null
+  freibetragMonat?: number | null
+  hinzurechnungMonat?: number | null
+  faktor?: number | null
   konfession?: string | null
   bundesland?: string | null
   sozialversicherungsnummer?: string | null
@@ -163,7 +169,20 @@ export function LohnStammdaten({ employeeId }: { employeeId: string }) {
           </div>
 
           <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Steuer</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+              Steuer <span className="normal-case font-normal tracking-normal">(ELStAM)</span>
+            </p>
+            {/* §117 Diese Merkmale gehören dem Finanzamt. Sie werden hier nur
+                nachgeführt — deshalb steht dabei, von wann der Stand ist. */}
+            <div className={`mb-2 rounded-lg px-2.5 py-1.5 text-[11px] ${
+              profil.elstamStand ? 'bg-gray-50 text-gray-500' : 'bg-amber-50 text-amber-800'}`}>
+              {profil.elstamStand
+                ? <>Stand vom {profil.elstamStand.split('-').reverse().join('.')}
+                    {profil.elstamQuelle ? ` · ${profil.elstamQuelle}` : ''}
+                    {profil.elstamBestaetigtVon ? ` · bestätigt von ${profil.elstamBestaetigtVon}` : ''}</>
+                : <>Kein ELStAM-Stand hinterlegt. Es ist nicht nachvollziehbar, wann
+                    Steuerklasse und Freibeträge zuletzt abgeglichen wurden.</>}
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <Feld label="Steuer-ID" feld="steuerId" platzhalter="11-stellig" />
               <div>
@@ -175,6 +194,11 @@ export function LohnStammdaten({ employeeId }: { employeeId: string }) {
                 </select>
               </div>
               <Feld label="Kinderfreibeträge" feld="kinderfreibetraege" typ="number" platzhalter="z.B. 1" />
+              <Feld label="Freibetrag mtl." feld="freibetragMonat" typ="number" platzhalter="lt. ELStAM" />
+              <Feld label="Hinzurechnung mtl." feld="hinzurechnungMonat" typ="number" platzhalter="lt. ELStAM" />
+              {profil.steuerklasse === 4 && (
+                <Feld label="Faktor" feld="faktor" typ="number" platzhalter="z.B. 0.842" />
+              )}
               <div>
                 <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-0.5">Konfession</label>
                 <select value={profil.konfession ?? ''} onChange={e => setzen('konfession', e.target.value || null)}

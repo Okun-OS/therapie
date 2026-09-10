@@ -388,10 +388,63 @@ Abrechnung stünde. Deshalb der Wechsel auf die amtliche Vorlage.
 Nachweis: 19 Prüfungen gegen den Ablaufplan, 37 im Rechenkern, 39 am laufenden
 System für Beleg, Export und SEPA, 15 für die Lohnberechnung.
 
+## Block D8 (10.09.) — ELStAM
+
+Die Lohnsteuer ist seit dem Wechsel auf den amtlichen Ablaufplan exakt. Exakt
+gerechnet mit einem veralteten Merkmal ist aber trotzdem falsch: Steuerklasse,
+Kinderfreibeträge und Freibeträge kommen vom Finanzamt und ändern sich laufend.
+Bei 3.400 € brutto liegen zwischen Klasse I und Klasse III mit einem Kind
+**286 € im Monat** — und für zu wenig einbehaltene Lohnsteuer haftet der
+Arbeitgeber (§42d EStG).
+
+- [x] **D8 ELStAM-Abgleich** — fertig und getestet. Zwei Teile:
+      - **Der schützende:** Jedes Lohnprofil trägt einen ELStAM-Stand. Vor dem
+        Abrechnungslauf wird gemeldet, wessen Stand fehlt oder älter ist als der
+        Abrechnungsmonat. Gewarnt, nicht gesperrt — manchmal gibt es schlicht
+        keine Änderung, aber es muss jemandem auffallen, bevor gerechnet wird.
+      - **Der bequeme:** Die monatliche Änderungsliste wird eingelesen. Der
+        Abgleich zeigt Mitarbeiter für Mitarbeiter, was sich ändern *würde*;
+        übernommen wird erst nach Bestätigung. Festgehalten wird, von wann der
+        Stand ist, aus welcher Liste er kommt und wer bestätigt hat.
+- [x] **Freibetrag, Hinzurechnungsbetrag und Faktor** — gehören zu ELStAM, wurden
+      bisher gar nicht geführt. Der amtliche Ablaufplan nimmt sie entgegen, jetzt
+      werden sie auch gefüllt. Der Faktor gilt nur in Steuerklasse IV; an einer
+      anderen Klasse wäre er ein Datenfehler und wird nicht angewandt.
+
+Entscheidungen, die im Code stehen und begründet sind:
+
+- **Zugeordnet wird über die Steuer-ID**, ersatzweise Personalnummer, notfalls
+  Name. Eine Zuordnung über den Namen wird gekennzeichnet und ist **nicht**
+  vorausgewählt — bei Namensgleichheit wird gar nicht zugeordnet, sondern gefragt.
+- **Felder, die die Liste nicht nennt, bleiben unangetastet.** Eine fehlende
+  Spalte darf keinen bestehenden Freibetrag löschen.
+- **Die Datei ist nur ein Parser.** Käme später ein zertifizierter Abruf dazu,
+  bliebe alles Übrige — Abgleich, Bestätigung, Nachweis — unverändert.
+- **Eine fremde Leitung findet fremde Mitarbeiter in ihrer Datei gar nicht erst.**
+  Kein Fehler, kein Hinweis: der Abgleich läuft nur gegen den eigenen Bestand.
+
+Nachweis: 22 Modultests, 24 Prüfungen am laufenden System — darunter der
+vollständige Weg von der Liste bis zur gesunkenen Lohnsteuer (388 € → 102 €).
+
+## Zur Zertifizierung — Stand der Überlegung
+
+Zwei getrennte Dinge, die oft verwechselt werden:
+
+- **ELStAM selbst abrufen** braucht ERiC und ein Organisationszertifikat.
+  Abgegrenzt und machbar, laufender Aufwand: einmal im Jahr die neue Version.
+  Sinnvoll, sobald der monatliche Handgriff bei genug Kunden Arbeit macht.
+- **SV-Meldungen (ITSG)** brauchen eine jährlich zu wiederholende Systemprüfung
+  des ganzen Programms. Eine Dauerverpflichtung, keine einmalige Hürde. Lohnt
+  nur, wenn die Lohnabrechnung ein eigenes Produkt wird.
+
+Der jetzige Stand ist bewusst dazwischen: **wir rechnen, der Steuerberater
+meldet.** Kein einziger externer Zugang nötig.
+
 ## Offen und bewusst so
-- Der Zugriff auf **ELStAM** (Steuerklassen elektronisch von der Finanzverwaltung)
-  braucht einen zertifizierten Zugang. Bei uns trägt sie jemand ein — zulässig,
-  aber der Kunde steht dafür gerade. Gehört in seinen Vertrag.
+- Der Zugriff auf **ELStAM** braucht einen zertifizierten Zugang, den der
+  Arbeitgeber hat und nicht die Software. Die Liste holt er oder sein
+  Steuerberater; wir lesen sie ein (D8). Dass er sie holt, kann ihm niemand
+  abnehmen — wir warnen, wenn der Stand veraltet. Gehört in seinen Vertrag.
 - **npm audit** meldet 12 Befunde, alle in `postcss` innerhalb von Next.js und
   alle schon vor diesem Block vorhanden. Die Behebung hieße Next 16 — eigener
   Vorgang, nicht nebenbei.

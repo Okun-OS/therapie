@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { allowedLocationScope } from '@/lib/scope'
 import { monatsGrundlagen, abrechnungRechnen, abrechnungsFelder } from '@/lib/payroll-monat'
+import { elstamStandBewerten } from '@/lib/elstam'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,6 +64,10 @@ export async function POST(req: NextRequest) {
   const unvollstaendig: { name: string; fehlt: string[] }[] = []
   const gesperrt: string[] = []
   const hinweise: { name: string; text: string }[] = []
+  // §117 Veraltete Steuermerkmale sind der teuerste stille Fehler in der
+  // Abrechnung — deshalb werden sie eigens gemeldet und nicht unter die
+  // uebrigen Hinweise gemischt.
+  const veralteteMerkmale: { name: string; text: string }[] = []
 
   for (const m of mitarbeiter) {
     const p = profilVon.get(m.id)
@@ -93,6 +98,11 @@ export async function POST(req: NextRequest) {
     if (vorhanden && vorhanden.status !== 'draft') {
       gesperrt.push(m.name)
       continue
+    }
+
+    const stand = elstamStandBewerten(p!.elstamStand, year, month)
+    if (!stand.aktuell && stand.hinweis) {
+      veralteteMerkmale.push({ name: m.name, text: stand.hinweis })
     }
 
     const grundlage = grundlagen.get(m.id)!
@@ -140,11 +150,15 @@ export async function POST(req: NextRequest) {
   if (angelegt.length > 0) teile.push(`${angelegt.length} Abrechnungen berechnet`)
   if (gesperrt.length > 0) teile.push(`${gesperrt.length} bereits freigegeben und unverändert`)
   if (unvollstaendig.length > 0) teile.push(`${unvollstaendig.length} ohne vollständige Lohn-Stammdaten`)
+  if (veralteteMerkmale.length > 0) {
+    teile.push(`${veralteteMerkmale.length} mit veraltetem ELStAM-Stand`)
+  }
 
   return NextResponse.json({
     angelegt: angelegt.length,
     gesperrt,
     unvollstaendig,
+    veralteteMerkmale,
     hinweise,
     hinweis: teile.length > 0 ? teile.join(' · ') + '.' : 'Keine Mitarbeiter zum Abrechnen gefunden.',
   })

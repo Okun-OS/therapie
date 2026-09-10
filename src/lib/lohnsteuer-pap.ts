@@ -57,6 +57,8 @@ export interface LohnsteuerEingabe {
   /** Freibetrag bzw. Hinzurechnungsbetrag laut ELStAM, Euro im Monat */
   freibetragMonat?: number
   hinzurechnungMonat?: number
+  /** Faktor laut ELStAM — nur Steuerklasse IV (Faktorverfahren, §39f EStG) */
+  faktor?: number
 }
 
 export interface LohnsteuerErgebnis {
@@ -124,6 +126,11 @@ export function lohnsteuerBerechnen(e: LohnsteuerEingabe): LohnsteuerErgebnis {
       KRV: e.rentenversicherungspflichtig === false ? 1 : 0,
       LZZFREIB: cent(e.freibetragMonat ?? 0),
       LZZHINZU: cent(e.hinzurechnungMonat ?? 0),
+      // Das Faktorverfahren gibt es nur in Steuerklasse IV. Ein Faktor an einer
+      // anderen Klasse waere ein Datenfehler und wird deshalb nicht angewandt.
+      ...(e.steuerklasse === 4 && e.faktor && e.faktor > 0
+        ? { af: 1, f: e.faktor }
+        : {}),
     })
   } catch (fehler) {
     throw new Error(

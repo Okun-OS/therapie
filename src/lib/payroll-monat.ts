@@ -253,6 +253,10 @@ export interface AbrechnungsStammdaten {
   /** Kinder unter 25 — ab dem zweiten mindert jedes den Pflegebeitrag */
   kinderUnter25?: number | null
   rentenversicherungspflichtig?: boolean | null
+  /** Freibetrag und Hinzurechnungsbetrag laut ELStAM, Monatsbetrag */
+  freibetragMonat?: number | null
+  hinzurechnungMonat?: number | null
+  faktor?: number | null
 }
 
 /** Aus Stammdaten und Monatsgrundlage die fertige Abrechnung rechnen. */
@@ -289,6 +293,9 @@ export function abrechnungRechnen(
     hasChildren: stamm.hatKinder ?? undefined,
     childrenUnder25: stamm.kinderUnter25 ?? undefined,
     rvExempt: stamm.rentenversicherungspflichtig === false,
+    freibetragMonat: stamm.freibetragMonat ?? undefined,
+    hinzurechnungMonat: stamm.hinzurechnungMonat ?? undefined,
+    faktor: stamm.faktor ?? undefined,
     grundlohnHourly: g.zuschlagsStundenlohn ?? undefined,
     churchTax: !!stamm.konfession && stamm.konfession !== 'keine',
     bundesland: stamm.bundesland ?? undefined,

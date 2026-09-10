@@ -18,6 +18,8 @@ const FELDER = {
   krankenkasse: true, zusatzbeitrag: true, pkvBeitrag: true,
   rentenversicherungspflichtig: true, schwerbehindert: true,
   hatKinder: true, kinderUnter25: true,
+  elstamStand: true, elstamQuelle: true, elstamBestaetigtVon: true,
+  freibetragMonat: true, hinzurechnungMonat: true, faktor: true,
   lohnart: true, stundenlohn: true, monatsgehalt: true,
   iban: true, bic: true, kontoinhaber: true, notiz: true, updatedAt: true,
 } as const
@@ -81,6 +83,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     hatKinder: body.hatKinder === null || body.hatKinder === undefined || body.hatKinder === ''
       ? null : body.hatKinder === true,
     kinderUnter25: zahl(body.kinderUnter25),
+    // §117 Freibetraege und Faktor kommen aus ELStAM. Wer sie hier von Hand
+    // eintraegt, setzt damit auch den Stand — sonst stuende ein neuer Wert mit
+    // einem alten Datum da.
+    freibetragMonat: zahl(body.freibetragMonat),
+    hinzurechnungMonat: zahl(body.hinzurechnungMonat),
+    faktor: zahl(body.faktor),
+    ...(body.elstamStand !== undefined ? { elstamStand: text(body.elstamStand) } : {}),
+    ...(body.elstamQuelle !== undefined ? { elstamQuelle: text(body.elstamQuelle) } : {}),
     lohnart: text(body.lohnart),
     stundenlohn: zahl(body.stundenlohn),
     monatsgehalt: zahl(body.monatsgehalt),
