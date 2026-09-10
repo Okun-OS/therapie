@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
       zeilen.push(...datevZeilenAusAbrechnung({
         ...a,
         personalnummer: profilVon.get(a.employeeId)?.personalnummer ?? null,
+        auszahlungsbetrag: a.auszahlungsbetrag || a.netto,
       }))
     }
     const csv = datevCsv(
@@ -111,11 +112,15 @@ export async function GET(req: NextRequest) {
     const iban = profil?.iban?.replace(/\s+/g, '').toUpperCase()
     if (!iban) { ohneBankverbindung.push(`${a.employeeName ?? a.employeeId}: keine IBAN hinterlegt`); continue }
     if (!ibanGueltig(iban)) { ohneBankverbindung.push(`${a.employeeName ?? a.employeeId}: IBAN ungültig`); continue }
-    if (a.netto <= 0) { ohneBankverbindung.push(`${a.employeeName ?? a.employeeId}: kein Auszahlungsbetrag`); continue }
+    // §119 Ueberwiesen wird der Auszahlungsbetrag — Netto plus ausgeglichene
+    // Korrekturen aus aufgerollten Monaten. Wer hier das Netto naehme, zahlte
+    // die Korrektur nie aus.
+    const betrag = a.auszahlungsbetrag || a.netto
+    if (betrag <= 0) { ohneBankverbindung.push(`${a.employeeName ?? a.employeeId}: kein Auszahlungsbetrag`); continue }
     zahlungen.push({
       name: profil?.kontoinhaber || a.employeeName || 'Mitarbeiter',
       iban, bic: profil?.bic,
-      betrag: a.netto,
+      betrag,
       verwendungszweck: `Gehalt ${MONATE[month - 1]} ${year}`,
     })
   }

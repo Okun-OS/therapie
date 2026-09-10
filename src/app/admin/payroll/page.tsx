@@ -5,9 +5,10 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import {
   ChevronLeft, ChevronRight, Download, Plus, Calculator,
-  CheckCircle, AlertTriangle, Euro, Users, Upload,
+  CheckCircle, AlertTriangle, Euro, Users, Upload, RotateCcw,
 } from 'lucide-react'
 import { ElstamImport } from '@/components/payroll/ElstamImport'
+import { Aufrollung } from '@/components/payroll/Aufrollung'
 import { useToast } from '@/lib/toast-context'
 import { calculatePayroll } from '@/lib/payroll-engine'
 import type { PayrollInput, PayrollResult } from '@/lib/payroll-engine'
@@ -368,6 +369,7 @@ export default function PayrollPage() {
   const [loading, setLoading] = useState(false)
   const [aktion, setAktion] = useState<string | null>(null)
   const [zeigeElstam, setZeigeElstam] = useState(false)
+  const [zeigeAufrollung, setZeigeAufrollung] = useState(false)
   const { showToast } = useToast()
   const [showModal, setShowModal] = useState(false)
 
@@ -563,11 +565,19 @@ export default function PayrollPage() {
           <button onClick={() => setZeigeElstam(v => !v)} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <Upload size={16} /> ELStAM einlesen
           </button>
+          <button onClick={() => setZeigeAufrollung(v => !v)} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <RotateCcw size={16} /> Abrechnungen prüfen
+          </button>
         </div>
 
         {/* §117 Steuerklasse und Freibeträge kommen vom Finanzamt und ändern
             sich laufend. Ohne Abgleich rechnen wir exakt das Falsche. */}
         {zeigeElstam && <ElstamImport onFertig={load} />}
+
+        {/* §119 Rueckwirkende Aenderungen an freigegebenen Monaten sind der
+            Normalfall, nicht der Randfall. Ohne Aufrollung bliebe die
+            Abrechnung dauerhaft falsch. */}
+        {zeigeAufrollung && <Aufrollung jahr={year} onFertig={load} />}
 
         {/* Table */}
         {loading ? (

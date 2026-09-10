@@ -92,6 +92,8 @@ export function datevZeilenAusAbrechnung(a: {
   soli: number
   rvAN: number; kvAN: number; pvAN: number; avAN: number
   netto: number
+  korrekturNetto?: number
+  auszahlungsbetrag?: number
 }): DatevZeile[] {
   const basis = {
     // Ohne Personalnummer nimmt der Steuerberater die interne Kennung —
@@ -128,7 +130,21 @@ export function datevZeilenAusAbrechnung(a: {
   for (const [lohnart, bezeichnung, betrag] of abzuege) {
     if (betrag > 0) zeilen.push({ ...basis, lohnart, bezeichnung, betrag })
   }
-  zeilen.push({ ...basis, lohnart: '9999', bezeichnung: 'Auszahlungsbetrag', betrag: a.netto })
+  // §119 Korrekturen aus aufgerollten Monaten stehen als eigene Lohnart da.
+  // Der Steuerberater muss sehen koennen, warum die Auszahlung vom Netto des
+  // Monats abweicht — sonst sucht er den Fehler bei sich.
+  const korrektur = a.korrekturNetto ?? 0
+  if (Math.abs(korrektur) >= 0.005) {
+    zeilen.push({
+      ...basis, lohnart: '0900',
+      bezeichnung: korrektur > 0 ? 'Nachzahlung aus Aufrollung' : 'Rückforderung aus Aufrollung',
+      betrag: korrektur,
+    })
+  }
+  zeilen.push({
+    ...basis, lohnart: '9999', bezeichnung: 'Auszahlungsbetrag',
+    betrag: a.auszahlungsbetrag ?? a.netto,
+  })
   return zeilen
 }
 

@@ -874,6 +874,49 @@ model TimesheetApproval {
 
 // ── Payroll Entries ───────────────────────────────────────────────────────────
 
+/// §119 Eine rueckwirkende Aenderung an einem bereits freigegebenen Monat.
+///
+/// Zwei Prinzipien treffen hier aufeinander und werden bewusst unterschiedlich
+/// behandelt:
+///   - Lohnsteuer folgt dem Zuflussprinzip: die Differenz wird in dem Monat
+///     versteuert, in dem sie ausgezahlt wird (§41c EStG erlaubt dem
+///     Arbeitgeber die Aufrollung innerhalb des Jahres).
+///   - Sozialversicherung folgt beim laufenden Entgelt dem Entstehungsprinzip:
+///     die Beitraege gehoeren in den URSPRUNGSMONAT. Deshalb bleiben jahr und
+///     monat hier der korrigierte Monat, waehrend ausgleichJahr/-monat sagen,
+///     wann das Geld fliesst.
+model PayrollCorrection {
+  id             String   @id @default(cuid())
+  employeeId     String
+  employeeName   String?
+  customerId     String
+  locationId     String?
+  /// Der Monat, der neu gerechnet wurde
+  jahr           Int
+  monat          Int
+  /// Der Monat, in dem die Differenz ausgezahlt wird
+  ausgleichJahr  Int
+  ausgleichMonat Int
+  grund          String
+  /// Vollstaendige Momentaufnahmen — fuer den Beitragsnachweis wird spaeter
+  /// mehr gebraucht als nur die Differenz.
+  werteAlt       Json
+  werteNeu       Json
+  /// Die Zahlen, nach denen tatsaechlich gehandelt wird
+  differenzBrutto     Float
+  differenzNetto      Float
+  differenzLohnsteuer Float
+  differenzSvAN       Float
+  differenzSvAG       Float
+  status         String   @default("offen") // offen | ausgeglichen | verworfen
+  ausgeglichenIn String?
+  erstelltAm     DateTime @default(now())
+  erstelltVon    String?
+
+  @@index([customerId, ausgleichJahr, ausgleichMonat])
+  @@index([employeeId, jahr, monat])
+}
+
 model PayrollEntry {
   id              String   @id @default(cuid())
   employeeId      String
@@ -926,6 +969,12 @@ model PayrollEntry {
   totalAgCost     Float    @default(0)
   // §116 Nach welchem Stand gerechnet wurde — steht auch auf dem Beleg
   grundlage       String?
+  // §119 Aufrollung: Differenzen aus rueckwirkend geaenderten Monaten werden
+  // hier ausgeglichen. auszahlungsbetrag ist das, was wirklich ueberwiesen
+  // wird — Netto plus Korrektur. SEPA, DATEV und der Beleg lesen dieses eine
+  // Feld, damit sie nicht auseinanderlaufen koennen.
+  korrekturNetto  Float    @default(0)
+  auszahlungsbetrag Float  @default(0)
   // Meta
   approvedBy      String?
   approvedAt      String?

@@ -426,6 +426,66 @@ Entscheidungen, die im Code stehen und begründet sind:
 Nachweis: 22 Modultests, 24 Prüfungen am laufenden System — darunter der
 vollständige Weg von der Liste bis zur gesunkenen Lohnsteuer (388 € → 102 €).
 
+## Block D9 (10.09.) — Rückwirkende Aufrollung
+
+Der Fall, um den es geht: Eine Abrechnung ist freigegeben und ausgezahlt. Danach
+ändert sich etwas an ihrer Grundlage — ein Krankenschein wird nachgereicht, eine
+Zeitbuchung korrigiert, das Finanzamt meldet rückwirkend eine andere
+Steuerklasse, eine Gehaltserhöhung gilt ab einem vergangenen Datum. Bisher
+passierte dann nichts: ein freigegebener Monat wurde nicht mehr angefasst, und
+die Abrechnung blieb dauerhaft falsch. **Das ist kein Randfall, sondern der
+Normalfall in jedem Betrieb.**
+
+- [x] **D9 Aufrollung** — fertig und getestet.
+      - Freigegebene Monate werden mit den heutigen Daten nachgerechnet. Die
+        freigegebene Abrechnung wird dabei **nie überschrieben** — sie bleibt,
+        wie sie unterschrieben wurde. Der Unterschied entsteht als eigener,
+        nachvollziehbarer Datensatz daneben.
+      - Wie beim ELStAM-Import: erst zeigen was abweicht, dann bestätigen.
+        Geprüft wird das ganze Jahr, weil niemand vorher weiß, welcher Monat
+        betroffen ist.
+      - Die Differenz wird im nächsten offenen Monat ausgezahlt. Ist der schon
+        freigegeben, **wandert die Korrektur weiter statt liegenzubleiben.**
+      - Eine versehentlich angelegte Korrektur lässt sich verwerfen. Eine
+        bereits ausgezahlte nicht — dafür gibt es die Aufrollung des
+        Ausgleichsmonats.
+- [x] **Auszahlungsbetrag als eigenes Feld** — Netto plus Korrektur. SEPA, DATEV
+      und der Beleg lesen dieses eine Feld, damit sie nicht auseinanderlaufen
+      können. Auf dem Beleg steht die Korrektur als eigene Zeile mit Herkunft
+      („Nachzahlung aus August 2026"), in der DATEV-Datei als eigene Lohnart.
+
+Zwei Rechtsprinzipien, die hier bewusst getrennt behandelt werden:
+
+- **Lohnsteuer folgt dem Zuflussprinzip.** Die Differenz wird in dem Monat
+  versteuert, in dem sie ausgezahlt wird; §41c EStG erlaubt dem Arbeitgeber die
+  Aufrollung innerhalb des Jahres.
+- **Sozialversicherung folgt beim laufenden Entgelt dem Entstehungsprinzip.**
+  Die Beiträge gehören in den Ursprungsmonat. Deshalb hält jeder
+  Korrekturdatensatz **beide** Monate fest — das ist die Grundlage für den
+  späteren Beitragsnachweis.
+
+### Dabei gefunden und behoben: die Lohn-Schnittstelle war offen
+
+Block D war bei der Nachweis-Phase übersprungen worden, deshalb war
+`/api/payroll` nie geprüft. Es fanden sich drei Löcher:
+
+- **Eine fremde Leitung konnte eine fremde Abrechnung freigeben und ändern.**
+  PATCH hat allein über die Kennung gearbeitet, ohne zu prüfen, wem die
+  Abrechnung gehört — über Mandantengrenzen hinweg. Am laufenden System
+  nachgewiesen und behoben.
+- **Der Browser bestimmte Brutto und Netto.** POST schrieb den ganzen
+  Anfragekörper in die Datenbank. Jetzt liefert er nur die
+  Bemessungsgrundlagen; gerechnet wird auf dem Server.
+- **Eine Standortleitung sah die Abrechnungen aller Standorte.** GET war nur
+  nach Kunde gefiltert, nicht nach Standort.
+
+Dazu: ein freigegebener Monat lässt sich über POST nicht mehr überschreiben
+(HTTP 409), und wer freigibt, wird festgehalten statt vom Absender bestimmt.
+
+Nachweis: 15 Modultests, 40 Prüfungen am laufenden System — darunter der ganze
+Weg von der rückwirkenden Steuerklassenänderung über die Korrektur bis zum
+höheren Betrag in der SEPA-Datei.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

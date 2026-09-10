@@ -53,6 +53,10 @@ export interface BelegAbrechnung {
   steuerfreieZuschlaege?: number
   /** Woher die Rechengrößen stammen — gehört auf den Beleg, nicht nur ins Log. */
   grundlage?: string
+  /** §119 Korrektur aus einem aufgerollten Monat und der daraus folgende Betrag */
+  korrekturNetto?: number
+  auszahlungsbetrag?: number
+  korrekturText?: string
   steuerBrutto?: number
   svBrutto?: number
   regularHours: number
@@ -261,7 +265,22 @@ export async function erzeugeLohnbeleg(
   y -= 13
   text('Summe der Abzüge', RAND, 10, fett)
   rechts(`- ${euro(abrechnung.totalDeductions)} EUR`, SP_BETRAG, 10, fett)
-  y -= 22
+  y -= 16
+
+  // §119 Weicht die Auszahlung vom Netto ab, muss der Mitarbeiter sehen warum.
+  // Ein unerklärter Betrag auf dem Konto erzeugt genau die Rückfrage, die eine
+  // Abrechnung vermeiden soll.
+  const korrektur = abrechnung.korrekturNetto ?? 0
+  const zeigeKorrektur = Math.abs(korrektur) >= 0.005
+  if (zeigeKorrektur) {
+    text('Nettoentgelt', RAND, 9, normal)
+    rechts(`${euro(abrechnung.netto)} EUR`, SP_BETRAG, 9, normal)
+    y -= 13
+    text(abrechnung.korrekturText ?? 'Korrektur aus Vormonat', RAND, 9, normal)
+    rechts(`${korrektur >= 0 ? '+' : '- '}${euro(Math.abs(korrektur))} EUR`, SP_BETRAG, 9, normal)
+    y -= 13
+  }
+  y -= 6
 
   // ── Auszahlung ───────────────────────────────────────────────────────────
   seite.drawRectangle({
@@ -270,7 +289,7 @@ export async function erzeugeLohnbeleg(
   })
   y += 4
   text('Auszahlungsbetrag', RAND, 12, fett)
-  rechts(`${euro(abrechnung.netto)} EUR`, SP_BETRAG, 14, fett)
+  rechts(`${euro(abrechnung.auszahlungsbetrag ?? abrechnung.netto)} EUR`, SP_BETRAG, 14, fett)
   y -= 14
   if (arbeitnehmer.iban) {
     text(`Überweisung auf ${arbeitnehmer.iban}`, RAND, 8, normal, grau)

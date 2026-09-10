@@ -4,6 +4,10 @@ import { requireRole, resolveCustomerId } from '@/lib/session'
 import { allowedLocationScope } from '@/lib/scope'
 import { monatsGrundlagen, abrechnungRechnen, abrechnungsFelder } from '@/lib/payroll-monat'
 import { elstamStandBewerten } from '@/lib/elstam'
+import { korrekturText } from '@/lib/aufrollung'
+
+const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 
 export const dynamic = 'force-dynamic'
 
@@ -60,6 +64,24 @@ export async function POST(req: NextRequest) {
     }
   }))
 
+  // §119 Offene Korrekturen aus aufgerollten Monaten, die in diesem Monat
+  // ausgeglichen werden. Sie kommen zum Netto hinzu — ausgezahlt wird der
+  // auszahlungsbetrag, nicht das Netto des Monats.
+  // Auch die bereits ausgeglichenen zaehlen mit: sonst loescht der zweite Lauf
+  // eines Monats die Korrektur wieder aus der Abrechnung, und das Geld
+  // verschwaende zwischen zwei Klicks. Nur verworfene bleiben draussen.
+  const offeneKorrekturen = await prisma.payrollCorrection.findMany({
+    where: {
+      customerId, ausgleichJahr: year, ausgleichMonat: month,
+      status: { in: ['offen', 'ausgeglichen'] },
+      employeeId: { in: mitarbeiter.map(m => m.id) },
+    },
+  })
+  const korrekturenJeMitarbeiter = new Map<string, typeof offeneKorrekturen>()
+  for (const k of offeneKorrekturen) {
+    korrekturenJeMitarbeiter.set(k.employeeId, [...(korrekturenJeMitarbeiter.get(k.employeeId) ?? []), k])
+  }
+
   const angelegt: string[] = []
   const unvollstaendig: { name: string; fehlt: string[] }[] = []
   const gesperrt: string[] = []
@@ -68,6 +90,8 @@ export async function POST(req: NextRequest) {
   // Abrechnung — deshalb werden sie eigens gemeldet und nicht unter die
   // uebrigen Hinweise gemischt.
   const veralteteMerkmale: { name: string; text: string }[] = []
+  const ausgeglichen: { name: string; text: string; betrag: number }[] = []
+  const verschoben: { name: string; text: string }[] = []
 
   for (const m of mitarbeiter) {
     const p = profilVon.get(m.id)
@@ -97,6 +121,26 @@ export async function POST(req: NextRequest) {
     })
     if (vorhanden && vorhanden.status !== 'draft') {
       gesperrt.push(m.name)
+      // §119 Eine offene Korrektur darf hier nicht liegenbleiben. Der Monat ist
+      // schon freigegeben, also kann das Geld hier nicht mehr fliessen — sie
+      // wandert in den naechsten Monat, statt still zu verschwinden.
+      const haengende = (korrekturenJeMitarbeiter.get(m.id) ?? [])
+        .filter(x => x.status === 'offen')
+      for (const k of haengende) {
+        const naechster = month === 12
+          ? { jahr: year + 1, monat: 1 }
+          : { jahr: year, monat: month + 1 }
+        await prisma.payrollCorrection.update({
+          where: { id: k.id },
+          data: { ausgleichJahr: naechster.jahr, ausgleichMonat: naechster.monat },
+        })
+        verschoben.push({
+          name: m.name,
+          text: `${korrekturText(k.jahr, k.monat, k.differenzNetto)} — `
+            + `${MONATE[month - 1]} ist bereits freigegeben, Ausgleich jetzt in `
+            + `${MONATE[naechster.monat - 1]} ${naechster.jahr}`,
+        })
+      }
       continue
     }
 
@@ -138,11 +182,37 @@ export async function POST(req: NextRequest) {
     }
     const gerechnet = abrechnungsFelder(grundlage, ergebnis)
 
-    await prisma.payrollEntry.upsert({
+    const korrekturen = korrekturenJeMitarbeiter.get(m.id) ?? []
+    const korrekturNetto = Math.round(
+      korrekturen.reduce((s, k) => s + k.differenzNetto, 0) * 100) / 100
+    for (const k of korrekturen.filter(x => x.status === 'offen')) {
+      ausgeglichen.push({
+        name: m.name,
+        text: korrekturText(k.jahr, k.monat, k.differenzNetto),
+        betrag: k.differenzNetto,
+      })
+    }
+
+    const eintrag = await prisma.payrollEntry.upsert({
       where: { employeeId_year_month: { employeeId: m.id, year, month } },
-      create: { employeeId: m.id, year, month, status: 'draft', ...stammFelder, ...gerechnet },
-      update: { ...stammFelder, ...gerechnet },
+      create: {
+        employeeId: m.id, year, month, status: 'draft', ...stammFelder, ...gerechnet,
+        korrekturNetto, auszahlungsbetrag: Math.round((gerechnet.netto + korrekturNetto) * 100) / 100,
+      },
+      update: {
+        ...stammFelder, ...gerechnet,
+        korrekturNetto, auszahlungsbetrag: Math.round((gerechnet.netto + korrekturNetto) * 100) / 100,
+      },
     })
+
+    // Erst wenn die Korrektur wirklich an einer Abrechnung haengt, gilt sie als
+    // ausgeglichen. Sonst waere sie verbucht, ohne dass jemand Geld bekommt.
+    for (const k of korrekturen.filter(x => x.status === 'offen')) {
+      await prisma.payrollCorrection.update({
+        where: { id: k.id },
+        data: { status: 'ausgeglichen', ausgeglichenIn: eintrag.id },
+      })
+    }
     angelegt.push(m.name)
   }
 
@@ -153,12 +223,22 @@ export async function POST(req: NextRequest) {
   if (veralteteMerkmale.length > 0) {
     teile.push(`${veralteteMerkmale.length} mit veraltetem ELStAM-Stand`)
   }
+  if (verschoben.length > 0) {
+    teile.push(`${verschoben.length} Korrekturen in den Folgemonat verschoben`)
+  }
+  if (ausgeglichen.length > 0) {
+    const summe = ausgeglichen.reduce((s, x) => s + x.betrag, 0)
+    teile.push(`${ausgeglichen.length} Korrekturen ausgeglichen `
+      + `(${summe >= 0 ? '+' : ''}${summe.toFixed(2)} EUR)`)
+  }
 
   return NextResponse.json({
     angelegt: angelegt.length,
     gesperrt,
     unvollstaendig,
     veralteteMerkmale,
+    ausgeglichen,
+    verschoben,
     hinweise,
     hinweis: teile.length > 0 ? teile.join(' · ') + '.' : 'Keine Mitarbeiter zum Abrechnen gefunden.',
   })

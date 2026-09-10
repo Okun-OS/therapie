@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { notifyEmployee } from '@/lib/notify'
 import { dateiSpeichern } from '@/lib/file-storage'
 import { erzeugeLohnbeleg, belegDateiname } from '@/lib/lohnbeleg'
+import { korrekturText } from '@/lib/aufrollung'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,6 +66,21 @@ export async function POST(req: NextRequest) {
     betriebsnummer: orgSettings?.betriebsnummer, steuernummer: orgSettings?.steuernummer,
   }
 
+  // §119 Wofuer die Korrektur auf dem Beleg steht — aus den ausgeglichenen
+  // Korrekturen dieses Monats.
+  const korrekturen = await prisma.payrollCorrection.findMany({
+    where: {
+      customerId, ausgleichJahr: year, ausgleichMonat: month,
+      employeeId: { in: abrechnungen.map(a => a.employeeId) },
+    },
+  })
+  const korrekturHinweis = new Map<string, string>()
+  for (const k of korrekturen) {
+    const bisher = korrekturHinweis.get(k.employeeId)
+    const text = korrekturText(k.jahr, k.monat, k.differenzNetto)
+    korrekturHinweis.set(k.employeeId, bisher ? `${bisher}, ${text}` : text)
+  }
+
   const erzeugt: { name: string; dateiId: string }[] = []
   const uebersprungen: { name: string; grund: string }[] = []
 
@@ -102,6 +118,9 @@ export async function POST(req: NextRequest) {
           brutto: a.brutto, surchargesTotal: a.surchargesTotal,
           steuerfreieZuschlaege: a.steuerfreieZuschlaege,
           grundlage: a.grundlage ?? undefined,
+          korrekturNetto: a.korrekturNetto,
+          auszahlungsbetrag: a.auszahlungsbetrag || a.netto,
+          korrekturText: korrekturHinweis.get(a.employeeId),
           steuerBrutto: a.steuerBrutto, svBrutto: a.svBrutto,
           regularHours: a.regularHours, overtimeHours: a.overtimeHours,
           lohnsteuer: a.lohnsteuer, kirchensteuer: a.kirchensteuer, soli: a.soli,
@@ -134,7 +153,7 @@ export async function POST(req: NextRequest) {
         type: 'lohnabrechnung',
         title: `Abrechnung ${MONATE[month - 1]} ${year}`,
         body: `Deine Entgeltabrechnung für ${MONATE[month - 1]} ${year} liegt bereit. `
-          + `Auszahlungsbetrag: ${a.netto.toLocaleString('de-DE', { minimumFractionDigits: 2 })} EUR.`,
+          + `Auszahlungsbetrag: ${(a.auszahlungsbetrag || a.netto).toLocaleString('de-DE', { minimumFractionDigits: 2 })} EUR.`,
         url: '/employee/profile',
       }).catch(() => null)
 
