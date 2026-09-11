@@ -155,6 +155,20 @@ export const DATENARTEN: Datenart[] = [
     begruendung: 'Keine Aufbewahrungspflicht — wird sofort gelöscht.',
   },
   {
+    id: 'chat',
+    bezeichnung: 'Nachrichten an Kollegen',
+    beschreibung:
+      'Ihre Gespräche mit Kolleginnen und Kollegen und die Gruppen, in denen Sie waren.',
+    modelle: ['ChatNachricht', 'ChatMitglied'],
+    behandlung: 'loeschen',
+    fristJahre: 0,
+    begruendung:
+      'Nachrichten unterliegen keiner Aufbewahrungspflicht. Ihre eigenen Nachrichten '
+      + 'werden gelöscht; Gespräche, die nur zwischen Ihnen und einer anderen Person '
+      + 'geführt wurden, verschwinden ganz — was dort stünde, wäre nur noch ein '
+      + 'einseitiger Verlauf über Sie. In Gruppen bleiben die Beiträge der anderen.',
+  },
+  {
     id: 'wuensche',
     bezeichnung: 'Wünsche und Vorlieben',
     beschreibung:

@@ -173,18 +173,51 @@ async function main() {
     })
   }
 
-  // Ein Mitarbeiter mit eigenem Zugang — sonst lassen sich Rollenrechte
-  // und die Mitarbeiter-App gar nicht prüfen.
-  const anna = await prisma.employee.findUnique({ where: { email: 'anna.fischer@rheinblick-reha.de' } })
-  if (anna) {
+  // Mitarbeiter mit eigenem Zugang — sonst lassen sich Rollenrechte und die
+  // Mitarbeiter-App gar nicht prüfen. Drei sind das Mindeste: zwei, die
+  // miteinander zu tun haben, und eine dritte Person, die NICHT mitlesen darf.
+  const mitZugang: [string, string][] = [
+    ['anna.fischer@rheinblick-reha.de', reha.id],
+    ['thomas.weber@rheinblick-reha.de', reha.id],
+    ['maria.schneider@rheinblick-reha.de', reha.id],
+    ['susi.sonnenschein@kita-sonnenschein.de', kitaKunde.id],
+  ]
+  for (const [email, kundeId] of mitZugang) {
+    const person = await prisma.employee.findUnique({ where: { email } })
+    if (!person) continue
     await prisma.user.upsert({
-      where: { email: anna.email },
+      where: { email },
       create: {
-        email: anna.email, name: anna.name, role: 'employee', passwordHash: hash,
-        customerId: reha.id, locationId: rehaStandort.id, employeeId: anna.id,
+        email, name: person.name, role: 'employee', passwordHash: hash,
+        customerId: kundeId, locationId: person.locationId, employeeId: person.id,
       },
-      update: { role: 'employee', employeeId: anna.id, locationId: rehaStandort.id, passwordHash: hash },
+      update: {
+        role: 'employee', employeeId: person.id,
+        locationId: person.locationId, passwordHash: hash,
+      },
     })
+  }
+
+  // §129 Die Standortleitung ist im Datenmodell ein Mitarbeiter mit der Rolle
+  // "admin" — reassignLocationAdmin setzt genau das. Im Seed fehlte ihr bisher
+  // der Mitarbeiterdatensatz, wodurch sie in der App zwar verwalten, aber
+  // niemandem schreiben konnte. Ohne eigene Kennung gibt es keinen Chat.
+  const leitungen: [string, string, string, string][] = [
+    ['leitung@rheinblick-reha.de',   'Leitung Reha', reha.id,      rehaStandort.id],
+    ['leitung@kita-sonnenschein.de', 'Leitung Kita', kitaKunde.id, kitaStandort.id],
+  ]
+  for (const [email, name, kundeId, standortId] of leitungen) {
+    const person = await prisma.employee.upsert({
+      where: { email },
+      create: {
+        customerId: kundeId, locationId: standortId, name, email,
+        role: 'admin', position: 'Standortleitung', roleType: 'Standortleitung',
+        weeklyHours: 40, workDaysPerWeek: 5,
+        joinedAt: '2024-01-01', vacationDaysTotal: 30, active: true,
+      },
+      update: { locationId: standortId, role: 'admin', active: true },
+    })
+    await prisma.user.update({ where: { email }, data: { employeeId: person.id } })
   }
 
   // ── Basisregeln je Standort ──────────────────────────────────────────────
@@ -203,7 +236,7 @@ async function main() {
   console.log(`Testdaten bereit: 2 Kunden, 2 Standorte, ${anzahl} Mitarbeiter, ${dienste.length} Dienste`)
   console.log(`Zugänge (Passwort ${PASSWORT}):`)
   for (const z of zugaenge) console.log(`  ${z.role.padEnd(8)} ${z.email}`)
-  if (anna) console.log(`  employee ${anna.email}`)
+  for (const [email] of mitZugang) console.log(`  employee ${email}`)
 }
 
 main()

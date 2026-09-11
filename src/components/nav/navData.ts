@@ -2,7 +2,7 @@ import type { Role } from '@/lib/types'
 import {
   IcoDashboard, IcoMitarbeiter, IcoDienstplanung, IcoZeitUrlaub, IcoFinanzen,
   IcoKIAnalyse, IcoEinstellungen, IcoStandorte, IcoHeute,
-  IcoPersonalrisiko, IcoSupport, IcoMitarbeiterprofil,
+  IcoPersonalrisiko, IcoSupport, IcoMitarbeiterprofil, IcoNachrichten,
   IcoOKUNAssistent,
 } from './OkunIcons'
 
@@ -58,6 +58,7 @@ const employeeDock: DockItem[] = [
       ],
     },
   },
+  { id: 'nachrichten', label: 'Nachrichten', icon: IcoNachrichten, href: '/employee/nachrichten' },
   { id: 'profil', label: 'Profil', icon: IcoMitarbeiterprofil, href: '/employee/profile' },
   { id: 'assistent', label: 'OKUN Assistent', icon: IcoOKUNAssistent, href: '/admin/assistant', isGold: true },
 ]
@@ -88,6 +89,7 @@ const adminDock: DockItem[] = [
     },
   },
   { id: 'zeit', label: 'Zeiterfassung', icon: IcoZeitUrlaub, href: '/admin/time-tracking' },
+  { id: 'nachrichten', label: 'Nachrichten', icon: IcoNachrichten, href: '/admin/nachrichten' },
   {
     // §106 Fuenf Analyseseiten auf denselben Daten wurden eine Seite mit
     // Umschaltung. Der Workforce Score gehoert fachlich zum Team und steht
@@ -136,6 +138,7 @@ const companyDock: DockItem[] = [
     },
   },
   { id: 'mitarbeiter', label: 'Mitarbeiter', icon: IcoMitarbeiter, href: '/company/employees' },
+  { id: 'nachrichten', label: 'Nachrichten', icon: IcoNachrichten, href: '/company/nachrichten' },
   {
     id: 'finanzen', label: 'Finanzen', icon: IcoFinanzen,
     panel: {

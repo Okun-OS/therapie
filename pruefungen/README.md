@@ -55,6 +55,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `d14-beleg-vollstaendig.mjs` | Beleg mit Minijob, Teilmonat, Arbeitgeberanteilen |
 | `d15-jahresabschluss.mjs` | Jahreswerte, Übersicht für den Mitarbeiter |
 | `e-kommunikation.mjs` | Benachrichtigungen, Einspringen, Push |
+| `e5-chat.mjs` | Nachrichten, Gruppen, wer nicht mitlesen darf |
 | `f-dienstplan.mjs` | Rechenkern, Dienstwünsche, Schichttausch |
 | `f5-regelpakete.mjs` | Regelpakete je Kunde, Freischaltung der Dienstplanung |
 | `g1-dsgvo.mjs` | Auskunft, Löschkonzept, Sperre statt Löschung |

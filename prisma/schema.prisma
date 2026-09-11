@@ -387,6 +387,78 @@ model Employee {
   updatedAt         DateTime @updatedAt
 }
 
+/// §129 Nachrichten zwischen Mitarbeitern.
+///
+/// Zwei Arten, mit unterschiedlichen Regeln:
+///
+///   direkt  Ein Gespraech zwischen genau zwei Personen. Niemand sonst kommt
+///           hinein — auch die Leitung nicht, auch OKUN nicht. Der schluessel
+///           haelt fest, welche beiden es sind, und verhindert, dass zwei
+///           Raeume fuer dasselbe Gespraech entstehen, wenn beide gleichzeitig
+///           schreiben.
+///
+///   gruppe  Von der Standortleitung eroeffnet und verwaltet. Wer darin liest,
+///           ist Mitglied — Verwalten und Mitlesen sind absichtlich zwei
+///           verschiedene Dinge.
+model ChatRaum {
+  id           String    @id @default(cuid())
+  customerId   String
+  locationId   String
+  /// direkt | gruppe
+  art          String
+  /// Nur bei Gruppen
+  name         String?
+  beschreibung String?
+  /// Nur bei Direktchats: beide Mitarbeiterkennungen sortiert, mit "|" verbunden
+  schluessel   String?   @unique
+  erstelltVon  String?
+  /// Geschlossene Gruppen bleiben lesbar, nehmen aber nichts Neues mehr auf
+  archiviertAm DateTime?
+  /// Fuer die Sortierung der Liste ohne teure Unterabfrage
+  letzteAktivitaet DateTime @default(now())
+  createdAt    DateTime  @default(now())
+
+  mitglieder   ChatMitglied[]
+  nachrichten  ChatNachricht[]
+
+  @@index([customerId])
+  @@index([locationId, art])
+}
+
+model ChatMitglied {
+  id            String    @id @default(cuid())
+  raumId        String
+  employeeId    String
+  /// mitglied | leitung — "leitung" darf Mitglieder aendern und schliessen
+  rolle         String    @default("mitglied")
+  /// Bis wohin gelesen wurde; alles Spaetere ist ungelesen
+  gelesenBis    DateTime?
+  beigetretenAm DateTime  @default(now())
+
+  raum          ChatRaum  @relation(fields: [raumId], references: [id], onDelete: Cascade)
+
+  @@unique([raumId, employeeId])
+  @@index([employeeId])
+}
+
+model ChatNachricht {
+  id           String   @id @default(cuid())
+  raumId       String
+  employeeId   String
+  /// Der Name zum Zeitpunkt des Schreibens — spaetere Aenderungen sollen
+  /// alte Nachrichten nicht rueckwirkend umschreiben.
+  absenderName String
+  text         String
+  /// text | system — Systemhinweise ("ist beigetreten") sehen anders aus
+  art          String   @default("text")
+  createdAt    DateTime @default(now())
+
+  raum         ChatRaum @relation(fields: [raumId], references: [id], onDelete: Cascade)
+
+  @@index([raumId, createdAt])
+  @@index([employeeId])
+}
+
 /// §128 Was bei einer Loeschung tatsaechlich geschehen ist.
 ///
 /// Ohne diesen Nachweis laesst sich gegenueber der Aufsichtsbehoerde weder

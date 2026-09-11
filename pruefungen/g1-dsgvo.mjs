@@ -57,6 +57,26 @@ if (dienstId) {
   })
 }
 
+// §129 Nachrichten: ein Gespräch zu zweit und eine Gruppe. Beim Löschen müssen
+// die beiden unterschiedlich behandelt werden — das Gespräch zu zweit ganz weg,
+// die Gruppe erhalten, weil dort die Beiträge anderer Menschen stehen.
+const mKollege = (await hole(kollege, '/api/auth/me')).body.user
+const direkt = await sende(kollege, '/api/chat', 'POST', {
+  art: 'direkt', employeeId: personId,
+})
+const direktId = direkt.body.raum?.id
+if (direktId) {
+  await sende(kollege, `/api/chat/${direktId}`, 'POST', { text: 'Willkommen im Team!' })
+}
+const chatGruppe = await sende(leitung, '/api/chat', 'POST', {
+  art: 'gruppe', name: `Team-Nachweis ${Date.now()}`,
+  mitglieder: [personId, mKollege.employeeId],
+})
+const chatGruppeId = chatGruppe.body.raum?.id
+if (chatGruppeId) {
+  await sende(kollege, `/api/chat/${chatGruppeId}`, 'POST', { text: 'Beitrag einer Kollegin.' })
+}
+
 // ── G1 Auskunft nach Art.15 ────────────────────────────────────────────────
 console.log('=== G1 Auskunft nach Art.15 DSGVO ===')
 
@@ -67,6 +87,9 @@ check('Auskunft wird erstellt', auskunft.status === 200 && !!auskunft.body.perso
 const bloecke = auskunft.body.bloecke ?? []
 check('Enthält die Stammdaten', bloecke.some(b => b.id === 'stammdaten'))
 check('Enthält die Fehlzeit', (bloecke.find(b => b.id === 'abwesenheiten')?.anzahl ?? 0) >= 1)
+check('Enthält die Nachrichten und Gruppen',
+  (bloecke.find(b => b.id === 'chat')?.anzahl ?? 0) >= 1,
+  `${bloecke.find(b => b.id === 'chat')?.anzahl} Einträge`)
 check('Nennt auch die Bereiche ohne Daten',
   Array.isArray(auskunft.body.ohneDaten) && auskunft.body.ohneDaten.length > 0,
   `${auskunft.body.ohneDaten?.length ?? 0} Bereiche ohne Daten`)
@@ -147,6 +170,10 @@ check('Zugangsdaten werden gelöscht',
   befund('zugang')?.behandlung === 'loeschen' && befund('zugang')?.frei === true)
 check('Vorschau sagt, ab wann restlos gelöscht werden kann',
   vorschau.body.restlosAb === '2036-12-31', `${vorschau.body.restlosAb}`)
+
+check('Nachrichten werden gelöscht, nicht aufbewahrt',
+  befund('chat')?.behandlung === 'loeschen' && (befund('chat')?.anzahl ?? 0) > 0,
+  `${befund('chat')?.anzahl} Einträge`)
 
 const zugangVorher = befund('zugang')?.anzahl ?? 0
 const planVorher = befund('dienstplan')?.anzahl ?? 0
@@ -231,6 +258,25 @@ check('Die Fehlzeit ist weiterhin vorhanden', anzahl('abwesenheiten') >= 1,
   `${anzahl('abwesenheiten')} Einträge`)
 check('Der Zugang ist wirklich weg', anzahl('zugang') === 0)
 check('Der Dienstplan hängt nicht mehr an der Person', anzahl('dienstplan') === 0)
+check('Die Nachrichten der Person sind weg', anzahl('chat') === 0)
+
+// §129 Der Unterschied, auf den es beim Chat ankommt.
+if (direktId && chatGruppeId) {
+  const raeumeKollege = (await hole(kollege, '/api/chat')).body.raeume ?? []
+  check('Das Gespräch zu zweit ist ganz verschwunden',
+    !raeumeKollege.some(r => r.id === direktId),
+    `${raeumeKollege.length} Gespräche`)
+  check('Auch der Abruf schlägt fehl',
+    (await hole(kollege, `/api/chat/${direktId}`)).status === 404)
+
+  const gruppe = await hole(kollege, `/api/chat/${chatGruppeId}`)
+  check('Die Gruppe bleibt — dort stehen Beiträge anderer Menschen',
+    gruppe.status === 200
+    && (gruppe.body.nachrichten ?? []).some(n => n.text === 'Beitrag einer Kollegin.'))
+  check('Die gelöschte Person ist kein Mitglied mehr',
+    !(gruppe.body.mitglieder ?? []).some(m => m.employeeId === personId),
+    `${gruppe.body.mitglieder?.length} Mitglieder`)
+}
 
 // Die Bankverbindung ist für die Aufbewahrung nicht nötig — sie muss weg sein,
 // obwohl die Lohnstammdaten selbst gesperrt bleiben.

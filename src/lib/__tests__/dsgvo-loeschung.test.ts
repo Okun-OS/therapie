@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { modelleOhneZugriff, anonymisierungOhneVerfahren } from '../dsgvo-loeschung'
+import { modelleOhneAbfrage } from '../dsgvo-auskunft'
 import { DATENARTEN } from '../dsgvo-katalog'
 
 /**
@@ -17,6 +18,16 @@ describe('Jede Tabelle im Katalog ist auch löschbar', () => {
       + `  ${fehlend.join('\n  ')}\n\n`
       + `Trage sie in ZUGRIFF in src/lib/dsgvo-loeschung.ts ein — mit Zählen `
       + `und Löschen. Sonst bleiben die Daten nach einer Löschung liegen.`,
+    ).toEqual([])
+  })
+
+  it('führt jedes Modell auch in der Auskunft', () => {
+    const fehlend = modelleOhneAbfrage()
+    expect(fehlend,
+      `Diese Tabellen stehen im Katalog, erscheinen in der Auskunft aber leer:\n`
+      + `  ${fehlend.join('\n  ')}\n\n`
+      + `Trage sie in ABFRAGEN in src/lib/dsgvo-auskunft.ts ein. Sonst sieht eine `
+      + `unvollständige Auskunft aus wie „darüber haben wir nichts".`,
     ).toEqual([])
   })
 

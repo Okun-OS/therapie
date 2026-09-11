@@ -132,7 +132,9 @@ aussieht.
 - [x] **E4 Einspringen: Benachrichtigung der Infragekommenden** — fertig und
       getestet. Ausfall am Dienst melden, Empfänger wählen, Postfach/Push/E-Mail;
       danach Dienstanfrage oder direktes Besetzen. 16 Ende-zu-Ende-Checks.
-- [ ] **E5 Mitarbeiter-Chat** — **fehlt.** Es gibt nur Support-Tickets.
+- [x] **E5 Mitarbeiter-Chat** — fertig. Jeder schreibt jedem am eigenen
+      Standort, die Standortleitung eröffnet und verwaltet Gruppen. Siehe
+      Block E5 unten.
 
 ## F · Dienstplanung
 
@@ -158,10 +160,10 @@ Siehe `PRODUKT-NOTIZEN.md`.
 
 - [x] **G1 DSGVO: Auskunft und Datenexport** — fertig. Jeder holt seine Auskunft
       selbst, als lesbares PDF und als Datei zum Mitnehmen. Siehe Block G1/G2 unten.
-- [x] **G2 DSGVO: Löschkonzept** — fertig. Katalog über alle 33 Tabellen mit
+- [x] **G2 DSGVO: Löschkonzept** — fertig. Katalog über alle 35 Tabellen mit
       Personenbezug, Vorschau vor jeder Löschung, Sperre statt Löschung wo das
       Gesetz es verlangt, Löschbericht als Nachweis. Siehe Block G1/G2 unten.
-- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 425 Nachweise im
+- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 496 Nachweise im
       Repo unter `pruefungen/`, ein Befehl (`npm run pruefen`), automatischer
       Lauf bei jedem Push. Siehe Block G3 unten.
       `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
@@ -749,7 +751,7 @@ laufenden System.
 
 ## Block G1/G2 (11.09.) — Auskunft und Löschkonzept
 
-Vor dem ersten echten Kunden: Personendaten liegen bei uns in **33 Tabellen**.
+Vor dem ersten echten Kunden: Personendaten liegen bei uns in **35 Tabellen**.
 Eine Auskunft ist nur vollständig, wenn wirklich alle gemeint sind — und eine
 Löschung nur richtig, wenn jede Tabelle einzeln beurteilt wurde.
 
@@ -829,6 +831,74 @@ Dazu 22 Modultests.
 Die Fristen sind mit der Vorschrift belegt, aus der sie stammen, aber **nicht
 von einem Steuerberater oder Datenschutzbeauftragten gegengezeichnet.** Das
 gehört vor den ersten echten Kunden — es ist eine Datei und eine Stunde Arbeit.
+
+## Block E5 (11.09.) — Nachrichten zwischen Mitarbeitern
+
+Bisher gab es nur Benachrichtigungen in eine Richtung und Support-Tickets an
+OKUN. Wer einer Kollegin schreiben wollte, hat das Programm verlassen und
+WhatsApp genommen — mit Dienstplänen, Krankmeldungen und Namen auf privaten
+Telefonen. Genau das soll überflüssig werden.
+
+### Was geht
+- [x] **Jeder schreibt jedem an seinem Standort.** Nicht dem ganzen Unternehmen:
+      In einem Betrieb mit acht Häusern hat der Kollege aus dem anderen Ort
+      nichts mit einem zu tun, und eine Suchliste über alle wäre selbst schon
+      eine Preisgabe. Leitung und Unternehmen erreichen jeden in ihrem Bereich —
+      dieselbe Grenze wie überall sonst.
+- [x] **Die Standortleitung eröffnet und verwaltet Gruppen:** Mitglieder setzen
+      und entfernen, umbenennen, schließen und wieder öffnen.
+- [x] **Geschlossen heißt nicht gelöscht.** Der Verlauf bleibt für die Mitglieder
+      lesbar; wer eine Absprache von vor einem Jahr sucht, findet sie wieder.
+- [x] Ungelesen-Zähler je Gespräch und ein Abzeichen im Kopf jeder Seite.
+- [x] Push aufs Handy — aber **keine E-Mail und kein Eintrag ins Postfach.** Bei
+      dreißig Nachrichten am Tag wären beides dreißig Störungen, und das
+      Postfach fasst ohnehin nur die letzten dreißig Meldungen.
+
+### Die drei Entscheidungen, auf die es ankommt
+
+**Mitlesen ist nicht Verwalten.** Eine Standortleitung darf Gruppen einrichten
+und Mitglieder setzen — lesen kann sie nur, was in Gruppen steht, in denen sie
+selbst Mitglied ist. Der Beitritt ist möglich, hinterlässt aber einen für alle
+sichtbaren Hinweis im Verlauf. Eine Vorgesetzte, die unbemerkt mitliest, wäre
+keine Funktion, sondern ein Vertrauensbruch.
+
+**Gespräche zu zweit sind unantastbar.** Für niemanden sonst einsehbar: nicht
+für die Leitung, nicht für das Unternehmen, nicht für OKUN. Deshalb kann ein
+Zugang ohne eigenen Mitarbeiterdatensatz — und das ist jeder OKUN-Zugang — den
+Chat gar nicht erst benutzen.
+
+**„Gibt es nicht" und „du bist kein Mitglied" sehen gleich aus.** Beides wird
+mit 404 beantwortet. Sonst ließe sich durch Ausprobieren herausfinden, welche
+Gespräche existieren — und schon die Existenz eines Gesprächs ist eine
+Information über Menschen.
+
+### Bewusst nicht gebaut
+- **Keine Lesebestätigung für andere und keine Anzeige „schreibt gerade".**
+  Beides erzeugt in einem Betrieb Druck: jemand sieht, dass gelesen und nicht
+  geantwortet wurde. Der Lesestand ist ausschließlich für den eigenen
+  Ungelesen-Zähler da.
+- **Kein Live-Kanal**, sondern Nachsehen alle zehn Sekunden. Für einen
+  Betriebschat schnell genug; eine dauerhafte Verbindung je Gerät wäre Aufwand,
+  der sich hier nicht auszahlt.
+
+### Beim Löschen
+Der Katalogtest hat die drei neuen Tabellen sofort eingefordert. Nachrichten
+unterliegen keiner Aufbewahrungspflicht und werden gelöscht — mit einem
+Unterschied: **Ein Gespräch zu zweit verschwindet ganz**, denn was übrig bliebe,
+wäre ein einseitiger Verlauf, der ausschließlich von der gelöschten Person
+handelt. **In Gruppen bleiben die Beiträge der anderen**; sie gehören anderen
+Menschen. Beides ist eigens nachgewiesen.
+
+Nachweis: 64 Prüfungen am laufenden System (`pruefungen/e5-chat.mjs`), davon der
+größere Teil zum Thema „wer kommt NICHT hinein". Dazu 6 Prüfungen in
+`g1-dsgvo.mjs` für das Löschen.
+
+### Nebenbei korrigiert
+Die Standortleitung hatte in den Testdaten keinen Mitarbeiterdatensatz, obwohl
+das Datenmodell genau das vorsieht (`reassignLocationAdmin` setzt
+`Employee.role = 'admin'`). Sie konnte damit verwalten, aber niemandem
+schreiben. Im Seed nachgetragen, zusammen mit drei weiteren Mitarbeiterzugängen
+— ohne die lässt sich ein Chat gar nicht prüfen.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

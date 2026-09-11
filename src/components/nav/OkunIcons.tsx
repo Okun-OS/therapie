@@ -3,7 +3,7 @@ import {
   Sparkles, Settings, MapPin, Search, Sun, CalendarPlus,
   Calendar, CalendarX, CheckSquare, Repeat, BarChart2,
   TrendingUp, ShieldAlert, HelpCircle, UserCircle, Receipt,
-  Percent, Scale, Bot, MessageCircleQuestion, BarChart3,
+  Percent, Scale, Bot, MessageCircleQuestion, BarChart3, MessageSquare,
 } from 'lucide-react'
 
 interface IconProps {
@@ -40,6 +40,7 @@ export const IcoWorkforceScore      = navIcon(TrendingUp)
 export const IcoPersonalrisiko      = navIcon(ShieldAlert)
 export const IcoSupport             = navIcon(HelpCircle)
 export const IcoMitarbeiterprofil   = navIcon(UserCircle)
+export const IcoNachrichten         = navIcon(MessageSquare)
 export const IcoLohnabrechnung      = navIcon(Receipt)
 export const IcoZuschlagsEngine     = navIcon(Percent)
 export const IcoFairnessEngine      = navIcon(Scale)

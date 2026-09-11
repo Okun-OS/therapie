@@ -101,6 +101,18 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
       sichtbarFuerMitarbeiter: true,
     },
   }),
+  // §129 Die eigenen Nachrichten — nicht die der anderen im selben Raum.
+  ChatNachricht: id => prisma.chatNachricht.findMany({
+    where: { employeeId: id },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, raumId: true, text: true, createdAt: true },
+  }),
+  ChatMitglied: id => prisma.chatMitglied.findMany({
+    where: { employeeId: id },
+    // Wer sonst noch in der Gruppe ist, geht den Betroffenen nichts an —
+    // deshalb nur die Gruppe selbst, nicht ihre Mitgliederliste.
+    select: { raumId: true, rolle: true, beigetretenAm: true },
+  }),
   ScheduleEntry: id => prisma.scheduleEntry.findMany({ where: { employeeId: id }, orderBy: { date: 'asc' } }),
   PlanChange: id => prisma.planChange.findMany({ where: { employeeId: id } }),
   ScoreEvent: id => prisma.scoreEvent.findMany({ where: { employeeId: id } }),
@@ -139,6 +151,30 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
   SmsTotpCode: async () => [],          // kurzlebig, wird nicht bescheinigt
   AuditLog: async () => [],             // siehe unten: gesondert behandelt
   SupportAccessLog: async () => [],
+  // §128 Dass über die eigenen Daten eine Löschung gelaufen ist, gehört in die
+  // Auskunft — es ist eine Verarbeitung wie jede andere.
+  Loeschvorgang: id => prisma.loeschvorgang.findMany({
+    where: { employeeId: id },
+    select: { id: true, art: true, angestossenVonName: true, createdAt: true },
+  }),
+}
+
+/**
+ * Tabellen aus dem Katalog, zu denen es hier keine Abfrage gibt.
+ *
+ * Genau so entsteht eine unvollständige Auskunft: Die Datenart steht im
+ * Katalog, erscheint mit ihrer Beschreibung — und ist leer, weil niemand die
+ * Abfrage nachgetragen hat. Nach außen sieht das aus wie „darüber haben wir
+ * nichts". Der Test hält diese Liste leer.
+ */
+export function modelleOhneAbfrage(): string[] {
+  const fehlend = new Set<string>()
+  for (const art of DATENARTEN) {
+    for (const modell of art.modelle) {
+      if (!ABFRAGEN[modell]) fehlend.add(modell)
+    }
+  }
+  return Array.from(fehlend).sort()
 }
 
 async function blockLaden(art: Datenart, employeeId: string): Promise<unknown[]> {

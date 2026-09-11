@@ -143,6 +143,37 @@ const ZUGRIFF: Record<string, Zugriff> = {
       data: { employeeId: k.pseudonym, reason: null },
     }).then(zahl),
   },
+  ChatNachricht: {
+    zaehlen: (db, k) => db.chatNachricht.count({ where: { employeeId: k.employeeId } }),
+    loeschen: (db, k) => db.chatNachricht.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
+  },
+  ChatMitglied: {
+    zaehlen: (db, k) => db.chatMitglied.count({ where: { employeeId: k.employeeId } }),
+    /**
+     * Erst die Gespräche zu zweit ganz weg, dann die restlichen
+     * Mitgliedschaften.
+     *
+     * Ein Direktchat, aus dem eine der beiden Personen gelöscht ist, wäre ein
+     * einseitiger Verlauf, der ausschließlich von ihr handelt — mit ihrem
+     * Namen in jeder Zeile der Gegenseite. Der bleibt nicht stehen. In Gruppen
+     * ist es umgekehrt: dort gehören die übrigen Beiträge anderen Menschen und
+     * werden nicht angerührt.
+     */
+    loeschen: async (db, k) => {
+      const direkte = await db.chatMitglied.findMany({
+        where: { employeeId: k.employeeId, raum: { art: 'direkt' } },
+        select: { raumId: true },
+      })
+      const raumIds = direkte.map(d => d.raumId)
+      if (raumIds.length > 0) {
+        await db.chatNachricht.deleteMany({ where: { raumId: { in: raumIds } } })
+        await db.chatMitglied.deleteMany({ where: { raumId: { in: raumIds } } })
+        await db.chatRaum.deleteMany({ where: { id: { in: raumIds } } })
+      }
+      const rest = await db.chatMitglied.deleteMany({ where: { employeeId: k.employeeId } })
+      return raumIds.length + rest.count
+    },
+  },
   ScoreEvent: {
     zaehlen: (db, k) => db.scoreEvent.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.scoreEvent.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),

@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, LogOut } from 'lucide-react'
+import { Bell, LogOut, MessageSquare } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
@@ -26,6 +26,9 @@ export function Header({ title, subtitle }: HeaderProps) {
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  // §129 Ungelesene Nachrichten. Eigene Abfrage, weil sie auf jeder Seite
+  // laeuft — die volle Gespraechsliste dafuer zu laden waere Verschwendung.
+  const [chatUngelesen, setChatUngelesen] = useState(0)
 
   const handleLogout = () => {
     logout()
@@ -55,6 +58,23 @@ export function Header({ title, subtitle }: HeaderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
+  useEffect(() => {
+    if (!user?.employeeId) return
+    const laden = () => fetch('/api/chat/ungelesen')
+      .then(r => r.json())
+      .then(d => setChatUngelesen(d.ungelesen ?? 0))
+      .catch(() => {})
+    laden()
+    const takt = setInterval(laden, 30000)
+    return () => clearInterval(takt)
+  }, [user])
+
+  // Der Chat liegt je Rolle auf einer eigenen Seite, weil die Layouts die
+  // Rolle pruefen — der Weg dorthin haengt deshalb an der Rolle.
+  const chatPfad = user?.role === 'admin' ? '/admin/nachrichten'
+    : user?.role === 'company' ? '/company/nachrichten'
+    : '/employee/nachrichten'
+
   const unreadCount = notifications.filter(n => !n.read).length
 
   const markRead = (id: string) => {
@@ -73,6 +93,22 @@ export function Header({ title, subtitle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
+        {/* §129 Nachrichten */}
+        {user?.employeeId && (
+          <button
+            onClick={() => router.push(chatPfad)}
+            aria-label="Nachrichten"
+            className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors"
+          >
+            <MessageSquare size={20} className="text-gray-600" />
+            {chatUngelesen > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {chatUngelesen > 9 ? '9+' : chatUngelesen}
+              </span>
+            )}
+          </button>
+        )}
+
         {/* Notifications */}
         <div className="relative">
           <button

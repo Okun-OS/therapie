@@ -16,10 +16,10 @@ Zuletzt aktualisiert: **11.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | Datenschutz: Auskunft und Löschkonzept |
-| **Zuletzt fertig** | G1 Auskunft · G2 Löschkonzept (11.09.) |
-| **Als Nächstes** | E5 Mitarbeiter-Chat |
-| **Danach** | Krankenschein mit Fehlzeit verknüpfen · Fahrplan Teil 1.4–1.6 |
+| **Baustelle** | — alle Blöcke A–G sind nachgewiesen |
+| **Zuletzt fertig** | E5 Nachrichten zwischen Mitarbeitern (11.09.) |
+| **Als Nächstes** | Krankenschein mit Fehlzeit verknüpfen |
+| **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
@@ -38,7 +38,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 | **Arbeitszeit** (B) | ✅ fertig, nachgewiesen | — |
 | **Abwesenheit** (C) | ✅ fertig, nachgewiesen | Krankenschein mit Fehlzeit verknüpfen |
 | **Lohn** (D) | ✅ Übergangsversion fertig | Beitragsnachweis, Bescheinigungen |
-| **Kommunikation** (E) | ⚠️ E5 fehlt | Mitarbeiter-Chat |
+| **Kommunikation** (E) | ✅ fertig, nachgewiesen | — |
 | **Dienstplanung** (F) | ✅ fertig, nachgewiesen | — |
 | **Grundlagen & Betrieb** (G) | ✅ fertig, nachgewiesen | Fristen vom Datenschutzbeauftragten gegenzeichnen lassen |
 
@@ -51,7 +51,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 Nach Dringlichkeit, nicht nach Bereich.
 
 ### Dringend
-- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 425 Nachweise
+- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 496 Nachweise
       liegen jetzt im Repo unter `pruefungen/`, ein Befehl prüft alles
       (`npm run pruefen`), und bei jedem Push läuft es automatisch.
 
@@ -66,12 +66,15 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [ ] Alles Weitere: siehe `FAHRPLAN-KOMPLETTLOESUNG.md`
 
 ### Sonst offen
-- [ ] **E5 Mitarbeiter-Chat** — fehlt ganz, es gibt nur Support-Tickets
+- [x] ~~**E5 Mitarbeiter-Chat**~~ ✅ — jeder schreibt jedem am Standort, die
+      Standortleitung eröffnet und verwaltet Gruppen. Mitlesen ist bewusst
+      nicht dasselbe wie Verwalten: ein Beitritt der Leitung steht sichtbar im
+      Verlauf, und Gespräche zu zweit sind für niemanden sonst einsehbar.
 - [x] ~~**F5 Kundenmodul-Mechanik**~~ ✅ — Regelpakete laufen im Rechendienst
 - [x] ~~**F6 Freischaltung je Kunde**~~ ✅ — gesperrt, bis OKUN sie einrichtet
 - [x] ~~**G1 DSGVO Auskunft und Datenexport**~~ ✅ — jeder holt seine Auskunft
       selbst, als PDF und als Datei zum Mitnehmen (Art.15 und Art.20)
-- [x] ~~**G2 DSGVO Löschkonzept**~~ ✅ — Katalog über alle 33 Tabellen, Vorschau
+- [x] ~~**G2 DSGVO Löschkonzept**~~ ✅ — Katalog über alle 35 Tabellen, Vorschau
       vor jeder Löschung, Sperre statt Löschung wo das Gesetz es verlangt,
       Löschbericht als Nachweis
 - [ ] **Krankenschein mit Fehlzeit verknüpfen** — Datei liegt in der Akte, die
