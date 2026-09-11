@@ -125,7 +125,10 @@ export default function Datenschutz() {
     .slice(0, 60)
 
   const bereit = pruefung && pruefung.hindernisse.length === 0
-  const richtigGetippt = gewaehlt ? tippfeld.trim() === gewaehlt.name : false
+  // §128 Groß-/Kleinschreibung und doppelte Leerzeichen sollen niemanden
+  // aufhalten — die Sicherung soll vor Versehen schützen, nicht vor Tippfehlern.
+  const normiert = (t: string) => t.trim().replace(/\s+/g, ' ').toLowerCase()
+  const richtigGetippt = gewaehlt ? normiert(tippfeld) === normiert(gewaehlt.name) : false
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
@@ -297,12 +300,24 @@ export default function Datenschutz() {
                 </p>
 
                 {!sicherheitsfrage ? (
-                  <button
-                    onClick={() => setSicherheitsfrage(true)}
-                    disabled={!bereit}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-white bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed">
-                    <Trash2 size={13} /> Löschung vorbereiten
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setSicherheitsfrage(true)}
+                      disabled={!bereit}
+                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-white bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed">
+                      <Trash2 size={13} /> Löschung vorbereiten
+                    </button>
+                    {/*
+                      §132 Ein Knopf, der nichts tut, ist schlimmer als keiner:
+                      man drückt ihn, nichts geschieht, und man weiß nicht warum.
+                      Hier steht der Grund direkt darunter.
+                    */}
+                    {!bereit && pruefung.hindernisse.length > 0 && (
+                      <p className="text-xs text-amber-700">
+                        Noch nicht möglich: {pruefung.hindernisse.join(' ')}
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     <label className="block text-xs text-gray-600">

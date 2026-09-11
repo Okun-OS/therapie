@@ -995,6 +995,45 @@ export default function AdminSchedule() {
     )
   }
 
+  /*
+    §132 Die Dienstplanung ist gesperrt, bis OKUN sie eingerichtet hat.
+    
+    Die Sperre gab es seit F6 im Rechendienst — im Dienstplan selbst war
+    davon nichts zu sehen. Der Kunde landete stattdessen auf einer leeren
+    Wochentabelle mit dem Hinweis "noch keine Schichten angelegt" und dachte,
+    er müsse selbst etwas einrichten. Genau das soll er nicht: die
+    Dienstplanung wird für jeden Betrieb von Hand programmiert.
+    
+    Gewartet wird auf die Standortliste — solange sie nicht geladen ist, ist
+    unbekannt, ob gesperrt ist, und dann wird nichts behauptet.
+  */
+  if (LOCATIONS.length > 0 && location && location.dienstplanungFrei === false) {
+    return (
+      <>
+        <div className="p-4 sm:p-6 max-w-2xl">
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <CalendarOff size={18} className="text-teal-600" />
+              <h1 className="text-lg font-bold text-navy">
+                Die Dienstplanung wird gerade eingerichtet
+              </h1>
+            </div>
+            <p className="text-sm text-gray-600">
+              {location.dienstplanungHinweis
+                || 'Die Dienstplanung dieses Standorts wird von OKUN passgenau für Ihren '
+                 + 'Betrieb gebaut — mit Ihren Diensten, Ihren Gruppen und Ihren Regeln. '
+                 + 'Sobald sie steht, wird sie hier freigeschaltet.'}
+            </p>
+            <p className="text-xs text-gray-400">
+              Alles andere — Zeiterfassung, Urlaub, Abwesenheiten, Lohn, Nachrichten und
+              Personalakte — können Sie in der Zwischenzeit ohne Einschränkung nutzen.
+            </p>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       

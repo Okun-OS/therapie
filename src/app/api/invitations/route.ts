@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createAndSendInvitation } from '@/lib/invitations'
-import { requireRole } from '@/lib/session'
+import { requireRole, resolveCustomerId } from '@/lib/session'
+import { allowedLocationScope } from '@/lib/scope'
 import { getAppOrigin } from '@/lib/app-url'
 import type { Role } from '@/lib/types'
 
@@ -13,7 +14,29 @@ export async function GET(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
-  const invitations = await prisma.invitationToken.findMany({ orderBy: { createdAt: 'desc' } })
+  // §132 Die Liste war nicht auf den Mandanten eingegrenzt: Eine Standortleitung
+  // sah die offenen Einladungen ALLER Kunden — mit Namen und E-Mail-Adressen.
+  // Das ist ein Datenschutzvorfall, kein Schoenheitsfehler.
+  const customerId = session.role === 'okun' ? undefined : await resolveCustomerId(session)
+  if (session.role !== 'okun' && !customerId) {
+    return NextResponse.json({ invitations: [] })
+  }
+
+  // Die Standortleitung sieht zusaetzlich nur ihren eigenen Standort.
+  const scope = await allowedLocationScope(session)
+
+  const invitations = await prisma.invitationToken.findMany({
+    where: {
+      ...(customerId ? { customerId } : {}),
+      ...(scope.kind === 'locations'
+        // Einladungen ohne Standort sind Verwaltungszugaenge des Mandanten.
+        ? { OR: [{ locationId: { in: scope.ids } }, { locationId: null }] }
+        : {}),
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const origin = getAppOrigin(req)
   return NextResponse.json({
     invitations: invitations.map(inv => ({
       id: inv.id,
@@ -22,6 +45,11 @@ export async function GET(req: NextRequest) {
       customerName: inv.customerName,
       status: inv.usedAt ? 'accepted' : inv.expiresAt < new Date() ? 'expired' : 'pending',
       sentAt: inv.createdAt.toISOString().split('T')[0],
+      // §132 Der Link gehoert dazu: Wenn die E-Mail nicht ankommt — Spamfilter,
+      // Tippfehler, kein Postfach im Betrieb —, muss die Leitung ihn weitergeben
+      // koennen. Sonst steht der neue Kollege vor einer Tuer ohne Klinke.
+      // Nur solange die Einladung noch offen ist.
+      ...(inv.usedAt ? {} : { token: inv.token, link: `${origin}/register/${inv.token}` }),
     })),
   })
 }

@@ -34,13 +34,15 @@ interface Raum {
 }
 
 interface Partner {
-  id: string
+  userId: string
   name: string
+  rollenText: string
+  standort?: string | null
   position?: string | null
 }
 
 interface Mitglied {
-  employeeId: string
+  userId: string
   name: string
   position: string | null
   rolle: string
@@ -167,11 +169,11 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
     setPartner(d.partner ?? [])
   }
 
-  async function direktStarten(employeeId: string) {
+  async function direktStarten(userId: string) {
     setFehler('')
     const r = await fetch('/api/chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ art: 'direkt', employeeId }),
+      body: JSON.stringify({ art: 'direkt', userId }),
     })
     const d = await r.json().catch(() => ({}))
     if (!r.ok) { setFehler(d.error ?? 'Gespräch konnte nicht begonnen werden'); return }
@@ -229,11 +231,10 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
 
   const gefilterterPartner = partner.filter(p =>
     p.name.toLowerCase().includes(suche.toLowerCase()))
-  const nichtMitglied = partner.filter(p => !mitglieder.some(m => m.employeeId === p.id))
+  const nichtMitglied = partner.filter(p => !mitglieder.some(m => m.userId === p.userId))
 
-  // §129 Ein Zugang, der zu keinem Mitarbeiter gehört, hat im Chat niemanden —
-  // Nachrichten gehen an Menschen am Standort, nicht an Zugänge. Das gilt für
-  // OKUN und für eine Geschäftsführung, die an keinem Standort arbeitet.
+  // §131 Nur Plattformzugänge bleiben draußen: sie gehören zu keinem Kunden.
+  // Ein Gespräch zwischen zwei Menschen im Betrieb geht OKUN nichts an.
   if (!moeglich && !laedt) {
     return (
       <div className="p-4 sm:p-6">
@@ -242,13 +243,11 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
         </h1>
         <div className="bg-white rounded-2xl border border-gray-100 p-6 mt-4 max-w-2xl">
           <p className="text-sm text-gray-600">
-            Dieser Zugang ist keinem Mitarbeiter an einem Standort zugeordnet. Nachrichten
-            laufen zwischen Menschen an einem Standort — deshalb gibt es hier niemanden
-            zum Anschreiben.
+            Dieser Zugang nimmt an Gesprächen im Betrieb nicht teil.
           </p>
           <p className="text-xs text-gray-400 mt-2">
-            Soll dieser Zugang mitschreiben können, muss er im Standort als Mitarbeiter
-            angelegt und mit dem Benutzerkonto verknüpft sein.
+            Plattformzugänge von OKUN gehören zu keinem Unternehmen. Was zwei Menschen
+            im Betrieb einander schreiben, geht uns nichts an.
           </p>
         </div>
       </div>
@@ -367,10 +366,12 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
               </div>
               <div className="max-h-72 overflow-y-auto space-y-0.5">
                 {gefilterterPartner.map(p => (
-                  <button key={p.id} onClick={() => direktStarten(p.id)}
+                  <button key={p.userId} onClick={() => direktStarten(p.userId)}
                     className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-gray-50">
                     <span className="text-sm font-semibold text-navy">{p.name}</span>
-                    {p.position && <span className="text-xs text-gray-400 ml-2">{p.position}</span>}
+                    <span className="text-xs text-gray-400 ml-2">
+                      {[p.position ?? p.rollenText, p.standort].filter(Boolean).join(' · ')}
+                    </span>
                   </button>
                 ))}
                 {gefilterterPartner.length === 0 && (
@@ -406,11 +407,11 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
               </div>
               <div className="max-h-60 overflow-y-auto space-y-0.5">
                 {gefilterterPartner.map(p => {
-                  const drin = gewaehlte.includes(p.id)
+                  const drin = gewaehlte.includes(p.userId)
                   return (
-                    <button key={p.id}
+                    <button key={p.userId}
                       onClick={() => setGewaehlte(prev =>
-                        drin ? prev.filter(x => x !== p.id) : [...prev, p.id])}
+                        drin ? prev.filter(x => x !== p.userId) : [...prev, p.userId])}
                       className={`w-full flex items-center gap-2 text-left px-2.5 py-2 rounded-lg ${
                         drin ? 'bg-teal-50' : 'hover:bg-gray-50'}`}>
                       <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
@@ -418,7 +419,9 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                         {drin && <Check size={11} className="text-white" />}
                       </span>
                       <span className="text-sm font-semibold text-navy">{p.name}</span>
-                      {p.position && <span className="text-xs text-gray-400">{p.position}</span>}
+                      <span className="text-xs text-gray-400">
+                        {[p.position ?? p.rollenText, p.standort].filter(Boolean).join(' · ')}
+                      </span>
                     </button>
                   )
                 })}
@@ -508,7 +511,7 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
 
               <div className="divide-y divide-gray-100">
                 {mitglieder.map(m => (
-                  <div key={m.employeeId} className="flex items-center gap-3 py-2">
+                  <div key={m.userId} className="flex items-center gap-3 py-2">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-navy">
                         {m.name}{m.ichSelbst && ' (Sie)'}
@@ -518,7 +521,7 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                       </p>
                     </div>
                     {kopf.darfVerwalten && !m.ichSelbst && (
-                      <button onClick={() => raumAendern({ entfernen: m.employeeId })}
+                      <button onClick={() => raumAendern({ entfernen: m.userId })}
                         className="text-xs text-gray-400 hover:text-red-600 px-2 py-1">
                         entfernen
                       </button>
@@ -532,8 +535,8 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                   <p className="text-[10px] font-semibold text-gray-400 uppercase">Hinzufügen</p>
                   <div className="max-h-44 overflow-y-auto space-y-0.5">
                     {nichtMitglied.map(p => (
-                      <button key={p.id}
-                        onClick={() => raumAendern({ hinzufuegen: [p.id] })}
+                      <button key={p.userId}
+                        onClick={() => raumAendern({ hinzufuegen: [p.userId] })}
                         className="w-full flex items-center gap-2 text-left px-2.5 py-1.5 rounded-lg hover:bg-gray-50">
                         <UserPlus size={13} className="text-gray-400" />
                         <span className="text-sm text-navy">{p.name}</span>

@@ -21,6 +21,11 @@ export interface Location {
   employeeCount: number
   adminId: string
   active: boolean
+  // §127/§132 Die Dienstplanung wird je Kunde von Hand gebaut. Bis OKUN sie
+  // eingerichtet hat, bleibt sie gesperrt — und der Kunde sieht den Hinweis,
+  // statt einen schlechten Plan zu bekommen.
+  dienstplanungFrei?: boolean
+  dienstplanungHinweis?: string | null
 }
 
 export interface Bereich {

@@ -57,6 +57,8 @@ function toLocation(row: any): Location {
     employeeCount: row.employeeCount,
     adminId: row.adminId,
     active: row.active,
+    dienstplanungFrei: row.dienstplanungFrei ?? false,
+    dienstplanungHinweis: row.dienstplanungHinweis ?? null,
   }
 }
 

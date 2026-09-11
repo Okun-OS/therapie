@@ -16,34 +16,40 @@ const leitung = await login('leitung@rheinblick-reha.de')
 const susi = await login('susi.sonnenschein@kita-sonnenschein.de')
 const okun = await login('okun@okun.de')
 
-const ich = async c => (await hole(c, '/api/auth/me')).body.user
-const [mAnna, mThomas, mMaria, mLeitung, mSusi] = await Promise.all(
-  [anna, thomas, maria, leitung, susi].map(ich))
+const gf = await login('gf@rheinblick-reha.de')
 
-console.log(`Anna ${String(mAnna.employeeId).slice(0, 8)} · `
-  + `Thomas ${String(mThomas.employeeId).slice(0, 8)} · `
-  + `Leitung ${String(mLeitung.employeeId).slice(0, 8)}\n`)
+const ich = async c => (await hole(c, '/api/auth/me')).body.user
+const [mAnna, mThomas, mMaria, mLeitung, mSusi, mGf] = await Promise.all(
+  [anna, thomas, maria, leitung, susi, gf].map(ich))
+
+// §131 Der Teilnehmer ist das Benutzerkonto, nicht der Mitarbeiterdatensatz.
+// Sonst koennten Standortleitung und Geschaeftsfuehrung gar nicht mitreden —
+// genau die zwei Rollen, die am meisten zu kommunizieren haben.
+console.log(`Anna ${String(mAnna.id).slice(0, 8)} · `
+  + `Thomas ${String(mThomas.id).slice(0, 8)} · `
+  + `Leitung ${String(mLeitung.id).slice(0, 8)} · `
+  + `GF ${String(mGf.id).slice(0, 8)}\n`)
 
 // ── E5 Wen man überhaupt erreicht ──────────────────────────────────────────
 console.log('=== E5 Wen man erreicht ===')
 
 const partnerAnna = (await hole(anna, '/api/chat/partner')).body.partner ?? []
 check('Kollegen des eigenen Standorts stehen zur Auswahl',
-  partnerAnna.some(p => p.id === mThomas.employeeId),
+  partnerAnna.some(p => p.userId === mThomas.id),
   `${partnerAnna.length} Personen`)
 check('Man selbst steht nicht in der eigenen Liste',
-  !partnerAnna.some(p => p.id === mAnna.employeeId))
+  !partnerAnna.some(p => p.userId === mAnna.id))
 check('Der andere Mandant taucht nicht auf',
-  !partnerAnna.some(p => p.id === mSusi.employeeId))
+  !partnerAnna.some(p => p.userId === mSusi.id))
 check('Die Standortleitung ist erreichbar — sie ist selbst Mitarbeiterin',
-  partnerAnna.some(p => p.id === mLeitung.employeeId))
+  partnerAnna.some(p => p.userId === mLeitung.id))
 
 const partnerOkun = (await hole(okun, '/api/chat/partner')).body.partner ?? []
 check('OKUN hat niemanden zum Anschreiben', partnerOkun.length === 0,
   `${partnerOkun.length} Personen`)
 
 const okunVersuch = await sende(okun, '/api/chat', 'POST', {
-  art: 'direkt', employeeId: mAnna.employeeId,
+  art: 'direkt', userId: mAnna.id,
 })
 check('OKUN kann kein Gespräch beginnen', okunVersuch.status === 403,
   `HTTP ${okunVersuch.status}`)
@@ -52,7 +58,7 @@ check('OKUN kann kein Gespräch beginnen', okunVersuch.status === 403,
 console.log('\n=== E5 Gespräch zu zweit ===')
 
 const eroeffnet = await sende(anna, '/api/chat', 'POST', {
-  art: 'direkt', employeeId: mThomas.employeeId,
+  art: 'direkt', userId: mThomas.id,
 })
 check('Anna beginnt ein Gespräch mit Thomas', eroeffnet.status === 200 && !!eroeffnet.body.raum,
   eroeffnet.body.error)
@@ -61,13 +67,13 @@ const raumId = eroeffnet.body.raum?.id
 // Beide gleichzeitig: ohne eindeutigen Schluessel gaebe es zwei Raeume und
 // jeder saehe nur seine Haelfte des Gespraechs.
 const nochmal = await sende(anna, '/api/chat', 'POST', {
-  art: 'direkt', employeeId: mThomas.employeeId,
+  art: 'direkt', userId: mThomas.id,
 })
 check('Ein zweiter Versuch öffnet dasselbe Gespräch',
   nochmal.body.raum?.id === raumId && nochmal.body.neu === false)
 
 const andersherum = await sende(thomas, '/api/chat', 'POST', {
-  art: 'direkt', employeeId: mAnna.employeeId,
+  art: 'direkt', userId: mAnna.id,
 })
 check('Auch von der anderen Seite ist es dasselbe Gespräch',
   andersherum.body.raum?.id === raumId, `${andersherum.body.raum?.id?.slice(0, 8)}`)
@@ -111,7 +117,7 @@ const fremdesSenden = await sende(maria, `/api/chat/${raumId}`, 'POST', { text: 
 check('Wer nicht dabei ist, kann auch nicht hineinschreiben', fremdesSenden.status === 404)
 
 const anFremden = await sende(anna, '/api/chat', 'POST', {
-  art: 'direkt', employeeId: mSusi.employeeId,
+  art: 'direkt', userId: mSusi.id,
 })
 check('Dem anderen Mandanten lässt sich nicht schreiben', anFremden.status === 403,
   `HTTP ${anFremden.status}`)
@@ -146,7 +152,7 @@ check('Nach dem Lesen ist der Zähler zurück', danach.body.ungelesen === 0,
 console.log('\n=== E5 Gruppen der Standortleitung ===')
 
 const durchMitarbeiter = await sende(anna, '/api/chat', 'POST', {
-  art: 'gruppe', name: 'Heimliche Runde', mitglieder: [mThomas.employeeId],
+  art: 'gruppe', name: 'Heimliche Runde', mitglieder: [mThomas.id],
 })
 check('Ein Mitarbeiter eröffnet keine Gruppe', durchMitarbeiter.status === 403,
   `HTTP ${durchMitarbeiter.status}`)
@@ -154,14 +160,14 @@ check('Ein Mitarbeiter eröffnet keine Gruppe', durchMitarbeiter.status === 403,
 const gruppe = await sende(leitung, '/api/chat', 'POST', {
   art: 'gruppe', name: 'Frühdienst Station 1',
   beschreibung: 'Absprachen zum Frühdienst',
-  mitglieder: [mAnna.employeeId, mThomas.employeeId],
+  mitglieder: [mAnna.id, mThomas.id],
 })
 check('Die Leitung eröffnet eine Gruppe', gruppe.status === 200 && !!gruppe.body.raum,
   gruppe.body.error)
 const gruppenId = gruppe.body.raum?.id
 
 const mitFremdem = await sende(leitung, '/api/chat', 'POST', {
-  art: 'gruppe', name: 'Quer durchs Haus', mitglieder: [mSusi.employeeId],
+  art: 'gruppe', name: 'Quer durchs Haus', mitglieder: [mSusi.id],
 })
 check('In eine Gruppe kommt niemand aus einem fremden Standort',
   mitFremdem.status === 403, `HTTP ${mitFremdem.status}`)
@@ -192,13 +198,13 @@ check('Thomas sieht Annas Beitrag mit ihrem Namen',
 console.log('\n=== E5 Gruppe verwalten ===')
 
 const durchAnna = await sende(anna, `/api/chat/${gruppenId}`, 'PATCH', {
-  hinzufuegen: [mMaria.employeeId],
+  hinzufuegen: [mMaria.id],
 })
 check('Ein Mitglied kann niemanden hinzufügen', durchAnna.status === 403,
   `HTTP ${durchAnna.status}`)
 
 const dazu = await sende(leitung, `/api/chat/${gruppenId}`, 'PATCH', {
-  hinzufuegen: [mMaria.employeeId],
+  hinzufuegen: [mMaria.id],
 })
 check('Die Leitung fügt jemanden hinzu', dazu.status === 200, dazu.body.error)
 
@@ -218,7 +224,7 @@ check('Der neue Name kommt an',
   nachUmbenennen.body.raum?.titel === 'Frühdienst Station 1 und 2')
 
 const raus = await sende(leitung, `/api/chat/${gruppenId}`, 'PATCH', {
-  entfernen: mMaria.employeeId,
+  entfernen: mMaria.id,
 })
 check('Die Leitung entfernt jemanden', raus.status === 200)
 const wiederDraussen = await hole(maria, `/api/chat/${gruppenId}`)
@@ -260,7 +266,7 @@ console.log('\n=== E5 Mitlesen ist nicht verwalten ===')
 // Team ein und zieht sich dann heraus — der uebliche Fall, wenn das Team etwas
 // unter sich besprechen soll.
 const ohneLeitung = await sende(leitung, '/api/chat', 'POST', {
-  art: 'gruppe', name: 'Nur das Team', mitglieder: [mAnna.employeeId, mThomas.employeeId],
+  art: 'gruppe', name: 'Nur das Team', mitglieder: [mAnna.id, mThomas.id],
 })
 const ohneId = ohneLeitung.body.raum?.id
 check('Die Leitung richtet eine Gruppe für das Team ein', ohneLeitung.status === 200,
@@ -279,16 +285,6 @@ check('In der Verwaltungssicht steht die Gruppe trotzdem', !!eintrag,
 check('Dort steht, dass sie nicht Mitglied ist', eintrag?.binMitglied === false)
 check('Und wie viele darin sind', eintrag?.mitgliederAnzahl === 2,
   `${eintrag?.mitgliederAnzahl}`)
-
-// §129 Ein Zugang ohne eigenen Mitarbeiterdatensatz — etwa eine
-// Geschaeftsfuehrung, die an keinem Standort arbeitet — kann den Chat nicht
-// nutzen. Das ist keine Panne, sondern die Folge davon, dass Nachrichten an
-// Menschen am Standort gehen und nicht an Zugaenge.
-const gf = await login('gf@rheinblick-reha.de')
-const gfListe = await hole(gf, '/api/chat')
-check('Ein Zugang ohne Mitarbeiterdatensatz bekommt eine klare Antwort',
-  gfListe.status === 200 && gfListe.body.chatMoeglich === false,
-  `chatMoeglich=${gfListe.body.chatMoeglich}`)
 
 const mitarbeiterSicht = await hole(anna, '/api/chat/gruppen')
 check('Ein Mitarbeiter bekommt die Verwaltungssicht nicht', mitarbeiterSicht.status === 403,
@@ -313,5 +309,64 @@ check('Die Kita-Leitung sieht keine Gruppen des anderen Mandanten',
 const fremderBeitritt = await sende(kitaLeitung, `/api/chat/${ohneId}`, 'PATCH', { beitreten: true })
 check('Sie kann dort auch nicht beitreten', fremderBeitritt.status === 404,
   `HTTP ${fremderBeitritt.status}`)
+
+// ── E5 Die Unternehmensebene ───────────────────────────────────────────────
+//
+// §131 Der Fehler, der im Betrieb sofort auffiel: Die Geschaeftsfuehrung hat
+// ein Konto, aber keinen Mitarbeiterdatensatz — und konnte deshalb niemanden
+// anschreiben. Ausgerechnet die Rolle, die mit allen Standorten reden muss.
+console.log('\n=== E5 Die Unternehmensebene ===')
+
+const gfListe = await hole(gf, '/api/chat')
+check('Die Geschäftsführung kann den Chat benutzen',
+  gfListe.status === 200 && gfListe.body.chatMoeglich === true,
+  `chatMoeglich=${gfListe.body.chatMoeglich}`)
+
+const partnerGf = (await hole(gf, '/api/chat/partner')).body.partner ?? []
+check('Sie erreicht die Standortleitung',
+  partnerGf.some(p => p.userId === mLeitung.id), `${partnerGf.length} Personen`)
+check('Und die Mitarbeiter aller eigenen Standorte',
+  partnerGf.some(p => p.userId === mAnna.id) && partnerGf.some(p => p.userId === mThomas.id))
+check('Aber niemanden aus einem fremden Unternehmen',
+  !partnerGf.some(p => p.userId === mSusi.id))
+check('Zu jedem Namen steht, wer das ist',
+  partnerGf.find(p => p.userId === mLeitung.id)?.rollenText === 'Standortleitung',
+  partnerGf.find(p => p.userId === mLeitung.id)?.rollenText)
+
+const gfAnLeitung = await sende(gf, '/api/chat', 'POST', {
+  art: 'direkt', userId: mLeitung.id,
+})
+check('Sie kann die Standortleitung anschreiben', gfAnLeitung.status === 200,
+  gfAnLeitung.body.error)
+const gfRaum = gfAnLeitung.body.raum?.id
+check('Und die Nachricht geht raus',
+  (await sende(gf, `/api/chat/${gfRaum}`, 'POST', { text: 'Kurze Rückfrage zum Monatsabschluss.' }))
+    .status === 200)
+check('Die Leitung sieht sie',
+  ((await hole(leitung, `/api/chat/${gfRaum}`)).body.nachrichten ?? [])
+    .some(n => n.text.startsWith('Kurze Rückfrage')))
+
+// Auch andersherum: ein Mitarbeiter muss seiner Geschaeftsfuehrung antworten
+// koennen, sonst waere es kein Gespraech, sondern ein Rundschreiben.
+check('Ein Mitarbeiter erreicht auch die Unternehmensebene',
+  partnerAnna.some(p => p.userId === mGf.id),
+  partnerAnna.map(p => p.rollenText).join(', ').slice(0, 80))
+
+const gfGruppe = await sende(gf, '/api/chat', 'POST', {
+  art: 'gruppe', name: 'Alle Standortleitungen',
+  beschreibung: 'Absprachen über die Häuser hinweg',
+  mitglieder: [mLeitung.id],
+})
+check('Die Geschäftsführung kann eine Gruppe eröffnen', gfGruppe.status === 200,
+  gfGruppe.body.error)
+const gfGruppenId = gfGruppe.body.raum?.id
+check('Die Leitung ist darin und sieht sie',
+  (await hole(leitung, `/api/chat/${gfGruppenId}`)).status === 200)
+
+const inFremderGruppe = await sende(gf, '/api/chat', 'POST', {
+  art: 'gruppe', name: 'Quer durch die Kunden', mitglieder: [mSusi.id],
+})
+check('Über die Unternehmensgrenze geht auch für sie nichts',
+  inFremderGruppe.status === 403, `HTTP ${inFremderGruppe.status}`)
 
 process.exit(bilanz() > 0 ? 1 : 0)

@@ -403,13 +403,15 @@ model Employee {
 model ChatRaum {
   id           String    @id @default(cuid())
   customerId   String
-  locationId   String
+  /// Leer bei Raeumen der Unternehmensebene — eine Geschaeftsfuehrung sitzt an
+  /// keinem einzelnen Standort.
+  locationId   String?
   /// direkt | gruppe
   art          String
   /// Nur bei Gruppen
   name         String?
   beschreibung String?
-  /// Nur bei Direktchats: beide Mitarbeiterkennungen sortiert, mit "|" verbunden
+  /// Nur bei Direktchats: beide Benutzerkennungen sortiert, mit "|" verbunden
   schluessel   String?   @unique
   erstelltVon  String?
   /// Geschlossene Gruppen bleiben lesbar, nehmen aber nichts Neues mehr auf
@@ -428,7 +430,15 @@ model ChatRaum {
 model ChatMitglied {
   id            String    @id @default(cuid())
   raumId        String
-  employeeId    String
+  /// §131 Das Benutzerkonto ist der Teilnehmer, nicht der Mitarbeiterdatensatz.
+  ///
+  /// Eine Standortleitung und eine Geschaeftsfuehrung haben ein Konto, aber
+  /// nicht zwingend einen Mitarbeiterdatensatz — mit employeeId als Schluessel
+  /// konnten sie den Chat gar nicht benutzen.
+  userId        String
+  /// Gefuellt, wenn das Konto zu einem Mitarbeiter gehoert. Nur dafuer da,
+  /// dass eine Loeschung nach Art.17 DSGVO die Nachrichten findet.
+  employeeId    String?
   /// mitglied | leitung — "leitung" darf Mitglieder aendern und schliessen
   rolle         String    @default("mitglied")
   /// Bis wohin gelesen wurde; alles Spaetere ist ungelesen
@@ -437,14 +447,18 @@ model ChatMitglied {
 
   raum          ChatRaum  @relation(fields: [raumId], references: [id], onDelete: Cascade)
 
-  @@unique([raumId, employeeId])
+  @@unique([raumId, userId])
   @@index([employeeId])
+  @@index([userId])
 }
 
 model ChatNachricht {
   id           String   @id @default(cuid())
   raumId       String
-  employeeId   String
+  /// §131 Der Absender als Benutzerkonto; "system" fuer Hinweise im Verlauf.
+  userId       String
+  /// Gefuellt, wenn das Konto zu einem Mitarbeiter gehoert — fuer die Loeschung.
+  employeeId   String?
   /// Der Name zum Zeitpunkt des Schreibens — spaetere Aenderungen sollen
   /// alte Nachrichten nicht rueckwirkend umschreiben.
   absenderName String

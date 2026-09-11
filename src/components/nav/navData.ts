@@ -145,8 +145,8 @@ const companyDock: DockItem[] = [
       title: 'Finanzen & Abrechnung',
       sections: [
         { items: [
-          { href: '/admin/payroll',    label: 'Lohnabrechnung',   description: 'Abrechnungen aller Standorte', icon: '💰' },
-          { href: '/admin/surcharges', label: 'Zuschlags-Engine', description: 'Zuschläge, Prämien & Sonderzahlungen', icon: '⚡' },
+          { href: '/company/payroll',    label: 'Lohnabrechnung',   description: 'Abrechnungen aller Standorte', icon: '💰' },
+          { href: '/company/surcharges', label: 'Zuschlags-Engine', description: 'Zuschläge, Prämien & Sonderzahlungen', icon: '⚡' },
         ]},
       ],
     },

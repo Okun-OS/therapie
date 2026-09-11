@@ -51,10 +51,21 @@ const einladungen = await hole(leitung, '/api/invitations')
 const meine = (einladungen.body.invitations ?? []).find(i => i.email === mail)
 check('Einladung wird beim Anlegen erzeugt', !!meine,
   meine ? `Status ${meine.status}` : `${einladungen.body.invitations?.length ?? 0} Einladungen gesamt`)
+check('Der Einladungslink steht dabei', !!meine?.link,
+  meine?.link ? 'vorhanden' : 'fehlt — die Leitung kann ihn nicht weitergeben')
 if (meine?.token) {
   const r = await fetch(`${BASIS}/api/invitations/${meine.token}`)
   check('Einladungslink ist gültig abrufbar', r.ok, `HTTP ${r.status}`)
 }
+
+// §132 Die Liste war nicht auf den Mandanten eingegrenzt — eine fremde Leitung
+// sah die offenen Einladungen ALLER Kunden, mit Namen und E-Mail-Adressen.
+const fremdeEinladungen = (await hole(kita, '/api/invitations')).body.invitations ?? []
+check('Eine fremde Leitung sieht die Einladung nicht',
+  !fremdeEinladungen.some(i => i.email === mail),
+  `${fremdeEinladungen.length} eigene Einladungen`)
+check('Und auch sonst keine fremden Adressen',
+  !fremdeEinladungen.some(i => String(i.email).endsWith('@rheinblick-reha.de')))
 
 // ── A4 Rollen und Rechte ───────────────────────────────────────────────────
 console.log('\n=== A4 Rollen und Rechte ===')

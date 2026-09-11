@@ -16,10 +16,10 @@ Zuletzt aktualisiert: **11.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | — alle Blöcke A–G sind nachgewiesen |
-| **Zuletzt fertig** | C6 Krankenschein mit Fehlzeit verbunden (11.09.) |
-| **Als Nächstes** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
-| **Danach** | Fahrplan Teil 3 — Beitragsnachweis, AAG, DEÜV (Meilenstein 2) |
+| **Baustelle** | Funde aus dem laufenden Betrieb |
+| **Zuletzt fertig** | Chat auf Unternehmensebene, tote Menüpunkte, Sperre sichtbar (11.09.) |
+| **Als Nächstes** | Mobile App prüfen und in die App Stores bringen |
+| **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
@@ -51,7 +51,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 Nach Dringlichkeit, nicht nach Bereich.
 
 ### Dringend
-- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 546 Nachweise
+- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 562 Nachweise
       liegen jetzt im Repo unter `pruefungen/`, ein Befehl prüft alles
       (`npm run pruefen`), und bei jedem Push läuft es automatisch.
 
@@ -66,6 +66,11 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [ ] Alles Weitere: siehe `FAHRPLAN-KOMPLETTLOESUNG.md`
 
 ### Sonst offen
+- [ ] **Mobile App prüfen und veröffentlichen** — durchgehen, Fehler sammeln,
+      dann in App Store und Play Store bringen
+- [ ] **Test- und Fehlererfassung im System** — statt Google Sheet: Funde direkt
+      in der App erfassen, täglich auswerten, Behebung vorschlagen lassen
+      (Vorschlag liegt vor)
 - [x] ~~**E5 Mitarbeiter-Chat**~~ ✅ — jeder schreibt jedem am Standort, die
       Standortleitung eröffnet und verwaltet Gruppen. Mitlesen ist bewusst
       nicht dasselbe wie Verwalten: ein Beitritt der Leitung steht sichtbar im

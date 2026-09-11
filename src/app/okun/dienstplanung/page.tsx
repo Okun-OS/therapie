@@ -138,6 +138,22 @@ export default function DienstplanungVerwalten() {
                 </button>
               </div>
 
+              {/*
+                §132 Freigeschaltet, aber nichts gebaut — der stille Fall.
+                Der Kunde plant dann mit Standardregeln, die seinen Betrieb
+                nicht kennen, und haelt das Ergebnis fuer unser Produkt.
+              */}
+              {s.dienstplanungFrei && !s.rulePackId && (
+                <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-2.5">
+                  <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-900">
+                    Freigeschaltet, aber ohne Regelpaket. Der Standort plant mit den
+                    Standardregeln — die kennen seinen Betrieb nicht. Entweder ein Paket
+                    zuordnen oder wieder sperren, bis es steht.
+                  </p>
+                </div>
+              )}
+
               {s.paketFehlt && (
                 <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-2.5">
                   <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />

@@ -3,7 +3,8 @@ import { requireRole } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { sendPushToEmployee } from '@/lib/push'
 import {
-  raumZugriff, darfVerwalten, darfSchreibenAn, eigeneKennung, systemHinweis, MAX_ZEICHEN,
+  raumZugriff, darfVerwalten, darfSchreibenAn, eigeneKennung, systemHinweis,
+  MAX_ZEICHEN, ROLLEN_TEXT,
 } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
@@ -41,14 +42,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   ])
 
   const namen = new Map(
-    (await prisma.employee.findMany({
-      where: { id: { in: mitglieder.map(m => m.employeeId) } },
-      select: { id: true, name: true, position: true },
-    })).map(e => [e.id, e]),
+    (await prisma.user.findMany({
+      where: { id: { in: mitglieder.map(m => m.userId) } },
+      select: { id: true, name: true, role: true },
+    })).map(u => [u.id, u]),
   )
 
   const gegenueber = raum.art === 'direkt'
-    ? mitglieder.find(m => m.employeeId !== ich)?.employeeId
+    ? mitglieder.find(m => m.userId !== ich)?.userId
     : undefined
 
   return NextResponse.json({
@@ -64,16 +65,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       binLeitung: zugriff.mitglied!.rolle === 'leitung',
     },
     mitglieder: mitglieder.map(m => ({
-      employeeId: m.employeeId,
-      name: namen.get(m.employeeId)?.name ?? 'Ehemalige Kollegin',
-      position: namen.get(m.employeeId)?.position ?? null,
+      userId: m.userId,
+      name: namen.get(m.userId)?.name ?? 'Ehemalige Kollegin',
+      position: ROLLEN_TEXT[namen.get(m.userId)?.role ?? ''] ?? null,
       rolle: m.rolle,
-      ichSelbst: m.employeeId === ich,
+      ichSelbst: m.userId === ich,
     })),
     nachrichten: nachrichten.map(n => ({
       id: n.id, text: n.text, art: n.art,
       absenderName: n.absenderName,
-      vonMir: n.employeeId === ich,
+      vonMir: n.userId === ich,
       createdAt: n.createdAt.toISOString(),
     })),
   })
@@ -103,13 +104,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     )
   }
 
-  const mich = await prisma.employee.findUnique({
-    where: { id: ich }, select: { name: true },
+  const mich = await prisma.user.findUnique({
+    where: { id: ich }, select: { name: true, employeeId: true },
   })
 
   const nachricht = await prisma.chatNachricht.create({
     data: {
-      raumId: raum.id, employeeId: ich,
+      raumId: raum.id, userId: ich, employeeId: mich?.employeeId ?? null,
       absenderName: mich?.name ?? 'Unbekannt', text: inhalt,
     },
   })
@@ -120,12 +121,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Push, aber keine E-Mail und kein Eintrag ins Postfach: bei einem Gespräch
   // mit dreißig Nachrichten am Tag wären beides dreißig Störungen, und das
   // Postfach fasst ohnehin nur die letzten dreißig Meldungen.
+  //
+  // Push hängt am Mitarbeiterdatensatz — wer keinen hat (Leitung, Unternehmen),
+  // sieht die Nachricht beim nächsten Öffnen. Das ist kein Verlust: diese
+  // Rollen arbeiten am Rechner, nicht am Diensthandy.
   const andere = await prisma.chatMitglied.findMany({
-    where: { raumId: raum.id, employeeId: { not: ich } },
+    where: { raumId: raum.id, userId: { not: ich }, employeeId: { not: null } },
     select: { employeeId: true },
   })
   const titel = raum.art === 'gruppe' ? `${raum.name}: ${mich?.name}` : (mich?.name ?? 'Nachricht')
-  await Promise.all(andere.map(m => sendPushToEmployee(m.employeeId, {
+  await Promise.all(andere.map(m => sendPushToEmployee(m.employeeId!, {
     title: titel,
     body: inhalt.length > 120 ? `${inhalt.slice(0, 117)}…` : inhalt,
     url: '/employee/nachrichten',
@@ -166,9 +171,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!zugriff.raum) return NICHT_DA
     if (!await darfVerwalten(session, zugriff.raum)) return NICHT_DA
 
-    const mich = await prisma.employee.findUnique({ where: { id: ich }, select: { name: true } })
+    const mich = await prisma.user.findUnique({
+      where: { id: ich }, select: { name: true, employeeId: true },
+    })
     await prisma.chatMitglied.create({
-      data: { raumId: zugriff.raum.id, employeeId: ich, rolle: 'leitung' },
+      data: {
+        raumId: zugriff.raum.id, userId: ich,
+        employeeId: mich?.employeeId ?? null, rolle: 'leitung',
+      },
     })
     await systemHinweis(zugriff.raum.id,
       `${mich?.name ?? 'Die Leitung'} ist der Gruppe beigetreten und liest ab jetzt mit.`)
@@ -181,7 +191,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // ── Lesestand ────────────────────────────────────────────────────────────
   if (body.gelesen) {
     await prisma.chatMitglied.update({
-      where: { raumId_employeeId: { raumId: raum.id, employeeId: ich } },
+      where: { raumId_userId: { raumId: raum.id, userId: ich } },
       data: { gelesenBis: new Date() },
     })
     return NextResponse.json({ ok: true })
@@ -194,9 +204,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         { error: 'Ein Gespräch zu zweit lässt sich nicht verlassen.' }, { status: 400 },
       )
     }
-    const mich = await prisma.employee.findUnique({ where: { id: ich }, select: { name: true } })
+    const mich = await prisma.user.findUnique({ where: { id: ich }, select: { name: true } })
     await prisma.chatMitglied.delete({
-      where: { raumId_employeeId: { raumId: raum.id, employeeId: ich } },
+      where: { raumId_userId: { raumId: raum.id, userId: ich } },
     })
     await systemHinweis(raum.id, `${mich?.name ?? 'Jemand'} hat die Gruppe verlassen.`)
     return NextResponse.json({ ok: true })
@@ -205,7 +215,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // ── Ab hier: Verwaltung ──────────────────────────────────────────────────
   if (!await darfVerwalten(session, raum)) {
     return NextResponse.json(
-      { error: 'Gruppen verwaltet die Standortleitung.' }, { status: 403 },
+      { error: 'Gruppen verwalten die Standortleitung und das Unternehmen.' }, { status: 403 },
     )
   }
 
@@ -233,30 +243,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         )
       }
     }
-    const namen = new Map(
-      (await prisma.employee.findMany({
-        where: { id: { in: body.hinzufuegen } }, select: { id: true, name: true },
-      })).map(e => [e.id, e.name]),
-    )
-    for (const id of body.hinzufuegen) {
+    const konten = await prisma.user.findMany({
+      where: { id: { in: body.hinzufuegen } },
+      select: { id: true, name: true, employeeId: true },
+    })
+    for (const k of konten) {
       const schon = await prisma.chatMitglied.findUnique({
-        where: { raumId_employeeId: { raumId: raum.id, employeeId: id } },
+        where: { raumId_userId: { raumId: raum.id, userId: k.id } },
       })
       if (schon) continue
-      await prisma.chatMitglied.create({ data: { raumId: raum.id, employeeId: id } })
-      await systemHinweis(raum.id, `${namen.get(id) ?? 'Jemand'} wurde hinzugefügt.`)
+      await prisma.chatMitglied.create({
+        data: { raumId: raum.id, userId: k.id, employeeId: k.employeeId },
+      })
+      await systemHinweis(raum.id, `${k.name} wurde hinzugefügt.`)
     }
     return NextResponse.json({ ok: true })
   }
 
   if (body.entfernen) {
-    const person = await prisma.employee.findUnique({
+    const konto = await prisma.user.findUnique({
       where: { id: body.entfernen }, select: { name: true },
     })
     await prisma.chatMitglied.deleteMany({
-      where: { raumId: raum.id, employeeId: body.entfernen },
+      where: { raumId: raum.id, userId: body.entfernen },
     })
-    await systemHinweis(raum.id, `${person?.name ?? 'Jemand'} wurde entfernt.`)
+    await systemHinweis(raum.id, `${konto?.name ?? 'Jemand'} wurde entfernt.`)
     return NextResponse.json({ ok: true })
   }
 

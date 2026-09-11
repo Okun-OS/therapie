@@ -164,7 +164,7 @@ Siehe `PRODUKT-NOTIZEN.md`.
 - [x] **G2 DSGVO: Löschkonzept** — fertig. Katalog über alle 35 Tabellen mit
       Personenbezug, Vorschau vor jeder Löschung, Sperre statt Löschung wo das
       Gesetz es verlangt, Löschbericht als Nachweis. Siehe Block G1/G2 unten.
-- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 546 Nachweise im
+- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 562 Nachweise im
       Repo unter `pruefungen/`, ein Befehl (`npm run pruefen`), automatischer
       Lauf bei jedem Push. Siehe Block G3 unten.
       `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
@@ -955,6 +955,62 @@ es heute auch tut.
 
 Nachweis: 50 Prüfungen am laufenden System (`pruefungen/c2-krankenschein.mjs`)
 und 25 Modultests für die Fristen- und Lückenrechnung.
+
+## Block §131/§132 (11.09.) — Funde aus dem laufenden Betrieb
+
+Der erste echte Rundgang durch das laufende System hat sieben Sachen zutage
+gebracht, die kein Test gefunden hatte, weil alle Tests von den richtigen
+Voraussetzungen ausgingen.
+
+### Der Chat hing am falschen Datensatz
+Die erste Fassung machte den **Mitarbeiterdatensatz** zum Teilnehmer. Im Betrieb
+fiel das sofort um: Standortleitung und Geschäftsführung haben ein Konto, aber
+nicht zwingend einen Mitarbeiterdatensatz. Beide bekamen „Dieser Zugang ist
+keinem Mitarbeiter zugeordnet" zu sehen — ausgerechnet die zwei Rollen, die am
+meisten zu kommunizieren haben.
+
+Jetzt ist der Teilnehmer das **Benutzerkonto**. Damit erreicht die
+Geschäftsführung alle Standortleitungen und alle Mitarbeiter ihrer Häuser,
+eröffnet Gruppen über Standorte hinweg, und ein Mitarbeiter kann ihr auch
+antworten. Die Mitarbeiterkennung wird weiter mitgeschrieben — nur über sie
+findet eine Löschung nach Art.17 DSGVO die Nachrichten wieder.
+
+### Zwei Menüpunkte führten ins Leere
+„Lohnabrechnung" und „Zuschlags-Engine" zeigten in der Navigation des
+Unternehmens auf `/admin/...`. Deren Layout lässt nur die Rolle „admin" zu — wer
+als Unternehmen klickte, landete **wortlos wieder auf dem Dashboard**. Beide
+Seiten gibt es jetzt unter `/company/...`; der Inhalt ist derselbe, die
+Eingrenzung auf den eigenen Bereich macht ohnehin der Server.
+
+### Die Sperre der Dienstplanung war unsichtbar
+Es gab sie seit F6 — aber nur im Rechendienst. Im Dienstplan selbst sah der
+Kunde eine leere Wochentabelle mit „Noch keine Schichten angelegt" und dachte,
+er müsse selbst etwas einrichten. Genau das soll er nicht. Jetzt steht dort, dass
+wir seine Dienstplanung gerade bauen, und dass er alles andere in der
+Zwischenzeit ohne Einschränkung nutzen kann.
+
+Dazu zwei ehrlichere Texte: Die Einrichtung verspricht nicht mehr „fünf Schritte
+zur fertigen Dienstplanung", solange die Planung gesperrt ist — sie sammelt dann
+Grunddaten. Und die OKUN-Verwaltung warnt jetzt bei Standorten, die
+**freigeschaltet sind, aber kein Regelpaket haben**: die planen mit
+Standardregeln, die ihren Betrieb nicht kennen.
+
+### Ein Knopf, der nichts tat
+„Löschung vorbereiten" war deaktiviert, wenn ein Hindernis bestand — aber ohne
+sichtbaren Grund. Man drückt, nichts passiert, man weiß nicht warum. Der Grund
+steht jetzt direkt darunter. Und die Sicherheitsabfrage (den Namen tippen)
+verzeiht Groß-/Kleinschreibung: Sie soll vor Versehen schützen, nicht vor
+Tippfehlern.
+
+### Nebenbei gefunden: ein Datenschutzvorfall
+`/api/invitations` war **nicht auf den Mandanten eingegrenzt**. Eine
+Standortleitung sah die offenen Einladungen aller Kunden — mit Namen und
+E-Mail-Adressen. Behoben und mit zwei Prüfungen belegt. Bei der Gelegenheit
+liefert die Liste jetzt auch den Einladungslink: Wenn die E-Mail nicht ankommt,
+muss die Leitung ihn weitergeben können.
+
+Nachweis: 562 Prüfungen gesamt, davon 75 für die Nachrichten (jetzt
+einschließlich Unternehmensebene) und 28 für die Mitarbeiterverwaltung.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

@@ -60,22 +60,41 @@ if (dienstId) {
 // §129 Nachrichten: ein Gespräch zu zweit und eine Gruppe. Beim Löschen müssen
 // die beiden unterschiedlich behandelt werden — das Gespräch zu zweit ganz weg,
 // die Gruppe erhalten, weil dort die Beiträge anderer Menschen stehen.
+// §131 Die Testperson bekommt einen echten Zugang: Nachrichten laufen zwischen
+// Benutzerkonten, und ohne Konto liesse sich am Chat nichts nachweisen. Der
+// Umweg ueber die Einladung ist zugleich der Beleg, dass dieser Weg funktioniert.
 const mKollege = (await hole(kollege, '/api/auth/me')).body.user
-const direkt = await sende(kollege, '/api/chat', 'POST', {
-  art: 'direkt', employeeId: personId,
-})
-const direktId = direkt.body.raum?.id
-if (direktId) {
-  await sende(kollege, `/api/chat/${direktId}`, 'POST', { text: 'Willkommen im Team!' })
+const einladungen = (await hole(gf, '/api/invitations')).body.invitations ?? []
+const einladung = einladungen.find(i => i.email === mail)
+let personUserId = null
+if (einladung?.token) {
+  const angenommen = await sende(gf, `/api/invitations/${einladung.token}/accept`, 'POST', {
+    password: 'Test1234!', name: 'Loeschkandidatin Nachweis',
+  })
+  personUserId = angenommen.body.user?.id ?? null
 }
-const chatGruppe = await sende(leitung, '/api/chat', 'POST', {
-  art: 'gruppe', name: `Team-Nachweis ${Date.now()}`,
-  mitglieder: [personId, mKollege.employeeId],
-})
-const chatGruppeId = chatGruppe.body.raum?.id
-if (chatGruppeId) {
-  await sende(kollege, `/api/chat/${chatGruppeId}`, 'POST', { text: 'Beitrag einer Kollegin.' })
+
+let direktId = null
+let chatGruppeId = null
+if (personUserId) {
+  const direkt = await sende(kollege, '/api/chat', 'POST', {
+    art: 'direkt', userId: personUserId,
+  })
+  direktId = direkt.body.raum?.id ?? null
+  if (direktId) {
+    await sende(kollege, `/api/chat/${direktId}`, 'POST', { text: 'Willkommen im Team!' })
+  }
+  const chatGruppe = await sende(leitung, '/api/chat', 'POST', {
+    art: 'gruppe', name: `Team-Nachweis ${Date.now()}`,
+    mitglieder: [personUserId, mKollege.id],
+  })
+  chatGruppeId = chatGruppe.body.raum?.id ?? null
+  if (chatGruppeId) {
+    await sende(kollege, `/api/chat/${chatGruppeId}`, 'POST', { text: 'Beitrag einer Kollegin.' })
+  }
 }
+check('Die Testperson hat einen Zugang und ein Gespräch', !!direktId && !!chatGruppeId,
+  `Konto ${personUserId?.slice(0, 8)}`)
 
 // ── G1 Auskunft nach Art.15 ────────────────────────────────────────────────
 console.log('=== G1 Auskunft nach Art.15 DSGVO ===')
@@ -274,7 +293,7 @@ if (direktId && chatGruppeId) {
     gruppe.status === 200
     && (gruppe.body.nachrichten ?? []).some(n => n.text === 'Beitrag einer Kollegin.'))
   check('Die gelöschte Person ist kein Mitglied mehr',
-    !(gruppe.body.mitglieder ?? []).some(m => m.employeeId === personId),
+    !(gruppe.body.mitglieder ?? []).some(m => m.userId === personUserId),
     `${gruppe.body.mitglieder?.length} Mitglieder`)
 }
 

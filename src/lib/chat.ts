@@ -1,44 +1,63 @@
 /**
- * §129 Nachrichten zwischen Mitarbeitern.
+ * §129/§131 Nachrichten im Betrieb.
  *
  * Bisher gab es nur Benachrichtigungen in eine Richtung und Support-Tickets an
  * OKUN. Wer einer Kollegin schreiben wollte, hat das Programm verlassen und
  * WhatsApp genommen — mit Dienstplänen, Krankmeldungen und Namen auf privaten
  * Telefonen. Genau das soll dieses Modul überflüssig machen.
  *
- * Die drei Entscheidungen, die alles andere bestimmen:
+ * §131 DER TEILNEHMER IST DAS BENUTZERKONTO, nicht der Mitarbeiterdatensatz.
  *
- *   WER WEN ERREICHT. Jeder erreicht jeden an seinem Standort. Nicht das ganze
- *   Unternehmen: In einem Betrieb mit acht Häusern hat der Kollege aus dem
- *   anderen Ort nichts mit einem zu tun, und eine Suchliste über alle wäre
- *   selbst schon eine Preisgabe. Leitung und Unternehmen erreichen jeden in
- *   ihrem Bereich — dieselbe Grenze wie überall sonst (`scope.ts`).
+ * Die erste Fassung hing am Mitarbeiter — und fiel im Betrieb sofort um: eine
+ * Standortleitung und erst recht eine Geschäftsführung haben ein Konto, aber
+ * nicht zwingend einen Mitarbeiterdatensatz. Beide bekamen „Dieser Zugang ist
+ * keinem Mitarbeiter zugeordnet" zu sehen und konnten niemanden anschreiben —
+ * ausgerechnet die zwei Rollen, die am meisten zu kommunizieren haben.
  *
- *   MITLESEN IST NICHT VERWALTEN. Eine Standortleitung eröffnet Gruppen, setzt
- *   Mitglieder und schließt sie wieder. Lesen kann sie nur, was in Gruppen
- *   steht, in denen sie selbst Mitglied ist — und ein Beitritt hinterlässt
- *   einen sichtbaren Hinweis im Verlauf. Ein Vorgesetzter, der unbemerkt
- *   mitliest, wäre keine Funktion, sondern ein Vertrauensbruch.
+ * Die Mitarbeiterkennung wird trotzdem mitgeschrieben, wo es eine gibt: nur
+ * über sie findet eine Löschung nach Art.17 DSGVO die Nachrichten wieder.
+ *
+ * Die weiteren Entscheidungen, die alles andere bestimmen:
+ *
+ *   WER WEN ERREICHT. Jeder erreicht jeden an seinem Standort, dazu die
+ *   Unternehmensebene. Nicht das ganze Unternehmen quer über alle Häuser: in
+ *   einem Betrieb mit acht Standorten hat der Kollege aus dem anderen Ort
+ *   nichts mit einem zu tun, und eine Suchliste über alle wäre selbst schon
+ *   eine Preisgabe. Leitung und Unternehmen erreichen ihren Bereich — dieselbe
+ *   Grenze wie überall sonst (`scope.ts`).
+ *
+ *   MITLESEN IST NICHT VERWALTEN. Standortleitung und Unternehmen eröffnen
+ *   Gruppen, setzen Mitglieder und schließen sie wieder. Lesen können sie nur,
+ *   was in Gruppen steht, in denen sie selbst Mitglied sind — und ein Beitritt
+ *   hinterlässt einen sichtbaren Hinweis im Verlauf. Ein Vorgesetzter, der
+ *   unbemerkt mitliest, wäre keine Funktion, sondern ein Vertrauensbruch.
  *
  *   DIREKTCHATS SIND UNANTASTBAR. Ein Gespräch zwischen zwei Personen ist für
- *   niemanden sonst einsehbar: nicht für die Leitung, nicht für das
- *   Unternehmen, nicht für OKUN. Deshalb kann eine Sitzung ohne eigene
- *   Mitarbeiterkennung — und das ist jede OKUN-Sitzung — den Chat gar nicht
- *   erst benutzen.
+ *   niemanden sonst einsehbar — auch nicht für OKUN. Plattformzugänge bleiben
+ *   deshalb ganz draußen: sie gehören zu keinem Kunden.
  */
 
 import { prisma } from './prisma'
 import type { SessionPayload } from './session'
+import { resolveCustomerId } from './session'
 import { allowedLocationScope } from './scope'
 
 /** Wie lang eine Nachricht sein darf. */
 export const MAX_ZEICHEN = 4000
 
+/** Absender von Systemhinweisen im Verlauf. */
+export const SYSTEM = 'system'
+
 export interface ChatPerson {
-  id: string
+  /** Die Kennung, mit der gearbeitet wird: das Benutzerkonto */
+  userId: string
   name: string
+  /** employee | admin | company — bestimmt nur, was daneben steht */
+  rolle: string
+  rollenText: string
+  standort?: string | null
+  employeeId?: string | null
   position?: string | null
-  locationId?: string | null
 }
 
 export interface RaumListe {
@@ -55,62 +74,99 @@ export interface RaumListe {
   letzteAktivitaet: string
 }
 
-/**
- * Die Mitarbeiterkennung der Sitzung — der Ausweis für den Chat.
- *
- * Ohne sie geht nichts. Das trifft bewusst auch OKUN: Plattformzugänge haben
- * keinen Mitarbeiterdatensatz und sollen in keinem Kundenchat stehen.
- */
-export function eigeneKennung(session: SessionPayload): string | null {
-  return session.employeeId ?? null
+export const ROLLEN_TEXT: Record<string, string> = {
+  employee: 'Mitarbeiter',
+  admin: 'Standortleitung',
+  company: 'Unternehmen',
+  okun: 'OKUN',
 }
 
-/** Die Standorte, aus denen diese Sitzung jemanden anschreiben darf. */
-async function erreichbareStandorte(session: SessionPayload): Promise<string[] | 'alle'> {
-  if (session.role === 'employee') {
-    const ich = await prisma.employee.findUnique({
-      where: { id: session.employeeId ?? '' },
-      select: { locationId: true },
-    })
-    return ich?.locationId ? [ich.locationId] : []
-  }
-  const scope = await allowedLocationScope(session)
-  return scope.kind === 'all' ? 'alle' : scope.ids
+/**
+ * Die Kennung der Sitzung im Chat.
+ *
+ * Immer vorhanden — jede angemeldete Sitzung hat ein Konto. Nur
+ * Plattformzugänge von OKUN bleiben draußen: sie gehören zu keinem Kunden und
+ * haben in keinem Kundengespräch etwas zu suchen.
+ */
+export function eigeneKennung(session: SessionPayload): string | null {
+  if (session.role === 'okun') return null
+  return session.userId ?? null
 }
 
 /**
  * Wen diese Sitzung anschreiben darf.
  *
- * Inaktive Mitarbeiter sind nicht dabei: Wer nicht mehr da ist, liest auch
- * nicht mehr mit, und eine Nachricht in ein totes Postfach ist schlimmer als
- * gar keine — der Absender glaubt, sie sei angekommen.
+ * Konten, keine Mitarbeiterdatensätze: geschrieben wird an jemanden, der sich
+ * anmelden und antworten kann. Ein Mitarbeiter ohne Zugang bekäme eine
+ * Nachricht in ein Postfach, das nie jemand öffnet — schlimmer als gar keine,
+ * weil der Absender glaubt, sie sei angekommen.
  */
 export async function erreichbarePartner(session: SessionPayload): Promise<ChatPerson[]> {
   const ich = eigeneKennung(session)
   if (!ich) return []
-  const standorte = await erreichbareStandorte(session)
-  if (standorte !== 'alle' && standorte.length === 0) return []
 
-  const leute = await prisma.employee.findMany({
+  const customerId = await resolveCustomerId(session)
+  if (!customerId) return []
+
+  const scope = await allowedLocationScope(session)
+  const standorte = scope.kind === 'all' ? null : scope.ids
+
+  // Die Unternehmensebene ist immer dabei — sie sitzt an keinem Standort,
+  // gehört aber zu allen. Sonst könnte ein Mitarbeiter seiner eigenen
+  // Geschäftsführung nicht antworten.
+  const konten = await prisma.user.findMany({
     where: {
-      active: true,
+      customerId,
       id: { not: ich },
-      // Wer gesperrt ist, ist ausgeschieden — er taucht nicht mehr auf.
-      datenGesperrtAm: null,
-      ...(standorte === 'alle' ? {} : { locationId: { in: standorte } }),
+      role: { in: ['employee', 'admin', 'company'] },
+      ...(standorte
+        ? { OR: [{ locationId: { in: standorte } }, { role: 'company' }] }
+        : {}),
     },
-    select: { id: true, name: true, position: true, locationId: true },
+    select: {
+      id: true, name: true, role: true, employeeId: true, locationId: true,
+    },
     orderBy: { name: 'asc' },
   })
-  return leute
+  if (konten.length === 0) return []
+
+  const [orte, personen] = await Promise.all([
+    prisma.location.findMany({
+      where: { id: { in: konten.map(k => k.locationId).filter(Boolean) as string[] } },
+      select: { id: true, name: true },
+    }),
+    prisma.employee.findMany({
+      where: { id: { in: konten.map(k => k.employeeId).filter(Boolean) as string[] } },
+      select: { id: true, position: true, active: true, datenGesperrtAm: true },
+    }),
+  ])
+  const ortName = new Map(orte.map(o => [o.id, o.name]))
+  const person = new Map(personen.map(p => [p.id, p]))
+
+  return konten
+    // Wer ausgeschieden oder gesperrt ist, taucht nicht mehr auf.
+    .filter(k => {
+      if (!k.employeeId) return true
+      const p = person.get(k.employeeId)
+      return !p || (p.active && !p.datenGesperrtAm)
+    })
+    .map(k => ({
+      userId: k.id,
+      name: k.name,
+      rolle: k.role,
+      rollenText: ROLLEN_TEXT[k.role] ?? k.role,
+      standort: k.locationId ? ortName.get(k.locationId) ?? null : null,
+      employeeId: k.employeeId,
+      position: k.employeeId ? person.get(k.employeeId)?.position ?? null : null,
+    }))
 }
 
-/** Darf diese Sitzung dieser Person schreiben? */
+/** Darf diese Sitzung diesem Konto schreiben? */
 export async function darfSchreibenAn(
-  session: SessionPayload, employeeId: string,
+  session: SessionPayload, userId: string,
 ): Promise<boolean> {
   const partner = await erreichbarePartner(session)
-  return partner.some(p => p.id === employeeId)
+  return partner.some(p => p.userId === userId)
 }
 
 /** Der eindeutige Schlüssel eines Direktchats — unabhängig davon, wer anfängt. */
@@ -127,27 +183,39 @@ export function direktSchluessel(a: string, b: string): string {
  */
 export async function darfVerwalten(
   session: SessionPayload,
-  raum: { art: string; locationId: string },
+  raum: { art: string; locationId: string | null; customerId: string },
 ): Promise<boolean> {
   if (raum.art !== 'gruppe') return false
   if (!['admin', 'company'].includes(session.role)) return false
-  const standorte = await erreichbareStandorte(session)
-  return standorte === 'alle' || standorte.includes(raum.locationId)
+  const customerId = await resolveCustomerId(session)
+  if (!customerId || customerId !== raum.customerId) return false
+  if (!raum.locationId) return session.role === 'company'
+  const scope = await allowedLocationScope(session)
+  return scope.kind === 'all' || scope.ids.includes(raum.locationId)
 }
 
 export type ZugriffsGrund = 'ok' | 'unbekannt' | 'keinMitglied' | 'keinZugang'
 
+export interface RaumDaten {
+  id: string
+  art: string
+  locationId: string | null
+  customerId: string
+  name: string | null
+  beschreibung: string | null
+  archiviertAm: Date | null
+}
+
 /**
  * Zugriff auf einen Raum prüfen — die eine Stelle, an der das entschieden wird.
  *
- * Der Unterschied zwischen „gibt es nicht" und „du bist kein Mitglied" ist hier
- * absichtlich unsichtbar nach außen: beides wird als 404 beantwortet. Sonst
- * ließe sich durch Ausprobieren herausfinden, welche Gespräche es gibt.
+ * Der Unterschied zwischen „gibt es nicht" und „du bist kein Mitglied" ist nach
+ * außen absichtlich unsichtbar: beides wird als 404 beantwortet. Sonst ließe
+ * sich durch Ausprobieren herausfinden, welche Gespräche es gibt.
  */
 export async function raumZugriff(session: SessionPayload, raumId: string): Promise<{
   grund: ZugriffsGrund
-  raum?: { id: string; art: string; locationId: string; customerId: string; name: string | null
-    beschreibung: string | null; archiviertAm: Date | null }
+  raum?: RaumDaten
   mitglied?: { id: string; rolle: string; gelesenBis: Date | null }
 }> {
   const ich = eigeneKennung(session)
@@ -157,7 +225,7 @@ export async function raumZugriff(session: SessionPayload, raumId: string): Prom
   if (!raum) return { grund: 'unbekannt' }
 
   const mitglied = await prisma.chatMitglied.findUnique({
-    where: { raumId_employeeId: { raumId, employeeId: ich } },
+    where: { raumId_userId: { raumId, userId: ich } },
     select: { id: true, rolle: true, gelesenBis: true },
   })
   if (!mitglied) return { grund: 'keinMitglied', raum }
@@ -168,75 +236,8 @@ export async function raumZugriff(session: SessionPayload, raumId: string): Prom
 /** Ein Systemhinweis im Verlauf — damit Beitritte und Abgänge sichtbar sind. */
 export async function systemHinweis(raumId: string, text: string): Promise<void> {
   await prisma.chatNachricht.create({
-    data: { raumId, employeeId: 'system', absenderName: 'System', text, art: 'system' },
+    data: { raumId, userId: SYSTEM, absenderName: 'System', text, art: 'system' },
   })
-}
-
-/** Die Räume einer Person, fertig für die Liste. */
-export async function raeumeFuer(session: SessionPayload): Promise<RaumListe[]> {
-  const ich = eigeneKennung(session)
-  if (!ich) return []
-
-  const mitgliedschaften = await prisma.chatMitglied.findMany({
-    where: { employeeId: ich },
-    select: { raumId: true, gelesenBis: true },
-  })
-  if (mitgliedschaften.length === 0) return []
-  const raumIds = mitgliedschaften.map(m => m.raumId)
-
-  const [raeume, mitglieder, letzte] = await Promise.all([
-    prisma.chatRaum.findMany({
-      where: { id: { in: raumIds } },
-      orderBy: { letzteAktivitaet: 'desc' },
-    }),
-    prisma.chatMitglied.findMany({
-      where: { raumId: { in: raumIds } },
-      select: { raumId: true, employeeId: true },
-    }),
-    prisma.chatNachricht.findMany({
-      where: { raumId: { in: raumIds } },
-      orderBy: { createdAt: 'desc' },
-      distinct: ['raumId'],
-      select: { raumId: true, text: true, absenderName: true, createdAt: true, art: true },
-    }),
-  ])
-
-  // Die Namen der Gegenüber in einem Zug — sonst eine Abfrage je Raum.
-  const fremdeIds = Array.from(new Set(
-    mitglieder.filter(m => m.employeeId !== ich).map(m => m.employeeId),
-  ))
-  const namen = new Map(
-    (await prisma.employee.findMany({
-      where: { id: { in: fremdeIds } }, select: { id: true, name: true },
-    })).map(e => [e.id, e.name]),
-  )
-
-  const letzteJeRaum = new Map(letzte.map(n => [n.raumId, n]))
-  const ungelesen = await ungeleseneJeRaum(ich, mitgliedschaften)
-
-  return Promise.all(raeume.map(async raum => {
-    const imRaum = mitglieder.filter(m => m.raumId === raum.id)
-    const gegenueber = raum.art === 'direkt'
-      ? imRaum.find(m => m.employeeId !== ich)?.employeeId
-      : undefined
-    const n = letzteJeRaum.get(raum.id)
-    return {
-      id: raum.id,
-      art: raum.art as 'direkt' | 'gruppe',
-      titel: raum.art === 'direkt'
-        ? (gegenueber ? namen.get(gegenueber) ?? 'Ehemalige Kollegin' : 'Gespräch')
-        : raum.name ?? 'Gruppe',
-      beschreibung: raum.beschreibung,
-      archiviert: !!raum.archiviertAm,
-      mitgliederAnzahl: imRaum.length,
-      darfVerwalten: await darfVerwalten(session, raum),
-      letzteNachricht: n
-        ? { text: n.text, absenderName: n.absenderName, createdAt: n.createdAt.toISOString(), art: n.art }
-        : null,
-      ungelesen: ungelesen.get(raum.id) ?? 0,
-      letzteAktivitaet: raum.letzteAktivitaet.toISOString(),
-    }
-  }))
 }
 
 /**
@@ -262,7 +263,7 @@ async function ungeleseneJeRaum(
   const neue = await prisma.chatNachricht.findMany({
     where: {
       raumId: { in: mitgliedschaften.map(m => m.raumId) },
-      employeeId: { not: ich },
+      userId: { not: ich },
       art: 'text',
       ...(aeltester ? { createdAt: { gt: aeltester } } : {}),
     },
@@ -277,12 +278,79 @@ async function ungeleseneJeRaum(
   return ergebnis
 }
 
+/** Die Räume einer Person, fertig für die Liste. */
+export async function raeumeFuer(session: SessionPayload): Promise<RaumListe[]> {
+  const ich = eigeneKennung(session)
+  if (!ich) return []
+
+  const mitgliedschaften = await prisma.chatMitglied.findMany({
+    where: { userId: ich },
+    select: { raumId: true, gelesenBis: true },
+  })
+  if (mitgliedschaften.length === 0) return []
+  const raumIds = mitgliedschaften.map(m => m.raumId)
+
+  const [raeume, mitglieder, letzte] = await Promise.all([
+    prisma.chatRaum.findMany({
+      where: { id: { in: raumIds } },
+      orderBy: { letzteAktivitaet: 'desc' },
+    }),
+    prisma.chatMitglied.findMany({
+      where: { raumId: { in: raumIds } },
+      select: { raumId: true, userId: true },
+    }),
+    prisma.chatNachricht.findMany({
+      where: { raumId: { in: raumIds } },
+      orderBy: { createdAt: 'desc' },
+      distinct: ['raumId'],
+      select: { raumId: true, text: true, absenderName: true, createdAt: true, art: true },
+    }),
+  ])
+
+  // Die Namen der Gegenüber in einem Zug — sonst eine Abfrage je Raum.
+  const fremdeIds = Array.from(new Set(
+    mitglieder.filter(m => m.userId !== ich).map(m => m.userId),
+  ))
+  const namen = new Map(
+    (await prisma.user.findMany({
+      where: { id: { in: fremdeIds } }, select: { id: true, name: true },
+    })).map(u => [u.id, u.name]),
+  )
+
+  const letzteJeRaum = new Map(letzte.map(n => [n.raumId, n]))
+  const ungelesen = await ungeleseneJeRaum(ich, mitgliedschaften)
+
+  return Promise.all(raeume.map(async raum => {
+    const imRaum = mitglieder.filter(m => m.raumId === raum.id)
+    const gegenueber = raum.art === 'direkt'
+      ? imRaum.find(m => m.userId !== ich)?.userId
+      : undefined
+    const n = letzteJeRaum.get(raum.id)
+    return {
+      id: raum.id,
+      art: raum.art as 'direkt' | 'gruppe',
+      titel: raum.art === 'direkt'
+        ? (gegenueber ? namen.get(gegenueber) ?? 'Ehemalige Kollegin' : 'Gespräch')
+        : raum.name ?? 'Gruppe',
+      beschreibung: raum.beschreibung,
+      archiviert: !!raum.archiviertAm,
+      mitgliederAnzahl: imRaum.length,
+      darfVerwalten: await darfVerwalten(session, raum),
+      letzteNachricht: n
+        ? { text: n.text, absenderName: n.absenderName, createdAt: n.createdAt.toISOString(), art: n.art }
+        : null,
+      ungelesen: ungelesen.get(raum.id) ?? 0,
+      letzteAktivitaet: raum.letzteAktivitaet.toISOString(),
+    }
+  }))
+}
+
 /** Wie viele ungelesene Nachrichten insgesamt — für das Abzeichen im Kopf. */
 export async function ungeleseneGesamt(session: SessionPayload): Promise<number> {
   const ich = eigeneKennung(session)
   if (!ich) return 0
   const mitgliedschaften = await prisma.chatMitglied.findMany({
-    where: { employeeId: ich },
+    where: { userId: ich },
     select: { raumId: true, gelesenBis: true },
   })
   const jeRaum = await ungeleseneJeRaum(ich, mitgliedschaften)

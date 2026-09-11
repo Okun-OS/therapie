@@ -100,6 +100,8 @@ export default function SetupWizardPage() {
   const { showToast } = useToast()
   const [step, setStep] = useState(0)
   const [locationId, setLocationId] = useState<string | null>(null)
+  // §132 Ob die Dienstplanung dieses Standorts schon von OKUN gebaut wurde.
+  const [planungFrei, setPlanungFrei] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
 
   const [arbeitstage, setArbeitstage] = useState<WochentagKuerzel[]>([])
@@ -112,6 +114,13 @@ export default function SetupWizardPage() {
   const load = useCallback(async () => {
     const me = await fetch('/api/auth/me').then(r => r.json()).catch(() => null)
     const locId = me?.user?.locationId as string | undefined
+    fetch('/api/locations')
+      .then(r => r.json())
+      .then(d => {
+        const eigener = (d.locations ?? []).find((l: { id: string }) => l.id === locId)
+        setPlanungFrei(eigener ? eigener.dienstplanungFrei !== false : null)
+      })
+      .catch(() => setPlanungFrei(null))
     if (!locId) { setLoading(false); return }
     setLocationId(locId)
     const [modelRes, shiftsRes, unitsRes, empRes, rulesRes, ccRes] = await Promise.all([
@@ -495,10 +504,36 @@ export default function SetupWizardPage() {
       <div>
         <h1 className="font-bold text-navy text-xl">Standort einrichten</h1>
         <p className="text-sm text-gray-500">
-          Fünf Schritte zur fertigen Dienstplanung. Alles, was du hier einträgst, gilt exakt so — nichts wird automatisch verändert.
+          {planungFrei === false
+            ? 'Hier tragen Sie die Grunddaten Ihres Betriebs ein: Arbeitstage, Struktur, Dienste und Team. Alles, was Sie eintragen, gilt exakt so — nichts wird automatisch verändert.'
+            : 'Fünf Schritte zur fertigen Dienstplanung. Alles, was du hier einträgst, gilt exakt so — nichts wird automatisch verändert.'}
         </p>
         <p className="text-[10px] text-gray-300 mt-1">Version {process.env.NEXT_PUBLIC_BUILD_ID}</p>
       </div>
+
+      {/*
+        §132 Solange die Dienstplanung nicht freigeschaltet ist, verspricht
+        "Fünf Schritte zur fertigen Dienstplanung" etwas, was am Ende nicht
+        passiert. Der Kunde trägt dann Regeln ein und wundert sich, dass kein
+        Plan entsteht. Die Planungslogik bauen wir — was er hier einträgt, sind
+        die Grunddaten, auf denen wir aufsetzen.
+      */}
+      {planungFrei === false && (
+        <div className="flex items-start gap-2 rounded-2xl border border-teal-200 bg-teal-50 p-3">
+          <Sparkles size={16} className="text-teal-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-semibold text-teal-900">
+              Die Dienstplanung bauen wir für Sie
+            </p>
+            <p className="text-xs text-teal-900 mt-0.5">
+              Ihre Planungslogik wird von OKUN passgenau programmiert — Sie müssen sie
+              hier nicht selbst zusammenstellen. Was Sie eintragen, sind die Grunddaten:
+              Arbeitstage, Struktur, Dienste und Team. Darauf setzen wir auf. Der Schritt
+              &bdquo;Regeln&ldquo; ist deshalb nur als Notiz für uns gedacht.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stepper */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
