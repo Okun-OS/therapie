@@ -69,8 +69,8 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [ ] **Mobile App prüfen und veröffentlichen** — durchgehen, Fehler sammeln,
       dann in App Store und Play Store bringen
 - [ ] **Test- und Fehlererfassung im System** — statt Google Sheet: Funde direkt
-      in der App erfassen, täglich auswerten, Behebung vorschlagen lassen
-      (Vorschlag liegt vor)
+      in der App erfassen, täglich auswerten, Behebung vorschlagen lassen.
+      **Vorschlag liegt vor: `FEHLERKREISLAUF.md` — Entscheidung offen**
 - [x] ~~**E5 Mitarbeiter-Chat**~~ ✅ — jeder schreibt jedem am Standort, die
       Standortleitung eröffnet und verwaltet Gruppen. Mitlesen ist bewusst
       nicht dasselbe wie Verwalten: ein Beitritt der Leitung steht sichtbar im
@@ -123,6 +123,7 @@ Ausführlich: `ABLAUFPLAN.md`
 | `ABLAUFPLAN.md` | was Daniel außerhalb des Codes erledigen muss |
 | `LOHN-ZERTIFIZIERUNG.md` | Zertifizierung, Kosten, Anfragelisten |
 | `PRODUKT-NOTIZEN.md` | Geschäftsmodell und Leitentscheidungen |
+| `FEHLERKREISLAUF.md` | Vorschlag: Funde erfassen, täglich auswerten, beheben |
 | `pruefungen/README.md` | wie die Nachweise laufen und wie man neue schreibt |
 
 ---
