@@ -783,6 +783,39 @@ export default function EmployeeProfile() {
             </div>
           )}
         </Card>
+
+        {/*
+          §128 Auskunft nach Art.15 DSGVO.
+
+          Das Recht steht dem Menschen zu, nicht dem Arbeitgeber — deshalb holt
+          er sie hier selbst und muss niemanden darum bitten. Zwei Formate: das
+          PDF erklärt in Sätzen, was gespeichert ist und wie lange; die Datei
+          enthält jeden Eintrag einzeln und lässt sich weitergeben (Art.20).
+        */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Meine Daten</CardTitle>
+          </CardHeader>
+          <p className="text-xs text-gray-500 mb-3">
+            Du darfst jederzeit erfahren, welche Daten wir über dich gespeichert haben,
+            wofür wir sie nutzen und wie lange wir sie aufbewahren. Die Auskunft bekommst
+            du sofort — du musst dafür niemanden fragen.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/api/dsgvo/auskunft?format=pdf"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-gray-600 border border-gray-200 hover:bg-gray-50"
+            >
+              <FileText size={14} /> Auskunft als PDF
+            </a>
+            <a
+              href="/api/dsgvo/auskunft"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-gray-600 border border-gray-200 hover:bg-gray-50"
+            >
+              <FileText size={14} /> Alle Daten als Datei
+            </a>
+          </div>
+        </Card>
       </div>
     </>
   )

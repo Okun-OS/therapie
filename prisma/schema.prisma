@@ -375,8 +375,38 @@ model Employee {
   workDays          String[] @default([])
   dailyTargetHours  Float?
   fixedOffDays      String[] @default([])
+
+  // §128 Einschraenkung der Verarbeitung nach Art.18 DSGVO.
+  // Gesetzt, wenn nach dem Austritt geloescht wurde, aber Lohn- und
+  // Steuerunterlagen aufbewahrt werden muessen. Solange gesetzt, darf mit
+  // diesen Daten nur noch das geschehen, wofuer das Gesetz sie verlangt.
+  datenGesperrtAm    DateTime?
+  datenGesperrtGrund String?
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+}
+
+/// §128 Was bei einer Loeschung tatsaechlich geschehen ist.
+///
+/// Ohne diesen Nachweis laesst sich gegenueber der Aufsichtsbehoerde weder
+/// belegen, dass geloescht wurde, noch warum etwas bleiben musste. Der Bericht
+/// haelt je Datenart fest, was passiert ist — er enthaelt Zahlen und
+/// Begruendungen, keine Personendaten.
+model Loeschvorgang {
+  id                 String   @id @default(cuid())
+  employeeId         String
+  customerId         String?
+  personName         String
+  /// loeschung = auf Verlangen oder nach Austritt, aufraeumen = abgelaufene Frist
+  art                String   @default("loeschung")
+  angestossenVon     String
+  angestossenVonName String?
+  bericht            Json
+  createdAt          DateTime @default(now())
+
+  @@index([employeeId])
+  @@index([customerId])
 }
 
 model Customer {

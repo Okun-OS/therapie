@@ -156,10 +156,12 @@ Siehe `PRODUKT-NOTIZEN.md`.
 
 ## G · Grundlagen und Betrieb
 
-- [ ] **G1 DSGVO: Auskunft und Datenexport** — **fehlt.**
-- [ ] **G2 DSGVO: Löschkonzept** — teilweise. Beim Löschen des eigenen Kontos wird
-      anonymisiert; ein durchgängiges Konzept mit Fristen fehlt.
-- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 303 Nachweise im
+- [x] **G1 DSGVO: Auskunft und Datenexport** — fertig. Jeder holt seine Auskunft
+      selbst, als lesbares PDF und als Datei zum Mitnehmen. Siehe Block G1/G2 unten.
+- [x] **G2 DSGVO: Löschkonzept** — fertig. Katalog über alle 33 Tabellen mit
+      Personenbezug, Vorschau vor jeder Löschung, Sperre statt Löschung wo das
+      Gesetz es verlangt, Löschbericht als Nachweis. Siehe Block G1/G2 unten.
+- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 425 Nachweise im
       Repo unter `pruefungen/`, ein Befehl (`npm run pruefen`), automatischer
       Lauf bei jedem Push. Siehe Block G3 unten.
       `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
@@ -744,6 +746,89 @@ Nachweis: 24 Python-Tests für die Bausteine — darunter die **Gegenprobe**, da
 es ohne die Regel mehr Spätdienste gäbe (sonst könnte eine wirkungslose Regel
 einen grünen Test erzeugen). Dazu 4 Tests im Verifier und 21 Prüfungen am
 laufenden System.
+
+## Block G1/G2 (11.09.) — Auskunft und Löschkonzept
+
+Vor dem ersten echten Kunden: Personendaten liegen bei uns in **33 Tabellen**.
+Eine Auskunft ist nur vollständig, wenn wirklich alle gemeint sind — und eine
+Löschung nur richtig, wenn jede Tabelle einzeln beurteilt wurde.
+
+### Der Kern: Löschen ist oft verboten
+
+„Recht auf Löschung" heißt nicht „alles weg". Lohnunterlagen müssen sechs Jahre
+bleiben, Buchungsbelege zehn, Arbeitszeitnachweise zwei. Wer sie auf Zuruf
+löscht, verstößt gegen Steuer- und Sozialrecht und kann bei der Betriebsprüfung
+nichts vorlegen. Richtig ist die **Einschränkung der Verarbeitung** (Art.18
+DSGVO): die Daten bleiben, werden gesperrt und nur noch für den Zweck verwendet,
+für den das Gesetz sie verlangt.
+
+- [x] **Ein Katalog statt Code an dreißig Stellen** (`src/lib/dsgvo-katalog.ts`):
+      je Datenart steht dort, was passiert (löschen / anonymisieren / sperren),
+      wie lange aufbewahrt wird, **aus welcher Vorschrift** die Frist folgt und
+      warum — in der Sprache des Betroffenen, ohne Tabellennamen.
+- [x] **Der Katalog kann nicht veralten.** Ein Test liest `schema.prisma` und
+      schlägt fehl, sobald eine neue Tabelle mit Personenbezug dazukommt und
+      nicht eingetragen wird. Er hat beim ersten Lauf sofort eine gefunden
+      (`SurchargeWageConfig`).
+- [x] **Keine Datenart kann beim Löschen stillschweigend übersprungen werden.**
+      Ein zweiter Test hält fest, dass es zu jeder Tabelle im Katalog auch eine
+      Abfrage gibt — der gefährlichste Fehler wäre der, bei dem der Knopf
+      funktioniert und die Daten trotzdem liegen bleiben.
+
+### G1 — Auskunft (Art.15) und Mitnehmen (Art.20)
+
+- [x] **Jeder holt sie selbst**, unter „Mein Profil". Art.15 ist ein Recht der
+      Person, keine Gefälligkeit des Arbeitgebers — es darf keinen Antrag
+      brauchen.
+- [x] **Zwei Formate mit Absicht:** ein PDF, das in Sätzen erklärt, welche Daten
+      es gibt, wie viele Einträge und wie lange sie bleiben — und die
+      vollständigen Einzeldaten als Datei, die man auch woanders hin mitnehmen
+      kann. Eine reine JSON-Datei wäre formal richtig und praktisch wertlos.
+- [x] **Fremde Daten sind gekürzt.** Eine Vertretungsanfrage nennt Kollegen, ein
+      Dienstplan zeigt, wer sonst Schicht hatte. Auskunft heißt „Ihre Daten",
+      nicht „alles, wo Ihr Name vorkommt".
+- [x] Passwörter und Geräteschlüssel sind nie enthalten — eigens geprüft.
+- [x] Die Auskunft nennt zu jeder Datenart die **Aufbewahrungsdauer** (Art.15
+      Abs.1 lit.d) — die Frage, die Betroffene am häufigsten stellen.
+- [x] Jeder Abruf wird protokolliert. Eine Auskunft versammelt an einer Stelle
+      alles über einen Menschen; wer sie erzeugt, muss nachvollziehbar sein.
+
+### G2 — Löschen, sperren, anonymisieren
+
+- [x] **Vorschau vor jeder Löschung.** Sie zeigt Zeile für Zeile, was
+      verschwindet, was anonymisiert wird und was bleiben **muss** — mit Datum
+      und Vorschrift. Eine Löschung lässt sich nicht zurücknehmen; wer sie
+      auslöst, muss vorher gesehen haben, was passiert.
+- [x] **Zwei Bremsen.** Ohne Austrittsdatum läuft nichts (ohne Austritt beginnt
+      keine Frist), und eine noch aktive Person wird nicht gelöscht. Dazu eine
+      ausdrückliche Bestätigung — ein doppelter Klick darf das nicht auslösen.
+- [x] **Anonymisieren heißt wirklich anonymisieren.** Der Dienstplan bleibt dem
+      Betrieb erhalten, die Einträge bekommen aber eine Zufallskennung, die
+      **nirgends gespeichert** wird. Damit ist die Verbindung zur Person
+      zerstört — das unterscheidet Anonymisierung von Pseudonymisierung.
+- [x] **Sperren nach Art.18** für Lohn, Zeiten, Fehlzeiten und Personalakte.
+      Bankverbindung und Anschrift gehen trotzdem sofort — für die Aufbewahrung
+      werden sie nicht gebraucht.
+- [x] **Abgelaufene Fristen werden geräumt.** Aufbewahren ist eine Pflicht,
+      keine Erlaubnis: läuft die Frist ab, wird gelöscht, am Ende auch der
+      Personaldatensatz selbst. Als Jahreslauf über alle gesperrten Personen.
+- [x] **Der Löschbericht bleibt.** Er enthält keine Personendaten, nur Zahlen
+      und Begründungen — und ist der einzige Weg, eine **vollständige** Löschung
+      hinterher noch nachweisen zu können (Art.5 Abs.2 DSGVO). Auch als PDF für
+      den Betroffenen.
+- [x] **Löschen darf nur das Unternehmen**, nicht die Standortleitung; der
+      Jahreslauf nur OKUN.
+
+Nachweis: 53 Prüfungen am laufenden System (`pruefungen/g1-dsgvo.mjs`) —
+darunter der harte Teil: nach der Löschung wird **nachgesehen**, dass die
+Fehlzeit noch da ist, der Zugang weg, die Schicht dem Betrieb erhalten und
+niemandem mehr zugeordnet, die IBAN entfernt und die Personalnummer geblieben.
+Dazu 22 Modultests.
+
+### Was noch aussteht
+Die Fristen sind mit der Vorschrift belegt, aus der sie stammen, aber **nicht
+von einem Steuerberater oder Datenschutzbeauftragten gegengezeichnet.** Das
+gehört vor den ersten echten Kunden — es ist eine Datei und eine Stunde Arbeit.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

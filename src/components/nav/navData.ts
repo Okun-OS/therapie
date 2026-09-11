@@ -154,9 +154,10 @@ const companyDock: DockItem[] = [
       title: 'Einstellungen',
       sections: [
         { items: [
-          { href: '/company/settings', label: 'Unternehmenseinstellungen', description: 'Globale Konfiguration', icon: '⚙️' },
-          { href: '/company/reports',  label: 'Berichte & Export',         description: 'Daten exportieren',      icon: '📤' },
-          { href: '/company/support',  label: 'Support & Hilfe',           description: 'Hilfe & Kontakt',        icon: '💬' },
+          { href: '/company/settings',    label: 'Unternehmenseinstellungen', description: 'Globale Konfiguration',                    icon: '⚙️' },
+          { href: '/company/datenschutz', label: 'Datenschutz',              description: 'Auskunft und Löschung nach DSGVO',         icon: '🔐' },
+          { href: '/company/reports',     label: 'Berichte & Export',        description: 'Daten exportieren',                        icon: '📤' },
+          { href: '/company/support',     label: 'Support & Hilfe',          description: 'Hilfe & Kontakt',                          icon: '💬' },
         ]},
       ],
     },

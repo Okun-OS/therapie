@@ -3,7 +3,7 @@
 **Diese Seite ist die Wahrheit.** Nicht das Gespräch, nicht die Erinnerung.
 Wer wissen will, wo etwas steht, liest hier — und nur hier.
 
-Zuletzt aktualisiert: **10.09.2026**
+Zuletzt aktualisiert: **11.09.2026**
 
 > **Regel für Claude:** Diese Datei wird bei **jedem** abgeschlossenen Punkt
 > aktualisiert, im selben Commit wie die Arbeit. Nie später, nie gesammelt.
@@ -16,20 +16,15 @@ Zuletzt aktualisiert: **10.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | Dienstplanung: Regelpakete und Freischaltung |
-| **Zuletzt fertig** | F5 Regelpakete je Kunde · F6 Freischaltung (11.09.) |
-| **Als Nächstes** | G1/G2 DSGVO — Auskunft, Export, Löschkonzept |
-| **Danach** | E5 Mitarbeiter-Chat · Krankenschein mit Fehlzeit verknüpfen |
+| **Baustelle** | Datenschutz: Auskunft und Löschkonzept |
+| **Zuletzt fertig** | G1 Auskunft · G2 Löschkonzept (11.09.) |
+| **Als Nächstes** | E5 Mitarbeiter-Chat |
+| **Danach** | Krankenschein mit Fehlzeit verknüpfen · Fahrplan Teil 1.4–1.6 |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
 > den Berater, SEPA an die Bank, Jahr abschließen. Gemeldet wird über den
 > Steuerberater — bis zur Zertifizierung (Fahrplan Teil 4/5).
-
-> **Die Übergangsversion ist fertig.** Rechnen, Beleg zustellen, ELStAM
-> nachführen, rückwirkend korrigieren, DATEV an den Berater, SEPA an die Bank,
-> Jahr abschließen. Gemeldet wird über den Steuerberater — bis zur
-> Zertifizierung (Fahrplan Teil 4/5).
 
 Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 
@@ -45,7 +40,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 | **Lohn** (D) | ✅ Übergangsversion fertig | Beitragsnachweis, Bescheinigungen |
 | **Kommunikation** (E) | ⚠️ E5 fehlt | Mitarbeiter-Chat |
 | **Dienstplanung** (F) | ✅ fertig, nachgewiesen | — |
-| **Grundlagen & Betrieb** (G) | ⚠️ G1/G2 offen | DSGVO: Auskunft und Löschkonzept |
+| **Grundlagen & Betrieb** (G) | ✅ fertig, nachgewiesen | Fristen vom Datenschutzbeauftragten gegenzeichnen lassen |
 
 ✅ fertig · 🔨 in Arbeit · ⚠️ offen
 
@@ -56,7 +51,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 Nach Dringlichkeit, nicht nach Bereich.
 
 ### Dringend
-- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 303 Nachweise
+- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 425 Nachweise
       liegen jetzt im Repo unter `pruefungen/`, ein Befehl prüft alles
       (`npm run pruefen`), und bei jedem Push läuft es automatisch.
 
@@ -74,8 +69,11 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [ ] **E5 Mitarbeiter-Chat** — fehlt ganz, es gibt nur Support-Tickets
 - [x] ~~**F5 Kundenmodul-Mechanik**~~ ✅ — Regelpakete laufen im Rechendienst
 - [x] ~~**F6 Freischaltung je Kunde**~~ ✅ — gesperrt, bis OKUN sie einrichtet
-- [ ] **G1 DSGVO Auskunft und Datenexport** — fehlt
-- [ ] **G2 DSGVO Löschkonzept** — teilweise
+- [x] ~~**G1 DSGVO Auskunft und Datenexport**~~ ✅ — jeder holt seine Auskunft
+      selbst, als PDF und als Datei zum Mitnehmen (Art.15 und Art.20)
+- [x] ~~**G2 DSGVO Löschkonzept**~~ ✅ — Katalog über alle 33 Tabellen, Vorschau
+      vor jeder Löschung, Sperre statt Löschung wo das Gesetz es verlangt,
+      Löschbericht als Nachweis
 - [ ] **Krankenschein mit Fehlzeit verknüpfen** — Datei liegt in der Akte, die
       Abwesenheit im Kalender, beides ist nicht verbunden
 
@@ -93,6 +91,7 @@ Ohne diese Punkte kommt die Arbeit an bestimmten Stellen nicht weiter.
 |---|---|---|
 | 🔴 | **Steuerberater die Rechnung gegenzeichnen lassen** | den ersten echten Kunden |
 | 🔴 | **Eine echte ELStAM-Änderungsliste besorgen** | den Import passgenau zu machen |
+| 🟡 | **Aufbewahrungsfristen gegenzeichnen lassen** (Steuerberater oder Datenschutzbeauftragter) | den ersten echten Kunden — die Fristen stehen mit Vorschrift in `src/lib/dsgvo-katalog.ts`, sind aber noch nicht geprüft |
 | 🟡 | Die drei Anfragen verschicken (ITSG, ELSTER, Steuerberater) | die Zertifizierungs-Entscheidung |
 | 🟡 | Vermögensschadenhaftpflicht klären | den ersten echten Kunden |
 | 🟢 | Unternehmensdaten je Kunde vollständig eintragen | SEPA und DATEV je Kunde |

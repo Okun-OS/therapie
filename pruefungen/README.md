@@ -52,8 +52,12 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `d11-minijob.mjs` | Minijob, kurzfristig, Übergangsbereich |
 | `d12-lohnrechnung.mts` | Lohnberechnung gegen echte Zeiterfassung |
 | `d13-teilmonat.mjs` | Ein- und Austritte innerhalb des Monats |
+| `d14-beleg-vollstaendig.mjs` | Beleg mit Minijob, Teilmonat, Arbeitgeberanteilen |
+| `d15-jahresabschluss.mjs` | Jahreswerte, Übersicht für den Mitarbeiter |
 | `e-kommunikation.mjs` | Benachrichtigungen, Einspringen, Push |
 | `f-dienstplan.mjs` | Rechenkern, Dienstwünsche, Schichttausch |
+| `f5-regelpakete.mjs` | Regelpakete je Kunde, Freischaltung der Dienstplanung |
+| `g1-dsgvo.mjs` | Auskunft, Löschkonzept, Sperre statt Löschung |
 
 ## Eine neue Prüfung schreiben
 
