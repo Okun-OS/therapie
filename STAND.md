@@ -16,11 +16,15 @@ Zuletzt aktualisiert: **10.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | Lohnabrechnung → eigene Komplettlösung |
-| **Meilenstein** | **1 von 4 erreicht** — die Übergangsversion ist vollständig |
-| **Zuletzt fertig** | Jahresabschluss (Teil 2.2) — Werte für den Berater, Übersicht für den Mitarbeiter |
-| **Als Nächstes** | Meilenstein 2: Teil 3.1 Beitragsnachweis · Teil 2.3 Bescheinigungen |
-| **Danach** | Teil 1.4–1.6 geldwerte Vorteile, bAV, Pfändungen |
+| **Baustelle** | Dienstplanung: Regelpakete und Freischaltung |
+| **Zuletzt fertig** | F5 Regelpakete je Kunde · F6 Freischaltung (11.09.) |
+| **Als Nächstes** | G1/G2 DSGVO — Auskunft, Export, Löschkonzept |
+| **Danach** | E5 Mitarbeiter-Chat · Krankenschein mit Fehlzeit verknüpfen |
+
+> **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
+> Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
+> den Berater, SEPA an die Bank, Jahr abschließen. Gemeldet wird über den
+> Steuerberater — bis zur Zertifizierung (Fahrplan Teil 4/5).
 
 > **Die Übergangsversion ist fertig.** Rechnen, Beleg zustellen, ELStAM
 > nachführen, rückwirkend korrigieren, DATEV an den Berater, SEPA an die Bank,
@@ -40,7 +44,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 | **Abwesenheit** (C) | ✅ fertig, nachgewiesen | Krankenschein mit Fehlzeit verknüpfen |
 | **Lohn** (D) | ✅ Übergangsversion fertig | Beitragsnachweis, Bescheinigungen |
 | **Kommunikation** (E) | ⚠️ E5 fehlt | Mitarbeiter-Chat |
-| **Dienstplanung** (F) | ⚠️ F5/F6 offen | Kundenmodul-Mechanik, Freischaltung je Kunde |
+| **Dienstplanung** (F) | ✅ fertig, nachgewiesen | — |
 | **Grundlagen & Betrieb** (G) | ⚠️ G1/G2 offen | DSGVO: Auskunft und Löschkonzept |
 
 ✅ fertig · 🔨 in Arbeit · ⚠️ offen
@@ -68,10 +72,8 @@ Nach Dringlichkeit, nicht nach Bereich.
 
 ### Sonst offen
 - [ ] **E5 Mitarbeiter-Chat** — fehlt ganz, es gibt nur Support-Tickets
-- [ ] **F5 Kundenmodul-Mechanik** — Entwurf liegt in `solver-service/rulepacks/`,
-      nicht verdrahtet
-- [ ] **F6 Freischaltung je Kunde** — Dienstplanung soll gesperrt sein, bis sie
-      für den Kunden gebaut wurde
+- [x] ~~**F5 Kundenmodul-Mechanik**~~ ✅ — Regelpakete laufen im Rechendienst
+- [x] ~~**F6 Freischaltung je Kunde**~~ ✅ — gesperrt, bis OKUN sie einrichtet
 - [ ] **G1 DSGVO Auskunft und Datenexport** — fehlt
 - [ ] **G2 DSGVO Löschkonzept** — teilweise
 - [ ] **Krankenschein mit Fehlzeit verknüpfen** — Datei liegt in der Akte, die

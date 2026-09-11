@@ -210,6 +210,13 @@ export interface PlanningRuleModel {
   frozenDates?: string[]
   planVariante?: PlanVariante
   customConstraints?: CustomConstraintEntry[]
+  /**
+   * §126 Regelpaket des Standorts — die von OKUN programmierte Dienstplanlogik.
+   * Sie liegt als versionierter Code im Rechendienst, nicht in der Datenbank.
+   * Der Unterschied zu `customConstraints`: die schreibt der Kunde, das Paket
+   * schreiben wir.
+   */
+  rulePackId?: string
   // §72 break rules: presence time above threshold contains an unpaid break,
   // so net working time = presence − deduction. Solver uses NET for all hour math.
   pausenRegeln?: { thresholdMinutes: number; deductionMinutes: number }
@@ -274,6 +281,16 @@ export interface GenerierterPlan {
     angewendet: boolean
     fehler?: string
   }>
+  // §126: das Regelpaket des Kunden — von OKUN programmierte Dienstplanlogik.
+  // `regeln` listet auf, was es wirklich getan hat; ein leeres Protokoll bei
+  // angewendet=true heißt: das Paket lief, hat aber nichts bewirkt.
+  regelpaket?: {
+    id: string
+    name: string
+    angewendet: boolean
+    fehler?: string
+    regeln?: string[]
+  } | null
 }
 
 // §13: PlanningSnapshot — immutable snapshot of a completed planning session

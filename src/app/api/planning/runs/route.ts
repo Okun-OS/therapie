@@ -67,6 +67,27 @@ export async function POST(req: NextRequest) {
   const standortErlaubt = await locationFilter(session, locationId)
   if (standortErlaubt instanceof NextResponse) return standortErlaubt
 
+  // §127 Die Dienstplanung wird je Kunde von Hand gebaut. Bis das Regelpaket
+  // steht, bleibt sie gesperrt — ein Kunde, der ungebaute Dienstplanung
+  // ausprobiert, bekommt einen schlechten Plan und ein falsches Bild vom
+  // Produkt. Genau das ist im August passiert.
+  const standort = await prisma.location.findUnique({
+    where: { id: locationId },
+    select: { name: true, dienstplanungFrei: true, dienstplanungHinweis: true },
+  })
+  if (!standort) {
+    return NextResponse.json({ error: 'Standort nicht gefunden' }, { status: 404 })
+  }
+  if (!standort.dienstplanungFrei && session.role !== 'okun') {
+    return NextResponse.json({
+      error: standort.dienstplanungHinweis
+        || `Die Dienstplanung für „${standort.name}" ist noch nicht freigeschaltet. `
+          + 'Sie wird von OKUN für Ihren Betrieb eingerichtet — melden Sie sich bei uns, '
+          + 'sobald Sie loslegen möchten.',
+      gesperrt: true,
+    }, { status: 423 })
+  }
+
   const planSession = await prisma.planningSession.create({
     data: {
       locationId,

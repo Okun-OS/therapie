@@ -87,6 +87,12 @@ export async function buildRuleModel(
   // Fetch the per-location model to resolve which days to plan.
   // Falls back gracefully to defaults when no LocationModel has been generated yet.
   const locationModel = await getLocationModel(locationId)
+  // §126 Das Regelpaket haengt am Standort — von OKUN programmierte
+  // Dienstplanlogik, die im Rechendienst liegt und nicht in der Datenbank.
+  const standortDaten = await prisma.location.findUnique({
+    where: { id: locationId },
+    select: { rulePackId: true },
+  })
   const betriebsTyp = locationModel?.betriebsTyp ?? 'mon_fri'
   const modelArbeitstage = locationModel?.schichtmodell?.arbeitstage ?? []
   // Explicit arbeitstage array wins; fall back to betriebsTyp-derived days
@@ -518,6 +524,9 @@ export async function buildRuleModel(
     sessionId,
     locationId,
     customerId,
+    // §126 Das Regelpaket dieses Standorts — von OKUN programmierte
+    // Dienstplanlogik, die im Rechendienst liegt und nicht in der Datenbank.
+    rulePackId: standortDaten?.rulePackId ?? undefined,
     zeitraum: { von, bis, arbeitstage },
     einheiten,
     schichten,

@@ -149,9 +149,9 @@ Siehe `PRODUKT-NOTIZEN.md`.
 - [x] **F4 Schichttausch** — nachgewiesen: Anfrage stellen, bestätigen, und die
       Dienste sind danach WIRKLICH getauscht. Nur die angefragte Person darf
       antworten; ein beantworteter Tausch lässt sich nicht erneut beantworten.
-- [ ] **F5 Kundenmodul-Mechanik** — Entwurf liegt unter
+- [x] **F5 Kundenmodul-Mechanik** — fertig. Entwurf lag unter
       `solver-service/rulepacks/`, nicht eingebunden, nicht aktiv
-- [ ] **F6 Freischaltung je Kunde** — **fehlt.** Dienstplanung soll gesperrt sein,
+- [x] **F6 Freischaltung je Kunde** — fertig. Dienstplanung ist gesperrt,
       bis das Kundenmodul abgenommen ist.
 
 ## G · Grundlagen und Betrieb
@@ -695,6 +695,55 @@ Zertifizierung steht (Fahrplan Teil 4 und 5).
 **Nachweis: 351 Checks in 14 Prüfungen am laufenden System, 339 Modultests.**
 
 ---
+
+## Block F5/F6 (11.09.) — Regelpakete und Freischaltung
+
+Das Geschäftsmodell aus `PRODUKT-NOTIZEN.md` war bisher eine Absichtserklärung:
+„Wir programmieren die Dienstplanung je Kunde von Hand." Der Entwurf dafür lag
+seit August im Rechendienst — **verdrahtet war nichts davon.** Kein Feld am
+Standort, kein Aufruf im Solver, kein Kundenverzeichnis, keine Sperre.
+
+### F5 — Regelpakete
+
+- [x] **Die Mechanik läuft.** Ein Standort trägt eine Paket-ID, der Solver lädt
+      das Paket und wendet es an — nach den Custom-Constraints des Kunden, damit
+      es auf ihnen aufbauen kann.
+- [x] **Bausteine statt Einzelstücke** (`rulepacks/bausteine.py`): die Muster,
+      die in vielen Betrieben gleich aussehen — Leitung ohne Gruppe, höchstens
+      N pro Woche, Dienst nur an bestimmten Tagen, immer eine Fachkraft, zwei
+      Personen nie zusammen. Ein Kundenpaket bleibt damit zehn Zeilen lang.
+- [x] **Ein echtes Paket als Muster** (`kunden/kita_sonnenschein.py`) — genau
+      die Fälle, an denen die Planung im August gescheitert ist, mit einem Satz
+      dazu, **warum** der Betrieb es so hält. Dieser Satz ist wichtiger als der
+      Code darunter.
+- [x] **Jede Regel meldet sich laut.** Eine Regel, die niemanden trifft, ist der
+      teuerste Fehler überhaupt — sie sieht aus, als würde sie wirken. Die
+      Sucher werfen einen Fehler statt still nichts zu tun.
+- [x] **Der Verifier prüft das Paket mit.** Ein Paket, das nicht lief, ist eine
+      kritische Verletzung — und eines, das durchlief und **nichts tat**, auch.
+      Der zweite Fall ist der gefährlichere, weil er unauffällig ist.
+- [x] **Eine Paket-ID kann keinen fremden Modulpfad laden** — eigens geprüft.
+- [x] Der Rechendienst meldet seine Pakete in `/version`; die Verwaltung merkt,
+      wenn ein zugeordnetes Paket nach einem Deploy verschwunden ist.
+
+### F6 — Freischaltung
+
+- [x] **Die Dienstplanung ist gesperrt, bis OKUN sie eingerichtet hat.** Ein
+      Kunde, der ungebaute Dienstplanung ausprobiert, bekommt einen schlechten
+      Plan und ein falsches Bild vom Produkt — genau das ist im August passiert.
+- [x] Der Planungslauf antwortet mit HTTP 423 und einem Text, den OKUN je
+      Standort hinterlegen kann („wird gerade eingerichtet, wir melden uns").
+- [x] **Freischalten darf nur OKUN**, weder die Standortleitung noch das
+      Unternehmen. Wer freigeschaltet hat und wann, wird festgehalten.
+- [x] Eine eigene Seite unter `/okun/dienstplanung`.
+- [x] **Bestehende Standorte werden nicht still gesperrt** — sie arbeiten heute
+      damit, und ein stiller Entzug wäre schlimmer als die fehlende Sperre. Nur
+      neue Standorte starten gesperrt.
+
+Nachweis: 24 Python-Tests für die Bausteine — darunter die **Gegenprobe**, dass
+es ohne die Regel mehr Spätdienste gäbe (sonst könnte eine wirkungslose Regel
+einen grünen Test erzeugen). Dazu 4 Tests im Verifier und 21 Prüfungen am
+laufenden System.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

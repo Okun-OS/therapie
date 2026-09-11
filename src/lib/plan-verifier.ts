@@ -280,6 +280,33 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
     }
   }
 
+  // §126: Das Regelpaket des Kunden ist die Dienstplanlogik, für die er bezahlt.
+  // Läuft es nicht, ist der Plan wertlos — auch wenn er rechnerisch aufgeht.
+  const paket = plan.regelpaket
+  if (paket && !paket.angewendet) {
+    verletzungen.push({
+      schwere: 'kritisch',
+      regelId: `paket-${paket.id}`,
+      beschreibung:
+        `Das Regelpaket „${paket.name}" konnte nicht angewendet werden` +
+        `${paket.fehler ? ` (${paket.fehler})` : ''} — der Plan folgt NICHT den ` +
+        'für diesen Betrieb programmierten Regeln.',
+      betrifft: [],
+    })
+  }
+  // Ein Paket, das läuft und nichts tut, ist genauso schlimm wie eines, das
+  // abstürzt — nur unauffälliger.
+  if (paket && paket.angewendet && (paket.regeln?.length ?? 0) === 0) {
+    verletzungen.push({
+      schwere: 'kritisch',
+      regelId: `paket-leer-${paket.id}`,
+      beschreibung:
+        `Das Regelpaket „${paket.name}" lief durch, hat aber keine einzige Regel ` +
+        'angewendet. Entweder ist es leer, oder seine Regeln haben niemanden getroffen.',
+      betrifft: [],
+    })
+  }
+
   // §97: Veralteter Rechendienst — individuelle Regeln können wirkungslos sein,
   // ohne dass ein Fehler auftaucht. Das ist der gefährlichste Zustand überhaupt,
   // weil der Plan völlig unauffällig aussieht.

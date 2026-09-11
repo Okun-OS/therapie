@@ -76,6 +76,62 @@ function makePlan(eintraege: PlanEintrag[]): GenerierterPlan {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
+describe('Regelpaket des Kunden (§126)', () => {
+  // Das Regelpaket ist die Dienstplanlogik, für die der Kunde bezahlt hat.
+  // Läuft es nicht, ist der Plan wertlos — auch wenn er rechnerisch aufgeht.
+  const model = makeModel(
+    [makeEmp('emp1')],
+    [makeSchicht('frueh', '06:00', '14:00')],
+    ['2024-01-08'],
+  )
+  const planMitEintrag = () => makePlan([makeEintrag('emp1', '2024-01-08', 'frueh')])
+
+  it('meldet ein Paket, das nicht angewendet werden konnte, als kritisch', () => {
+    const plan = {
+      ...planMitEintrag(),
+      regelpaket: {
+        id: 'kita_sonnenschein', name: 'Kita Sonnenschein (v1)',
+        angewendet: false, fehler: 'RegelFehler: Person „Franka" nicht gefunden',
+      },
+    }
+    const ergebnis = verifyPlan(plan, model)
+    const treffer = ergebnis.verletzungen.find(v => v.regelId.startsWith('paket-'))
+    expect(treffer?.schwere).toBe('kritisch')
+    expect(treffer?.beschreibung).toContain('Franka')
+  })
+
+  it('meldet ein Paket, das durchläuft aber nichts tut — der unauffällige Fall', () => {
+    const plan = {
+      ...planMitEintrag(),
+      regelpaket: {
+        id: 'leer', name: 'Leeres Paket (v1)', angewendet: true, regeln: [],
+      },
+    }
+    const ergebnis = verifyPlan(plan, model)
+    const treffer = ergebnis.verletzungen.find(v => v.regelId.startsWith('paket-leer-'))
+    expect(treffer?.schwere).toBe('kritisch')
+    expect(treffer?.beschreibung).toContain('keine einzige Regel')
+  })
+
+  it('beanstandet ein Paket nicht, das wirklich gewirkt hat', () => {
+    const plan = {
+      ...planMitEintrag(),
+      regelpaket: {
+        id: 'kita_sonnenschein', name: 'Kita Sonnenschein (v1)',
+        angewendet: true,
+        regeln: ['Franka wird keiner Gruppe zugeordnet.', 'Höchstens 1× „spät" je Woche.'],
+      },
+    }
+    const ergebnis = verifyPlan(plan, model)
+    expect(ergebnis.verletzungen.filter(v => v.regelId.startsWith('paket-'))).toHaveLength(0)
+  })
+
+  it('beanstandet nichts, wenn der Standort gar kein Paket hat', () => {
+    const ergebnis = verifyPlan(planMitEintrag(), model)
+    expect(ergebnis.verletzungen.filter(v => v.regelId.startsWith('paket-'))).toHaveLength(0)
+  })
+})
+
 describe('verifyPlan', () => {
   // ── Empty plan ──────────────────────────────────────────────────────────────
   describe('empty plan', () => {

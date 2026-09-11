@@ -321,6 +321,25 @@ model Location {
   adminId       String
   bereichId     String?
   active        Boolean  @default(true)
+
+  // §126 Regelpaket: die von OKUN fuer diesen Standort programmierte
+  // Dienstplanlogik. Die ID ist der Dateiname im Rechendienst.
+  rulePackId    String?
+
+  // §127 Freischaltung der Dienstplanung.
+  //
+  // Das Geschaeftsmodell: alles ausser der Dienstplanung ist Standard und
+  // laeuft sofort. Die Dienstplanung wird je Kunde von Hand gebaut — bis dahin
+  // bleibt sie gesperrt. Ein Kunde, der ungebaute Dienstplanung ausprobiert,
+  // bekommt einen schlechten Plan und ein falsches Bild vom Produkt.
+  //
+  // Freischalten darf nur OKUN, nicht der Kunde.
+  dienstplanungFrei      Boolean   @default(false)
+  dienstplanungFreiSeit  String?
+  dienstplanungFreiVon   String?
+  /// Was dem Kunden angezeigt wird, solange gesperrt ist
+  dienstplanungHinweis   String?
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

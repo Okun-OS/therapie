@@ -173,6 +173,7 @@ const okunDock: DockItem[] = [
       title: 'Plattform-Verwaltung',
       sections: [
         { items: [
+          { href: '/okun/dienstplanung', label: 'Dienstplanung einrichten', description: 'Regelpakete zuordnen und freischalten', icon: '🗓️' },
           { href: '/okun/test-accounts', label: 'Testzugänge', description: 'Demo-Konten verwalten', icon: '🔑' },
           { href: '/okun/invitations',   label: 'Einladungen', description: 'Zugänge versenden',      icon: '✉️' },
         ]},

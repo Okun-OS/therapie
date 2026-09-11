@@ -55,6 +55,9 @@ async function main() {
     { email: 'gf@rheinblick-reha.de',        name: 'Geschäftsführung Reha', role: 'company', customerId: reha.id },
     { email: 'leitung@rheinblick-reha.de',   name: 'Leitung Reha',          role: 'admin',   customerId: reha.id },
     { email: 'leitung@kita-sonnenschein.de', name: 'Leitung Kita',          role: 'admin',   customerId: kitaKunde.id },
+    // §127 Nur OKUN schaltet die Dienstplanung frei und ordnet Regelpakete zu.
+    // Ohne diesen Zugang lässt sich das gar nicht nachweisen.
+    { email: 'okun@okun.de',                 name: 'OKUN Plattform',        role: 'okun',    customerId: null },
   ]
   const nutzer: Record<string, string> = {}
   for (const z of zugaenge) {

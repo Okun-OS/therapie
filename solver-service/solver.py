@@ -26,6 +26,9 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta
 
+from rulepacks import apply_pack, verfuegbare_pakete
+from rulepacks.context import PlanKontext
+
 log = logging.getLogger("solver")
 
 SHIFT_TYPE_LOAD: dict[str, str] = {
@@ -100,7 +103,7 @@ def _streak_before_period(emp: dict, first_plan_day: str) -> int:
 #
 # SOLVER_VERSION bei jeder Änderung erhöhen, die den Regel-Code betrifft.
 # SANDBOX_VARS listet die Variablen, die generierter Regel-Code verwenden darf.
-SOLVER_VERSION = 98
+SOLVER_VERSION = 99
 
 # §98: Standardfunktionen, die Regel-Code verwenden darf.
 # Zu eng gefasst war die Sandbox selbst der Fehler: fehlte etwa str(), scheiterte
@@ -130,6 +133,7 @@ SOLVER_FEATURES = [
     "regel-report",     # §96 gescheiterte Regeln werden gemeldet
     "feste-zeiten",     # §96 keine gekürzten Dienstfenster mehr
     "stundenbilanz",    # §96 Soll/Ist der Wochenstunden
+    "regelpakete",      # §126 von OKUN programmierte Dienstplanlogik je Kunde
 ]
 
 
@@ -139,6 +143,10 @@ def capabilities() -> dict:
         "sandboxVars": SANDBOX_VARS,
         "features": SOLVER_FEATURES,
         "safeBuiltins": sorted(SAFE_BUILTINS.keys()),
+        # §126 Welche Regelpakete hinterlegt sind. Die App braucht das, um sie
+        # einem Standort zuordnen zu koennen — und um zu merken, wenn ein
+        # zugeordnetes Paket nach einem Deploy verschwunden ist.
+        "rulePacks": verfuegbare_pakete(),
     }
 
 
@@ -525,6 +533,19 @@ def solve(rule_model: dict) -> dict:
         G=G, gruppen=gruppen, n_groups=n_groups,
         weeks=list(weeks.values()),
     )
+
+    # §126 Regelpaket des Kunden — von OKUN programmierte Dienstplanlogik.
+    # Es läuft NACH den Custom-Constraints: was der Kunde selbst eingestellt hat,
+    # steht schon im Modell, und das Paket kann darauf aufbauen.
+    kontext = PlanKontext(
+        model=model, X=X, G=G,
+        employees=employees, shifts=shifts,
+        gruppen=gruppen, etagen=rule_model.get("etagen") or [],
+        days=days,
+        weekdays=[date.fromisoformat(d).weekday() for d in days],
+        weeks=list(weeks.values()),
+    )
+    pack_report = apply_pack(rule_model.get("rulePackId"), kontext)
 
     # H3: Legal max weekly hours (NET working minutes, §72)
     for ei in range(n_emp):
@@ -1027,6 +1048,7 @@ def solve(rule_model: dict) -> dict:
         "whyNotAssigned": why_not_assigned,  # §68
         "stundenbilanz": stundenbilanz,      # §96
         "regelReport": constraint_report,    # §96: welche Regeln wirklich griffen
+        "regelpaket": pack_report,           # §126: das Kundenpaket und was es tat
         "metadaten": {
             "erstelltAm": datetime.utcnow().isoformat() + "Z",
             "solver": solver_tag,
