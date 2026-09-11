@@ -142,6 +142,8 @@ export const DATEI_FELDER = {
   sichtbarFuerMitarbeiter: true,
   hochgeladenVon: true, hochgeladenVonName: true,
   notiz: true, gueltigVon: true, gueltigBis: true,
+  // §130 Zu welcher Fehlzeit der Nachweis gehoert — die Liste zeigt es an
+  absenceId: true,
   createdAt: true,
 } as const
 

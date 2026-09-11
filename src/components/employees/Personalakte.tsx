@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/lib/toast-context'
-import { FileText, Upload, Trash2, Eye, EyeOff, Loader2, Image as ImageIcon, Download } from 'lucide-react'
+import { FileText, Upload, Trash2, Eye, EyeOff, Loader2, Image as ImageIcon, Download, Link2, Stethoscope } from 'lucide-react'
 
 interface Datei {
   id: string
@@ -25,8 +25,22 @@ interface Datei {
   notiz?: string | null
   gueltigVon?: string | null
   gueltigBis?: string | null
+  absenceId?: string | null
   createdAt: string
 }
+
+// §130 Die Fehlzeiten der Person — eine Krankmeldung gehoert zu einer von ihnen.
+interface Fehlzeit {
+  id: string
+  type: string
+  startDate: string
+  endDate: string
+  days: number
+}
+
+const NACHWEISPFLICHTIG = ['krankheit', 'krank']
+
+const kurz = (iso: string) => iso.split('-').reverse().join('.')
 
 const KATEGORIE_TEXT: Record<string, string> = {
   vertrag: 'Arbeitsvertrag',
@@ -70,6 +84,13 @@ export function Personalakte({
   const [kategorie, setKategorie] = useState(verwalten ? 'vertrag' : 'krankenschein')
   const dateiFeld = useRef<HTMLInputElement>(null)
 
+  // §130 Krankmeldung und Fehlzeit gehoeren zusammen. Beim Einreichen wird der
+  // Zeitraum der Bescheinigung mitgegeben — damit ordnet der Server sie der
+  // richtigen Fehlzeit zu, ohne dass jemand zwei Listen vergleichen muss.
+  const [gueltigVon, setGueltigVon] = useState('')
+  const [gueltigBis, setGueltigBis] = useState('')
+  const [fehlzeiten, setFehlzeiten] = useState<Fehlzeit[]>([])
+
   const kategorien = verwalten ? KATEGORIEN_LEITUNG : KATEGORIEN_MITARBEITER
 
   const laden_ = useCallback(async () => {
@@ -84,6 +105,16 @@ export function Personalakte({
 
   useEffect(() => { laden_() }, [laden_])
 
+  useEffect(() => {
+    if (ownerType !== 'employee') return
+    fetch(`/api/absences?employeeId=${ownerId}`)
+      .then(r => r.ok ? r.json() : { absences: [] })
+      .then(d => setFehlzeiten(
+        (d.absences ?? []).filter((a: Fehlzeit) => NACHWEISPFLICHTIG.includes(a.type)),
+      ))
+      .catch(() => setFehlzeiten([]))
+  }, [ownerType, ownerId])
+
   const hochladen = async (datei: File) => {
     setLaedtHoch(true)
     try {
@@ -92,11 +123,25 @@ export function Personalakte({
       form.append('ownerType', ownerType)
       form.append('ownerId', ownerId)
       form.append('kategorie', kategorie)
+      if (kategorie === 'krankenschein') {
+        if (gueltigVon) form.append('gueltigVon', gueltigVon)
+        if (gueltigBis) form.append('gueltigBis', gueltigBis)
+      }
       const res = await fetch('/api/files', { method: 'POST', body: form })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { showToast(d.error ?? 'Hochladen fehlgeschlagen', 'error'); return }
       setDateien(prev => [d.datei, ...prev])
-      showToast(verwalten ? 'Dokument abgelegt' : 'Eingereicht — die Leitung sieht es jetzt', 'success')
+      setGueltigVon(''); setGueltigBis('')
+
+      // Der Hinweis sagt, was tatsaechlich passiert ist. "Eingereicht" allein
+      // laesst offen, ob die Bescheinigung auch angekommen ist, wo sie hin soll.
+      if (d.zuordnung?.zugeordnet) {
+        showToast('Eingereicht und der passenden Fehlzeit zugeordnet', 'success')
+      } else if (kategorie === 'krankenschein' && (d.zuordnung?.vorschlaege?.length ?? 0) > 0) {
+        showToast('Eingereicht — bitte unten noch die Fehlzeit auswählen', 'success')
+      } else {
+        showToast(verwalten ? 'Dokument abgelegt' : 'Eingereicht — die Leitung sieht es jetzt', 'success')
+      }
     } catch {
       showToast('Hochladen fehlgeschlagen', 'error')
     } finally {
@@ -115,6 +160,21 @@ export function Personalakte({
     if (!res.ok) { showToast('Änderung fehlgeschlagen', 'error'); return }
     setDateien(prev => prev.map(x => x.id === d.id ? { ...x, sichtbarFuerMitarbeiter: neu } : x))
     showToast(neu ? 'Für den Mitarbeiter sichtbar' : 'Nicht mehr sichtbar', 'success')
+  }
+
+  const zuordnen = async (d: Datei, absenceId: string | null) => {
+    const res = await fetch(`/api/files/${d.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ absenceId }),
+    })
+    if (!res.ok) {
+      const f = await res.json().catch(() => ({}))
+      showToast(f.error ?? 'Zuordnung fehlgeschlagen', 'error')
+      return
+    }
+    setDateien(prev => prev.map(x => x.id === d.id ? { ...x, absenceId } : x))
+    showToast(absenceId ? 'Der Fehlzeit zugeordnet' : 'Zuordnung gelöst', 'success')
   }
 
   const loeschen = async (d: Datei) => {
@@ -160,6 +220,36 @@ export function Personalakte({
         <span className="text-[11px] text-gray-400">PDF oder Bild, max. 10 MB</span>
       </div>
 
+      {/*
+        §130 Der Zeitraum der Bescheinigung. Ohne ihn laesst sich nicht sagen,
+        ob eine Fehlzeit gedeckt ist — eine dreiwoechige Krankheit mit einer
+        Bescheinigung ueber eine Woche saehe sonst genauso aus wie eine
+        vollstaendig belegte.
+      */}
+      {kategorie === 'krankenschein' && (
+        <div className="flex flex-wrap items-end gap-2 mb-4 -mt-2">
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-0.5">
+              Arbeitsunfähig von
+            </label>
+            <input
+              type="date" value={gueltigVon} onChange={e => setGueltigVon(e.target.value)}
+              className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-0.5">
+              bis
+            </label>
+            <input
+              type="date" value={gueltigBis} onChange={e => setGueltigBis(e.target.value)}
+              className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5" />
+          </div>
+          <span className="text-[11px] text-gray-400 pb-1.5">
+            Steht auf der Bescheinigung. Damit wird sie der richtigen Fehlzeit zugeordnet.
+          </span>
+        </div>
+      )}
+
       {/* Liste */}
       {laden ? (
         <p className="text-xs text-gray-400">Wird geladen…</p>
@@ -198,7 +288,34 @@ export function Personalakte({
                   <p className="text-[11px] text-gray-400">
                     {datumText(d.createdAt)} · {groesseText(d.groesse)}
                     {d.hochgeladenVonName ? ` · ${d.hochgeladenVonName}` : ''}
+                    {d.gueltigVon && d.gueltigBis
+                      ? ` · arbeitsunfähig ${kurz(d.gueltigVon)}–${kurz(d.gueltigBis)}`
+                      : ''}
                   </p>
+
+                  {/* §130 Wozu diese Krankmeldung gehoert */}
+                  {d.kategorie === 'krankenschein' && ownerType === 'employee' && (
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <Link2 size={11} className="text-gray-400 shrink-0" />
+                      <select
+                        value={d.absenceId ?? ''}
+                        onChange={e => zuordnen(d, e.target.value || null)}
+                        className="text-[11px] border border-gray-200 rounded-lg px-1.5 py-0.5 max-w-full"
+                      >
+                        <option value="">— keiner Fehlzeit zugeordnet —</option>
+                        {fehlzeiten.map(f => (
+                          <option key={f.id} value={f.id}>
+                            {kurz(f.startDate)}–{kurz(f.endDate)} ({f.days} Tage)
+                          </option>
+                        ))}
+                      </select>
+                      {!d.absenceId && fehlzeiten.length === 0 && (
+                        <span className="text-[10px] text-amber-700">
+                          Für diese Zeit ist noch keine Fehlzeit gemeldet.
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <a

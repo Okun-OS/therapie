@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/lib/toast-context'
-import { Building2, Clock, Palmtree, CheckCircle2, Mail } from 'lucide-react'
+import { Building2, Clock, Palmtree, CheckCircle2, Mail, Stethoscope } from 'lucide-react'
 import type { OrgSettings } from '@/lib/types'
 
 const DEFAULT_SETTINGS: OrgSettings = {
@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS: OrgSettings = {
   defaultVacationDaysPerYear: 30,
   autoApproveVacationUnderDays: 0,
   notificationEmail: '',
+  auNachweisAbTag: null,
 }
 
 export default function CompanySettings() {
@@ -144,6 +145,30 @@ export default function CompanySettings() {
             min={0}
             value={form.autoApproveVacationUnderDays}
             onChange={e => setForm(f => ({ ...f, autoApproveVacationUnderDays: Number(e.target.value) }))}
+          />
+        </Card>
+
+        {/*
+          §130 §5 Abs.1 EntgFG: die Bescheinigung ist spaetestens am vierten
+          Kalendertag vorzulegen. Satz 3 erlaubt dem Arbeitgeber, sie frueher zu
+          verlangen — das steht dann im Arbeitsvertrag. Deshalb einstellbar und
+          nicht einprogrammiert.
+        */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Stethoscope size={16} className="text-navy" />
+              <CardTitle>Krankmeldung</CardTitle>
+            </div>
+          </CardHeader>
+          <Input
+            label="Bescheinigung verlangen ab dem … Kalendertag"
+            hint="Das Gesetz verlangt sie spätestens ab dem 4. Kalendertag (§5 Abs.1 EntgFG). Sie dürfen sie früher verlangen — dann muss das im Arbeitsvertrag stehen. Gezählt werden Kalendertage, nicht Arbeitstage: Wer Freitag krank wird und Montag noch krank ist, ist am vierten Tag."
+            type="number"
+            min={1}
+            max={7}
+            value={form.auNachweisAbTag ?? 4}
+            onChange={e => setForm(f => ({ ...f, auNachweisAbTag: Number(e.target.value) }))}
           />
         </Card>
 

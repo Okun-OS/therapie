@@ -200,6 +200,19 @@ export interface Absence {
   verifiedBy?: string
   verifiedAt?: string
   submittedAt: string
+  // §130 Wie es um die Arbeitsunfaehigkeitsbescheinigung steht. Wird vom
+  // Server aus den verknuepften Dateien abgeleitet, nicht von Hand gepflegt.
+  nachweisLage?: NachweisLageDaten
+}
+
+/** §130 Siehe src/lib/krankmeldung.ts — hier nur die Form fuer die Oberflaeche. */
+export interface NachweisLageDaten {
+  pflicht: { pflichtig: boolean; spaetestensAm: string | null; begruendung: string }
+  anzahlNachweise: number
+  ohneZeitraum: number
+  luecken: { von: string; bis: string; tage: number }[]
+  deckung: 'vollstaendig' | 'teilweise' | 'keine' | 'nicht_noetig'
+  text: string
 }
 
 // ─── Stundenkonto / Monatsabschluss ───────────────────────────────────────────
@@ -501,4 +514,7 @@ export interface OrgSettings {
   kontoinhaber?: string | null
   datevBeraternummer?: string | null
   datevMandantennummer?: string | null
+  // §130 Ab dem wievielten Kalendertag der Betrieb die
+  // Arbeitsunfaehigkeitsbescheinigung verlangt. Leer = die gesetzlichen vier.
+  auNachweisAbTag?: number | null
 }

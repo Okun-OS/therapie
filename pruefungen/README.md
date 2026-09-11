@@ -45,6 +45,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `a-mitarbeiter.mjs` | Stammdaten, Rollen, Einladungen, Kollegensicht |
 | `b-zeit.mjs` | Zeiterfassung, Überstunden, Monatsabschluss |
 | `c-abwesenheit.mjs` | Urlaub, Krankheit, Schließzeiten |
+| `c2-krankenschein.mjs` | Krankenschein und Fehlzeit, Fristen, Lücken |
 | `d-lohn.mjs` | Beleg, Zustellung, DATEV, SEPA |
 | `d8-elstam.mjs` | ELStAM-Stand, Warnung, Import der Änderungsliste |
 | `d9-aufrollung.mjs` | Rückwirkende Änderungen, Korrekturen, `/api/payroll` |

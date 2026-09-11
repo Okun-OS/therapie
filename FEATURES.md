@@ -67,10 +67,11 @@ aussieht.
       eigene Urlaubswünsche hinterlegen; nicht für Kollegen, nicht am fremden Standort.
 - [x] **C3 Urlaubsregeln** — nachgewiesen. Nur die eigene Leitung setzt sie;
       unvollständige Angaben werden verständlich abgelehnt statt mit HTTP 500.
-- [x] **C4 Abwesenheiten** — nachgewiesen: erfassen und korrigieren, nicht auf
-      fremden Namen, nicht durch eine fremde Leitung. Der Krankenschein selbst
-      liegt in der Personalakte (A6); die Verknüpfung von Schein und Fehlzeit
-      steht noch aus und ist als eigener Punkt vermerkt.
+- [x] **C4 Abwesenheiten** — nachgewiesen: erfassen, korrigieren und entfernen,
+      nicht auf fremden Namen, nicht durch eine fremde Leitung.
+- [x] **C6 Krankenschein und Fehlzeit** — fertig. Die Bescheinigung wird beim
+      Einreichen der passenden Fehlzeit zugeordnet, Lücken werden benannt, die
+      Frist nach §5 EntgFG ist einstellbar. Siehe Block C6 unten.
 - [x] **C5 Schließzeiten** — nachgewiesen: anlegen, löschen, Ende-vor-Beginn
       wird abgewiesen; eine fremde Leitung kann weder lesen noch anlegen noch löschen.
 
@@ -163,7 +164,7 @@ Siehe `PRODUKT-NOTIZEN.md`.
 - [x] **G2 DSGVO: Löschkonzept** — fertig. Katalog über alle 35 Tabellen mit
       Personenbezug, Vorschau vor jeder Löschung, Sperre statt Löschung wo das
       Gesetz es verlangt, Löschbericht als Nachweis. Siehe Block G1/G2 unten.
-- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 496 Nachweise im
+- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 546 Nachweise im
       Repo unter `pruefungen/`, ein Befehl (`npm run pruefen`), automatischer
       Lauf bei jedem Push. Siehe Block G3 unten.
       `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
@@ -900,6 +901,61 @@ das Datenmodell genau das vorsieht (`reassignLocationAdmin` setzt
 schreiben. Im Seed nachgetragen, zusammen mit drei weiteren Mitarbeiterzugängen
 — ohne die lässt sich ein Chat gar nicht prüfen.
 
+## Block C6 (11.09.) — Krankenschein und Fehlzeit verbunden
+
+Beide lagen nebeneinander und wussten nichts voneinander: die
+Arbeitsunfähigkeitsbescheinigung als Datei in der Personalakte, die Fehlzeit als
+Eintrag im Kalender. An der Fehlzeit stand ein von Hand gesetztes „Nachweis
+vorhanden: ja/nein" — und das stimmte irgendwann nicht mehr.
+
+### Der teure Fall ist nicht die fehlende Bescheinigung
+Sondern die **unvollständige**: drei Wochen krank, eine Bescheinigung über eine
+Woche. Vorher sah das aus wie eine vollständig belegte Fehlzeit. Jetzt wird
+ausgerechnet, welche Tage gedeckt sind, und die Lücke benannt: „Für 11.04. bis
+20.04. fehlt noch eine Bescheinigung (10 Tage) — in der Regel die
+Folgebescheinigung."
+
+- [x] **Zuordnung beim Einreichen.** Der Mitarbeiter gibt den Zeitraum der
+      Bescheinigung an; passt genau eine Fehlzeit, wird verbunden.
+- [x] **Bei mehreren wird gefragt, nicht geraten.** Eine falsch zugeordnete
+      Bescheinigung ist schlimmer als eine nicht zugeordnete, weil sie eine
+      Lücke zudeckt, die dann niemand mehr sieht.
+- [x] **Erst- und Folgebescheinigung** werden zusammengesetzt; eine Fehlzeit
+      kann beliebig viele Nachweise haben.
+- [x] **„Nachweis vorhanden" wird abgeleitet, nicht gepflegt.** Es ist das
+      Ergebnis daraus, ob Dateien verknüpft sind, und wird bei jeder Änderung —
+      auch beim Löschen einer Datei — neu bestimmt.
+- [x] **Eine Datei ohne Gültigkeitszeitraum deckt nichts ab** und wird auch so
+      angezeigt. Sie stillschweigend anzurechnen wäre der gefährlichere Weg.
+- [x] Die Leitung sieht die Bescheinigungen direkt an der Fehlzeit und kann sie
+      dort öffnen; der Mitarbeiter sieht selbst, ob seine Fehlzeit gedeckt ist.
+
+### Ab wann eine Bescheinigung verlangt wird
+§5 Abs.1 EntgFG: spätestens ab dem **vierten Kalendertag**. Gerechnet wird in
+Kalendertagen, nicht in Arbeitstagen — wer Freitag krank wird und Montag noch
+krank ist, ist am vierten Tag, auch wenn nur zwei davon Arbeitstage waren. Genau
+hier wird sonst falsch gerechnet.
+
+Satz 3 erlaubt dem Arbeitgeber, sie früher zu verlangen. Das steht im
+Arbeitsvertrag und ist deshalb **einstellbar** (Unternehmenseinstellungen),
+nicht einprogrammiert.
+
+### Nebenbei geschlossen: Fehlzeiten löschen
+Eine versehentlich erfasste Krankmeldung ließ sich bisher nur umdeuten, nicht
+entfernen — wer sich im Mitarbeiter vertippt hatte, hinterließ eine Krankheit
+bei einer Person, die nie krank war. Das fließt in Fehlzeitenquoten und in die
+Lohnabrechnung ein. Jetzt entfernbar; die eingereichten Bescheinigungen bleiben
+dabei in der Personalakte und verlieren nur ihre Zuordnung.
+
+### Bewusst nicht
+Die **elektronische AU (eAU)** bei der Krankenkasse abrufen. Das läuft über ein
+zertifiziertes Verfahren, das wir nicht haben — dasselbe Thema wie beim
+Meldewesen. Bis dahin reicht der Mitarbeiter seine Bescheinigung ein, so wie er
+es heute auch tut.
+
+Nachweis: 50 Prüfungen am laufenden System (`pruefungen/c2-krankenschein.mjs`)
+und 25 Modultests für die Fristen- und Lückenrechnung.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:
@@ -924,6 +980,4 @@ meldet.** Kein einziger externer Zugang nötig.
   Vorgang, nicht nebenbei.
 
 ## Noch offen aus der Nachweis-Phase
-- [ ] **Krankenschein mit Fehlzeit verknüpfen** — die Datei liegt in der
-      Personalakte, die Abwesenheit im Kalender; beides ist noch nicht
-      miteinander verbunden.
+- [x] **Krankenschein mit Fehlzeit verknüpfen** — fertig. Siehe Block C6 oben.

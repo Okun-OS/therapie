@@ -728,6 +728,15 @@ model OrgSettings {
   datevBeraternummer           String?
   datevMandantennummer         String?
 
+  // §130 Ab dem wievielten Kalendertag der Betrieb die
+  // Arbeitsunfaehigkeitsbescheinigung verlangt.
+  //
+  // §5 Abs.1 EntgFG sagt: spaetestens ab dem vierten. Satz 3 erlaubt dem
+  // Arbeitgeber, sie frueher zu verlangen — das steht dann im Arbeitsvertrag.
+  // Deshalb einstellbar und nicht einprogrammiert. Leer = die gesetzlichen
+  // vier Tage.
+  auNachweisAbTag              Int?
+
   updatedAt                    DateTime @updatedAt
 }
 
@@ -1420,6 +1429,14 @@ model StoredFile {
   // ein sofortiges Verschwinden wäre in vielen Fällen unzulässig.
   deletedAt DateTime?
 
+  // §130 Zu welcher Fehlzeit dieser Nachweis gehoert.
+  //
+  // Eine Fehlzeit kann mehrere haben: Erst- und Folgebescheinigung sind der
+  // Normalfall, nicht die Ausnahme. Deshalb haengt die Verbindung an der Datei
+  // und nicht an der Abwesenheit.
+  absenceId String?
+
+  @@index([absenceId])
   @@index([ownerType, ownerId])
   @@index([customerId])
   @@index([locationId])

@@ -7,6 +7,7 @@ import {
   MITARBEITER_DARF_HOCHLADEN, KATEGORIEN, MAX_DATEI_BYTES,
   type Kategorie,
 } from '@/lib/file-storage'
+import { automatischZuordnen, verknuepfen } from '@/lib/krankmeldung'
 
 export const dynamic = 'force-dynamic'
 
@@ -128,5 +129,44 @@ export async function POST(req: NextRequest) {
       : sichtbarRoh === 'true',
   })
 
-  return NextResponse.json({ datei: gespeichert }, { status: 201 })
+  // §130 Ein Krankenschein gehört zu einer Fehlzeit.
+  //
+  // Bisher landete er als Datei in der Akte und die Fehlzeit stand im Kalender
+  // — verbunden war nichts. Wer wissen wollte, ob für die Krankheit vom 2. bis
+  // 6. März ein Nachweis vorliegt, musste zwei Listen von Hand vergleichen.
+  //
+  // Zugeordnet wird nur, wenn es eindeutig ist. Passen mehrere Fehlzeiten, wird
+  // gefragt: eine falsch zugeordnete Bescheinigung ist schlimmer als eine nicht
+  // zugeordnete, weil sie eine Lücke zudeckt, die dann niemand mehr sieht.
+  let zuordnung: {
+    zugeordnet: string | null
+    vorschlaege: { id: string; startDate: string; endDate: string; type: string }[]
+  } | undefined
+
+  if (kategorie === 'krankenschein' && ownerType === 'employee') {
+    const gewuenscht = (form.get('absenceId') as string) || null
+    if (gewuenscht) {
+      const passt = await prisma.absence.findFirst({
+        where: { id: gewuenscht, employeeId: ownerId },
+        select: { id: true },
+      })
+      if (!passt) {
+        return NextResponse.json(
+          { error: 'Diese Fehlzeit gehört nicht zu dieser Person.' }, { status: 400 },
+        )
+      }
+      await verknuepfen(gespeichert.id, gewuenscht)
+      zuordnung = { zugeordnet: gewuenscht, vorschlaege: [] }
+    } else {
+      zuordnung = await automatischZuordnen(
+        gespeichert.id, ownerId,
+        gespeichert.gueltigVon, gespeichert.gueltigBis,
+      )
+    }
+  }
+
+  return NextResponse.json(
+    { datei: { ...gespeichert, absenceId: zuordnung?.zugeordnet ?? null }, zuordnung },
+    { status: 201 },
+  )
 }

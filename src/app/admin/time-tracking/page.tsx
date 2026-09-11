@@ -13,6 +13,7 @@ import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing, TimeLog, Em
 import {
   AlertCircle, CheckCircle, XCircle, Clock, Stethoscope, FileText, ChevronDown, ChevronUp,
   MessageSquare, ShieldCheck, ShieldX, Pencil, CalendarPlus, AlertTriangle, Printer,
+  Download, Paperclip,
 } from 'lucide-react'
 import { formatDate, formatTime } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -47,6 +48,12 @@ export default function AdminTimeTracking() {
 
   const [absences, setAbsences] = useState<Absence[]>([])
   const openAbsenceCount = absences.filter(a => a.verificationStatus === 'offen').length
+
+  // §130 Die Arbeitsunfaehigkeitsbescheinigungen zur geoeffneten Fehlzeit.
+  const [nachweise, setNachweise] = useState<{
+    id: string; dateiname: string; gueltigVon: string | null; gueltigBis: string | null
+    hochgeladenVonName: string | null; createdAt: string
+  }[]>([])
 
   const loadOvertimeRequests = () => {
     if (!locationId) return
@@ -162,6 +169,20 @@ export default function AdminTimeTracking() {
     })
     setSelectedAbsence(null)
     showToast('Abwesenheit aktualisiert', 'success')
+    loadAbsences()
+  }
+
+  const handleDeleteAbsence = async () => {
+    if (!selectedAbsence) return
+    if (!confirm(
+      `Die Fehlzeit von ${selectedAbsence.employeeName} vom `
+      + `${formatDate(selectedAbsence.startDate)} bis ${formatDate(selectedAbsence.endDate)} `
+      + 'wirklich entfernen? Eingereichte Bescheinigungen bleiben in der Personalakte.',
+    )) return
+    const res = await fetch(`/api/absences/${selectedAbsence.id}`, { method: 'DELETE' })
+    if (!res.ok) { showToast('Entfernen fehlgeschlagen', 'error'); return }
+    setSelectedAbsence(null)
+    showToast('Fehlzeit entfernt', 'success')
     loadAbsences()
   }
 
@@ -359,14 +380,40 @@ export default function AdminTimeTracking() {
                     <div
                       key={absence.id}
                       className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-                      onClick={() => setSelectedAbsence(absence)}
+                      onClick={() => {
+                        setSelectedAbsence(absence)
+                        setNachweise([])
+                        fetch(`/api/absences/${absence.id}/nachweise`)
+                          .then(r => r.ok ? r.json() : { nachweise: [] })
+                          .then(d => setNachweise(d.nachweise ?? []))
+                          .catch(() => setNachweise([]))
+                      }}
                     >
                       <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
                         <Stethoscope size={16} className="text-purple-600" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-navy">{absence.employeeName} · {ABSENCE_TYPE_LABEL[absence.type]}</p>
-                        <p className="text-xs text-gray-500">{formatDate(absence.startDate)} – {formatDate(absence.endDate)} ({absence.days} Tage){absence.proofProvided ? ' · Nachweis vorhanden' : ''}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDate(absence.startDate)} – {formatDate(absence.endDate)} ({absence.days} Tage)
+                        </p>
+                        {/*
+                          §130 Statt "Nachweis vorhanden: ja/nein" die tatsaechliche
+                          Lage. Eine dreiwoechige Krankheit mit einer Bescheinigung
+                          ueber eine Woche sah vorher aus wie eine vollstaendig belegte.
+                        */}
+                        {absence.nachweisLage && absence.nachweisLage.deckung !== 'nicht_noetig' && (
+                          <p className={`text-[11px] mt-0.5 ${
+                            absence.nachweisLage.deckung === 'vollstaendig'
+                              ? 'text-green-700'
+                              : 'text-amber-700 font-semibold'}`}>
+                            {absence.nachweisLage.deckung === 'vollstaendig'
+                              ? '✓ Bescheinigung vollständig'
+                              : absence.nachweisLage.deckung === 'teilweise'
+                                ? '! Bescheinigung deckt nicht alles ab'
+                                : '! Keine Bescheinigung'}
+                          </p>
+                        )}
                       </div>
                       <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
                     </div>
@@ -541,7 +588,53 @@ export default function AdminTimeTracking() {
               <p className="text-gray-600 text-sm mt-1">{ABSENCE_TYPE_LABEL[selectedAbsence.type]}</p>
               <p className="text-gray-500 text-sm">{formatDate(selectedAbsence.startDate)} – {formatDate(selectedAbsence.endDate)} ({selectedAbsence.days} Tage)</p>
               {selectedAbsence.note && <p className="text-sm text-gray-600 mt-2 italic">&bdquo;{selectedAbsence.note}&ldquo;</p>}
-              <p className="text-xs text-gray-400 mt-2">{selectedAbsence.proofProvided ? 'Nachweis liegt vor' : 'Kein Nachweis hinterlegt'}</p>
+            </div>
+
+            {/* §130 Die Bescheinigungen zu dieser Fehlzeit */}
+            <div className="rounded-2xl border border-gray-100 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Paperclip size={14} className="text-gray-400" />
+                <p className="text-sm font-semibold text-navy flex-1">Arbeitsunfähigkeitsbescheinigung</p>
+              </div>
+              {selectedAbsence.nachweisLage && (
+                <p className={`text-xs ${
+                  selectedAbsence.nachweisLage.deckung === 'vollstaendig'
+                    ? 'text-green-700'
+                    : selectedAbsence.nachweisLage.deckung === 'nicht_noetig'
+                      ? 'text-gray-500'
+                      : 'text-amber-700'}`}>
+                  {selectedAbsence.nachweisLage.text}
+                </p>
+              )}
+              {nachweise.length > 0 && (
+                <div className="divide-y divide-gray-100">
+                  {nachweise.map(n => (
+                    <div key={n.id} className="flex items-center gap-2 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-navy truncate">{n.dateiname}</p>
+                        <p className="text-[11px] text-gray-400">
+                          {n.gueltigVon && n.gueltigBis
+                            ? `${formatDate(n.gueltigVon)} – ${formatDate(n.gueltigBis)}`
+                            : 'ohne Gültigkeitszeitraum — deckt nichts ab'}
+                          {n.hochgeladenVonName ? ` · ${n.hochgeladenVonName}` : ''}
+                        </p>
+                      </div>
+                      <a
+                        href={`/api/files/${n.id}`} target="_blank" rel="noreferrer"
+                        title="Bescheinigung öffnen"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-brand hover:bg-gray-50"
+                      >
+                        <Download size={13} />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedAbsence.nachweisLage?.pflicht.spaetestensAm && nachweise.length === 0 && (
+                <p className="text-[11px] text-gray-400">
+                  Vorzulegen bis {formatDate(selectedAbsence.nachweisLage.pflicht.spaetestensAm)}.
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-semibold text-navy mb-1.5">Art ändern</label>
@@ -567,6 +660,18 @@ export default function AdminTimeTracking() {
                 Geprüft
               </Button>
             </div>
+
+            {/*
+              §130 Eine versehentlich erfasste Krankmeldung musste bisher stehen
+              bleiben — sie liess sich nur umdeuten. Sie fliesst aber in
+              Fehlzeitenquoten und in die Lohnabrechnung ein.
+            */}
+            <button
+              onClick={() => handleDeleteAbsence()}
+              className="w-full text-xs text-gray-400 hover:text-red-600 py-1"
+            >
+              Diese Fehlzeit war ein Versehen — entfernen
+            </button>
           </div>
         )}
       </Modal>

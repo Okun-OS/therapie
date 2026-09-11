@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/session'
 import { assertEmployeeAccess, allowedLocationScope } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 import { dateiInhalt, dateiLoeschen, mitarbeiterDarfSehen, DATEI_FELDER } from '@/lib/file-storage'
+import { verknuepfen, nachweisKennzeichenAktualisieren } from '@/lib/krankmeldung'
 import type { SessionPayload } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
@@ -65,12 +66,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   })
 }
 
-// PATCH /api/files/[id] — Freigabe, Notiz und Gültigkeit ändern
+// PATCH /api/files/[id] — Freigabe, Notiz, Gültigkeit und Zuordnung ändern
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = requireRole(req, ['admin', 'company', 'okun'])
+  // §130 Der Mitarbeiter darf hier eines: seinen eigenen Krankenschein der
+  // richtigen Fehlzeit zuordnen. Er reicht ihn ein, er weiß am besten, wozu er
+  // gehört — und wenn er es nicht selbst kann, bleibt die Zuordnung liegen.
+  // Alles andere an einer Personalakte bleibt der Leitung vorbehalten.
+  const session = requireRole(req, ['employee', 'admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
-  const { fehler } = await pruefeZugriff(session, params.id)
+  const { fehler, datei } = await pruefeZugriff(session, params.id)
   if (fehler) return fehler
 
   const body = await req.json().catch(() => ({})) as {
@@ -79,6 +84,35 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     kategorie?: string
     gueltigVon?: string | null
     gueltigBis?: string | null
+    absenceId?: string | null
+  }
+
+  const nurZuordnung = Object.keys(body).length === 1 && 'absenceId' in body
+  if (session.role === 'employee'
+      && !(nurZuordnung && datei!.kategorie === 'krankenschein'
+           && datei!.ownerId === session.employeeId)) {
+    return NextResponse.json(
+      { error: 'Als Mitarbeiter kannst du nur deinen eigenen Krankenschein einer Fehlzeit zuordnen.' },
+      { status: 403 },
+    )
+  }
+
+  // §130 Die Fehlzeit muss zu derselben Person gehören. Sonst ließe sich ein
+  // Nachweis an eine fremde Krankheit hängen — und die sähe damit gedeckt aus.
+  if (body.absenceId) {
+    const passt = await prisma.absence.findFirst({
+      where: { id: body.absenceId, employeeId: datei!.ownerId },
+      select: { id: true },
+    })
+    if (!passt) {
+      return NextResponse.json(
+        { error: 'Diese Fehlzeit gehört nicht zu dieser Person.' }, { status: 400 },
+      )
+    }
+  }
+
+  if ('absenceId' in body) {
+    await verknuepfen(params.id, body.absenceId ?? null)
   }
 
   const aktualisiert = await prisma.storedFile.update({
@@ -100,9 +134,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
-  const { fehler } = await pruefeZugriff(session, params.id)
+  const { fehler, datei } = await pruefeZugriff(session, params.id)
   if (fehler) return fehler
 
   await dateiLoeschen(params.id)
+
+  // §130 War es der letzte Nachweis einer Fehlzeit, gilt sie wieder als
+  // unbelegt. Ohne diese Zeile bliebe „Nachweis vorhanden" stehen, obwohl
+  // nichts mehr da ist — und genau darauf verlässt sich nachher jemand.
+  if (datei?.absenceId) await nachweisKennzeichenAktualisieren(datei.absenceId)
+
   return NextResponse.json({ ok: true })
 }

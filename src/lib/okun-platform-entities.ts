@@ -53,6 +53,7 @@ function toOrgSettings(row: any): OrgSettings {
     defaultVacationDaysPerYear: row.defaultVacationDaysPerYear,
     autoApproveVacationUnderDays: row.autoApproveVacationUnderDays,
     notificationEmail: row.notificationEmail,
+    auNachweisAbTag: row.auNachweisAbTag ?? null,
   }
 }
 

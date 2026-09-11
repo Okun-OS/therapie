@@ -17,9 +17,9 @@ Zuletzt aktualisiert: **11.09.2026**
 | | |
 |---|---|
 | **Baustelle** | — alle Blöcke A–G sind nachgewiesen |
-| **Zuletzt fertig** | E5 Nachrichten zwischen Mitarbeitern (11.09.) |
-| **Als Nächstes** | Krankenschein mit Fehlzeit verknüpfen |
-| **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
+| **Zuletzt fertig** | C6 Krankenschein mit Fehlzeit verbunden (11.09.) |
+| **Als Nächstes** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
+| **Danach** | Fahrplan Teil 3 — Beitragsnachweis, AAG, DEÜV (Meilenstein 2) |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
@@ -36,7 +36,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 |---|---|---|
 | **Mitarbeiter & Stammdaten** (A) | ✅ fertig, nachgewiesen | — |
 | **Arbeitszeit** (B) | ✅ fertig, nachgewiesen | — |
-| **Abwesenheit** (C) | ✅ fertig, nachgewiesen | Krankenschein mit Fehlzeit verknüpfen |
+| **Abwesenheit** (C) | ✅ fertig, nachgewiesen | — |
 | **Lohn** (D) | ✅ Übergangsversion fertig | Beitragsnachweis, Bescheinigungen |
 | **Kommunikation** (E) | ✅ fertig, nachgewiesen | — |
 | **Dienstplanung** (F) | ✅ fertig, nachgewiesen | — |
@@ -51,7 +51,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 Nach Dringlichkeit, nicht nach Bereich.
 
 ### Dringend
-- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 496 Nachweise
+- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 546 Nachweise
       liegen jetzt im Repo unter `pruefungen/`, ein Befehl prüft alles
       (`npm run pruefen`), und bei jedem Push läuft es automatisch.
 
@@ -77,8 +77,11 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [x] ~~**G2 DSGVO Löschkonzept**~~ ✅ — Katalog über alle 35 Tabellen, Vorschau
       vor jeder Löschung, Sperre statt Löschung wo das Gesetz es verlangt,
       Löschbericht als Nachweis
-- [ ] **Krankenschein mit Fehlzeit verknüpfen** — Datei liegt in der Akte, die
-      Abwesenheit im Kalender, beides ist nicht verbunden
+- [x] ~~**Krankenschein mit Fehlzeit verknüpfen**~~ ✅ — die Bescheinigung wird
+      beim Einreichen der passenden Fehlzeit zugeordnet, Lücken (fehlende
+      Folgebescheinigung) werden benannt, und die Frist nach §5 EntgFG ist
+      einstellbar. Nebenbei: eine versehentlich erfasste Fehlzeit lässt sich
+      jetzt auch entfernen
 
 ### Bewusst nicht
 - **D7 Meldewesen selbst übermitteln** — erst ab Fahrplan Teil 4/5, mit
