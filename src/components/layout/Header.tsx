@@ -1,0 +1,192 @@
+'use client'
+
+import { Bell, LogOut, MessageSquare } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
+import { formatRelativeTime } from '@/lib/utils'
+import { Logo } from '@/components/ui/Logo'
+
+interface HeaderProps {
+  title: string
+  subtitle?: string
+}
+
+interface NotificationItem {
+  id: string
+  title: string
+  body: string
+  read: boolean
+  createdAt: string
+}
+
+export function Header({ title, subtitle }: HeaderProps) {
+  const { user, logout } = useAuth()
+  const router = useRouter()
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  // §129 Ungelesene Nachrichten. Eigene Abfrage, weil sie auf jeder Seite
+  // laeuft — die volle Gespraechsliste dafuer zu laden waere Verschwendung.
+  const [chatUngelesen, setChatUngelesen] = useState(0)
+
+  const handleLogout = () => {
+    logout()
+    router.push('/login')
+  }
+
+  const loadNotifications = (employeeId: string) => {
+    fetch(`/api/notifications?employeeId=${employeeId}`)
+      .then(res => res.json())
+      .then(data => setNotifications(Array.isArray(data.notifications) ? data.notifications : []))
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    if (!user) return
+    loadNotifications(user.id)
+
+    if (user.role === 'admin' || user.role === 'company') {
+      fetch('/api/controlling/early-warning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: user.id, locationId: user.locationId }),
+      })
+        .then(() => loadNotifications(user.id))
+        .catch(() => {})
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
+  useEffect(() => {
+    if (!user?.employeeId) return
+    const laden = () => fetch('/api/chat/ungelesen')
+      .then(r => r.json())
+      .then(d => setChatUngelesen(d.ungelesen ?? 0))
+      .catch(() => {})
+    laden()
+    const takt = setInterval(laden, 30000)
+    return () => clearInterval(takt)
+  }, [user])
+
+  // Der Chat liegt je Rolle auf einer eigenen Seite, weil die Layouts die
+  // Rolle pruefen — der Weg dorthin haengt deshalb an der Rolle.
+  const chatPfad = user?.role === 'admin' ? '/admin/nachrichten'
+    : user?.role === 'company' ? '/company/nachrichten'
+    : '/employee/nachrichten'
+
+  const unreadCount = notifications.filter(n => !n.read).length
+
+  const markRead = (id: string) => {
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)))
+    fetch(`/api/notifications/${id}/read`, { method: 'POST' }).catch(() => {})
+  }
+
+  return (
+    <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+      <div className="flex items-center gap-3">
+        <Logo variant="icon" iconSize={28} className="lg:hidden" />
+        <div>
+          <h1 className="text-lg sm:text-xl font-bold text-navy">{title}</h1>
+          {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        {/* §129 Nachrichten */}
+        {user?.employeeId && (
+          <button
+            onClick={() => router.push(chatPfad)}
+            aria-label="Nachrichten"
+            className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors"
+          >
+            <MessageSquare size={20} className="text-gray-600" />
+            {chatUngelesen > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {chatUngelesen > 9 ? '9+' : chatUngelesen}
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* Notifications */}
+        <div className="relative">
+          <button
+            onClick={() => setNotifOpen(!notifOpen)}
+            className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors"
+          >
+            <Bell size={20} className="text-gray-600" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            )}
+          </button>
+
+          {notifOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+              <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                  <p className="font-semibold text-navy text-sm">Benachrichtigungen</p>
+                  {unreadCount > 0 && (
+                    <span className="text-xs bg-brand text-navy font-bold px-2 py-0.5 rounded-full">{unreadCount} neu</span>
+                  )}
+                </div>
+                <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
+                  {notifications.length === 0 && (
+                    <p className="px-4 py-6 text-sm text-gray-400 text-center">Keine Benachrichtigungen</p>
+                  )}
+                  {notifications.map(n => (
+                    <div
+                      key={n.id}
+                      onClick={() => !n.read && markRead(n.id)}
+                      className={`px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
+                    >
+                      <div className="flex gap-3">
+                        {!n.read && <div className="w-2 h-2 rounded-full bg-brand mt-1.5 flex-shrink-0" />}
+                        {n.read && <div className="w-2 h-2 flex-shrink-0" />}
+                        <div>
+                          <p className="text-sm text-gray-800 font-medium">{n.title}</p>
+                          <p className="text-sm text-gray-600">{n.body}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{formatRelativeTime(new Date(n.createdAt))}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Profile / Logout */}
+        <div className="relative">
+          <button
+            onClick={() => setProfileOpen(!profileOpen)}
+            className="w-9 h-9 rounded-full bg-navy flex items-center justify-center font-bold text-brand text-sm flex-shrink-0 hover:ring-2 hover:ring-brand/40 transition-all"
+          >
+            {user?.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+          </button>
+
+          {profileOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+              <div className="absolute right-0 top-12 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-sm font-semibold text-navy truncate">{user?.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+                >
+                  <LogOut size={16} />
+                  Abmelden
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </header>
+  )
+}

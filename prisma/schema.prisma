@@ -1,0 +1,1653 @@
+// Prisma schema for the new Vertretungsmanagement (substitution management) module.
+// Existing app data stays in src/lib/mock-data.ts on purpose – this schema only
+// covers the new, persisted module so existing functionality is untouched.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SubstitutionStatus {
+  open
+  filled
+  cancelled
+  expired
+}
+
+enum SubstitutionPriority {
+  low
+  normal
+  high
+  urgent
+}
+
+enum EscalationStage {
+  group
+  location
+  organization
+  springerpool
+}
+
+enum CandidateResponseStatus {
+  pending
+  accepted
+  declined
+  expired
+}
+
+// Additive metadata for an existing mock-data Employee (kept separate from
+// mock-data.ts so the existing employee directory is never modified).
+model EmployeeProfile {
+  employeeId     String   @id
+  isSpringer     Boolean  @default(false)
+  qualifications String[] @default([])
+  groupId        String?
+  updatedAt      DateTime @updatedAt
+}
+
+// ─── Menschliche Dienstplanung (Modul 8) ────────────────────────────────────
+// Voluntary, employee-controlled soft signals for fairer/more human scheduling.
+// Kept separate from EmployeeProfile (which serves substitution matching) so
+// the two audiences/purposes never get entangled.
+model EmployeeHumanContext {
+  employeeId          String   @id
+  strengths           String[] @default([])
+  lifeCircumstances   String[] @default([])
+  preferredGroups     String[] @default([])
+  preferredActivities String[] @default([])
+  shiftPreferences    String[] @default([])
+  agreements          String?
+  updatedAt           DateTime @updatedAt
+}
+
+model EmployeePlanningProfile {
+  employeeId         String   @id
+  // Schicht-Präferenz für den Solver
+  shiftPreference    String   @default("keine") // frueh | spaet | nacht | keine
+  // Kinder-Abholzeiten: [{day:"Mo", beforeTime:"15:30"}, ...]
+  childPickupTimes   Json     @default("[]")
+  // Maximale aufeinanderfolgende Arbeitstage (0 = Unternehmensregel gilt)
+  maxConsecutiveDays Int      @default(0)
+  // Wochenend-Freiheits-Vereinbarung (z.B. "jedes 2. Wochenende frei")
+  weekendRule        String?
+  // Zusätzliche Planungsnotiz (dauerhaft, nicht pro Lauf)
+  planningNote       String?
+  // Zuschlagsregelung
+  surchargeMode      String   @default("unternehmensregel") // unternehmensregel | abweichungen | individuell
+  surchargeOverrides Json? // nur abweichende Felder vom Unternehmensstandard
+  updatedAt          DateTime @updatedAt
+}
+
+model SubstitutionRequest {
+  id                 String                  @id @default(cuid())
+  locationId         String
+  groupId            String?
+  date               String
+  startTime          String
+  endTime            String
+  // §101 Ausfall aus dem Dienstplan heraus: welcher Dienst ist ausgefallen und
+  // wer haette ihn gehabt. Ohne das ist eine Vertretungsanfrage ein loser
+  // Zettel ohne Bezug zum Plan.
+  scheduleEntryId    String?
+  originalEmployeeId String?
+  shiftId            String?
+  grund              String?
+  qualification      String?
+  priority           SubstitutionPriority    @default(normal)
+  status             SubstitutionStatus      @default(open)
+  escalationStage    EscalationStage         @default(group)
+  note               String?
+  createdBy          String
+  createdAt          DateTime                @default(now())
+  filledByEmployeeId String?
+  filledAt           DateTime?
+  candidates         SubstitutionCandidate[]
+}
+
+model SubstitutionCandidate {
+  id              String                  @id @default(cuid())
+  requestId       String
+  request         SubstitutionRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employeeName    String
+  matchScore      Int
+  matchReasons    String[]                @default([])
+  escalationStage EscalationStage
+  responseStatus  CandidateResponseStatus @default(pending)
+  notifiedAt      DateTime?
+  respondedAt     DateTime?
+  createdAt       DateTime                @default(now())
+
+  @@unique([requestId, employeeId])
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  employeeId String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  employeeId String
+  type       String
+  title      String
+  body       String
+  requestId  String?
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+/// §139 Ein Telefon, das die App aus dem Store nutzt.
+///
+/// Die Web-Benachrichtigung (PushSubscription) erreicht ein iPhone nur, wenn
+/// die Seite auf dem Startbildschirm liegt und der Dienst-Arbeiter lebt. Der
+/// native Weg erreicht es auch, wenn die App seit Tagen zu ist — und genau das
+/// braucht ein kurzfristiger Ausfall um sechs Uhr morgens.
+///
+/// Ein Mensch hat mehrere Geraete (Telefon und Tablet), und ein Geraet kann den
+/// Besitzer wechseln. Deshalb ist die Kennung eindeutig, nicht die Person: Wer
+/// sich neu anmeldet, uebernimmt den Eintrag, statt einen zweiten anzulegen —
+/// sonst bekaeme der Vorgaenger weiter die Dienstplaene seines Nachfolgers.
+model Geraet {
+  id         String   @id @default(cuid())
+  employeeId String
+  /// Die Geraetekennung von APNs bzw. FCM
+  kennung    String   @unique
+  /// ios | android
+  plattform  String
+  erstelltAm DateTime @default(now())
+  zuletztAm  DateTime @updatedAt
+
+  @@index([employeeId])
+}
+
+/// §139 Der Antrag eines Menschen, seine Daten loeschen zu lassen.
+///
+/// Zwei Gruende, warum das im Programm steht und nicht in einer E-Mail:
+/// Art. 17 DSGVO gibt jedem dieses Recht, und Apple verlangt seit 2022, dass
+/// eine App, die ein Konto fuehrt, das Loeschen auch in der App anbietet
+/// (Richtlinie 5.1.1 v). Eine Adresse zum Hinschreiben genuegt beidem nicht.
+///
+/// Geloescht wird dabei NICHT sofort: Lohnunterlagen unterliegen
+/// Aufbewahrungsfristen (§147 AO, §257 HGB, §28f SGB IV). Der Antrag geht
+/// deshalb an den Arbeitgeber, der ihn mit dem Loeschkonzept (§128) abarbeitet
+/// — inklusive der Sperre statt Loeschung, wo das Gesetz sie verlangt.
+model Loeschantrag {
+  id            String    @id @default(cuid())
+  employeeId    String
+  customerId    String?
+  personName    String
+  /// Was die Person dazu geschrieben hat, freiwillig
+  begruendung   String?
+  /// offen | erledigt | abgelehnt
+  status        String    @default("offen")
+  /// Was der Arbeitgeber geantwortet hat — bei einer Ablehnung Pflicht
+  antwort       String?
+  bearbeitetVon String?
+  bearbeitetAm  DateTime?
+  /// Der Loeschvorgang, mit dem er erledigt wurde
+  loeschungId   String?
+  createdAt     DateTime  @default(now())
+
+  @@index([employeeId])
+  @@index([customerId])
+  @@index([status])
+}
+
+// ─── Workforce Score (Modul 3: Gamification) ────────────────────────────────
+// Additive module. The existing mock-data TimeLog (src/lib/mock-data.ts) stays
+// untouched as seed/history data; this model is the new, real persistence
+// layer for the clock-in/out action so punctuality can actually be scored.
+
+enum WorkforceLevel {
+  bronze
+  silber
+  gold
+  platin
+  diamant
+}
+
+model TimeClockEntry {
+  id         String    @id @default(cuid())
+  employeeId String
+  date       String
+  locationId String
+  clockIn    DateTime
+  clockOut   DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model ScoreEvent {
+  id         String   @id @default(cuid())
+  employeeId String
+  points     Int
+  reason     String
+  type       String
+  relatedId  String?
+  createdAt  DateTime @default(now())
+
+  @@unique([type, relatedId])
+}
+
+model LevelBonusConfig {
+  level     WorkforceLevel @id
+  bonusText String?
+  updatedAt DateTime       @updatedAt
+}
+
+// ─── KI-Onboarding (Modul 02) ────────────────────────────────────────────────
+// Zweistufiges Onboarding per KI-Chat statt klassischem Formular.
+// Ebene 1 (Träger): trägerweite Angaben, einmalig, ein Datensatz pro Mandant.
+// Ebene 2 (Einrichtung): pro Standort (mock-data Location) eigene Konfiguration –
+// "Das System darf niemals einfach die Regeln einer anderen Einrichtung kopieren."
+// customerId statt fixer 'singleton'-PK: jeder Mandant (Customer) bekommt seinen
+// eigenen Datensatz, sonst sehen alle Träger dieselben Onboarding-Daten.
+model OrganizationOnboarding {
+  customerId              String   @id
+  traegerName             String?
+  rollenmodell            String?
+  unternehmensweiteRegeln String?
+  completed               Boolean  @default(false)
+  chatMessages            Json?
+  updatedAt               DateTime @updatedAt
+}
+
+model LocationOnboarding {
+  locationId             String   @id
+  einrichtungsart        String?
+  organisationsstruktur  String?
+  personalstruktur       String?
+  arbeitszeiten          String?
+  dienstplanlogik        String?
+  pausenlogik            String?
+  wiederkehrendeAufgaben String?
+  individuelleRegeln     String[] @default([])
+  vertretungsregeln      String?
+  urlaubslogik           String?
+  zeiterfassung          String?
+  besonderheiten         String?
+  tagesablauf            String?
+  completedPhases        String[] @default([])
+  completed              Boolean  @default(false)
+  chatMessages           Json?
+  updatedAt              DateTime @updatedAt
+}
+
+// ─── Google-Kalender-Synchronisation (Modul 04/05/06) ───────────────────────
+// Statt einer OAuth-Anbindung (erfordert Google-Cloud-Zugangsdaten, die hier
+// nicht vorliegen) nutzen wir einen klassischen, token-basierten ICS-Feed:
+// der Mitarbeiter abonniert die Feed-URL einmalig in Google/Apple Kalender,
+// danach hält der Kalender-Anbieter den Plan automatisch aktuell, da der
+// Feed bei jedem Abruf live aus dem aktuellen Dienstplan generiert wird.
+model EmployeeCalendarSync {
+  employeeId String   @id
+  enabled    Boolean  @default(false)
+  token      String   @unique @default(cuid())
+  updatedAt  DateTime @updatedAt
+}
+
+// Ergänzung 4 zu 02_ONBOARDING_CHAT.md: kurzfristige, nur für die jeweils
+// aktuelle Planungsperiode gültige Besonderheiten (z.B. "Diese Woche findet
+// ein Sommerfest statt"). Bewusst getrennt von LocationOnboarding, da diese
+// Hinweise gerade NICHT dauerhaft gelten sollen.
+model SchedulingPeriodNote {
+  id         String   @id @default(cuid())
+  locationId String
+  weekStart  String
+  note       String
+  createdAt  DateTime @default(now())
+}
+
+// ─── Echte Authentifizierung & Einladungen (Demo → Produktivsystem) ────────
+// Ersetzt die rein clientseitige Demo-Anmeldung durch echte, gehashte
+// Passwörter. employeeId/locationId/customerName verknüpfen den Account
+// optional mit den bestehenden mock-data Entitäten, ohne diese anzufassen.
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  role          String
+  employeeId    String?
+  locationId    String?
+  customerId    String?
+  customerName  String?
+  totpSecret    String?
+  totpEnabled   Boolean  @default(false)
+  phone         String?
+  phoneVerified Boolean  @default(false)
+  smsOtpEnabled Boolean  @default(false)
+  bereichIds    String[] @default([])
+  avatarUrl     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model InvitationToken {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  email        String
+  role         String
+  name         String?
+  customerId   String?
+  customerName String?
+  employeeId   String?
+  locationId   String?
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+// Separat von InvitationToken: zielt auf bestehende Accounts (nicht auf
+// Neuanlage) und ist bewusst kurzlebig (1 Stunde statt 7 Tage).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// ─── Echte Datenpersistenz: Mitarbeiter/Kunden/Standorte ───────────────────
+// Ersetzt die bisherigen EMPLOYEES/LOCATIONS/CUSTOMERS Arrays in
+// mock-data.ts. Bewusst ohne @relation (wie der Rest des Schemas) – alle
+// Querverweise (locationId, adminId, employeeId, ...) bleiben lose Strings,
+// damit bestehende Tabellen (EmployeeProfile, User, ...) unverändert bleiben.
+model Location {
+  id            String   @id @default(cuid())
+  customerId    String?
+  name          String
+  address       String
+  city          String
+  state         String
+  zip           String?
+  street        String?
+  houseNumber   String?
+  country       String?
+  bundesland    String?
+  employeeCount Int      @default(0)
+  adminId       String
+  bereichId     String?
+  active        Boolean  @default(true)
+
+  // §126 Regelpaket: die von OKUN fuer diesen Standort programmierte
+  // Dienstplanlogik. Die ID ist der Dateiname im Rechendienst.
+  rulePackId    String?
+
+  // §127 Freischaltung der Dienstplanung.
+  //
+  // Das Geschaeftsmodell: alles ausser der Dienstplanung ist Standard und
+  // laeuft sofort. Die Dienstplanung wird je Kunde von Hand gebaut — bis dahin
+  // bleibt sie gesperrt. Ein Kunde, der ungebaute Dienstplanung ausprobiert,
+  // bekommt einen schlechten Plan und ein falsches Bild vom Produkt.
+  //
+  // Freischalten darf nur OKUN, nicht der Kunde.
+  dienstplanungFrei      Boolean   @default(false)
+  dienstplanungFreiSeit  String?
+  dienstplanungFreiVon   String?
+  /// Was dem Kunden angezeigt wird, solange gesperrt ist
+  dienstplanungHinweis   String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Employee {
+  id                String   @id @default(cuid())
+  customerId        String?
+  name              String
+  email             String   @unique
+  role              String
+  locationId        String?
+  weeklyHours       Float
+  position          String
+  hoursBalance      Float    @default(0)
+  vacationDaysTotal Int      @default(30)
+  vacationDaysUsed  Int      @default(0)
+  preferences       Json?
+  active            Boolean  @default(true)
+  joinedAt          String
+  hasChildren       Boolean?
+  phone             String?
+  birthDate         String?
+  roleType          String?
+  employmentType    String?
+  gruppe            String?
+  bereich           String?
+  multiGroupCapable Boolean?
+  fixedLocations    String?
+  qualifications    String[] @default([])
+  allowedTasks      String[] @default([])
+  avatarUrl         String?
+  workDaysPerWeek   Int?
+  workDays          String[] @default([])
+  dailyTargetHours  Float?
+  fixedOffDays      String[] @default([])
+
+  // §128 Einschraenkung der Verarbeitung nach Art.18 DSGVO.
+  // Gesetzt, wenn nach dem Austritt geloescht wurde, aber Lohn- und
+  // Steuerunterlagen aufbewahrt werden muessen. Solange gesetzt, darf mit
+  // diesen Daten nur noch das geschehen, wofuer das Gesetz sie verlangt.
+  datenGesperrtAm    DateTime?
+  datenGesperrtGrund String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+/// §129 Nachrichten zwischen Mitarbeitern.
+///
+/// Zwei Arten, mit unterschiedlichen Regeln:
+///
+///   direkt  Ein Gespraech zwischen genau zwei Personen. Niemand sonst kommt
+///           hinein — auch die Leitung nicht, auch OKUN nicht. Der schluessel
+///           haelt fest, welche beiden es sind, und verhindert, dass zwei
+///           Raeume fuer dasselbe Gespraech entstehen, wenn beide gleichzeitig
+///           schreiben.
+///
+///   gruppe  Von der Standortleitung eroeffnet und verwaltet. Wer darin liest,
+///           ist Mitglied — Verwalten und Mitlesen sind absichtlich zwei
+///           verschiedene Dinge.
+model ChatRaum {
+  id           String    @id @default(cuid())
+  customerId   String
+  /// Leer bei Raeumen der Unternehmensebene — eine Geschaeftsfuehrung sitzt an
+  /// keinem einzelnen Standort.
+  locationId   String?
+  /// direkt | gruppe
+  art          String
+  /// Nur bei Gruppen
+  name         String?
+  beschreibung String?
+  /// Nur bei Direktchats: beide Benutzerkennungen sortiert, mit "|" verbunden
+  schluessel   String?   @unique
+  erstelltVon  String?
+  /// Geschlossene Gruppen bleiben lesbar, nehmen aber nichts Neues mehr auf
+  archiviertAm DateTime?
+  /// Fuer die Sortierung der Liste ohne teure Unterabfrage
+  letzteAktivitaet DateTime @default(now())
+  createdAt    DateTime  @default(now())
+
+  mitglieder   ChatMitglied[]
+  nachrichten  ChatNachricht[]
+
+  @@index([customerId])
+  @@index([locationId, art])
+}
+
+model ChatMitglied {
+  id            String    @id @default(cuid())
+  raumId        String
+  /// §131 Das Benutzerkonto ist der Teilnehmer, nicht der Mitarbeiterdatensatz.
+  ///
+  /// Eine Standortleitung und eine Geschaeftsfuehrung haben ein Konto, aber
+  /// nicht zwingend einen Mitarbeiterdatensatz — mit employeeId als Schluessel
+  /// konnten sie den Chat gar nicht benutzen.
+  userId        String
+  /// Gefuellt, wenn das Konto zu einem Mitarbeiter gehoert. Nur dafuer da,
+  /// dass eine Loeschung nach Art.17 DSGVO die Nachrichten findet.
+  employeeId    String?
+  /// mitglied | leitung — "leitung" darf Mitglieder aendern und schliessen
+  rolle         String    @default("mitglied")
+  /// Bis wohin gelesen wurde; alles Spaetere ist ungelesen
+  gelesenBis    DateTime?
+  beigetretenAm DateTime  @default(now())
+
+  raum          ChatRaum  @relation(fields: [raumId], references: [id], onDelete: Cascade)
+
+  @@unique([raumId, userId])
+  @@index([employeeId])
+  @@index([userId])
+}
+
+model ChatNachricht {
+  id           String   @id @default(cuid())
+  raumId       String
+  /// §131 Der Absender als Benutzerkonto; "system" fuer Hinweise im Verlauf.
+  userId       String
+  /// Gefuellt, wenn das Konto zu einem Mitarbeiter gehoert — fuer die Loeschung.
+  employeeId   String?
+  /// Der Name zum Zeitpunkt des Schreibens — spaetere Aenderungen sollen
+  /// alte Nachrichten nicht rueckwirkend umschreiben.
+  absenderName String
+  text         String
+  /// text | system — Systemhinweise ("ist beigetreten") sehen anders aus
+  art          String   @default("text")
+  createdAt    DateTime @default(now())
+
+  raum         ChatRaum @relation(fields: [raumId], references: [id], onDelete: Cascade)
+
+  @@index([raumId, createdAt])
+  @@index([employeeId])
+}
+
+/// §128 Was bei einer Loeschung tatsaechlich geschehen ist.
+///
+/// Ohne diesen Nachweis laesst sich gegenueber der Aufsichtsbehoerde weder
+/// belegen, dass geloescht wurde, noch warum etwas bleiben musste. Der Bericht
+/// haelt je Datenart fest, was passiert ist — er enthaelt Zahlen und
+/// Begruendungen, keine Personendaten.
+model Loeschvorgang {
+  id                 String   @id @default(cuid())
+  employeeId         String
+  customerId         String?
+  personName         String
+  /// loeschung = auf Verlangen oder nach Austritt, aufraeumen = abgelaufene Frist
+  art                String   @default("loeschung")
+  angestossenVon     String
+  angestossenVonName String?
+  bericht            Json
+  createdAt          DateTime @default(now())
+
+  @@index([employeeId])
+  @@index([customerId])
+}
+
+model Customer {
+  id                 String    @id @default(cuid())
+  name               String
+  contactName        String
+  contactEmail       String
+  status             String
+  plan               String
+  seatsLicensed      Int
+  seatsUsed          Int       @default(0)
+  locationsCount     Int       @default(0)
+  createdAt          String
+  renewalDate        String?
+  notes              String?
+  roles              String[]  @default([])
+  deletedAt          DateTime?
+  updatedAt          DateTime  @updatedAt
+  legalContractDate  String?
+  legalContractNotes String?
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  userId     String
+  userEmail  String
+  userRole   String
+  action     String
+  entityType String
+  entityId   String?
+  customerId String?
+  details    Json?
+}
+
+// ─── Bereich: optionale Zwischenebene Company → Bereich → Location ───────────
+// Reine Organisationsstruktur, keine neue Rolle. Company-Nutzer mit bereichIds
+// (Bereichsleiter) sehen ausschließlich Standorte und Mitarbeiter in ihren Bereichen.
+
+model Bereich {
+  id          String   @id @default(cuid())
+  customerId  String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+// ─── Echte Datenpersistenz: Dienstplanung, Zeiterfassung, Urlaub, Plattform ─
+// Ersetzt die übrigen, bisher noch simulierten Arrays in src/lib/mock-data.ts
+// (Shift, ScheduleEntry, TimeLog, VacationRequest, ...). Wie der Rest des
+// Schemas ohne @relation – alle Querverweise bleiben lose Strings. Bewusst
+// ohne Seed-Daten: Produktivsysteme starten leer, echte Daten entstehen durch
+// echte Nutzung der Anwendung ("keine Demo-Daten mehr").
+
+model Shift {
+  id                     String   @id @default(cuid())
+  name                   String
+  type                   String
+  startTime              String
+  endTime                String
+  color                  String
+  bgColor                String
+  minStaff               Int      @default(1)
+  locationId             String
+  requiredQualifications String[] @default([])
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model ScheduleEntry {
+  id              String   @id @default(cuid())
+  employeeId      String
+  shiftId         String
+  date            String
+  locationId      String
+  status          String   @default("planned")
+  note            String?
+  reason          String?
+  startTime       String?
+  endTime         String?
+  gruppe          String?
+  funktion        String?
+  isSubstitution  Boolean  @default(false)
+  substitutionFor String?
+  taskBlocks      Json?
+  createdAt       DateTime @default(now())
+}
+
+model LocationPlanningRules {
+  locationId            String    @id
+  maxWeeklyHours        Int       @default(40)
+  restHours             Int       @default(11)
+  maxConsecutiveDays    Int       @default(5)
+  fridayLateMax         Int       @default(2)
+  mondayEarlyMax        Int       @default(3)
+  fridayEarlyMax        Int       @default(3)
+  weekendMax            Int       @default(2)
+  considerWishes        Boolean   @default(true)
+  balanceHoursAccount   Boolean   @default(true)
+  autoBreakDeduction    Boolean   @default(false)
+  breakThresholdMinutes Int       @default(360)
+  breakDeductionMinutes Int       @default(30)
+  breakRulesExtractedAt DateTime?
+  updatedAt             DateTime  @updatedAt
+}
+
+model TimeLog {
+  id           String    @id @default(cuid())
+  employeeId   String
+  date         String
+  clockIn      String
+  clockInAt    DateTime?
+  clockOut     String?
+  totalMinutes Int?
+  breakMinutes Int?
+  breakStart   String?
+  breakStartAt DateTime?
+  note         String?
+  locationId   String
+
+  /// §137 Woher dieser Eintrag stammt: app | offline | leitung.
+  ///
+  /// Im Funkloch entsteht der Stempel auf dem Telefon und wird spaeter
+  /// uebertragen — dann zaehlt die Zeit des Stempelns, nicht die des
+  /// Hochladens. Die Standortleitung muss beim Monatsabschluss sehen, welcher
+  /// Eintrag vom Geraet kam und welcher nachgereicht wurde: Der Zeitpunkt
+  /// entscheidet ueber Lohn, und was niemand pruefen kann, ist eine
+  /// Behauptung.
+  quelle       String?
+
+  createdAt    DateTime  @default(now())
+}
+
+model VacationRequest {
+  id           String   @id @default(cuid())
+  employeeId   String
+  employeeName String
+  locationId   String
+  locationName String
+  startDate    String
+  endDate      String
+  days         Int
+  reason       String?
+  status       String   @default("pending")
+  submittedAt  String
+  respondedAt  String?
+  respondedBy  String?
+  createdAt    DateTime @default(now())
+}
+
+model SwapRequest {
+  id                 String  @id @default(cuid())
+  requesterId        String
+  requesterName      String
+  requesterDate      String
+  requesterShiftId   String
+  targetEmployeeId   String
+  targetEmployeeName String
+  targetDate         String
+  targetShiftId      String
+  message            String?
+  status             String  @default("pending")
+  submittedAt        String
+  respondedAt        String?
+  locationId         String
+}
+
+model WishSubmission {
+  id                 String  @id @default(cuid())
+  employeeId         String
+  employeeName       String
+  locationId         String
+  date               String
+  preferredShiftType String
+  reason             String?
+  importance         String  @default("normal")
+  submittedAt        String
+  status             String  @default("pending")
+  conflictInfo       Json?
+}
+
+model VacationPlanPreference {
+  employeeId            String   @id
+  hasChildren           Boolean  @default(false)
+  schoolHolidayPriority String?
+  preferredMonths       Int[]    @default([])
+  preferredPeriod       String?
+  notes                 String?
+  priority              String   @default("medium")
+  updatedAt             DateTime @updatedAt
+}
+
+model VacationRules {
+  locationId                String   @id
+  facilityDescription       String
+  maxConcurrent             Int
+  customRules               String[] @default([])
+  schoolHolidayPriorityMode String   @default("none")
+  updatedAt                 DateTime @updatedAt
+}
+
+model TaskType {
+  name      String   @id
+  createdAt DateTime @default(now())
+}
+
+model TestAccount {
+  id           String  @id @default(cuid())
+  customerName String
+  contactEmail String
+  createdAt    String
+  expiresAt    String
+  converted    Boolean @default(false)
+}
+
+// Plattformweite Einladungen an potenzielle Kunden (Vertrieb) – getrennt von
+// InvitationToken, das echte Konten innerhalb eines bestehenden Mandanten anlegt.
+model PlatformInvitation {
+  id           String  @id @default(cuid())
+  email        String
+  role         String
+  customerName String?
+  status       String  @default("pending")
+  sentAt       String
+}
+
+model SupportAccessLogEntry {
+  id           String  @id @default(cuid())
+  customerName String
+  requestedBy  String
+  reason       String
+  grantedAt    String
+  revokedAt    String?
+}
+
+model OrgSettings {
+  customerId                   String   @id
+  organizationName             String
+  defaultWeeklyHours           Int
+  defaultVacationDaysPerYear   Int
+  autoApproveVacationUnderDays Int
+  notificationEmail            String
+
+  // §113 Angaben des Arbeitgebers. Die Anschrift steht nach §108 GewO auf jeder
+  // Entgeltabrechnung; Bankverbindung und Betriebsnummer werden fuer die
+  // SEPA-Datei und den DATEV-Export gebraucht.
+  strasse                      String?
+  plz                          String?
+  ort                          String?
+  betriebsnummer               String?   // Agentur fuer Arbeit, 8-stellig
+  steuernummer                 String?
+  iban                         String?
+  bic                          String?
+  kontoinhaber                 String?
+  datevBeraternummer           String?
+  datevMandantennummer         String?
+
+  // §130 Ab dem wievielten Kalendertag der Betrieb die
+  // Arbeitsunfaehigkeitsbescheinigung verlangt.
+  //
+  // §5 Abs.1 EntgFG sagt: spaetestens ab dem vierten. Satz 3 erlaubt dem
+  // Arbeitgeber, sie frueher zu verlangen — das steht dann im Arbeitsvertrag.
+  // Deshalb einstellbar und nicht einprogrammiert. Leer = die gesetzlichen
+  // vier Tage.
+  auNachweisAbTag              Int?
+
+  updatedAt                    DateTime @updatedAt
+}
+
+model OvertimeRequest {
+  id              String  @id @default(cuid())
+  employeeId      String
+  employeeName    String
+  locationId      String
+  date            String
+  timeLogId       String
+  overtimeMinutes Int
+  reason          String
+  comment         String?
+  status          String  @default("pending")
+  approvedMinutes Int?
+  adminComment    String?
+  respondedAt     String?
+  respondedBy     String?
+  submittedAt     String
+}
+
+model Absence {
+  id                 String  @id @default(cuid())
+  employeeId         String
+  employeeName       String
+  locationId         String
+  type               String
+  startDate          String
+  endDate            String
+  days               Int
+  note               String?
+  proofProvided      Boolean @default(false)
+  verificationStatus String  @default("offen")
+  verifiedBy         String?
+  verifiedAt         String?
+  submittedAt        String
+}
+
+// ─── Schließzeiten / Pflichturlaub ───────────────────────────────────────────
+// Feste, vom Standort vorgegebene Schließzeiten (Betriebsferien, Kita-Schließzeit,
+// Brückentage, ...). Beim Anlegen werden automatisch Urlaubsanträge (status
+// 'approved', respondedBy 'System (Schließzeit)') für alle betroffenen aktiven
+// Mitarbeiter erzeugt – nur für tatsächliche Arbeitstage (siehe lib/workdays.ts).
+model ClosurePeriod {
+  id         String   @id @default(cuid())
+  locationId String
+  name       String
+  startDate  String
+  endDate    String
+  createdBy  String
+  createdAt  DateTime @default(now())
+}
+
+// ─── Planungseinheiten (frei konfigurierbarer Einsatzplan) ──────────────────
+// Durch das Onboarding definierte benannte Einheiten eines Standorts:
+// Gruppen, Bereiche, Objekte, Touren, Fahrzeuge, Maschinen, Räume, Stationen.
+// Nur echte, vom Nutzer genannte Einheiten – niemals durch die KI erfunden.
+model PlanningUnit {
+  id          String   @id @default(cuid())
+  locationId  String
+  name        String
+  type        String   @default("bereich")
+  description String?
+  capacity    Int?
+  address     String?
+  notes       String?
+  sortOrder   Int      @default(0)
+  // §71 hierarchy: a "gruppe" points at its "etage" (or other parent unit)
+  parentId    String?
+  // §71 minimum staff that must cover this unit in every shift it is open
+  minStaff    Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([locationId])
+}
+
+model MonthlyClosing {
+  id               String  @id @default(cuid())
+  employeeId       String
+  employeeName     String
+  locationId       String
+  year             Int
+  month            Int
+  status           String  @default("offen")
+  arbeitstage      Int
+  sollMinutes      Int
+  istMinutes       Int
+  breakMinutes     Int
+  overtimeMinutes  Int
+  undertimeMinutes Int
+  vacationDays     Int
+  sickDays         Int
+  otherAbsenceDays Int
+  approvalsCount   Int
+  comments         Json    @default("[]")
+  reviewedBy       String?
+  reviewedAt       String?
+  releasedBy       String?
+  releasedAt       String?
+
+  @@unique([employeeId, year, month])
+}
+
+// ─── Neue Planungsarchitektur: CompanyModel + Solver-Evaluator ───────────────
+
+model CompanyModelRecord {
+  id          String   @id @default(cuid())
+  customerId  String   @unique
+  version     Int      @default(1)
+  model       Json
+  generatedBy String   @default("ai")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LocationRuleModelRecord {
+  id             String   @id @default(cuid())
+  locationId     String   @unique
+  customerId     String
+  version        Int      @default(1)
+  ruleModel      Json
+  companyModelId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model PlanningSession {
+  id                 String              @id @default(cuid())
+  locationId         String
+  customerId         String
+  zeitraumVon        String
+  zeitraumBis        String
+  status             String              @default("pending")
+  ruleModelSnap      Json
+  finalPlan          Json?
+  finalScore         Float?
+  freigabeEmpfehlung String?
+  bewertungSnap      Json?
+  solverDiagnosis    String?
+  solverSeed         Int?
+  iterationen        PlanningIteration[]
+  createdAt          DateTime            @default(now())
+  completedAt        DateTime?
+}
+
+model PlanningIteration {
+  id         String          @id @default(cuid())
+  sessionId  String
+  session    PlanningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  nummer     Int
+  planJson   Json
+  bewertung  Json
+  durationMs Int?
+  createdAt  DateTime        @default(now())
+
+  @@unique([sessionId, nummer])
+}
+
+model PlanningRuleFeedback {
+  id         String   @id @default(cuid())
+  locationId String
+  customerId String
+  regelTyp   String
+  regelId    String
+  feedback   String
+  kommentar  String?
+  createdAt  DateTime @default(now())
+}
+
+// ── Zuschlags-Engine ──────────────────────────────────────────────────────────
+
+model SurchargeRuleSet {
+  id                  String                @id @default(cuid())
+  customerId          String
+  locationId          String?
+  name                String                @default("Zuschlagsregelwerk")
+  defaultHourlyWage   Float?
+  onboardingCompleted Boolean               @default(false)
+  onboardingMessages  Json?
+  rules               SurchargeRule[]
+  wageConfigs         SurchargeWageConfig[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+}
+
+model SurchargeRule {
+  id               String           @id @default(cuid())
+  ruleSetId        String
+  ruleSet          SurchargeRuleSet @relation(fields: [ruleSetId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  type             String // night|sunday|holiday|saturday|overtime|shift_24h|oncall_passive|oncall_active|custom
+  timeStart        String? // HH:MM, null = full shift
+  timeEnd          String? // HH:MM
+  daysOfWeek       Int[] // 0=Sun…6=Sat, empty = all days
+  includeHolidays  Boolean          @default(false)
+  excludeHolidays  Boolean          @default(false)
+  rateType         String // percent | fixed_per_hour | fixed_per_shift
+  rateValue        Float
+  priority         Int              @default(0)
+  roundingMinutes  Int              @default(0)
+  maxMinutesPerDay Int?
+  isActive         Boolean          @default(true)
+  sortOrder        Int              @default(0)
+  createdAt        DateTime         @default(now())
+}
+
+model SurchargeWageConfig {
+  id         String           @id @default(cuid())
+  ruleSetId  String
+  ruleSet    SurchargeRuleSet @relation(fields: [ruleSetId], references: [id], onDelete: Cascade)
+  employeeId String? // null = location default
+  hourlyWage Float
+  validFrom  String // YYYY-MM-DD
+  validTo    String? // YYYY-MM-DD, null = ongoing
+  createdAt  DateTime         @default(now())
+}
+
+// ── Bug Reports ───────────────────────────────────────────────────────────────
+
+model BugReport {
+  id            String   @id @default(cuid())
+  ticketId      String   @unique
+  status        String   @default("open")
+  priority      String   @default("normal")
+  severity      String   @default("normal")
+  userId        String?
+  userName      String?
+  userRole      String?
+  customerId    String?
+  customerName  String?
+  title         String   @default("")
+  description   String?
+  page          String?
+  browser       String?
+  os            String?
+  screenSize    String?
+  consoleErrors String?
+  lastActions   String?
+  adminNotes    String?
+
+  // §133 Aus dem Fehlermelder wird die Fundstelle.
+  //
+  // Bisher waren Titel, Beschreibung und Schwere alles. Damit laesst sich ein
+  // Fund nicht nachstellen und schon gar nicht automatisch beheben — es fehlt
+  // genau die eine Angabe, an der alles haengt: was der Melder erwartet hat.
+
+  /// fehler | verbesserung | frage | wunsch
+  art            String   @default("fehler")
+  /// dienstplan | zeit | urlaub | lohn | nachrichten | akte | datenschutz | einrichtung | sonstiges
+  bereich        String   @default("sonstiges")
+  /// In welcher Rolle getestet wurde — nicht zwingend die Rolle des Zugangs
+  ebene          String?
+  /// Was hast du getan
+  schritte       String?
+  /// Was haettest du erwartet — das wichtigste Feld
+  erwartet       String?
+  /// immer | manchmal | einmal
+  haeufigkeit    String?
+  /// Beruehrt Geld oder Recht: Lohn, Arbeitszeiten, Loeschfristen, Zugriffsrechte.
+  /// Hebt die Dringlichkeit und sperrt jede automatische Behebung.
+  heikel         Boolean  @default(false)
+  /// Build-Nummer, in der der Fund auftrat
+  version        String?
+  /// gruen | gelb — ob die Meldung zum Arbeiten reicht, beim Speichern bestimmt
+  meldeQualitaet String   @default("gelb")
+
+  // Freigabe — Verbesserungen und Wuensche werden nie ohne Zustimmung gebaut
+  /// offen | freigegeben | abgelehnt
+  freigabe       String?
+  freigabeVon    String?
+  freigabeAm     DateTime?
+  freigabeNotiz  String?
+
+  // Rueckfrage, wenn die Meldung nicht reicht
+  rueckfrage     String?
+  antwort        String?
+
+  /// Der vorgeschlagene Behebungsweg
+  vorschlag      String?
+  erledigtAm     DateTime?
+  erledigtNotiz  String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+  @@index([art, bereich])
+}
+
+// ── Timesheet Approvals ───────────────────────────────────────────────────────
+
+model TimesheetApproval {
+  id              String   @id @default(cuid())
+  employeeId      String
+  employeeName    String?
+  locationId      String?
+  year            Int
+  month           Int
+  status          String   @default("pending")
+  approvedBy      String?
+  approvedAt      String?
+  rejectionReason String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([employeeId, year, month])
+}
+
+// ── Payroll Entries ───────────────────────────────────────────────────────────
+
+/// §120 Eine Einmalzahlung: Weihnachtsgeld, Urlaubsgeld, Praemie, Abfindung.
+///
+/// Sonstige Bezuege werden anders besteuert als laufender Lohn — nach der
+/// Jahreslohnsteuer-Methode (§39b Abs.3 EStG): die Steuer ist der Unterschied
+/// zwischen der Steuer auf den Jahreslohn MIT und OHNE die Zahlung. In der
+/// Sozialversicherung gilt die anteilige Jahres-Beitragsbemessungsgrenze
+/// statt der monatlichen.
+///
+/// Deshalb eine eigene Tabelle: eine Einmalzahlung ist ein Ereignis mit
+/// eigenem Grund und eigenem Datum, kein Feld an der Monatsabrechnung. In
+/// einem Monat koennen mehrere zusammenkommen.
+model PayrollBonus {
+  id           String   @id @default(cuid())
+  employeeId   String
+  employeeName String?
+  customerId   String
+  locationId   String?
+  jahr         Int
+  monat        Int
+  /// weihnachtsgeld | urlaubsgeld | praemie | abfindung | sonstiges
+  art          String
+  bezeichnung  String
+  betrag       Float
+  /// Abfindungen sind beitragsfrei und werden nach der Fuenftelregelung
+  /// besteuert — deshalb eigens gekennzeichnet.
+  beitragsfrei Boolean  @default(false)
+  notiz        String?
+  erstelltAm   DateTime @default(now())
+  erstelltVon  String?
+
+  @@index([customerId, jahr, monat])
+  @@index([employeeId, jahr])
+}
+
+/// §119 Eine rueckwirkende Aenderung an einem bereits freigegebenen Monat.
+///
+/// Zwei Prinzipien treffen hier aufeinander und werden bewusst unterschiedlich
+/// behandelt:
+///   - Lohnsteuer folgt dem Zuflussprinzip: die Differenz wird in dem Monat
+///     versteuert, in dem sie ausgezahlt wird (§41c EStG erlaubt dem
+///     Arbeitgeber die Aufrollung innerhalb des Jahres).
+///   - Sozialversicherung folgt beim laufenden Entgelt dem Entstehungsprinzip:
+///     die Beitraege gehoeren in den URSPRUNGSMONAT. Deshalb bleiben jahr und
+///     monat hier der korrigierte Monat, waehrend ausgleichJahr/-monat sagen,
+///     wann das Geld fliesst.
+model PayrollCorrection {
+  id             String   @id @default(cuid())
+  employeeId     String
+  employeeName   String?
+  customerId     String
+  locationId     String?
+  /// Der Monat, der neu gerechnet wurde
+  jahr           Int
+  monat          Int
+  /// Der Monat, in dem die Differenz ausgezahlt wird
+  ausgleichJahr  Int
+  ausgleichMonat Int
+  grund          String
+  /// Vollstaendige Momentaufnahmen — fuer den Beitragsnachweis wird spaeter
+  /// mehr gebraucht als nur die Differenz.
+  werteAlt       Json
+  werteNeu       Json
+  /// Die Zahlen, nach denen tatsaechlich gehandelt wird
+  differenzBrutto     Float
+  differenzNetto      Float
+  differenzLohnsteuer Float
+  differenzSvAN       Float
+  differenzSvAG       Float
+  status         String   @default("offen") // offen | ausgeglichen | verworfen
+  ausgeglichenIn String?
+  erstelltAm     DateTime @default(now())
+  erstelltVon    String?
+
+  @@index([customerId, ausgleichJahr, ausgleichMonat])
+  @@index([employeeId, jahr, monat])
+}
+
+model PayrollEntry {
+  id              String   @id @default(cuid())
+  employeeId      String
+  employeeName    String?
+  locationId      String?
+  customerId      String
+  year            Int
+  month           Int
+  status          String   @default("draft")
+  // Wage
+  hourlyWage      Float?
+  monthlyWage     Float?
+  // Labour hours
+  regularHours    Float    @default(0)
+  overtimeHours   Float    @default(0)
+  nightHours      Float    @default(0)
+  sundayHours     Float    @default(0)
+  holidayHours    Float    @default(0)
+  saturdayHours   Float    @default(0)
+  vacationDays    Int      @default(0)
+  sickDays        Int      @default(0)
+  // Tax & insurance
+  taxClass        Int      @default(1)
+  childCount      Float    @default(0)
+  insuranceType   String   @default("GKV")
+  pkv             Float?
+  churchTax       Boolean  @default(false)
+  bundesland      String?
+  // Calculated results
+  brutto          Float    @default(0)
+  surchargesTotal Float    @default(0)
+  // §3b EStG: steuer- und beitragsfreier Anteil der Zuschläge
+  steuerfreieZuschlaege Float @default(0)
+  svfreieZuschlaege     Float @default(0)
+  steuerBrutto          Float @default(0)
+  svBrutto              Float @default(0)
+  lohnsteuer      Float    @default(0)
+  kirchensteuer   Float    @default(0)
+  soli            Float    @default(0)
+  rvAN            Float    @default(0)
+  kvAN            Float    @default(0)
+  pvAN            Float    @default(0)
+  avAN            Float    @default(0)
+  totalDeductions Float    @default(0)
+  netto           Float    @default(0)
+  rvAG            Float    @default(0)
+  kvAG            Float    @default(0)
+  pvAG            Float    @default(0)
+  avAG            Float    @default(0)
+  totalAgCost     Float    @default(0)
+  // §116 Nach welchem Stand gerechnet wurde — steht auch auf dem Beleg
+  grundlage       String?
+  // §121 Welche Beschaeftigungsart tatsaechlich galt, und die Pauschsteuer des
+  // Arbeitgebers beim Minijob — sie ist kein Abzug beim Arbeitnehmer.
+  beschaeftigungsart String @default("regulaer")
+  pauschsteuerAG     Float  @default(0)
+  // §122 SV-Tage des Monats — 30 heisst voller Monat. Steht am Eintrag, weil
+  // spaeter niemand mehr rekonstruieren kann, mit welchem Anteil gerechnet wurde.
+  svTage             Int    @default(30)
+  // §119 Aufrollung: Differenzen aus rueckwirkend geaenderten Monaten werden
+  // hier ausgeglichen. auszahlungsbetrag ist das, was wirklich ueberwiesen
+  // wird — Netto plus Korrektur. SEPA, DATEV und der Beleg lesen dieses eine
+  // Feld, damit sie nicht auseinanderlaufen koennen.
+  korrekturNetto  Float    @default(0)
+  auszahlungsbetrag Float  @default(0)
+  // §120 Einmalzahlungen des Monats und die Steuer darauf. Sie werden getrennt
+  // ausgewiesen, weil sie getrennt berechnet werden — und weil der
+  // Steuerberater sie getrennt braucht.
+  sonstigeBezuege       Float @default(0)
+  lohnsteuerSonstige    Float @default(0)
+  kirchensteuerSonstige Float @default(0)
+  soliSonstige          Float @default(0)
+  svANSonstige          Float @default(0)
+  svAGSonstige          Float @default(0)
+  // Meta
+  approvedBy      String?
+  approvedAt      String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([employeeId, year, month])
+}
+
+// ── SMS 2FA ───────────────────────────────────────────────────────────────────
+
+model SmsTotpCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+}
+
+// ── Support Tickets ───────────────────────────────────────────────────────────
+
+model SupportTicket {
+  id            String                 @id @default(cuid())
+  ticketId      String                 @unique
+  status        String                 @default("new")
+  priority      String                 @default("normal")
+  category      String?
+  userId        String?
+  userName      String?
+  userRole      String?
+  customerId    String?
+  customerName  String?
+  locationId    String?
+  locationName  String?
+  currentPage   String?
+  title         String
+  description   String?
+  browser       String?
+  os            String?
+  screenSize    String?
+  consoleErrors String?
+  lastActions   String?
+  adminNotes    String?
+  assignedTo    String?
+  resolvedAt    DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  messages      SupportTicketMessage[]
+  accessGrants  SupportAccessGrant[]
+}
+
+model SupportTicketMessage {
+  id         String        @id @default(cuid())
+  ticketId   String
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String?
+  authorName String
+  authorRole String
+  body       String
+  internal   Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+}
+
+model SupportAccessGrant {
+  id         String             @id @default(cuid())
+  ticketId   String
+  ticket     SupportTicket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  customerId String
+  grantedBy  String
+  grantedTo  String?
+  scope      String             @default("readonly")
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime           @default(now())
+  logs       SupportAccessLog[]
+}
+
+model SupportAccessLog {
+  id        String             @id @default(cuid())
+  grantId   String
+  grant     SupportAccessGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  userId    String
+  action    String
+  resource  String?
+  createdAt DateTime           @default(now())
+}
+
+// ── Admin Audit Log ────────────────────────────────────────────────────────────
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String
+  entityName String?
+  actorId    String
+  actorName  String?
+  details    String?
+  createdAt  DateTime @default(now())
+}
+
+// ── Planning Policy (Phase 9) ─────────────────────────────────────────────────
+// Human-readable admin configuration that governs how the solver run is evaluated.
+// One record per location; upserted by PUT /api/planning-policy.
+
+model PlanningPolicy {
+  locationId              String    @id
+  customerId              String
+  // How to treat employees with excess hours before the planning run
+  defaultOvertimeHandling String    @default("normal") // reduce | normal | compensate
+  // Minimum quality score required for automatic approval (0–100)
+  minAutoApproveScore     Float     @default(80)
+  // Abort the run immediately when the solver reports INFEASIBLE (vs. partial plan)
+  failFastOnInfeasible    Boolean   @default(true)
+  // Deadline by which employees must submit their wishes; after this the scheduler locks input
+  requestDeadline         DateTime?
+  updatedAt               DateTime  @updatedAt
+
+  @@index([customerId])
+}
+
+// ── Employee Requests (Phase 8) ──────────────────────────────────────────────
+// Structured employee requests: single source of truth for all request types.
+// Complements WishSubmission (per-date soft wishes) with a richer model that
+// covers vacations, absences, overtime adjustments and date-range requests.
+
+model EmployeeRequest {
+  id          String    @id @default(cuid())
+  employeeId  String
+  locationId  String
+  customerId  String
+  // Type of request (mirrors EmployeeRequestType in company-model-types.ts)
+  type        String // shift_wish | day_off_wish | vacation | absence | overtime_reduce | overtime_compensate
+  status      String    @default("pending") // pending | approved | rejected | expired
+  priority    String    @default("normal") // low | normal | high | critical
+  // Day-specific requests
+  date        String?
+  // Range requests (vacation, absence, consecutive days off)
+  dateFrom    String?
+  dateTo      String?
+  // For shift_wish: which shift
+  shiftId     String?
+  reason      String?
+  // Audit
+  submittedAt DateTime  @default(now())
+  respondedAt DateTime?
+  respondedBy String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([employeeId])
+  @@index([locationId])
+  @@index([customerId])
+}
+
+// ── §31 ShiftDemand — configurable per-shift staffing targets ────────────────
+
+model ShiftDemand {
+  id         String   @id @default(cuid())
+  locationId String
+  shiftId    String
+  date       String? // null = recurring rule
+  dayOfWeek  Int? // 0=Sun…6=Sat; null = all days
+  minStaff   Int      @default(1)
+  maxStaff   Int?
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([locationId])
+}
+
+// ── §62 PlanChange — dispatcher learning: track manual plan edits ──────────────
+
+model PlanChange {
+  id         String   @id @default(cuid())
+  locationId String
+  customerId String
+  sessionId  String? // planning session that generated the original plan
+  employeeId String
+  date       String
+  oldShiftId String?
+  newShiftId String?
+  changeType String // assign | remove | swap
+  changedBy  String
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  @@index([locationId])
+  @@index([employeeId])
+}
+
+// ── Workflow Engine — Requirement Learning Queue ───────────────────────────────
+
+model WorkflowLearning {
+  id             String   @id @default(cuid())
+  workflowId     String
+  customerId     String?
+  locationId     String?
+  type           String
+  description    String
+  confidence     String
+  structuredData Json?
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+}
+
+// ── §70 Custom Constraint Generator ──────────────────────────────────────────
+
+model CustomConstraint {
+  id          String   @id @default(cuid())
+  locationId  String
+  customerId  String
+  name        String
+  description String
+  code        String
+  status      String   @default("pending")
+  errorLog    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([locationId])
+  @@index([customerId])
+}
+
+// ── §100 Dateiablage ─────────────────────────────────────────────────────────
+// Fundament für Personalakte, Krankenscheine und Lohnbelege. Bis hierher gab es
+// im System überhaupt keine Möglichkeit, eine Datei abzulegen.
+//
+// Der Inhalt liegt standardmäßig in der Datenbank (Treiber "db"): Personalakten
+// sind klein, und der Dateispeicher von Railway ist nach jedem Neustart leer —
+// für Arbeitsverträge untauglich. Für größere Mengen kann später ein
+// S3-kompatibler Speicher dazukommen, ohne dass sich am Rest etwas ändert.
+
+model StoredFile {
+  id         String  @id @default(cuid())
+  customerId String
+  locationId String?
+
+  // Wem gehört die Datei: "employee" oder "location"
+  ownerType String
+  ownerId   String
+
+  // vertrag | zeugnis | bescheinigung | krankenschein | lohnabrechnung | sonstiges
+  kategorie String @default("sonstiges")
+
+  dateiname String
+  mimeType  String
+  groesse   Int
+
+  // Treiber "db": Inhalt hier. Treiber "s3": Schlüssel im Objektspeicher.
+  treiber          String  @default("db")
+  inhalt           Bytes?
+  objektSchluessel String?
+
+  // Steuert, ob der Mitarbeiter die Datei in seiner App sieht.
+  // Lohnabrechnung und Vertrag: ja. Interne Notizen: nein.
+  sichtbarFuerMitarbeiter Boolean @default(false)
+
+  hochgeladenVon     String
+  hochgeladenVonName String?
+  notiz              String?
+  gueltigVon         String?
+  gueltigBis         String?
+
+  createdAt DateTime  @default(now())
+  // Weiches Löschen: Personalunterlagen unterliegen Aufbewahrungsfristen,
+  // ein sofortiges Verschwinden wäre in vielen Fällen unzulässig.
+  deletedAt DateTime?
+
+  // §130 Zu welcher Fehlzeit dieser Nachweis gehoert.
+  //
+  // Eine Fehlzeit kann mehrere haben: Erst- und Folgebescheinigung sind der
+  // Normalfall, nicht die Ausnahme. Deshalb haengt die Verbindung an der Datei
+  // und nicht an der Abwesenheit.
+  absenceId String?
+
+  @@index([absenceId])
+  @@index([ownerType, ownerId])
+  @@index([customerId])
+  @@index([locationId])
+}
+
+// ── §102 Lohn-Stammdaten am Mitarbeiter ──────────────────────────────────────
+// PayrollEntry verlangt Steuerklasse, Kinderfreibetraege, Versicherungsart,
+// Kirchensteuer, Bundesland und Lohn — beim Mitarbeiter stand davon nichts.
+// Jede Abrechnung haette diese Angaben neu gebraucht.
+//
+// Bewusst eine eigene Tabelle: Bankverbindung, Sozialversicherungs- und
+// Steuernummer sind besonders schutzwuerdig und haben nichts in derselben
+// Zeile wie der Anzeigename zu suchen. Nur Leitung, Unternehmen und der
+// Mitarbeiter selbst kommen heran.
+
+model EmployeePayrollProfile {
+  employeeId          String   @id
+  customerId          String?
+
+  // Zuordnung im Betrieb
+  personalnummer      String?
+  eintrittsdatum      String?
+  austrittsdatum      String?
+  befristetBis        String?
+  probezeitBis        String?
+
+  // Anschrift — steht auf jeder Lohnabrechnung
+  strasse             String?
+  plz                 String?
+  ort                 String?
+
+  // Steuer
+  steuerId            String?   // Steuerliche Identifikationsnummer (11-stellig)
+  steuerklasse        Int?      // 1–6
+  kinderfreibetraege  Float?    // z.B. 0, 0.5, 1, 1.5 …
+  konfession          String?   // keine | ev | rk | sonstige
+  bundesland          String?   // Kirchensteuersatz und Feiertage
+
+  // Sozialversicherung
+  sozialversicherungsnummer String?
+  versicherungsart    String?   // GKV | PKV
+  krankenkasse        String?
+  zusatzbeitrag       Float?    // Prozentpunkte der Krankenkasse
+  pkvBeitrag          Float?    // Monatsbeitrag bei privater Versicherung
+  rentenversicherungspflichtig Boolean @default(true)
+  schwerbehindert     Boolean   @default(false)
+  // §121 Beschaeftigungsart: regulaer | minijob | kurzfristig.
+  // Der Uebergangsbereich wird NICHT hier gefuehrt — er ergibt sich aus dem
+  // Entgelt und ist keine Vereinbarung, sondern Gesetz.
+  beschaeftigungsart  String?
+  /// Minijob: Befreiung von der Rentenversicherungspflicht auf Antrag
+  rvBefreiung         Boolean?
+  /// Minijob: 2 % Pauschsteuer statt individueller Besteuerung nach ELStAM
+  pauschalsteuer      Boolean?
+
+  // §116 Pflegeversicherung: der Zuschlag entfaellt dauerhaft mit dem ersten Kind,
+  // die Abschlaege gibt es nur fuer Kinder unter 25 und erst ab dem zweiten.
+  hatKinder           Boolean?
+  kinderUnter25       Int?
+
+  // §117 ELStAM — die Merkmale, nach denen die Lohnsteuer gerechnet wird.
+  // Sie gehoeren dem Finanzamt, nicht uns: wir fuehren nur nach, was in der
+  // Aenderungsliste des Arbeitgebers steht. elstamStand sagt, von wann dieser
+  // Stand ist; ohne ihn wird vor jedem Abrechnungslauf gewarnt.
+  elstamStand         String?   // YYYY-MM-DD der zugrunde liegenden Liste
+  elstamQuelle        String?   // z.B. "Aenderungsliste 03/2026" oder "manuell"
+  elstamBestaetigtVon String?
+  freibetragMonat     Float?    // Freibetrag lt. ELStAM, Monatsbetrag
+  hinzurechnungMonat  Float?    // Hinzurechnungsbetrag lt. ELStAM, Monatsbetrag
+  faktor              Float?    // Faktorverfahren, nur Steuerklasse IV
+
+  // Entgelt
+  lohnart             String?   // stunde | monat
+  stundenlohn         Float?
+  monatsgehalt        Float?
+
+  // Zahlung — Grundlage fuer die spaetere SEPA-Datei
+  iban                String?
+  bic                 String?
+  kontoinhaber        String?
+
+  notiz               String?
+  updatedAt           DateTime @updatedAt
+
+  @@index([customerId])
+}

@@ -1,0 +1,486 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
+import { Textarea } from '@/components/ui/Textarea'
+import { UserPlus, CheckCircle2, Plus, Trash2 } from 'lucide-react'
+import type { EmployeeDraft, PreApprovedVacation } from '@/lib/employee-draft'
+
+const EMPLOYMENT_OPTIONS = ['Vollzeit', 'Teilzeit', 'Minijob', 'Individuell']
+const NEW_ROLE_VALUE = '__new_role__'
+const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+
+const EMPTY_DRAFT: EmployeeDraft = { weeklyHours: 38, multiGroupCapable: false }
+
+function toCsv(values?: string[]) {
+  return values?.join(', ') ?? ''
+}
+
+function fromCsv(value: string): string[] | undefined {
+  const items = value.split(',').map(v => v.trim()).filter(Boolean)
+  return items.length > 0 ? items : undefined
+}
+
+function toFreeText(values?: string[]) {
+  return values?.join('\n') ?? ''
+}
+
+function fromFreeText(value: string): string[] | undefined {
+  return value.trim() ? [value] : undefined
+}
+
+export function EmployeeCreationForm({
+  open,
+  onClose,
+  onSave,
+  initialDraft,
+  employeeName,
+}: {
+  open: boolean
+  onClose: () => void
+  onSave: (draft: EmployeeDraft) => Promise<void>
+  initialDraft?: EmployeeDraft
+  employeeName?: string
+}) {
+  const isEditMode = !!initialDraft
+  const [draft, setDraft] = useState<EmployeeDraft>(initialDraft ?? EMPTY_DRAFT)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+  const [roles, setRoles] = useState<string[]>([])
+  const [addingRole, setAddingRole] = useState(false)
+  const [newRole, setNewRole] = useState('')
+  const [emailTaken, setEmailTaken] = useState(false)
+  const emailCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Local raw text states for CSV fields — avoids trim() eating spaces during typing
+  const [qualificationsText, setQualificationsText] = useState(toCsv(initialDraft?.qualifications))
+  const [allowedTasksText, setAllowedTasksText] = useState(toCsv(initialDraft?.allowedTasks))
+
+  useEffect(() => {
+    if (!open) return
+    setDraft(initialDraft ?? EMPTY_DRAFT)
+    setQualificationsText(toCsv(initialDraft?.qualifications))
+    setAllowedTasksText(toCsv(initialDraft?.allowedTasks))
+  }, [open, initialDraft])
+
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/roles').then(r => r.json()).then(d => setRoles(d.roles ?? [])).catch(() => {})
+  }, [open])
+
+  // §71: offer the location's real Gruppen as Stammgruppen-Auswahl so the
+  // employee↔group link never breaks on typos
+  const [gruppenOptions, setGruppenOptions] = useState<string[]>([])
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(d => {
+        const locId = d.user?.locationId
+        if (!locId) return
+        return fetch(`/api/planning-units?locationId=${locId}`)
+          .then(r => r.json())
+          .then(pd => setGruppenOptions(
+            ((pd.units ?? []) as { name: string; type: string }[])
+              .filter(u => u.type === 'gruppe')
+              .map(u => u.name),
+          ))
+      })
+      .catch(() => {})
+  }, [open])
+
+  useEffect(() => {
+    if (isEditMode) return
+    const email = draft.email?.trim()
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailTaken(false)
+      return
+    }
+    if (emailCheckTimer.current) clearTimeout(emailCheckTimer.current)
+    emailCheckTimer.current = setTimeout(() => {
+      fetch(`/api/check-email?email=${encodeURIComponent(email)}`)
+        .then(r => r.json())
+        .then(d => setEmailTaken(!d.available))
+        .catch(() => {})
+    }, 500)
+    return () => {
+      if (emailCheckTimer.current) clearTimeout(emailCheckTimer.current)
+    }
+  }, [draft.email, isEditMode])
+
+  function update<K extends keyof EmployeeDraft>(key: K, value: EmployeeDraft[K]) {
+    setDraft(prev => ({ ...prev, [key]: value }))
+  }
+
+  function toggleDay(key: 'workDays' | 'fixedOffDays', day: string) {
+    setDraft(prev => {
+      const current = prev[key] ?? []
+      const next = current.includes(day) ? current.filter(d => d !== day) : [...current, day]
+      return { ...prev, [key]: next.length > 0 ? next : undefined }
+    })
+  }
+
+  function reset() {
+    setDraft(initialDraft ?? EMPTY_DRAFT)
+    setError(null)
+    setDone(false)
+    setAddingRole(false)
+    setNewRole('')
+  }
+
+  async function handleAddRole() {
+    const trimmed = newRole.trim()
+    if (!trimmed) return
+    const res = await fetch('/api/roles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: trimmed }),
+    })
+    const data = await res.json()
+    if (data.roles) setRoles(data.roles)
+    update('roleType', trimmed)
+    setAddingRole(false)
+    setNewRole('')
+  }
+
+  async function handleSubmit() {
+    // Flush local CSV text states into draft before validation
+    const flushedDraft = {
+      ...draft,
+      qualifications: fromCsv(qualificationsText),
+      allowedTasks: fromCsv(allowedTasksText),
+    }
+    setDraft(flushedDraft)
+
+    if (!flushedDraft.name?.trim() || !flushedDraft.email?.trim()) {
+      setError('Name und E-Mail sind erforderlich')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((flushedDraft.email ?? '').trim())) {
+      setError('Ungültige E-Mail-Adresse')
+      return
+    }
+    if (!isEditMode && emailTaken) {
+      setError('Diese E-Mail-Adresse ist bereits im System registriert.')
+      return
+    }
+    setError(null)
+    setSaving(true)
+    try {
+      await onSave(flushedDraft)
+      setDone(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Mitarbeiter konnte nicht angelegt werden')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (done) {
+    return (
+      <Modal open={open} onClose={() => { reset(); onClose() }} title={isEditMode ? 'Profil aktualisiert' : 'Mitarbeiter angelegt'} size="md">
+        <div className="text-center py-4">
+          <CheckCircle2 size={40} className="text-green-500 mx-auto mb-3" />
+          <p className="text-navy font-semibold">
+            {isEditMode ? `${draft.name} wurde aktualisiert` : `${draft.name} wurde im System angelegt`}
+          </p>
+          {!isEditMode && <p className="text-sm text-gray-500 mt-1">Einladung per E-Mail wird versendet</p>}
+          <Button className="mt-5 w-full" onClick={() => { reset(); onClose() }}>Schließen</Button>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={() => { reset(); onClose() }}
+      title={isEditMode ? `${employeeName ?? 'Mitarbeiter'} bearbeiten` : 'Mitarbeiter per Formular anlegen'}
+      size="lg"
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Name *" value={draft.name ?? ''} onChange={e => update('name', e.target.value)} placeholder="Vor- und Nachname" />
+          <div>
+            <Input label="E-Mail *" type="email" value={draft.email ?? ''} onChange={e => update('email', e.target.value)} placeholder="name@beispiel.de" />
+            {emailTaken && <p className="text-xs text-red-600 mt-0.5">Diese E-Mail ist bereits vergeben</p>}
+          </div>
+          <Input label="Telefon" value={draft.phone ?? ''} onChange={e => update('phone', e.target.value)} />
+          <Input label="Geburtsdatum" type="date" value={draft.birthDate ?? ''} onChange={e => update('birthDate', e.target.value)} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {gruppenOptions.length > 0 ? (
+            <Select label="Gruppe (Stammgruppe)" value={draft.gruppe ?? ''} onChange={e => update('gruppe', e.target.value || undefined)}>
+              <option value="">Keine / Springer</option>
+              {gruppenOptions.map(g => <option key={g} value={g}>{g}</option>)}
+              {draft.gruppe && !gruppenOptions.includes(draft.gruppe) && (
+                <option value={draft.gruppe}>{draft.gruppe} (nicht mehr vorhanden)</option>
+              )}
+            </Select>
+          ) : (
+            <Input label="Gruppe" value={draft.gruppe ?? ''} onChange={e => update('gruppe', e.target.value)} />
+          )}
+          <Input label="Bereich" value={draft.bereich ?? ''} onChange={e => update('bereich', e.target.value)} />
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={!!draft.multiGroupCapable}
+            onChange={e => update('multiGroupCapable', e.target.checked)}
+            className="rounded accent-brand"
+          />
+          Kann in mehreren Gruppen eingesetzt werden
+        </label>
+
+        <Input label="Feste Einsatzorte" value={draft.fixedLocations ?? ''} onChange={e => update('fixedLocations', e.target.value)} hint="Falls die Person nur an bestimmten Standorten eingesetzt werden kann" />
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            {addingRole ? (
+              <div>
+                <label className="block text-sm font-semibold text-navy mb-1.5">Neue Rolle</label>
+                <div className="flex gap-1.5">
+                  <Input value={newRole} onChange={e => setNewRole(e.target.value)} placeholder="z.B. Pflegefachkraft" />
+                  <Button type="button" size="sm" onClick={handleAddRole}>OK</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => { setAddingRole(false); setNewRole('') }}>Abbrechen</Button>
+                </div>
+              </div>
+            ) : (
+              <Select
+                label="Rolle"
+                value={draft.roleType ?? ''}
+                onChange={e => {
+                  if (e.target.value === NEW_ROLE_VALUE) { setAddingRole(true); return }
+                  update('roleType', e.target.value || undefined)
+                }}
+              >
+                <option value="">Bitte wählen</option>
+                {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                <option value={NEW_ROLE_VALUE}>+ Neue Rolle hinzufügen</option>
+              </Select>
+            )}
+          </div>
+          <Select label="Beschäftigungsart" value={draft.employmentType ?? ''} onChange={e => update('employmentType', e.target.value || undefined)}>
+            <option value="">Bitte wählen</option>
+            {EMPLOYMENT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+          </Select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">Wochenstunden</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range" min={5} max={60} step={1}
+                value={draft.weeklyHours ?? 38}
+                onChange={e => update('weeklyHours', Number(e.target.value))}
+                className="flex-1 accent-brand"
+              />
+              <span className="font-bold text-navy w-12 text-center">{draft.weeklyHours ?? 38}h</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">Arbeitstage / Woche</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range" min={1} max={7} step={1}
+                value={draft.workDaysPerWeek ?? 5}
+                onChange={e => update('workDaysPerWeek', Number(e.target.value))}
+                className="flex-1 accent-brand"
+              />
+              <span className="font-bold text-navy w-12 text-center">{draft.workDaysPerWeek ?? 5} Tage</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">Konkrete Arbeitstage (optional)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {WEEKDAYS.map(day => (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => toggleDay('workDays', day)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                    draft.workDays?.includes(day)
+                      ? 'bg-brand text-navy border-brand'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-navy mb-1.5">Feste freie Tage (optional)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {WEEKDAYS.map(day => (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => toggleDay('fixedOffDays', day)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                    draft.fixedOffDays?.includes(day)
+                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <Input
+          label="Tägliche Soll-Stunden (optional)"
+          type="number"
+          min={1}
+          max={12}
+          step={0.5}
+          value={draft.dailyTargetHours ?? ''}
+          onChange={e => update('dailyTargetHours', e.target.value ? Number(e.target.value) : undefined)}
+          hint="Nur ausfüllen, falls abweichend von Wochenstunden ÷ Arbeitstage"
+        />
+
+        <Input
+          label="Qualifikationen"
+          value={qualificationsText}
+          onChange={e => setQualificationsText(e.target.value)}
+          onBlur={e => update('qualifications', fromCsv(e.target.value))}
+          hint="Kommagetrennt, z.B. Erste-Hilfe-Schein, Schwimmbefähigung"
+        />
+        <Input
+          label="Erlaubte Aufgaben"
+          value={allowedTasksText}
+          onChange={e => setAllowedTasksText(e.target.value)}
+          onBlur={e => update('allowedTasks', fromCsv(e.target.value))}
+          hint="Kommagetrennt – fließt in die Dienstplanung ein"
+        />
+        <Textarea
+          label="Persönliche Besonderheiten"
+          value={toFreeText(draft.besonderheiten)}
+          onChange={e => update('besonderheiten', fromFreeText(e.target.value))}
+          placeholder="z.B. Alleinerziehend, kein Führerschein, Wunsch nach Frühdiensten, gesundheitliche Einschränkungen, Sprachen, ..."
+          hint="Freitext – beliebig ausführlich. Die KI berücksichtigt diese Angaben bei der Dienstplanung."
+          rows={4}
+        />
+        <Textarea
+          label="Individuelle Absprachen"
+          value={draft.absprachen ?? ''}
+          onChange={e => update('absprachen', e.target.value || undefined)}
+          placeholder="z.B. feste Bürozeit montags, nie Spätdienst am Freitag"
+        />
+
+        {/* ── Vertrag & Stundenstand ─────────────────────────────── */}
+        <div className="pt-1 border-t border-gray-100">
+          <p className="text-sm font-bold text-navy mb-3">Vertrag & Stundenstand</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">
+                Vertragsurlaub (Tage/Jahr)
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range" min={20} max={40} step={1}
+                  value={draft.contractVacationDays ?? 30}
+                  onChange={e => update('contractVacationDays', Number(e.target.value))}
+                  className="flex-1 accent-brand"
+                />
+                <span className="font-bold text-navy w-14 text-center">
+                  {draft.contractVacationDays ?? 30} T
+                </span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">
+                Aktueller Stundenstand
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step={0.5}
+                  min={-200}
+                  max={200}
+                  value={draft.hoursBalanceOffset ?? 0}
+                  onChange={e => update('hoursBalanceOffset', Number(e.target.value))}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold text-navy focus:outline-none focus:ring-2 focus:ring-brand/30 text-center"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">h</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">Positiv = Überstunden · Negativ = Minusstunden</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Bereits genehmigte Urlaube ─────────────────────────── */}
+        <div className="pt-1 border-t border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-navy">Bereits genehmigte Urlaube</p>
+            <button
+              type="button"
+              onClick={() => update('preApprovedVacations', [...(draft.preApprovedVacations ?? []), { from: '', to: '' }])}
+              className="flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand/80 transition-colors"
+            >
+              <Plus size={13} /> Urlaub hinzufügen
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">
+            Diese Urlaube werden direkt als genehmigt in den Kalender eingetragen.
+          </p>
+          {(draft.preApprovedVacations ?? []).length === 0 && (
+            <p className="text-xs text-gray-400 italic">Keine bereits genehmigten Urlaube</p>
+          )}
+          <div className="space-y-2">
+            {(draft.preApprovedVacations ?? []).map((v, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                <Input
+                  label={i === 0 ? 'Von' : undefined}
+                  type="date"
+                  value={v.from}
+                  onChange={e => {
+                    const next = [...(draft.preApprovedVacations ?? [])]
+                    next[i] = { ...next[i], from: e.target.value }
+                    update('preApprovedVacations', next)
+                  }}
+                />
+                <Input
+                  label={i === 0 ? 'Bis' : undefined}
+                  type="date"
+                  value={v.to}
+                  onChange={e => {
+                    const next = [...(draft.preApprovedVacations ?? [])]
+                    next[i] = { ...next[i], to: e.target.value }
+                    update('preApprovedVacations', next)
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => update('preApprovedVacations', (draft.preApprovedVacations ?? []).filter((_, j) => j !== i))}
+                  className="mb-0.5 p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <Button className="w-full gap-2" loading={saving} onClick={handleSubmit}>
+          <UserPlus size={16} />
+          {isEditMode ? 'Änderungen speichern' : 'Mitarbeiter anlegen'}
+        </Button>
+      </div>
+    </Modal>
+  )
+}

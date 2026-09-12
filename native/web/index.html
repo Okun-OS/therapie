@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>OKUN Workforce</title>
+  <!--
+    §139 Diese Seite liegt IM Programm, nicht auf dem Server — sie ist das
+    Einzige, was noch da ist, wenn die Anlage gar nicht antwortet. Deshalb
+    steht hier alles im Dokument selbst: kein Stilblatt, keine Schriftart und
+    kein Bild von außen, denn nichts davon käme an.
+
+    Ohne diese Seite zeigte die App einen weißen Bildschirm. Ein Prüfer bei
+    Apple sieht dann nichts, wovon er auf eine Anwendung schließen könnte, und
+    lehnt ab. Und ein Mitarbeiter im Zug wüsste nicht, ob sein Telefon kaputt
+    ist oder nur der Tunnel zu lang.
+  -->
+  <style>
+    :root { color-scheme: dark }
+    * { box-sizing: border-box }
+    body {
+      margin: 0; min-height: 100vh; background: #1A1D1F; color: #fff;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center;
+      padding: 24px max(24px, env(safe-area-inset-left)) 24px max(24px, env(safe-area-inset-right));
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-user-select: none; user-select: none;
+    }
+    .zeichen {
+      width: 76px; height: 76px; border-radius: 22px; margin-bottom: 24px;
+      background: rgba(45, 212, 191, .16);
+      display: flex; align-items: center; justify-content: center;
+    }
+    h1 { font-size: 22px; margin: 0 0 10px; font-weight: 700 }
+    p { margin: 0 0 8px; max-width: 22em; line-height: 1.55; color: rgba(255,255,255,.66); font-size: 15px }
+    .klein { font-size: 13px; color: rgba(255,255,255,.4); margin-top: 18px }
+    button {
+      margin-top: 26px; border: 0; border-radius: 16px; padding: 15px 30px;
+      background: #2DD4BF; color: #0F172A; font-size: 16px; font-weight: 700;
+      font-family: inherit;
+    }
+    button:active { transform: scale(.98) }
+  </style>
+</head>
+<body>
+  <div class="zeichen" aria-hidden="true">
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="1" y1="1" x2="23" y2="23" />
+      <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
+      <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
+      <path d="M10.71 5.05A16 16 0 0 1 22.56 9" />
+      <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+      <line x1="12" y1="20" x2="12.01" y2="20" />
+    </svg>
+  </div>
+
+  <h1>Keine Verbindung</h1>
+  <p>OKUN Workforce ist gerade nicht erreichbar. Meist liegt es am Empfang.</p>
+  <p class="klein">
+    Was du ohne Netz gestempelt oder gemeldet hast, ist gespeichert und geht
+    raus, sobald die Verbindung wieder steht.
+  </p>
+
+  <button onclick="location.reload()">Erneut versuchen</button>
+
+  <script>
+    // Sobald das Telefon wieder Netz meldet, von selbst weiterversuchen —
+    // niemand soll auf einen Knopf starren müssen.
+    addEventListener('online', function () { location.reload() })
+  </script>
+</body>
+</html>
