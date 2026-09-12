@@ -211,106 +211,91 @@ export default function TimeTracking() {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   }
 
+  /*
+   * §137 Gestempelt wird ueber EINEN Aufruf.
+   *
+   * Vorher legte diese Seite die Zeitbuchung selbst an, startete danach die
+   * Erfassung und merkte sich beide Kennungen im Browser. Brach einer der
+   * Aufrufe ab, stimmte der Zustand nicht mehr — und auf der Startseite gab es
+   * daneben noch einen dritten Weg, der ueberhaupt nichts gespeichert hat.
+   *
+   * Jetzt entscheidet der Server, was erlaubt ist, und antwortet mit dem neuen
+   * Zustand. Diese Seite zeigt ihn nur noch an.
+   */
   const handleClockIn = async () => {
-    const clockInDate = new Date()
+    const r = await fetch('/api/time-tracking/stempeln', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aktion: 'kommen', zeitpunkt: new Date().toISOString() }),
+    })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok) { showToast(d.error ?? 'Einstempeln hat nicht geklappt', 'error'); return }
     setClockedIn(true)
-    setClockInTime(clockInDate)
+    setClockInTime(d.log?.clockInAt ? new Date(d.log.clockInAt) : new Date())
     setElapsed(0)
-
-    if (user?.employeeId) {
-      const log = await fetch('/api/time-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeId: user.employeeId,
-          date: todayStr,
-          clockIn: clockInDate.toTimeString().slice(0, 5),
-          locationId: myEmployee?.locationId || user.locationId,
-        }),
-      }).then(r => r.json()).then(d => d.log)
-      setActiveTimeLogId(log.id)
-      setTIME_LOGS(prev => [log, ...prev])
-
-      fetch('/api/time-tracking/clock-in', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId: user.employeeId, date: todayStr, locationId: myEmployee?.locationId || user.locationId }),
-      })
-        .then(res => res.json())
-        .then(data => setActiveEntryId(data.entry?.id ?? null))
-        .catch(() => {})
-    }
+    setActiveTimeLogId(d.log?.id ?? null)
     fetchActiveLog()
     refresh()
   }
 
   const handleClockOut = async () => {
     const clockOutDate = new Date()
+    const beendeter = activeTimeLogId
+
+    const r = await fetch('/api/time-tracking/stempeln', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aktion: 'gehen', zeitpunkt: clockOutDate.toISOString() }),
+    })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok) { showToast(d.error ?? 'Ausstempeln hat nicht geklappt', 'error'); return }
+
     setClockedIn(false)
-
-    if (activeTimeLogId && user?.employeeId && clockInTime) {
-      const totalMinutes = Math.max(0, Math.round((clockOutDate.getTime() - clockInTime.getTime()) / 60000))
-      const updated = await fetch(`/api/time-logs/${activeTimeLogId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clockOut: clockOutDate.toTimeString().slice(0, 5), totalMinutes }),
-      }).then(r => r.json()).then(d => d.log)
-      setTIME_LOGS(prev => prev.map(l => l.id === updated.id ? updated : l))
-
-      const scheduleEntry = SCHEDULE_ENTRIES.find(e => e.employeeId === user.employeeId && e.date === todayStr)
-      const shift = scheduleEntry ? getShiftById(scheduleEntry.shiftId) : undefined
-      if (shift) {
-        const [eh, em] = shift.endTime.split(':').map(Number)
-        const plannedEnd = eh * 60 + em
-        const actualEnd = clockOutDate.getHours() * 60 + clockOutDate.getMinutes()
-        const diff = actualEnd - plannedEnd
-        if (diff >= OVERTIME_MIN_MINUTES) {
-          setPendingOvertime({ timeLogId: activeTimeLogId, date: todayStr, minutes: diff })
-          setOvertimeReason('')
-          setOvertimeComment('')
-          setOvertimeModalOpen(true)
-        }
-      }
-      setActiveTimeLogId(null)
-    }
-
     setClockInTime(null)
     setElapsed(0)
+    setActiveTimeLogId(null)
+    setActiveEntryId(null)
 
-    if (activeEntryId) {
-      fetch('/api/time-tracking/clock-out', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timeClockEntryId: activeEntryId }),
-      }).catch(() => {})
-      setActiveEntryId(null)
+    // Laenger geblieben als geplant? Dann gleich fragen, wofuer — spaeter weiss
+    // es niemand mehr, und ohne Grund wird aus Mehrarbeit keine Ueberstunde.
+    const scheduleEntry = SCHEDULE_ENTRIES.find(
+      e => e.employeeId === user?.employeeId && e.date === todayStr)
+    const shift = scheduleEntry ? getShiftById(scheduleEntry.shiftId) : undefined
+    if (shift && beendeter) {
+      const [eh, em] = shift.endTime.split(':').map(Number)
+      const plannedEnd = eh * 60 + em
+      const actualEnd = clockOutDate.getHours() * 60 + clockOutDate.getMinutes()
+      const diff = actualEnd - plannedEnd
+      if (diff >= OVERTIME_MIN_MINUTES) {
+        setPendingOvertime({ timeLogId: beendeter, date: todayStr, minutes: diff })
+        setOvertimeReason('')
+        setOvertimeComment('')
+        setOvertimeModalOpen(true)
+      }
     }
+
     fetchActiveLog()
     fetchAccount()
     refresh()
   }
 
-  const handleStartBreak = async () => {
-    if (!user?.employeeId) return
-    await fetch('/api/time-tracking/break/start', {
+  const stempelPause = async (aktion: 'pause-start' | 'pause-ende') => {
+    const r = await fetch('/api/time-tracking/stempeln', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeId: user.employeeId }),
+      body: JSON.stringify({ aktion, zeitpunkt: new Date().toISOString() }),
     })
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}))
+      showToast(d.error ?? 'Das hat nicht geklappt', 'error')
+      return
+    }
     fetchActiveLog()
     refresh()
   }
 
-  const handleEndBreak = async () => {
-    if (!user?.employeeId) return
-    await fetch('/api/time-tracking/break/end', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeId: user.employeeId }),
-    })
-    fetchActiveLog()
-    refresh()
-  }
+  const handleStartBreak = () => stempelPause('pause-start')
+  const handleEndBreak = () => stempelPause('pause-ende')
 
   const handleSubmitOvertime = async () => {
     if (!user?.employeeId || !pendingOvertime) return

@@ -31,36 +31,34 @@ export interface DockItem {
 }
 
 // ── Employee ────────────────────────────────────────────────────
+//
+// §137 Vier Punkte statt neun.
+//
+// Am Telefon trägt eine untere Leiste vier, höchstens fünf Ziele. Vorher waren
+// es fünf Symbole, hinter zweien davon Aufklapp-Menüs — also neun Wege, die
+// erst ein zweiter Fingertipp sichtbar machte. Das ist eine Schreibtisch-
+// Navigation im Telefonformat.
+//
+// Jetzt: was heute ansteht (Heute), der Plan, das Postfach, und alles über
+// einen selbst. Die Aufklapp-Menüs sind weg — jeder Punkt führt direkt
+// irgendwohin.
 const employeeDock: DockItem[] = [
-  { id: 'dashboard', label: 'Mein Tag', icon: IcoHeute, href: '/employee' },
+  { id: 'dashboard', label: 'Heute', icon: IcoHeute, href: '/employee' },
   {
-    id: 'dienstplan', label: 'Dienstplan', icon: IcoDienstplanung,
+    id: 'dienstplan', label: 'Plan', icon: IcoDienstplanung,
     panel: {
       title: 'Dienstplan',
       sections: [
         { items: [
-          { href: '/employee/schedule',              label: 'Mein Dienstplan', description: 'Aktuelle Schichten & Woche',  icon: '📅' },
-          { href: '/employee/schedule?tab=wishes',   label: 'Wunschdienste',   description: 'Schichtwünsche eintragen',   icon: '⭐' },
-          { href: '/employee/substitutions',         label: 'Vertretungen',    description: 'Schichten tauschen',          icon: '🔄' },
-        ]},
-      ],
-    },
-  },
-  {
-    id: 'zeit', label: 'Zeit & Urlaub', icon: IcoZeitUrlaub,
-    panel: {
-      title: 'Zeit & Urlaub',
-      sections: [
-        { items: [
-          { href: '/employee/time-tracking', label: 'Zeiterfassung', description: 'Stunden & Überstunden erfassen', icon: '⏱' },
-          { href: '/employee/vacation',      label: 'Urlaub',        description: 'Anträge stellen & Resturlaub',   icon: '🌴' },
+          { href: '/employee/schedule',            label: 'Mein Dienstplan', description: 'Schichten und Woche',      icon: '📅' },
+          { href: '/employee/schedule?tab=wishes', label: 'Wunschdienste',   description: 'Wünsche eintragen',        icon: '⭐' },
+          { href: '/employee/substitutions',       label: 'Einspringen',     description: 'Anfragen und Tausch',      icon: '🔄' },
         ]},
       ],
     },
   },
   { id: 'nachrichten', label: 'Nachrichten', icon: IcoNachrichten, href: '/employee/nachrichten' },
-  { id: 'profil', label: 'Profil', icon: IcoMitarbeiterprofil, href: '/employee/profile' },
-  { id: 'assistent', label: 'OKUN Assistent', icon: IcoOKUNAssistent, href: '/admin/assistant', isGold: true },
+  { id: 'ich', label: 'Ich', icon: IcoMitarbeiterprofil, href: '/employee/ich' },
 ]
 
 // ── Admin (Standortleitung) ──────────────────────────────────────

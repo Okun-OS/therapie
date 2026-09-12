@@ -1,277 +1,200 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
-import { StatCard } from '@/components/ui/StatCard'
-import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
-import { useAuth } from '@/lib/auth-context'
-import { Clock, Palmtree, Calendar, TrendingUp, PlayCircle, StopCircle, Sun, Moon, Briefcase, ChevronRight, AlertCircle, ListChecks } from 'lucide-react'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { formatDate, formatTime, toDateString, getDayName, getWeekDays } from '@/lib/utils'
 import Link from 'next/link'
-import type { Employee, ScheduleEntry, Shift, TimeLog, VacationRequest } from '@/lib/types'
+import { useAuth } from '@/lib/auth-context'
+import { Stempeluhr } from '@/components/employee/Stempeluhr'
+import {
+  Stethoscope, Palmtree, MessageSquare, Repeat, ChevronRight,
+  CalendarDays, Receipt,
+} from 'lucide-react'
+import type { ScheduleEntry, Shift } from '@/lib/types'
 
-export default function EmployeeDashboard() {
+/**
+ * §137 „Heute" — die Startseite der Mitarbeiter-App.
+ *
+ * Vorher war das ein Schreibtisch-Dashboard im Telefonformat: Kacheln mit
+ * Wochenstunden, Resturlaub, Punkten, Schnellzugriffen. Alles interessant,
+ * nichts davon der Grund, warum jemand um zehn vor sechs das Telefon aus der
+ * Tasche holt.
+ *
+ * Dieser Grund ist EIN Handgriff: einstempeln. Er steht jetzt oben, groß, ohne
+ * Scrollen. Darunter nur noch das, was heute wirklich ansteht — und was auf
+ * eine Antwort wartet.
+ *
+ * Zahlen zum Nachschlagen (Stundenkonto, Resturlaub, Punkte) sind nicht
+ * verschwunden, sie stehen unter „Ich". Eine Startseite, die alles zeigt,
+ * zeigt nichts.
+ */
+
+interface Ungelesen { ungelesen: number }
+
+export default function Heute() {
   const { user } = useAuth()
-  const [clockedIn, setClockedIn] = useState(false)
-  const [clockInTime, setClockInTime] = useState<Date | null>(null)
-  const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
-  const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
-  const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
-  const [TIME_LOGS, setTIME_LOGS] = useState<TimeLog[]>([])
-  const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
+  const [eintraege, setEintraege] = useState<ScheduleEntry[]>([])
+  const [dienste, setDienste] = useState<Shift[]>([])
+  const [ungelesen, setUngelesen] = useState(0)
+  const [anfragen, setAnfragen] = useState(0)
 
   useEffect(() => {
-    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
-    fetch('/api/shifts').then(r => r.json()).then(d => setSHIFTS(d.shifts))
+    fetch('/api/shifts').then(r => r.json()).then(d => setDienste(d.shifts ?? [])).catch(() => {})
   }, [])
 
   useEffect(() => {
     if (!user?.employeeId) return
-    fetch(`/api/schedule-entries?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries))
-    fetch(`/api/time-logs?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setTIME_LOGS(d.logs))
-    fetch(`/api/vacation-requests?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
+    fetch(`/api/schedule-entries?employeeId=${user.employeeId}`)
+      .then(r => r.json()).then(d => setEintraege(d.entries ?? [])).catch(() => {})
+    fetch('/api/chat/ungelesen')
+      .then(r => r.json()).then((d: Ungelesen) => setUngelesen(d.ungelesen ?? 0)).catch(() => {})
+    fetch(`/api/substitutions/incoming?employeeId=${user.employeeId}`)
+      .then(r => r.json())
+      .then(d => setAnfragen((d.requests ?? []).filter(
+        (x: { responseStatus?: string }) => x.responseStatus === 'pending').length))
+      .catch(() => {})
   }, [user?.employeeId])
 
-  const employee = EMPLOYEES.find(e => e.id === user?.employeeId)
-  const today = toDateString(new Date())
-  const now = new Date()
-  const hour = now.getHours()
-  const greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend'
+  const heute = new Date()
+  const heuteStr = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, '0')}`
+    + `-${String(heute.getDate()).padStart(2, '0')}`
 
-  const todayEntries = SCHEDULE_ENTRIES.filter(s => s.employeeId === user?.employeeId && s.date === today)
-  const upcomingEntries = SCHEDULE_ENTRIES
-    .filter(s => s.employeeId === user?.employeeId && s.date >= today)
-    .slice(0, 5)
+  const meine = eintraege.filter(e => e.employeeId === user?.employeeId)
+  const heutiger = meine.find(e => e.date === heuteStr)
+  const dienstVon = (id: string) => dienste.find(s => s.id === id)
+  const heutigerDienst = heutiger ? dienstVon(heutiger.shiftId) : null
 
-  const weekDays = getWeekDays(now)
-  const weekStart = toDateString(weekDays[0])
-  const weekEnd = toDateString(weekDays[6])
-  const thisWeekLogs = TIME_LOGS.filter(t => t.employeeId === user?.employeeId && t.date >= weekStart && t.date <= weekEnd)
-  const weekMinutes = thisWeekLogs.reduce((sum, l) => sum + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0)
+  const naechste = meine
+    .filter(e => e.date > heuteStr)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 3)
 
-  const myVacations = VACATION_REQUESTS.filter(v => v.employeeId === user?.employeeId)
-  const pendingVacations = myVacations.filter(v => v.status === 'pending')
+  const stunde = heute.getHours()
+  const gruss = stunde < 11 ? 'Guten Morgen' : stunde < 18 ? 'Guten Tag' : 'Guten Abend'
+  const vorname = (user?.name ?? '').split(' ')[0]
 
-  const vacationRemaining = (employee?.vacationDaysTotal || 30) - (employee?.vacationDaysUsed || 0)
-
-  const handleClockIn = () => {
-    setClockedIn(true)
-    setClockInTime(new Date())
-  }
-
-  const handleClockOut = () => {
-    setClockedIn(false)
-    setClockInTime(null)
-  }
-
-  const getShiftInfo = (shiftId: string) => SHIFTS.find(s => s.id === shiftId)
-  const getShiftIcon = (type: string) => type === 'early' ? Sun : type === 'late' ? Moon : Briefcase
-
-  const todayShift = todayEntries[0] ? getShiftInfo(todayEntries[0].shiftId) : null
+  const wochentag = (iso: string) =>
+    new Date(`${iso}T12:00:00`).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })
 
   return (
-    <>
-      
+    <div className="px-4 pt-4 pb-2 space-y-4 max-w-2xl mx-auto">
+      <p className="text-navy font-bold text-xl">
+        {gruss}{vorname ? `, ${vorname}` : ''}
+      </p>
 
-      <div className="p-4 sm:p-6 space-y-5">
-        <FeatureIntro
-          featureKey="employee-dashboard"
-          text="Hier siehst du deinen heutigen Dienst, dein Stundenkonto und kannst dich ein- und ausstempeln. Über die Schnellzugriffe erreichst du Dienstplan, Zeiterfassung und Urlaub."
+      <Stempeluhr
+        dienst={heutigerDienst
+          ? { name: heutigerDienst.name, von: heutigerDienst.startTime, bis: heutigerDienst.endTime }
+          : null}
+      />
+
+      {/* Was auf eine Antwort wartet — nur wenn es etwas gibt. */}
+      {(ungelesen > 0 || anfragen > 0) && (
+        <div className="space-y-2">
+          {anfragen > 0 && (
+            <Karte
+              href="/employee/substitutions"
+              icon={<Repeat size={18} className="text-amber-600" />}
+              titel={anfragen === 1 ? 'Eine Anfrage zum Einspringen' : `${anfragen} Anfragen zum Einspringen`}
+              text="Jemand fällt aus — kannst du?"
+              dringend
+            />
+          )}
+          {ungelesen > 0 && (
+            <Karte
+              href="/employee/nachrichten"
+              icon={<MessageSquare size={18} className="text-teal-600" />}
+              titel={ungelesen === 1 ? 'Eine neue Nachricht' : `${ungelesen} neue Nachrichten`}
+              text="Im Postfach"
+            />
+          )}
+        </div>
+      )}
+
+      {/* Zwei Handgriffe, die man unterwegs braucht */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <Schnell
+          href="/employee/krank"
+          icon={<Stethoscope size={20} className="text-purple-600" />}
+          titel="Krankmelden"
         />
-        {/* Clock In/Out Hero */}
-        <Card className="bg-gradient-to-br from-navy to-navy-light border-0 shadow-lg" padding="lg">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="text-navy-100 text-sm font-medium mb-1">
-                {todayShift ? `Heute: ${todayShift.name}` : 'Kein Dienst heute'}
-              </p>
-              {todayShift && (
-                <p className="text-white text-2xl font-bold">
-                  {todayShift.startTime} – {todayShift.endTime} Uhr
-                </p>
-              )}
-              {clockedIn && clockInTime && (
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <p className="text-green-300 text-sm">Eingestempelt seit {clockInTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-3">
-              {!clockedIn ? (
-                todayShift ? (
-                  <Button onClick={handleClockIn} size="lg" className="gap-2 whitespace-nowrap">
-                    <PlayCircle size={20} />
-                    Einstempeln
-                  </Button>
-                ) : (
-                  <span title="Kein Dienst heute geplant – Einstempeln nicht möglich">
-                    <Button disabled size="lg" className="gap-2 whitespace-nowrap">
-                      <PlayCircle size={20} />
-                      Einstempeln
-                    </Button>
-                  </span>
-                )
-              ) : (
-                <Button onClick={handleClockOut} variant="danger" size="lg" className="gap-2 whitespace-nowrap">
-                  <StopCircle size={20} />
-                  Ausstempeln
-                </Button>
-              )}
-            </div>
-          </div>
-        </Card>
-
-        {/* Aufgaben innerhalb des heutigen Dienstes – wird automatisch aus dem aktuellen
-            Dienstplan und den zugewiesenen Aufgaben abgeleitet, daher immer aktuell. */}
-        {todayShift && (employee?.allowedTasks?.length ?? 0) > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Meine Aufgaben heute</CardTitle>
-            </CardHeader>
-            <div className="flex flex-wrap gap-2">
-              {employee!.allowedTasks!.map(task => (
-                <span key={task} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 text-xs font-medium text-navy">
-                  <ListChecks size={13} className="text-brand-dark" />
-                  {task}
-                </span>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard
-            title="Stundenkonto"
-            value={`${employee?.hoursBalance && employee.hoursBalance > 0 ? '+' : ''}${employee?.hoursBalance || 0}h`}
-            subtitle="aktueller Stand"
-            icon={TrendingUp}
-            iconColor={employee?.hoursBalance && employee.hoursBalance >= 0 ? 'text-green-600' : 'text-red-500'}
-            iconBg={employee?.hoursBalance && employee.hoursBalance >= 0 ? 'bg-green-100' : 'bg-red-100'}
-          />
-          <StatCard
-            title="Diese Woche"
-            value={formatTime(weekMinutes)}
-            subtitle={`von ${employee?.weeklyHours || 38}h`}
-            icon={Clock}
-            iconColor="text-blue-600"
-            iconBg="bg-blue-100"
-          />
-          <StatCard
-            title="Resturlaub"
-            value={`${vacationRemaining} Tage`}
-            subtitle={`von ${employee?.vacationDaysTotal || 30}`}
-            icon={Palmtree}
-            iconColor="text-emerald-600"
-            iconBg="bg-emerald-100"
-          />
-          <StatCard
-            title="Anträge"
-            value={pendingVacations.length}
-            subtitle="offen"
-            icon={Calendar}
-            iconColor="text-amber-600"
-            iconBg="bg-amber-100"
-          />
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-5">
-          {/* Upcoming Shifts */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Meine nächsten Dienste</CardTitle>
-              <Link href="/employee/schedule" className="text-xs text-brand font-semibold flex items-center gap-1 hover:underline">
-                Alle <ChevronRight size={12} />
-              </Link>
-            </CardHeader>
-            <div className="space-y-2">
-              {upcomingEntries.length === 0 ? (
-                <EmptyState icon={Calendar} title="Keine Dienste geplant" />
-              ) : (
-                upcomingEntries.map(entry => {
-                  const shift = getShiftInfo(entry.shiftId)
-                  if (!shift) return null
-                  const Icon = getShiftIcon(shift.type)
-                  const isEntryToday = entry.date === today
-                  return (
-                    <div key={entry.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: shift.bgColor }}>
-                        <Icon size={18} style={{ color: shift.color }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-navy">{shift.name}</p>
-                          {isEntryToday && <Badge variant="warning">Heute</Badge>}
-                          {entry.status === 'planned' && <Badge variant="default">Geplant</Badge>}
-                        </div>
-                        <p className="text-xs text-gray-500">{getDayName(entry.date)}, {formatDate(entry.date)} · {shift.startTime}–{shift.endTime} Uhr</p>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </Card>
-
-          {/* Vacation Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Urlaubsanträge</CardTitle>
-              <Link href="/employee/vacation" className="text-xs text-brand font-semibold flex items-center gap-1 hover:underline">
-                Alle <ChevronRight size={12} />
-              </Link>
-            </CardHeader>
-            <div className="space-y-2 mb-4">
-              {myVacations.length === 0 ? (
-                <EmptyState icon={Palmtree} title="Keine Anträge" />
-              ) : (
-                myVacations.slice(0, 3).map(v => (
-                  <div key={v.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-navy">{formatDate(v.startDate)} – {formatDate(v.endDate)}</p>
-                      <p className="text-xs text-gray-500">{v.days} Arbeitstage</p>
-                    </div>
-                    <Badge variant={v.status === 'approved' ? 'success' : v.status === 'denied' ? 'danger' : 'warning'}>
-                      {v.status === 'approved' ? 'Genehmigt' : v.status === 'denied' ? 'Abgelehnt' : 'Ausstehend'}
-                    </Badge>
-                  </div>
-                ))
-              )}
-            </div>
-            <Link href="/employee/vacation">
-              <Button variant="ghost" size="sm" className="w-full border border-dashed border-gray-200 hover:border-brand hover:bg-amber-50">
-                + Urlaub beantragen
-              </Button>
-            </Link>
-          </Card>
-        </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardTitle className="mb-4">Schnellzugriff</CardTitle>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { href: '/employee/schedule', icon: Calendar, label: 'Dienstplan', color: 'bg-blue-50 text-blue-600' },
-              { href: '/employee/time-tracking', icon: Clock, label: 'Zeiterfassung', color: 'bg-emerald-50 text-emerald-600' },
-              { href: '/employee/vacation', icon: Palmtree, label: 'Urlaub', color: 'bg-amber-50 text-amber-600' },
-              { href: '/employee/profile', icon: AlertCircle, label: 'Einschränkungen', color: 'bg-purple-50 text-purple-600' },
-            ].map(({ href, icon: Icon, label, color }) => (
-              <Link key={href} href={href}>
-                <div className="flex flex-col items-center gap-2 p-4 rounded-xl hover:bg-gray-50 transition-colors text-center group">
-                  <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                    <Icon size={22} />
-                  </div>
-                  <span className="text-xs font-semibold text-navy">{label}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </Card>
+        <Schnell
+          href="/employee/vacation"
+          icon={<Palmtree size={20} className="text-teal-600" />}
+          titel="Urlaub beantragen"
+        />
       </div>
-    </>
+
+      {/* Die nächsten Dienste */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+          <p className="text-sm font-semibold text-navy">Nächste Dienste</p>
+          <Link href="/employee/schedule" className="text-xs font-semibold text-teal-700">
+            Ganzer Plan
+          </Link>
+        </div>
+        {naechste.length === 0 ? (
+          <p className="text-xs text-gray-400 px-4 pb-4">
+            Für die nächsten Tage ist nichts eingeplant.
+          </p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {naechste.map(e => {
+              const d = dienstVon(e.shiftId)
+              return (
+                <div key={e.id} className="flex items-center gap-3 px-4 py-3">
+                  <CalendarDays size={16} className="text-gray-300 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-navy">{wochentag(e.date)}</p>
+                    <p className="text-xs text-gray-400">
+                      {d ? `${d.name} · ${d.startTime}–${d.endTime}` : 'Dienst'}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <Link
+        href="/employee/lohn"
+        className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 px-4 py-3.5"
+      >
+        <Receipt size={18} className="text-gray-400 shrink-0" />
+        <span className="text-sm font-medium text-navy flex-1">Meine Lohnabrechnungen</span>
+        <ChevronRight size={16} className="text-gray-300" />
+      </Link>
+    </div>
+  )
+}
+
+function Karte({ href, icon, titel, text, dringend }: {
+  href: string; icon: React.ReactNode; titel: string; text: string; dringend?: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 rounded-2xl border px-4 py-3.5 ${
+        dringend ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-white'}`}
+    >
+      <span className="shrink-0">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-navy">{titel}</span>
+        <span className="block text-xs text-gray-500">{text}</span>
+      </span>
+      <ChevronRight size={16} className="text-gray-300 shrink-0" />
+    </Link>
+  )
+}
+
+function Schnell({ href, icon, titel }: { href: string; icon: React.ReactNode; titel: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-col items-start gap-2 bg-white rounded-2xl border border-gray-100 p-4
+                 active:scale-[0.98] transition-transform"
+    >
+      {icon}
+      <span className="text-sm font-semibold text-navy leading-tight">{titel}</span>
+    </Link>
   )
 }

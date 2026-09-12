@@ -44,6 +44,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 |---|---|
 | `a-mitarbeiter.mjs` | Stammdaten, Rollen, Einladungen, Kollegensicht |
 | `b-zeit.mjs` | Zeiterfassung, Überstunden, Monatsabschluss |
+| `b2-stempeluhr.mjs` | Stempeln: Reihenfolge, Zeitpunkt vom Gerät, für wen |
 | `c-abwesenheit.mjs` | Urlaub, Krankheit, Schließzeiten |
 | `c2-krankenschein.mjs` | Krankenschein und Fehlzeit, Fristen, Lücken |
 | `d-lohn.mjs` | Beleg, Zustellung, DATEV, SEPA |

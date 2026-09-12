@@ -164,7 +164,7 @@ Siehe `PRODUKT-NOTIZEN.md`.
 - [x] **G2 DSGVO: Löschkonzept** — fertig. Katalog über alle 35 Tabellen mit
       Personenbezug, Vorschau vor jeder Löschung, Sperre statt Löschung wo das
       Gesetz es verlangt, Löschbericht als Nachweis. Siehe Block G1/G2 unten.
-- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 641 Nachweise im
+- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 670 Nachweise im
       Repo unter `pruefungen/`, ein Befehl (`npm run pruefen`), automatischer
       Lauf bei jedem Push. Siehe Block G3 unten.
       `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
@@ -1173,6 +1173,68 @@ des Laufs, nicht einer Person, und wird jetzt vorab geprüft.
 Nachweis: 22 Prüfungen (`pruefungen/d16-monatsfreigabe.mjs`) und 10 Modultests
 für die Regel selbst — sie entscheidet über Geld und gehört zu den Stellen, die
 man einzeln nachrechnen können muss.
+
+## Block §137 (12.09.) — Die Mitarbeiter-App, Etappe 1
+
+Die App war eine Schreibtisch-Oberfläche im Telefonformat: fünf Symbole unten,
+hinter zweien davon Aufklapp-Menüs — also neun Wege, die erst ein zweiter
+Fingertipp sichtbar machte. Und die Startseite zeigte Kacheln mit
+Wochenstunden, Resturlaub und Punkten. Alles interessant, nichts davon der
+Grund, warum jemand um zehn vor sechs das Telefon aus der Tasche holt.
+
+### Der schwerste Fund: ein Knopf, der nichts tat
+Auf der Startseite stand **„Einstempeln" — und der Knopf hat nichts gestempelt.**
+Er hat nur die Anzeige umgeschaltet. Wer darauf gedrückt hat und losgegangen
+ist, war nicht eingestempelt. In einem System, in dem die gestempelte Zeit
+direkt Geld wird, ist das der schlimmste Fehler von allen: **Er sieht aus wie
+Erfolg.**
+
+### Eine Stempeluhr, ein Aufruf
+Vorher legte die Zeiten-Seite die Zeitbuchung selbst an, startete danach die
+Erfassung und merkte sich beide Kennungen im Browser — vier Aufrufe, von denen
+einer abbrechen konnte. Jetzt gibt es **einen Aufruf je Handgriff**
+(`/api/time-tracking/stempeln`), der Server entscheidet, was erlaubt ist, und
+antwortet mit dem neuen Zustand.
+
+- [x] **Der Zustand kommt vom Server**, nicht aus dem Browser. Ein Gerät, das
+      eine Weile offline war, weiß nicht mehr, was inzwischen geschah.
+- [x] **Die Reihenfolge lässt sich nicht umgehen:** zweimal einstempeln,
+      Pause ohne Einstempeln, Pause beenden ohne Pause — alles abgelehnt, mit
+      einem Satz, der sagt, wie es weitergeht.
+- [x] **Man stempelt für sich selbst.** Die Person kommt aus der Sitzung, nicht
+      aus der Anfrage; eine mitgeschickte fremde Kennung ändert nichts.
+- [x] **Eine vergessene Pause endet mit dem Ausstempeln** — sonst liefe sie bis
+      in alle Ewigkeit weiter.
+- [x] **Über zwölf Stunden eingestempelt?** Dann steht das als Hinweis da —
+      sofort, nicht erst beim Monatsabschluss.
+
+### Der Zeitpunkt vom Gerät — die Vorbereitung auf Etappe 2
+Im Funkloch entsteht der Stempel auf dem Telefon und wird später übertragen.
+Dann zählt die Zeit des Stempelns, nicht die des Hochladens. Ein mitgeschickter
+Zeitpunkt wird deshalb angenommen, aber eng geführt: **nie aus der Zukunft, nie
+älter als 24 Stunden, und immer als nachgereicht gekennzeichnet** (`quelle` am
+Zeiteintrag). Die Standortleitung sieht beim Monatsabschluss, welcher Eintrag
+vom Gerät kam und welcher aus dem Funkloch — ohne diese Kennzeichnung wäre der
+Zeitpunkt eine Behauptung, die niemand prüfen kann, und er entscheidet über Lohn.
+
+### Vier Menüpunkte statt neun
+**Heute** (der Stempelknopf, groß und ohne Scrollen) · **Plan** · **Nachrichten**
+· **Ich**. Die Aufklapp-Menüs sind weg, jeder Punkt führt direkt irgendwohin.
+
+Neu dabei, weil vorher am Telefon kaum erreichbar:
+- **Lohnabrechnungen** an eigener Stelle, nach Jahren sortiert, mit dem Monat
+  als Überschrift statt eines Dateinamens. Sie lagen bisher in der Personalakte
+  zwischen Verträgen und Zeugnissen — ordentlich abgelegt und trotzdem am
+  falschen Platz.
+- **Krankmelden in zwei Angaben:** seit wann, voraussichtlich bis wann. Die App
+  sagt selbst, ob eine Bescheinigung nötig ist (§5 EntgFG und die betriebliche
+  Regelung), und die Kamera steht bereit, um sie gleich abzufotografieren —
+  zugeordnet wird sie automatisch der eben gemeldeten Fehlzeit.
+- **Ich** trägt die zwei Zahlen, nach denen im Betrieb am häufigsten gefragt
+  wird: Resturlaub und Stundenkonto.
+
+Nachweis: 29 Prüfungen am laufenden System (`pruefungen/b2-stempeluhr.mjs`) und
+17 Modultests für die Reihenfolge der Handgriffe und den Zeitpunkt.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

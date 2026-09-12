@@ -16,10 +16,10 @@ Zuletzt aktualisiert: **12.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | — |
-| **Zuletzt fertig** | D16 Kein Lohn ohne freigegebenen Monat (12.09.) |
-| **Als Nächstes** | Mobile App prüfen und in die App Stores bringen |
-| **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
+| **Baustelle** | Mitarbeiter-App für die Stores — Etappe 1 von 5 fertig |
+| **Zuletzt fertig** | §137 App-Umbau: Stempeluhr, vier Menüpunkte, Lohn, Krankmelden |
+| **Als Nächstes** | Etappe 2: Offline — Stempel und Anträge im Funkloch merken |
+| **Danach** | Etappe 3: native Hülle (Capacitor) für Apple |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
@@ -51,7 +51,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 Nach Dringlichkeit, nicht nach Bereich.
 
 ### Dringend
-- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 641 Nachweise
+- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 670 Nachweise
       liegen jetzt im Repo unter `pruefungen/`, ein Befehl prüft alles
       (`npm run pruefen`), und bei jedem Push läuft es automatisch.
 
@@ -69,8 +69,9 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [ ] Alles Weitere: siehe `FAHRPLAN-KOMPLETTLOESUNG.md`
 
 ### Sonst offen
-- [ ] **Mobile App prüfen und veröffentlichen** — durchgehen, Fehler sammeln,
-      dann in App Store und Play Store bringen
+- [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon) ist
+      fertig. Offen: Offline (2), native Hülle für Apple (3), Play Store (4),
+      App Store (5)
 - [x] ~~**Test- und Fehlererfassung im System, Stufe 1**~~ ✅ — zwei Wege zum
       Melden (Käfer und ausführliches Formular), vier Arten, Ampel für die
       Meldequalität, Freigabe für Verbesserungsvorschläge, Rückfragen
@@ -115,6 +116,9 @@ Ohne diese Punkte kommt die Arbeit an bestimmten Stellen nicht weiter.
 | 🟡 | Die drei Anfragen verschicken (ITSG, ELSTER, Steuerberater) | die Zertifizierungs-Entscheidung |
 | 🟡 | Vermögensschadenhaftpflicht klären | den ersten echten Kunden |
 | 🔴 | **`FUNDE_TOKEN` und `FUNDE_URL` setzen** (Railway + Sitzungsumgebung) | den stündlichen Fundelauf — er läuft, findet aber nichts |
+| 🔴 | **D-U-N-S-Nummer beantragen** (kostenlos, dauert 1–2 Wochen) | das Apple Developer Program — und damit den App Store |
+| 🟡 | Google-Play-Entwicklerkonto (25 $ einmalig) | den Play Store |
+| 🟡 | Datenschutzerklärung und Impressum öffentlich erreichbar | beide Stores |
 | 🟢 | Unternehmensdaten je Kunde vollständig eintragen | SEPA und DATEV je Kunde |
 
 🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt

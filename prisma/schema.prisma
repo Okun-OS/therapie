@@ -615,6 +615,17 @@ model TimeLog {
   breakStartAt DateTime?
   note         String?
   locationId   String
+
+  /// §137 Woher dieser Eintrag stammt: app | offline | leitung.
+  ///
+  /// Im Funkloch entsteht der Stempel auf dem Telefon und wird spaeter
+  /// uebertragen — dann zaehlt die Zeit des Stempelns, nicht die des
+  /// Hochladens. Die Standortleitung muss beim Monatsabschluss sehen, welcher
+  /// Eintrag vom Geraet kam und welcher nachgereicht wurde: Der Zeitpunkt
+  /// entscheidet ueber Lohn, und was niemand pruefen kann, ist eine
+  /// Behauptung.
+  quelle       String?
+
   createdAt    DateTime  @default(now())
 }
 
