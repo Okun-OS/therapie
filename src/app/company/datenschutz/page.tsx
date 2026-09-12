@@ -42,6 +42,18 @@ interface Vorgang {
   createdAt: string
 }
 
+/** §139 Ein Antrag, den ein Mensch selbst in der App gestellt hat. */
+interface Antrag {
+  id: string
+  employeeId: string
+  personName: string
+  begruendung: string | null
+  status: string
+  antwort: string | null
+  createdAt: string
+  bearbeitetAm: string | null
+}
+
 interface Pruefung {
   employeeId: string
   name: string
@@ -69,11 +81,22 @@ export default function Datenschutz() {
   const [sicherheitsfrage, setSicherheitsfrage] = useState(false)
   const [tippfeld, setTippfeld] = useState('')
   const [verlauf, setVerlauf] = useState<Vorgang[]>([])
+  const [antraege, setAntraege] = useState<Antrag[]>([])
+  const [ablehnung, setAblehnung] = useState<{ id: string; text: string } | null>(null)
 
   const verlaufLaden = useCallback(() => {
     fetch('/api/dsgvo/loeschung')
       .then(r => r.json())
       .then(d => setVerlauf(d.vorgaenge ?? []))
+      .catch(() => undefined)
+  }, [])
+
+  // §139 Was Menschen selbst beantragt haben. Ein Antrag, den niemand sieht,
+  // ist kein Antrag — und Art. 12 Abs. 3 DSGVO gibt dafür einen Monat Zeit.
+  const antraegeLaden = useCallback(() => {
+    fetch('/api/dsgvo/loeschantrag')
+      .then(r => r.json())
+      .then(d => setAntraege(d.antraege ?? []))
       .catch(() => undefined)
   }, [])
 
@@ -83,7 +106,8 @@ export default function Datenschutz() {
       .then(d => setLeute(d.employees ?? []))
       .catch(() => setFehler('Mitarbeiter konnten nicht geladen werden'))
     verlaufLaden()
-  }, [verlaufLaden])
+    antraegeLaden()
+  }, [verlaufLaden, antraegeLaden])
 
   const pruefen = useCallback(async (m: Mitarbeiter) => {
     setGewaehlt(m); setPruefung(null); setFehler(''); setErfolg('')
@@ -114,9 +138,49 @@ export default function Datenschutz() {
           : 'Gelöscht. Was aufbewahrt werden muss, ist jetzt gesperrt — der Löschbericht sagt, was und wie lange.',
       )
       setSicherheitsfrage(false); setTippfeld('')
+
+      // §139 Hat die Person das selbst beantragt, ist ihr Antrag damit
+      // erledigt. Ihn von Hand nachzuziehen würde vergessen — und die Person
+      // sähe in ihrer App auf ewig „liegt vor", obwohl längst gelöscht ist.
+      const offenerAntrag = antraege.find(
+        a => a.employeeId === gewaehlt.id && a.status === 'offen')
+      if (offenerAntrag) {
+        await fetch('/api/dsgvo/loeschantrag', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: offenerAntrag.id,
+            status: 'erledigt',
+            loeschungId: d.bericht?.vorgangId ?? undefined,
+            antwort: 'Ihre Daten wurden gelöscht. Was das Steuer- und Sozialrecht '
+              + 'aufzubewahren verlangt, ist gesperrt — der Löschbericht sagt, was '
+              + 'und wie lange.',
+          }),
+        }).catch(() => {})
+        antraegeLaden()
+      }
+
       await pruefen(gewaehlt)
       verlaufLaden()
     } catch { setFehler('Löschung fehlgeschlagen') }
+    finally { setArbeitet(false) }
+  }
+
+  async function antragAblehnen() {
+    if (!ablehnung || !ablehnung.text.trim()) return
+    setArbeitet(true)
+    try {
+      const res = await fetch('/api/dsgvo/loeschantrag', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: ablehnung.id, status: 'abgelehnt', antwort: ablehnung.text.trim(),
+        }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { setFehler(d.error ?? 'Die Antwort konnte nicht gespeichert werden'); return }
+      setAblehnung(null)
+      setErfolg('Die Person sieht die Begründung jetzt in ihrer App.')
+      antraegeLaden()
+    } catch { setFehler('Die Antwort konnte nicht gespeichert werden') }
     finally { setArbeitet(false) }
   }
 
@@ -153,6 +217,90 @@ export default function Datenschutz() {
         <div className="flex items-start gap-2 rounded-2xl border border-teal-200 bg-teal-50 p-3">
           <Check size={16} className="text-teal-600 shrink-0 mt-0.5" />
           <p className="text-xs text-teal-900">{erfolg}</p>
+        </div>
+      )}
+
+      {/* §139 Offene Löschanträge stehen GANZ OBEN, nicht in einem Reiter.
+          Art. 12 Abs. 3 DSGVO gibt einen Monat für die Antwort — eine Frist,
+          die man nur einhält, wenn man den Antrag sieht, ohne ihn zu suchen. */}
+      {antraege.filter(a => a.status === 'offen').length > 0 && (
+        <div className="bg-white rounded-2xl border border-amber-200 overflow-hidden">
+          <div className="px-4 py-3 bg-amber-50 border-b border-amber-200">
+            <p className="text-sm font-semibold text-amber-900">
+              Löschanträge von Mitarbeitern
+            </p>
+            <p className="text-xs text-amber-900/70 mt-0.5">
+              Innerhalb eines Monats zu beantworten (Art. 12 Abs. 3 DSGVO). Löschen Sie
+              die Person unten, gilt der Antrag als erledigt — oder lehnen Sie ihn mit
+              Begründung ab.
+            </p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {antraege.filter(a => a.status === 'offen').map(a => {
+              const person = leute.find(m => m.id === a.employeeId)
+              return (
+                <div key={a.id} className="px-4 py-3 flex flex-wrap items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-navy">{a.personName}</p>
+                    <p className="text-xs text-gray-400">
+                      beantragt am {datum(a.createdAt)}
+                      {a.begruendung ? ` · „${a.begruendung}“` : ''}
+                    </p>
+                  </div>
+                  {person && (
+                    <button
+                      onClick={() => pruefen(person)}
+                      className="text-xs font-semibold text-teal-700 px-3 py-1.5
+                                 rounded-lg border border-teal-200"
+                    >
+                      Prüfen
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setAblehnung({ id: a.id, text: '' })}
+                    className="text-xs font-semibold text-gray-500 px-3 py-1.5
+                               rounded-lg border border-gray-200"
+                  >
+                    Ablehnen
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Eine Ablehnung ohne Begründung gibt es nicht — Art. 12 Abs. 4 DSGVO. */}
+      {ablehnung && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+          <p className="text-sm font-semibold text-navy">Antrag ablehnen</p>
+          <p className="text-xs text-gray-500">
+            Die Person liest diesen Text in ihrer App. Der Regelfall ist die
+            Aufbewahrungsfrist — sagen Sie, welche und bis wann.
+          </p>
+          <textarea
+            value={ablehnung.text}
+            onChange={e => setAblehnung({ ...ablehnung, text: e.target.value })}
+            rows={3}
+            placeholder="z. B. Ihre Lohnunterlagen müssen nach §147 AO bis Ende 2032 aufbewahrt werden. Wir haben Ihre Daten gesperrt und melden uns danach von selbst."
+            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => setAblehnung(null)}
+              className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-navy"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={antragAblehnen}
+              disabled={arbeitet || !ablehnung.text.trim()}
+              className="px-4 py-2 rounded-xl bg-navy text-white text-sm font-semibold
+                         disabled:opacity-50"
+            >
+              Ablehnung senden
+            </button>
+          </div>
         </div>
       )}
 

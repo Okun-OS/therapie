@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import type { User } from './types'
+import { pushAbmelden } from './nativ'
 
 export interface LoginResult {
   ok: boolean
@@ -124,9 +125,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
+    // §139 Zuerst das Gerät austragen, dann abmelden — danach fehlt die
+    // Sitzung, und der Eintrag bliebe für immer stehen. Auf einem geteilten
+    // Diensttelefon bekäme der Nachfolger sonst die Meldungen des Vorgängers.
+    pushAbmelden().finally(() => {
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
+    })
     setUser(null)
     sessionStorage.removeItem('dienstplan_user')
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
   }
 
   return (

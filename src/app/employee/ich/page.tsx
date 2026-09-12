@@ -8,6 +8,7 @@ import {
   ChevronRight, LogOut, Shield,
 } from 'lucide-react'
 import type { Employee } from '@/lib/types'
+import { AppEinstellungen } from '@/components/app/AppEinstellungen'
 
 /**
  * §137 „Ich" — alles, was einen selbst betrifft.
@@ -95,9 +96,16 @@ export default function Ich() {
           titel="Meine Punkte" text="Workforce Score" />
       </Gruppe>
 
+      {/* §139 Nur in der App: Benachrichtigungen und die Sperre. Beides gehört
+          zum Telefon, nicht zum Konto — im Browser rendert es nichts. */}
+      <AppEinstellungen />
+
       <Gruppe>
-        <Zeile href="/api/dsgvo/auskunft?format=pdf" icon={<Shield size={18} className="text-gray-400" />}
-          titel="Meine Daten" text="Auskunft über alles, was gespeichert ist" extern />
+        {/* §139 Vorher führte das direkt in ein PDF. Die Auskunft ist aber nur
+            die eine Hälfte des Rechts — die andere ist die Löschung, und die
+            muss in der App erreichbar sein (Art. 17 DSGVO, Apple 5.1.1 v). */}
+        <Zeile href="/employee/daten" icon={<Shield size={18} className="text-gray-400" />}
+          titel="Meine Daten" text="Auskunft, Mitnehmen und Löschung beantragen" />
         <Zeile href="/funde" icon={<Shield size={18} className="text-gray-400" />}
           titel="Etwas melden" text="Fehler oder Verbesserungsvorschlag" />
       </Gruppe>

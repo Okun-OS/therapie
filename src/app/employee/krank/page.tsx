@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { einreihen } from '@/lib/warteschlange'
 import { schlangeGeaendert } from '@/components/offline/Warteschlange'
+import { istApp, kameraFoto } from '@/lib/nativ'
 
 /**
  * §137 Krankmelden vom Telefon.
@@ -135,6 +136,25 @@ export default function Krankmelden() {
     } finally { setSendet(false) }
   }, [user, locationId, von, bis, tage, notiz])
 
+  /**
+   * §139 In der App die richtige Kamera, im Browser das Dateifeld.
+   *
+   * Der Unterschied ist nicht Kosmetik: Die Hülle liefert ein verkleinertes
+   * Bild zurück. Ein Krankenschein aus einer Telefonkamera sind sonst fünf
+   * Megabyte — die überträgt sich mit einem Balken Empfang nicht, und genau da
+   * steht die Person, wenn sie den Schein beim Arzt abfotografiert.
+   */
+  async function fotografieren() {
+    if (istApp()) {
+      const foto = await kameraFoto()
+      // Kein Foto heißt abgebrochen oder abgelehnt — beides ist eine
+      // Entscheidung und keine Störung.
+      if (foto) await hochladen(foto)
+      return
+    }
+    dateiFeld.current?.click()
+  }
+
   async function hochladen(datei: File) {
     if (!fertig?.id || !user?.employeeId) return
     setLaedtHoch(true); setFehler('')
@@ -213,7 +233,7 @@ export default function Krankmelden() {
                 onChange={e => { const f = e.target.files?.[0]; if (f) hochladen(f) }}
               />
               <button
-                onClick={() => dateiFeld.current?.click()}
+                onClick={fotografieren}
                 disabled={laedtHoch}
                 className="w-full h-12 rounded-2xl bg-brand text-navy font-semibold
                            flex items-center justify-center gap-2 active:scale-[0.98]

@@ -16,10 +16,10 @@ Zuletzt aktualisiert: **12.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | Mitarbeiter-App für die Stores — Etappe 2 von 5 fertig |
-| **Zuletzt fertig** | §138 Offline: Warteschlange fürs Stempeln, Krankmelden, Urlaub, Nachrichten |
-| **Als Nächstes** | Etappe 3: native Hülle (Capacitor) für Apple |
-| **Danach** | Etappe 4 Play Store, Etappe 5 App Store — wartet auf die D-U-N-S-Nummer |
+| **Baustelle** | Mitarbeiter-App für die Stores — Etappe 3 von 5 fertig |
+| **Zuletzt fertig** | §139 Native Hülle: Push, Kamera, Face ID, Löschantrag in der App |
+| **Als Nächstes** | Etappe 4/5: einreichen — blockiert durch D-U-N-S, Firebase, Datenschutzerklärung |
+| **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
@@ -69,9 +69,13 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [ ] Alles Weitere: siehe `FAHRPLAN-KOMPLETTLOESUNG.md`
 
 ### Sonst offen
-- [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon) und
-      Etappe 2 (Offline) sind fertig. Offen: native Hülle für Apple (3),
-      Play Store (4), App Store (5). Die Stores brauchen die D-U-N-S-Nummer
+- [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon),
+      Etappe 2 (Offline) und Etappe 3 (native Hülle) sind fertig. Offen ist
+      nur noch das Einreichen selbst (4 Play Store, 5 App Store), und das
+      hängt an Dingen, die OKUN besorgen muss: D-U-N-S-Nummer,
+      Entwicklerkonten, Firebase-Projekt, öffentliche Datenschutzerklärung
+      und Impressum, eigene Domain, Prüfer-Zugang mit gefüllten Daten.
+      **Der Ablaufplan steht in `APP-STORES.md`.**
 - [x] ~~**Test- und Fehlererfassung im System, Stufe 1**~~ ✅ — zwei Wege zum
       Melden (Käfer und ausführliches Formular), vier Arten, Ampel für die
       Meldequalität, Freigabe für Verbesserungsvorschläge, Rückfragen

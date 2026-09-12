@@ -157,6 +157,22 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
     where: { employeeId: id },
     select: { id: true, art: true, angestossenVonName: true, createdAt: true },
   }),
+  // §139 Der eigene Löschantrag und die Antwort darauf gehören in die Auskunft.
+  // Wer nach Monaten fragt, was aus seinem Antrag geworden ist, findet es hier
+  // schwarz auf weiß — samt Begründung, falls er abgelehnt wurde.
+  Loeschantrag: id => prisma.loeschantrag.findMany({
+    where: { employeeId: id },
+    select: {
+      id: true, status: true, begruendung: true, antwort: true,
+      bearbeitetAm: true, createdAt: true,
+    },
+  }),
+  // Welches Telefon, aber nicht die Kennung selbst: Die ist ein Schlüssel,
+  // mit dem sich Benachrichtigungen verschicken lassen.
+  Geraet: id => prisma.geraet.findMany({
+    where: { employeeId: id },
+    select: { id: true, plattform: true, erstelltAm: true, zuletztAm: true },
+  }),
 }
 
 /**

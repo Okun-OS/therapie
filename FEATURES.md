@@ -1293,6 +1293,102 @@ dass der Server eine ganze Kette aus dem Funkloch mit den richtigen Uhrzeiten
 verbucht, Wiederholungen und falsche Reihenfolge mit 409 und einem Grund
 ablehnt, und Krankmeldung, Urlaubsantrag und Nachricht nachträglich annimmt.
 
+## Block §139 (12.09.) — Die Mitarbeiter-App, Etappe 3: die native Hülle
+
+Die App lädt die laufende Anwendung, sie bringt sie nicht mit. Das ist eine
+Entscheidung, keine Abkürzung: OKUN Workforce rechnet Gehälter. Eine App, die
+den Stand vom Tag der Einreichung mitbrächte, wäre am Tag darauf falsch — und
+jede Korrektur an der Lohnabrechnung müsste durch eine Store-Prüfung.
+
+Damit ist die Frage nicht „wie packe ich die Seite ein", sondern: **Was kann ein
+Browser nicht, das diese App können muss?** Fünf Dinge.
+
+### 1. Benachrichtigungen, die ankommen, wenn die App zu ist
+Web-Push erreicht ein iPhone nur, solange die Seite auf dem Startbildschirm
+liegt und der Dienst-Arbeiter lebt — Apple beendet den nach einiger Zeit. Wer
+Sonntagabend einen Ausfall für Montag sechs Uhr meldet, erreicht damit
+niemanden. Jetzt läuft es über APNs und FCM.
+
+Beide Wege stehen nebeneinander hinter **einem** Aufruf (`sendPushToEmployee`),
+kein Aufrufer muss sie unterscheiden. Der heikle Teil ist nicht das Senden,
+sondern das Aufräumen: **Wann wird eine Gerätekennung gelöscht?** Zu früh heißt,
+jemand bekommt nichts mehr und erfährt es nie. Gelöscht wird deshalb nur bei
+den zwei Antworten, mit denen Google genau das meint — ein ungültiges Feld in
+*unserem* Aufruf kostet kein Gerät.
+
+- [x] **Das Gerät gehört dem, der es anmeldet.** Beim Web-Push (§111) ließ sich
+      einmal das eigene Gerät als Empfänger für die Meldungen einer anderen
+      Person eintragen. Hier kommt die Person aus der Sitzung, und eine
+      mitgeschickte fremde Kennung ändert nichts.
+- [x] **Das Diensttelefon darf den Besitzer wechseln.** Meldet sich dort jemand
+      Neues an, übernimmt er den Eintrag — sonst bekäme der Vorgänger weiterhin
+      die Dienstpläne seines Nachfolgers auf den Sperrbildschirm.
+- [x] **Abmelden trägt das Gerät aus**, bevor die Sitzung weg ist.
+
+### 2. Die Kamera für den Krankenschein
+Vorher das Dateifeld, jetzt die Kamera der Hülle — mit einem verkleinerten Bild
+zurück. Ein Krankenschein aus einer Telefonkamera sind sonst fünf Megabyte, und
+die überträgt sich mit einem Balken Empfang nicht. Genau dort steht die Person
+aber, wenn sie den Schein beim Arzt abfotografiert.
+
+### 3. Face ID und Fingerabdruck
+Hinter zwei Fingertipps liegt eine Lohnabrechnung, hinter drei die
+Personalliste des Standorts. Telefone liegen im Dienstzimmer und werden
+verliehen. Eine Anmeldung, die Wochen hält — und das soll sie —, braucht eine
+zweite, schnelle Tür.
+
+**Freiwillig** (erzwungen schalten die Leute das Telefonschloss ganz ab),
+**erst nach einer Minute** (wer zur Kamera wechselt, wird nicht gesperrt),
+**im Zweifel zu** (Abbruch und Fehler lassen nicht durch), und **nicht
+einschaltbar ohne funktionierenden Sensor** — sonst käme jemand nie wieder
+hinein.
+
+### 4. Löschen des Kontos, in der App
+Apple verlangt seit 2022, dass eine App mit Konto das Löschen auch **in** der
+App anbietet (Richtlinie 5.1.1 v); ein „schreiben Sie uns" genügt ausdrücklich
+nicht und ist ein häufiger Ablehnungsgrund. Art. 17 DSGVO gibt das Recht
+ohnehin.
+
+Was hier **nicht** steht, ist ein Knopf, der sofort alles löscht — das wäre
+nicht erlaubt. Lohnunterlagen müssen sechs Jahre aufbewahrt werden (§147 AO,
+§257 HGB, §28f SGB IV), und ein solcher Knopf risse der Person am Ende ihre
+eigene Lohnsteuerbescheinigung weg. Der Antrag geht deshalb an den Arbeitgeber
+und wird mit dem Löschkonzept (§128) abgearbeitet.
+
+- [x] Neue Seite **Ich → Meine Daten**: Auskunft als PDF, Daten zum Mitnehmen,
+      Löschung beantragen — und der Stand des eigenen Antrags samt Antwort.
+- [x] Offene Anträge stehen bei der Leitung **ganz oben** auf der
+      Datenschutzseite. Art. 12 Abs. 3 DSGVO gibt einen Monat; eine Frist hält
+      nur, wer den Antrag sieht, ohne ihn zu suchen.
+- [x] **Eine Ablehnung ohne Begründung gibt es nicht** (Art. 12 Abs. 4). Der
+      Text landet in der App der Person.
+- [x] Wird die Person gelöscht, gilt ihr Antrag automatisch als erledigt und
+      zeigt auf den Löschbericht. Von Hand nachziehen würde vergessen — und in
+      ihrer App stünde ewig „liegt vor".
+
+### 5. Kein weißer Bildschirm ohne Netz
+`native/web/fehler.html` liegt **im** Programm und kommt ohne Stilblatt,
+Schriftart und Bild von außen aus — nichts davon käme an. Ohne sie sähe ein
+Prüfer bei Apple nichts und lehnte ab; ein Mitarbeiter im Zug wüsste nicht, ob
+sein Telefon kaputt ist oder nur der Tunnel lang.
+
+### Die zwei Dinge, die sonst zur Ablehnung führen
+Beides eingebaut, weil es später teuer wird: **`NSCameraUsageDescription`,
+`NSPhotoLibraryUsageDescription` und `NSFaceIDUsageDescription`** stehen mit
+verständlichen deutschen Sätzen in der Info.plist — fehlen sie, wird ohne
+Prüfung abgelehnt. Und **`POST_NOTIFICATIONS`** steht im Android-Manifest: ohne
+sie fragt Android 13 gar nicht erst nach Mitteilungen, die Anmeldung läuft
+scheinbar durch, und es kommt nie etwas an. Der stillste aller Fehler.
+
+Dazu: keine Google-Sicherung der App-Daten (`allowBackup=false`) auf einem
+Telefon mit Lohndaten, und `WKAppBoundDomains` auf iOS, damit der
+Offline-Zwischenspeicher aus §138 in Apples WebView überhaupt lebt.
+
+Nachweis: 33 Prüfungen am laufenden System (`pruefungen/b4-app.mjs`) für Gerät
+und Löschantrag, 6 Modultests für den Umgang mit toten Gerätekennungen. Der
+Ablaufplan bis zur Veröffentlichung steht in **`APP-STORES.md`** — samt der
+ehrlichen Liste dessen, was noch gegen eine Ablehnung spricht.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

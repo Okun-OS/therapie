@@ -252,6 +252,18 @@ const ZUGRIFF: Record<string, Zugriff> = {
     zaehlen: (db, k) => db.loeschvorgang.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.loeschvorgang.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
   },
+  Loeschantrag: {
+    zaehlen: (db, k) => db.loeschantrag.count({ where: { employeeId: k.employeeId } }),
+    loeschen: (db, k) => db.loeschantrag.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
+  },
+  // §139 Die Gerätekennung verschwindet mit der Person. Bliebe sie stehen,
+  // bekäme das Telefon weiter Benachrichtigungen für jemanden, den es im
+  // System nicht mehr gibt — und auf einem Diensttelefon läse sie der
+  // Nachfolger im Sperrbildschirm mit.
+  Geraet: {
+    zaehlen: (db, k) => db.geraet.count({ where: { employeeId: k.employeeId } }),
+    loeschen: (db, k) => db.geraet.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
+  },
 }
 
 /**
@@ -450,6 +462,15 @@ export interface Loeschbericht {
   /** Der Mitarbeiterdatensatz selbst */
   person: Ergebnisart
   restlosAb: string | null
+  /**
+   * §139 Die Kennung des Nachweises, der zu dieser Löschung geschrieben wurde.
+   *
+   * Sie steht hier, damit ein Löschantrag, den ein Mensch selbst gestellt hat,
+   * auf genau den Vorgang zeigen kann, der ihn erledigt hat. Ohne diese
+   * Verbindung stünde in seiner App „erledigt" und daneben nichts, womit sich
+   * das nachvollziehen ließe.
+   */
+  vorgangId?: string
 }
 
 interface AusfuehrenOptionen {
@@ -580,7 +601,7 @@ export async function loeschungAusfuehren(
 
   // Der Nachweis wird NACH der Transaktion geschrieben: räumt der Lauf die
   // abgelaufenen Protokolle mit ab, würde er sich sonst selbst mitnehmen.
-  await prisma.loeschvorgang.create({
+  const vorgang = await prisma.loeschvorgang.create({
     data: {
       employeeId,
       customerId: kunde?.customerId ?? null,
@@ -591,6 +612,7 @@ export async function loeschungAusfuehren(
       bericht: bericht as unknown as Prisma.InputJsonValue,
     },
   })
+  bericht.vorgangId = vorgang.id
 
   // Bleibt nichts mehr, kann auch der Mitarbeiterdatensatz gehen. Der Nachweis
   // trägt nur noch Name und Zahlen — das ist die Rechenschaft, die Art.5 Abs.2

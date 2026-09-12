@@ -145,6 +145,63 @@ model Notification {
   createdAt  DateTime @default(now())
 }
 
+/// §139 Ein Telefon, das die App aus dem Store nutzt.
+///
+/// Die Web-Benachrichtigung (PushSubscription) erreicht ein iPhone nur, wenn
+/// die Seite auf dem Startbildschirm liegt und der Dienst-Arbeiter lebt. Der
+/// native Weg erreicht es auch, wenn die App seit Tagen zu ist — und genau das
+/// braucht ein kurzfristiger Ausfall um sechs Uhr morgens.
+///
+/// Ein Mensch hat mehrere Geraete (Telefon und Tablet), und ein Geraet kann den
+/// Besitzer wechseln. Deshalb ist die Kennung eindeutig, nicht die Person: Wer
+/// sich neu anmeldet, uebernimmt den Eintrag, statt einen zweiten anzulegen —
+/// sonst bekaeme der Vorgaenger weiter die Dienstplaene seines Nachfolgers.
+model Geraet {
+  id         String   @id @default(cuid())
+  employeeId String
+  /// Die Geraetekennung von APNs bzw. FCM
+  kennung    String   @unique
+  /// ios | android
+  plattform  String
+  erstelltAm DateTime @default(now())
+  zuletztAm  DateTime @updatedAt
+
+  @@index([employeeId])
+}
+
+/// §139 Der Antrag eines Menschen, seine Daten loeschen zu lassen.
+///
+/// Zwei Gruende, warum das im Programm steht und nicht in einer E-Mail:
+/// Art. 17 DSGVO gibt jedem dieses Recht, und Apple verlangt seit 2022, dass
+/// eine App, die ein Konto fuehrt, das Loeschen auch in der App anbietet
+/// (Richtlinie 5.1.1 v). Eine Adresse zum Hinschreiben genuegt beidem nicht.
+///
+/// Geloescht wird dabei NICHT sofort: Lohnunterlagen unterliegen
+/// Aufbewahrungsfristen (§147 AO, §257 HGB, §28f SGB IV). Der Antrag geht
+/// deshalb an den Arbeitgeber, der ihn mit dem Loeschkonzept (§128) abarbeitet
+/// — inklusive der Sperre statt Loeschung, wo das Gesetz sie verlangt.
+model Loeschantrag {
+  id            String    @id @default(cuid())
+  employeeId    String
+  customerId    String?
+  personName    String
+  /// Was die Person dazu geschrieben hat, freiwillig
+  begruendung   String?
+  /// offen | erledigt | abgelehnt
+  status        String    @default("offen")
+  /// Was der Arbeitgeber geantwortet hat — bei einer Ablehnung Pflicht
+  antwort       String?
+  bearbeitetVon String?
+  bearbeitetAm  DateTime?
+  /// Der Loeschvorgang, mit dem er erledigt wurde
+  loeschungId   String?
+  createdAt     DateTime  @default(now())
+
+  @@index([employeeId])
+  @@index([customerId])
+  @@index([status])
+}
+
 // ─── Workforce Score (Modul 3: Gamification) ────────────────────────────────
 // Additive module. The existing mock-data TimeLog (src/lib/mock-data.ts) stays
 // untouched as seed/history data; this model is the new, real persistence

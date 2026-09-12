@@ -1,5 +1,6 @@
 import webpush from 'web-push'
 import { prisma } from './prisma'
+import { sendeAnGeraete } from './push-geraet'
 
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
@@ -11,6 +12,13 @@ if (configured) {
 }
 
 export async function sendPushToEmployee(employeeId: string, payload: { title: string; body: string; url?: string }): Promise<void> {
+  // §139 Zwei Wege, ein Aufruf. Die App aus dem Store bekommt die Nachricht
+  // nativ (APNs/FCM) — die erreicht das Telefon auch, wenn die App zu ist.
+  // Der Browser bekommt sie wie bisher. Kein Aufrufer muss das unterscheiden.
+  await sendeAnGeraete(employeeId, {
+    titel: payload.title, text: payload.body, url: payload.url,
+  }).catch(() => 0)
+
   const subs = await prisma.pushSubscription.findMany({ where: { employeeId } })
   if (subs.length === 0) return
 

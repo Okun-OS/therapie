@@ -11,11 +11,22 @@
     "test:watch": "vitest",
     "pruefen": "node pruefungen/lauf.mjs",
     "pruefen:alles": "npm run test && npm run pruefen",
+    "app:sync": "cap sync",
+    "app:ios": "cap sync ios && cap open ios",
+    "app:android": "cap sync android && cap open android",
     "postinstall": "prisma generate",
     "seed": "npx tsx --env-file-if-exists=.env prisma/seed.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
+    "@aparajita/capacitor-biometric-auth": "^10.0.0",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/camera": "^8.2.4",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/push-notifications": "^8.1.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "@prisma/client": "^5.22.0",
     "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.3",
@@ -34,6 +45,9 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.19.43",
     "@types/react": "^18",

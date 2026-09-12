@@ -55,6 +55,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `b-zeit.mjs` | Zeiterfassung, Überstunden, Monatsabschluss |
 | `b2-stempeluhr.mjs` | Stempeln: Reihenfolge, Zeitpunkt vom Gerät, für wen |
 | `b3-warteschlange.mjs` | Nachgereicht aus dem Funkloch: Kette, Wiederholung, Anträge |
+| `b4-app.mjs` | Native Hülle: Gerät für Push, Löschantrag, wer was sehen darf |
 | `c-abwesenheit.mjs` | Urlaub, Krankheit, Schließzeiten |
 | `c2-krankenschein.mjs` | Krankenschein und Fehlzeit, Fristen, Lücken |
 | `d-lohn.mjs` | Beleg, Zustellung, DATEV, SEPA |

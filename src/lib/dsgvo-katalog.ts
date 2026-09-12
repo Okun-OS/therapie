@@ -149,7 +149,11 @@ export const DATENARTEN: Datenart[] = [
     id: 'nachrichten',
     bezeichnung: 'Nachrichten und Benachrichtigungen',
     beschreibung: 'Ihr Postfach und die Anmeldung Ihres Geräts für Push-Nachrichten.',
-    modelle: ['Notification', 'PushSubscription'],
+    // §139 `Geraet` ist die Kennung des Telefons, auf dem die App aus dem Store
+    // läuft. Sie sagt, welches Gerät einer Person gehört — das ist ein
+    // Personenbezug und gehört deshalb genauso in die Auskunft wie die
+    // Anmeldung über den Browser.
+    modelle: ['Notification', 'PushSubscription', 'Geraet'],
     behandlung: 'loeschen',
     fristJahre: 0,
     begruendung: 'Keine Aufbewahrungspflicht — wird sofort gelöscht.',
@@ -210,7 +214,11 @@ export const DATENARTEN: Datenart[] = [
     id: 'protokolle',
     bezeichnung: 'Zugriffsprotokolle',
     beschreibung: 'Aufzeichnungen darüber, wer wann auf welche Daten zugegriffen hat.',
-    modelle: ['AuditLog', 'SupportAccessLog', 'Loeschvorgang'],
+    // §139 Der Löschantrag gehört hierher und nicht zu den Kontodaten: Er ist
+    // der Nachweis, dass jemand von seinem Recht Gebrauch gemacht hat und was
+    // daraufhin geschah. Löschte man ihn mit, bliebe von einer abgelehnten
+    // Löschung keine Spur — weder für die Person noch für die Aufsicht.
+    modelle: ['AuditLog', 'SupportAccessLog', 'Loeschvorgang', 'Loeschantrag'],
     behandlung: 'sperren',
     fristJahre: 3,
     grundlage: 'Art.5 Abs.2 DSGVO (Rechenschaftspflicht)',

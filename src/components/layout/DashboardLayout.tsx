@@ -12,6 +12,7 @@ import { PageBanner } from '@/components/onboarding/PageBanner'
 import { FloatingHelp } from '@/components/ui/FloatingHelp'
 import { BugReportButton } from '@/components/ui/BugReportButton'
 import { Warteschlange } from '@/components/offline/Warteschlange'
+import { AppRahmen } from '@/components/app/AppRahmen'
 import type { Role } from '@/lib/types'
 
 interface DashboardLayoutProps {
@@ -61,6 +62,10 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
 
   return (
     <div className="min-h-screen bg-gray-50 bg-dot-grid">
+
+      {/* §139 Die native Hülle: Statusleiste, Benachrichtigungen, Sperre.
+          Im Browser tut das nichts — dort gibt es nichts einzurichten. */}
+      <AppRahmen />
 
       {/* Command Rail — persistent top bar */}
       <CommandRail />
