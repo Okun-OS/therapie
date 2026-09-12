@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getSessionFromRequest, setSessionCookie, clearSessionCookie, type SessionRole } from '@/lib/session'
-import { logAudit } from '@/lib/audit'
+import { getSessionFromRequest, setSessionCookie, type SessionRole } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,31 +49,37 @@ export async function GET(req: NextRequest) {
 }
 
 // DSGVO Art. 17 – Recht auf Löschung
+/**
+ * §140 Das Konto löscht sich nicht mehr selbst.
+ *
+ * Bis hierher tat dieser Aufruf genau das, was auf dem Knopf stand: Er löschte
+ * das Benutzerkonto und überschrieb Name und E-Mail des Mitarbeiters mit
+ * „Gelöschter Mitarbeiter" — ohne jede Prüfung.
+ *
+ * In einem Programm, das Löhne rechnet, ist das aus zwei Richtungen falsch.
+ * Gegen das Gesetz: Das Lohnkonto muss sechs Jahre zuordenbar bleiben (§41
+ * Abs. 1 EStG, §28f SGB IV), Buchungsbelege zehn (§147 AO, §257 HGB) —
+ * danach hätte die Betriebsprüfung Abrechnungen ohne Person vorgefunden. Und
+ * gegen den Menschen selbst: Mit dem Namen verschwindet die Grundlage seiner
+ * eigenen Lohnsteuerbescheinigung.
+ *
+ * Der richtige Weg steht seit §128/§139 im Programm: ein Löschantrag mit
+ * Vorschau, der löscht, was gelöscht werden darf, und sperrt, was bleiben
+ * muss. Dieser Aufruf verweist nur noch dorthin — als Fehler, nicht still,
+ * damit es auffällt, falls ihn doch noch jemand ruft.
+ */
 export async function DELETE(req: NextRequest) {
   const session = getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
 
-  await logAudit({
-    userId: session.userId,
-    userEmail: session.email,
-    userRole: session.role,
-    action: 'delete',
-    entityType: 'user_self',
-    entityId: session.userId,
-    customerId: session.customerId,
-    details: { reason: 'DSGVO Art. 17 self-deletion' },
-  })
-
-  if (session.employeeId) {
-    await prisma.employee.updateMany({
-      where: { id: session.employeeId },
-      data: { active: false, name: 'Gelöschter Mitarbeiter', email: `deleted-${session.userId}@okun.deleted`, avatarUrl: null },
-    })
-  }
-  await prisma.user.delete({ where: { id: session.userId } })
-
-  const res = NextResponse.json({ ok: true })
-  clearSessionCookie(res)
-  return res
+  return NextResponse.json(
+    {
+      error: 'Ein Konto lässt sich nicht sofort löschen: Lohnunterlagen '
+        + 'unterliegen gesetzlichen Aufbewahrungsfristen. Stellen Sie den '
+        + 'Löschantrag unter „Mein Konto → Datenschutz" — er wird geprüft, und '
+        + 'was gelöscht werden darf, wird gelöscht.',
+      weiter: '/api/dsgvo/loeschantrag',
+    },
+    { status: 409 },
+  )
 }
-

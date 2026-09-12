@@ -190,8 +190,22 @@ export function CommandRail() {
       >
         {/* ── Left: Logo + page label ────────────────── */}
         <div className="flex items-center gap-3 flex-shrink-0 min-w-0">
-          <Logo variant="wordmark" tagline iconSize={52} className="flex-shrink-0 hidden sm:block" />
-          <Logo variant="icon" iconSize={32} className="flex-shrink-0 sm:hidden opacity-95" />
+          {/*
+            §140 Das Zeichen führt aufs eigene Dashboard. Auf jeder Website der
+            Welt tut das Logo genau das, und wer es hier antippte, landete
+            bisher nirgends — man musste erst die Leiste unten suchen. Wohin es
+            führt, hängt an der Rolle: eine Standortleitung hat ein anderes
+            Zuhause als eine Pflegekraft.
+          */}
+          <Link
+            href={`/${user?.role ?? 'employee'}`}
+            aria-label="Zum Dashboard"
+            className="flex items-center flex-shrink-0 rounded-lg focus:outline-none
+                       focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <Logo variant="wordmark" tagline iconSize={52} className="flex-shrink-0 hidden sm:block" />
+            <Logo variant="icon" iconSize={32} className="flex-shrink-0 sm:hidden opacity-95" />
+          </Link>
           <div className="w-px h-5 bg-black/10 flex-shrink-0" />
           <div className="flex flex-col justify-center min-w-0">
             <span

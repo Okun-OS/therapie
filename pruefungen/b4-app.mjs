@@ -178,6 +178,41 @@ check('Nach einer Ablehnung lässt sich erneut beantragen',
   && wiederOffen.body.antrag?.id !== gestellt.body.antrag?.id,
   wiederOffen.body.antrag?.status)
 
+// ── B9 Das Konto löscht sich nicht mehr selbst ─────────────────────────────
+//
+// §140 Bis hierher löschte „Mein Konto → Konto unwiderruflich löschen" das
+// Benutzerkonto sofort und überschrieb Name und E-Mail des Mitarbeiters — ohne
+// jede Prüfung. Das Lohnkonto muss sechs Jahre zuordenbar bleiben (§41 EStG,
+// §28f SGB IV, §147 AO); danach stünden Abrechnungen ohne Person da, und dem
+// Menschen fehlte die Grundlage seiner eigenen Lohnsteuerbescheinigung.
+//
+// ACHTUNG BEIM LESEN DIESER PRÜFUNG: Sie ruft den Weg wirklich auf. Käme die
+// alte Fassung zurück, wäre danach ein Testkonto weg — und alle übrigen
+// Nachweise, die sich damit anmelden, fielen ebenfalls aus. Genau das ist
+// beabsichtigt: Diese Rückkehr darf nicht leise passieren.
+console.log('\n=== B9 Kein Sofort-Löschen des eigenen Kontos ===')
+
+const selbstLoeschen = await sende(person, '/api/auth/me', 'DELETE')
+check('Das eigene Konto lässt sich nicht sofort löschen',
+  selbstLoeschen.status === 409, `HTTP ${selbstLoeschen.status}`)
+check('Und es wird gesagt, warum und wie es richtig geht',
+  /Aufbewahrungsfrist/i.test(selbstLoeschen.body.error ?? '')
+  && /Löschantrag/i.test(selbstLoeschen.body.error ?? ''),
+  selbstLoeschen.body.error)
+
+const nochDa = await hole(person, '/api/auth/me')
+check('Das Konto ist danach unverändert da', nochDa.status === 200
+  && nochDa.body.user?.employeeId === mPerson.employeeId,
+  `HTTP ${nochDa.status}`)
+
+// Der alte, unvollständige Auskunftsweg ist weg: Er gab vier Tabellen aus und
+// nannte sich „alle gespeicherten Daten". Eine Auskunft, die unvollständig ist
+// und sich vollständig nennt, ist schlimmer als gar keine.
+const alterExport = await hole(person, '/api/auth/me/export')
+check('Der alte, unvollständige Export ist abgeschafft',
+  alterExport.status === 404 || alterExport.status === 405,
+  `HTTP ${alterExport.status}`)
+
 // ── B9 Der Antrag steht in der eigenen Auskunft ────────────────────────────
 console.log('\n=== B9 In der Auskunft ===')
 

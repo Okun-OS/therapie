@@ -75,10 +75,28 @@ if (typeof window !== 'undefined') {
   }, { passive: true, capture: true })
 }
 
-export function BugReportButton() {
+/**
+ * §140 Das Meldefenster lässt sich auch von außen öffnen.
+ *
+ * Der eigene Käfer unten links ist weg. Er saß in der anderen Ecke als die
+ * Hilfe, war kleiner und hing auf einer anderen Höhe — drei Unterschiede ohne
+ * einen Grund. Beide Fenster beantworten dieselbe Lage („ich komme hier nicht
+ * weiter"), und beide hängen jetzt an einem Knopf (`Hilfeknopf`).
+ *
+ * Ohne Eigenschaften bleibt der alte Weg bestehen.
+ */
+export function BugReportButton({ offen, beiSchliessen }: {
+  offen?: boolean
+  beiSchliessen?: () => void
+} = {}) {
   const { user } = useAuth()
   const pathname = usePathname()
-  const [open, setOpen] = useState(false)
+  const gesteuert = offen !== undefined
+  const [selbstOffen, setSelbstOffen] = useState(false)
+  const open = gesteuert ? offen : selbstOffen
+  const setOpen = (wert: boolean) => {
+    if (gesteuert) { if (!wert) beiSchliessen?.() } else setSelbstOffen(wert)
+  }
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
   const [ticketId, setTicketId] = useState('')
@@ -137,14 +155,16 @@ export function BugReportButton() {
 
   return (
     <>
-      {/* Floating trigger button */}
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-20 left-4 lg:bottom-6 z-40 w-10 h-10 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:shadow-lg transition-all"
-        title="Fehler melden"
-      >
-        <Bug size={16} />
-      </button>
+      {/* Eigener Knopf nur, wenn niemand von außen steuert. */}
+      {!gesteuert && (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-20 left-4 lg:bottom-6 z-40 w-10 h-10 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:shadow-lg transition-all"
+          title="Fehler melden"
+        >
+          <Bug size={16} />
+        </button>
+      )}
 
       {/* Modal */}
       {open && (

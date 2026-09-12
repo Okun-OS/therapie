@@ -5,9 +5,8 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { LogOut, Search, ChevronUp } from 'lucide-react'
+import { ChevronUp } from 'lucide-react'
 import { getDockItems, type DockItem } from './navData'
-import { SearchModal } from './SearchModal'
 
 // ── Ripple helper ────────────────────────────────────────────────
 function spawnRipples(el: HTMLElement, isGold: boolean) {
@@ -257,59 +256,12 @@ function DockIcon({
   )
 }
 
-// ── Utility Button ───────────────────────────────────────────────
-function UtilityButton({ label, scale, onClick, href, children }: {
-  label: string
-  scale: number
-  onClick?: () => void
-  href?: string
-  danger?: boolean
-  children: React.ReactNode
-}) {
-  const wrapperRef = useRef<HTMLDivElement>(null)
-  const [labelPos, setLabelPos] = useState<{ x: number; bottom: number } | null>(null)
-
-  const handleMouseEnter = () => {
-    const el = wrapperRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    setLabelPos({ x: rect.left + rect.width / 2, bottom: window.innerHeight - rect.top + 10 })
-  }
-
-  const inner = (
-    <div
-      className="w-12 h-12 flex items-center justify-center rounded-2xl transition-colors duration-150"
-      style={{ background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,255,255,0.08)' }}
-    >
-      {children}
-    </div>
-  )
-
-  return (
-    <div
-      ref={wrapperRef}
-      className="relative flex flex-col items-center"
-      style={{ transform: `scale(${scale})`, transition: 'transform 0.15s ease-out', transformOrigin: 'bottom center' }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={() => setLabelPos(null)}
-    >
-      {labelPos && <DockLabel label={label} x={labelPos.x} bottom={labelPos.bottom} />}
-      {href
-        ? <Link href={href} aria-label={label} className="focus:outline-none">{inner}</Link>
-        : <button onClick={onClick} aria-label={label} className="focus:outline-none" style={{ WebkitTapHighlightColor: 'transparent' }}>{inner}</button>
-      }
-    </div>
-  )
-}
-
 // ── FloatingDock ─────────────────────────────────────────────────
 export function FloatingDock() {
-  const { user, logout } = useAuth()
-  const router = useRouter()
+  const { user } = useAuth()
   const dockRef = useRef<HTMLDivElement>(null)
   const [openId, setOpenId] = useState<string | null>(null)
   const [scales, setScales] = useState<Record<string, number>>({})
-  const [searchOpen, setSearchOpen] = useState(false)
   const [dockHidden, setDockHidden] = useState(false)
 
   const items = getDockItems(user?.role)
@@ -392,11 +344,6 @@ export function FloatingDock() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const handleLogout = () => {
-    logout()
-    router.push('/login')
-  }
-
   return (
     <>
       {/* Mega Panel */}
@@ -459,45 +406,20 @@ export function FloatingDock() {
               </div>
             ))}
 
-            {/* Divider */}
-            <div className="w-px h-8 mx-1 self-center" style={{ background: 'rgba(255,255,255,0.1)' }} />
+            {/*
+              §140 Hier standen bis eben noch Suche, Konto und Abmelden.
+              Alle drei sind weg, und zwar aus demselben Grund: Suche und Konto
+              stehen schon oben in der Leiste, und zwei Wege zum selben Ziel
+              sind kein Komfort, sondern eine Frage, die sich der Mensch stellen
+              muss („sind die beiden dasselbe?"). Abmelden wiederum ist ein
+              Handgriff von zweimal am Tag — der gehört nicht auf die Fläche,
+              die man hundertmal antippt; er steht unter „Mein Konto".
 
-            {/* Search */}
-            <div data-dock-slot="search">
-              <UtilityButton label="Suche" scale={scales['search'] ?? 1} onClick={() => setSearchOpen(true)}>
-                <Search size={22} className="text-white/65" />
-              </UtilityButton>
-            </div>
-
-            {/* Account */}
-            <div data-dock-slot="account">
-              <UtilityButton label={user?.name ?? 'Konto'} scale={scales['account'] ?? 1} href="/account">
-                <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-[12px] font-bold text-navy flex-shrink-0"
-                  style={!user?.avatarUrl ? { background: 'linear-gradient(135deg, #26C6C6 0%, #0E6B6F 100%)' } : undefined}
-                >
-                  {user?.avatarUrl
-                    // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
-                    : (user?.name?.charAt(0)?.toUpperCase() ?? '?')
-                  }
-                </div>
-              </UtilityButton>
-            </div>
-
-            {/* Logout */}
-            <div data-dock-slot="logout">
-              <UtilityButton label="Abmelden" scale={scales['logout'] ?? 1} onClick={handleLogout}>
-                <LogOut size={20} className="text-white/50" />
-              </UtilityButton>
-            </div>
+              Damit trägt die Leiste genau das, wofür sie da ist: die Ziele.
+            */}
           </div>
         </div>
       </div>
-
-      {/* Search Modal */}
-      {searchOpen && (
-        <SearchModal items={items} onClose={() => setSearchOpen(false)} />
-      )}
     </>
   )
 }

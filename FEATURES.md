@@ -1389,6 +1389,68 @@ und Löschantrag, 6 Modultests für den Umgang mit toten Gerätekennungen. Der
 Ablaufplan bis zur Veröffentlichung steht in **`APP-STORES.md`** — samt der
 ehrlichen Liste dessen, was noch gegen eine Ablehnung spricht.
 
+## Block §140 (12.09.) — Aufgeräumt nach dem ersten Blick auf dem Telefon
+
+Vier Funde aus der Praxis, drei davon Oberfläche — und einer, der es nicht war.
+
+### Die Leiste unten trägt wieder nur Ziele
+Dort standen sieben Felder: die vier Ziele plus Suche, Konto und Abmelden.
+Suche und Konto gibt es schon oben in der Leiste; zwei Wege zum selben Ort sind
+kein Komfort, sondern eine Frage, die sich der Mensch stellen muss („sind die
+beiden dasselbe?"). Und Abmelden ist ein Handgriff von zweimal am Tag — der
+gehört nicht auf die Fläche, die man hundertmal antippt. Er steht weiterhin im
+Menü oben rechts, unter „Mein Konto" und unter „Ich".
+
+### Das Zeichen führt nach Hause
+Auf das OKUN-Zeichen zu tippen tat bisher nichts. Auf jeder Website der Welt
+führt das Logo aufs Dashboard — jetzt auch hier, und zwar auf das der eigenen
+Rolle.
+
+### Ein Knopf statt zweier ungleicher
+Unten links ein grauer Käfer, 40 Pixel, 80 vom Rand. Unten rechts ein türkiser
+Fragezeichen-Kreis, 48 Pixel, 96 vom Rand. Andere Ecke, andere Größe, andere
+Höhe, andere Farbe — vier Unterschiede ohne einen Grund. Das sah nicht nach
+zwei Funktionen aus, sondern nach zwei Systemen im selben Programm.
+
+Dabei beantworten beide dieselbe Lage: **„Ich komme hier gerade nicht weiter."**
+Ob daraus eine Frage wird oder eine Meldung, entscheidet sich erst danach. Also
+ein Knopf, ruhig gehalten, und die Wahl kommt nach dem Antippen. Der dauerhaft
+sichtbare rote Käfer ist damit weg — er sagte jedem Benutzer den ganzen Tag
+„hier ist etwas kaputt".
+
+### Der eine, der keine Oberfläche war
+Auf dem Bild von „Mein Konto" stand **„Konto unwiderruflich löschen — löscht
+Ihren Account und anonymisiert Ihre Mitarbeiterdaten"**. Der Knopf tat genau
+das: Benutzerkonto weg, Name und E-Mail des Mitarbeiters überschrieben mit
+„Gelöschter Mitarbeiter" — **ohne jede Prüfung.**
+
+In einem Programm, das Löhne rechnet, ist das aus zwei Richtungen falsch. Gegen
+das Gesetz: Das Lohnkonto muss sechs Jahre zuordenbar bleiben (§41 Abs. 1 EStG,
+§28f SGB IV), Buchungsbelege zehn (§147 AO, §257 HGB) — die Betriebsprüfung
+fände Abrechnungen ohne Person. Und gegen den Menschen selbst: Mit dem Namen
+verschwindet die Grundlage seiner eigenen Lohnsteuerbescheinigung.
+
+Daneben stand „Meine Daten exportieren — **alle** gespeicherten Daten". Ausgegeben
+wurden vier Tabellen, gekappt bei 500 Zeilen; der Katalog aus §128 kennt
+fünfunddreißig. Eine Auskunft, die unvollständig ist und sich vollständig nennt,
+ist schlimmer als gar keine — sie sieht aus wie die Erfüllung von Art. 15 DSGVO.
+
+- [x] Beides ersetzt durch **einen** Baustein (`MeineDatenrechte`), den „Mein
+      Konto" und die App-Seite „Meine Daten" gemeinsam benutzen: vollständige
+      Auskunft aus dem Katalog, Löschung über den Antrag aus §139.
+- [x] Der alte Sofort-Löschweg **antwortet jetzt mit 409** und sagt, warum und
+      wie es richtig geht — als Fehler, nicht still, damit es auffällt, falls
+      ihn doch noch jemand ruft.
+- [x] Der alte, unvollständige Export ist **entfernt**.
+- [x] Ein Zugang ohne Personalakte (Geschäftsführung) bekommt keine Knöpfe, die
+      ins Leere greifen, sondern den Satz, der erklärt, warum es hier nichts
+      abzurufen gibt.
+
+Nachweis: 4 zusätzliche Prüfungen in `pruefungen/b4-app.mjs` (jetzt 37). Die
+Prüfung ruft den Löschweg **wirklich** auf — käme die alte Fassung zurück, wäre
+danach ein Testkonto weg und die halbe Nachweisreihe fiele aus. Genau das ist
+beabsichtigt: Diese Rückkehr darf nicht leise passieren.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

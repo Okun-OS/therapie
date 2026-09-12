@@ -17,7 +17,7 @@ Zuletzt aktualisiert: **12.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Mitarbeiter-App für die Stores — Etappe 3 von 5 fertig |
-| **Zuletzt fertig** | §139 Native Hülle: Push, Kamera, Face ID, Löschantrag in der App |
+| **Zuletzt fertig** | §140 Aufgeräumt: Leiste, Logo, ein Hilfe-Knopf — und der Sofort-Löschweg ist weg |
 | **Als Nächstes** | Etappe 4/5: einreichen — blockiert durch D-U-N-S, Firebase, Datenschutzerklärung |
 | **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
 

@@ -9,8 +9,7 @@ import { SystemTour } from '@/components/onboarding/SystemTour'
 import { WhatsNewModal } from '@/components/onboarding/WhatsNewModal'
 import { LocationModelMigrationModal } from '@/components/onboarding/LocationModelMigrationModal'
 import { PageBanner } from '@/components/onboarding/PageBanner'
-import { FloatingHelp } from '@/components/ui/FloatingHelp'
-import { BugReportButton } from '@/components/ui/BugReportButton'
+import { Hilfeknopf } from '@/components/ui/Hilfeknopf'
 import { Warteschlange } from '@/components/offline/Warteschlange'
 import { AppRahmen } from '@/components/app/AppRahmen'
 import type { Role } from '@/lib/types'
@@ -103,8 +102,9 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
       <SystemTour role={user.role} />
       <WhatsNewModal role={user.role} />
       <LocationModelMigrationModal role={user.role} />
-      <FloatingHelp />
-      <BugReportButton />
+      {/* §140 Ein Knopf für Hilfe UND Melden — vorher zwei, in zwei Ecken,
+          in zwei Größen, auf zwei Höhen. */}
+      <Hilfeknopf />
     </div>
   )
 }

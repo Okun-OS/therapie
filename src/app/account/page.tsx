@@ -6,6 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useAuth } from '@/lib/auth-context'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { MeineDatenrechte } from '@/components/datenschutz/MeineDatenrechte'
 import {
   User, Mail, Shield, Bell, LogOut, Camera, Trash2,
   Lock, ChevronRight, CheckCircle2, AlertCircle, Download, ShieldAlert,
@@ -68,10 +69,6 @@ export default function AccountPage() {
   const [notifEmail, setNotifEmail] = useState(true)
   const [notifPush, setNotifPush] = useState(true)
 
-  const [exportLoading, setExportLoading] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState(false)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-  const [deleteError, setDeleteError] = useState('')
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -192,42 +189,6 @@ export default function AccountPage() {
       setPwError('Netzwerkfehler')
     } finally {
       setPwLoading(false)
-    }
-  }
-
-  async function handleExport() {
-    setExportLoading(true)
-    try {
-      const res = await fetch('/api/auth/me/export')
-      if (!res.ok) return
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `okun-datenschutz-export-${new Date().toISOString().split('T')[0]}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-    } finally {
-      setExportLoading(false)
-    }
-  }
-
-  async function handleDeleteAccount() {
-    setDeleteLoading(true)
-    setDeleteError('')
-    try {
-      const res = await fetch('/api/auth/me', { method: 'DELETE' })
-      if (!res.ok) {
-        const d = await res.json()
-        setDeleteError(d.error ?? 'Fehler beim Löschen')
-        return
-      }
-      logout()
-      router.push('/login')
-    } catch {
-      setDeleteError('Netzwerkfehler')
-    } finally {
-      setDeleteLoading(false)
     }
   }
 
@@ -451,59 +412,27 @@ export default function AccountPage() {
         </div>
 
         {/* ── Datenschutz & DSGVO ─────────────────────────────────── */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
-          <div className="flex items-center gap-2 mb-1">
+        {/*
+          §140 Hier stand bis eben eine zweite, widersprüchliche Fassung
+          desselben Rechts: ein Export, der sich „alle gespeicherten Daten"
+          nannte und vier Tabellen ausgab, und ein Knopf „Konto unwiderruflich
+          löschen", der das Benutzerkonto sofort entfernte und den Namen des
+          Mitarbeiters überschrieb — ohne jede Prüfung von Aufbewahrungsfristen.
+
+          In einem Programm, das Löhne rechnet, ist das doppelt falsch: Das
+          Lohnkonto muss sechs Jahre zuordenbar bleiben (§41 EStG, §147 AO,
+          §257 HGB, §28f SGB IV), und dem Menschen selbst nähme es seine
+          Lohnsteuerbescheinigung weg.
+
+          Jetzt steht hier derselbe Inhalt wie in der App — aus dem Katalog
+          (§128) und über den Löschantrag (§139).
+        */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
             <ShieldAlert size={16} className="text-brand" />
             <h2 className="font-semibold text-navy">Datenschutz (DSGVO)</h2>
           </div>
-
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm font-medium text-navy">Meine Daten exportieren</p>
-              <p className="text-xs text-gray-400 mt-0.5">Alle gespeicherten Daten als JSON-Datei herunterladen (Art. 20 DSGVO)</p>
-              <button
-                onClick={handleExport}
-                disabled={exportLoading}
-                className="mt-2 flex items-center gap-1.5 text-sm font-medium text-brand hover:opacity-80 transition-opacity disabled:opacity-50"
-              >
-                <Download size={14} />
-                {exportLoading ? 'Wird exportiert…' : 'Daten herunterladen'}
-              </button>
-            </div>
-
-            <div className="border-t border-gray-100 pt-3">
-              <p className="text-sm font-medium text-red-600">Konto unwiderruflich löschen</p>
-              <p className="text-xs text-gray-400 mt-0.5">Löscht Ihren Account und anonymisiert Ihre Mitarbeiterdaten (Art. 17 DSGVO)</p>
-              {!deleteConfirm ? (
-                <button
-                  onClick={() => setDeleteConfirm(true)}
-                  className="mt-2 text-sm font-medium text-red-500 hover:text-red-700 transition-colors"
-                >
-                  Konto löschen…
-                </button>
-              ) : (
-                <div className="mt-2 p-3 rounded-xl border border-red-200 bg-red-50 space-y-2">
-                  <p className="text-xs font-semibold text-red-700">Diese Aktion kann nicht rückgängig gemacht werden. Wirklich fortfahren?</p>
-                  {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleDeleteAccount}
-                      disabled={deleteLoading}
-                      className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
-                    >
-                      {deleteLoading ? 'Wird gelöscht…' : 'Ja, Konto löschen'}
-                    </button>
-                    <button
-                      onClick={() => { setDeleteConfirm(false); setDeleteError('') }}
-                      className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                    >
-                      Abbrechen
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <MeineDatenrechte />
         </div>
 
         {/* ── Abmelden ────────────────────────────────────────────── */}

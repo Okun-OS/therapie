@@ -44,8 +44,29 @@ function AssistantAvatar() {
   )
 }
 
-export function FloatingHelp() {
-  const [open, setOpen] = useState(false)
+/**
+ * §140 Die Hilfe lässt sich auch von außen öffnen.
+ *
+ * Vorher brachte sie ihren eigenen runden Knopf unten rechts mit — und der
+ * Käfer daneben seinen eigenen, in einer anderen Größe, auf einer anderen Höhe
+ * und in der anderen Ecke. Zwei Dinge, die dasselbe sind („ich komme hier
+ * nicht weiter"), sahen aus wie zwei Systeme. Jetzt trägt `Hilfeknopf` einen
+ * einzigen Knopf, und diese beiden Fenster werden von dort gesteuert.
+ *
+ * Ohne Eigenschaften bleibt der alte Weg bestehen — für den Fall, dass die
+ * Hilfe irgendwo allein stehen soll.
+ */
+export function FloatingHelp({ offen, beiSchliessen }: {
+  offen?: boolean
+  beiSchliessen?: () => void
+} = {}) {
+  const gesteuert = offen !== undefined
+  const [selbstOffen, setSelbstOffen] = useState(false)
+  const open = gesteuert ? offen : selbstOffen
+  const setOpen = (wert: boolean | ((v: boolean) => boolean)) => {
+    const neu = typeof wert === 'function' ? wert(open) : wert
+    if (gesteuert) { if (!neu) beiSchliessen?.() } else setSelbstOffen(neu)
+  }
   const [messages, setMessages] = useState<HelpMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -100,19 +121,21 @@ export function FloatingHelp() {
 
   return (
     <>
-      {/* Floating button */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        className={cn(
-          'fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200',
-          open
-            ? 'bg-navy text-white scale-95'
-            : 'bg-teal-600 text-white hover:bg-teal-700 hover:scale-110',
-        )}
-        aria-label="Hilfe öffnen"
-      >
-        {open ? <Minimize2 className="w-5 h-5" /> : <HelpCircle className="w-5 h-5" />}
-      </button>
+      {/* Eigener Knopf nur, wenn niemand von außen steuert. */}
+      {!gesteuert && (
+        <button
+          onClick={() => setOpen(v => !v)}
+          className={cn(
+            'fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200',
+            open
+              ? 'bg-navy text-white scale-95'
+              : 'bg-teal-600 text-white hover:bg-teal-700 hover:scale-110',
+          )}
+          aria-label="Hilfe öffnen"
+        >
+          {open ? <Minimize2 className="w-5 h-5" /> : <HelpCircle className="w-5 h-5" />}
+        </button>
+      )}
 
       {/* Chat panel */}
       {open && (
