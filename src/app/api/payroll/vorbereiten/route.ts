@@ -5,6 +5,8 @@ import { allowedLocationScope } from '@/lib/scope'
 import { monatsGrundlagen, abrechnungRechnen, abrechnungsFelder } from '@/lib/payroll-monat'
 import { elstamStandBewerten } from '@/lib/elstam'
 import { korrekturText } from '@/lib/aufrollung'
+import { freigabelagen } from '@/lib/monatsfreigabe'
+import { lohnjahrOderFehler } from '@/lib/lohnjahre'
 
 /** Erster Beschaeftigungsmonat im Abrechnungsjahr — 1, wenn schon vorher dabei. */
 function eintrittsMonatImJahr(eintritt: string | null | undefined, jahr: number): number {
@@ -107,6 +109,47 @@ export async function POST(req: NextRequest) {
   const verschoben: { name: string; text: string }[] = []
   const nichtBeschaeftigt: string[] = []
   const teilmonate: { name: string; svTage: number }[] = []
+  const ohneFreigabe: { name: string; text: string; grund: string }[] = []
+
+  /*
+   * §136 Das Abrechnungsjahr wird VOR der Schleife geprueft.
+   *
+   * Bis hierher fiel der Fehler erst auf, wenn die erste Person gerechnet
+   * wurde. Seit die Freigabe des Monats vorgeschaltet ist, kann es passieren,
+   * dass gar niemand gerechnet wird — dann waere ein Jahr ohne hinterlegte
+   * Rechengroessen stillschweigend durchgegangen, mit der Meldung "0
+   * abgerechnet". Das Jahr ist eine Eigenschaft des Laufs, nicht einer Person,
+   * und gehoert deshalb an den Anfang.
+   */
+  try {
+    lohnjahrOderFehler(year)
+  } catch (fehler) {
+    return NextResponse.json(
+      { error: fehler instanceof Error ? fehler.message : 'Abrechnungsjahr nicht moeglich' },
+      { status: 400 },
+    )
+  }
+
+  /*
+   * §136 Kein Lohn ohne freigegebenen Monat.
+   *
+   * Weil Zeiterfassung und Lohn bei uns zusammenhaengen, muss niemand mehr
+   * "fuenf Stunden nachts, zehn am Sonntag" eintippen — das System rechnet die
+   * Zuschlaege selbst aus der gestempelten Zeit. Genau deshalb darf nicht
+   * abgerechnet werden, solange die Zeiten noch wackeln: Eine Schicht, die
+   * abends nachgetragen wird, waere sonst ein Zuschlag, der NACH der Abrechnung
+   * entsteht — und auf dem Beleg staende eine Zahl, die morgen nicht mehr
+   * stimmt.
+   *
+   * Die Standortleitung schliesst den Monat ab und gibt ihn frei; mit der
+   * Freigabe sind die Zeiten gesperrt. Darauf ruht die Abrechnung.
+   */
+  const freigaben = await freigabelagen(
+    mitarbeiter.map(m => ({
+      employeeId: m.id, lohnart: profilVon.get(m.id)?.lohnart,
+    })),
+    year, month,
+  )
 
   for (const m of mitarbeiter) {
     const p = profilVon.get(m.id)
@@ -170,6 +213,13 @@ export async function POST(req: NextRequest) {
     // Abrechnung — weder vor dem Eintritt noch nach dem Austritt.
     if (!grundlage.beschaeftigt) {
       nichtBeschaeftigt.push(m.name)
+      continue
+    }
+
+    // §136 Erst nach der Freigabe des Monats durch die Standortleitung.
+    const freigabe = freigaben.get(m.id)
+    if (freigabe && !freigabe.frei) {
+      ohneFreigabe.push({ name: m.name, text: freigabe.text, grund: freigabe.grund })
       continue
     }
     // Fuer die Pflegeversicherung zaehlt, ob jemand Kinder hat — die Angabe am
@@ -250,6 +300,11 @@ export async function POST(req: NextRequest) {
   if (nichtBeschaeftigt.length > 0) {
     teile.push(`${nichtBeschaeftigt.length} in diesem Monat nicht beschäftigt`)
   }
+  if (ohneFreigabe.length > 0) {
+    // §136 Ganz vorn in der Meldung: Das ist kein Randfall, sondern der Grund,
+    // warum jemand kein Geld bekommt.
+    teile.unshift(`${ohneFreigabe.length} ohne freigegebenen Monatsabschluss`)
+  }
   if (teilmonate.length > 0) {
     teile.push(`${teilmonate.length} Teilmonate`)
   }
@@ -268,6 +323,7 @@ export async function POST(req: NextRequest) {
     unvollstaendig,
     veralteteMerkmale,
     nichtBeschaeftigt,
+    ohneFreigabe,
     teilmonate,
     ausgeglichen,
     verschoben,

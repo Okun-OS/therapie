@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import {
@@ -369,6 +370,8 @@ export default function PayrollPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(false)
   const [aktion, setAktion] = useState<string | null>(null)
+  // §136 Wer diesen Monat kein Geld bekommt, weil der Monatsabschluss fehlt.
+  const [ohneFreigabe, setOhneFreigabe] = useState<{ name: string; text: string }[]>([])
   const [zeigeElstam, setZeigeElstam] = useState(false)
   const [zeigeAufrollung, setZeigeAufrollung] = useState(false)
   const [zeigeEinmal, setZeigeEinmal] = useState(false)
@@ -473,7 +476,12 @@ export default function PayrollPage() {
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { showToast(d.error ?? 'Vorbereiten fehlgeschlagen', 'error'); return }
-      showToast(d.hinweis ?? 'vorbereitet', (d.unvollstaendig?.length ?? 0) > 0 ? 'error' : 'success')
+      setOhneFreigabe(d.ohneFreigabe ?? [])
+      showToast(
+        d.hinweis ?? 'vorbereitet',
+        (d.unvollstaendig?.length ?? 0) > 0 || (d.ohneFreigabe?.length ?? 0) > 0
+          ? 'error' : 'success',
+      )
       load()
     } catch { showToast('Vorbereiten fehlgeschlagen', 'error') }
     finally { setAktion(null) }
@@ -558,6 +566,47 @@ export default function PayrollPage() {
             <ChevronRight size={18} className="text-gray-500" />
           </button>
         </div>
+
+        {/*
+          §136 Ein Hinweis, der nur kurz als Meldung aufblitzt, reicht hier
+          nicht: Es geht darum, dass jemand diesen Monat kein Geld bekommt.
+          Das bleibt stehen, bis der Monat freigegeben und neu gerechnet ist.
+        */}
+        {ohneFreigabe.length > 0 && (
+          <Card>
+            <div className="p-4 space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-navy">
+                    {ohneFreigabe.length} {ohneFreigabe.length === 1
+                      ? 'Person wurde nicht abgerechnet' : 'Personen wurden nicht abgerechnet'}
+                    {' '}— der Monat ist noch nicht freigegeben
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Aus den erfassten Zeiten entstehen Zuschläge, und die sind Geld. Solange
+                    der Monatsabschluss offen ist, können sich die Zeiten noch ändern — dann
+                    stünde auf dem Beleg eine Zahl, die morgen nicht mehr stimmt.
+                  </p>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {ohneFreigabe.map(p => (
+                  <div key={p.name} className="py-2">
+                    <p className="text-sm font-semibold text-navy">{p.name}</p>
+                    <p className="text-xs text-gray-500">{p.text}</p>
+                  </div>
+                ))}
+              </div>
+              <Link
+                href="/admin/time-tracking"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-navy hover:text-brand-dark"
+              >
+                Zum Monatsabschluss in der Zeiterfassung →
+              </Link>
+            </div>
+          </Card>
+        )}
 
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-3">

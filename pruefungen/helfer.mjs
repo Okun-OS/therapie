@@ -118,3 +118,30 @@ export async function lohnPerson(cookie, locationId, name = 'Lohnpruefung Nachwe
   if (!id) throw new Error(`Testperson konnte nicht angelegt werden: ${angelegt.body.error}`)
   return id
 }
+
+/**
+ * §136 Den Monat abschließen und freigeben — wie es die Standortleitung tut.
+ *
+ * Seit der Lohnlauf einen freigegebenen Monatsabschluss verlangt, gehört dieser
+ * Schritt zu jeder Lohn-Prüfung, die mit erfassten Zeiten rechnet. Genau so
+ * läuft es im Betrieb auch: erst die Zeiten abnehmen, dann das Geld.
+ */
+export async function monatFreigeben(cookie, employeeId, jahr, monat, name) {
+  const angelegt = await sende(cookie, '/api/monthly-closings/get-or-create', 'POST', {
+    employeeId, year: jahr, month: monat,
+    employeeInfo: name ? { employeeName: name } : undefined,
+  })
+  const id = angelegt.body.closing?.id
+  if (!id) return { ok: false, fehler: angelegt.body.error ?? 'Abschluss nicht angelegt' }
+
+  // Schon freigegeben: nichts zu tun. Ein zweiter Lauf derselben Pruefung darf
+  // daran nicht scheitern — eine Freigabe laesst sich nicht zweimal erteilen.
+  if (angelegt.body.closing?.status === 'freigegeben') {
+    return { ok: true, id, status: 200, schonFrei: true }
+  }
+
+  const frei = await sende(cookie, '/api/time-tracking/release-closing', 'POST', {
+    closingId: id, releasedBy: 'Prüfung',
+  })
+  return { ok: frei.status === 200, id, status: frei.status, body: frei.body }
+}

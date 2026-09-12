@@ -164,7 +164,7 @@ Siehe `PRODUKT-NOTIZEN.md`.
 - [x] **G2 DSGVO: Löschkonzept** — fertig. Katalog über alle 35 Tabellen mit
       Personenbezug, Vorschau vor jeder Löschung, Sperre statt Löschung wo das
       Gesetz es verlangt, Löschbericht als Nachweis. Siehe Block G1/G2 unten.
-- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 617 Nachweise im
+- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 641 Nachweise im
       Repo unter `pruefungen/`, ein Befehl (`npm run pruefen`), automatischer
       Lauf bei jedem Push. Siehe Block G3 unten.
       `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
@@ -1126,6 +1126,53 @@ der Unterschied zwischen „morgen" und „gleich".
 
 Nachweis: 17 Prüfungen (`pruefungen/h2-fundelauf.mjs`), davon der größere Teil
 zu dem, was der Lauf **nicht** darf.
+
+## Block D16 (12.09.) — Kein Lohn ohne freigegebenen Monat
+
+Der eigentliche Vorteil daran, dass Zeiterfassung und Lohnabrechnung bei uns
+zusammenhängen: Niemand tippt mehr „fünf Stunden nachts, zehn am Sonntag, drei
+Vierundzwanzig-Stunden-Dienste" ein. Der Mitarbeiter stempelt, die Regeln der
+Zuschlags-Engine liegen darüber, und das Geld steht in der Abrechnung. Das gab
+es schon — was fehlte, war die andere Hälfte.
+
+### Der Preis für den Vorteil
+Wenn die gestempelte Zeit direkt Geld wird, darf nicht abgerechnet werden,
+solange sie noch wackelt. Eine Schicht, die abends nachgetragen wird, wäre ein
+Zuschlag, der **nach** der Abrechnung entsteht — und auf dem Beleg stünde eine
+Zahl, die morgen nicht mehr stimmt.
+
+- [x] **Die Standortleitung gibt den Monat frei, erst dann fließt er ein.** Mit
+      der Freigabe sind die Zeiten gesperrt; darauf ruht die Abrechnung.
+- [x] **Wer aufgehalten wird, steht mit Namen und Grund im Lauf** — und auf der
+      Lohnseite in einem Kasten, der stehen bleibt, statt nur kurz aufzublitzen.
+      Es geht darum, dass jemand diesen Monat kein Geld bekommt.
+- [x] **Drei Gründe werden unterschieden:** kein Abschluss vorhanden · Abschluss
+      vorhanden, aber nicht freigegeben · alles frei. „Geprüft" ist nicht
+      „freigegeben".
+- [x] **Wo die Regel nicht greift:** Wer ein festes Gehalt bezieht und in dem
+      Monat gar keine Zeiten erfasst hat, hat nichts freizugeben. Ihn zu
+      blockieren wäre keine Sorgfalt, sondern eine Schikane.
+- [x] **Bei Stundenlohn greift sie immer** — dort ist die erfasste Zeit nicht nur
+      Grundlage der Zuschläge, sondern des Entgelts selbst.
+- [x] Eine bereits gerechnete Abrechnung wird **nicht fortgeschrieben**, solange
+      der Monat offen ist: Die neuen Zuschläge fließen nicht ein.
+
+### Monat und Monat bleiben getrennt
+Eine Nachtschicht, die am letzten Tag eines Monats beginnt und erst im nächsten
+endet, gehört zu dem Tag, an dem sie **begonnen** hat. Sonst wanderten Zuschläge
+stillschweigend über die Monatsgrenze, und ein längst freigegebener Vormonat
+würde nachträglich teurer. Eigens nachgewiesen.
+
+### Nebenbei: das Abrechnungsjahr wird zuerst geprüft
+Bis hierher fiel ein Jahr ohne hinterlegte Rechengrößen erst auf, wenn die erste
+Person gerechnet wurde. Seit die Freigabe vorgeschaltet ist, kann es passieren,
+dass gar niemand gerechnet wird — dann wäre das fehlende Jahr stillschweigend
+durchgegangen, mit der Meldung „0 abgerechnet". Das Jahr ist eine Eigenschaft
+des Laufs, nicht einer Person, und wird jetzt vorab geprüft.
+
+Nachweis: 22 Prüfungen (`pruefungen/d16-monatsfreigabe.mjs`) und 10 Modultests
+für die Regel selbst — sie entscheidet über Geld und gehört zu den Stellen, die
+man einzeln nachrechnen können muss.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

@@ -16,8 +16,8 @@ Zuletzt aktualisiert: **12.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | Fehlerkreislauf — Stufe 1 und 2 stehen |
-| **Zuletzt fertig** | H2 Der stündliche Lauf (12.09.) |
+| **Baustelle** | — |
+| **Zuletzt fertig** | D16 Kein Lohn ohne freigegebenen Monat (12.09.) |
 | **Als Nächstes** | Mobile App prüfen und in die App Stores bringen |
 | **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
 
@@ -51,7 +51,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 Nach Dringlichkeit, nicht nach Bereich.
 
 ### Dringend
-- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 617 Nachweise
+- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 641 Nachweise
       liegen jetzt im Repo unter `pruefungen/`, ein Befehl prüft alles
       (`npm run pruefen`), und bei jedem Push läuft es automatisch.
 
@@ -61,6 +61,9 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [x] ~~Ein-/Austritte im Monat, Teilmonate~~ — Teil 1.3 ✅
 - [x] ~~Beleg und DATEV vollständig~~ ✅
 - [x] ~~Jahresabschluss und Werte für die Lohnsteuerbescheinigung~~ — Teil 2.2 ✅
+- [x] ~~**Kein Lohn ohne freigegebenen Monat**~~ ✅ — die Standortleitung gibt
+      den Monat frei, erst dann fließen die Zuschläge aus der Zeiterfassung in
+      die Abrechnung. Wer aufgehalten wird, steht mit Namen und Grund da
 - [ ] Geldwerte Vorteile, bAV, Pfändungen — Teil 1.4–1.6
 - [ ] Beitragsnachweis, AAG, DEÜV-Daten — Teil 3 (Meilenstein 2)
 - [ ] Alles Weitere: siehe `FAHRPLAN-KOMPLETTLOESUNG.md`

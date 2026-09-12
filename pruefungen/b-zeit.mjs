@@ -6,7 +6,11 @@ const { check, bilanz } = pruefer()
 
 const leitung = await login('leitung@rheinblick-reha.de')
 const kita = await login('leitung@kita-sonnenschein.de')
-const anna = await login('anna.fischer@rheinblick-reha.de')
+// §136 Bewusst NICHT Anna: Seit der Lohnlauf einen freigegebenen Monat
+// verlangt, geben die Lohn-Prüfungen ihren Monat frei — und ein freigegebener
+// Monat lässt keine Nacherfassung mehr zu. Diese Prüfung braucht einen Monat,
+// der offen bleibt, und dafür jemanden, den keine andere Prüfung anfasst.
+const anna = await login('thomas.weber@rheinblick-reha.de')
 
 const meLeitung = (await hole(leitung, '/api/auth/me')).body.user
 const meAnna = (await hole(anna, '/api/auth/me')).body.user
@@ -17,7 +21,7 @@ const alle = (await hole(leitung, '/api/employees')).body.employees ?? []
 const kollege = alle.find(e => e.id !== annaId && e.locationId === locationId)
 
 const heute = new Date().toISOString().slice(0, 10)
-console.log(`Anna ${annaId?.slice(0, 8)} · Kollege ${kollege?.name} · ${heute}\n`)
+console.log(`${meAnna.name} ${annaId?.slice(0, 8)} · Kollege ${kollege?.name} · ${heute}\n`)
 
 // Sauberer Ausgangszustand: eine noch laufende Erfassung beenden
 const laufend = await hole(anna, `/api/time-tracking/active?employeeId=${annaId}`)
@@ -94,7 +98,7 @@ check('Leitung kann eine Zeitbuchung nachtragen', buchung.status === 200 || buch
   buchung.body.error ?? `Buchung ${String(timeLogId).slice(0, 8)}`)
 
 const antrag = await sende(anna, '/api/overtime-requests', 'POST', {
-  employeeId: annaId, employeeName: 'Anna Fischer', locationId, date: heute,
+  employeeId: annaId, employeeName: meAnna.name ?? 'Thomas Weber', locationId, date: heute,
   timeLogId, overtimeMinutes: 90, reason: 'Übergabe verlängert',
 })
 check('Mitarbeiter kann Überstunden beantragen', antrag.status === 200 || antrag.status === 201,

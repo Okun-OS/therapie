@@ -1,5 +1,5 @@
 // Nachweis D9: rückwirkende Aufrollung — und die Abschottung von /api/payroll.
-import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate } from './helfer.mjs'
+import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate, monatFreigeben } from './helfer.mjs'
 
 const { check, bilanz } = pruefer()
 
@@ -165,7 +165,18 @@ check('Es steht fest, wer sie angelegt hat', !!k?.erstelltVon, k?.erstelltVon)
 
 // ── Auszahlung im Folgemonat ───────────────────────────────────────────────
 console.log('\n=== Ausgleich im laufenden Monat ===')
+
+// §136 Anna hat erfasste Zeiten — ohne freigegebenen Monatsabschluss wird sie
+// zu Recht nicht abgerechnet. Im Betrieb macht das die Standortleitung; hier
+// gehoert es zur Prueffolge, sonst prueft die Pruefung an der Wirklichkeit
+// vorbei.
+const monatsfreigabe = await monatFreigeben(gf, annaId, jahr, monat, 'Anna Fischer')
+check('Der Monat lässt sich freigeben', monatsfreigabe.ok, `HTTP ${monatsfreigabe.status}`)
+
 const lauf = await sende(gf, '/api/payroll/vorbereiten', 'POST', { year: jahr, month: monat })
+check('Nach der Freigabe wird sie abgerechnet',
+  !(lauf.body.ohneFreigabe ?? []).some(x => x.name === 'Anna Fischer'),
+  (lauf.body.ohneFreigabe ?? []).map(x => x.name).join(', '))
 check('Der Abrechnungslauf gleicht die Korrektur aus',
   (lauf.body.ausgeglichen ?? []).some(a => a.name === 'Anna Fischer'),
   lauf.body.hinweis)
