@@ -164,7 +164,7 @@ Siehe `PRODUKT-NOTIZEN.md`.
 - [x] **G2 DSGVO: Löschkonzept** — fertig. Katalog über alle 35 Tabellen mit
       Personenbezug, Vorschau vor jeder Löschung, Sperre statt Löschung wo das
       Gesetz es verlangt, Löschbericht als Nachweis. Siehe Block G1/G2 unten.
-- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 600 Nachweise im
+- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 617 Nachweise im
       Repo unter `pruefungen/`, ein Befehl (`npm run pruefen`), automatischer
       Lauf bei jedem Push. Siehe Block G3 unten.
       `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
@@ -1087,6 +1087,45 @@ der zuletzt geladene — jemand bekam die Steuerklasse eines Kollegen. Bei
 gleichen **Namen** wurde die Mehrdeutigkeit längst gemeldet; ausgerechnet bei
 den Kennzeichen, denen man am meisten vertraut, nicht. Jetzt wird auch dort
 abgebrochen, mit dem Hinweis, zuerst die Stammdaten zu bereinigen.
+
+## Block H2 (12.09.) — Der stündliche Lauf
+
+Stufe 2 aus `FEHLERKREISLAUF.md`: Ein Zeitplan weckt stündlich eine Sitzung, die
+die offenen Funde liest, sie beurteilt und Vorschläge bzw. Rückfragen
+zurückschreibt. **Code ändert der Lauf noch nicht** — das ist Stufe 3 und
+kommt erst, wenn der Bericht ein paar Wochen gezeigt hat, dass die Einschätzung
+stimmt.
+
+### Ein eigener Schlüssel statt einer Anmeldung
+Der Lauf braucht einen Weg ins laufende System. Eine Anmeldung mit Benutzername
+und Passwort wäre dafür falsch: Sie brächte ein echtes Konto mit dessen vollen
+Rechten mit. Stattdessen ein eigener Schlüssel, der **genau zwei Dinge** kann —
+offene Funde lesen und ihren Bearbeitungsstand zurückschreiben. Wer ihn erbeutet,
+sieht Mängelmeldungen. Ärgerlich, aber kein Schaden an Menschen.
+
+- [x] **Ohne hinterlegten Schlüssel ist der Zugang zu** — nicht offen, nicht
+      „erstmal erlaubt". Ein Zugang, der ohne Einrichtung funktioniert, ist
+      irgendwann einer, den niemand eingerichtet hat.
+- [x] Der Vergleich läuft in gleichbleibender Zeit; sonst verrät die Dauer der
+      Antwort den Schlüssel Zeichen für Zeichen.
+- [x] **Eine OKUN-Anmeldung ersetzt den Schlüssel nicht** und umgekehrt.
+- [x] **Der Lauf kann sich keine Freigabe selbst erteilen.** Ein Vorschlag, der
+      nicht freigegeben ist, lässt sich nicht als erledigt melden — HTTP 409 mit
+      Begründung. Ein Programm, das sich selbst freigeben kann, hat keine
+      Freigabe.
+- [x] Die Einsortierung in die vier Töpfe passiert **im System**, nicht im Lauf.
+      So gilt für beide dieselbe Regel, und der Bericht auf der Fundeseite zeigt
+      genau das, was dann tatsächlich geschieht.
+
+### Was der Zeitplan wirklich kann
+Ich kann mich nicht aus der App heraus wecken — die App kann nichts zurufen.
+Möglich ist ein Zeitplan, der von sich aus eine Sitzung startet; kleinste
+Taktung ist **stündlich**. Für „sofort nach der Freigabe" heißt das im Schnitt
+eine halbe Stunde. Das ist die ehrliche Antwort, und stündlich statt täglich ist
+der Unterschied zwischen „morgen" und „gleich".
+
+Nachweis: 17 Prüfungen (`pruefungen/h2-fundelauf.mjs`), davon der größere Teil
+zu dem, was der Lauf **nicht** darf.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

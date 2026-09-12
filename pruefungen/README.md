@@ -61,6 +61,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `f5-regelpakete.mjs` | Regelpakete je Kunde, Freischaltung der Dienstplanung |
 | `g1-dsgvo.mjs` | Auskunft, Löschkonzept, Sperre statt Löschung |
 | `h-funde.mjs` | Funde melden, bewerten, freigeben, nachfragen |
+| `h2-fundelauf.mjs` | Der Zugang für den stündlichen Lauf und seine Grenzen |
 
 ## Eine neue Prüfung schreiben
 

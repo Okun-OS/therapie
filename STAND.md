@@ -16,10 +16,10 @@ Zuletzt aktualisiert: **12.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | Fehlerkreislauf — Stufe 1 steht, Stufe 2 offen |
-| **Zuletzt fertig** | H1 Funde erfassen, bewerten, freigeben (12.09.) |
-| **Als Nächstes** | Stufe 2: der stündliche Lauf mit Bericht und Vorschlägen |
-| **Danach** | Mobile App prüfen und in die App Stores bringen |
+| **Baustelle** | Fehlerkreislauf — Stufe 1 und 2 stehen |
+| **Zuletzt fertig** | H2 Der stündliche Lauf (12.09.) |
+| **Als Nächstes** | Mobile App prüfen und in die App Stores bringen |
+| **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
@@ -51,7 +51,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 Nach Dringlichkeit, nicht nach Bereich.
 
 ### Dringend
-- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 600 Nachweise
+- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 617 Nachweise
       liegen jetzt im Repo unter `pruefungen/`, ein Befehl prüft alles
       (`npm run pruefen`), und bei jedem Push läuft es automatisch.
 
@@ -71,9 +71,12 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [x] ~~**Test- und Fehlererfassung im System, Stufe 1**~~ ✅ — zwei Wege zum
       Melden (Käfer und ausführliches Formular), vier Arten, Ampel für die
       Meldequalität, Freigabe für Verbesserungsvorschläge, Rückfragen
-- [ ] **Fehlerkreislauf Stufe 2** — der stündliche Lauf mit Bericht und
-      Vorschlägen zum Bestätigen. Braucht einen Zugangsschlüssel von Daniel
-      (eine Zeile in den Railway-Variablen). Siehe `FEHLERKREISLAUF.md`
+- [x] ~~**Fehlerkreislauf Stufe 2**~~ ✅ — eigener schmaler Zugang, stündlicher
+      Zeitplan, Bericht auf der Fundeseite. Der Lauf schreibt Vorschläge und
+      Rückfragen, ändert aber noch keinen Code
+- [ ] **Fehlerkreislauf Stufe 3** — automatische Behebung für den Kleinkram,
+      je Bereich einschaltbar. Erst sinnvoll, wenn der Bericht ein paar Wochen
+      gezeigt hat, dass die Einschätzung stimmt
 - [x] ~~**E5 Mitarbeiter-Chat**~~ ✅ — jeder schreibt jedem am Standort, die
       Standortleitung eröffnet und verwaltet Gruppen. Mitlesen ist bewusst
       nicht dasselbe wie Verwalten: ein Beitritt der Leitung steht sichtbar im
@@ -108,6 +111,7 @@ Ohne diese Punkte kommt die Arbeit an bestimmten Stellen nicht weiter.
 | 🟡 | **Aufbewahrungsfristen gegenzeichnen lassen** (Steuerberater oder Datenschutzbeauftragter) | den ersten echten Kunden — die Fristen stehen mit Vorschrift in `src/lib/dsgvo-katalog.ts`, sind aber noch nicht geprüft |
 | 🟡 | Die drei Anfragen verschicken (ITSG, ELSTER, Steuerberater) | die Zertifizierungs-Entscheidung |
 | 🟡 | Vermögensschadenhaftpflicht klären | den ersten echten Kunden |
+| 🔴 | **`FUNDE_TOKEN` und `FUNDE_URL` setzen** (Railway + Sitzungsumgebung) | den stündlichen Fundelauf — er läuft, findet aber nichts |
 | 🟢 | Unternehmensdaten je Kunde vollständig eintragen | SEPA und DATEV je Kunde |
 
 🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt
@@ -126,7 +130,7 @@ Ausführlich: `ABLAUFPLAN.md`
 | `ABLAUFPLAN.md` | was Daniel außerhalb des Codes erledigen muss |
 | `LOHN-ZERTIFIZIERUNG.md` | Zertifizierung, Kosten, Anfragelisten |
 | `PRODUKT-NOTIZEN.md` | Geschäftsmodell und Leitentscheidungen |
-| `FEHLERKREISLAUF.md` | Funde erfassen, auswerten, beheben — Stufe 1 gebaut |
+| `FEHLERKREISLAUF.md` | Funde erfassen, auswerten, beheben — Stufe 1+2 gebaut |
 | `pruefungen/README.md` | wie die Nachweise laufen und wie man neue schreibt |
 
 ---

@@ -5,8 +5,9 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useAuth } from '@/lib/auth-context'
 import {
   ClipboardList, Plus, Check, X, AlertTriangle, MessageCircleQuestion,
-  ThumbsUp, ThumbsDown, Search, Send, CircleDot,
+  ThumbsUp, ThumbsDown, Search, Send, CircleDot, Wrench,
 } from 'lucide-react'
+import { topf, TOPF_TEXT, type Topf } from '@/lib/funde'
 
 /**
  * §133 Funde — der Ort für alles, was beim Testen auffällt.
@@ -212,6 +213,21 @@ export default function FundePage() {
 
   const zuFreigeben = funde.filter(f => f.status === 'wartet_freigabe').length
 
+  /*
+    §135 Was beim nächsten Lauf passieren wird.
+    
+    Dieselbe Einsortierung, die der Lauf selbst benutzt — damit hier nicht
+    etwas anderes steht als das, was dann tatsächlich geschieht. Ein Bericht,
+    der vom Ablauf abweicht, ist schlimmer als keiner.
+  */
+  const OFFENE_STATUS = ['open', 'wartet_freigabe', 'freigegeben', 'rueckfrage', 'in_progress']
+  const offeneFunde = funde.filter(f => OFFENE_STATUS.includes(f.status))
+  const jeTopf = offeneFunde.reduce((acc, f) => {
+    const t = topf(f)
+    acc[t] = (acc[t] ?? 0) + 1
+    return acc
+  }, {} as Record<Topf, number>)
+
   return (
     <DashboardLayout>
       <div className="p-4 sm:p-6 space-y-4">
@@ -232,6 +248,29 @@ export default function FundePage() {
             {formular ? <><X size={13} /> Abbrechen</> : <><Plus size={13} /> Fund melden</>}
           </button>
         </div>
+
+        {/* §135 Der Bericht: was beim nächsten Lauf ansteht */}
+        {istOkun && offeneFunde.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <p className="text-sm font-semibold text-navy flex items-center gap-2">
+              <Wrench size={15} className="text-teal-600" /> Was beim nächsten Lauf ansteht
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+              {(['selbst', 'vorschlag', 'freigabe', 'rueckfrage'] as Topf[]).map(t => (
+                <div key={t} className={`rounded-xl p-3 ${
+                  t === 'freigabe' && (jeTopf[t] ?? 0) > 0 ? 'bg-amber-50' : 'bg-gray-50'}`}>
+                  <p className="text-lg font-bold text-navy">{jeTopf[t] ?? 0}</p>
+                  <p className="text-[11px] text-gray-500 leading-tight">{TOPF_TEXT[t]}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-gray-400 mt-2">
+              Der Lauf erledigt nur, was im ersten Topf steht. Alles andere wartet auf
+              dich — Vorschläge auf eine Freigabe, unvollständige Meldungen auf eine
+              Antwort.
+            </p>
+          </div>
+        )}
 
         {istOkun && zuFreigeben > 0 && (
           <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">

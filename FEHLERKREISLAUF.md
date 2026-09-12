@@ -1,6 +1,6 @@
 # Vorschlag: Funde erfassen, täglich auswerten, automatisch beheben
 
-Stand: 12.09.2026 · **Stufe 1 gebaut** · Stufe 2 und 3 offen
+Stand: 12.09.2026 · **Stufe 1 und 2 gebaut** · Stufe 3 offen
 
 ---
 
@@ -29,15 +29,38 @@ tägliche Lauf, und die Regeln, wann ich selbst handeln darf.
 
 ---
 
-## Stufe 1 ist gebaut (12.09.)
+## Stufe 1 und 2 sind gebaut (12.09.)
 
-Unter **Funde** gibt es jetzt zwei Wege zum Melden — den Käfer für unterwegs und
-ein ausführliches Formular für die Tester. Beide mit denselben Pflichtangaben,
-beide mit der Ampel, die sagt, ob die Meldung reicht. Verbesserungsvorschläge
-sind eine eigene Art und warten auf Freigabe, bevor irgendetwas gebaut wird.
-Nachgewiesen mit 38 Prüfungen am laufenden System und 26 Modultests.
+**Stufe 1 — Erfassen.** Unter **Funde** gibt es zwei Wege zum Melden: den Käfer
+für unterwegs und ein ausführliches Formular für die Tester. Beide mit denselben
+Pflichtangaben, beide mit der Ampel, die sagt, ob die Meldung reicht.
+Verbesserungsvorschläge sind eine eigene Art und warten auf Freigabe.
 
-Was noch offen ist: der tägliche (besser: stündliche) Lauf — Stufe 2 und 3.
+**Stufe 2 — Der Lauf.** Ein eigener, schmaler Zugang (`/api/okun/funde`), ein
+Zeitplan, der stündlich eine Sitzung weckt, und ein Bericht auf der Fundeseite,
+der zeigt, was beim nächsten Lauf ansteht. Der Lauf **ändert noch keinen Code** —
+er liest, beurteilt und schreibt Vorschläge und Rückfragen zurück.
+
+Nachgewiesen mit 55 Prüfungen am laufenden System und 26 Modultests.
+
+### Was noch fehlt, damit der Lauf etwas tut
+
+Der Zeitplan läuft, findet aber nichts, solange **zwei Umgebungsvariablen**
+fehlen. Beide gehören in die Sitzungsumgebung (nicht nach Railway — der Lauf
+ruft von außen an):
+
+| Variable | Wert |
+|---|---|
+| `FUNDE_URL` | `https://therapie-production.up.railway.app` |
+| `FUNDE_TOKEN` | ein selbst gewürfelter Schlüssel, mindestens 24 Zeichen |
+
+Derselbe `FUNDE_TOKEN` muss zusätzlich **in den Railway-Variablen** stehen —
+sonst weiß das laufende System nicht, wen es hereinlassen soll. Einen Schlüssel
+erzeugen zum Beispiel mit `openssl rand -base64 32`.
+
+**Ohne hinterlegten Schlüssel ist der Zugang zu** — nicht offen, nicht „erstmal
+erlaubt". Ein Zugang, der ohne Einrichtung funktioniert, ist irgendwann ein
+Zugang, den niemand eingerichtet hat.
 
 ## Teil 1 — Besser fragen (das ist die eigentliche Arbeit)
 
