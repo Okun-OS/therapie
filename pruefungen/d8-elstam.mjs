@@ -19,7 +19,7 @@ await zuruecksetzen(gf, pruefMonate(jahr, monat))
 // ── Ausgangslage: Steuer-ID setzen, ELStAM-Stand entfernen ─────────────────
 console.log('=== Vorbereitung ===')
 const stamm = await sende(gf, `/api/employees/${annaId}/payroll-profile`, 'PUT', {
-  personalnummer: '1042', steuerId: '12345678901',
+  personalnummer: '9008', steuerId: '20000000008',
   steuerklasse: 1, kinderfreibetraege: 0, konfession: 'keine',
   bundesland: 'Nordrhein-Westfalen', versicherungsart: 'GKV', zusatzbeitrag: 1.7,
   lohnart: 'monat', monatsgehalt: 3400,
@@ -43,7 +43,7 @@ check('Die Abrechnung läuft trotzdem durch — gewarnt, nicht gesperrt',
 console.log('\n=== Änderungsliste einlesen (Vorschau) ===')
 const liste = [
   'IdNr;Arbeitnehmer;St.Kl.;ZKF;KiSt;Freibetrag mtl.',
-  '12345678901;Anna Fischer;III;1,0;ev;',
+  '20000000008;Anna Fischer;III;1,0;ev;',
   '00000000000;Fremde Person;I;0;--;',
 ].join('\r\n')
 

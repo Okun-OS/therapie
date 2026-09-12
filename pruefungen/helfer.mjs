@@ -94,3 +94,27 @@ export function pruefMonate(jahr, monat) {
 /** Eindeutige Test-E-Mail, damit Wiederholungen nicht kollidieren. */
 export const testMail = (praefix) =>
   `${praefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}@pruefung.test`
+
+/**
+ * §134 Eine eigene Person für eine Lohn-Prüfung.
+ *
+ * Die Lohn-Prüfungen rechnen mit einem festen Monatsgehalt und prüfen den
+ * Cent-Betrag dahinter. Nimmt man dafür jemanden aus den Testdaten, rechnet
+ * dessen Zeiterfassung mit — und daraus entstehen Zuschläge, die sich mit
+ * jedem Tag ändern, der vergeht. Am 11.09. waren es null Euro, am 12.09.
+ * plötzlich 17,93 €, und fünf Prüfungen schlugen fehl, ohne dass sich am
+ * Programm etwas geändert hatte.
+ *
+ * Eine frisch angelegte Person hat keine Zeiterfassung. Damit ist das Brutto
+ * genau das vereinbarte Gehalt, und die Prüfung misst wieder das Programm
+ * statt den Kalender.
+ */
+export async function lohnPerson(cookie, locationId, name = 'Lohnpruefung Nachweis') {
+  const angelegt = await sende(cookie, '/api/employees', 'POST', {
+    name, email: testMail('lohn'), position: 'Pflegefachkraft',
+    weeklyHours: 39, workDaysPerWeek: 5, locationId,
+  })
+  const id = angelegt.body.employee?.id
+  if (!id) throw new Error(`Testperson konnte nicht angelegt werden: ${angelegt.body.error}`)
+  return id
+}

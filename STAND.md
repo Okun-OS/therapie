@@ -3,7 +3,7 @@
 **Diese Seite ist die Wahrheit.** Nicht das Gespräch, nicht die Erinnerung.
 Wer wissen will, wo etwas steht, liest hier — und nur hier.
 
-Zuletzt aktualisiert: **11.09.2026**
+Zuletzt aktualisiert: **12.09.2026**
 
 > **Regel für Claude:** Diese Datei wird bei **jedem** abgeschlossenen Punkt
 > aktualisiert, im selben Commit wie die Arbeit. Nie später, nie gesammelt.
@@ -16,10 +16,10 @@ Zuletzt aktualisiert: **11.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | Funde aus dem laufenden Betrieb |
-| **Zuletzt fertig** | Chat auf Unternehmensebene, tote Menüpunkte, Sperre sichtbar (11.09.) |
-| **Als Nächstes** | Mobile App prüfen und in die App Stores bringen |
-| **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
+| **Baustelle** | Fehlerkreislauf — Stufe 1 steht, Stufe 2 offen |
+| **Zuletzt fertig** | H1 Funde erfassen, bewerten, freigeben (12.09.) |
+| **Als Nächstes** | Stufe 2: der stündliche Lauf mit Bericht und Vorschlägen |
+| **Danach** | Mobile App prüfen und in die App Stores bringen |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
@@ -51,7 +51,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 Nach Dringlichkeit, nicht nach Bereich.
 
 ### Dringend
-- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 562 Nachweise
+- [x] ~~**G3 Automatische Prüfung vor dem Ausrollen**~~ ✅ — 600 Nachweise
       liegen jetzt im Repo unter `pruefungen/`, ein Befehl prüft alles
       (`npm run pruefen`), und bei jedem Push läuft es automatisch.
 
@@ -68,9 +68,12 @@ Nach Dringlichkeit, nicht nach Bereich.
 ### Sonst offen
 - [ ] **Mobile App prüfen und veröffentlichen** — durchgehen, Fehler sammeln,
       dann in App Store und Play Store bringen
-- [ ] **Test- und Fehlererfassung im System** — statt Google Sheet: Funde direkt
-      in der App erfassen, täglich auswerten, Behebung vorschlagen lassen.
-      **Vorschlag liegt vor: `FEHLERKREISLAUF.md` — Entscheidung offen**
+- [x] ~~**Test- und Fehlererfassung im System, Stufe 1**~~ ✅ — zwei Wege zum
+      Melden (Käfer und ausführliches Formular), vier Arten, Ampel für die
+      Meldequalität, Freigabe für Verbesserungsvorschläge, Rückfragen
+- [ ] **Fehlerkreislauf Stufe 2** — der stündliche Lauf mit Bericht und
+      Vorschlägen zum Bestätigen. Braucht einen Zugangsschlüssel von Daniel
+      (eine Zeile in den Railway-Variablen). Siehe `FEHLERKREISLAUF.md`
 - [x] ~~**E5 Mitarbeiter-Chat**~~ ✅ — jeder schreibt jedem am Standort, die
       Standortleitung eröffnet und verwaltet Gruppen. Mitlesen ist bewusst
       nicht dasselbe wie Verwalten: ein Beitritt der Leitung steht sichtbar im
@@ -123,7 +126,7 @@ Ausführlich: `ABLAUFPLAN.md`
 | `ABLAUFPLAN.md` | was Daniel außerhalb des Codes erledigen muss |
 | `LOHN-ZERTIFIZIERUNG.md` | Zertifizierung, Kosten, Anfragelisten |
 | `PRODUKT-NOTIZEN.md` | Geschäftsmodell und Leitentscheidungen |
-| `FEHLERKREISLAUF.md` | Vorschlag: Funde erfassen, täglich auswerten, beheben |
+| `FEHLERKREISLAUF.md` | Funde erfassen, auswerten, beheben — Stufe 1 gebaut |
 | `pruefungen/README.md` | wie die Nachweise laufen und wie man neue schreibt |
 
 ---

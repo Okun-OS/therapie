@@ -211,3 +211,51 @@ describe('Vom Einlesen bis zur Änderung', () => {
       .toEqual(['faktor', 'freibetragMonat'])
   })
 })
+
+/**
+ * §134 Doppelte Kennzeichen.
+ *
+ * Gefunden, als mehrere Testprofile versehentlich dieselbe Steuer-ID trugen:
+ * Der Abgleich nahm still den zuletzt geladenen Datensatz. In einem echten
+ * Betrieb heißt das, dass jemand die Steuerklasse eines Kollegen bekommt —
+ * und zwar ohne Warnung, denn die Steuer-ID gilt als das sichere Kennzeichen.
+ */
+describe('§134 Doppelte Steuer-ID und Personalnummer', () => {
+  const satz = { steuerId: '12345678901', name: 'Anna Fischer', steuerklasse: 3 }
+
+  it('ordnet bei doppelter Steuer-ID niemandem zu', () => {
+    const [a] = abgleichen([satz], [
+      { employeeId: 'a', name: 'Anna Fischer', steuerId: '12345678901' },
+      { employeeId: 'b', name: 'Bea Klein', steuerId: '12345678901' },
+    ])
+    expect(a.employeeId).toBeNull()
+    expect(a.zuordnung).toBe('keine')
+    expect(a.hinweis).toContain('Steuer-ID')
+  })
+
+  it('sagt dazu, dass zuerst die Stammdaten zu bereinigen sind', () => {
+    const [a] = abgleichen([satz], [
+      { employeeId: 'a', name: 'Anna Fischer', steuerId: '12345678901' },
+      { employeeId: 'b', name: 'Bea Klein', steuerId: '12345678901' },
+    ])
+    expect(a.hinweis).toMatch(/Stammdaten/)
+  })
+
+  it('ordnet bei doppelter Personalnummer ebenfalls nicht zu', () => {
+    const [a] = abgleichen([{ personalnummer: '1042', steuerklasse: 3 }], [
+      { employeeId: 'a', name: 'Anna Fischer', personalnummer: '1042' },
+      { employeeId: 'b', name: 'Bea Klein', personalnummer: '1042' },
+    ])
+    expect(a.employeeId).toBeNull()
+    expect(a.hinweis).toContain('Personalnummer')
+  })
+
+  it('ordnet bei eindeutiger Steuer-ID weiterhin zu', () => {
+    const [a] = abgleichen([satz], [
+      { employeeId: 'a', name: 'Anna Fischer', steuerId: '12345678901' },
+      { employeeId: 'b', name: 'Bea Klein', steuerId: '99999999999' },
+    ])
+    expect(a.employeeId).toBe('a')
+    expect(a.zuordnung).toBe('steuerId')
+  })
+})

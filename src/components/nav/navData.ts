@@ -116,6 +116,7 @@ const adminDock: DockItem[] = [
           { href: '/admin/model',     label: 'Regeln & Wartung', description: 'Regeln prüfen, Standort zurücksetzen',           icon: '📋' },
           { href: '/admin/tasks',     label: 'Aufgabenkatalog',  description: 'To-dos und Checklisten für Dienste',             icon: '✅' },
           { href: '/company/support', label: 'Support & Hilfe',  description: 'Hilfe & Kontakt',                                icon: '💬' },
+          { href: '/funde',           label: 'Funde melden',     description: 'Fehler und Verbesserungsvorschläge',             icon: '🔍' },
         ]},
       ],
     },
@@ -161,6 +162,7 @@ const companyDock: DockItem[] = [
           { href: '/company/datenschutz', label: 'Datenschutz',              description: 'Auskunft und Löschung nach DSGVO',         icon: '🔐' },
           { href: '/company/reports',     label: 'Berichte & Export',        description: 'Daten exportieren',                        icon: '📤' },
           { href: '/company/support',     label: 'Support & Hilfe',          description: 'Hilfe & Kontakt',                          icon: '💬' },
+          { href: '/funde',               label: 'Funde melden',             description: 'Fehler und Verbesserungsvorschläge',       icon: '🔍' },
         ]},
       ],
     },
@@ -185,7 +187,7 @@ const okunDock: DockItem[] = [
     },
   },
   { id: 'support', label: 'Support',        icon: IcoSupport,         href: '/okun/support' },
-  { id: 'bugs',    label: 'Bug-Management', icon: IcoPersonalrisiko,  href: '/okun/bugs' },
+  { id: 'funde',   label: 'Funde',           icon: IcoPersonalrisiko,  href: '/funde' },
 ]
 
 export function getDockItems(role?: string): DockItem[] {

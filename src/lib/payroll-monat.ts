@@ -12,7 +12,7 @@
  */
 
 import { prisma } from './prisma'
-import { voraussichtlicherJahreslohn } from './einmalbezug'
+import { voraussichtlicherJahreslohn, beschaeftigtSeitMonat } from './einmalbezug'
 import { svTageImMonat } from './teilmonat'
 import { calculatePayroll, type PayrollInput, type PayrollResult } from './payroll-engine'
 import {
@@ -325,6 +325,12 @@ export interface AbrechnungsStammdaten {
   beschaeftigungsart?: string | null
   rvBefreiung?: boolean | null
   pauschalsteuer?: boolean | null
+  /**
+   * §134 Seit wann die Person beschäftigt ist. Wird gebraucht, um den
+   * voraussichtlichen Jahresarbeitslohn zu schätzen, wenn die Monate davor
+   * nicht in diesem System abgerechnet wurden.
+   */
+  eintrittsdatum?: string | null
 }
 
 /** Aus Stammdaten und Monatsgrundlage die fertige Abrechnung rechnen. */
@@ -384,6 +390,7 @@ export function abrechnungRechnen(
             : (stamm.stundenlohn ?? 0) * (g.regularHours + g.overtimeHours),
           monat,
           bisherigeEinmalzahlungen: g.bisherigeEinmalzahlungen,
+          seitMonat: beschaeftigtSeitMonat(stamm.eintrittsdatum, jahr),
         })
       : undefined,
     churchTax: !!stamm.konfession && stamm.konfession !== 'keine',

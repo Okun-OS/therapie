@@ -3,7 +3,7 @@
 // Bei einem Minijob steht auf dem Beleg sonst nur „Lohnsteuer 0,00 €" — ohne
 // jede Erklärung. Und der Steuerberater bekäme im DATEV-Export gar keine
 // Abgaben, obwohl die Pauschalen dort die einzigen sind.
-import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate } from './helfer.mjs'
+import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate, lohnPerson } from './helfer.mjs'
 import zlib from 'node:zlib'
 
 const { check, bilanz } = pruefer()
@@ -29,7 +29,10 @@ function pdfText(buf) {
 
 const gf = await login('gf@rheinblick-reha.de')
 const anna = await login('anna.fischer@rheinblick-reha.de')
-const annaId = (await hole(anna, '/api/auth/me')).body.user.employeeId
+const locationId = (await hole(anna, '/api/auth/me')).body.user.locationId
+// §134 Eine eigene Person ohne Zeiterfassung — sonst rechnen Zuschläge mit,
+// die sich mit jedem Tag ändern, und die Prüfung misst den Kalender.
+const personId = await lohnPerson(gf, locationId)
 
 const jetzt = new Date()
 const jahr = jetzt.getFullYear(), monat = jetzt.getMonth() + 1
@@ -39,11 +42,11 @@ console.log(`Abrechnungszeitraum ${mm}.${jahr}\n`)
 await zuruecksetzen(gf, pruefMonate(jahr, monat))
 
 async function stammdaten(zusatz) {
-  return sende(gf, `/api/employees/${annaId}/payroll-profile`, 'PUT', {
-    personalnummer: '1042', steuerId: '12345678901',
+  return sende(gf, `/api/employees/${personId}/payroll-profile`, 'PUT', {
+    personalnummer: '9014', steuerId: '20000000014',
     steuerklasse: 1, kinderfreibetraege: 0, konfession: 'keine',
     bundesland: 'Nordrhein-Westfalen', versicherungsart: 'GKV', zusatzbeitrag: 1.7,
-    iban: 'DE02120300000000202051', kontoinhaber: 'Anna Fischer',
+    iban: 'DE02120300000000202051', kontoinhaber: 'Lohnpruefung Nachweis',
     elstamStand: `${jahr}-${mm}-01`, eintrittsdatum: '2024-03-01', austrittsdatum: '',
     lohnart: 'monat', monatsgehalt: 3400, beschaeftigungsart: 'regulaer',
     ...zusatz,
@@ -52,17 +55,17 @@ async function stammdaten(zusatz) {
 
 async function rechnenUndBeleg() {
   const vorher = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-    .body.entries?.find(x => x.employeeId === annaId)
+    .body.entries?.find(x => x.employeeId === personId)
   if (vorher && vorher.status !== 'draft') {
     await sende(gf, '/api/payroll', 'PATCH', { id: vorher.id, status: 'draft' })
   }
   await sende(gf, '/api/payroll/vorbereiten', 'POST', { year: jahr, month: monat })
-  await sende(gf, '/api/payroll/beleg', 'POST', { year: jahr, month: monat, employeeId: annaId })
+  await sende(gf, '/api/payroll/beleg', 'POST', { year: jahr, month: monat, employeeId: personId })
 
-  const akte = (await hole(anna, `/api/files?ownerType=employee&ownerId=${annaId}`)).body.dateien ?? []
+  const akte = (await hole(gf, `/api/files?ownerType=employee&ownerId=${personId}`)).body.dateien ?? []
   const belege = akte.filter(d => d.kategorie === 'lohnabrechnung')
     .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
-  const r = await fetch(`${BASIS}/api/files/${belege[0].id}`, { headers: { cookie: anna } })
+  const r = await fetch(`${BASIS}/api/files/${belege[0].id}`, { headers: { cookie: gf } })
   const text = pdfText(Buffer.from(await r.arrayBuffer()))
 
   const datevR = await fetch(`${BASIS}/api/payroll/export?art=datev&year=${jahr}&month=${monat}`,

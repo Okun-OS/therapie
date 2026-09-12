@@ -1,12 +1,15 @@
 // Nachweis D10: Einmalzahlungen (Weihnachtsgeld, Prämie, Abfindung).
-import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate } from './helfer.mjs'
+import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate, lohnPerson } from './helfer.mjs'
 
 const { check, bilanz } = pruefer()
 
 const gf = await login('gf@rheinblick-reha.de')
 const kita = await login('leitung@kita-sonnenschein.de')
 const anna = await login('anna.fischer@rheinblick-reha.de')
-const annaId = (await hole(anna, '/api/auth/me')).body.user.employeeId
+const locationId = (await hole(anna, '/api/auth/me')).body.user.locationId
+// §134 Eine eigene Person ohne Zeiterfassung — sonst rechnen Zuschläge mit,
+// die sich mit jedem Tag ändern, und die Prüfung misst den Kalender.
+const personId = await lohnPerson(gf, locationId)
 
 const jetzt = new Date()
 const jahr = jetzt.getFullYear(), monat = jetzt.getMonth() + 1
@@ -17,12 +20,12 @@ await zuruecksetzen(gf, pruefMonate(jahr, monat))
 
 // ── Ausgangszustand ────────────────────────────────────────────────────────
 console.log('=== Vorbereitung ===')
-const stamm = await sende(gf, `/api/employees/${annaId}/payroll-profile`, 'PUT', {
-  personalnummer: '1042', steuerId: '12345678901', eintrittsdatum: '2024-03-01',
+const stamm = await sende(gf, `/api/employees/${personId}/payroll-profile`, 'PUT', {
+  personalnummer: '9010', steuerId: '20000000010', eintrittsdatum: '2024-03-01',
   steuerklasse: 1, kinderfreibetraege: 0, konfession: 'keine',
   bundesland: 'Nordrhein-Westfalen', versicherungsart: 'GKV', zusatzbeitrag: 1.7,
   lohnart: 'monat', monatsgehalt: 3400,
-  iban: 'DE02120300000000202051', kontoinhaber: 'Anna Fischer',
+  iban: 'DE02120300000000202051', kontoinhaber: 'Lohnpruefung Nachweis',
   elstamStand: `${jahr}-${String(monat).padStart(2, '0')}-01`,
 })
 check('Stammdaten gesetzt', stamm.status === 200, stamm.body.error ?? 'ok')
@@ -30,7 +33,7 @@ check('Stammdaten gesetzt', stamm.status === 200, stamm.body.error ?? 'ok')
 // Monat muss Entwurf sein, alte Zahlungen weg
 await sende(gf, '/api/payroll/vorbereiten', 'POST', { year: jahr, month: monat })
 const eintrag = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-  .body.entries?.find(e => e.employeeId === annaId)
+  .body.entries?.find(e => e.employeeId === personId)
 if (eintrag && eintrag.status !== 'draft') {
   await sende(gf, '/api/payroll', 'PATCH', { id: eintrag.id, status: 'draft' })
 }
@@ -39,31 +42,31 @@ for (const z of (await hole(gf, `/api/payroll/einmalzahlung?jahr=${jahr}&monat=$
 }
 await sende(gf, '/api/payroll/vorbereiten', 'POST', { year: jahr, month: monat })
 const ohne = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-  .body.entries.find(e => e.employeeId === annaId)
+  .body.entries.find(e => e.employeeId === personId)
 check('Ausgangslage ohne Einmalzahlung', ohne.sonstigeBezuege === 0,
   `${ohne.brutto} EUR brutto, ${ohne.netto} EUR netto`)
 
 // ── Erfassen ───────────────────────────────────────────────────────────────
 console.log('\n=== Weihnachtsgeld erfassen ===')
 const ohneBetrag = await sende(gf, '/api/payroll/einmalzahlung', 'POST',
-  { employeeId: annaId, jahr, monat, art: 'weihnachtsgeld', betrag: 0 })
+  { employeeId: personId, jahr, monat, art: 'weihnachtsgeld', betrag: 0 })
 check('Ein Betrag von null wird abgelehnt', ohneBetrag.status === 400, ohneBetrag.body.error)
 
 const erfasst = await sende(gf, '/api/payroll/einmalzahlung', 'POST',
-  { employeeId: annaId, jahr, monat, art: 'weihnachtsgeld', betrag: 3400 })
+  { employeeId: personId, jahr, monat, art: 'weihnachtsgeld', betrag: 3400 })
 check('Das Weihnachtsgeld wird erfasst', erfasst.status === 200, erfasst.body.hinweis ?? erfasst.body.error)
 check('Es heißt automatisch richtig', erfasst.body.zahlung?.bezeichnung === 'Weihnachtsgeld')
 check('Es ist beitragspflichtig', erfasst.body.zahlung?.beitragsfrei === false)
 
 const nochNicht = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-  .body.entries.find(e => e.employeeId === annaId)
+  .body.entries.find(e => e.employeeId === personId)
 check('Erfassen allein ändert die Abrechnung noch nicht', nochNicht.sonstigeBezuege === 0)
 
 // ── Rechnen ────────────────────────────────────────────────────────────────
 console.log('\n=== Abrechnungslauf ===')
 await sende(gf, '/api/payroll/vorbereiten', 'POST', { year: jahr, month: monat })
 const mit = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-  .body.entries.find(e => e.employeeId === annaId)
+  .body.entries.find(e => e.employeeId === personId)
 
 check('Die Einmalzahlung steht in der Abrechnung', mit.sonstigeBezuege === 3400)
 check('Das Gesamtbrutto enthält sie',
@@ -97,20 +100,20 @@ check('Das Grundentgelt enthält sie NICHT',
   `Grundentgelt sollte ${ohne.brutto} sein`)
 
 const beleg = await sende(gf, '/api/payroll/beleg', 'POST',
-  { year: jahr, month: monat, employeeId: annaId })
+  { year: jahr, month: monat, employeeId: personId })
 check('Der Beleg wird erzeugt', beleg.status === 200 && beleg.body.erzeugt > 0,
   beleg.body.hinweis ?? beleg.body.error)
 
 // ── Abfindung ──────────────────────────────────────────────────────────────
 console.log('\n=== Abfindung ist beitragsfrei ===')
 const abfindung = await sende(gf, '/api/payroll/einmalzahlung', 'POST',
-  { employeeId: annaId, jahr, monat, art: 'abfindung', betrag: 5000 })
+  { employeeId: personId, jahr, monat, art: 'abfindung', betrag: 5000 })
 check('Eine Abfindung wird als beitragsfrei erkannt',
   abfindung.body.zahlung?.beitragsfrei === true)
 
 await sende(gf, '/api/payroll/vorbereiten', 'POST', { year: jahr, month: monat })
 const mitAbfindung = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-  .body.entries.find(e => e.employeeId === annaId)
+  .body.entries.find(e => e.employeeId === personId)
 check('Sie erhöht das Brutto', mitAbfindung.sonstigeBezuege === 8400)
 check('Aber NICHT die Beiträge',
   Math.abs(mitAbfindung.svANSonstige - mit.svANSonstige) < 0.02,
@@ -122,7 +125,7 @@ check('Versteuert wird sie trotzdem', mitAbfindung.lohnsteuerSonstige > mit.lohn
 console.log('\n=== Ein freigegebener Monat ist gesperrt ===')
 await sende(gf, '/api/payroll', 'PATCH', { id: mitAbfindung.id, status: 'approved' })
 const nachFreigabe = await sende(gf, '/api/payroll/einmalzahlung', 'POST',
-  { employeeId: annaId, jahr, monat, art: 'praemie', betrag: 500 })
+  { employeeId: personId, jahr, monat, art: 'praemie', betrag: 500 })
 check('Danach lässt sich nichts mehr nachtragen', nachFreigabe.status === 409,
   nachFreigabe.body.error)
 
@@ -139,13 +142,13 @@ await sende(gf, '/api/payroll', 'PATCH', { id: mitAbfindung.id, status: 'draft' 
 // ── Abschottung ────────────────────────────────────────────────────────────
 console.log('\n=== Abschottung ===')
 const fremdErfasst = await sende(kita, '/api/payroll/einmalzahlung', 'POST',
-  { employeeId: annaId, jahr, monat, art: 'praemie', betrag: 9999 })
+  { employeeId: personId, jahr, monat, art: 'praemie', betrag: 9999 })
 check('Eine fremde Leitung kann keine Zahlung für fremde Mitarbeiter erfassen',
   fremdErfasst.status === 403, `HTTP ${fremdErfasst.status}`)
 
 const fremdSieht = await hole(kita, `/api/payroll/einmalzahlung?jahr=${jahr}&monat=${monat}`)
 check('Und sieht die fremden Zahlungen nicht',
-  !(fremdSieht.body.zahlungen ?? []).some(z => z.employeeId === annaId))
+  !(fremdSieht.body.zahlungen ?? []).some(z => z.employeeId === personId))
 
 const fremdLoescht = await fetch(`${BASIS}/api/payroll/einmalzahlung?id=${alle[0]?.id ?? 'x'}`,
   { method: 'DELETE', headers: { cookie: kita } })

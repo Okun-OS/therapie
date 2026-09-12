@@ -288,14 +288,24 @@ export function abgleichen(
   saetze: ElstamSatz[],
   bestand: BestandsProfil[],
 ): ElstamAbgleich[] {
-  const nachSteuerId = new Map<string, BestandsProfil>()
-  const nachPersonalnummer = new Map<string, BestandsProfil>()
+  /*
+   * §134 Auch Steuer-ID und Personalnummer koennen doppelt vorkommen.
+   *
+   * Bisher gewann hier still der zuletzt geladene Datensatz: Sind zwei Profile
+   * versehentlich mit derselben Steuer-ID angelegt, bekam einer von beiden die
+   * Steuermerkmale des anderen — falsche Steuerklasse, falscher Freibetrag,
+   * falscher Lohn. Beim Namen wurde die Mehrdeutigkeit laengst gemeldet; bei
+   * den Kennzeichen, denen man am meisten vertraut, nicht.
+   */
+  const nachSteuerId = new Map<string, BestandsProfil[]>()
+  const nachPersonalnummer = new Map<string, BestandsProfil[]>()
   const nachName = new Map<string, BestandsProfil[]>()
+  const dazu = (m: Map<string, BestandsProfil[]>, k: string, p: BestandsProfil) =>
+    m.set(k, [...(m.get(k) ?? []), p])
   for (const p of bestand) {
-    if (p.steuerId) nachSteuerId.set(p.steuerId.replace(/\s+/g, ''), p)
-    if (p.personalnummer) nachPersonalnummer.set(p.personalnummer.trim(), p)
-    const k = normName(p.name)
-    nachName.set(k, [...(nachName.get(k) ?? []), p])
+    if (p.steuerId) dazu(nachSteuerId, p.steuerId.replace(/\s+/g, ''), p)
+    if (p.personalnummer) dazu(nachPersonalnummer, p.personalnummer.trim(), p)
+    dazu(nachName, normName(p.name), p)
   }
 
   return saetze.map(satz => {
@@ -303,10 +313,21 @@ export function abgleichen(
     let zuordnung: ElstamAbgleich['zuordnung'] = 'keine'
     let hinweis: string | undefined
 
-    if (satz.steuerId && nachSteuerId.has(satz.steuerId)) {
-      treffer = nachSteuerId.get(satz.steuerId); zuordnung = 'steuerId'
-    } else if (satz.personalnummer && nachPersonalnummer.has(satz.personalnummer.trim())) {
-      treffer = nachPersonalnummer.get(satz.personalnummer.trim()); zuordnung = 'personalnummer'
+    const perSteuerId = satz.steuerId ? nachSteuerId.get(satz.steuerId) ?? [] : []
+    const perNummer = satz.personalnummer
+      ? nachPersonalnummer.get(satz.personalnummer.trim()) ?? [] : []
+
+    if (perSteuerId.length === 1) {
+      treffer = perSteuerId[0]; zuordnung = 'steuerId'
+    } else if (perSteuerId.length > 1) {
+      hinweis = `${perSteuerId.length} Mitarbeiter haben die Steuer-ID `
+        + `${satz.steuerId} hinterlegt. Eine Steuer-ID gehoert zu genau einem `
+        + `Menschen — bitte zuerst den Fehler in den Stammdaten beheben.`
+    } else if (perNummer.length === 1) {
+      treffer = perNummer[0]; zuordnung = 'personalnummer'
+    } else if (perNummer.length > 1) {
+      hinweis = `${perNummer.length} Mitarbeiter haben die Personalnummer `
+        + `${satz.personalnummer}. Bitte zuerst die Stammdaten bereinigen.`
     } else if (satz.name) {
       const kandidaten = nachName.get(normName(satz.name)) ?? []
       if (kandidaten.length === 1) {

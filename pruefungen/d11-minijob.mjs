@@ -1,11 +1,14 @@
 // Nachweis D11: Minijob, kurzfristige Beschäftigung, Übergangsbereich.
-import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate } from './helfer.mjs'
+import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate, lohnPerson } from './helfer.mjs'
 
 const { check, bilanz } = pruefer()
 
 const gf = await login('gf@rheinblick-reha.de')
 const anna = await login('anna.fischer@rheinblick-reha.de')
-const annaId = (await hole(anna, '/api/auth/me')).body.user.employeeId
+const locationId = (await hole(anna, '/api/auth/me')).body.user.locationId
+// §134 Eine eigene Person ohne Zeiterfassung — sonst rechnen Zuschläge mit,
+// die sich mit jedem Tag ändern, und die Prüfung misst den Kalender.
+const personId = await lohnPerson(gf, locationId)
 
 const jetzt = new Date()
 const jahr = jetzt.getFullYear(), monat = jetzt.getMonth() + 1
@@ -19,11 +22,11 @@ await zuruecksetzen(gf, pruefMonate(jahr, monat))
 const GRENZE = 603
 
 async function stammdaten(zusatz) {
-  return sende(gf, `/api/employees/${annaId}/payroll-profile`, 'PUT', {
-    personalnummer: '1042', steuerId: '12345678901', eintrittsdatum: '2024-03-01',
+  return sende(gf, `/api/employees/${personId}/payroll-profile`, 'PUT', {
+    personalnummer: '9011', steuerId: '20000000011', eintrittsdatum: '2024-03-01',
     steuerklasse: 1, kinderfreibetraege: 0, konfession: 'keine',
     bundesland: 'Nordrhein-Westfalen', versicherungsart: 'GKV', zusatzbeitrag: 1.7,
-    iban: 'DE02120300000000202051', kontoinhaber: 'Anna Fischer',
+    iban: 'DE02120300000000202051', kontoinhaber: 'Lohnpruefung Nachweis',
     elstamStand: `${jahr}-${mm}-01`,
     lohnart: 'monat',
     ...zusatz,
@@ -32,13 +35,13 @@ async function stammdaten(zusatz) {
 
 async function rechnen() {
   const e = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-    .body.entries?.find(x => x.employeeId === annaId)
+    .body.entries?.find(x => x.employeeId === personId)
   if (e && e.status !== 'draft') {
     await sende(gf, '/api/payroll', 'PATCH', { id: e.id, status: 'draft' })
   }
   await sende(gf, '/api/payroll/vorbereiten', 'POST', { year: jahr, month: monat })
   return (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-    .body.entries.find(x => x.employeeId === annaId)
+    .body.entries.find(x => x.employeeId === personId)
 }
 
 // Alte Einmalzahlungen weg, damit sie die Beträge nicht verfälschen

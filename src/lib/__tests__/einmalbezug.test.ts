@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   einmalbezugBeitraege, anteiligeJahresgrenze, voraussichtlicherJahreslohn,
+  beschaeftigtSeitMonat,
 } from '../einmalbezug'
 import { calculatePayroll, type PayrollInput } from '../payroll-engine'
 import { lohnjahr } from '../lohnjahre'
@@ -208,5 +209,89 @@ describe('Einmalzahlung in der ganzen Abrechnung', () => {
     expect(r.sonstigeBezuege).toBe(0)
     expect(r.lohnsteuerSonstige).toBe(0)
     expect(r.svANSonstige).toBe(0)
+  })
+})
+
+/**
+ * §134 Der voraussichtliche Jahresarbeitslohn, wenn die Vormonate fehlen.
+ *
+ * Gefunden über eine Prüfung, die plötzlich fehlschlug: Für eine Person ohne
+ * Abrechnungshistorie kam auf ein Weihnachtsgeld von 3.400 € eine Lohnsteuer
+ * von 0 € heraus. Der Grund war kein Rechenfehler, sondern eine falsche
+ * Annahme — es zählte nur, was schon in DIESEM System abgerechnet war.
+ *
+ * Das trifft jeden Kunden, der mitten im Jahr wechselt. Und es trifft ihn an
+ * der unangenehmsten Stelle: zu wenig einbehaltene Lohnsteuer wird im
+ * Folgejahr zur Nachzahlung, mit der der Mitarbeiter nicht rechnet.
+ */
+describe('§134 Jahreslohn ohne Vormonate', () => {
+  it('rechnet die Monate vor dem Wechsel hoch', () => {
+    // September, 3.400 € im Monat, seit Jahren beschäftigt, aber erster
+    // Abrechnungslauf in diesem System: 12 × 3.400 = 40.800, nicht 4 × 3.400.
+    expect(voraussichtlicherJahreslohn({
+      bisherSteuerBrutto: 0,
+      laufendesSteuerBrutto: 3400,
+      monat: 9,
+      bisherigeEinmalzahlungen: 0,
+      seitMonat: 1,
+    })).toBe(40800)
+  })
+
+  it('rechnet nur ab dem Eintritt hoch, nicht ab Januar', () => {
+    // Eintritt im Juli, Abrechnung im September: Juli und August dazu,
+    // September bis Dezember voraus — sechs Monate, nicht zwölf.
+    expect(voraussichtlicherJahreslohn({
+      bisherSteuerBrutto: 0,
+      laufendesSteuerBrutto: 3400,
+      monat: 9,
+      bisherigeEinmalzahlungen: 0,
+      seitMonat: 7,
+    })).toBe(3400 * 6)
+  })
+
+  it('nimmt die echte Historie, wenn sie größer ist', () => {
+    // Wer in den Vormonaten mehr verdient hat, wird nicht kleingerechnet.
+    expect(voraussichtlicherJahreslohn({
+      bisherSteuerBrutto: 40000,
+      laufendesSteuerBrutto: 3400,
+      monat: 9,
+      bisherigeEinmalzahlungen: 0,
+      seitMonat: 1,
+    })).toBe(40000 + 3400 * 4)
+  })
+
+  it('verhält sich ohne Angabe wie „seit Januar"', () => {
+    // Im Zweifel mehr Steuer einbehalten: Zuviel holt sich der Mitarbeiter
+    // mit der Steuererklärung zurück, Zuwenig wird zur Nachzahlung.
+    expect(voraussichtlicherJahreslohn({
+      bisherSteuerBrutto: 0, laufendesSteuerBrutto: 3400,
+      monat: 9, bisherigeEinmalzahlungen: 0,
+    })).toBe(40800)
+  })
+
+  it('ändert nichts für den, der im Januar anfängt', () => {
+    expect(voraussichtlicherJahreslohn({
+      bisherSteuerBrutto: 0, laufendesSteuerBrutto: 3400,
+      monat: 1, bisherigeEinmalzahlungen: 0, seitMonat: 1,
+    })).toBe(40800)
+  })
+})
+
+describe('§134 Ab welchem Monat jemand beschäftigt war', () => {
+  it('zählt einen Eintritt aus früheren Jahren ab Januar', () => {
+    expect(beschaeftigtSeitMonat('2019-08-01', 2026)).toBe(1)
+  })
+
+  it('nimmt bei Eintritt im selben Jahr den Eintrittsmonat', () => {
+    expect(beschaeftigtSeitMonat('2026-07-15', 2026)).toBe(7)
+  })
+
+  it('nimmt ohne Datum vorsichtshalber Januar', () => {
+    expect(beschaeftigtSeitMonat(null, 2026)).toBe(1)
+    expect(beschaeftigtSeitMonat(undefined, 2026)).toBe(1)
+  })
+
+  it('kommt mit einem Eintritt in der Zukunft zurecht', () => {
+    expect(beschaeftigtSeitMonat('2027-03-01', 2026)).toBe(12)
   })
 })

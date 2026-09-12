@@ -1,6 +1,6 @@
 # Vorschlag: Funde erfassen, täglich auswerten, automatisch beheben
 
-Stand: 11.09.2026 · Entscheidung offen
+Stand: 12.09.2026 · **Stufe 1 gebaut** · Stufe 2 und 3 offen
 
 ---
 
@@ -28,6 +28,16 @@ Das ist die Grundlage. Es fehlen drei Dinge: bessere Fragen beim Erfassen, der
 tägliche Lauf, und die Regeln, wann ich selbst handeln darf.
 
 ---
+
+## Stufe 1 ist gebaut (12.09.)
+
+Unter **Funde** gibt es jetzt zwei Wege zum Melden — den Käfer für unterwegs und
+ein ausführliches Formular für die Tester. Beide mit denselben Pflichtangaben,
+beide mit der Ampel, die sagt, ob die Meldung reicht. Verbesserungsvorschläge
+sind eine eigene Art und warten auf Freigabe, bevor irgendetwas gebaut wird.
+Nachgewiesen mit 38 Prüfungen am laufenden System und 26 Modultests.
+
+Was noch offen ist: der tägliche (besser: stündliche) Lauf — Stufe 2 und 3.
 
 ## Teil 1 — Besser fragen (das ist die eigentliche Arbeit)
 
@@ -65,10 +75,28 @@ genau die eine fehlende Frage zurück.
 
 ---
 
-## Teil 2 — Der tägliche Lauf
+## Teil 2 — Der Lauf
 
-Einmal am Tag (z. B. 6 Uhr) lese ich alle neuen Meldungen und sortiere sie in
-drei Töpfe:
+**Wie das Auslösen wirklich funktioniert.** Ich kann mich nicht selbst aus der
+App heraus wecken — die App kann mir nichts zurufen. Es gibt zwei Wege:
+
+1. **Ein Zeitplan**, der von sich aus eine Sitzung startet. Den kann ich
+   einrichten, du musst nichts installieren. Kleinste Taktung: **stündlich**.
+2. **Du schreibst mir eine Zeile.** Dann sofort.
+
+Für „sofort nach der Freigabe" heißt das: Du drückst *Freigeben*, und beim
+nächsten Lauf wird es abgearbeitet — bei stündlichem Takt im Schnitt eine halbe
+Stunde. Brennt es, schreibst du mir, dann ist es sofort.
+
+**Empfehlung: stündlich statt täglich.** Ein Lauf ohne offene Funde kostet fast
+nichts, und die Wartezeit auf eine Freigabe fällt von einem Tag auf Minuten.
+
+**Was du dafür einmal tun musst:** einen Zugangsschlüssel anlegen — eine Zeile
+in den Railway-Variablen und dieselbe in der Sitzungsumgebung. Kein Programm,
+keine Installation. Damit darf die Sitzung die offenen Funde aus dem laufenden
+System lesen und den Status zurückschreiben.
+
+Bei jedem Lauf lese ich alle neuen Meldungen und sortiere sie in drei Töpfe:
 
 ### Topf 1 — selbst erledigt
 Kleinigkeiten mit eindeutigem Befund und ohne Verhaltensänderung:
@@ -117,7 +145,7 @@ Ohne diese Regeln ist automatische Behebung gefährlicher als hilfreich.
    dieselbe Grenze, die heute schon für Migrationen gilt.
 3. **Höchstens fünf automatische Änderungen am Tag.** Wenn mehr anfällt, ist
    etwas Größeres im Argen — das gehört besprochen, nicht abgearbeitet.
-4. **Alles über die volle Prüfstrecke.** Die 562 Nachweise laufen vor jedem
+4. **Alles über die volle Prüfstrecke.** Die 600 Nachweise laufen vor jedem
    Ausrollen. Eine einzige rote Prüfung stoppt alles.
 5. **Jede Änderung einzeln zurückdrehbar** und in einem Satz begründet.
 6. **Ein Schalter je Bereich.** Du kannst die Automatik für „Texte" einschalten

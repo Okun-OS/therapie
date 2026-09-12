@@ -1,11 +1,15 @@
 // Nachweis D13: Ein- und Austritte innerhalb des Monats.
-import { pruefer, login, hole, sende, zuruecksetzen, pruefMonate } from './helfer.mjs'
+import { pruefer, login, hole, sende, zuruecksetzen, pruefMonate, lohnPerson } from './helfer.mjs'
 
 const { check, bilanz } = pruefer()
 
 const gf = await login('gf@rheinblick-reha.de')
 const anna = await login('anna.fischer@rheinblick-reha.de')
-const annaId = (await hole(anna, '/api/auth/me')).body.user.employeeId
+const locationId = (await hole(anna, '/api/auth/me')).body.user.locationId
+// §134 Eine eigene Person ohne Zeiterfassung — sonst rechnen Zuschläge mit,
+// die sich mit jedem Tag ändern, und die Prüfung misst den Kalender.
+const NAME = 'Teilmonat Nachweis'
+const personId = await lohnPerson(gf, locationId, NAME)
 
 const jetzt = new Date()
 const jahr = jetzt.getFullYear(), monat = jetzt.getMonth() + 1
@@ -17,11 +21,11 @@ console.log(`Abrechnungszeitraum ${mm}.${jahr} (${letzterTag} Kalendertage)\n`)
 await zuruecksetzen(gf, pruefMonate(jahr, monat))
 
 async function stammdaten(zusatz) {
-  return sende(gf, `/api/employees/${annaId}/payroll-profile`, 'PUT', {
-    personalnummer: '1042', steuerId: '12345678901',
+  return sende(gf, `/api/employees/${personId}/payroll-profile`, 'PUT', {
+    personalnummer: '9013', steuerId: '20000000013',
     steuerklasse: 1, kinderfreibetraege: 0, konfession: 'keine',
     bundesland: 'Nordrhein-Westfalen', versicherungsart: 'GKV', zusatzbeitrag: 1.7,
-    iban: 'DE02120300000000202051', kontoinhaber: 'Anna Fischer',
+    iban: 'DE02120300000000202051', kontoinhaber: 'Lohnpruefung Nachweis',
     elstamStand: `${jahr}-${mm}-01`,
     lohnart: 'monat', monatsgehalt: 3400, beschaeftigungsart: 'regulaer',
     eintrittsdatum: '2024-03-01', austrittsdatum: '',
@@ -31,13 +35,13 @@ async function stammdaten(zusatz) {
 
 async function rechnen() {
   const e = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-    .body.entries?.find(x => x.employeeId === annaId)
+    .body.entries?.find(x => x.employeeId === personId)
   if (e && e.status !== 'draft') {
     await sende(gf, '/api/payroll', 'PATCH', { id: e.id, status: 'draft' })
   }
   const lauf = await sende(gf, '/api/payroll/vorbereiten', 'POST', { year: jahr, month: monat })
   const eintrag = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-    .body.entries.find(x => x.employeeId === annaId)
+    .body.entries.find(x => x.employeeId === personId)
   return { lauf: lauf.body, eintrag }
 }
 
@@ -61,7 +65,7 @@ check('Das Gehalt ist anteilig',
 check('Die Beiträge sinken mit', spaet.eintrag.rvAN < voll.eintrag.rvAN,
   `${spaet.eintrag.rvAN} statt ${voll.eintrag.rvAN} EUR`)
 check('Der Lauf meldet den Teilmonat',
-  (spaet.lauf.teilmonate ?? []).some(t => t.name === 'Anna Fischer'),
+  (spaet.lauf.teilmonate ?? []).some(t => t.name === NAME),
   spaet.lauf.hinweis)
 check('Es bleibt eine reguläre Beschäftigung — kein Minijob',
   spaet.eintrag.beschaeftigungsart === 'regulaer',
@@ -85,13 +89,13 @@ console.log('\n=== Vor dem Eintritt und nach dem Austritt ===')
 await stammdaten({ eintrittsdatum: `${jahr + 1}-01-01` })
 const nochNicht = await rechnen()
 check('Wer noch nicht da ist, bekommt keine Abrechnung',
-  (nochNicht.lauf.nichtBeschaeftigt ?? []).includes('Anna Fischer'),
+  (nochNicht.lauf.nichtBeschaeftigt ?? []).includes(NAME),
   nochNicht.lauf.hinweis)
 
 await stammdaten({ eintrittsdatum: '2024-03-01', austrittsdatum: `${jahr - 1}-12-31` })
 const nichtMehr = await rechnen()
 check('Wer schon weg ist, auch nicht',
-  (nichtMehr.lauf.nichtBeschaeftigt ?? []).includes('Anna Fischer'))
+  (nichtMehr.lauf.nichtBeschaeftigt ?? []).includes(NAME))
 
 // ── Gutverdiener: die Grenze wird mitgekürzt ───────────────────────────────
 console.log('\n=== Beitragsbemessungsgrenze im Teilmonat ===')

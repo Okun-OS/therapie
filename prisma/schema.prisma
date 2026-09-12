@@ -992,8 +992,54 @@ model BugReport {
   consoleErrors String?
   lastActions   String?
   adminNotes    String?
+
+  // §133 Aus dem Fehlermelder wird die Fundstelle.
+  //
+  // Bisher waren Titel, Beschreibung und Schwere alles. Damit laesst sich ein
+  // Fund nicht nachstellen und schon gar nicht automatisch beheben — es fehlt
+  // genau die eine Angabe, an der alles haengt: was der Melder erwartet hat.
+
+  /// fehler | verbesserung | frage | wunsch
+  art            String   @default("fehler")
+  /// dienstplan | zeit | urlaub | lohn | nachrichten | akte | datenschutz | einrichtung | sonstiges
+  bereich        String   @default("sonstiges")
+  /// In welcher Rolle getestet wurde — nicht zwingend die Rolle des Zugangs
+  ebene          String?
+  /// Was hast du getan
+  schritte       String?
+  /// Was haettest du erwartet — das wichtigste Feld
+  erwartet       String?
+  /// immer | manchmal | einmal
+  haeufigkeit    String?
+  /// Beruehrt Geld oder Recht: Lohn, Arbeitszeiten, Loeschfristen, Zugriffsrechte.
+  /// Hebt die Dringlichkeit und sperrt jede automatische Behebung.
+  heikel         Boolean  @default(false)
+  /// Build-Nummer, in der der Fund auftrat
+  version        String?
+  /// gruen | gelb — ob die Meldung zum Arbeiten reicht, beim Speichern bestimmt
+  meldeQualitaet String   @default("gelb")
+
+  // Freigabe — Verbesserungen und Wuensche werden nie ohne Zustimmung gebaut
+  /// offen | freigegeben | abgelehnt
+  freigabe       String?
+  freigabeVon    String?
+  freigabeAm     DateTime?
+  freigabeNotiz  String?
+
+  // Rueckfrage, wenn die Meldung nicht reicht
+  rueckfrage     String?
+  antwort        String?
+
+  /// Der vorgeschlagene Behebungsweg
+  vorschlag      String?
+  erledigtAm     DateTime?
+  erledigtNotiz  String?
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([status])
+  @@index([art, bereich])
 }
 
 // ── Timesheet Approvals ───────────────────────────────────────────────────────

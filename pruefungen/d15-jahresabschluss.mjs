@@ -4,7 +4,7 @@
 // Der teuerste Fehler hier: pauschal versteuerten Arbeitslohn zu bescheinigen.
 // Das Finanzamt besteuert ihn dann ein zweites Mal, beim Mitarbeiter, der
 // nichts davon ahnt.
-import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate } from './helfer.mjs'
+import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate, lohnPerson } from './helfer.mjs'
 import zlib from 'node:zlib'
 
 const { check, bilanz } = pruefer()
@@ -30,7 +30,10 @@ function pdfText(buf) {
 const gf = await login('gf@rheinblick-reha.de')
 const kita = await login('leitung@kita-sonnenschein.de')
 const anna = await login('anna.fischer@rheinblick-reha.de')
-const annaId = (await hole(anna, '/api/auth/me')).body.user.employeeId
+const locationId = (await hole(anna, '/api/auth/me')).body.user.locationId
+// §134 Eine eigene Person ohne Zeiterfassung — sonst rechnen Zuschläge mit,
+// die sich mit jedem Tag ändern, und die Prüfung misst den Kalender.
+const personId = await lohnPerson(gf, locationId)
 
 const jetzt = new Date()
 const jahr = jetzt.getFullYear(), monat = jetzt.getMonth() + 1
@@ -40,11 +43,11 @@ console.log(`Jahresabschluss ${jahr}\n`)
 await zuruecksetzen(gf, pruefMonate(jahr, monat))
 
 async function stammdaten(zusatz) {
-  return sende(gf, `/api/employees/${annaId}/payroll-profile`, 'PUT', {
-    personalnummer: '1042', steuerId: '12345678901',
+  return sende(gf, `/api/employees/${personId}/payroll-profile`, 'PUT', {
+    personalnummer: '9015', steuerId: '20000000015',
     steuerklasse: 1, kinderfreibetraege: 0, konfession: 'keine',
     bundesland: 'Nordrhein-Westfalen', versicherungsart: 'GKV', zusatzbeitrag: 1.7,
-    iban: 'DE02120300000000202051', kontoinhaber: 'Anna Fischer',
+    iban: 'DE02120300000000202051', kontoinhaber: 'Lohnpruefung Nachweis',
     elstamStand: `${jahr}-${mm}-01`, eintrittsdatum: '2024-03-01', austrittsdatum: '',
     lohnart: 'monat', monatsgehalt: 3400, beschaeftigungsart: 'regulaer',
     ...zusatz,
@@ -52,7 +55,7 @@ async function stammdaten(zusatz) {
 }
 async function rechnen() {
   const e = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`))
-    .body.entries?.find(x => x.employeeId === annaId)
+    .body.entries?.find(x => x.employeeId === personId)
   if (e && e.status !== 'draft') {
     await sende(gf, '/api/payroll', 'PATCH', { id: e.id, status: 'draft' })
   }
@@ -66,7 +69,7 @@ await rechnen()
 
 const uebersicht = await hole(gf, `/api/payroll/jahresabschluss?jahr=${jahr}`)
 check('Die Jahreswerte werden geliefert', uebersicht.status === 200, uebersicht.body.hinweis)
-const annaWerte = (uebersicht.body.mitarbeiter ?? []).find(m => m.employeeId === annaId)
+const annaWerte = (uebersicht.body.mitarbeiter ?? []).find(m => m.employeeId === personId)
 check('Anna ist dabei', !!annaWerte, annaWerte?.zeitraum)
 check('Der Bruttoarbeitslohn ist gesetzt', annaWerte?.werte.bruttoarbeitslohn > 0,
   `${annaWerte?.werte.bruttoarbeitslohn} EUR`)
@@ -81,8 +84,8 @@ const csv = await csvR.text()
 check('Die Datei wird geliefert', csvR.status === 200, `HTTP ${csvR.status}`)
 check('Sie kommt als CSV zum Herunterladen',
   (csvR.headers.get('content-disposition') ?? '').includes('.csv'))
-check('Die Personalnummer steht drin', csv.includes('"1042"'))
-check('Die Steuer-ID steht drin', csv.includes('"12345678901"'))
+check('Die Personalnummer steht drin', csv.includes('"9015"'))
+check('Die Steuer-ID steht drin', csv.includes('"20000000015"'))
 for (const spalte of ['Bruttoarbeitslohn', 'Lohnsteuer', 'RV Arbeitgeber',
   'KV Arbeitnehmer', 'Steuerfreie Zuschläge', 'Zu bescheinigen']) {
   check(`Spalte „${spalte}" ist vorhanden`, csv.includes(spalte))
@@ -91,19 +94,19 @@ check('Beträge mit Komma statt Punkt', /"\d+,\d{2}"/.test(csv))
 
 // ── Jahresübersicht für den Mitarbeiter ────────────────────────────────────
 console.log('\n=== Jahresübersicht für den Mitarbeiter ===')
-const vorher = (await hole(anna, `/api/notifications?employeeId=${annaId}`)).body.notifications?.[0]?.id ?? null
-const beleg = await sende(gf, '/api/payroll/jahresabschluss', 'POST', { jahr, employeeId: annaId })
+const vorher = (await hole(gf, `/api/notifications?employeeId=${personId}`)).body.notifications?.[0]?.id ?? null
+const beleg = await sende(gf, '/api/payroll/jahresabschluss', 'POST', { jahr, employeeId: personId })
 check('Sie wird erzeugt', beleg.status === 200 && beleg.body.erzeugt > 0,
   beleg.body.hinweis ?? beleg.body.error)
 
-const akte = (await hole(anna, `/api/files?ownerType=employee&ownerId=${annaId}`)).body.dateien ?? []
+const akte = (await hole(gf, `/api/files?ownerType=employee&ownerId=${personId}`)).body.dateien ?? []
 const jahresbelege = akte.filter(d => d.dateiname?.startsWith('Jahresuebersicht'))
   .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
 check('Sie liegt in den Unterlagen des Mitarbeiters', jahresbelege.length > 0,
   jahresbelege[0]?.dateiname)
 check('Und ist für ihn freigegeben', jahresbelege[0]?.sichtbarFuerMitarbeiter === true)
 
-const r = await fetch(`${BASIS}/api/files/${jahresbelege[0].id}`, { headers: { cookie: anna } })
+const r = await fetch(`${BASIS}/api/files/${jahresbelege[0].id}`, { headers: { cookie: gf } })
 const text = pdfText(Buffer.from(await r.arrayBuffer()))
 check('Sie heißt „Jahresübersicht"', text.includes('Jahresübersicht'))
 check('Sie sagt ausdrücklich, dass sie KEINE Lohnsteuerbescheinigung ist',
@@ -115,7 +118,7 @@ check('Der Bruttoarbeitslohn steht drauf', text.includes('Bruttoarbeitslohn'))
 check('Die Rentenversicherung steht drauf', text.includes('Rentenversicherung'))
 check('Der Zeitraum steht drauf', /Bescheinigungszeitraum/.test(text))
 
-const nachher = (await hole(anna, `/api/notifications?employeeId=${annaId}`)).body.notifications ?? []
+const nachher = (await hole(gf, `/api/notifications?employeeId=${personId}`)).body.notifications ?? []
 check('Der Mitarbeiter wird benachrichtigt',
   nachher[0]?.id !== vorher && /Jahres/.test(nachher[0]?.title ?? ''),
   nachher[0]?.title)
@@ -125,13 +128,13 @@ console.log('\n=== Pauschal versteuerter Minijob wird NICHT bescheinigt ===')
 // Gemessen wird die Veränderung, nicht der absolute Wert: Anna hat aus anderen
 // Prüfungen weitere Monate im Jahr, die zu Recht bescheinigt werden.
 const vorMinijob = ((await hole(gf, `/api/payroll/jahresabschluss?jahr=${jahr}`))
-  .body.mitarbeiter ?? []).find(m => m.employeeId === annaId).werte
+  .body.mitarbeiter ?? []).find(m => m.employeeId === personId).werte
 
 await stammdaten({ monatsgehalt: 500, beschaeftigungsart: 'minijob', pauschalsteuer: true })
 await rechnen()
 
 const nachMinijob = await hole(gf, `/api/payroll/jahresabschluss?jahr=${jahr}`)
-const minijobWerte = (nachMinijob.body.mitarbeiter ?? []).find(m => m.employeeId === annaId).werte
+const minijobWerte = (nachMinijob.body.mitarbeiter ?? []).find(m => m.employeeId === personId).werte
 
 check('Der pauschal versteuerte Lohn ist gesondert ausgewiesen',
   Math.abs(minijobWerte.pauschalVersteuert - 500) < 0.02,
@@ -151,11 +154,11 @@ check('Und es steht dabei, warum',
 console.log('\n=== Abschottung ===')
 const fremd = await hole(kita, `/api/payroll/jahresabschluss?jahr=${jahr}`)
 check('Eine fremde Leitung sieht Anna nicht',
-  !(fremd.body.mitarbeiter ?? []).some(m => m.employeeId === annaId),
+  !(fremd.body.mitarbeiter ?? []).some(m => m.employeeId === personId),
   `${fremd.body.mitarbeiter?.length ?? 0} eigene Mitarbeiter`)
 
 const fremdBeleg = await sende(kita, '/api/payroll/jahresabschluss', 'POST',
-  { jahr, employeeId: annaId })
+  { jahr, employeeId: personId })
 check('Und kann für sie keine Übersicht erzeugen', fremdBeleg.status === 403,
   `HTTP ${fremdBeleg.status}`)
 

@@ -164,7 +164,7 @@ Siehe `PRODUKT-NOTIZEN.md`.
 - [x] **G2 DSGVO: Löschkonzept** — fertig. Katalog über alle 35 Tabellen mit
       Personenbezug, Vorschau vor jeder Löschung, Sperre statt Löschung wo das
       Gesetz es verlangt, Löschbericht als Nachweis. Siehe Block G1/G2 unten.
-- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 562 Nachweise im
+- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 600 Nachweise im
       Repo unter `pruefungen/`, ein Befehl (`npm run pruefen`), automatischer
       Lauf bei jedem Push. Siehe Block G3 unten.
       `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
@@ -1011,6 +1011,82 @@ muss die Leitung ihn weitergeben können.
 
 Nachweis: 562 Prüfungen gesamt, davon 75 für die Nachrichten (jetzt
 einschließlich Unternehmensebene) und 28 für die Mitarbeiterverwaltung.
+
+## Block H1 (12.09.) — Funde erfassen statt Fehler melden
+
+Aus dem Fehlermelder ist die **Fundstelle** geworden. Der Auslöser war eine
+einfache Beobachtung: Getestet wird von mehreren Leuten, und was dabei auffällt,
+ist nicht immer ein Fehler. Ein Verbesserungsvorschlag passt nicht in ein
+Formular, das nach „Schweregrad des Fehlers" fragt.
+
+### Die Einsicht, die alles bestimmt
+Wie gut eine Behebung wird, hängt fast ausschließlich an der **Qualität der
+Meldung** — nicht an dem, was danach damit geschieht. Deshalb steckt die Arbeit
+im Formular und nicht in der Verarbeitung.
+
+Das wichtigste Feld ist **„Was hättest du erwartet?"**. Ohne es lässt sich nicht
+entscheiden, ob etwas kaputt ist oder nur anders, als der Melder dachte — und
+genau daran hängt, ob aus einer Meldung ein Fehler oder ein Vorschlag wird.
+
+- [x] **Zwei Wege zum Melden.** Der Käfer unten links für den schnellen Fund
+      unterwegs, ein ausführliches Formular unter „Funde" für die Tester. Beide
+      schreiben in dieselbe Tabelle, mit denselben Pflichtangaben.
+- [x] **Vier Arten:** Fehler, Verbesserungsvorschlag, Frage, Wunsch — mit je
+      eigenen Fragen. Bei einem Vorschlag gibt es nichts nachzustellen; da zählt
+      der Zielzustand, nicht der Weg dorthin.
+- [x] **Eine Ampel beim Absenden**, die sagt, was noch fehlt. Sie weist die
+      Meldung aber **nicht ab**: Eine abgewiesene Meldung ist eine verlorene
+      Meldung — wer zweimal abgewiesen wird, meldet beim dritten Mal nicht mehr.
+- [x] **Die Bewertung entsteht auf dem Server.** Ein Browser, der seine eigene
+      Meldung für vollständig erklärt, wäre eine Selbstbescheinigung.
+- [x] **Verbesserungen und Wünsche warten auf Freigabe.** Ein Fehler wird
+      behoben; ein Vorschlag ist eine Entscheidung darüber, wie das Produkt sein
+      soll. Die trifft nicht der Melder und nicht das Programm. Eine Ablehnung
+      bleibt mit Begründung stehen, damit derselbe Vorschlag nicht in drei
+      Wochen erneut auf dem Tisch liegt.
+- [x] **Rückfragen** an den Melder, der sie beantworten kann — und mit der
+      Antwort geht der Fund zurück in die Bearbeitung.
+- [x] **Was Geld oder Recht berührt** (Lohn, Zeiten, Datenschutz, Zugänge) wird
+      am Bereich erkannt, bekommt hohe Dringlichkeit und ist von jeder
+      automatischen Behebung ausgenommen.
+- [x] **Eine Fundliste ist eine Mängelliste des Betriebs** — wer nicht OKUN ist,
+      sieht ausschließlich die eigenen Meldungen.
+- [x] Der Melde-Weg war bisher **ohne Anmeldung** erreichbar; jetzt nicht mehr.
+
+Nachweis: 38 Prüfungen am laufenden System (`pruefungen/h-funde.mjs`), 26
+Modultests für die Bewertung und die Freigabe-Regeln.
+
+## Block §134 (12.09.) — Zwei Funde aus den eigenen Prüfungen
+
+Am Morgen des 12.09. schlugen fünf Lohn-Prüfungen fehl, ohne dass sich am
+Programm etwas geändert hatte. Der Grund: Sie rechneten mit einer Person aus den
+Testdaten, deren Zeiterfassung mitlief — und aus der entstanden über Nacht
+17,93 € Zuschläge. **Eine Prüfung, die am 11. besteht und am 12. nicht, prüft
+den Kalender und nicht das Programm.** Behoben, indem diese Prüfungen jetzt mit
+einer eigenen Person ohne Zeiterfassung rechnen.
+
+Beim Aufräumen kamen zwei echte Fehler heraus, die niemandem aufgefallen wären:
+
+### Der Jahreslohn ohne Vormonate
+Für den voraussichtlichen Jahresarbeitslohn (§39b Abs.3 EStG) zählte nur, was
+**in diesem System** bereits abgerechnet war. Bei einem Kunden, der im September
+zu uns wechselt, ist das nichts: Aus 40.800 € wurden 13.600 €, und auf ein
+Weihnachtsgeld von 3.400 € wurde **keine Lohnsteuer** einbehalten. Der
+Mitarbeiter hätte im Folgejahr eine Nachzahlung bekommen, mit der er nicht
+rechnet.
+
+Jetzt werden die Monate vor dem Wechsel aus dem laufenden Lohn hochgerechnet —
+ab dem Eintritt, nicht ab Januar. Genommen wird der größere der beiden Werte:
+Zu viel einbehaltene Steuer holt sich der Mitarbeiter mit der Steuererklärung
+zurück, zu wenig wird zur Nachzahlung. Von den beiden Fehlern ist nur einer
+zumutbar.
+
+### Doppelte Steuer-ID beim ELStAM-Abgleich
+Sind zwei Profile versehentlich mit derselben Steuer-ID angelegt, gewann still
+der zuletzt geladene — jemand bekam die Steuerklasse eines Kollegen. Bei
+gleichen **Namen** wurde die Mehrdeutigkeit längst gemeldet; ausgerechnet bei
+den Kennzeichen, denen man am meisten vertraut, nicht. Jetzt wird auch dort
+abgebrochen, mit dem Hinweis, zuerst die Stammdaten zu bereinigen.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

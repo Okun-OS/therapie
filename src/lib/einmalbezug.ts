@@ -175,11 +175,62 @@ export function voraussichtlicherJahreslohn(opts: {
   laufendesSteuerBrutto: number
   monat: number
   bisherigeEinmalzahlungen: number
+  /**
+   * §134 Der erste Monat des Jahres, in dem die Person beschäftigt war (1–12).
+   * Ohne Angabe: seit Januar.
+   */
+  seitMonat?: number
 }): number {
   const verbleibendeMonate = Math.max(0, 12 - opts.monat + 1)
+
+  /*
+   * §134 Warum hier hochgerechnet und nicht nur addiert wird.
+   *
+   * Bisher zählte allein, was in DIESEM System schon abgerechnet wurde. Bei
+   * einem Kunden, der im September zu uns wechselt, ist das nichts — und der
+   * voraussichtliche Jahresarbeitslohn eines Mitarbeiters mit 3.400 € im Monat
+   * fiel damit von 40.800 € auf 13.600 €. Auf ein Weihnachtsgeld wäre dann
+   * fast keine Steuer einbehalten worden, und der Mitarbeiter hätte im
+   * Folgejahr eine Nachzahlung bekommen, mit der er nicht rechnet.
+   *
+   * §39b Abs.3 EStG stellt auf den voraussichtlichen JahresARBEITSLOHN ab,
+   * nicht auf das, was zufällig schon in einer Software steht. Fehlt die
+   * Historie, werden die vergangenen Monate aus dem laufenden Lohn
+   * hochgerechnet — ab dem Eintritt, nicht ab Januar.
+   *
+   * Genommen wird der GRÖSSERE der beiden Werte. Zu viel einbehaltene Steuer
+   * holt sich der Mitarbeiter mit der Steuererklärung zurück; zu wenig
+   * einbehaltene wird zur Nachzahlung. Von den beiden Fehlern ist nur einer
+   * zumutbar.
+   */
+  const seit = Math.min(Math.max(opts.seitMonat ?? 1, 1), opts.monat)
+  const vergangene = Math.max(0, opts.monat - seit)
+  const bisher = Math.max(
+    opts.bisherSteuerBrutto,
+    opts.laufendesSteuerBrutto * vergangene,
+  )
+
   return rund(
-    opts.bisherSteuerBrutto
+    bisher
     + opts.laufendesSteuerBrutto * verbleibendeMonate
     + opts.bisherigeEinmalzahlungen,
   )
+}
+
+/**
+ * §134 Ab welchem Monat des Jahres jemand beschäftigt war.
+ *
+ * Vor dem Jahr eingetreten heißt: seit Januar. Im Jahr eingetreten: ab dem
+ * Eintrittsmonat. Kein Eintrittsdatum hinterlegt: vorsichtshalber seit Januar —
+ * das führt zu mehr einbehaltener Steuer, nicht zu weniger.
+ */
+export function beschaeftigtSeitMonat(
+  eintrittsdatum: string | null | undefined, jahr: number,
+): number {
+  if (!eintrittsdatum) return 1
+  const eintrittsJahr = Number(eintrittsdatum.slice(0, 4))
+  if (!Number.isFinite(eintrittsJahr) || eintrittsJahr < jahr) return 1
+  if (eintrittsJahr > jahr) return 12
+  const monat = Number(eintrittsdatum.slice(5, 7))
+  return Number.isFinite(monat) && monat >= 1 && monat <= 12 ? monat : 1
 }
