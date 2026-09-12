@@ -43,11 +43,22 @@ if (!SCHLUESSEL) {
   // §135 Ohne hinterlegten Schluessel ist der Weg zu — und genau das wird hier
   // nachgewiesen. Der Rest der Pruefung braucht einen; sie sagt das und hoert
   // auf, statt gruen zu melden, was sie nicht geprueft hat.
-  check('Ohne hinterlegten Schlüssel bleibt der Weg verschlossen',
-    ohne.status === 503 && /kein Schlüssel/i.test(ohne.body.error ?? ''),
-    ohne.body.error)
-  console.log('\n  Hinweis: FUNDE_TOKEN ist nicht gesetzt — der zweite Teil der Prüfung')
-  console.log('  (Lesen und Zurückschreiben) wurde deshalb nicht ausgeführt.')
+  //
+  // §138 Zwei verschiedene Lagen, die vorher verwechselt wurden: Entweder hat
+  // AUCH DAS SYSTEM keinen Schluessel — dann muss der Weg mit 503 zu sein, und
+  // genau das wird geprueft. Oder das System hat einen und nur dieser Prueflauf
+  // kennt ihn nicht — dann ist ein rotes Kreuz hier eine Falschmeldung ueber
+  // das Programm. Die Pruefung sagt dann, was ihr fehlt, und hoert auf.
+  if (ohne.status === 503) {
+    check('Ohne hinterlegten Schlüssel bleibt der Weg verschlossen',
+      /kein Schlüssel/i.test(ohne.body.error ?? ''), ohne.body.error)
+    console.log('\n  Hinweis: FUNDE_TOKEN ist weder im System noch hier gesetzt —')
+    console.log('  der zweite Teil (Lesen und Zurückschreiben) wurde nicht ausgeführt.')
+  } else {
+    console.log('\n  Hinweis: Das System hat einen Schlüssel, dieser Prüflauf nicht.')
+    console.log('  Der zweite Teil wurde nicht ausgeführt. Dafür:')
+    console.log('    FUNDE_TOKEN=<derselbe Wert wie im System> npm run pruefen -- h2')
+  }
   process.exit(bilanz() > 0 ? 1 : 0)
 }
 

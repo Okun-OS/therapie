@@ -16,10 +16,10 @@ Zuletzt aktualisiert: **12.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | Mitarbeiter-App für die Stores — Etappe 1 von 5 fertig |
-| **Zuletzt fertig** | §137 App-Umbau: Stempeluhr, vier Menüpunkte, Lohn, Krankmelden |
-| **Als Nächstes** | Etappe 2: Offline — Stempel und Anträge im Funkloch merken |
-| **Danach** | Etappe 3: native Hülle (Capacitor) für Apple |
+| **Baustelle** | Mitarbeiter-App für die Stores — Etappe 2 von 5 fertig |
+| **Zuletzt fertig** | §138 Offline: Warteschlange fürs Stempeln, Krankmelden, Urlaub, Nachrichten |
+| **Als Nächstes** | Etappe 3: native Hülle (Capacitor) für Apple |
+| **Danach** | Etappe 4 Play Store, Etappe 5 App Store — wartet auf die D-U-N-S-Nummer |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
@@ -69,9 +69,9 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [ ] Alles Weitere: siehe `FAHRPLAN-KOMPLETTLOESUNG.md`
 
 ### Sonst offen
-- [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon) ist
-      fertig. Offen: Offline (2), native Hülle für Apple (3), Play Store (4),
-      App Store (5)
+- [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon) und
+      Etappe 2 (Offline) sind fertig. Offen: native Hülle für Apple (3),
+      Play Store (4), App Store (5). Die Stores brauchen die D-U-N-S-Nummer
 - [x] ~~**Test- und Fehlererfassung im System, Stufe 1**~~ ✅ — zwei Wege zum
       Melden (Käfer und ausführliches Formular), vier Arten, Ampel für die
       Meldequalität, Freigabe für Verbesserungsvorschläge, Rückfragen

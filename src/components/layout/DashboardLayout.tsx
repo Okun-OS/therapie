@@ -11,6 +11,7 @@ import { LocationModelMigrationModal } from '@/components/onboarding/LocationMod
 import { PageBanner } from '@/components/onboarding/PageBanner'
 import { FloatingHelp } from '@/components/ui/FloatingHelp'
 import { BugReportButton } from '@/components/ui/BugReportButton'
+import { Warteschlange } from '@/components/offline/Warteschlange'
 import type { Role } from '@/lib/types'
 
 interface DashboardLayoutProps {
@@ -71,6 +72,15 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
         style={{ paddingBottom: 'max(176px, calc(128px + env(safe-area-inset-bottom, 0px)))' }}
       >
         <PageBanner />
+        {/*
+          §138 Die Warteschlange sitzt im Rahmen, nicht auf einer Seite: Wer im
+          Funkloch gestempelt hat und danach zum Dienstplan wechselt, soll
+          weiterhin sehen, dass etwas auf die Übertragung wartet. Sie hängt
+          bewusst hier und nicht nur in der Mitarbeiter-App — auch eine
+          Standortleitung schreibt Nachrichten aus dem Keller, und was gemerkt
+          wird, braucht überall jemanden, der es nachreicht.
+        */}
+        <Warteschlange />
         {children}
       </main>
 

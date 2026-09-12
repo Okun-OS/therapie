@@ -5,6 +5,8 @@ import {
   MessageSquare, Users, Plus, Search, Send, Settings2, X, Check,
   AlertTriangle, Archive, LogOut, UserPlus, Lock,
 } from 'lucide-react'
+import { einreihen } from '@/lib/warteschlange'
+import { schlangeGeaendert } from '@/components/offline/Warteschlange'
 
 /**
  * §129 Nachrichten.
@@ -148,18 +150,32 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
   async function senden() {
     if (!offen || !entwurf.trim()) return
     setSendet(true); setFehler('')
+    const text = entwurf
     try {
       const r = await fetch(`/api/chat/${offen}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: entwurf }),
+        body: JSON.stringify({ text }),
       })
+      // §138 503 heißt: nicht erreichbar — die Nachricht kam nie an.
+      if (r.status === 503) throw new Error('offline')
       const d = await r.json().catch(() => ({}))
       if (!r.ok) { setFehler(d.error ?? 'Nachricht konnte nicht gesendet werden'); return }
       setNachrichten(prev => [...prev, d.nachricht])
       setEntwurf('')
       setTimeout(() => ende.current?.scrollIntoView({ behavior: 'smooth' }), 50)
       listeLaden()
-    } catch { setFehler('Nachricht konnte nicht gesendet werden') }
+    } catch {
+      // §138 Ohne Netz wird die Nachricht gemerkt. Sie erscheint erst im
+      // Verlauf, wenn sie wirklich beim Server ist — eine Nachricht, die nur
+      // auf dem eigenen Telefon steht, hat niemand gelesen. Der Entwurf ist
+      // trotzdem weg, sonst schickt man sie ein zweites Mal.
+      const { ok } = einreihen('nachricht', `/api/chat/${offen}`, { text })
+      if (!ok) { setFehler('Keine Verbindung — die Nachricht ließ sich nicht merken.'); return }
+      schlangeGeaendert()
+      setEntwurf('')
+      setFehler('Kein Netz — die Nachricht ist gemerkt und geht raus, sobald wieder '
+        + 'Empfang da ist.')
+    }
     finally { setSendet(false) }
   }
 

@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import {
-  Stethoscope, Camera, Check, AlertTriangle, Loader2, FileText,
+  Stethoscope, Camera, Check, AlertTriangle, Loader2, FileText, CloudOff,
 } from 'lucide-react'
+import { einreihen } from '@/lib/warteschlange'
+import { schlangeGeaendert } from '@/components/offline/Warteschlange'
 
 /**
  * §137 Krankmelden vom Telefon.
@@ -41,7 +43,14 @@ export default function Krankmelden() {
   const [notiz, setNotiz] = useState('')
   const [sendet, setSendet] = useState(false)
   const [fehler, setFehler] = useState('')
-  const [fertig, setFertig] = useState<{ id: string; pflichtig: boolean; text: string } | null>(null)
+  /**
+   * §138 `id: null` heißt: gemerkt, aber noch nicht übertragen. Dann gibt es
+   * noch keine Fehlzeit, der die Bescheinigung zugeordnet werden könnte — der
+   * Knopf zum Abfotografieren wäre eine Lüge. Er verschwindet, und stattdessen
+   * steht da, wo die Bescheinigung später hingehört.
+   */
+  const [fertig, setFertig] = useState<
+    { id: string | null; pflichtig: boolean; text: string } | null>(null)
   const [laedtHoch, setLaedtHoch] = useState(false)
   const [eingereicht, setEingereicht] = useState(false)
   const [locationId, setLocationId] = useState<string | null>(null)
@@ -70,21 +79,25 @@ export default function Krankmelden() {
       return
     }
     setSendet(true); setFehler('')
+    const daten = {
+      employeeId: user.employeeId,
+      employeeName: user.name,
+      locationId,
+      type: 'krankheit',
+      startDate: von,
+      endDate: bis,
+      days: tage,
+      note: notiz.trim() || undefined,
+    }
     try {
       const r = await fetch('/api/absences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeId: user.employeeId,
-          employeeName: user.name,
-          locationId,
-          type: 'krankheit',
-          startDate: von,
-          endDate: bis,
-          days: tage,
-          note: notiz.trim() || undefined,
-        }),
+        body: JSON.stringify(daten),
       })
+      // §138 503 heißt: nicht erreichbar. Keine Ablehnung — die Meldung ist nie
+      // angekommen und gehört in die Warteschlange.
+      if (r.status === 503) throw new Error('offline')
       const d = await r.json().catch(() => ({}))
       if (!r.ok) { setFehler(d.error ?? 'Die Meldung konnte nicht gespeichert werden.'); return }
 
@@ -98,12 +111,32 @@ export default function Krankmelden() {
         text: lage?.lage?.pflicht?.begruendung ?? '',
       })
     } catch {
-      setFehler('Keine Verbindung. Die Meldung wurde nicht gespeichert.')
+      // §138 Kein Netz: merken statt verlieren. Eine Krankmeldung, die im
+      // Funkloch verpufft, kostet die Person am Monatsende Lohn — und die
+      // Leitung erfährt erst vom Fehlen, wenn die Schicht leer bleibt.
+      const { ok } = einreihen('krankmeldung', '/api/absences', daten)
+      if (!ok) {
+        setFehler('Keine Verbindung — und die Meldung ließ sich auch nicht merken. '
+          + 'Bitte bei der Standortleitung anrufen.')
+        return
+      }
+      schlangeGeaendert()
+      setFertig({
+        id: null,
+        // Ohne Netz kann der Server nicht antworten. Die gesetzliche Grenze
+        // (§5 EntgFG: ab dem vierten Kalendertag) gilt trotzdem — eine
+        // strengere betriebliche Regelung kommt dann später dazu.
+        pflichtig: tage >= 4,
+        text: tage >= 4
+          ? 'Ab dem vierten Kalendertag braucht es in der Regel eine Bescheinigung.'
+          : 'Bei bis zu drei Kalendertagen in der Regel nicht. '
+            + 'Sobald die Meldung übertragen ist, sagt dir die App verbindlich Bescheid.',
+      })
     } finally { setSendet(false) }
   }, [user, locationId, von, bis, tage, notiz])
 
   async function hochladen(datei: File) {
-    if (!fertig || !user?.employeeId) return
+    if (!fertig?.id || !user?.employeeId) return
     setLaedtHoch(true); setFehler('')
     try {
       const form = new FormData()
@@ -136,12 +169,20 @@ export default function Krankmelden() {
     return (
       <div className="px-4 pt-4 pb-2 space-y-4 max-w-2xl mx-auto">
         <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center">
-          <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-            <Check size={22} className="text-green-600" />
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${
+            fertig.id ? 'bg-green-100' : 'bg-gray-200'}`}>
+            {fertig.id
+              ? <Check size={22} className="text-green-600" />
+              : <CloudOff size={22} className="text-gray-600" />}
           </div>
-          <p className="font-bold text-navy">Krankmeldung ist raus</p>
+          <p className="font-bold text-navy">
+            {fertig.id ? 'Krankmeldung ist raus' : 'Krankmeldung gemerkt'}
+          </p>
           <p className="text-sm text-gray-500 mt-1">
-            Deine Standortleitung sieht sie jetzt. Gute Besserung.
+            {fertig.id
+              ? 'Deine Standortleitung sieht sie jetzt. Gute Besserung.'
+              : 'Kein Netz — sie geht raus, sobald wieder Empfang da ist. '
+                + 'Solange die Leitung sie nicht sieht, ruf im Zweifel kurz an.'}
           </p>
         </div>
 
@@ -152,7 +193,12 @@ export default function Krankmelden() {
           </p>
           <p className="text-xs text-gray-500">{fertig.text}</p>
 
-          {eingereicht ? (
+          {!fertig.id ? (
+            <p className="text-xs text-gray-500">
+              Die Bescheinigung kannst du hochladen, sobald die Meldung übertragen ist —
+              du findest sie dann unter &bdquo;Ich&ldquo;.
+            </p>
+          ) : eingereicht ? (
             <p className="text-xs text-green-700 flex items-center gap-1.5">
               <Check size={14} /> Bescheinigung eingereicht und der Krankmeldung zugeordnet.
             </p>

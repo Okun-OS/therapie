@@ -29,6 +29,15 @@ Voraussetzungen: Datenbank läuft, `npm run seed` ist gelaufen, `npm run dev`
 läuft. Fehlt eine davon, sagt der Läufer das im Klartext, statt mit
 unverständlichen Fehlern abzubrechen.
 
+Ein Nachweis braucht einen Schlüssel: `h2-fundelauf.mjs` prüft den Zugang des
+stündlichen Laufs. Ohne `FUNDE_TOKEN` prüft er nur, dass ohne Schlüssel nichts
+geht, und sagt, dass der Rest ausgelassen wurde. Vollständig läuft er so — mit
+**demselben Wert, den auch das System kennt**:
+
+```bash
+FUNDE_TOKEN=<Wert aus der Umgebung des Systems> npm run pruefen
+```
+
 Gegen eine andere Adresse prüfen:
 
 ```bash
@@ -45,6 +54,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `a-mitarbeiter.mjs` | Stammdaten, Rollen, Einladungen, Kollegensicht |
 | `b-zeit.mjs` | Zeiterfassung, Überstunden, Monatsabschluss |
 | `b2-stempeluhr.mjs` | Stempeln: Reihenfolge, Zeitpunkt vom Gerät, für wen |
+| `b3-warteschlange.mjs` | Nachgereicht aus dem Funkloch: Kette, Wiederholung, Anträge |
 | `c-abwesenheit.mjs` | Urlaub, Krankheit, Schließzeiten |
 | `c2-krankenschein.mjs` | Krankenschein und Fehlzeit, Fristen, Lücken |
 | `d-lohn.mjs` | Beleg, Zustellung, DATEV, SEPA |

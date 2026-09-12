@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'okun-v3'
+const CACHE_VERSION = 'okun-v4'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`
 
@@ -40,7 +40,53 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return
   if (url.origin !== self.location.origin) return
   if (url.pathname.startsWith('/api/')) {
-    // Network-first for API; don't cache
+    // §138 Was ein Mitarbeiter unterwegs LESEN koennen muss, auch wenn kein
+    // Netz da ist: der eigene Dienstplan, die Dienste, der Stempelzustand, die
+    // eigenen Unterlagen. Dafuer wird die letzte Antwort aufgehoben und im
+    // Funkloch ausgeliefert — mit einem Merkmal im Kopf, damit die Oberflaeche
+    // sagen kann, dass es ein aelterer Stand ist.
+    //
+    // Alles andere bleibt ungespeichert: Eine Lohnabrechnung oder eine
+    // Mitarbeiterliste im Zwischenspeicher eines Telefons waere ein
+    // Datenschutzproblem, kein Komfortgewinn.
+    const OFFLINE_LESBAR = [
+      '/api/schedule-entries',
+      '/api/shifts',
+      '/api/time-tracking/stempeln',
+      '/api/absences',
+      '/api/vacation-requests',
+    ]
+    const darfLiegenbleiben = OFFLINE_LESBAR.some(p => url.pathname === p)
+
+    if (darfLiegenbleiben) {
+      event.respondWith(
+        fetch(request)
+          .then(response => {
+            if (response.ok) {
+              const clone = response.clone()
+              caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, clone))
+            }
+            return response
+          })
+          .catch(() =>
+            caches.match(request).then(cached => {
+              if (!cached) {
+                return new Response(JSON.stringify({ error: 'offline' }), {
+                  status: 503,
+                  headers: { 'Content-Type': 'application/json' },
+                })
+              }
+              // Der Oberflaeche sagen, dass das ein gespeicherter Stand ist.
+              const kopf = new Headers(cached.headers)
+              kopf.set('X-Okun-Stand', 'gespeichert')
+              return cached.blob().then(inhalt =>
+                new Response(inhalt, { status: 200, headers: kopf }))
+            })
+          )
+      )
+      return
+    }
+
     event.respondWith(
       fetch(request).catch(() =>
         new Response(JSON.stringify({ error: 'offline' }), {

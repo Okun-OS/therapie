@@ -14,6 +14,8 @@ import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, Send, Baby } fro
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate } from '@/lib/utils'
 import { countWorkdays } from '@/lib/workdays'
+import { einreihen } from '@/lib/warteschlange'
+import { schlangeGeaendert } from '@/components/offline/Warteschlange'
 import type { Employee, Location, VacationRequest, VacationPlanPreference } from '@/lib/types'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
@@ -128,19 +130,41 @@ export default function EmployeeVacation() {
       return
     }
 
-    const res = await fetch('/api/vacation-requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        employeeId: employee.id,
-        employeeName: employee.name,
-        locationId: employee.locationId,
-        locationName: location?.name || '',
-        startDate: form.startDate,
-        endDate: form.endDate,
-        reason: form.reason || undefined,
-      }),
-    })
+    const daten = {
+      employeeId: employee.id,
+      employeeName: employee.name,
+      locationId: employee.locationId,
+      locationName: location?.name || '',
+      startDate: form.startDate,
+      endDate: form.endDate,
+      reason: form.reason || undefined,
+    }
+
+    let res: Response
+    try {
+      res = await fetch('/api/vacation-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(daten),
+      })
+      // §138 503 heißt: nicht erreichbar — keine Ablehnung.
+      if (res.status === 503) throw new Error('offline')
+    } catch {
+      // Ohne Netz wird der Antrag gemerkt und nachgereicht. Er taucht erst in
+      // der Liste auf, wenn er wirklich beim Server ist — ein Antrag, der nur
+      // auf dem eigenen Telefon steht, ist kein Antrag.
+      const { ok } = einreihen('urlaub', '/api/vacation-requests', daten)
+      showToast(ok
+        ? 'Kein Netz — der Antrag ist gemerkt und geht raus, sobald wieder Empfang da ist.'
+        : 'Kein Netz — und der Antrag ließ sich nicht merken. Bitte später noch einmal.',
+        ok ? 'success' : 'error')
+      if (ok) {
+        schlangeGeaendert()
+        setModal(false)
+        setForm({ startDate: '', endDate: '', reason: '' })
+      }
+      return
+    }
 
     if (!res.ok) {
       showToast('Antrag konnte nicht eingereicht werden', 'error')

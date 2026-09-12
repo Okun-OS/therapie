@@ -1236,6 +1236,63 @@ Neu dabei, weil vorher am Telefon kaum erreichbar:
 Nachweis: 29 Prüfungen am laufenden System (`pruefungen/b2-stempeluhr.mjs`) und
 17 Modultests für die Reihenfolge der Handgriffe und den Zeitpunkt.
 
+## Block §138 (12.09.) — Die Mitarbeiter-App, Etappe 2: das Funkloch
+
+Eine Pflegekraft steht im Keller eines Altbaus und will einstempeln. Bisher
+bekam sie eine Fehlermeldung, und die Zeit war weg. Wer das zweimal erlebt hat,
+stempelt nicht mehr über die App — und dann stimmt weder die Arbeitszeit noch
+der Lohn. Dasselbe galt für die Krankmeldung um halb sechs aus dem Schlafzimmer
+mit einem Balken Empfang.
+
+Ab jetzt wird **gemerkt statt verloren**: Stempel, Pause, Krankmeldung,
+Urlaubsantrag und Nachricht wandern ohne Netz in eine Warteschlange auf dem
+Gerät und gehen raus, sobald wieder Empfang da ist — **mit der Uhrzeit des
+Handgriffs, nicht der der Übertragung.**
+
+### Vier Entscheidungen, die alles bestimmen
+
+- [x] **Die Reihenfolge hält.** Nachgereicht wird strikt in der Reihenfolge des
+      Entstehens, und beim ersten Vorgang, der nicht durchgeht, ist Schluss für
+      diesen Durchlauf. Sonst käme „gehen" vor „kommen" an, der Server lehnte es
+      zu Recht ab — und die Zeit wäre trotzdem weg.
+- [x] **Nur das Nötige kommt hinein.** Gemerkt wird, was ohne Rückfrage gültig
+      bleibt. **Nicht** gemerkt wird, was eine Antwort braucht — etwa eine
+      Zusage zum Einspringen: Bis die überträgt, hat vielleicht längst jemand
+      anderes zugesagt, und dann stünden zwei Leute in derselben Schicht.
+- [x] **Aufgeben ist erlaubt.** Was der Server dauerhaft ablehnt (400, 403) oder
+      was nach 20 Versuchen nicht ankommt, fliegt raus. Eine Schlange, die sich
+      nie leert, ist schlimmer als keine. Eine abgelaufene Anmeldung (401) gilt
+      dagegen nicht als Ablehnung — nach dem nächsten Anmelden geht es.
+- [x] **Nichts verschwindet still.** Jeder verworfene Vorgang bleibt als rote
+      Meldung stehen, bis jemand sie wegklickt, samt Grund vom Server. Bei etwas,
+      das über Lohn entscheidet, ist „ist wohl nicht durchgegangen" keine
+      zulässige Antwort.
+
+### Was man ohne Netz sieht
+Die Uhr zeigt den **Stand einschließlich dessen, was noch wartet** — sonst
+stünde „nicht eingestempelt", obwohl die Person längst arbeitet, und sie drückte
+ein zweites Mal. Lesbar bleiben im Funkloch außerdem der eigene Dienstplan, die
+Dienste, der Stempelzustand und die eigenen Fehlzeiten; sie kommen aus dem
+Zwischenspeicher und sind als **gespeicherter Stand** gekennzeichnet. Was nicht
+auf ein Telefon gehört, bleibt ungespeichert: Lohnabrechnungen und
+Mitarbeiterlisten im Zwischenspeicher wären ein Datenschutzproblem, kein
+Komfortgewinn.
+
+Kein „Background Sync": Den gibt es auf iPhones nicht, und genau dorthin soll
+die App. Nachgereicht wird, wenn die App offen ist — beim Start, sobald das Netz
+zurückkommt, und alle halbe Minute. Das genügt; der Weg aus dem Keller nach oben
+dauert länger.
+
+Die Leiste hängt **im Rahmen der ganzen Anwendung**, nicht nur in der
+Mitarbeiter-App: Auch eine Standortleitung schreibt Nachrichten aus dem Keller.
+
+Nachweis: 21 Modultests für die Regeln der Warteschlange (jeder Ausgang einzeln
+nachgerechnet, besonders die Fälle, in denen aufgegeben wird) und 23 Prüfungen
+am laufenden System (`pruefungen/b3-warteschlange.mjs`) für die andere Hälfte —
+dass der Server eine ganze Kette aus dem Funkloch mit den richtigen Uhrzeiten
+verbucht, Wiederholungen und falsche Reihenfolge mit 409 und einem Grund
+ablehnt, und Krankmeldung, Urlaubsantrag und Nachricht nachträglich annimmt.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:
