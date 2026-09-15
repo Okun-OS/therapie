@@ -43,20 +43,50 @@ er liest, beurteilt und schreibt Vorschläge und Rückfragen zurück.
 
 Nachgewiesen mit 55 Prüfungen am laufenden System und 26 Modultests.
 
-### Was noch fehlt, damit der Lauf etwas tut
+### Die Einrichtung des Laufs (15.09. erledigt)
 
-Der Zeitplan läuft, findet aber nichts, solange **zwei Umgebungsvariablen**
-fehlen. Beide gehören in die Sitzungsumgebung (nicht nach Railway — der Lauf
-ruft von außen an):
+Vier Dinge müssen stimmen, und **drei davon scheitern lautlos**. Deshalb steht
+hier bei jedem, woran man merkt, dass er fehlt.
+
+**1. Der Schlüssel im laufenden System.** In den Railway-Variablen:
 
 | Variable | Wert |
 |---|---|
-| `FUNDE_URL` | `https://therapie-production.up.railway.app` |
 | `FUNDE_TOKEN` | ein selbst gewürfelter Schlüssel, mindestens 24 Zeichen |
 
-Derselbe `FUNDE_TOKEN` muss zusätzlich **in den Railway-Variablen** stehen —
-sonst weiß das laufende System nicht, wen es hereinlassen soll. Einen Schlüssel
-erzeugen zum Beispiel mit `openssl rand -base64 32`.
+Nur Buchstaben und Ziffern — der Lauf setzt ihn in einen Shell-Befehl ein, und
+ein `$` oder ein Leerzeichen würde dort zerpflückt. Zum Prüfen genügt der
+Browser: `…/api/okun/funde` aufrufen. Steht dort *„Kein gültiger Schlüssel"*,
+sitzt er. Steht dort *„Für den Fundelauf ist kein Schlüssel hinterlegt"*, nicht.
+
+**2. Dieselben Werte in der Sitzungsumgebung** (claude.ai/code → Umgebung →
+Umgebungsvariablen), denn der Lauf ruft von außen an:
+
+| Variable | Wert |
+|---|---|
+| `FUNDE_TOKEN` | **derselbe** Wert wie bei Railway |
+| `FUNDE_URL` | `https://therapie-production.up.railway.app`, ohne Schrägstrich am Ende |
+
+Fehlt eine davon, steigt der Lauf gleich im ersten Schritt aus und sagt das auch.
+
+**3. Der Netzwerkzugriff der Umgebung muss unsere Adresse durchlassen.** Das ist
+die Falle, die am meisten Zeit gekostet hat: Auf der Stufe „Vertraut" ist nur
+eine feste Liste erlaubt (npm, PyPI, GitHub und Ähnliches) — die eigene
+Railway-Adresse gehört **nicht** dazu. Der Aufruf scheitert dann mit einem
+403 des Gateways, was wie ein Serverproblem aussieht und keines ist. Die
+Umgebung braucht „Voll" oder eine Liste, in der die Adresse steht.
+
+**4. Der Quelltext.** Die Sitzungen des Laufs starten ohne Repository. Die
+Anweisung holt es sich deshalb in Schritt 0 selbst (`add_repo`, klonen) und
+wechselt auf den Arbeitsbranch — der Standardbranch ist Monate alt, ein
+Vorschlag von dort wäre wertlos. Ohne diesen Schritt kann der Lauf Funde zwar
+lesen und Rückfragen stellen, aber keinen brauchbaren Vorschlag schreiben.
+
+> **Zum Schlüssel in der Sitzungsumgebung:** Er liegt dort im Klartext und ist
+> für jeden lesbar, der die Umgebung mitbenutzt. Genau deshalb ist dieser Zugang
+> so schmal gebaut — er öffnet Fehlermeldungen, sonst nichts. Keine Löhne, keine
+> Personaldaten, keine Zeiten. Kommt er abhanden, kann jemand Bug-Reports lesen
+> und kommentieren. Nimmt jemand Neues die Umgebung mit, gehört er getauscht.
 
 **Ohne hinterlegten Schlüssel ist der Zugang zu** — nicht offen, nicht „erstmal
 erlaubt". Ein Zugang, der ohne Einrichtung funktioniert, ist irgendwann ein

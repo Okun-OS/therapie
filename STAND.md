@@ -119,8 +119,8 @@ Ohne diese Punkte kommt die Arbeit an bestimmten Stellen nicht weiter.
 | 🟡 | **Aufbewahrungsfristen gegenzeichnen lassen** (Steuerberater oder Datenschutzbeauftragter) | den ersten echten Kunden — die Fristen stehen mit Vorschrift in `src/lib/dsgvo-katalog.ts`, sind aber noch nicht geprüft |
 | 🟡 | Die drei Anfragen verschicken (ITSG, ELSTER, Steuerberater) | die Zertifizierungs-Entscheidung |
 | 🟡 | Vermögensschadenhaftpflicht klären | den ersten echten Kunden |
-| 🔴 | **`FUNDE_TOKEN` und `FUNDE_URL` setzen** (Railway + Sitzungsumgebung) | den stündlichen Fundelauf — er läuft, findet aber nichts |
 | 🔴 | **D-U-N-S-Nummer beantragen** (kostenlos, dauert 1–2 Wochen) | das Apple Developer Program — und damit den App Store |
+| 🔴 | **Firebase-Projekt anlegen und `FCM_SERVICE_ACCOUNT` bei Railway setzen** | jede native Benachrichtigung — ohne den Schlüssel verschickt das System nichts und schreibt nur ins Protokoll |
 | 🟡 | Google-Play-Entwicklerkonto (25 $ einmalig) | den Play Store |
 | 🟡 | Datenschutzerklärung und Impressum öffentlich erreichbar | beide Stores |
 | 🟢 | Unternehmensdaten je Kunde vollständig eintragen | SEPA und DATEV je Kunde |
