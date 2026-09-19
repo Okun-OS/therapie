@@ -17,7 +17,7 @@ Zuletzt aktualisiert: **12.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Mitarbeiter-App für die Stores — Etappe 3 von 5 fertig |
-| **Zuletzt fertig** | §140 Aufgeräumt: Leiste, Logo, ein Hilfe-Knopf — und der Sofort-Löschweg ist weg |
+| **Zuletzt fertig** | §142 Fehlerkreislauf Stufe 3: der Lauf behebt Kleinigkeiten selbst |
 | **Als Nächstes** | Etappe 4/5: einreichen — blockiert durch D-U-N-S, Firebase, Datenschutzerklärung |
 | **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
 
@@ -82,9 +82,11 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [x] ~~**Fehlerkreislauf Stufe 2**~~ ✅ — eigener schmaler Zugang, stündlicher
       Zeitplan, Bericht auf der Fundeseite. Der Lauf schreibt Vorschläge und
       Rückfragen, ändert aber noch keinen Code
-- [ ] **Fehlerkreislauf Stufe 3** — automatische Behebung für den Kleinkram,
-      je Bereich einschaltbar. Erst sinnvoll, wenn der Bericht ein paar Wochen
-      gezeigt hat, dass die Einschätzung stimmt
+- [x] ~~**Fehlerkreislauf Stufe 3**~~ ✅ — der Lauf behebt Kleinigkeiten selbst.
+      Drei Spuren: reine Anzeige geht direkt raus, alles mit Verhalten wird
+      fertig gebaut und wartet auf deine Freigabe, Geld und Recht nur nach
+      ausdrücklicher Freigabe. Die Grenze zieht der Server anhand der geänderten
+      Dateien, nicht der Lauf. Prüfungen und Tests sind unantastbar
 - [x] ~~**E5 Mitarbeiter-Chat**~~ ✅ — jeder schreibt jedem am Standort, die
       Standortleitung eröffnet und verwaltet Gruppen. Mitlesen ist bewusst
       nicht dasselbe wie Verwalten: ein Beitritt der Leitung steht sichtbar im

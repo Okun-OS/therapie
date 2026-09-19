@@ -1110,6 +1110,57 @@ model BugReport {
   @@index([art, bereich])
 }
 
+/// §142 Stufe 3: Was der Lauf selbst behoben hat.
+///
+/// Jede automatische Aenderung an einem Programm, das Gehaelter rechnet, muss
+/// nachher erklaerbar sein — was wurde geaendert, warum, welche Dateien, was
+/// hat es geprueft, und auf welchem Weg ist es rausgegangen. Ohne diese Spur
+/// waere die Automatik nicht zu verantworten: Man kann nicht zurueckdrehen,
+/// was man nicht sieht.
+///
+/// Die Entscheidung "direkt" oder "sammeln" faellt NICHT hier und nicht im
+/// Lauf, sondern in src/lib/behebung.ts anhand der geaenderten Dateien.
+model Behebung {
+  id          String   @id @default(cuid())
+  /// Der Fund, um den es geht
+  fundId      String
+  /// Seine Kennung, damit der Eintrag auch ohne Verknuepfung lesbar bleibt
+  kennung     String?
+  titel       String   @default("")
+
+  /// anzeige | logik — was der Lauf ueber seine Aenderung sagt
+  klasse      String
+  /// direkt | sammeln | abgelehnt — was das Programm daraus gemacht hat
+  ausgang     String
+  /// Der Satz, der auf der Fundeseite steht
+  grund       String   @default("")
+
+  /// Die geaenderten Dateien
+  dateien     Json
+  zeilen      Int      @default(0)
+  /// Was der Lauf zu seiner Aenderung sagt — fuenf Saetze
+  begruendung String?
+
+  /// Ergebnis der Pruefreihe: Nachweise, Modultests, Build
+  pruefstand  Json?
+
+  /// Wohin gepusht wurde
+  zweig       String?
+  commit      String?
+
+  /// ausgerollt | wartet | freigegeben | verworfen
+  status      String   @default("wartet")
+  entschiedenVon String?
+  entschiedenAm  DateTime?
+  entscheidNotiz String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([fundId])
+  @@index([status])
+}
+
 // ── Timesheet Approvals ───────────────────────────────────────────────────────
 
 model TimesheetApproval {

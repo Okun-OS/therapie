@@ -1,6 +1,6 @@
 # Vorschlag: Funde erfassen, täglich auswerten, automatisch beheben
 
-Stand: 12.09.2026 · **Stufe 1 und 2 gebaut** · Stufe 3 offen
+Stand: 19.09.2026 · **Stufe 1, 2 und 3 gebaut**
 
 ---
 
@@ -186,23 +186,69 @@ Eine Seite „Gestern gemeldet":
 
 ---
 
-## Teil 3 — Die Leitplanken
+## Teil 3 — Die Leitplanken (gebaut am 19.09.)
 
-Ohne diese Regeln ist automatische Behebung gefährlicher als hilfreich.
+Ohne diese Regeln ist automatische Behebung gefährlicher als hilfreich. Sie
+stehen deshalb nicht in der Anweisung des Laufs, sondern in
+`src/lib/behebung.ts` und werden vom Server geprüft. **Eine Regel, die in einem
+Text steht, den ein Modell liest, ist eine Bitte. Eine Regel, die der Server
+prüft, ist eine Regel.**
 
-1. **Nie ohne neue Prüfung.** Jede Behebung bringt einen Nachweis mit. Sonst
-   kommt derselbe Fehler in vier Wochen zurück und keiner merkt es.
-2. **Niemals automatisch bei:** Lohnrechnung · Löschkonzept und Fristen ·
-   Zugriffsrechte und Rollen · jeder Änderung an bestehenden Daten. Hier gibt es
-   **immer** einen Vorschlag zum Bestätigen, egal wie klein er aussieht. Das ist
-   dieselbe Grenze, die heute schon für Migrationen gilt.
-3. **Höchstens fünf automatische Änderungen am Tag.** Wenn mehr anfällt, ist
-   etwas Größeres im Argen — das gehört besprochen, nicht abgearbeitet.
-4. **Alles über die volle Prüfstrecke.** Die 600 Nachweise laufen vor jedem
-   Ausrollen. Eine einzige rote Prüfung stoppt alles.
-5. **Jede Änderung einzeln zurückdrehbar** und in einem Satz begründet.
-6. **Ein Schalter je Bereich.** Du kannst die Automatik für „Texte" einschalten
-   und für „Dienstplan" aus lassen. Startzustand: alles aus.
+### Drei Spuren
+
+| | Was | Wer entscheidet |
+|---|---|---|
+| **direkt** | Reine Anzeige: Text, Beschriftung, Darstellung, ein toter Knopf. Höchstens 3 Dateien, höchstens 40 Zeilen, nur `.tsx` unter `src/app` oder `src/components`, nicht an heiklen Stellen | niemand — geht raus |
+| **sammeln** | Alles, was Verhalten anfasst. Wird fertig gebaut und geprüft, liegt auf einem eigenen Zweig | du, auf der Fundeseite |
+| **abgelehnt** | Wird nicht angefasst | — |
+
+### Was niemals automatisch geändert wird
+
+`pruefungen/**` · alle Tests · `prisma/**` · `src/lib/session|scope|auth*` ·
+`src/lib/lohn|payroll|zuschlag|elstam|datev|sepa*` · `src/lib/dsgvo*` ·
+`src/lib/funde.ts` · `src/lib/behebung.ts` · `package.json` · `ios/**` ·
+`android/**` · `.github/**`
+
+**Die wichtigste Zeile davon ist die erste.** Ein Lauf, der seine eigene Prüfung
+ändern darf, bekommt jede Änderung grün — dann ist das Sicherheitsnetz nur noch
+Dekoration. Deshalb kippt eine einzige verbotene Datei die ganze Behebung, auch
+wenn sie nur als Beifang neben einer harmlosen mitläuft.
+
+### Die übrigen Leitplanken
+
+1. **Ungeprüft geht nichts** — und zwar auf BEIDEN Spuren. Was gesammelt wird,
+   landet später genauso auf der Anlage, nur mit einem Menschen dazwischen, und
+   der sieht einer roten Prüfung nicht an, dass sie rot ist. Eine einzige rote
+   Prüfung hält alles an.
+2. **Eine leere Prüfreihe ist kein grünes Ergebnis.** Null Prüfungen und null
+   Fehler sieht in einer Zusammenfassung aus wie „keine Fehler" — es heißt aber
+   „nichts geprüft". Wird ausdrücklich abgewiesen.
+3. **Geld und Recht nur nach ausdrücklicher Freigabe** — und auch dann nur
+   gesammelt, nie direkt. Bestätigt wurde die Absicht, nicht der Code.
+4. **Höchstens zwei Behebungen je Lauf.** Ein Lauf, der schiefgeht, richtet dann
+   auch nur begrenzt Schaden an.
+5. **Jede Änderung ist nachlesbar**: welche Dateien, wie viele Zeilen, was sie
+   geprüft hat, auf welchem Zweig, mit welchem Commit. Auf der Fundeseite. Eine
+   Automatik, die man nicht nachlesen kann, ist eine, der man nicht
+   widersprechen kann.
+6. **Verworfen heißt nicht erledigt.** Wer eine Behebung ablehnt, sagt damit
+   „dieser Weg war es nicht" — der Fund bleibt offen.
+7. **Was draußen ist, lässt sich nicht nachträglich freigeben.** Eine
+   Zustimmung im Nachhinein ist keine.
+
+Nachgewiesen mit 26 Modultests für die Regeln selbst und 40 Prüfungen am
+laufenden System (`pruefungen/h3-behebung.mjs`).
+
+### Das zweite Tor für Verbesserungen
+
+Ein Verbesserungsvorschlag durchläuft zwei Freigaben, nicht eine:
+
+1. **Soll daran überhaupt gearbeitet werden?** — der Fund wartet im Topf
+   „Freigabe", der Lauf rührt ihn nicht an.
+2. **Ist dieser Weg richtig?** — die fertige Behebung liegt auf ihrem Zweig und
+   wartet auf der Fundeseite.
+
+Erst danach wird zusammengeführt.
 
 ---
 
@@ -231,7 +277,7 @@ Das ginge — einmal am Tag das Sheet lesen, verstehen, abarbeiten. Aber:
 |---|---|---|---|
 | **1** | Erfassung erweitern (Teil 1), Liste mit Status, Rückfragen | ~1 Tag | Ersetzt das Sheet sofort |
 | **2** | Täglicher Lauf mit Bericht und Vorschlägen — **ohne** Automatik | ~1 Tag | Du siehst jeden Morgen, was los ist, und entscheidest mit einem Klick |
-| **3** | Automatische Behebung für Topf 1, je Bereich einschaltbar | ~1–2 Tage | Kleinigkeiten verschwinden von selbst |
+| **3** | ✅ Automatische Behebung für Topf 1, Grenze im Programm statt je Bereich | gebaut 19.09. | Kleinigkeiten verschwinden von selbst |
 
 **Vorschlag zur Reihenfolge:** Stufe 1 und 2 bringen zusammen rund achtzig
 Prozent des Nutzens und haben **kein Risiko** — es wird nichts von allein

@@ -1451,6 +1451,81 @@ Prüfung ruft den Löschweg **wirklich** auf — käme die alte Fassung zurück,
 danach ein Testkonto weg und die halbe Nachweisreihe fiele aus. Genau das ist
 beabsichtigt: Diese Rückkehr darf nicht leise passieren.
 
+## Block §142 (19.09.) — Der Lauf behebt jetzt selbst
+
+Stufe 2 hat gelesen, nachgedacht und einen Vorschlag hingeschrieben. Das war
+als Zwischenschritt richtig, aber es war auch der Punkt, an dem der Nutzen
+aufhörte: Ein Vorschlag, den trotzdem ein Mensch umsetzen muss, spart die
+Arbeit nicht, er verschiebt sie.
+
+Ab jetzt behebt der Lauf Kleinigkeiten selbst. Drei Spuren.
+
+### Die eine Entscheidung, an der alles hängt
+**Wo verläuft die Grenze, und wer zieht sie?**
+
+Nicht der Lauf. Er sagt, was er geändert hat und was er dafür hält — und der
+Server entscheidet anhand der **geänderten Dateien**. Wer sich selbst einstuft,
+stuft sich im Zweifel großzügig ein, und der Zweifel fällt hier auf Lohndaten.
+
+Die Regeln stehen deshalb in `src/lib/behebung.ts` und nicht in der Anweisung
+des Laufs: **Eine Regel, die in einem Text steht, den ein Modell liest, ist eine
+Bitte. Eine Regel, die der Server prüft, ist eine Regel.**
+
+| | Was | Wer entscheidet |
+|---|---|---|
+| **direkt** | Reine Anzeige. Höchstens 3 Dateien, 40 Zeilen, nur `.tsx` unter `src/app` oder `src/components`, nicht an heiklen Stellen | niemand — geht raus |
+| **sammeln** | Alles mit Verhalten. Fertig gebaut und geprüft, auf eigenem Zweig | du, auf der Fundeseite |
+| **abgelehnt** | Wird nicht angefasst | — |
+
+### Die wichtigste Zeile im ganzen Block
+- [x] **Prüfungen und Tests sind unantastbar.** Ein Lauf, der seine eigene
+      Prüfung ändern darf, bekommt jede Änderung grün — dann ist das
+      Sicherheitsnetz nur noch Dekoration. Eine einzige verbotene Datei kippt
+      die ganze Behebung, auch wenn sie nur als Beifang neben einer harmlosen
+      mitläuft. Das ist der einzige Verstoß, der nicht „sammeln" auslöst,
+      sondern rundheraus abgelehnt wird.
+
+Ebenso tabu: die Datenbank, Anmeldung und Rechte, Lohn, Datenschutz, die
+native Hülle — und die Regeldatei selbst. Sonst schriebe sich der Lauf die
+Erlaubnis.
+
+### Was sonst noch gilt
+- [x] **Ungeprüft geht nichts, auf beiden Spuren.** Was gesammelt wird, landet
+      später genauso auf der Anlage — nur mit einem Menschen dazwischen, und
+      der sieht einer roten Prüfung nicht an, dass sie rot ist.
+- [x] **Eine leere Prüfreihe ist kein grünes Ergebnis.** Null Prüfungen und
+      null Fehler sieht in einer Zusammenfassung aus wie „keine Fehler" — es
+      heißt aber „nichts geprüft". Wird ausdrücklich abgewiesen.
+- [x] **Geld und Recht nur nach ausdrücklicher Freigabe** — und auch dann nur
+      gesammelt, nie direkt. Bestätigt wurde die Absicht, nicht der Code.
+- [x] **Höchstens zwei Behebungen je Lauf.** Ein Lauf, der schiefgeht, richtet
+      dann auch nur begrenzt Schaden an.
+- [x] **Verworfen heißt nicht erledigt.** Der Fund bleibt offen — abgelehnt
+      wurde der Weg, nicht das Problem.
+- [x] **Was draußen ist, lässt sich nicht nachträglich freigeben.** Eine
+      Zustimmung im Nachhinein ist keine.
+
+### Nachlesbar, sonst nicht zu verantworten
+Auf der Fundeseite steht zu jeder Behebung: die Dateien, die Zahl der Zeilen,
+was sie geprüft hat, der Zweig, der Commit. Oben die, die auf eine Entscheidung
+warten, darunter das Protokoll dessen, was ohne Rückfrage rausging. **Eine
+Automatik, die man nicht nachlesen kann, ist eine, der man nicht widersprechen
+kann.**
+
+Was dort bewusst fehlt: ein Knopf „alles freigeben". Wer zehn Behebungen auf
+einmal durchwinkt, hat keine davon gelesen — und dann ist das Tor keines.
+
+### Das zweite Tor für Verbesserungen
+Ein Verbesserungsvorschlag durchläuft zwei Freigaben: erst *ob* daran
+gearbeitet wird, dann *ob dieser Weg richtig war*. Das erste Tor stand seit
+§133, das zweite ist neu.
+
+Nachweis: 26 Modultests für die Regeln und 40 Prüfungen am laufenden System
+(`pruefungen/h3-behebung.mjs`) — die Fälle, in denen NICHT gehandelt werden
+darf, gründlicher als die anderen. Der Maßstab dabei: Ein zu streng abgelehnter
+Fund kostet einen Klick, ein zu großzügig durchgewinkter im schlimmsten Fall
+einen falschen Lohn.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

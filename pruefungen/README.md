@@ -38,6 +38,18 @@ geht, und sagt, dass der Rest ausgelassen wurde. Vollständig läuft er so — m
 FUNDE_TOKEN=<Wert aus der Umgebung des Systems> npm run pruefen
 ```
 
+> **Der Schlüssel muss auch dem laufenden System bekannt sein, nicht nur dem
+> Prüflauf.** Eine `.env` reicht dafür nicht immer — je nachdem, wie der Server
+> gestartet wurde, sieht er sie nicht. Sicher ist:
+>
+> ```bash
+> FUNDE_TOKEN=<derselbe Wert> npm run dev
+> ```
+>
+> Woran man es merkt: `h2` und `h3` melden 401 („Kein gültiger Schlüssel"),
+> obwohl der Wert in der `.env` steht. Das hat schon einmal eine halbe Stunde
+> gekostet.
+
 Gegen eine andere Adresse prüfen:
 
 ```bash
@@ -75,6 +87,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `g1-dsgvo.mjs` | Auskunft, Löschkonzept, Sperre statt Löschung |
 | `h-funde.mjs` | Funde melden, bewerten, freigeben, nachfragen |
 | `h2-fundelauf.mjs` | Der Zugang für den stündlichen Lauf und seine Grenzen |
+| `h3-behebung.mjs` | Was der Lauf selbst beheben darf — und was nie |
 
 ## Eine neue Prüfung schreiben
 

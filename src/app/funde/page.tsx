@@ -8,6 +8,7 @@ import {
   ThumbsUp, ThumbsDown, Search, Send, CircleDot, Wrench,
 } from 'lucide-react'
 import { topf, TOPF_TEXT, type Topf } from '@/lib/funde'
+import { Behebungen } from '@/components/funde/Behebungen'
 
 /**
  * §133 Funde — der Ort für alles, was beim Testen auffällt.
@@ -271,6 +272,9 @@ export default function FundePage() {
             </p>
           </div>
         )}
+
+        {/* §142 Stufe 3: was der Lauf selbst behoben hat, und was auf dich wartet. */}
+        {istOkun && <Behebungen />}
 
         {istOkun && zuFreigeben > 0 && (
           <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
