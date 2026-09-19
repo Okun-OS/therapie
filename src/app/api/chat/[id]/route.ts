@@ -6,6 +6,7 @@ import {
   raumZugriff, darfVerwalten, darfSchreibenAn, eigeneKennung, systemHinweis,
   MAX_ZEICHEN, ROLLEN_TEXT,
 } from '@/lib/chat'
+import { OKUN_ART, weiterleitenAnOkun } from '@/lib/okun-kanal'
 
 export const dynamic = 'force-dynamic'
 
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const mich = await prisma.user.findUnique({
-    where: { id: ich }, select: { name: true, employeeId: true },
+    where: { id: ich }, select: { name: true, employeeId: true, email: true },
   })
 
   const nachricht = await prisma.chatNachricht.create({
@@ -129,6 +130,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { raumId: raum.id, userId: { not: ich }, employeeId: { not: null } },
     select: { employeeId: true },
   })
+  // §143 Der OKUN-Kanal hat kein zweites Mitglied — was hier steht, geht als
+  // E-Mail bei OKUN ein. Ein Kanal, in den hineingeschrieben wird, ohne dass es
+  // ankommt, wäre schlimmer als gar keiner.
+  if (raum.art === OKUN_ART) {
+    const kunde = await prisma.customer.findUnique({
+      where: { id: raum.customerId }, select: { name: true },
+    }).catch(() => null)
+    await weiterleitenAnOkun(
+      {
+        name: mich?.name ?? 'Unbekannt',
+        email: mich?.email,
+        rolle: ROLLEN_TEXT[session.role] ?? session.role,
+      },
+      kunde?.name ?? null,
+      inhalt,
+    )
+    return NextResponse.json({ nachricht })
+  }
+
   const titel = raum.art === 'gruppe' ? `${raum.name}: ${mich?.name}` : (mich?.name ?? 'Nachricht')
   await Promise.all(andere.map(m => sendPushToEmployee(m.employeeId!, {
     title: titel,

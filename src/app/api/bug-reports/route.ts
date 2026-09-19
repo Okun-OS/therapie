@@ -4,6 +4,9 @@ import { requireRole, resolveCustomerId } from '@/lib/session'
 import {
   bewerten, istHeikel, startStatus, brauchtFreigabe, neueKennung,
 } from '@/lib/funde'
+import { meldetext } from '@/lib/fundmeldung'
+import { schreibeVonOkun } from '@/lib/okun-kanal'
+import { getAppOrigin } from '@/lib/app-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,6 +85,27 @@ export async function POST(req: NextRequest) {
       lastActions: text('lastActions'),
     },
   })
+
+  // §143 Sofort zurückmelden, dass die Meldung angekommen ist.
+  //
+  // Bisher verschwand sie im Nichts: Wer einen Fehler meldet, wusste danach
+  // nicht, ob ihn jemand gelesen hat. Beim zweiten Mal meldet man dann nichts
+  // mehr — und genau die Leute, die den Betrieb kennen, hören auf, uns zu
+  // sagen, was kaputt ist.
+  //
+  // Bewusst ohne await im Ergebnisweg: Eine Störung beim Versand darf die
+  // Meldung nicht verschlucken. Die ist gespeichert, das ist das Wichtige.
+  if (eintrag.userId) {
+    const meldung = meldetext('eingegangen', {
+      kennung: eintrag.ticketId, titel: eintrag.title, art: eintrag.art,
+    })
+    schreibeVonOkun(eintrag.userId, {
+      text: meldung.text,
+      betreff: meldung.betreff,
+      ziel: `${getAppOrigin(req)}/funde`,
+      zielText: 'Meine Meldungen',
+    }).catch(() => undefined)
+  }
 
   return NextResponse.json({
     ticketId: eintrag.ticketId,
@@ -177,5 +201,19 @@ export async function PATCH(req: NextRequest) {
         : {}),
     },
   })
+  // §143 Schließt ein Mensch den Fund von Hand, erfährt der Melder es genauso.
+  if (fund.userId && aktualisiert.status !== fund.status) {
+    const anlass = aktualisiert.status === 'resolved' ? 'behoben'
+      : aktualisiert.status === 'abgelehnt' ? 'nicht_umgesetzt'
+      : null
+    if (anlass) {
+      const meldung = meldetext(anlass, {
+        kennung: fund.ticketId, titel: fund.title,
+      })
+      schreibeVonOkun(fund.userId, { text: meldung.text, betreff: meldung.betreff })
+        .catch(() => undefined)
+    }
+  }
+
   return NextResponse.json({ report: aktualisiert })
 }

@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import {
   beurteileBehebung, pruefstandReicht, type Klasse, type Pruefstand,
 } from '@/lib/behebung'
+import { meldetext, brauchtZwischenmeldung } from '@/lib/fundmeldung'
+import { schreibeVonOkun } from '@/lib/okun-kanal'
 
 /**
  * §142 Stufe 3 — der Weg, auf dem der Lauf eine Behebung anmeldet.
@@ -149,6 +151,20 @@ export async function POST(req: NextRequest) {
     },
   })
 
+  // §143 Die Zwischenmeldung — aber nur, wenn es wirklich länger dauert.
+  //
+  // Was gesammelt wird, wartet auf einen Menschen; das können Stunden sein.
+  // Wer gemeldet hat, soll in der Zeit nicht im Unklaren sitzen. Bei einer
+  // Kleinigkeit, die in derselben Viertelstunde rausgeht, wären zwei
+  // Nachrichten hintereinander dagegen nur Lärm — und wer drei Nachrichten für
+  // einen Tippfehler bekommt, stellt sie ab.
+  if (urteil.ausgang === 'sammeln' && fund.userId
+      && brauchtZwischenmeldung(fund.createdAt)) {
+    const meldung = meldetext('dran', { kennung: fund.ticketId, titel: fund.title })
+    schreibeVonOkun(fund.userId, { text: meldung.text, betreff: meldung.betreff })
+      .catch(() => undefined)
+  }
+
   return NextResponse.json({
     behebungId: behebung.id,
     ausgang: urteil.ausgang,
@@ -227,6 +243,26 @@ export async function PATCH(req: NextRequest) {
         ].filter(Boolean).join(' '),
       },
     }).catch(() => undefined)
+  }
+
+  // §143 Und jetzt der Moment, um den es geht: „Ist behoben."
+  //
+  // Jemand meldet sonntags um elf, dass ein Knopf nicht funktioniert, und eine
+  // Stunde später steht das hier. Das ist der Unterschied zwischen einem
+  // Werkzeug, dem man etwas erzählt, und einem, dem man nichts mehr erzählt.
+  if (neuerStatus === 'ausgerollt') {
+    const fund = await prisma.bugReport.findUnique({
+      where: { id: behebung.fundId },
+      select: { userId: true, ticketId: true, title: true },
+    })
+    if (fund?.userId) {
+      const meldung = meldetext('behoben', {
+        kennung: fund.ticketId, titel: fund.title,
+      })
+      await schreibeVonOkun(fund.userId, {
+        text: meldung.text, betreff: meldung.betreff,
+      }).catch(() => undefined)
+    }
   }
 
   return NextResponse.json({

@@ -62,7 +62,8 @@ export interface ChatPerson {
 
 export interface RaumListe {
   id: string
-  art: 'direkt' | 'gruppe'
+  /** §143 `okun` ist der Draht zu OKUN — ein Raum mit einem Mitglied. */
+  art: 'direkt' | 'gruppe' | 'okun'
   /** Anzeigename: bei Direktchats der Name des Gegenübers */
   titel: string
   beschreibung?: string | null
@@ -328,10 +329,10 @@ export async function raeumeFuer(session: SessionPayload): Promise<RaumListe[]> 
     const n = letzteJeRaum.get(raum.id)
     return {
       id: raum.id,
-      art: raum.art as 'direkt' | 'gruppe',
+      art: raum.art as 'direkt' | 'gruppe' | 'okun',
       titel: raum.art === 'direkt'
         ? (gegenueber ? namen.get(gegenueber) ?? 'Ehemalige Kollegin' : 'Gespräch')
-        : raum.name ?? 'Gruppe',
+        : raum.name ?? (raum.art === 'okun' ? 'OKUN Workforce' : 'Gruppe'),
       beschreibung: raum.beschreibung,
       archiviert: !!raum.archiviertAm,
       mitgliederAnzahl: imRaum.length,

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { timingSafeEqual } from 'node:crypto'
 import { prisma } from '@/lib/prisma'
+import { meldetext } from '@/lib/fundmeldung'
+import { schreibeVonOkun } from '@/lib/okun-kanal'
 import { topf, TOPF_TEXT, brauchtFreigabe, istHeikel } from '@/lib/funde'
 
 export const dynamic = 'force-dynamic'
@@ -66,10 +68,35 @@ export async function GET(req: NextRequest) {
   const abgelehnt = pruefeSchluessel(req)
   if (abgelehnt) return abgelehnt
 
-  const funde = await prisma.bugReport.findMany({
-    where: { status: { in: OFFEN } },
-    orderBy: [{ heikel: 'desc' }, { createdAt: 'asc' }],
-    take: 100,
+  // §143 Die Ältesten zuerst — aber die Neuesten nie unter den Tisch.
+  //
+  // Vorher war das schlicht `take: 100` auf der nach Alter sortierten Liste.
+  // Sobald hundert Funde offen standen, fiel jede NEUE Meldung hinten heraus:
+  // Sie wäre nie im Fenster aufgetaucht, egal wie dringend. Aufgefallen ist es
+  // im eigenen Prüflauf, als sich Testfunde auf genau hundert summiert hatten —
+  // und der Lauf seinen eigenen, gerade angelegten Fund nicht mehr fand.
+  //
+  // Jetzt: der Rückstand von vorn UND alles aus den letzten vierundzwanzig
+  // Stunden. Ein frisch gemeldeter Fehler ist damit immer sichtbar, auch wenn
+  // die Liste lang ist.
+  const seitGestern = new Date(Date.now() - 24 * 3600_000)
+  const [rueckstand, frisch] = await Promise.all([
+    prisma.bugReport.findMany({
+      where: { status: { in: OFFEN } },
+      orderBy: [{ heikel: 'desc' }, { createdAt: 'asc' }],
+      take: 100,
+    }),
+    prisma.bugReport.findMany({
+      where: { status: { in: OFFEN }, createdAt: { gte: seitGestern } },
+      orderBy: [{ heikel: 'desc' }, { createdAt: 'asc' }],
+      take: 50,
+    }),
+  ])
+  const gesehen = new Set<string>()
+  const funde = [...rueckstand, ...frisch].filter(f => {
+    if (gesehen.has(f.id)) return false
+    gesehen.add(f.id)
+    return true
   })
 
   const aufbereitet = funde.map(f => {
@@ -165,6 +192,15 @@ export async function PATCH(req: NextRequest) {
         ? { status: 'in_progress' } : {}),
     },
   })
+
+  // §143 Auch auf diesem Weg erfährt der Melder, dass es erledigt ist — nicht
+  // nur über Stufe 3. Sonst hinge die Rückmeldung davon ab, WIE behoben wurde,
+  // und das geht den Melder nichts an.
+  if (aktualisiert.status === 'resolved' && fund.status !== 'resolved' && fund.userId) {
+    const meldung = meldetext('behoben', { kennung: fund.ticketId, titel: fund.title })
+    schreibeVonOkun(fund.userId, { text: meldung.text, betreff: meldung.betreff })
+      .catch(() => undefined)
+  }
 
   return NextResponse.json({ fund: { id: aktualisiert.id, status: aktualisiert.status } })
 }

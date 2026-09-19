@@ -158,4 +158,24 @@ const unbekannt = await mit('PATCH', { id: 'gibtesnicht', erledigtNotiz: 'x' })
 check('Ein unbekannter Fund wird gemeldet, nicht stillschweigend angelegt',
   unbekannt.status === 404, `HTTP ${unbekannt.status}`)
 
+// Aufräumen: Die Testfunde dieses Nachweises schließen.
+//
+// Ohne das summieren sie sich über die Läufe. Genau daran ist der Nachweis
+// einmal gescheitert — bei hundert offenen Funden fiel der eigene, gerade
+// angelegte hinten aus dem Fenster. Der Fehler saß im Programm (§143 behoben),
+// die Ursache aber hier: Eine Prüfung, die Müll hinterlässt, wird irgendwann
+// selbst zur Fehlerquelle.
+const reste = ((await hole(okun, '/api/bug-reports')).body.reports ?? [])
+  .filter(f => /^Lauf-Nachweis/.test(f.title ?? '')
+    && !['resolved', 'abgelehnt'].includes(f.status))
+for (const f of reste) {
+  await sende(okun, '/api/bug-reports', 'PATCH', {
+    id: f.id, status: 'abgelehnt', adminNotes: 'H2-Nachweis — automatisch geschlossen.',
+  })
+}
+check('Der Nachweis lässt keine offenen Testfunde zurück',
+  ((await hole(okun, '/api/bug-reports')).body.reports ?? [])
+    .filter(f => /^Lauf-Nachweis/.test(f.title ?? '')
+      && !['resolved', 'abgelehnt'].includes(f.status)).length === 0)
+
 process.exit(bilanz() > 0 ? 1 : 0)

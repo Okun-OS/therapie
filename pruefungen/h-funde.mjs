@@ -202,4 +202,30 @@ check('Mit einem Satz, was geändert wurde',
   erledigt.body.report?.erledigtNotiz?.includes('Benutzerkonto'))
 check('Und mit Zeitpunkt', !!erledigt.body.report?.erledigtAm)
 
+// Aufräumen: Was dieser Nachweis angelegt hat, schließt er auch wieder.
+//
+// Bis zum 19.09. tat er das nicht — und hatte sich in einer Woche auf hundert
+// offene Funde summiert. Dadurch fiel im Nachweis H2 der eigene, gerade
+// angelegte Fund hinten aus dem Fenster von hundert. Der Fehler saß im
+// Programm und ist behoben (§143), die Ursache aber hier: Eine Prüfung, die
+// Müll hinterlässt, wird irgendwann selbst zur Fehlerquelle.
+const TITEL_DIESES_NACHWEISES = [
+  'Gruppe lässt sich nicht eröffnen',
+  'Nettobetrag stimmt nicht mit dem Beleg überein',
+  'Woche wechseln braucht zu viele Klicks',
+  'Dienstplan soll sich selbst an das Wetter anpassen',
+]
+const OFFENE_STATUS = ['open', 'wartet_freigabe', 'freigegeben', 'rueckfrage', 'in_progress']
+const reste = ((await hole(okun, '/api/bug-reports')).body.reports ?? [])
+  .filter(f => TITEL_DIESES_NACHWEISES.includes(f.title) && OFFENE_STATUS.includes(f.status))
+for (const f of reste) {
+  await sende(okun, '/api/bug-reports', 'PATCH', {
+    id: f.id, status: 'abgelehnt', adminNotes: 'H-Nachweis — automatisch geschlossen.',
+  })
+}
+check('Der Nachweis lässt keine offenen Testfunde zurück',
+  ((await hole(okun, '/api/bug-reports')).body.reports ?? [])
+    .filter(f => TITEL_DIESES_NACHWEISES.includes(f.title)
+      && OFFENE_STATUS.includes(f.status)).length === 0)
+
 process.exit(bilanz() > 0 ? 1 : 0)

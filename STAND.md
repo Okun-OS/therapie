@@ -17,7 +17,7 @@ Zuletzt aktualisiert: **12.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Mitarbeiter-App für die Stores — Etappe 3 von 5 fertig |
-| **Zuletzt fertig** | §142 Fehlerkreislauf Stufe 3: der Lauf behebt Kleinigkeiten selbst |
+| **Zuletzt fertig** | §143 Der Melder hört, was aus seinem Fund wurde — im Kanal zu OKUN und per E-Mail |
 | **Als Nächstes** | Etappe 4/5: einreichen — blockiert durch D-U-N-S, Firebase, Datenschutzerklärung |
 | **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
 

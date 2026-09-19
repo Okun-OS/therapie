@@ -139,14 +139,23 @@ check('Sie steht am richtigen Gespräch',
 check('Die Vorschau zeigt den letzten Satz',
   listeThomas.find(r => r.id === raumId)?.letzteNachricht?.text === 'Und am Samstag?')
 
-const eigeneZaehlenNicht = await hole(anna, '/api/chat/ungelesen')
+// §143 Gezählt wird IN DIESEM Raum, nicht über alle.
+//
+// Vorher stand hier der Gesamtzähler auf null. Das stimmte nur, solange es
+// ausser Kollegengesprächen nichts gab — seit es den Kanal zu OKUN gibt, hat
+// jeder dort ungelesene Nachrichten (Rückmeldungen auf gemeldete Funde), und
+// die Prüfung schlug fehl, obwohl das Gezählte richtig war. Eine Prüfung, die
+// an fremdem Zustand hängt, prüft nicht das, was sie behauptet.
+const listeAnna = (await hole(anna, '/api/chat')).body.raeume ?? []
 check('Die eigene Nachricht zählt für einen selbst nicht als ungelesen',
-  (eigeneZaehlenNicht.body.ungelesen ?? 0) === 0, `${eigeneZaehlenNicht.body.ungelesen}`)
+  (listeAnna.find(r => r.id === raumId)?.ungelesen ?? -1) === 0,
+  `${listeAnna.find(r => r.id === raumId)?.ungelesen}`)
 
 await sende(thomas, `/api/chat/${raumId}`, 'PATCH', { gelesen: true })
-const danach = await hole(thomas, '/api/chat/ungelesen')
-check('Nach dem Lesen ist der Zähler zurück', danach.body.ungelesen === 0,
-  `${danach.body.ungelesen}`)
+const listeDanach = (await hole(thomas, '/api/chat')).body.raeume ?? []
+check('Nach dem Lesen ist der Zähler zurück',
+  (listeDanach.find(r => r.id === raumId)?.ungelesen ?? -1) === 0,
+  `${listeDanach.find(r => r.id === raumId)?.ungelesen}`)
 
 // ── E5 Gruppen ─────────────────────────────────────────────────────────────
 console.log('\n=== E5 Gruppen der Standortleitung ===')

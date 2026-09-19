@@ -1526,6 +1526,68 @@ darf, gründlicher als die anderen. Der Maßstab dabei: Ein zu streng abgelehnte
 Fund kostet einen Klick, ein zu großzügig durchgewinkter im schlimmsten Fall
 einen falschen Lohn.
 
+## Block §143 (19.09.) — Der Melder hört, was aus seinem Fund wurde
+
+Bisher verschwand eine Meldung im Nichts. Wer einen Fehler meldete, wusste
+danach nicht, ob ihn jemand gelesen hat, ob daran gearbeitet wird, und ob es
+jemals behoben wurde. **Beim zweiten Mal meldet man dann nichts mehr** — und
+genau die Leute, die den Betrieb kennen, hören auf, uns zu sagen, was kaputt
+ist.
+
+### Der Moment, um den es geht
+Jemand meldet sonntags um elf, dass ein Knopf nicht funktioniert. Eine Stunde
+später steht in seinem Kanal: *„Ist behoben."* Das ist kein Beiwerk — das ist
+der Unterschied zwischen einem Werkzeug, dem man etwas erzählt, und einem, dem
+man nichts mehr erzählt. Seit §142 läuft die Behebung ohnehin von selbst; was
+fehlte, war nur, es dem zu sagen, der es gemeldet hat.
+
+### Drei Nachrichten, nicht mehr
+- [x] **eingegangen** — sofort beim Melden, mit der Nummer zum Nachfragen
+- [x] **wir sind dran** — nur, wenn es sich hinzieht (ab 20 Minuten). Bei einer
+      Kleinigkeit, die in derselben Viertelstunde rausgeht, wären zwei
+      Nachrichten hintereinander nur Lärm — und wer drei Nachrichten für einen
+      Tippfehler bekommt, stellt sie ab
+- [x] **behoben** — samt Einladung zum Widerspruch: Wer das liest und es geht
+      immer noch nicht, soll das loswerden können, ohne alles neu zu schreiben
+
+Jede geht in den Kanal **und** per E-Mail. Der Kanal ist der verlässliche Weg,
+die E-Mail der laute — wer sonntags meldet und das Programm zumacht, sähe eine
+reine Kanalnachricht erst beim nächsten Anmelden.
+
+Ohne Fachbegriffe. Kein Commit, kein Dateiname, kein „null pointer". Der Melder
+ist eine Pflegekraft, keine Entwicklerin; was technisch passiert ist, steht auf
+der Fundeseite, wo jemand es lesen will.
+
+### Der Kanal zu OKUN
+Neu in **Nachrichten**, bei jedem ganz oben: **OKUN Workforce**. Dort landen
+die Rückmeldungen — und was man hineinschreibt, kommt bei OKUN als E-Mail an.
+
+Bewusst **kein gewöhnlicher Direktchat**: Direktchats sind unantastbar (§129),
+niemand liest sie mit, auch OKUN nicht. Genau deshalb sitzt OKUN nicht als
+Teilnehmer in einem Kundenraum, sondern hat eine eigene Tür — eine eigene
+Raumart mit genau einem menschlichen Mitglied. Die Grenze bleibt, wo sie war.
+
+- [x] Jeder hat seinen eigenen; der Kanal einer Kollegin ist für niemanden
+      sonst lesbar
+- [x] Nicht verwaltbar, nicht schließbar, OKUN taucht in keiner Personenauswahl auf
+- [x] Ein Plattformzugang hat selbst keinen — er schriebe sich sonst selbst
+
+### Zwei Funde aus dem eigenen Prüflauf
+Beim Nachweis fiel auf, dass der stündliche Lauf **seinen eigenen, gerade
+angelegten Fund nicht mehr fand**. Ursache: Die Liste der offenen Funde war
+nach Alter sortiert und bei hundert abgeschnitten — sobald hundert offen
+standen, fiel jede NEUE Meldung hinten heraus, egal wie dringend. Jetzt kommt
+der Rückstand von vorn **und** alles aus den letzten 24 Stunden.
+
+Die zweite Ursache lag in den Prüfungen selbst: `h-funde` und `h2-fundelauf`
+legten bei jedem Lauf Funde an und räumten nicht auf — in einer Woche hatten
+sich genau hundert angesammelt. Beide schließen jetzt, was sie anlegen. **Eine
+Prüfung, die Müll hinterlässt, wird irgendwann selbst zur Fehlerquelle.**
+
+Nachweis: 11 Modultests für die Texte (unter anderem, dass keine Fachbegriffe
+durchrutschen) und 26 Prüfungen am laufenden System
+(`pruefungen/h4-rueckmeldung.mjs`).
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:
