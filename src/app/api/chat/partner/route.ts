@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/session'
-import { erreichbarePartner, eigeneKennung } from '@/lib/chat'
+import { erreichbarePartner, eigeneKennung, nochOhneZugang } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,5 +16,12 @@ export async function GET(req: NextRequest) {
   if (session instanceof NextResponse) return session
   if (!eigeneKennung(session)) return NextResponse.json({ partner: [] })
 
-  return NextResponse.json({ partner: await erreichbarePartner(session) })
+  // §144 Dazu, wer hier FEHLT. Ohne diese Angabe sucht eine Standortleitung
+  // nach jemandem, der nie auftauchen wird, und zweifelt an der Suche statt an
+  // der fehlenden Einladung.
+  const [partner, ohneZugang] = await Promise.all([
+    erreichbarePartner(session),
+    nochOhneZugang(session),
+  ])
+  return NextResponse.json({ partner, ohneZugang })
 }

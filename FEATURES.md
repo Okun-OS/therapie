@@ -1588,6 +1588,48 @@ Nachweis: 11 Modultests für die Texte (unter anderem, dass keine Fachbegriffe
 durchrutschen) und 26 Prüfungen am laufenden System
 (`pruefungen/h4-rueckmeldung.mjs`).
 
+## Block §144 (19.09.) — Gruppen eröffnen, ohne vierzigmal zu klicken
+
+Der Fund aus dem Betrieb: *„Wenn ich als Standortleitung die Mitarbeiter suche,
+findet er nicht alle."* Drei Dinge dahinter, und das dritte war das eigentliche.
+
+### Alle auf einmal
+- [x] **„Alle Mitarbeiter auswählen"** — eine Gruppe fürs ganze Haus baute man
+      sonst mit vierzig Einzelklicks, und beim achtunddreißigsten verrutscht
+      einer. Bei aktiver Suche heißt der Knopf „Alle n Treffer auswählen": So
+      wird aus *Frühdienst* eingeben und einmal klicken eine fertige Gruppe.
+      Nochmal drücken hebt die Auswahl wieder auf.
+
+### Die Suche greift weiter
+- [x] Gesucht wird über **Name, Position, Standort und Rolle**. Vorher nur über
+      den Namen: Wer „Pflege" tippte, um die Pflegekräfte zu finden, bekam eine
+      leere Liste und hielt die Suche für kaputt.
+- [x] Mehrere Wörter werden **UND-verknüpft** — „pflege haus2" grenzt wirklich
+      ein, statt alles zu zeigen, was irgendeines der Wörter enthält.
+- [x] Eine leere Trefferliste sagt jetzt, dass sie leer ist, statt einfach
+      nichts zu zeigen.
+
+### Und der eigentliche Grund, warum jemand fehlte
+Er fehlte wirklich — aber nicht an der Suche. **Im Chat sind Benutzerkonten die
+Teilnehmer** (§131), und wer angelegt, aber noch nie angemeldet war, hat keins.
+Er kann also gar keine Nachricht empfangen.
+
+Ihn trotzdem zur Auswahl zu stellen wäre die schlechtere Lösung gewesen: Man
+setzte jemanden in eine Gruppe, in der er nie etwas liest, und merkte es nie.
+Richtig ist, die Lücke zu **benennen**:
+
+> ⚠ 3 Personen fehlen hier (Daniel Krüger, …) — sie haben noch keinen Zugang und
+> können deshalb keine Nachrichten empfangen. Unter **Mitarbeiter** lässt sich
+> eine Einladung verschicken.
+
+Mit Zahl, mit bis zu fünf Namen (eine Liste mit vierzig liest niemand) und mit
+dem Weg, es zu ändern. **Eine Liste, die schweigend unvollständig ist, lässt den
+Menschen an der Suche zweifeln statt an der fehlenden Einladung.**
+
+Nachweis: 6 zusätzliche Prüfungen in `pruefungen/e5-chat.mjs` (jetzt 81) —
+darunter, dass niemand gleichzeitig in beiden Listen steht und dass die Zahl am
+eigenen Mandanten endet.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

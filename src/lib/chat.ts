@@ -357,3 +357,52 @@ export async function ungeleseneGesamt(session: SessionPayload): Promise<number>
   const jeRaum = await ungeleseneJeRaum(ich, mitgliedschaften)
   return Array.from(jeRaum.values()).reduce((s, n) => s + n, 0)
 }
+
+/**
+ * §144 Wer in der Personenauswahl FEHLT — und warum.
+ *
+ * Der Fund aus dem Betrieb lautete: „Wenn ich als Standortleitung die
+ * Mitarbeiter suche, findet er nicht alle." Das stimmt, und es ist kein
+ * Suchfehler: Im Chat sind Benutzerkonten die Teilnehmer (§131). Wer angelegt,
+ * aber noch nie angemeldet war, hat keins — und kann folglich auch keine
+ * Nachricht empfangen.
+ *
+ * Ihn trotzdem zur Auswahl zu stellen, wäre die schlechtere Lösung: Man setzte
+ * jemanden in eine Gruppe, in der er nie etwas liest, und merkte es nie.
+ * Richtig ist, die Lücke zu BENENNEN — mit Namen und mit dem Weg, sie zu
+ * schließen. Eine Liste, die schweigend unvollständig ist, lässt den Menschen
+ * an der Suche zweifeln statt an der Einladung.
+ */
+export async function nochOhneZugang(session: SessionPayload): Promise<{
+  anzahl: number
+  namen: string[]
+}> {
+  const customerId = await resolveCustomerId(session)
+  if (!customerId) return { anzahl: 0, namen: [] }
+
+  const scope = await allowedLocationScope(session)
+  const standorte = scope.kind === 'all' ? null : scope.ids
+
+  const leute = await prisma.employee.findMany({
+    where: {
+      customerId,
+      active: true,
+      datenGesperrtAm: null,
+      ...(standorte ? { locationId: { in: standorte } } : {}),
+    },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  })
+  if (leute.length === 0) return { anzahl: 0, namen: [] }
+
+  const mitKonto = await prisma.user.findMany({
+    where: { employeeId: { in: leute.map(l => l.id) } },
+    select: { employeeId: true },
+  })
+  const hat = new Set(mitKonto.map(u => u.employeeId))
+
+  const fehlend = leute.filter(l => !hat.has(l.id))
+  // Höchstens ein paar Namen: Die Zahl ist die Information, die Namen sind der
+  // Anhaltspunkt. Eine Liste mit vierzig Namen liest niemand.
+  return { anzahl: fehlend.length, namen: fehlend.slice(0, 5).map(l => l.name) }
+}

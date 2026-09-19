@@ -378,4 +378,40 @@ const inFremderGruppe = await sende(gf, '/api/chat', 'POST', {
 check('Über die Unternehmensgrenze geht auch für sie nichts',
   inFremderGruppe.status === 403, `HTTP ${inFremderGruppe.status}`)
 
+// ── E5 Wer in der Auswahl fehlt ────────────────────────────────────────────
+//
+// §144 Der Fund aus dem Betrieb: „Wenn ich als Standortleitung die Mitarbeiter
+// suche, findet er nicht alle." Das stimmt — im Chat sind Benutzerkonten die
+// Teilnehmer, und wer nie angemeldet war, hat keins. Ihn trotzdem zur Auswahl
+// zu stellen, waere schlimmer: Man setzte jemanden in eine Gruppe, in der er
+// nie etwas liest. Richtig ist, die Luecke zu benennen.
+console.log('\n=== E5 Wer fehlt, wird benannt ===')
+
+const auswahl = (await hole(leitung, '/api/chat/partner')).body
+check('Die Auswahl nennt, wie viele noch keinen Zugang haben',
+  typeof auswahl.ohneZugang?.anzahl === 'number',
+  `${auswahl.ohneZugang?.anzahl} ohne Zugang, ${(auswahl.partner ?? []).length} mit`)
+check('Und nennt ein paar davon beim Namen, wenn es welche gibt',
+  (auswahl.ohneZugang?.anzahl ?? 0) === 0
+  || (auswahl.ohneZugang?.namen ?? []).length > 0,
+  (auswahl.ohneZugang?.namen ?? []).join(', '))
+check('Aber nicht alle — eine Liste mit vierzig Namen liest niemand',
+  (auswahl.ohneZugang?.namen ?? []).length <= 5)
+
+// Niemand ohne Zugang steht gleichzeitig in der Auswahl — sonst waere die
+// Zahl eine Verdopplung statt einer Ergaenzung.
+const namenMitZugang = new Set((auswahl.partner ?? []).map(p => p.name))
+check('Wer fehlt, steht nicht gleichzeitig in der Auswahl',
+  !(auswahl.ohneZugang?.namen ?? []).some(n => namenMitZugang.has(n)))
+
+const auswahlMitarbeiter = (await hole(anna, '/api/chat/partner')).body
+check('Auch ein Mitarbeiter bekommt die Angabe',
+  typeof auswahlMitarbeiter.ohneZugang?.anzahl === 'number')
+
+// Der fremde Mandant taucht in keiner der beiden Zahlen auf.
+const fremdeAuswahl = (await hole(susi, '/api/chat/partner')).body
+check('Die Zahl endet am eigenen Mandanten',
+  !(fremdeAuswahl.ohneZugang?.namen ?? []).some(n => namenMitZugang.has(n)),
+  `${fremdeAuswahl.ohneZugang?.anzahl} beim anderen Kunden`)
+
 process.exit(bilanz() > 0 ? 1 : 0)

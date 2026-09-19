@@ -97,6 +97,8 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
 
   const [maske, setMaske] = useState<'keine' | 'direkt' | 'gruppe' | 'verwalten' | 'gruppenliste'>('keine')
   const [partner, setPartner] = useState<Partner[]>([])
+  const [ohneZugang, setOhneZugang] = useState<{ anzahl: number; namen: string[] }>(
+    { anzahl: 0, namen: [] })
   const [suche, setSuche] = useState('')
   const [gruppenName, setGruppenName] = useState('')
   const [gruppenText, setGruppenText] = useState('')
@@ -184,6 +186,7 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
     const r = await fetch('/api/chat/partner')
     const d = await r.json().catch(() => ({}))
     setPartner(d.partner ?? [])
+    setOhneZugang(d.ohneZugang ?? { anzahl: 0, namen: [] })
   }
 
   async function direktStarten(userId: string) {
@@ -246,8 +249,20 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
     await oeffnen(id)
   }
 
-  const gefilterterPartner = partner.filter(p =>
-    p.name.toLowerCase().includes(suche.toLowerCase()))
+  // §144 Gesucht wird über alles, was in der Zeile steht — Name, Position,
+  // Standort und Rolle. Vorher nur über den Namen: Wer „Pflege" tippte, um die
+  // Pflegekräfte zu finden, bekam eine leere Liste und hielt die Suche für
+  // kaputt. Mehrere Wörter werden UND-verknüpft, damit sich eine große Liste
+  // wirklich eingrenzen lässt.
+  const begriffe = suche.toLowerCase().split(/\s+/).filter(Boolean)
+  const passt = (p: Partner) => {
+    const heuhaufen = [p.name, p.position, p.standort, p.rollenText]
+      .filter(Boolean).join(' ').toLowerCase()
+    return begriffe.every(b => heuhaufen.includes(b))
+  }
+  const gefilterterPartner = partner.filter(passt)
+  const alleGewaehlt = gefilterterPartner.length > 0
+    && gefilterterPartner.every(p => gewaehlte.includes(p.userId))
   const nichtMitglied = partner.filter(p => !mitglieder.some(m => m.userId === p.userId))
 
   // §131 Nur Plattformzugänge bleiben draußen: sie gehören zu keinem Kunden.
@@ -387,7 +402,19 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                   placeholder="Name suchen"
                   className="w-full text-sm border border-gray-200 rounded-lg pl-8 pr-2.5 py-1.5" />
               </div>
+              {/* §144 Auch hier: Wer fehlt, wird benannt. */}
+              {ohneZugang.anzahl > 0 && (
+                <p className="text-[11px] text-gray-400 px-0.5">
+                  {ohneZugang.anzahl === 1 ? 'Eine Person fehlt' : `${ohneZugang.anzahl} Personen fehlen`}
+                  {' — noch kein Zugang, also auch kein Postfach.'}
+                </p>
+              )}
               <div className="max-h-72 overflow-y-auto space-y-0.5">
+                {gefilterterPartner.length === 0 && (
+                  <p className="text-xs text-gray-400 px-2.5 py-3">
+                    {suche.trim() ? `Niemand gefunden für „${suche}".` : 'Niemand da.'}
+                  </p>
+                )}
                 {gefilterterPartner.map(p => (
                   <button key={p.userId} onClick={() => direktStarten(p.userId)}
                     className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-gray-50">
@@ -425,9 +452,56 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                 <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
                 <input
                   value={suche} onChange={e => setSuche(e.target.value)}
-                  placeholder="Mitglieder suchen"
+                  placeholder="Suchen nach Name, Position oder Standort"
                   className="w-full text-sm border border-gray-200 rounded-lg pl-8 pr-2.5 py-1.5" />
               </div>
+
+              {/* §144 „Alle auswählen" — der häufigste Fall überhaupt.
+                  Eine Gruppe für das ganze Haus baut man sonst mit vierzig
+                  Einzelklicks, und beim achtunddreißigsten verrutscht einer. */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setGewaehlte(
+                    alleGewaehlt ? [] : gefilterterPartner.map(p => p.userId))}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5
+                             rounded-lg border border-gray-200 text-navy hover:bg-gray-50">
+                  <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${
+                    alleGewaehlt ? 'bg-brand border-brand' : 'border-gray-300'}`}>
+                    {alleGewaehlt && <Check size={9} className="text-white" />}
+                  </span>
+                  {alleGewaehlt
+                    ? 'Auswahl aufheben'
+                    : suche.trim()
+                      ? `Alle ${gefilterterPartner.length} Treffer auswählen`
+                      : 'Alle Mitarbeiter auswählen'}
+                </button>
+                <span className="text-xs text-gray-400">
+                  {gewaehlte.length} von {partner.length} ausgewählt
+                </span>
+              </div>
+
+              {/* §144 Wer hier FEHLT, wird benannt statt verschwiegen. Eine
+                  Liste, die schweigend unvollständig ist, lässt den Menschen
+                  an der Suche zweifeln statt an der fehlenden Einladung. */}
+              {ohneZugang.anzahl > 0 && (
+                <div className="flex items-start gap-2 rounded-xl bg-amber-50 border
+                                border-amber-200 p-2.5">
+                  <AlertTriangle size={13} className="text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-900 leading-relaxed">
+                    {ohneZugang.anzahl === 1
+                      ? 'Eine Person fehlt hier'
+                      : `${ohneZugang.anzahl} Personen fehlen hier`}
+                    {ohneZugang.namen.length > 0 && ` (${ohneZugang.namen.join(', ')}${
+                      ohneZugang.anzahl > ohneZugang.namen.length ? ' …' : ''})`}
+                    {' — '}
+                    {ohneZugang.anzahl === 1 ? 'sie hat' : 'sie haben'} noch keinen Zugang
+                    und {ohneZugang.anzahl === 1 ? 'kann' : 'können'} deshalb keine
+                    Nachrichten empfangen. Unter <strong>Mitarbeiter</strong> lässt sich
+                    eine Einladung verschicken.
+                  </p>
+                </div>
+              )}
+
               <div className="max-h-60 overflow-y-auto space-y-0.5">
                 {gefilterterPartner.map(p => {
                   const drin = gewaehlte.includes(p.userId)
@@ -448,6 +522,13 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                     </button>
                   )
                 })}
+                {gefilterterPartner.length === 0 && (
+                  <p className="text-xs text-gray-400 px-2.5 py-3">
+                    {suche.trim()
+                      ? `Niemand gefunden für „${suche}".`
+                      : 'Es gibt hier noch niemanden mit Zugang.'}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button
