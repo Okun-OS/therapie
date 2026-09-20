@@ -1630,6 +1630,56 @@ Nachweis: 6 zusätzliche Prüfungen in `pruefungen/e5-chat.mjs` (jetzt 81) —
 darunter, dass niemand gleichzeitig in beiden Listen steht und dass die Zahl am
 eigenen Mandanten endet.
 
+## Block §145 (20.09.) — Zwei feste Gespräche, die jeder schon hat
+
+Unter **Nachrichten** stehen ab sofort ganz oben zwei Gespräche, die niemand
+anlegen muss und die niemand schließen kann:
+
+| | Wer antwortet | Wie schnell |
+|---|---|---|
+| **OKUN Assistent** | ein Programm | sofort |
+| **OKUN Workforce** | Menschen bei OKUN | wenn jemand gelesen hat |
+
+### Warum zwei und nicht einer
+Beides in einen Raum zu legen wäre bequem und falsch. Man wüsste nie, ob
+gerade eine Maschine oder ein Mensch geantwortet hat — und würde dem einen
+Dinge erzählen, die für den anderen gedacht waren. Hinter der einen Tür sitzt
+etwas, das sofort antwortet und das Programm erklärt; hinter der anderen
+Menschen, die vielleicht erst morgen antworten, dafür aber **entscheiden**
+können.
+
+### Der Assistent
+- [x] **Begrüßt, statt leer dazustehen** — und sagt im selben Atemzug, was er
+      *nicht* kann: in Daten sehen oder etwas ändern. Sonst fragt ihn der erste
+      Mensch nach seinem Resturlaub und ist enttäuscht.
+- [x] **Die eigene Frage steht sofort im Verlauf**, die Antwort kommt Sekunden
+      später über dieselbe regelmäßige Abfrage wie die einer Kollegin. Ein
+      Absenden-Knopf, der acht Sekunden dreht, sieht aus wie ein hängendes
+      Programm.
+- [x] **Er antwortet immer** — notfalls mit einer ehrlichen Absage und dem
+      Verweis auf das Gespräch daneben. Ein Gespräch, in dem auf eine Frage gar
+      nichts folgt, ist schlimmer als eines mit einer Absage: Man wartet, lädt
+      neu, fragt noch einmal.
+- [x] Nur die letzten zwölf Beiträge als Zusammenhang. Was vor drei Wochen
+      gefragt wurde, hilft bei der heutigen Frage selten — kostet aber jedes Mal.
+
+### Der Systemtext liegt jetzt an einer Stelle
+Der Assistent wird von zwei Seiten gerufen: aus dem Fenster hinter dem
+Fragezeichen (§140) und aus diesem Gespräch. Beide benutzen dieselbe Datei
+(`src/lib/assistent.ts`). Zwei Kopien wären nach dem ersten Umbau
+auseinandergelaufen — **und dann bekäme derselbe Mensch auf dieselbe Frage zwei
+verschiedene Antworten, je nachdem, wo er sie stellt.**
+
+### Noch ein Prüfungsfehler derselben Art
+`b3-warteschlange` zählte ungelesene Nachrichten **über alle Räume** und
+erwartete null. Das stimmte, solange es außer Kollegengesprächen nichts gab —
+seit es die festen Räume gibt, hat dort jeder etwas Ungelesenes. Gezählt wird
+jetzt im Raum. Dieselbe Korrektur wie in `e5-chat` einen Block zuvor: **Eine
+Prüfung, die an fremdem Zustand hängt, prüft nicht das, was sie behauptet.**
+
+Nachweis: 12 zusätzliche Prüfungen in `pruefungen/h4-rueckmeldung.mjs`
+(jetzt 38).
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

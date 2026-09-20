@@ -6,7 +6,9 @@ import {
   raumZugriff, darfVerwalten, darfSchreibenAn, eigeneKennung, systemHinweis,
   MAX_ZEICHEN, ROLLEN_TEXT,
 } from '@/lib/chat'
-import { OKUN_ART, weiterleitenAnOkun } from '@/lib/okun-kanal'
+import {
+  OKUN_ART, ASSISTENT_ART, weiterleitenAnOkun, assistentAntwortet,
+} from '@/lib/okun-kanal'
 
 export const dynamic = 'force-dynamic'
 
@@ -130,6 +132,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { raumId: raum.id, userId: { not: ich }, employeeId: { not: null } },
     select: { employeeId: true },
   })
+  // §145 Im Assistenten-Gespräch antwortet ein Programm. Bewusst ohne await:
+  // Die eigene Nachricht steht sofort im Verlauf, die Antwort kommt Sekunden
+  // später über dieselbe regelmäßige Abfrage wie die einer Kollegin. Ein
+  // Absenden-Knopf, der acht Sekunden dreht, sieht aus wie ein hängendes
+  // Programm.
+  if (raum.art === ASSISTENT_ART) {
+    assistentAntwortet(raum.id).catch(() => undefined)
+    return NextResponse.json({ nachricht })
+  }
+
   // §143 Der OKUN-Kanal hat kein zweites Mitglied — was hier steht, geht als
   // E-Mail bei OKUN ein. Ein Kanal, in den hineingeschrieben wird, ohne dass es
   // ankommt, wäre schlimmer als gar keiner.

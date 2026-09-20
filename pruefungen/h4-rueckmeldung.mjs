@@ -20,10 +20,10 @@ const okun = await login('okun@okun.de')
 
 const mAnna = (await hole(anna, '/api/auth/me')).body.user
 
-/** Den Kanal zu OKUN holen — er entsteht beim ersten Öffnen der Nachrichten. */
-async function kanal(cookie) {
+/** Einen der festen Räume holen — sie entstehen beim ersten Öffnen der Nachrichten. */
+async function kanal(cookie, art = 'okun') {
   const liste = (await hole(cookie, '/api/chat')).body.raeume ?? []
-  return liste.find(r => r.art === 'okun') ?? null
+  return liste.find(r => r.art === art) ?? null
 }
 
 async function verlauf(cookie, raumId) {
@@ -160,6 +160,65 @@ check('Der Nachweis lässt keine offenen Testfunde zurück',
   ((await hole(okun, '/api/bug-reports')).body.reports ?? [])
     .filter(f => /^H4-Nachweis/.test(f.title ?? '')
       && !['resolved', 'abgelehnt'].includes(f.status)).length === 0)
+
+// ── H4 Der zweite feste Raum: der Assistent ────────────────────────────────
+//
+// §145 Zwei Türen, bewusst getrennt. Hinter der einen ein Programm, das sofort
+// antwortet und das Programm erklärt; hinter der anderen Menschen, die
+// vielleicht erst morgen antworten, dafür aber entscheiden können. Beides in
+// einen Raum zu legen wäre bequem und falsch: Man wüsste nie, ob gerade eine
+// Maschine oder ein Mensch geantwortet hat.
+console.log('\n=== H4 Der Assistent ===')
+
+const assistent = await kanal(anna, 'assistent')
+check('Auch der Assistent ist von Anfang an da', !!assistent, assistent?.titel)
+check('Er heißt nach dem Assistenten', /Assistent/i.test(assistent?.titel ?? ''),
+  assistent?.titel)
+check('Und ist ein anderer Raum als der Draht zu OKUN',
+  assistent?.id !== meiner.id)
+
+const begruessung = await verlauf(anna, assistent.id)
+check('Er begrüßt, statt leer dazustehen', begruessung.length >= 1,
+  `${begruessung.length} Nachrichten`)
+check('Und sagt auch, was er NICHT kann — sonst fragt man ihn nach dem Resturlaub',
+  /nicht kann|nicht.*ändern|nicht.*sehen/i.test(begruessung[0]?.text ?? ''),
+  begruessung[0]?.text?.slice(0, 80))
+check('Er verweist für Entscheidungen an die Menschen daneben',
+  /OKUN Workforce/.test(begruessung[0]?.text ?? ''))
+
+const fremderAssistent = await hole(kollege, `/api/chat/${assistent.id}`)
+check('Auch dieses Gespräch ist für niemanden sonst lesbar',
+  fremderAssistent.status === 404, `HTTP ${fremderAssistent.status}`)
+
+const gefragt = await sende(anna, `/api/chat/${assistent.id}`, 'POST',
+  { text: 'H4-Nachweis: Wo finde ich meinen Dienstplan?' })
+check('Man kann ihn fragen', gefragt.status === 200,
+  `HTTP ${gefragt.status} · ${gefragt.body.error}`)
+check('Die Frage steht sofort im Verlauf — ohne auf die Antwort zu warten',
+  gefragt.body.nachricht?.text?.includes('Dienstplan'))
+
+// Die Antwort kommt über denselben Weg wie die einer Kollegin, also ein paar
+// Sekunden später. Ohne hinterlegten Schlüssel antwortet er trotzdem — mit
+// einer ehrlichen Absage. Ein Gespräch, in dem auf eine Frage gar nichts
+// folgt, ist schlimmer als eines mit einer Absage.
+let antwortDa = false
+for (let versuch = 0; versuch < 20 && !antwortDa; versuch++) {
+  await new Promise(r => setTimeout(r, 1500))
+  const v = await verlauf(anna, assistent.id)
+  const letzte = v[v.length - 1]
+  antwortDa = !!letzte && letzte.vonMir === false
+    && !letzte.text.includes('Wo finde ich meinen Dienstplan')
+}
+check('Und er antwortet — spätestens mit einer ehrlichen Absage', antwortDa)
+
+const nachFrage = await verlauf(anna, assistent.id)
+const letzteAntwort = nachFrage[nachFrage.length - 1]
+check('Die Antwort steht unter seinem Namen',
+  /Assistent/i.test(letzteAntwort?.absenderName ?? ''), letzteAntwort?.absenderName)
+
+check('Der Assistent taucht in keiner Personenauswahl auf',
+  !((await hole(anna, '/api/chat/partner')).body.partner ?? [])
+    .some(p => /Assistent/i.test(p.name ?? '')))
 
 console.log(`\nMelderin ${String(mAnna.id).slice(0, 8)}`)
 process.exit(bilanz() > 0 ? 1 : 0)

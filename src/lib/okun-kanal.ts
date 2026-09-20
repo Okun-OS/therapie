@@ -33,6 +33,20 @@ export const OKUN_NAME = 'OKUN Workforce'
 export const OKUN_ART = 'okun'
 
 /**
+ * §145 Der zweite feste Raum: der Hilfe-Assistent.
+ *
+ * Zwei Türen, die bewusst getrennt sind. Hinter der einen sitzt ein Programm,
+ * das sofort antwortet und das Programm erklärt. Hinter der anderen sitzen
+ * Menschen, die vielleicht erst morgen antworten, dafür aber entscheiden
+ * können. Beides in einen Raum zu legen wäre bequem und falsch: Man wüsste nie,
+ * ob gerade eine Maschine oder ein Mensch geantwortet hat — und würde dem
+ * einen Dinge erzählen, die für den anderen gedacht waren.
+ */
+export const ASSISTENT_ART = 'assistent'
+export const ASSISTENT_ABSENDER = 'assistent'
+export const ASSISTENT_NAME = 'OKUN Assistent'
+
+/**
  * Wohin eine Nachricht aus dem Kanal geht.
  *
  * Ohne Anschrift wird nichts verschickt und nichts kaputtgemacht: Der Versand
@@ -43,10 +57,13 @@ export function okunAnschrift(): string | null {
   return process.env.OKUN_SUPPORT_EMAIL?.trim() || null
 }
 
-/** Der Schlüssel, der den Kanal eines Kontos eindeutig macht. */
-export function kanalSchluessel(userId: string): string {
-  return `okun|${userId}`
+/** Der Schlüssel, der einen festen Raum eines Kontos eindeutig macht. */
+export function kanalSchluessel(userId: string, art = OKUN_ART): string {
+  return `${art}|${userId}`
 }
+
+/** Die beiden festen Räume, die jedes Konto hat. */
+export const FESTE_RAEUME = [OKUN_ART, ASSISTENT_ART]
 
 /**
  * Den Kanal eines Kontos holen — und anlegen, wenn es ihn noch nicht gibt.
@@ -55,14 +72,14 @@ export function kanalSchluessel(userId: string): string {
  * kann: Plattformzugänge von OKUN (die schrieben sich selbst) und Konten ohne
  * Kunden.
  */
-export async function okunKanal(userId: string): Promise<string | null> {
+export async function okunKanal(userId: string, art = OKUN_ART): Promise<string | null> {
   const konto = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, customerId: true, locationId: true, employeeId: true, role: true },
   })
   if (!konto || konto.role === 'okun' || !konto.customerId) return null
 
-  const schluessel = kanalSchluessel(userId)
+  const schluessel = kanalSchluessel(userId, art)
   const vorhanden = await prisma.chatRaum.findUnique({ where: { schluessel } })
   if (vorhanden) return vorhanden.id
 
@@ -73,16 +90,40 @@ export async function okunKanal(userId: string): Promise<string | null> {
       data: {
         customerId: konto.customerId,
         locationId: konto.locationId,
-        art: OKUN_ART,
-        name: OKUN_NAME,
-        beschreibung: 'Fragen, Rückmeldungen und Störungen — direkt an OKUN.',
+        art,
+        name: art === ASSISTENT_ART ? ASSISTENT_NAME : OKUN_NAME,
+        beschreibung: art === ASSISTENT_ART
+          ? 'Fragen zum Programm — der Assistent antwortet sofort.'
+          : 'Fragen, Rückmeldungen und Störungen — direkt an OKUN.',
         schluessel,
-        erstelltVon: OKUN_ABSENDER,
+        erstelltVon: art === ASSISTENT_ART ? ASSISTENT_ABSENDER : OKUN_ABSENDER,
         mitglieder: {
           create: [{ userId: konto.id, employeeId: konto.employeeId, rolle: 'mitglied' }],
         },
       },
     })
+
+    // §145 Ein leeres Gespräch sagt nicht, wofür es da ist. Der erste Satz
+    // steht deshalb schon drin — und er sagt auch, was der Assistent NICHT
+    // kann, damit niemand ihn nach seinem Resturlaub fragt und enttäuscht wird.
+    await prisma.chatNachricht.create({
+      data: {
+        raumId: raum.id,
+        userId: art === ASSISTENT_ART ? ASSISTENT_ABSENDER : OKUN_ABSENDER,
+        absenderName: art === ASSISTENT_ART ? ASSISTENT_NAME : OKUN_NAME,
+        art: 'text',
+        text: art === ASSISTENT_ART
+          ? 'Hallo! Ich erkläre dir, wie OKUN Workforce funktioniert — wo du '
+            + 'etwas findest, was eine Funktion macht, wie ein Ablauf gedacht '
+            + 'ist. Frag einfach.\n\nWas ich nicht kann: in deine Daten sehen '
+            + 'oder etwas ändern. Für alles, wo ein Mensch entscheiden muss, ist '
+            + 'das Gespräch „OKUN Workforce" daneben da.'
+          : 'Hier erreichst du OKUN direkt — bei Störungen, Fragen zur '
+            + 'Abrechnung oder wenn etwas fehlt. Wir lesen mit und antworten. '
+            + 'Rückmeldungen zu gemeldeten Fehlern landen ebenfalls hier.',
+      },
+    }).catch(() => undefined)
+
     return raum.id
   } catch {
     const nachtraeglich = await prisma.chatRaum.findUnique({ where: { schluessel } })
@@ -169,4 +210,64 @@ export async function weiterleitenAnOkun(
     return
   }
   await sendEmail(anschrift, betreff, inhalt).catch(() => undefined)
+}
+
+/**
+ * §145 Die Antwort des Assistenten in den Raum schreiben.
+ *
+ * WARUM NICHT AUF DIE ANTWORT GEWARTET WIRD
+ * Der Aufrufer schickt eine Nachricht ab und bekommt sie sofort zurück — so
+ * steht sie im Verlauf, wie man es von jedem Messenger kennt. Die Antwort
+ * kommt Sekunden später über denselben Weg wie die einer Kollegin: Die Liste
+ * fragt ohnehin alle zehn Sekunden nach. Würde der Absenden-Knopf acht
+ * Sekunden lang drehen, hielte man das Programm für hängen.
+ *
+ * WARUM BEI EINEM FEHLER TROTZDEM ETWAS DASTEHT
+ * Ein Gespräch, in dem auf eine Frage gar nichts folgt, ist schlimmer als eins
+ * mit einer ehrlichen Absage — man wartet, lädt neu, fragt noch einmal. Bleibt
+ * die Antwort aus, schreibt der Assistent das selbst hin.
+ */
+export async function assistentAntwortet(raumId: string): Promise<void> {
+  const { frageAssistenten, assistentEingerichtet } = await import('./assistent')
+
+  const schreib = (text: string) => prisma.chatNachricht.create({
+    data: {
+      raumId, userId: ASSISTENT_ABSENDER, absenderName: ASSISTENT_NAME,
+      text, art: 'text',
+    },
+  }).then(() => prisma.chatRaum.update({
+    where: { id: raumId }, data: { letzteAktivitaet: new Date() },
+  })).then(() => undefined)
+
+  if (!assistentEingerichtet()) {
+    await schreib(
+      'Der Assistent ist auf dieser Anlage nicht eingerichtet. Deine Frage ist '
+      + 'nicht verloren — schreib sie im Gespräch „OKUN Workforce" daneben, '
+      + 'dort liest ein Mensch mit.',
+    ).catch(() => undefined)
+    return
+  }
+
+  // Nur die letzten Beiträge als Zusammenhang. Ein Gespräch, das seit Wochen
+  // läuft, würde sonst mit jeder Frage teurer und langsamer — und was vor drei
+  // Wochen gefragt wurde, hilft bei der heutigen Frage selten.
+  const letzte = await prisma.chatNachricht.findMany({
+    where: { raumId, art: 'text' },
+    orderBy: { createdAt: 'desc' },
+    take: 12,
+    select: { userId: true, text: true },
+  })
+  const verlauf = letzte.reverse().map(n => ({
+    role: n.userId === ASSISTENT_ABSENDER ? ('assistant' as const) : ('user' as const),
+    content: n.text,
+  }))
+  if (verlauf.length === 0 || verlauf[verlauf.length - 1].role !== 'user') return
+
+  const antwort = await frageAssistenten(verlauf)
+  await schreib(
+    antwort
+    ?? 'Da komme ich gerade nicht weiter — bitte versuch es gleich noch einmal. '
+      + 'Wenn es dabei bleibt, schreib es im Gespräch „OKUN Workforce" daneben, '
+      + 'dort liest ein Mensch mit.',
+  ).catch(() => undefined)
 }

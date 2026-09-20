@@ -213,10 +213,17 @@ if (raum.body.raum?.id) {
 
   // Aufräumen: Eine ungelesene Nachricht bliebe im Zähler des Kollegen stehen
   // und verschöbe den Nachweis E5, der genau diesen Zähler prüft.
+  //
+  // §145 Gezählt wird IM RAUM, nicht über alle. Der Gesamtzähler stand auf
+  // null, solange es ausser Kollegengesprächen nichts gab — seit es die festen
+  // Räume (Assistent, Draht zu OKUN) gibt, hat jeder dort etwas Ungelesenes.
+  // Eine Prüfung, die an fremdem Zustand hängt, prüft nicht das, was sie
+  // behauptet.
   await sende(kollege, `/api/chat/${raum.body.raum.id}`, 'PATCH', { gelesen: true })
-  const zaehler = (await hole(kollege, '/api/chat/ungelesen')).body.ungelesen
-  check('Und der Nachweis lässt keinen ungelesenen Rest zurück', zaehler === 0,
-    `${zaehler} ungelesen`)
+  const dieserRaum = ((await hole(kollege, '/api/chat')).body.raeume ?? [])
+    .find(r => r.id === raum.body.raum.id)
+  check('Und der Nachweis lässt keinen ungelesenen Rest zurück',
+    (dieserRaum?.ungelesen ?? -1) === 0, `${dieserRaum?.ungelesen} ungelesen`)
 }
 
 // Aufräumen: niemand bleibt eingestempelt zurück.

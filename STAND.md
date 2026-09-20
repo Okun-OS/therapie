@@ -17,7 +17,7 @@ Zuletzt aktualisiert: **12.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Mitarbeiter-App für die Stores — Etappe 3 von 5 fertig |
-| **Zuletzt fertig** | §144 Gruppen eröffnen: alle auf einmal, Suche über alles, und wer fehlt, wird benannt |
+| **Zuletzt fertig** | §145 Zwei feste Gespräche für jeden: der Assistent und der Draht zu OKUN |
 | **Als Nächstes** | Etappe 4/5: einreichen — blockiert durch D-U-N-S, Firebase, Datenschutzerklärung |
 | **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
 

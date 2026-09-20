@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   MessageSquare, Users, Plus, Search, Send, Settings2, X, Check,
-  AlertTriangle, Archive, LogOut, UserPlus, Lock, LifeBuoy,
+  AlertTriangle, Archive, LogOut, UserPlus, Lock, LifeBuoy, Sparkles,
 } from 'lucide-react'
 import { einreihen } from '@/lib/warteschlange'
 import { schlangeGeaendert } from '@/components/offline/Warteschlange'
@@ -24,8 +24,11 @@ import { schlangeGeaendert } from '@/components/offline/Warteschlange'
 
 interface Raum {
   id: string
-  /** §143 `okun` ist der Draht zu OKUN — steht immer oben und ist nicht löschbar. */
-  art: 'direkt' | 'gruppe' | 'okun'
+  /**
+   * §143/§145 Zwei feste Räume stehen immer oben und sind nicht löschbar:
+   * `assistent` (ein Programm, antwortet sofort) und `okun` (Menschen).
+   */
+  art: 'direkt' | 'gruppe' | 'okun' | 'assistent'
   titel: string
   beschreibung?: string | null
   archiviert: boolean
@@ -343,9 +346,11 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
             <div className="max-h-[62vh] overflow-y-auto space-y-0.5">
               {/* §143 Der Draht zu OKUN steht oben und bleibt dort. Wer eine
                   Störung melden will, soll nicht suchen müssen. */}
-              {[...raeume].sort((a, b) =>
-                (a.art === 'okun' ? 0 : 1) - (b.art === 'okun' ? 0 : 1),
-              ).map(r => (
+              {[...raeume].sort((a, b) => {
+                const rang = (x: Raum) =>
+                  x.art === 'assistent' ? 0 : x.art === 'okun' ? 1 : 2
+                return rang(a) - rang(b)
+              }).map(r => (
                 <button
                   key={r.id}
                   onClick={() => oeffnen(r.id)}
@@ -353,11 +358,13 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                     offen === r.id ? 'bg-teal-50' : 'hover:bg-gray-50'
                   }`}>
                   <div className="flex items-center gap-2">
-                    {r.art === 'okun'
-                      ? <LifeBuoy size={14} className="text-teal-600 shrink-0" />
-                      : r.art === 'gruppe'
-                        ? <Users size={14} className="text-gray-400 shrink-0" />
-                        : <MessageSquare size={14} className="text-gray-400 shrink-0" />}
+                    {r.art === 'assistent'
+                      ? <Sparkles size={14} className="text-brand shrink-0" />
+                      : r.art === 'okun'
+                        ? <LifeBuoy size={14} className="text-teal-600 shrink-0" />
+                        : r.art === 'gruppe'
+                          ? <Users size={14} className="text-gray-400 shrink-0" />
+                          : <MessageSquare size={14} className="text-gray-400 shrink-0" />}
                     <span className={`text-sm truncate flex-1 ${
                       r.ungelesen > 0 ? 'font-bold text-navy' : 'font-semibold text-navy'
                     }`}>{r.titel}</span>

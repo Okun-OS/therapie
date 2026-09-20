@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import {
   raeumeFuer, eigeneKennung, darfSchreibenAn, direktSchluessel,
 } from '@/lib/chat'
-import { okunKanal } from '@/lib/okun-kanal'
+import { okunKanal, FESTE_RAEUME } from '@/lib/okun-kanal'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +27,11 @@ export async function GET(req: NextRequest) {
   // §143 Der Draht zu OKUN ist für jeden da — er wird beim ersten Öffnen der
   // Nachrichten angelegt. Wer eine Störung melden will, soll nicht erst
   // herausfinden müssen, wo das geht.
-  await okunKanal(eigeneKennung(session)!).catch(() => null)
+  // §145 Zwei feste Gespräche hat jeder: der Assistent, der sofort antwortet,
+  // und der Draht zu OKUN, hinter dem Menschen sitzen.
+  await Promise.all(
+    FESTE_RAEUME.map(art => okunKanal(eigeneKennung(session)!, art).catch(() => null)),
+  )
 
   const raeume = await raeumeFuer(session)
   return NextResponse.json({
