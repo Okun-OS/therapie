@@ -1680,6 +1680,79 @@ Prüfung, die an fremdem Zustand hängt, prüft nicht das, was sie behauptet.**
 Nachweis: 12 zusätzliche Prüfungen in `pruefungen/h4-rueckmeldung.mjs`
 (jetzt 38).
 
+## Block §147 (21.09.) — HR Stufe 3: BEM aus den Fehlzeiten
+
+**§167 Abs. 2 SGB IX:** Wer innerhalb eines Jahres länger als sechs Wochen
+arbeitsunfähig war, dem *muss* ein betriebliches Eingliederungsmanagement
+angeboten werden. Ohne dokumentiertes Angebot ist eine spätere
+krankheitsbedingte Kündigung praktisch nicht haltbar.
+
+**Das ist die Stufe, die nur wir bauen können** — weil die Fehlzeiten schon im
+System liegen. Ein getrenntes Personalwerkzeug müsste sie abtippen lassen, und
+dann rechnet sie niemand aus, und dann fällt es erst auf, wenn ein Gericht
+danach fragt.
+
+### Drei Wörter im Gesetz, die gern falsch gelesen werden
+- [x] **„innerhalb eines Jahres"** — zwölf rollende Monate, nicht das
+      Kalenderjahr. Wer im November vier Wochen und im Februar drei Wochen
+      fehlt, ist über der Schwelle, obwohl in keinem Kalenderjahr sechs Wochen
+      zusammenkommen.
+- [x] **„oder wiederholt"** — es müssen keine sechs Wochen am Stück sein.
+      Einzelne Tage zählen zusammen.
+- [x] **„länger als"** — bei genau 42 Tagen ist die Schwelle noch *nicht*
+      überschritten. Erst der dreiundvierzigste löst aus. Ein Tag Unterschied,
+      und er entscheidet über eine Rechtspflicht.
+
+Dazu: überlappende Krankmeldungen zählen nicht doppelt (eine
+Folgebescheinigung, die einen Tag zurückreicht, darf nicht zu früh auslösen),
+Urlaub zählt gar nicht mit, und nach einem Abschluss wird **ab dem Abschluss**
+neu gezählt — sonst löste derselbe Zeitraum ein zweites Mal aus.
+
+### Was das Programm nicht tut
+Es entscheidet nichts und bietet nichts von selbst an. Es rechnet die Schwelle
+aus und sagt, dass ein Angebot fällig ist. **Ein BEM-Angebot ist ein Gespräch
+zwischen Menschen; eine automatische E-Mail dazu wäre der falsche Ton für den
+Anlass.**
+
+Eine **Ablehnung wird festgehalten**, nicht verworfen: Die Teilnahme ist
+freiwillig, und die dokumentierte Ablehnung ist der Nachweis, dass angeboten
+wurde — das Wertvollste am ganzen Vorgang. Ein **Abschluss braucht dagegen ein
+Ergebnis**: Ohne wäre das Verfahren nicht durchgeführt, sondern nur abgehakt,
+und genau das prüft ein Arbeitsgericht.
+
+### Gesundheitsdaten, also eng
+- [x] Die Standortleitung sieht BEM **standardmäßig nicht**. Der Betrieb kann
+      es freischalten — in kleinen Häusern führt sie das Gespräch selbst.
+- [x] **Die Leitung kann sich diese Freigabe nicht selbst erteilen.** Beim Bauen
+      aufgefallen: `/api/org-settings` nahm bis dahin jedes Feld von jeder
+      Leitung entgegen. Ohne diese Sperre wäre die ganze Sichtbarkeitsregel
+      eine Bitte gewesen.
+- [x] Ein Mitarbeiter sieht hier gar nichts — nicht einmal sich selbst. Sein BEM
+      erfährt er durch das Angebot, nicht durch eine Liste im Programm.
+- [x] **Keine Übersicht „wer war wie oft krank".** Angezeigt wird nur, wer über
+      der Schwelle liegt oder in einem Verfahren ist. Eine solche Liste kann man
+      nicht bauen, ohne dass sie irgendwann auch so benutzt wird.
+- [x] Niemals eine Diagnose — nur das Verfahren. In der Auskunft nach Art. 15
+      steht es trotzdem: Die Person darf wissen, was über ihr Verfahren
+      festgehalten ist.
+
+### Zwei Fehler, die der Prüflauf gefunden hat
+**Eine Antwort, die sich nur einmal lesen lässt.** Ich hatte die 403-Antwort als
+Modulkonstante angelegt. Eine `NextResponse` trägt einen Datenstrom, und der ist
+nach dem ersten Lesen verbraucht — ab der zweiten Anfrage kam ein 403 mit
+**leerem Körper**: Status richtig, Begründung weg. Jetzt eine Funktion.
+
+**Eine Prüfung, die an fremdem Zustand hing.** `i2-bem` rechnete zuerst mit den
+Fehlzeiten einer Person aus den Testdaten — und fiel im Gesamtlauf um, weil
+andere Nachweise deren Fehlzeiten anlegen und löschen. Sie hat jetzt eine eigene
+Person. Und sie räumt sie auch wieder weg: Beim ersten Versuch blieb „BEM
+Nachweis" stehen, stand alphabetisch vorn und wurde vom Lohnnachweis d12 als
+Testperson gegriffen, der daraufhin umfiel. **Wer jemanden anlegt, räumt ihn
+auch weg.**
+
+Nachweis: 26 Modultests für die Rechenwege (jeder Grenzfall der Schwelle
+einzeln) und 32 Prüfungen am laufenden System (`pruefungen/i2-bem.mjs`).
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

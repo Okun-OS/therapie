@@ -16,10 +16,10 @@ Zuletzt aktualisiert: **12.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | HR-Modul — Stufe 1 von 6 fertig (Fristen), danach Sichtbarkeit und BEM |
-| **Zuletzt fertig** | §146 HR Stufe 1: der Fristenmotor für Pflichtnachweise und Vertragsfristen |
-| **Als Nächstes** | HR Stufe 3: BEM aus den Fehlzeiten (§167 Abs.2 SGB IX) |
-| **Danach** | HR Stufe 4: Recruiting. Parallel: App in die Stores (wartet auf D-U-N-S) |
+| **Baustelle** | HR-Modul — Stufen 1–3 fertig (Fristen, Sichtbarkeit, BEM) |
+| **Zuletzt fertig** | §147 HR Stufe 3: BEM aus den Fehlzeiten (§167 Abs. 2 SGB IX) |
+| **Als Nächstes** | HR Stufe 4: Recruiting — zwei Fragen offen (Domain, Zusatzmodul) |
+| **Danach** | Onboarding-Checklisten. Parallel: App in die Stores (wartet auf D-U-N-S) |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an

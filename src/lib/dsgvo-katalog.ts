@@ -225,6 +225,21 @@ export const DATENARTEN: Datenart[] = [
       + 'aufgefrischt werden muss — er wird gelöscht.',
   },
   {
+    id: 'bem',
+    bezeichnung: 'Betriebliches Eingliederungsmanagement',
+    beschreibung:
+      'Wurde Ihnen ein Eingliederungsmanagement angeboten, ob Sie zugestimmt '
+      + 'haben und was dabei vereinbart wurde. Keine Diagnosen — nur das '
+      + 'Verfahren selbst.',
+    modelle: ['BemVorgang'],
+    behandlung: 'loeschen',
+    fristJahre: 0,
+    grundlage: 'Art.9 DSGVO (Gesundheitsdaten), §167 Abs.2 SGB IX',
+    begruendung:
+      'Gesundheitsbezogene Angaben werden nicht länger aufbewahrt als nötig. '
+      + 'Nach dem Ausscheiden werden sie gelöscht.',
+  },
+  {
     id: 'protokolle',
     bezeichnung: 'Zugriffsprotokolle',
     beschreibung: 'Aufzeichnungen darüber, wer wann auf welche Daten zugegriffen hat.',

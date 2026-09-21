@@ -522,4 +522,6 @@ export interface OrgSettings {
   // §130 Ab dem wievielten Kalendertag der Betrieb die
   // Arbeitsunfaehigkeitsbescheinigung verlangt. Leer = die gesetzlichen vier.
   auNachweisAbTag?: number | null
+  /** §147 Ob die Standortleitung BEM-Vorgänge sehen darf. Standard: nein. */
+  bemSichtbarLeitung?: boolean
 }

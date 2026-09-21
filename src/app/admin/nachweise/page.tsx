@@ -1,7 +1,9 @@
 'use client'
 
-import { ShieldAlert } from 'lucide-react'
+import { useState } from 'react'
+import { ShieldAlert, ListChecks, HeartPulse } from 'lucide-react'
 import { Fristenliste } from '@/components/hr/Fristenliste'
+import { BemListe } from '@/components/hr/BemListe'
 
 /**
  * §146 Nachweise und Fristen aus Sicht der Standortleitung.
@@ -12,6 +14,8 @@ import { Fristenliste } from '@/components/hr/Fristenliste'
  * alle Standorte.
  */
 export default function AdminNachweise() {
+  const [sicht, setSicht] = useState<'stand' | 'bem'>('stand')
+
   return (
     <div className="p-4 sm:p-6 space-y-5">
       <div>
@@ -23,7 +27,25 @@ export default function AdminNachweise() {
           Was abgelaufen ist, steht oben.
         </p>
       </div>
-      <Fristenliste />
+      {/* §147 BEM steht hier nur dann, wenn das Unternehmen es freigegeben hat —
+          die Liste selbst sagt es, ohne etwas preiszugeben. */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        {([
+          ['stand', 'Nachweise', <ListChecks key="a" size={13} />],
+          ['bem', 'BEM', <HeartPulse key="b" size={13} />],
+        ] as const).map(([wert, text, sym]) => (
+          <button
+            key={wert}
+            onClick={() => setSicht(wert)}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2
+                        rounded-lg ${sicht === wert ? 'bg-white text-navy shadow-sm'
+              : 'text-gray-500'}`}>
+            {sym} {text}
+          </button>
+        ))}
+      </div>
+
+      {sicht === 'stand' ? <Fristenliste /> : <BemListe />}
     </div>
   )
 }

@@ -54,6 +54,7 @@ function toOrgSettings(row: any): OrgSettings {
     autoApproveVacationUnderDays: row.autoApproveVacationUnderDays,
     notificationEmail: row.notificationEmail,
     auNachweisAbTag: row.auNachweisAbTag ?? null,
+    bemSichtbarLeitung: row.bemSichtbarLeitung ?? false,
   }
 }
 

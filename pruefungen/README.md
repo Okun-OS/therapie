@@ -90,6 +90,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `h3-behebung.mjs` | Was der Lauf selbst beheben darf — und was nie |
 | `h4-rueckmeldung.mjs` | Der Kanal zu OKUN und was der Melder zu hören bekommt |
 | `i-nachweise.mjs` | Pflichtnachweise und Vertragsfristen: Katalog, Sichtbarkeit, Ablauf |
+| `i2-bem.mjs` | Eingliederungsmanagement: Schwelle, Verfahren, wer es nicht sehen darf |
 
 ## Eine neue Prüfung schreiben
 

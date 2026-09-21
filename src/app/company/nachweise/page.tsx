@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { ShieldAlert, Settings2, ListChecks } from 'lucide-react'
+import { ShieldAlert, Settings2, ListChecks, HeartPulse } from 'lucide-react'
 import { Fristenliste } from '@/components/hr/Fristenliste'
 import { Nachweiskatalog } from '@/components/hr/Nachweiskatalog'
+import { BemListe } from '@/components/hr/BemListe'
 
 /**
  * §146 Nachweise und Fristen aus Sicht des Unternehmens.
@@ -14,7 +15,7 @@ import { Nachweiskatalog } from '@/components/hr/Nachweiskatalog'
  * Eintrag im Katalog.
  */
 export default function CompanyNachweise() {
-  const [sicht, setSicht] = useState<'stand' | 'katalog'>('stand')
+  const [sicht, setSicht] = useState<'stand' | 'katalog' | 'bem'>('stand')
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
@@ -31,6 +32,7 @@ export default function CompanyNachweise() {
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
         {([
           ['stand', 'Stand', <ListChecks key="a" size={13} />],
+          ['bem', 'BEM', <HeartPulse key="c" size={13} />],
           ['katalog', 'Katalog', <Settings2 key="b" size={13} />],
         ] as const).map(([wert, text, sym]) => (
           <button
@@ -44,7 +46,9 @@ export default function CompanyNachweise() {
         ))}
       </div>
 
-      {sicht === 'stand' ? <Fristenliste /> : <Nachweiskatalog />}
+      {sicht === 'stand' ? <Fristenliste />
+        : sicht === 'bem' ? <BemListe />
+        : <Nachweiskatalog />}
     </div>
   )
 }

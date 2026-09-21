@@ -258,6 +258,12 @@ const ZUGRIFF: Record<string, Zugriff> = {
     zaehlen: (db, k) => db.frist.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.frist.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
   },
+  // §147 Gesundheitsbezogen (Art.9 DSGVO) — wird nicht laenger aufbewahrt als
+  // noetig und geht mit dem Ausscheiden.
+  BemVorgang: {
+    zaehlen: (db, k) => db.bemVorgang.count({ where: { employeeId: k.employeeId } }),
+    loeschen: (db, k) => db.bemVorgang.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
+  },
   Loeschantrag: {
     zaehlen: (db, k) => db.loeschantrag.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.loeschantrag.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),

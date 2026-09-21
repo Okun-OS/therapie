@@ -157,6 +157,16 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
     where: { employeeId: id },
     select: { id: true, art: true, angestossenVonName: true, createdAt: true },
   }),
+  // §147 Das eigene BEM-Verfahren — ob angeboten, ob zugestimmt, was
+  // vereinbart wurde. Die Person hat ein Recht darauf zu wissen, was über
+  // dieses Verfahren festgehalten ist.
+  BemVorgang: id => prisma.bemVorgang.findMany({
+    where: { employeeId: id },
+    select: {
+      id: true, ausgeloestAm: true, angebotenAm: true, antwort: true,
+      antwortAm: true, ergebnis: true, abgeschlossenAm: true,
+    },
+  }),
   // §146 Welche Nachweise geführt werden und bis wann sie gelten — das ist
   // eine Verarbeitung über die Person und gehört in ihre Auskunft.
   Frist: id => prisma.frist.findMany({

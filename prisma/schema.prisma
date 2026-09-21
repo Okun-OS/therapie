@@ -810,6 +810,14 @@ model OrgSettings {
   datevBeraternummer           String?
   datevMandantennummer         String?
 
+  // §147 Ob die Standortleitung BEM-Vorgaenge sehen darf.
+  //
+  // Standardmaessig NEIN: Es sind Gesundheitsdaten nach Art. 9 DSGVO, und der
+  // Kreis der Mitwissenden gehoert so klein wie moeglich gehalten. In kleinen
+  // Betrieben fuehrt die Standortleitung das Gespraech aber selbst — dann
+  // laesst sich das hier einschalten.
+  bemSichtbarLeitung           Boolean  @default(false)
+
   // §130 Ab dem wievielten Kalendertag der Betrieb die
   // Arbeitsunfaehigkeitsbescheinigung verlangt.
   //
@@ -1108,6 +1116,48 @@ model BugReport {
 
   @@index([status])
   @@index([art, bereich])
+}
+
+/// §147 Betriebliches Eingliederungsmanagement (§167 Abs. 2 SGB IX).
+///
+/// Wer innerhalb eines Jahres laenger als sechs Wochen arbeitsunfaehig war,
+/// dem MUSS ein BEM angeboten werden. Die Schwelle rechnet das System aus den
+/// Fehlzeiten selbst aus; dieser Eintrag haelt fest, was daraufhin geschah.
+///
+/// DIESE DATEN SIND BESONDERS. Gesundheitsdaten nach Art. 9 DSGVO. Deshalb
+/// steht hier NUR, was im Verfahren geschah — niemals eine Diagnose. Und
+/// deshalb ist die Sichtbarkeit standardmaessig auf die Unternehmensebene
+/// beschraenkt.
+///
+/// Eine Ablehnung wird festgehalten und nicht geloescht: Sie ist der Nachweis,
+/// dass angeboten wurde, und damit das Wertvollste am ganzen Vorgang.
+model BemVorgang {
+  id              String    @id @default(cuid())
+  employeeId      String
+  customerId      String
+  /// Wie viele AU-Tage im rollenden Jahr die Schwelle ausgeloest haben
+  tageBeiAusloesung Int     @default(0)
+  ausgeloestAm    DateTime  @default(now())
+
+  angebotenAm     DateTime?
+  angebotenVon    String?
+  /// offen | zugestimmt | abgelehnt — die Teilnahme ist freiwillig
+  antwort         String    @default("offen")
+  antwortAm       DateTime?
+
+  /// Was herausgekommen ist. Ohne Ergebnis waere das Verfahren nicht
+  /// durchgefuehrt, sondern nur abgehakt — und genau das prueft ein
+  /// Arbeitsgericht spaeter.
+  ergebnis        String?
+  abgeschlossenAm DateTime?
+  abgeschlossenVon String?
+
+  notiz           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([employeeId])
+  @@index([customerId])
 }
 
 /// §146 Eine Art von Nachweis oder Frist, die ein Kunde fuehrt.
