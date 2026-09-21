@@ -89,6 +89,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `h2-fundelauf.mjs` | Der Zugang für den stündlichen Lauf und seine Grenzen |
 | `h3-behebung.mjs` | Was der Lauf selbst beheben darf — und was nie |
 | `h4-rueckmeldung.mjs` | Der Kanal zu OKUN und was der Melder zu hören bekommt |
+| `i-nachweise.mjs` | Pflichtnachweise und Vertragsfristen: Katalog, Sichtbarkeit, Ablauf |
 
 ## Eine neue Prüfung schreiben
 

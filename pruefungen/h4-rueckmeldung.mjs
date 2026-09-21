@@ -57,7 +57,15 @@ check('Ein Plattformzugang hat selbst keinen Kanal',
 // ── H4 Die Meldung kommt an ────────────────────────────────────────────────
 console.log('\n=== H4 Eingegangen ===')
 
-const vorher = (await verlauf(anna, meiner.id)).length
+// §146 Verglichen wird die NEUESTE Kennung, nicht die Anzahl. Der Verlauf ist
+// bei 500 Nachrichten gedeckelt — sobald ein Kanal darüber gewachsen ist, bleibt
+// die Zahl gleich, obwohl etwas dazugekommen ist. Genau daran ist diese Prüfung
+// einmal gescheitert; die Regel steht seitdem in pruefungen/README.md.
+const letzteKennung = async () => {
+  const v = await verlauf(anna, meiner.id)
+  return v[v.length - 1]?.id ?? null
+}
+const vorher = await letzteKennung()
 
 const gemeldet = await sende(anna, '/api/bug-reports', 'POST', {
   art: 'fehler', bereich: 'nachrichten',
@@ -71,7 +79,8 @@ check('Die Meldung wird angenommen', gemeldet.status === 200, gemeldet.body.tick
 
 const nachMeldung = await verlauf(anna, meiner.id)
 check('Es steht sofort eine Rückmeldung im Kanal',
-  nachMeldung.length > vorher, `${vorher} → ${nachMeldung.length}`)
+  (await letzteKennung()) !== vorher,
+  `${vorher?.slice(0, 8)} → ${nachMeldung[nachMeldung.length - 1]?.id?.slice(0, 8)}`)
 
 const eingang = nachMeldung[nachMeldung.length - 1]
 check('Sie kommt von OKUN, nicht von einem Kollegen',
@@ -95,8 +104,8 @@ await sende(okun, '/api/bug-reports', 'PATCH', {
 const nachAbschluss = await verlauf(anna, meiner.id)
 const abschluss = nachAbschluss[nachAbschluss.length - 1]
 check('Nach dem Abschluss steht die Erledigt-Meldung im Kanal',
-  nachAbschluss.length > nachMeldung.length,
-  `${nachMeldung.length} → ${nachAbschluss.length}`)
+  abschluss?.id !== nachMeldung[nachMeldung.length - 1]?.id,
+  `${abschluss?.id?.slice(0, 8)}`)
 check('Sie sagt, dass es behoben ist', /behoben/i.test(abschluss?.text ?? ''))
 check('Und dass es jetzt funktionieren sollte',
   /funktionieren/i.test(abschluss?.text ?? ''))
@@ -109,8 +118,8 @@ await sende(okun, '/api/bug-reports', 'PATCH', {
 })
 const nachNotiz = await verlauf(anna, meiner.id)
 check('Eine Notiz ohne Statuswechsel löst keine weitere Nachricht aus',
-  nachNotiz.length === nachAbschluss.length,
-  `${nachAbschluss.length} → ${nachNotiz.length}`)
+  nachNotiz[nachNotiz.length - 1]?.id === abschluss?.id,
+  `${nachNotiz[nachNotiz.length - 1]?.id?.slice(0, 8)}`)
 
 // ── H4 Zurückschreiben ─────────────────────────────────────────────────────
 console.log('\n=== H4 Zurückschreiben ===')

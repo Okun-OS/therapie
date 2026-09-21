@@ -35,14 +35,25 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const raum = zugriff.raum!
   const ich = eigeneKennung(session)!
 
-  const [nachrichten, mitglieder] = await Promise.all([
+  // §146 Die NEUESTEN 500, nicht die ältesten.
+  //
+  // Vorher stand hier `orderBy: asc` mit `take: 500` — das liefert die ersten
+  // fünfhundert Nachrichten eines Raums. Ab der fünfhunderteinsten sah man die
+  // neuen nie wieder: Der Verlauf blieb in der Vergangenheit stehen, und jede
+  // Antwort verschwand, ohne dass jemand es gemerkt hätte. Aufgefallen im
+  // eigenen Prüflauf, als ein Kanal über die Grenze gewachsen war.
+  //
+  // Geholt wird absteigend und danach gedreht, damit die Anzeige wie gewohnt
+  // von alt nach neu läuft.
+  const [neueste, mitglieder] = await Promise.all([
     prisma.chatNachricht.findMany({
       where: { raumId: raum.id },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       take: 500,
     }),
     prisma.chatMitglied.findMany({ where: { raumId: raum.id } }),
   ])
+  const nachrichten = neueste.reverse()
 
   const namen = new Map(
     (await prisma.user.findMany({

@@ -157,6 +157,15 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
     where: { employeeId: id },
     select: { id: true, art: true, angestossenVonName: true, createdAt: true },
   }),
+  // §146 Welche Nachweise geführt werden und bis wann sie gelten — das ist
+  // eine Verarbeitung über die Person und gehört in ihre Auskunft.
+  Frist: id => prisma.frist.findMany({
+    where: { employeeId: id },
+    select: {
+      id: true, bezeichnung: true, gattung: true, erfuelltAm: true,
+      faelligAm: true, befreitAm: true, befreitGrund: true, notiz: true,
+    },
+  }),
   // §139 Der eigene Löschantrag und die Antwort darauf gehören in die Auskunft.
   // Wer nach Monaten fragt, was aus seinem Antrag geworden ist, findet es hier
   // schwarz auf weiß — samt Begründung, falls er abgelehnt wurde.

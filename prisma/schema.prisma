@@ -1110,6 +1110,84 @@ model BugReport {
   @@index([art, bereich])
 }
 
+/// §146 Eine Art von Nachweis oder Frist, die ein Kunde fuehrt.
+///
+/// Der Katalog gehoert dem Kunden. Wir liefern Vorlagen je Betriebsform mit
+/// (src/lib/nachweis-vorlagen.ts), aber nichts davon ist einprogrammiert: Ein
+/// Betrieb, der nur ein Fuehrungszeugnis fuehrt, legt genau einen Eintrag an.
+///
+/// Erste Hilfe, Hygienebelehrung, Masernnachweis, Probezeitende, auslaufende
+/// Befristung — das sieht nach vielen Themen aus und ist eines: ein Datum
+/// laeuft ab, und jemand muss es vorher wissen.
+model Nachweisart {
+  id             String   @id @default(cuid())
+  customerId     String
+  name           String
+  /// nachweis | vertrag — nur fuer die Gruppierung in der Anzeige
+  gattung        String   @default("nachweis")
+  /// alle | positionen | qualifikationen | einzeln
+  giltFuer       String   @default("alle")
+  /// Bei positionen/qualifikationen: die Werte, auf die es zutrifft
+  giltFuerWerte  String[] @default([])
+  /// einmalig | einstellung | wiederkehrend | einstellung_und_wiederkehrend
+  faelligkeit    String   @default("wiederkehrend")
+  /// Bei wiederkehrend: der Abstand in Monaten
+  abstandMonate  Int?
+  /// Wie viele Tage vorher gewarnt wird
+  vorwarnTage    Int      @default(56)
+  nachweisNoetig Boolean  @default(true)
+  /// leitung | unternehmen — was die Leitung nicht sehen darf, wird
+  /// ausgeblendet, nicht ausgegraut
+  sichtbarkeit   String   @default("leitung")
+  /// warnen | sperren — sperren heisst: ohne gueltigen Nachweis nicht einplanen
+  folge          String   @default("warnen")
+  /// Die Vorschrift, aus der die Frist folgt. Wer sie aendert, soll sehen,
+  /// woran er ruettelt.
+  grundlage      String?
+  aktiv          Boolean  @default(true)
+  reihenfolge    Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+/// §146 Der Stand einer Frist bei einer Person.
+///
+/// Gespeichert werden nur Tatsachen: wann erfuellt, bis wann gueltig, ob
+/// befreit. Der STAND ("laeuft ab", "abgelaufen") wird gerechnet — ein
+/// gespeicherter Status waere am naechsten Morgen falsch, ohne dass jemand
+/// etwas getan haette.
+model Frist {
+  id            String    @id @default(cuid())
+  employeeId    String
+  customerId    String
+  /// Die Art aus dem Katalog. Leer bei einer von Hand angelegten Einzelfrist —
+  /// die wird beim Abgleich nie weggeraeumt.
+  nachweisartId String?
+  /// Kopie des Namens, damit der Eintrag lesbar bleibt, wenn die Art umbenannt
+  /// oder geloescht wird
+  bezeichnung   String
+  gattung       String    @default("nachweis")
+  /// Wann zuletzt erfuellt: Schulung besucht, Untersuchung gemacht, unterschrieben
+  erfuelltAm    DateTime?
+  /// Bis wann es gilt — das Feld, um das sich alles dreht
+  faelligAm     DateTime?
+  /// Wer befreit ist, braucht einen Grund. Sonst ist es keine Befreiung,
+  /// sondern Vergessen.
+  befreitAm     DateTime?
+  befreitGrund  String?
+  /// Das hinterlegte Dokument in der Personalakte
+  dateiId       String?
+  notiz         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([employeeId, nachweisartId])
+  @@index([employeeId])
+  @@index([customerId, faelligAm])
+}
+
 /// §142 Stufe 3: Was der Lauf selbst behoben hat.
 ///
 /// Jede automatische Aenderung an einem Programm, das Gehaelter rechnet, muss

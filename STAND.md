@@ -16,10 +16,10 @@ Zuletzt aktualisiert: **12.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | Mitarbeiter-App für die Stores — Etappe 3 von 5 fertig |
-| **Zuletzt fertig** | §145 Zwei feste Gespräche für jeden: der Assistent und der Draht zu OKUN |
-| **Als Nächstes** | Etappe 4/5: einreichen — blockiert durch D-U-N-S, Firebase, Datenschutzerklärung |
-| **Danach** | Fahrplan Teil 1.4–1.6 (geldwerte Vorteile, bAV, Pfändungen) |
+| **Baustelle** | HR-Modul — Stufe 1 von 6 fertig (Fristen), danach Sichtbarkeit und BEM |
+| **Zuletzt fertig** | §146 HR Stufe 1: der Fristenmotor für Pflichtnachweise und Vertragsfristen |
+| **Als Nächstes** | HR Stufe 3: BEM aus den Fehlzeiten (§167 Abs.2 SGB IX) |
+| **Danach** | HR Stufe 4: Recruiting. Parallel: App in die Stores (wartet auf D-U-N-S) |
 
 > **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
 > Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an

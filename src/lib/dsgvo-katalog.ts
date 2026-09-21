@@ -211,6 +211,20 @@ export const DATENARTEN: Datenart[] = [
       + 'Die Lohnunterlagen bleiben davon unberührt.',
   },
   {
+    id: 'nachweise',
+    bezeichnung: 'Qualifikationen und Pflichtnachweise',
+    beschreibung:
+      'Ihre Schulungen, Belehrungen und Zeugnisse samt Gültigkeitsdauer — etwa '
+      + 'Erste Hilfe, Infektionsschutzbelehrung oder das Führungszeugnis.',
+    modelle: ['Frist'],
+    behandlung: 'loeschen',
+    fristJahre: 0,
+    begruendung:
+      'Die Unterlagen selbst liegen in Ihrer Personalakte und folgen deren '
+      + 'Aufbewahrung. Der Eintrag hier ist nur die Erinnerung dazu, wann etwas '
+      + 'aufgefrischt werden muss — er wird gelöscht.',
+  },
+  {
     id: 'protokolle',
     bezeichnung: 'Zugriffsprotokolle',
     beschreibung: 'Aufzeichnungen darüber, wer wann auf welche Daten zugegriffen hat.',

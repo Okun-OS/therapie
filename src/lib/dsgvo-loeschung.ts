@@ -252,6 +252,12 @@ const ZUGRIFF: Record<string, Zugriff> = {
     zaehlen: (db, k) => db.loeschvorgang.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.loeschvorgang.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
   },
+  // §146 Die Frist ist nur die Erinnerung; der Nachweis selbst liegt als
+  // Dokument in der Personalakte und folgt deren Aufbewahrung.
+  Frist: {
+    zaehlen: (db, k) => db.frist.count({ where: { employeeId: k.employeeId } }),
+    loeschen: (db, k) => db.frist.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
+  },
   Loeschantrag: {
     zaehlen: (db, k) => db.loeschantrag.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.loeschantrag.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
