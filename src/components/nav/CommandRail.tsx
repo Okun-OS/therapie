@@ -114,7 +114,10 @@ export function CommandRail() {
   // Load notifications
   useEffect(() => {
     if (!user) return
-    fetch(`/api/notifications?employeeId=${user.id}`)
+    // §151 Ohne Parameter: das eigene Postfach. Vorher stand hier `user.id` —
+    // die Kennung des Kontos statt die des Mitarbeiters. Die Glocke bekam
+    // dadurch auf jeder Seite eine Absage und blieb immer leer.
+    fetch('/api/notifications')
       .then(r => r.json())
       .then(d => setNotifications(Array.isArray(d.notifications) ? d.notifications : []))
       .catch(() => {})

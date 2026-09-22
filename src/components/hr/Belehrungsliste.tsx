@@ -140,6 +140,12 @@ export function Belehrungsliste() {
         ? `${d.erinnert} erinnert.` : (d.hinweis ?? 'Es ist niemand mehr offen.'))
     }
     if (was === 'wiederholen') setMeldung('Neue Runde als Entwurf angelegt.')
+    // §151 Auch das Schließen bekommt eine Rückmeldung. Ohne sie ändert sich
+    // für den Anwender sichtbar nur ein kleines Abzeichen — zu wenig für
+    // einen Schritt, der nicht zurückgeht.
+    if (was === 'schliessen') {
+      setMeldung('Runde geschlossen. Die abgegebenen Bestätigungen bleiben erhalten.')
+    }
     await holen()
     if (was === 'wiederholen' && d.belehrung?.id) oeffnen(d.belehrung.id)
     else oeffnen(id)

@@ -122,7 +122,22 @@ export function Anforderungsliste() {
     const d = await res.json().catch(() => ({}))
     setArbeitet(false)
     if (!res.ok) { setFehler(d.error ?? 'Das hat nicht geklappt.'); return }
-    if (d.fristErfuellt) setMeldung('Abgenommen — die Frist ist damit erfüllt.')
+    // §151 Immer eine Rückmeldung, nicht nur wenn eine Frist dranhing.
+    //
+    // Vorher stand hier nur die Meldung für den Fall mit Frist. Bei allen
+    // anderen verschwand der Eintrag nach dem Klick wortlos aus der Liste —
+    // er rutschte unter „erledigt", das zugeklappt ist. Aus Sicht des
+    // Anwenders passierte damit nichts, und der Zweifel führt zum zweiten
+    // Klick auf einen Knopf, den es nicht mehr gibt.
+    setMeldung(
+      status === 'erledigt'
+        ? (d.fristErfuellt
+          ? 'Abgenommen — die Frist ist damit erfüllt.'
+          : 'Abgenommen. Der Vorgang steht jetzt unter „erledigt".')
+        : status === 'rueckfrage' ? 'Rückfrage verschickt.'
+          : status === 'zurueckgezogen' ? 'Zurückgezogen.'
+            : 'Gespeichert.',
+    )
     setAntwort('')
     await holen()
     oeffnen(id)

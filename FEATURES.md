@@ -1927,6 +1927,74 @@ Belegs, Wiederholungsrhythmus) und 60 Prüfungen am laufenden System
 (`pruefungen/i4-belehrung.mjs`). Gesamtlauf: **1075/1075 in 31 Prüfungen**, 686
 Modultests, Bauen sauber.
 
+## Block §151 (22.09.) — Das HR-Modul im Browser durchgespielt
+
+Die 1080 Prüfungen sprechen mit den **Schnittstellen**. Sie sagen nichts
+darüber, ob eine Seite überhaupt rendert oder ob ein Knopf tut, was daraufsteht.
+Deshalb einmal alles im echten Browser bedient: jede neue Seite, jeder Reiter,
+und die drei Abläufe von Anfang bis Ende — Stelle ausschreiben bis Bewerbung,
+Nachweis anfordern bis Abnahme, Belehrung verteilen bis Bestätigung.
+
+**Ergebnis: Das HR-Modul selbst trug keinen Fehler.** Alle Seiten rendern, alle
+Reiter schalten, alle drei Abläufe laufen durch. Gefunden wurden vier andere
+Dinge — drei davon älter als dieses Modul.
+
+### Die Glocke war für jeden kaputt
+`Header.tsx` und `CommandRail.tsx` fragten das Postfach mit `user.id` ab — der
+Kennung des **Benutzerkontos**, nicht der des **Mitarbeiterdatensatzes**. Die
+beiden sind nie gleich. Folge: auf jeder Seite und in jeder Rolle eine Absage
+(403 beim Mitarbeiter, 404 bei der Leitung), die Glocke blieb dauerhaft leer.
+
+Gemerkt hat es nie jemand, weil beide Aufrufer den Fehler verschlucken
+(`.catch(() => {})`) — und eine leere Glocke sieht aus wie eine Glocke ohne neue
+Nachrichten.
+
+Das betraf §149 und §150 unmittelbar: Beide verschicken Benachrichtigungen, und
+die wären in der Oberfläche nie angekommen. `/api/notifications` fällt jetzt ohne
+Angabe auf das **eigene** Postfach zurück; ein Konto ohne Mitarbeiterdatensatz
+(die Unternehmensebene) bekommt eine leere Liste statt eines Fehlers. Die fremde
+Kennung bleibt möglich und wird weiter geprüft — mit Gegenprobe in
+`e-kommunikation.mjs`.
+
+### Dieselbe Verwechslung in der Frühwarnung
+`/api/controlling/early-warning` legt Benachrichtigungen an und bekam ebenfalls
+`user.id`. Die Meldungen landeten in einem Postfach, das es nicht gibt, und
+waren für niemanden lesbar.
+
+### Das Stundenkonto fragte ins Leere
+Die Kachel auf `/employee/ich` rief `/api/hours-account` ohne Jahr und Monat auf
+— 400 bei jedem Seitenaufruf. Beigetragen hat die Antwort nie etwas; angezeigt
+wurde immer schon der Wert aus dem Mitarbeiterdatensatz. Sie richtig zu stellen
+hätte es schlimmer gemacht: Diese Schnittstelle liefert die Über- und
+Unterstunden **eines Monats**, und das ist unter der Überschrift „Stundenkonto"
+die falsche Zahl. Die Abfrage ist jetzt weg.
+
+### Zwei stumme Knöpfe (aus §149/§150)
+Nach „Abnehmen" verschwand der Vorgang wortlos aus der Liste — er rutschte unter
+„erledigt", das zugeklappt ist. Aus Sicht des Anwenders passierte nichts, und
+der Zweifel führt zum zweiten Klick auf einen Knopf, den es nicht mehr gibt.
+Dasselbe beim Schließen einer Belehrungsrunde. Beide melden jetzt, was geschehen
+ist.
+
+### Und ein Prüfstand, der sich selbst vergiftete
+`f5-regelpakete` ordnet dem Reha-Standort das Regelpaket der **Kita** zu — das
+ist sein Zweck — und nahm es nie zurück. Zwei Prüfungen später plant
+`f-dienstplan` denselben Standort, der Rechendienst sucht nach Erzieherinnen,
+findet nur Pflegefachkräfte und liefert einen leeren Plan. Ein einziger
+abgebrochener Lauf vergiftete damit jeden folgenden.
+
+Das ist genau Regel 1 der `pruefungen/README.md`. `f5` stellt den Ausgangszustand
+jetzt wieder her, und `f-dienstplan` stellt seinen eigenen her, statt sich darauf
+zu verlassen.
+
+**Bekannt, nicht behoben:** `lohnPerson()` in `helfer.mjs` legt für jede
+Lohn-Prüfung eine Person an und räumt sie nie weg — inzwischen 182 Karteileichen
+am Reha-Standort. Sie stören noch nichts (der Plan rechnet mit 330 Personen
+durch), aber sie wachsen mit jedem Lauf. Eigener Vorgang.
+
+Stand nach diesem Block: **1080/1080 in 31 Prüfungen**, 686 Modultests, Bauen
+sauber, und zusätzlich 50 Schritte im Browser über drei Rollen und drei Abläufe.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

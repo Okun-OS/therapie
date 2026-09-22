@@ -7,6 +7,7 @@ const { check, bilanz } = pruefer()
 const leitung = await login('leitung@rheinblick-reha.de')
 const kita = await login('leitung@kita-sonnenschein.de')
 const anna = await login('anna.fischer@rheinblick-reha.de')
+const okun = await login('okun@okun.de')
 
 const meLeitung = (await hole(leitung, '/api/auth/me')).body.user
 const meAnna = (await hole(anna, '/api/auth/me')).body.user
@@ -24,6 +25,23 @@ const woche = [0, 1, 2, 3, 4].map(tag)
 
 console.log(`Standort ${locationId.slice(0, 12)} · ${alleMA.filter(e => e.locationId === locationId).length} Mitarbeiter · ${dienste.length} Dienste`)
 console.log(`Planwoche ${woche[0]} bis ${woche[4]}\n`)
+
+/**
+ * Regel 1: Die Prüfung stellt ihren Ausgangszustand selbst her.
+ *
+ * Dieser Standort beschäftigt Pflegefachkräfte. Hing ihm noch das Regelpaket
+ * einer Kita an — `f5-regelpakete` ordnet es zu —, dann sucht der Rechendienst
+ * nach Erzieherinnen, findet keine und liefert einen leeren Plan. Der
+ * Fehlschlag sähe dann aus wie ein kaputter Rechenkern und wäre in Wahrheit
+ * nur hinterlassener Zustand.
+ */
+const fremdesPaket = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
+  ?.find(s => s.id === locationId)?.rulePackId
+if (fremdesPaket) {
+  await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+    { locationId, rulePackId: null })
+  console.log(`Regelpaket „${fremdesPaket}" entfernt — es gehört nicht zu diesem Standort.\n`)
+}
 
 // ── F1 Rechenkern ──────────────────────────────────────────────────────────
 console.log('=== F1 Rechenkern ===')

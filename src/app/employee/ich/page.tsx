@@ -22,12 +22,9 @@ import { AppEinstellungen } from '@/components/app/AppEinstellungen'
  * wird: „Wie viel Urlaub habe ich noch?" und „Wie stehen meine Stunden?"
  */
 
-interface Konto { balanceMinutes?: number }
-
 export default function Ich() {
   const { user, logout } = useAuth()
   const [mich, setMich] = useState<Employee | null>(null)
-  const [konto, setKonto] = useState<Konto | null>(null)
   const [offeneNachweise, setOffeneNachweise] = useState(0)
 
   useEffect(() => {
@@ -49,17 +46,23 @@ export default function Ich() {
       setOffeneNachweise(
         (z?.offen ?? 0) + (z?.rueckfrage ?? 0) + (b?.offen ?? 0))
     })
-    fetch(`/api/hours-account?employeeId=${user.employeeId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => setKonto(d?.account ?? d ?? null))
-      .catch(() => {})
   }, [user?.employeeId])
 
   const resturlaub = mich
     ? (mich.vacationDaysTotal ?? 0) - (mich.vacationDaysUsed ?? 0)
     : null
 
-  const saldo = konto?.balanceMinutes ?? (mich?.hoursBalance != null ? mich.hoursBalance * 60 : null)
+  /**
+   * §151 Das Stundenkonto ist der LAUFENDE Saldo, nicht der des Monats.
+   *
+   * Hier stand vorher zusätzlich eine Abfrage auf /api/hours-account. Sie ging
+   * ohne Jahr und Monat hinaus, bekam bei jedem Seitenaufruf einen 400 zurück
+   * und trug nie etwas bei — angezeigt wurde immer schon der Wert aus dem
+   * Mitarbeiterdatensatz. Sie richtig zu stellen hätte es schlimmer gemacht:
+   * Diese Schnittstelle liefert die Über- und Unterstunden EINES Monats, und
+   * das ist unter der Überschrift „Stundenkonto" die falsche Zahl.
+   */
+  const saldo = mich?.hoursBalance != null ? mich.hoursBalance * 60 : null
   const saldoText = saldo == null
     ? '—'
     : `${saldo >= 0 ? '+' : '−'}${Math.floor(Math.abs(saldo) / 60)}:${String(Math.round(Math.abs(saldo) % 60)).padStart(2, '0')}`

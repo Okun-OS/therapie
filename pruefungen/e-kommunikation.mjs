@@ -5,6 +5,9 @@ import { pruefer, login, hole, sende } from './helfer.mjs'
 const { check, bilanz } = pruefer()
 
 const leitung = await login('leitung@rheinblick-reha.de')
+// §151 Die Unternehmensebene hat kein eigenes Postfach — sie hat keinen
+// Mitarbeiterdatensatz. Genau dieser Fall wird unten geprüft.
+const gf = await login('gf@rheinblick-reha.de')
 const kita = await login('leitung@kita-sonnenschein.de')
 const anna = await login('anna.fischer@rheinblick-reha.de')
 
@@ -49,6 +52,43 @@ check('Fremdes Postfach ist NICHT abrufbar', fremdesPostfach.status === 403,
 const kitaPostfach = await hole(kita, `/api/notifications?employeeId=${annaId}`)
 check('Fremde Leitung kommt nicht an das Postfach', kitaPostfach.status === 403,
   `HTTP ${kitaPostfach.status}`)
+
+/**
+ * §151 Ohne Angabe: das EIGENE Postfach.
+ *
+ * Vorher war die Kennung Pflicht — und beide Aufrufer in der Oberfläche
+ * schickten dafür die Kennung des BENUTZERKONTOS statt die des Mitarbeiters.
+ * Die Glocke bekam auf jeder Seite eine Absage und blieb dauerhaft leer;
+ * gemerkt hat es niemand, weil eine leere Glocke aussieht wie eine ohne neue
+ * Nachrichten. Deshalb steht das hier jetzt als Nachweis.
+ */
+const ohneAngabe = await hole(anna, '/api/notifications')
+check('Ohne Angabe kommt das eigene Postfach', ohneAngabe.status === 200,
+  `HTTP ${ohneAngabe.status}`)
+check('Und zwar genau dasselbe wie mit Angabe',
+  (ohneAngabe.body.notifications ?? []).length
+    === (eigenesPostfach.body.notifications ?? []).length
+  && (ohneAngabe.body.notifications?.[0]?.id ?? null)
+    === (eigenesPostfach.body.notifications?.[0]?.id ?? null),
+  `${ohneAngabe.body.notifications?.length ?? 0} gegen `
+  + `${eigenesPostfach.body.notifications?.length ?? 0}`)
+
+// Die Gegenprobe: Der bequeme Weg darf keine fremden Daten öffnen. Eine
+// fremde Leitung bekommt ohne Angabe ihr eigenes Postfach — nicht Annas.
+const kitaOhneAngabe = await hole(kita, '/api/notifications')
+const annaKennungen = new Set(
+  (eigenesPostfach.body.notifications ?? []).map(n => n.id))
+check('Ohne Angabe sieht eine fremde Leitung nichts von Anna',
+  (kitaOhneAngabe.body.notifications ?? []).every(n => !annaKennungen.has(n.id)),
+  `${kitaOhneAngabe.body.notifications?.length ?? 0} eigene Nachrichten`)
+
+// Ein Konto ohne Mitarbeiterdatensatz hat kein Postfach. Das ist eine leere
+// Liste und kein Fehler — sonst meldete die Oberfläche der Unternehmensebene
+// auf jeder Seite eine Störung, die keine ist.
+const gfPostfach = await hole(gf, '/api/notifications')
+check('Ein Konto ohne Mitarbeiterdatensatz bekommt eine leere Liste',
+  gfPostfach.status === 200 && Array.isArray(gfPostfach.body.notifications),
+  `HTTP ${gfPostfach.status}`)
 
 // Rundruf
 const rundruf = await sende(leitung, '/api/notifications/broadcast', 'POST',

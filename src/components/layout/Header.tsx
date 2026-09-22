@@ -35,8 +35,11 @@ export function Header({ title, subtitle }: HeaderProps) {
     router.push('/login')
   }
 
-  const loadNotifications = (employeeId: string) => {
-    fetch(`/api/notifications?employeeId=${employeeId}`)
+  // §151 Ohne Parameter: das eigene Postfach. Vorher wurde `user.id`
+  // übergeben — die Kennung des Kontos, nicht die des Mitarbeiters. Die
+  // Glocke bekam dadurch immer eine Absage und blieb leer.
+  const loadNotifications = () => {
+    fetch('/api/notifications')
       .then(res => res.json())
       .then(data => setNotifications(Array.isArray(data.notifications) ? data.notifications : []))
       .catch(() => {})
@@ -44,15 +47,22 @@ export function Header({ title, subtitle }: HeaderProps) {
 
   useEffect(() => {
     if (!user) return
-    loadNotifications(user.id)
+    loadNotifications()
 
-    if (user.role === 'admin' || user.role === 'company') {
+    // §151 Die Frühwarnung legt Benachrichtigungen an — und zwar für einen
+    // Mitarbeiterdatensatz. Hier stand `user.id`, die Kennung des Kontos:
+    // Die Meldungen landeten in einem Postfach, das es nicht gibt, und waren
+    // für niemanden lesbar. Ein Konto ohne Mitarbeiterdatensatz (die
+    // Unternehmensebene) hat kein Postfach — dann wird gar nicht erst gefragt.
+    if ((user.role === 'admin' || user.role === 'company') && user.employeeId) {
       fetch('/api/controlling/early-warning', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId: user.id, locationId: user.locationId }),
+        body: JSON.stringify({
+          employeeId: user.employeeId, locationId: user.locationId,
+        }),
       })
-        .then(() => loadNotifications(user.id))
+        .then(() => loadNotifications())
         .catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

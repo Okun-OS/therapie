@@ -16,6 +16,24 @@ const kita = await login('leitung@kita-sonnenschein.de')
 const locationId = (await hole(leitung, '/api/auth/me')).body.user.locationId
 console.log(`Standort ${locationId}\n`)
 
+/**
+ * Der Ausgangszustand, den diese Prüfung gleich verändert.
+ *
+ * Sie ordnet diesem Standort das Regelpaket der Kita zu — das ist ihr Zweck.
+ * Zurückgenommen hat sie es nie, und das Paket blieb kleben. Die Folge fiel
+ * erst zwei Prüfungen später auf: `f-dienstplan` plant denselben Standort,
+ * der Rechendienst wendet das fremde Paket an, findet keine Erzieherinnen und
+ * liefert einen leeren Plan. Ein einziger abgebrochener Lauf vergiftete damit
+ * jeden folgenden — genau das, was Regel 1 der README verhindern soll.
+ */
+const paketVorher = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
+  ?.find(s => s.id === locationId)?.rulePackId ?? null
+
+async function zustandWiederherstellen() {
+  await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+    { locationId, rulePackId: paketVorher })
+}
+
 // ── Wer darf überhaupt hier hinein ─────────────────────────────────────────
 console.log('=== Nur OKUN verwaltet die Dienstplanung ===')
 for (const [wer, cookie] of [['Unternehmen', gf], ['Standortleitung', leitung]]) {
@@ -107,5 +125,13 @@ check('Der Kunde kann sich kein Paket selbst zuordnen', selbstSchaltet.status ==
 const nochFrei = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
   .find(s => s.id === locationId)
 check('Der Stand ist unverändert', nochFrei?.dienstplanungFrei === true)
+
+// ── Aufräumen ──────────────────────────────────────────────────────────────
+await zustandWiederherstellen()
+const danach = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
+  ?.find(s => s.id === locationId)
+check('Das Regelpaket ist wieder wie vorher',
+  (danach?.rulePackId ?? null) === paketVorher,
+  `jetzt ${danach?.rulePackId ?? 'keins'}, vorher ${paketVorher ?? 'keins'}`)
 
 process.exit(bilanz() ? 1 : 0)
