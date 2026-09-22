@@ -827,6 +827,22 @@ model OrgSettings {
   // vier Tage.
   auNachweisAbTag              Int?
 
+  // §148 Die Karriereseite.
+  //
+  // Sie ist die einzige Seite dieses Programms, die ohne Anmeldung erreichbar
+  // ist. Deshalb steht hier auch das Impressum: Eine oeffentliche Seite eines
+  // Unternehmens ohne Anbieterkennzeichnung ist nach §5 DDG abmahnfaehig, und
+  // das waere ein unschoener Weg, eine neue Funktion kennenzulernen. Ohne
+  // Impressum geht die Seite gar nicht erst online.
+  karriereSlug                 String?  @unique
+  karriereAktiv                Boolean  @default(false)
+  karriereUeberschrift         String?
+  karriereText                 String?
+  /// Wohin eine eingegangene Bewerbung gemeldet wird. Leer = notificationEmail
+  karriereEmail                String?
+  karriereImpressum            String?
+  karriereDatenschutz          String?
+
   updatedAt                    DateTime @updatedAt
 }
 
@@ -1829,4 +1845,134 @@ model EmployeePayrollProfile {
   updatedAt           DateTime @updatedAt
 
   @@index([customerId])
+}
+
+// ─── §148 Recruiting: Stellen, Karriereseite, Bewerber ───────────────────────
+
+/// §148 Eine ausgeschriebene Stelle.
+///
+/// WARUM DIE ANZEIGE IN FELDERN STEHT UND NICHT ALS EIN TEXTBLOCK
+/// Eine Stellenanzeige geht nicht nur auf die eigene Karriereseite. Google for
+/// Jobs will strukturierte Angaben (Ort, Umfang, Verguetung, Datum), und jede
+/// Boerse will sie wieder anders. Aus Feldern laesst sich jedes Format bauen;
+/// aus einem fertigen Absatz laesst sich nichts mehr herausholen.
+///
+/// WARUM DER TEXT TROTZDEM FREI BLEIBT
+/// `beschreibung` ist der Teil, den der Betrieb selbst schreibt. Ein Programm,
+/// das eine Kita zwingt, ihre Stelle in dieselben Stichpunkte zu pressen wie
+/// ein Pflegedienst, produziert Anzeigen, die niemand liest.
+model Stelle {
+  id                String    @id @default(cuid())
+  customerId        String
+  /// Leer = unternehmensweit ausgeschrieben
+  locationId        String?
+  titel             String
+  /// Der Ort in der Anzeige. Kopiert und nicht nachgeschlagen, damit eine
+  /// veroeffentlichte Anzeige sich nicht aendert, wenn jemand den Standort
+  /// umbenennt.
+  ort               String?
+  plz               String?
+  /// vollzeit | teilzeit | minijob | ausbildung | praktikum | aushilfe
+  umfang            String    @default("vollzeit")
+  stundenProWoche   Int?
+  /// unbefristet | befristet
+  befristung        String    @default("unbefristet")
+  befristetBis      String?
+  /// Leer heisst "ab sofort"
+  beginn            String?
+  beschreibung      String    @default("")
+  aufgaben          String[]  @default([])
+  profil            String[]  @default([])
+  wirBieten         String[]  @default([])
+  /// Angaben zur Verguetung. Freiwillig — aber eine Anzeige ohne Zahl wird
+  /// deutlich seltener angeklickt.
+  verguetungVon     Int?
+  verguetungBis     Int?
+  /// stunde | monat | jahr
+  verguetungZeit    String    @default("monat")
+  /// entwurf | veroeffentlicht | geschlossen
+  status            String    @default("entwurf")
+  /// Die Adresse der Anzeige auf der Karriereseite
+  slug              String
+  veroeffentlichtAm DateTime?
+  geschlossenAm     DateTime?
+  kontaktName       String?
+  kontaktEmail      String?
+  erstelltVon       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([customerId, slug])
+  @@index([customerId, status])
+  @@index([locationId])
+}
+
+/// §148 Eine Bewerbung — ueber die Karriereseite eingegangen oder von Hand
+/// eingepflegt.
+///
+/// WARUM `employeeId` HIER STEHT
+/// Weil eine Bewerbung im besten Fall in einer Einstellung endet. Ohne diese
+/// Verbindung waere nach der Uebernahme nicht mehr erkennbar, woher jemand
+/// kam — und die Bewerbungsdaten wuerden nach der Loeschfrist entfernt,
+/// obwohl die Person inzwischen im Haus arbeitet.
+///
+/// WARUM `loeschenAb` EIN FELD IST UND KEINE RECHNUNG
+/// Bewerberdaten duerfen nicht unbegrenzt liegen bleiben. Die Frist haengt
+/// aber vom Verlauf ab: Eine Absage startet sie, eine Aufnahme in den
+/// Bewerberpool mit Einwilligung verlaengert sie. Ein gerechneter Wert waere
+/// nach der ersten Einwilligung falsch.
+model Bewerbung {
+  id            String    @id @default(cuid())
+  customerId    String
+  stelleId      String?
+  /// Kopie des Titels, damit die Bewerbung lesbar bleibt, wenn die Anzeige
+  /// laengst geschlossen und geloescht ist
+  stelleTitel   String?
+  locationId    String?
+  name          String
+  email         String
+  telefon       String?
+  nachricht     String?
+  /// karriereseite | eingepflegt | empfehlung | initiativ | boerse
+  quelle        String    @default("karriereseite")
+  /// neu | gesichtet | gespraech | zusage | absage | eingestellt
+  status        String    @default("neu")
+  /// Wann der Stand zuletzt bewegt wurde
+  statusAm      DateTime  @default(now())
+  gespraechAm   DateTime?
+  gespraechOrt  String?
+  notiz         String?
+  /// Einwilligung, die Unterlagen ueber die gesetzliche Frist hinaus zu
+  /// behalten. Ohne sie wird nach `loeschenAb` geloescht.
+  poolBis       DateTime?
+  employeeId    String?
+  uebernommenAm DateTime?
+  /// §128 Ab wann die Daten zu loeschen sind
+  loeschenAb    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([customerId, status])
+  @@index([stelleId])
+  @@index([loeschenAb])
+  @@index([employeeId])
+}
+
+/// §148 Was mit einer Bewerbung geschehen ist.
+///
+/// Der Grund ist dasselbe wie beim Loeschbericht: Wer absagt, muss spaeter
+/// belegen koennen, wann und warum — das AGG kennt eine Klagefrist von zwei
+/// Monaten, und in dieser Zeit ist eine luecklose Spur der einzige Schutz.
+/// Zugleich ist es das, was ein Bewerber-CRM ueberhaupt brauchbar macht: Man
+/// sieht auf einen Blick, wer wann mit wem gesprochen hat.
+model BewerbungEreignis {
+  id          String   @id @default(cuid())
+  bewerbungId String
+  /// eingegangen | stand | notiz | nachricht | einladung | uebernahme
+  art         String
+  text        String
+  vonName     String?
+  createdAt   DateTime @default(now())
+
+  @@index([bewerbungId, createdAt])
 }

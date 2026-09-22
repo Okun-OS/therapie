@@ -176,6 +176,27 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
       faelligAm: true, befreitAm: true, befreitGrund: true, notiz: true,
     },
   }),
+  // §148 Wer über eine Bewerbung ins Haus gekommen ist, hat auch ein Recht
+  // darauf zu erfahren, was darüber festgehalten wurde. Nach der Übernahme ist
+  // der Vorgang mit der Person verknüpft — ohne diese Abfrage bliebe er in der
+  // Auskunft unsichtbar.
+  Bewerbung: id => prisma.bewerbung.findMany({
+    where: { employeeId: id },
+    select: {
+      id: true, stelleTitel: true, quelle: true, status: true,
+      gespraechAm: true, uebernommenAm: true, createdAt: true,
+    },
+  }),
+  BewerbungEreignis: async id => {
+    const vorgaenge = await prisma.bewerbung.findMany({
+      where: { employeeId: id }, select: { id: true },
+    })
+    if (vorgaenge.length === 0) return []
+    return prisma.bewerbungEreignis.findMany({
+      where: { bewerbungId: { in: vorgaenge.map(v => v.id) } },
+      select: { id: true, art: true, text: true, vonName: true, createdAt: true },
+    })
+  },
   // §139 Der eigene Löschantrag und die Antwort darauf gehören in die Auskunft.
   // Wer nach Monaten fragt, was aus seinem Antrag geworden ist, findet es hier
   // schwarz auf weiß — samt Begründung, falls er abgelehnt wurde.

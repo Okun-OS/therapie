@@ -1753,6 +1753,85 @@ auch weg.**
 Nachweis: 26 Modultests für die Rechenwege (jeder Grenzfall der Schwelle
 einzeln) und 32 Prüfungen am laufenden System (`pruefungen/i2-bem.mjs`).
 
+## Block §148 (22.09.) — HR Stufe 4: Recruiting und Karriereseite
+
+**Der erste Teil dieses Programms ohne Anmeldung.** Bis hierher lag alles hinter
+einer Anmeldung, und jede Zugriffsfrage lief über `scope.ts`. Eine Karriereseite
+ist das Gegenteil: Sie soll von Google gefunden und von Fremden gelesen werden.
+Deshalb hat dieser Block eine Regel, die über allem steht — **nach draußen geht
+ausschließlich, was jemand ausdrücklich veröffentlicht hat.** Entschieden wird
+das an genau einer Stelle (`src/lib/karriere.ts`), nicht in drei Routen.
+
+### Was ein Träger davon hat
+- [x] **Stellen ausschreiben** — die Standortleitung für ihren Standort, die
+      Unternehmensebene auch unternehmensweit. Eine Anzeige entsteht als
+      **Entwurf** und geht nicht versehentlich online.
+- [x] **Karriereseite** unter `/karriere/<adresse>` — Überschrift, Über-uns-Text,
+      alle offenen Stellen, Bewerbungsformular. Kein eigener Webauftritt nötig.
+- [x] **Google for Jobs** — jede Anzeige trägt ein schema.org `JobPosting` im
+      Quelltext. Das ist der wirksamste Kanal für einen kleinen Träger, und er
+      kostet nichts. Google prüft streng: Fehlt `datePosted` oder
+      `hiringOrganization`, wird die Anzeige stillschweigend ignoriert — man
+      merkt nichts, es passiert nur nichts. Deshalb sind beide Pflichtfelder in
+      den Modultests festgenagelt.
+- [x] **XML-Feed** unter `/karriere/<adresse>/stellen.xml` für Indeed,
+      StepStone, kimeta und die Bundesagentur. Adresse einmal dort eintragen,
+      danach holen sie sich die Anzeigen selbst. Eine echte API-Anbindung gäbe
+      es bei jedem auch — aber nur gegen Vertrag, Schlüssel und in drei
+      verschiedenen Formaten. Der Feed ist das, was ein Träger am Montag
+      einrichten kann.
+- [x] **Bewerber-CRM** — Pipeline (neu → gesichtet → Gespräch → Zusage /
+      Absage), Bewerber von Hand einpflegen, Unterlagen ansehen, dem Bewerber
+      direkt aus dem Vorgang schreiben. Jede E-Mail und jeder Standwechsel steht
+      im Verlauf.
+- [x] **Übernahme in die Personalakte** — aus der Bewerbung entsteht in einem
+      Zug ein Mitarbeiter samt Einladung, die Bewerbungsunterlagen wandern in
+      die Akte, und die **Pflichtnachweise aus dem Katalog (§146) werden
+      automatisch zugewiesen**. Genau am Einstellungstag denkt daran sonst
+      niemand.
+
+### Drei Entscheidungen, die nicht offensichtlich sind
+
+**Ohne Impressum geht die Seite nicht online.** Eine geschäftsmäßige Seite ohne
+Anbieterkennzeichnung verstößt gegen §5 DDG und ist abmahnfähig. Das wäre ein
+unschöner Weg, eine neue Funktion kennenzulernen. Der Schalter „online stellen"
+lehnt deshalb ab und sagt, was fehlt — er warnt nicht bloß.
+
+**Bewerberdaten verschwinden von selbst.** Sie sind die einzigen Personendaten
+im System, für die es nach Verfahrensende keine Rechtsgrundlage mehr gibt. Sechs
+Monate ab Absage (§15 Abs.4 AGG, §61b ArbGG); länger nur mit ausdrücklicher
+Einwilligung in den Bewerberpool. Die Frist entsteht beim Wechsel in einen
+Endstand und fällt weg, wenn die Bewerbung ins Verfahren zurückkommt. Wer
+eingestellt wurde, wird nie gelöscht — aus der Bewerbung ist eine Personalakte
+geworden. Steht als eigene Datenart im Löschkonzept (§128).
+
+**Ein Honigtopf statt eines Captchas.** Das Formular hat ein unsichtbares Feld,
+das kein Mensch sieht und ein Automat ausfüllt. Wer es ausfüllt, bekommt
+„danke" und wird verworfen — merkte er, dass er auffiel, probierte er es mit
+einem anderen Feld noch einmal. Ein Captcha würde dasselbe leisten und dabei
+echte Bewerber vertreiben.
+
+### Nebenbei repariert: /api/org-settings
+Die Schnittstelle reichte den ganzen Körper der Anfrage an die Datenbank durch.
+Damit konnte jeder, der sie erreicht, **jede Spalte** der Tabelle beschreiben —
+einschließlich der Bankverbindung des Unternehmens. Mit diesem Block wäre auch
+das Impressum der öffentlichen Seite dazugekommen. Jetzt eine Liste erlaubter
+Felder, nach Rolle getrennt: Anschrift, Betriebsnummer, Bankverbindung und die
+BEM-Freigabe kann nur die Unternehmensebene setzen.
+
+Nachweis: 40 Modultests für die Rechenwege (Adressen, Löschfristen, JSON-LD,
+das offene Formular) und 77 Prüfungen am laufenden System
+(`pruefungen/j-recruiting.mjs`) — davon ein ganzer Abschnitt allein dafür, dass
+ein Fremder weder Entwurf noch geschlossene Anzeige noch abgeschaltete Seite zu
+sehen bekommt.
+
+### Noch offen in diesem Bereich
+- **Nachweis-Anforderung mit Rückweg** — der Betrieb fordert etwas an
+  (Führungszeugnis, Hygienebelehrung), der Mitarbeiter lädt es hoch, der Betrieb
+  prüft und gibt frei oder fragt nach, mit Gespräch direkt daran.
+- **Belehrungen digital** — einmal hochladen, an alle verteilen, „gelesen und
+  akzeptiert" rechtssicher belegen, regelmäßig wiederholen.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

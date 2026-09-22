@@ -112,6 +112,7 @@ const adminDock: DockItem[] = [
         { items: [
           { href: '/admin/setup',     label: 'Einrichtung',      description: 'Betriebsform, Struktur, Dienste, Team & Regeln', badge: 'START', icon: '🚀' },
           { href: '/admin/nachweise', label: 'Nachweise & Fristen', description: 'Schulungen, Belehrungen, was wann abläuft',   icon: '🛡' },
+          { href: '/admin/recruiting', label: 'Recruiting',     description: 'Stellen ausschreiben, Bewerber begleiten, Karriereseite', icon: '📣' },
           { href: '/admin/model',     label: 'Regeln & Wartung', description: 'Regeln prüfen, Standort zurücksetzen',           icon: '📋' },
           { href: '/admin/tasks',     label: 'Aufgabenkatalog',  description: 'To-dos und Checklisten für Dienste',             icon: '✅' },
           { href: '/company/support', label: 'Support & Hilfe',  description: 'Hilfe & Kontakt',                                icon: '💬' },
@@ -159,6 +160,7 @@ const companyDock: DockItem[] = [
         { items: [
           { href: '/company/settings',    label: 'Unternehmenseinstellungen', description: 'Globale Konfiguration',                    icon: '⚙️' },
           { href: '/company/nachweise',   label: 'Nachweise & Fristen',      description: 'Pflichtnachweise, Vertragsfristen, Katalog', icon: '🛡' },
+          { href: '/company/recruiting',   label: 'Recruiting',               description: 'Stellen, Bewerber, Karriereseite',          icon: '📣' },
           { href: '/company/datenschutz', label: 'Datenschutz',              description: 'Auskunft und Löschung nach DSGVO',         icon: '🔐' },
           { href: '/company/reports',     label: 'Berichte & Export',        description: 'Daten exportieren',                        icon: '📤' },
           { href: '/company/support',     label: 'Support & Hilfe',          description: 'Hilfe & Kontakt',                          icon: '💬' },

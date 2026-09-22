@@ -264,6 +264,42 @@ const ZUGRIFF: Record<string, Zugriff> = {
     zaehlen: (db, k) => db.bemVorgang.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.bemVorgang.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
   },
+  // §148 Der Bewerbungsvorgang, aus dem diese Person hervorgegangen ist.
+  //
+  // Bewerbungen ohne Einstellung raeumt ein eigener Ablauf nach sechs Monaten
+  // weg (§15 Abs.4 AGG). Hier geht es nur um den einen Vorgang, der zu einem
+  // Arbeitsverhaeltnis gefuehrt hat: Scheidet die Person aus, faellt auch der
+  // letzte Grund weg, ihn noch aufzubewahren. Die eingereichten Unterlagen
+  // liegen davon getrennt in der Personalakte und folgen deren Aufbewahrung.
+  BewerbungEreignis: {
+    zaehlen: async (db, k) => {
+      const ids = await db.bewerbung.findMany({
+        where: { employeeId: k.employeeId }, select: { id: true },
+      })
+      if (ids.length === 0) return 0
+      return db.bewerbungEreignis.count({
+        where: { bewerbungId: { in: ids.map(v => v.id) } },
+      })
+    },
+    // Muss VOR `Bewerbung` laufen, sonst sind die Kennungen weg, ueber die
+    // die Eintraege gefunden werden. Die Reihenfolge bestimmt die Liste
+    // `modelle` im Katalog — dort steht dieses Modell deshalb zuerst.
+    loeschen: async (db, k) => {
+      const ids = await db.bewerbung.findMany({
+        where: { employeeId: k.employeeId }, select: { id: true },
+      })
+      if (ids.length === 0) return 0
+      return db.bewerbungEreignis.deleteMany({
+        where: { bewerbungId: { in: ids.map(v => v.id) } },
+      }).then(zahl)
+    },
+  },
+  Bewerbung: {
+    zaehlen: (db, k) => db.bewerbung.count({ where: { employeeId: k.employeeId } }),
+    loeschen: (db, k) => db.bewerbung.deleteMany({
+      where: { employeeId: k.employeeId },
+    }).then(zahl),
+  },
   Loeschantrag: {
     zaehlen: (db, k) => db.loeschantrag.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.loeschantrag.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),

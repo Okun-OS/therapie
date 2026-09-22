@@ -91,6 +91,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `h4-rueckmeldung.mjs` | Der Kanal zu OKUN und was der Melder zu hören bekommt |
 | `i-nachweise.mjs` | Pflichtnachweise und Vertragsfristen: Katalog, Sichtbarkeit, Ablauf |
 | `i2-bem.mjs` | Eingliederungsmanagement: Schwelle, Verfahren, wer es nicht sehen darf |
+| `j-recruiting.mjs` | Stellen, Karriereseite, Bewerber — und die Tür ohne Anmeldung |
 
 ## Eine neue Prüfung schreiben
 

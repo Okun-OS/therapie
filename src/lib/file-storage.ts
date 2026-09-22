@@ -34,6 +34,10 @@ export const KATEGORIEN = {
   bescheinigung: 'Bescheinigung',
   krankenschein: 'Arbeitsunfähigkeitsbescheinigung',
   lohnabrechnung: 'Lohnabrechnung',
+  // §148 Was ein Bewerber mitgeschickt hat. Bleibt nach der Übernahme in der
+  // Akte — deshalb eine eigene Kategorie und nicht „Sonstiges": Man soll
+  // später sehen, dass diese Unterlagen aus der Bewerbung stammen.
+  bewerbung: 'Bewerbungsunterlagen',
   sonstiges: 'Sonstiges',
 } as const
 

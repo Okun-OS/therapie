@@ -22,22 +22,57 @@ export async function PATCH(req: NextRequest) {
   if (!customerId) {
     return NextResponse.json({ error: 'Kein Mandant für diesen Nutzer hinterlegt' }, { status: 400 })
   }
-  const updates = await req.json()
+  const eingang = await req.json().catch(() => ({})) as Record<string, unknown>
 
-  // §147 Die BEM-Freigabe kann sich eine Standortleitung nicht selbst
-  // erteilen. Der Schalter entscheidet darüber, wer Gesundheitsdaten nach
-  // Art. 9 DSGVO sieht — eine Entscheidung des Unternehmens, nicht des
-  // Standorts. Ohne diese Sperre wäre die Sichtbarkeitsregel eine Bitte.
-  if (session.role === 'admin' && 'bemSichtbarLeitung' in updates) {
-    return NextResponse.json(
-      {
-        error: 'Die Freigabe für das Eingliederungsmanagement kann nur die '
-          + 'Unternehmensebene erteilen.',
-      },
-      { status: 403 },
-    )
+  // §148 Nur was hier steht, geht in die Datenbank.
+  //
+  // Vorher wurde der ganze Körper der Anfrage an Prisma durchgereicht. Damit
+  // konnte jeder, der diese Schnittstelle erreicht, jede Spalte der Tabelle
+  // beschreiben — einschließlich der Bankverbindung des Unternehmens und,
+  // seit dieser Etappe, des Impressums der öffentlichen Karriereseite. Eine
+  // Liste erlaubter Felder ist die einzige Form dieser Prüfung, die beim
+  // nächsten neuen Feld nicht stillschweigend veraltet: Was nicht
+  // dazugeschrieben wird, wird nicht geschrieben.
+  const ERLAUBT_ALLE = [
+    'organizationName', 'defaultWeeklyHours', 'defaultVacationDaysPerYear',
+    'autoApproveVacationUnderDays', 'notificationEmail', 'auNachweisAbTag',
+  ]
+  // §113/§114 Anschrift, Betriebsnummer und Bankverbindung des Arbeitgebers.
+  // Sie stehen auf jeder Entgeltabrechnung und in jeder SEPA-Datei — eine
+  // Standortleitung hat daran nichts zu ändern.
+  const ERLAUBT_UNTERNEHMEN = [
+    'strasse', 'plz', 'ort', 'betriebsnummer', 'steuernummer',
+    'iban', 'bic', 'kontoinhaber', 'datevBeraternummer', 'datevMandantennummer',
+    // §147 Wer Gesundheitsdaten sehen darf, entscheidet das Unternehmen.
+    'bemSichtbarLeitung',
+  ]
+
+  const erlaubt = session.role === 'company'
+    ? [...ERLAUBT_ALLE, ...ERLAUBT_UNTERNEHMEN]
+    : ERLAUBT_ALLE
+
+  const abgewiesen = Object.keys(eingang).filter(k => !erlaubt.includes(k))
+  if (abgewiesen.length > 0 && session.role === 'admin') {
+    const heikel = abgewiesen.filter(k => ERLAUBT_UNTERNEHMEN.includes(k))
+    if (heikel.length > 0) {
+      return NextResponse.json(
+        {
+          error: heikel.includes('bemSichtbarLeitung')
+            ? 'Die Freigabe für das Eingliederungsmanagement kann nur die '
+              + 'Unternehmensebene erteilen.'
+            : 'Diese Angaben ändert die Unternehmensebene: '
+              + `${heikel.join(', ')}.`,
+        },
+        { status: 403 },
+      )
+    }
   }
 
-  const settings = await updateOrgSettings(customerId, updates)
+  const updates: Record<string, unknown> = {}
+  for (const feld of erlaubt) {
+    if (feld in eingang) updates[feld] = eingang[feld]
+  }
+
+  const settings = await updateOrgSettings(customerId, updates as never)
   return NextResponse.json({ settings })
 }

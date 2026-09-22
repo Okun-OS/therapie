@@ -240,6 +240,28 @@ export const DATENARTEN: Datenart[] = [
       + 'Nach dem Ausscheiden werden sie gelöscht.',
   },
   {
+    id: 'bewerbungen',
+    bezeichnung: 'Bewerbungen',
+    beschreibung:
+      'Wie Sie zu uns gekommen sind: Ihre Unterlagen aus dem '
+      + 'Einstellungsverfahren und was dabei festgehalten wurde — wann etwas '
+      + 'eingegangen ist, wann eingeladen wurde, wie entschieden wurde.',
+    // Die Reihenfolge zaehlt: Der Verlauf haengt an der Kennung der Bewerbung
+    // und muss vor ihr weg, sonst findet ihn niemand mehr.
+    modelle: ['BewerbungEreignis', 'Bewerbung'],
+    behandlung: 'loeschen',
+    fristJahre: 0,
+    grundlage: '§15 Abs.4 AGG, §61b ArbGG, Art.6 Abs.1 lit.b DSGVO',
+    begruendung:
+      'Bewerbungsdaten werden nur für die Entscheidung über die Bewerbung '
+      + 'verarbeitet. Ist das Verfahren beendet, werden sie nach sechs Monaten '
+      + 'gelöscht — so lange, wie Ansprüche nach dem Allgemeinen '
+      + 'Gleichbehandlungsgesetz geltend gemacht werden können. Wer in die '
+      + 'Aufnahme in den Bewerberpool eingewilligt hat, bleibt so lange '
+      + 'gespeichert, wie die Einwilligung gilt. Wurde jemand eingestellt, '
+      + 'gehören die Unterlagen zur Personalakte und folgen deren Aufbewahrung.',
+  },
+  {
     id: 'protokolle',
     bezeichnung: 'Zugriffsprotokolle',
     beschreibung: 'Aufzeichnungen darüber, wer wann auf welche Daten zugegriffen hat.',
