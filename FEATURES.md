@@ -1825,12 +1825,9 @@ das offene Formular) und 77 Prüfungen am laufenden System
 ein Fremder weder Entwurf noch geschlossene Anzeige noch abgeschaltete Seite zu
 sehen bekommt.
 
-### Noch offen in diesem Bereich
-- **Nachweis-Anforderung mit Rückweg** — der Betrieb fordert etwas an
-  (Führungszeugnis, Hygienebelehrung), der Mitarbeiter lädt es hoch, der Betrieb
-  prüft und gibt frei oder fragt nach, mit Gespräch direkt daran.
-- **Belehrungen digital** — einmal hochladen, an alle verteilen, „gelesen und
-  akzeptiert" rechtssicher belegen, regelmäßig wiederholen.
+### Nachgereicht
+- **Nachweis-Anforderung mit Rückweg** — fertig, Block §149 unten.
+- **Belehrungen digital** — fertig, Block §150 unten.
 
 ## Block §149 (22.09.) — Nachweise anfordern, mit Rückweg
 
@@ -1875,9 +1872,60 @@ Nachweis: 27 Modultests für den Zustandsautomaten (jeder verbotene Übergang
 einzeln) und 47 Prüfungen am laufenden System (`pruefungen/i3-anforderung.mjs`).
 Gesamtlauf: 1015/1015 in 30 Prüfungen, 651 Modultests.
 
-### Noch offen in diesem Bereich
-- **Belehrungen digital** — einmal hochladen, an alle verteilen, „gelesen und
-  akzeptiert" rechtssicher belegen, regelmäßig wiederholen.
+## Block §150 (22.09.) — Belehrungen digital
+
+**Der Fall aus der Praxis.** In einer Kita liegen jeden Monat vier, fünf Seiten
+Belehrungen zur Unterschrift: Hygiene, Brandschutz, Schweigepflicht,
+Unfallverhütung. Sie werden an jede Einrichtung geschickt, dort ausgedruckt,
+herumgereicht, unterschrieben, eingesammelt und abgeheftet. Drei Wochen später
+weiß niemand mehr, wer fehlt.
+
+Jetzt: einmal hochladen, an alle verteilen, per Klick bestätigen. Der Betrieb
+sieht jederzeit, **wer noch fehlt** — die Frage, die ein Ordner mit
+Unterschriftenlisten nicht beantwortet.
+
+### Was einen Nachweis belastbar macht
+Eine Unterweisung nach §12 ArbSchG, eine Belehrung nach §43 IfSG, eine
+Einweisung nach DGUV Vorschrift 1 — sie alle verlangen keinen bestimmten
+Schriftträger. Verlangt wird der **Nachweis**: dass diese Person diesen Inhalt
+zu diesem Zeitpunkt zur Kenntnis genommen hat. Dafür drei Entscheidungen:
+
+- [x] **Jeder Beleg trägt Kopien, keine Verweise.** Name, bestätigter Wortlaut
+      und Fingerabdruck (SHA-256) des Dokuments — aus dem Augenblick des
+      Klicks. Ein Beleg, der auf die heutige Fassung zeigt, belegt nichts: Nach
+      einer Änderung sähe er so aus, als hätte jemand etwas bestätigt, das es
+      damals nicht gab.
+- [x] **Eine verteilte Belehrung ist unveränderlich.** Titel, Dokument und
+      Bestätigungssatz sind ab dem Verteilen festgeschrieben. Änderbar bleibt
+      nur, was niemandem den Boden wegzieht: die Frist (verlängern hilft) und
+      der Hinweistext. Wer etwas anderes will, schließt die Runde und verteilt
+      eine neue — die alten Belege bleiben, wie sie sind.
+- [x] **Bestätigen kann nur die Person selbst.** Weder die Leitung noch ein
+      Kollege. Eine Belehrung, die jemand für einen anderen abhakt, belegt
+      nichts.
+
+### Was „gelesen" hier ehrlicherweise heißt
+Niemand kann prüfen, ob ein Mensch etwas gelesen hat — auf Papier genauso
+wenig. Festgehalten wird, was sich feststellen lässt: **wann das Dokument
+ausgeliefert wurde** (das weiß der Server, nicht der Browser) und wann
+bestätigt. Der Bestätigen-Knopf lebt erst nach dem Öffnen. Liegt zwischen
+beidem keine Sekunde, steht das im Beleg — das System nennt ihn dann „dünn
+belegt", und der Betrieb kann nachfassen. Das ist mehr, als eine
+Unterschriftenliste hergibt.
+
+**Wiederholung:** Eine Runde lässt sich als neue Runde klonen; der Titel
+bekommt den Monat, das Dokument wird geteilt statt kopiert (derselbe
+Fingerabdruck belegt genau das). Erinnern geht wie bei §149 höchstens alle
+sieben Tage.
+
+**Der Beleg gehört auch dem Menschen:** Er sieht in seiner App, was er wann
+bestätigt hat — im Wortlaut von damals. Und in der Auskunft nach Art.15 DSGVO
+steht es ebenfalls.
+
+Nachweis: 35 Modultests (Unveränderlichkeit, Fingerabdruck, Belastbarkeit des
+Belegs, Wiederholungsrhythmus) und 60 Prüfungen am laufenden System
+(`pruefungen/i4-belehrung.mjs`). Gesamtlauf: **1075/1075 in 31 Prüfungen**, 686
+Modultests, Bauen sauber.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

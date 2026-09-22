@@ -2048,3 +2048,93 @@ model AnforderungBeitrag {
 
   @@index([anforderungId, createdAt])
 }
+
+// ─── §150 Belehrungen digital ────────────────────────────────────────────────
+
+/// §150 Eine Belehrung, die an alle geht.
+///
+/// DAS PROBLEM, DAS SIE LOEST
+/// In einer Kita liegen jeden Monat vier, fuenf Seiten Belehrungen zur
+/// Unterschrift: Hygiene, Brandschutz, Schweigepflicht, Unfallverhuetung. Sie
+/// werden an jede Einrichtung geschickt, dort ausgedruckt, herumgereicht,
+/// unterschrieben, eingesammelt und abgeheftet. Drei Wochen spaeter weiss
+/// niemand mehr, wer fehlt.
+///
+/// WARUM DAS DOKUMENT NACH DEM VERTEILEN UNVERAENDERLICH IST
+/// Weil die Bestaetigung sonst nichts wert waere. Koennte man den Text
+/// nachtraeglich austauschen, liesse sich jederzeit behaupten, jemand habe
+/// etwas anderes bestaetigt, als er gelesen hat. Ab dem Verteilen ist diese
+/// Zeile festgeschrieben; wer etwas aendern will, schliesst sie und verteilt
+/// eine neue Runde.
+model Belehrung {
+  id                String    @id @default(cuid())
+  customerId        String
+  titel             String
+  beschreibung      String?
+  /// Das Dokument in der Ablage (StoredFile, ownerType "belehrung")
+  dateiId           String?
+  dateiname         String?
+  /// Fingerabdruck des Dokuments (SHA-256). Er steht in jedem Beleg und macht
+  /// nachweisbar, WELCHE Fassung bestaetigt wurde.
+  pruefsumme        String?
+  /// Der Wortlaut, den die Person bestaetigt. Einstellbar, weil genau dieser
+  /// Satz die rechtliche Wirkung traegt — und weil eine Hygienebelehrung
+  /// anders lautet als eine Einweisung in eine Maschine.
+  bestaetigungstext String
+  /// entwurf | verteilt | geschlossen
+  status            String    @default("entwurf")
+  /// Bis wann bestaetigt werden soll
+  fristBis          DateTime?
+  /// Nur als Hinweis und fuer die Wiederholung: monatlich | quartal | jaehrlich
+  wiederholung      String?
+  /// Aus welcher Runde diese hier hervorgegangen ist
+  vorlageVon        String?
+  /// Ob der Empfaenger das Dokument geoeffnet haben muss, bevor er
+  /// bestaetigen kann. Standardmaessig ja.
+  oeffnenNoetig     Boolean   @default(true)
+  verteiltAm        DateTime?
+  geschlossenAm     DateTime?
+  erstelltVon       String?
+  erstelltVonName   String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([customerId, status])
+}
+
+/// §150 Der Beleg einer einzelnen Person.
+///
+/// WARUM HIER KOPIEN STEHEN UND KEINE VERWEISE
+/// `personName`, `wortlaut` und `pruefsumme` sind Kopien aus dem Zeitpunkt des
+/// Klicks. Ein Beleg, der auf die heutige Fassung verweist, belegt nichts: Er
+/// saehe nach einer Aenderung so aus, als haette die Person etwas bestaetigt,
+/// das es damals gar nicht gab. Ein Nachweis muss aus sich heraus lesbar sein.
+///
+/// WAS „GELESEN" HIER HEISST
+/// Niemand kann pruefen, ob ein Mensch etwas gelesen hat — auch auf Papier
+/// nicht. Festgehalten wird, was sich feststellen laesst: wann das Dokument
+/// geoeffnet wurde und wann bestaetigt. Liegt zwischen beidem keine Sekunde,
+/// sieht man das im Beleg. Das ist mehr, als eine Unterschriftenliste hergibt.
+model BelehrungBestaetigung {
+  id           String    @id @default(cuid())
+  belehrungId  String
+  employeeId   String
+  customerId   String
+  locationId   String?
+  /// Der Name zum Zeitpunkt der Bestaetigung
+  personName   String
+  /// Der Wortlaut, den diese Person bestaetigt hat
+  wortlaut     String?
+  /// Der Fingerabdruck des Dokuments, das dabei vorlag
+  pruefsumme   String?
+  zugestelltAm DateTime  @default(now())
+  angesehenAm  DateTime?
+  bestaetigtAm DateTime?
+  /// Womit bestaetigt wurde — Browser oder App, gekuerzt
+  geraet       String?
+  erinnertAm   DateTime?
+
+  @@unique([belehrungId, employeeId])
+  @@index([employeeId, bestaetigtAm])
+  @@index([customerId])
+}

@@ -214,19 +214,25 @@ export const DATENARTEN: Datenart[] = [
     id: 'nachweise',
     bezeichnung: 'Qualifikationen und Pflichtnachweise',
     beschreibung:
-      'Ihre Schulungen, Belehrungen und Zeugnisse samt Gültigkeitsdauer — etwa '
-      + 'Erste Hilfe, Infektionsschutzbelehrung oder das Führungszeugnis. Dazu '
-      + 'die Aufforderungen, etwas einzureichen, und was dazu geschrieben wurde.',
+      'Ihre Schulungen, Unterweisungen und Zeugnisse samt Gültigkeitsdauer — '
+      + 'etwa Erste Hilfe, Infektionsschutz oder das Führungszeugnis. Dazu die '
+      + 'Aufforderungen, etwas einzureichen, was dazu geschrieben wurde, und '
+      + 'Ihre Kenntnisnahmen samt Zeitpunkt.',
     // §149 Die Reihenfolge zaehlt: Das Gespraech haengt an der Kennung der
     // Aufforderung und muss vor ihr weg.
-    modelle: ['AnforderungBeitrag', 'Anforderung', 'Frist'],
+    // §150 Die Bestaetigung einer Belehrung steht hier mit: Fuer den
+    // Betroffenen ist es dieselbe Sache — was er an Schulungen und
+    // Unterweisungen hinter sich hat.
+    modelle: ['AnforderungBeitrag', 'Anforderung', 'BelehrungBestaetigung', 'Frist'],
     behandlung: 'loeschen',
     fristJahre: 0,
     begruendung:
       'Die Unterlagen selbst liegen in Ihrer Personalakte und folgen deren '
-      + 'Aufbewahrung. Die Einträge hier sind nur die Erinnerung dazu, wann '
-      + 'etwas aufgefrischt werden muss, und der Schriftwechsel darüber, was '
-      + 'eingereicht werden sollte — beides wird gelöscht.',
+      + 'Aufbewahrung. Die Einträge hier sind die Erinnerung daran, wann etwas '
+      + 'aufgefrischt werden muss, der Schriftwechsel darüber, was eingereicht '
+      + 'werden sollte, und der Nachweis Ihrer Kenntnisnahmen. Das alles wird '
+      + 'nach Ihrem Ausscheiden gelöscht — der Nachweis einer Unterweisung '
+      + 'nützt dem Betrieb nur, solange Sie dort arbeiten.',
   },
   {
     id: 'bem',

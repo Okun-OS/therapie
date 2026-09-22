@@ -36,13 +36,19 @@ export default function Ich() {
       .then(r => r.json())
       .then(d => setMich((d.employees ?? []).find((e: Employee) => e.id === user.employeeId) ?? null))
       .catch(() => {})
-    fetch('/api/anforderungen?offen=1')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        const z = d?.zusammenfassung
-        setOffeneNachweise((z?.offen ?? 0) + (z?.rueckfrage ?? 0))
-      })
-      .catch(() => {})
+    // §149/§150 Beides zählt in eine Zahl: Für den Menschen ist es dasselbe —
+    // etwas wartet auf ihn. Zwei Zähler nebeneinander wären eine Unterscheidung,
+    // die nur das Programm interessiert.
+    Promise.all([
+      fetch('/api/anforderungen?offen=1').then(r => r.ok ? r.json() : null)
+        .catch(() => null),
+      fetch('/api/belehrungen').then(r => r.ok ? r.json() : null)
+        .catch(() => null),
+    ]).then(([a, b]) => {
+      const z = a?.zusammenfassung
+      setOffeneNachweise(
+        (z?.offen ?? 0) + (z?.rueckfrage ?? 0) + (b?.offen ?? 0))
+    })
     fetch(`/api/hours-account?employeeId=${user.employeeId}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => setKonto(d?.account ?? d ?? null))

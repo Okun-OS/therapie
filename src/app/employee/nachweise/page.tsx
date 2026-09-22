@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
 import { MeineAnforderungen } from '@/components/hr/MeineAnforderungen'
+import { MeineBelehrungen } from '@/components/hr/MeineBelehrungen'
 
 /**
  * §149 „Meine Nachweise" — was der Betrieb von mir braucht.
@@ -27,6 +28,9 @@ export default function MeineNachweise() {
         </p>
       </div>
 
+      {/* §150 Belehrungen zuerst: Sie sind mit einem Klick erledigt, eine
+          Anforderung braucht ein Dokument. Was schnell geht, gehört nach oben. */}
+      <MeineBelehrungen />
       <MeineAnforderungen />
     </div>
   )

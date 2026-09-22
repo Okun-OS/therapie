@@ -252,6 +252,21 @@ const ZUGRIFF: Record<string, Zugriff> = {
     zaehlen: (db, k) => db.loeschvorgang.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.loeschvorgang.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
   },
+  // §150 Der Nachweis der Kenntnisnahme.
+  //
+  // Er geht mit dem Ausscheiden: Eine Unterweisung belegt, dass jemand
+  // waehrend seiner Beschaeftigung unterrichtet wurde — danach hat der Betrieb
+  // daran kein Interesse mehr, das den Personenbezug rechtfertigt. Die
+  // Belehrung selbst (das Dokument und die Runde) bleibt; sie ist keine
+  // Personendatei.
+  BelehrungBestaetigung: {
+    zaehlen: (db, k) => db.belehrungBestaetigung.count({
+      where: { employeeId: k.employeeId },
+    }),
+    loeschen: (db, k) => db.belehrungBestaetigung.deleteMany({
+      where: { employeeId: k.employeeId },
+    }).then(zahl),
+  },
   // §149 Was eingereicht werden sollte und was dazu geschrieben wurde.
   //
   // Das Gespraech muss VOR der Aufforderung weg, sonst sind die Kennungen

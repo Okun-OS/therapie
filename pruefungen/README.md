@@ -92,6 +92,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `i-nachweise.mjs` | Pflichtnachweise und Vertragsfristen: Katalog, Sichtbarkeit, Ablauf |
 | `i2-bem.mjs` | Eingliederungsmanagement: Schwelle, Verfahren, wer es nicht sehen darf |
 | `i3-anforderung.mjs` | Nachweise anfordern: einreichen, nachfragen, abnehmen |
+| `i4-belehrung.mjs` | Belehrungen: verteilen, bestätigen, was der Beleg trägt |
 | `j-recruiting.mjs` | Stellen, Karriereseite, Bewerber — und die Tür ohne Anmeldung |
 
 ## Eine neue Prüfung schreiben

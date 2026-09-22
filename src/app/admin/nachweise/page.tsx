@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { ShieldAlert, ListChecks, HeartPulse, Inbox } from 'lucide-react'
+import { ShieldAlert, ListChecks, HeartPulse, Inbox, BookOpenCheck } from 'lucide-react'
 import { Fristenliste } from '@/components/hr/Fristenliste'
 import { BemListe } from '@/components/hr/BemListe'
 import { Anforderungsliste } from '@/components/hr/Anforderungsliste'
+import { Belehrungsliste } from '@/components/hr/Belehrungsliste'
 
 /**
  * §146 Nachweise und Fristen aus Sicht der Standortleitung.
@@ -15,7 +16,7 @@ import { Anforderungsliste } from '@/components/hr/Anforderungsliste'
  * alle Standorte.
  */
 export default function AdminNachweise() {
-  const [sicht, setSicht] = useState<'stand' | 'anfordern' | 'bem'>('stand')
+  const [sicht, setSicht] = useState<'stand' | 'anfordern' | 'belehrung' | 'bem'>('stand')
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
@@ -34,6 +35,7 @@ export default function AdminNachweise() {
         {([
           ['stand', 'Nachweise', <ListChecks key="a" size={13} />],
           ['anfordern', 'Angefordert', <Inbox key="c" size={13} />],
+          ['belehrung', 'Belehrungen', <BookOpenCheck key="e" size={13} />],
           ['bem', 'BEM', <HeartPulse key="b" size={13} />],
         ] as const).map(([wert, text, sym]) => (
           <button
@@ -49,7 +51,8 @@ export default function AdminNachweise() {
 
       {sicht === 'stand' ? <Fristenliste />
         : sicht === 'anfordern' ? <Anforderungsliste />
-          : <BemListe />}
+          : sicht === 'belehrung' ? <Belehrungsliste />
+            : <BemListe />}
     </div>
   )
 }

@@ -191,6 +191,16 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
       },
     })
   },
+  // §150 Welche Belehrungen die Person zur Kenntnis genommen hat — mit dem
+  // Wortlaut, den sie damals bestätigt hat, und dem Zeitpunkt. Genau das ist
+  // der Nachweis; sie hat ein Recht darauf, ihn selbst zu sehen.
+  BelehrungBestaetigung: id => prisma.belehrungBestaetigung.findMany({
+    where: { employeeId: id },
+    select: {
+      id: true, personName: true, wortlaut: true, pruefsumme: true,
+      zugestelltAm: true, angesehenAm: true, bestaetigtAm: true, geraet: true,
+    },
+  }),
   // §146 Welche Nachweise geführt werden und bis wann sie gelten — das ist
   // eine Verarbeitung über die Person und gehört in ihre Auskunft.
   Frist: id => prisma.frist.findMany({
