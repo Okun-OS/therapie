@@ -1976,3 +1976,75 @@ model BewerbungEreignis {
 
   @@index([bewerbungId, createdAt])
 }
+
+// ─── §149 Nachweise anfordern — mit Rückweg ──────────────────────────────────
+
+/// §149 Eine Aufforderung an einen Menschen, etwas einzureichen.
+///
+/// WARUM DAS NICHT EINFACH EINE NACHRICHT IST
+/// Weil eine Nachricht keinen Zustand hat. „Bitte reich dein Fuehrungszeugnis
+/// ein" im Chat ist nach drei Tagen weggescrollt, und niemand weiss mehr, wer
+/// geantwortet hat und wer nicht. Hier ist es ein Vorgang: Er ist offen,
+/// eingereicht, in Rueckfrage oder erledigt — und eine Liste zeigt jederzeit,
+/// bei wem er noch offen steht.
+///
+/// WARUM DIE VERBINDUNG ZUR FRIST
+/// Weil das Ziel nicht die eingereichte Datei ist, sondern eine gueltige
+/// Frist. Wird die Anforderung abgenommen, traegt das System `erfuelltAm` in
+/// die Frist ein und der Motor (§146) rechnet das naechste Ablaufdatum selbst
+/// aus. Ohne diese Verbindung haette man zwei Wahrheiten: eine eingereichte
+/// Bescheinigung und eine Frist, die weiter auf Rot steht.
+model Anforderung {
+  id                 String    @id @default(cuid())
+  customerId         String
+  employeeId         String
+  locationId         String?
+  /// Die Frist, die damit erfuellt werden soll. Leer bei einer freien
+  /// Anforderung ("bitte reich deine neue Bankverbindung ein").
+  fristId            String?
+  nachweisartId      String?
+  titel              String
+  /// Was genau gebraucht wird, in eigenen Worten
+  hinweis            String?
+  /// Bis wann eingereicht werden soll
+  fristBis           DateTime?
+  /// offen | eingereicht | rueckfrage | erledigt | zurueckgezogen
+  status             String    @default("offen")
+  statusAm           DateTime  @default(now())
+  angefordertVon     String?
+  angefordertVonName String?
+  eingereichtAm      DateTime?
+  erledigtAm         DateTime?
+  erledigtVon        String?
+  /// Wann zuletzt erinnert wurde — damit nicht taeglich gemahnt wird
+  erinnertAm         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([customerId, status])
+  @@index([employeeId, status])
+  @@index([fristId])
+}
+
+/// §149 Das Gespraech an der Anforderung.
+///
+/// Hierher gehoert die Rueckfrage („Das Zeugnis ist aelter als drei Monate,
+/// bitte ein neues") und die Antwort darauf. Bewusst am Vorgang und nicht im
+/// Chat: Wer in einem halben Jahr wissen will, warum etwas zweimal eingereicht
+/// wurde, findet es hier — und nicht in einem Gespraechsverlauf zwischen zwei
+/// Menschen, von denen einer nicht mehr im Haus ist.
+model AnforderungBeitrag {
+  id            String   @id @default(cuid())
+  anforderungId String
+  userId        String
+  /// mitarbeiter | betrieb | system
+  seite         String
+  absenderName  String
+  text          String
+  /// Die mitgeschickte Datei in der Personalakte
+  dateiId       String?
+  dateiname     String?
+  createdAt     DateTime @default(now())
+
+  @@index([anforderungId, createdAt])
+}

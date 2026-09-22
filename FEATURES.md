@@ -1832,6 +1832,53 @@ sehen bekommt.
 - **Belehrungen digital** — einmal hochladen, an alle verteilen, „gelesen und
   akzeptiert" rechtssicher belegen, regelmäßig wiederholen.
 
+## Block §149 (22.09.) — Nachweise anfordern, mit Rückweg
+
+**Das Loch, das der Fristenmotor gelassen hat.** §146 rechnet aus, wer was
+schuldig ist. Was danach kam, war Handarbeit: anrufen, eine E-Mail schreiben,
+sich merken, wer geantwortet hat. Genau dort ging es verloren.
+
+### Der Ablauf
+1. Der Betrieb fordert etwas an — für einen oder für alle auf einmal.
+2. Der Mensch bekommt eine Nachricht und kann es **direkt in der App
+   hochladen**. Ein Foto der Bescheinigung genügt.
+3. Der Betrieb wird benachrichtigt, sieht sich das Dokument an und **nimmt es
+   ab oder fragt nach** — mit einem Gespräch direkt am Vorgang.
+4. Die Abnahme trägt die Frist als erfüllt ein, und der Motor rechnet das
+   nächste Ablaufdatum selbst aus.
+
+Der Einstieg dafür steht dort, wo die Lücke sichtbar wird: In der Fristenliste
+hat jeder fehlende oder abgelaufene Nachweis jetzt einen Knopf
+„Bei … anfordern". Vorher musste man sich merken, wer was schuldig ist, und es
+auf einer anderen Seite noch einmal eintippen — das tat niemand.
+
+### Drei Entscheidungen
+- **Einreichen darf nur der Mensch, abnehmen nur der Betrieb.** Das ist der
+  ganze Sinn der Sache: Wer sich seinen Nachweis selbst abhaken kann, braucht
+  keinen. Durchgesetzt als Zustandsautomat in `src/lib/anforderung.ts`, nicht
+  in der Oberfläche — und jede Ablehnung sagt im Klartext, warum.
+- **Hochladen und einreichen sind ein Knopf.** Zwei wären eine Falle: Man lädt
+  hoch, geht weg, und beim Betrieb kommt nie etwas an.
+- **Das Gespräch hängt am Vorgang, nicht im Chat.** Die Rückfrage („Das Zeugnis
+  ist älter als drei Monate") gehört dorthin, wo der Nachweis liegt. Im Chat
+  wäre sie nach zwei Tagen weggescrollt — und in einem halben Jahr fände
+  niemand mehr, warum etwas zweimal eingereicht wurde.
+
+**Erinnern, ohne zu drangsalieren:** frühestens alle sieben Tage, nie an jemanden,
+bei dem der Betrieb selbst am Zug ist. Eine tägliche Mahnung liest niemand mehr.
+
+Die Datei landet in der Personalakte, nicht am Vorgang — dort gehören
+Unterlagen hin, und dort überleben sie den Abschluss. Wer selbst eingereicht
+hat, sieht sie auch wieder; eine fremde Leitung kommt nicht heran.
+
+Nachweis: 27 Modultests für den Zustandsautomaten (jeder verbotene Übergang
+einzeln) und 47 Prüfungen am laufenden System (`pruefungen/i3-anforderung.mjs`).
+Gesamtlauf: 1015/1015 in 30 Prüfungen, 651 Modultests.
+
+### Noch offen in diesem Bereich
+- **Belehrungen digital** — einmal hochladen, an alle verteilen, „gelesen und
+  akzeptiert" rechtssicher belegen, regelmäßig wiederholen.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

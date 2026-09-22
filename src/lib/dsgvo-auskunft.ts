@@ -167,6 +167,30 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
       antwortAm: true, ergebnis: true, abgeschlossenAm: true,
     },
   }),
+  // §149 Was von der Person verlangt wurde, einzureichen — und was dazu
+  // geschrieben wurde. Eine Rückfrage („Das Zeugnis ist zu alt") ist eine
+  // Aussage über sie und gehört deshalb in die Auskunft.
+  Anforderung: id => prisma.anforderung.findMany({
+    where: { employeeId: id },
+    select: {
+      id: true, titel: true, hinweis: true, fristBis: true, status: true,
+      angefordertVonName: true, eingereichtAm: true, erledigtAm: true,
+      createdAt: true,
+    },
+  }),
+  AnforderungBeitrag: async id => {
+    const vorgaenge = await prisma.anforderung.findMany({
+      where: { employeeId: id }, select: { id: true },
+    })
+    if (vorgaenge.length === 0) return []
+    return prisma.anforderungBeitrag.findMany({
+      where: { anforderungId: { in: vorgaenge.map(v => v.id) } },
+      select: {
+        id: true, seite: true, absenderName: true, text: true,
+        dateiname: true, createdAt: true,
+      },
+    })
+  },
   // §146 Welche Nachweise geführt werden und bis wann sie gelten — das ist
   // eine Verarbeitung über die Person und gehört in ihre Auskunft.
   Frist: id => prisma.frist.findMany({

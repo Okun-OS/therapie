@@ -215,14 +215,18 @@ export const DATENARTEN: Datenart[] = [
     bezeichnung: 'Qualifikationen und Pflichtnachweise',
     beschreibung:
       'Ihre Schulungen, Belehrungen und Zeugnisse samt Gültigkeitsdauer — etwa '
-      + 'Erste Hilfe, Infektionsschutzbelehrung oder das Führungszeugnis.',
-    modelle: ['Frist'],
+      + 'Erste Hilfe, Infektionsschutzbelehrung oder das Führungszeugnis. Dazu '
+      + 'die Aufforderungen, etwas einzureichen, und was dazu geschrieben wurde.',
+    // §149 Die Reihenfolge zaehlt: Das Gespraech haengt an der Kennung der
+    // Aufforderung und muss vor ihr weg.
+    modelle: ['AnforderungBeitrag', 'Anforderung', 'Frist'],
     behandlung: 'loeschen',
     fristJahre: 0,
     begruendung:
       'Die Unterlagen selbst liegen in Ihrer Personalakte und folgen deren '
-      + 'Aufbewahrung. Der Eintrag hier ist nur die Erinnerung dazu, wann etwas '
-      + 'aufgefrischt werden muss — er wird gelöscht.',
+      + 'Aufbewahrung. Die Einträge hier sind nur die Erinnerung dazu, wann '
+      + 'etwas aufgefrischt werden muss, und der Schriftwechsel darüber, was '
+      + 'eingereicht werden sollte — beides wird gelöscht.',
   },
   {
     id: 'bem',

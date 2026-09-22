@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import {
   Receipt, Palmtree, Stethoscope, Clock, FolderOpen, User, TrendingUp,
-  ChevronRight, LogOut, Shield,
+  ChevronRight, LogOut, Shield, ShieldCheck,
 } from 'lucide-react'
 import type { Employee } from '@/lib/types'
 import { AppEinstellungen } from '@/components/app/AppEinstellungen'
@@ -28,12 +28,20 @@ export default function Ich() {
   const { user, logout } = useAuth()
   const [mich, setMich] = useState<Employee | null>(null)
   const [konto, setKonto] = useState<Konto | null>(null)
+  const [offeneNachweise, setOffeneNachweise] = useState(0)
 
   useEffect(() => {
     if (!user?.employeeId) return
     fetch('/api/employees')
       .then(r => r.json())
       .then(d => setMich((d.employees ?? []).find((e: Employee) => e.id === user.employeeId) ?? null))
+      .catch(() => {})
+    fetch('/api/anforderungen?offen=1')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const z = d?.zusammenfassung
+        setOffeneNachweise((z?.offen ?? 0) + (z?.rueckfrage ?? 0))
+      })
       .catch(() => {})
     fetch(`/api/hours-account?employeeId=${user.employeeId}`)
       .then(r => r.ok ? r.json() : null)
@@ -85,6 +93,14 @@ export default function Ich() {
           titel="Krankmelden" text="Meldung und Bescheinigung" />
         <Zeile href="/employee/time-tracking" icon={<Clock size={18} className="text-navy" />}
           titel="Meine Zeiten" text="Buchungen, Überstunden, Monatsabschluss" />
+        {/* §149 Mit Zähler: Was von einem gebraucht wird, soll man sehen,
+            ohne die Seite zu öffnen — sonst liegt es dort und niemand merkt es. */}
+        <Zeile href="/employee/nachweise"
+          icon={<ShieldCheck size={18} className="text-amber-600" />}
+          titel="Meine Nachweise"
+          text={offeneNachweise > 0
+            ? `${offeneNachweise} ${offeneNachweise === 1 ? 'Sache wartet' : 'Sachen warten'} auf dich`
+            : 'Belehrungen, Bescheinigungen, Führungszeugnis'} />
       </Gruppe>
 
       <Gruppe>

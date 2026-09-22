@@ -252,6 +252,37 @@ const ZUGRIFF: Record<string, Zugriff> = {
     zaehlen: (db, k) => db.loeschvorgang.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.loeschvorgang.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
   },
+  // §149 Was eingereicht werden sollte und was dazu geschrieben wurde.
+  //
+  // Das Gespraech muss VOR der Aufforderung weg, sonst sind die Kennungen
+  // fort, ueber die es gefunden wird. Die Reihenfolge bestimmt die Liste
+  // `modelle` im Katalog — dort steht dieses Modell deshalb zuerst.
+  AnforderungBeitrag: {
+    zaehlen: async (db, k) => {
+      const ids = await db.anforderung.findMany({
+        where: { employeeId: k.employeeId }, select: { id: true },
+      })
+      if (ids.length === 0) return 0
+      return db.anforderungBeitrag.count({
+        where: { anforderungId: { in: ids.map(v => v.id) } },
+      })
+    },
+    loeschen: async (db, k) => {
+      const ids = await db.anforderung.findMany({
+        where: { employeeId: k.employeeId }, select: { id: true },
+      })
+      if (ids.length === 0) return 0
+      return db.anforderungBeitrag.deleteMany({
+        where: { anforderungId: { in: ids.map(v => v.id) } },
+      }).then(zahl)
+    },
+  },
+  Anforderung: {
+    zaehlen: (db, k) => db.anforderung.count({ where: { employeeId: k.employeeId } }),
+    loeschen: (db, k) => db.anforderung.deleteMany({
+      where: { employeeId: k.employeeId },
+    }).then(zahl),
+  },
   // §146 Die Frist ist nur die Erinnerung; der Nachweis selbst liegt als
   // Dokument in der Personalakte und folgt deren Aufbewahrung.
   Frist: {

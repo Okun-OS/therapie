@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   ShieldAlert, Check, Clock, AlertTriangle, Ban, Loader2, X, CalendarClock, Search,
+  Send,
 } from 'lucide-react'
 
 /**
@@ -210,6 +211,7 @@ function Einzelheit({ eintrag, schliessen, geaendert }: {
   const [erfuelltAm, setErfuelltAm] = useState(
     eintrag.erfuelltAm ? eintrag.erfuelltAm.slice(0, 10) : '')
   const [grund, setGrund] = useState(eintrag.befreitGrund ?? '')
+  const [angefordert, setAngefordert] = useState(false)
   const [arbeitet, setArbeitet] = useState(false)
   const [fehler, setFehler] = useState('')
 
@@ -225,6 +227,32 @@ function Einzelheit({ eintrag, schliessen, geaendert }: {
       geaendert()
     } catch { setFehler('Keine Verbindung.') }
     finally { setArbeitet(false) }
+  }
+
+  /**
+   * §149 Den Nachweis bei der Person anfordern.
+   *
+   * Die Frist wird mitgegeben — nimmt der Betrieb die Einreichung später ab,
+   * trägt das System sie selbst als erfüllt ein. Ohne diese Verbindung gäbe es
+   * zwei Wahrheiten: eine abgenommene Bescheinigung und eine Frist auf Rot.
+   */
+  async function anfordern() {
+    setArbeitet(true); setFehler('')
+    const res = await fetch('/api/anforderungen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        titel: eintrag.bezeichnung,
+        employeeId: eintrag.employeeId,
+        fristId: eintrag.id,
+        hinweis: eintrag.grundlage
+          ? `Grundlage: ${eintrag.grundlage}` : undefined,
+      }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setArbeitet(false)
+    if (!res.ok) { setFehler(d.error ?? 'Das hat nicht geklappt.'); return }
+    setAngefordert(true)
   }
 
   return (
@@ -255,6 +283,38 @@ function Einzelheit({ eintrag, schliessen, geaendert }: {
           <p className="text-[11px] text-gray-400 leading-relaxed">
             <strong className="text-gray-500">Grundlage:</strong> {eintrag.grundlage}
           </p>
+        )}
+
+        {/* §149 Der direkte Weg von der Lücke zur Aufforderung. Vorher musste
+            man sich merken, wer was schuldig ist, und es auf einer anderen
+            Seite noch einmal eintippen — das tat niemand. */}
+        {['fehlt', 'abgelaufen', 'laeuft_ab'].includes(eintrag.stand)
+          && eintrag.nachweisNoetig && (
+          <div className="space-y-2">
+            {angefordert ? (
+              <p className="text-xs text-teal-700 bg-teal-50 rounded-xl px-3 py-2.5">
+                Angefordert. {eintrag.personName.split(' ')[0]} bekommt eine
+                Nachricht und kann es direkt in der App hochladen.
+              </p>
+            ) : (
+              <>
+                <button
+                  onClick={anfordern}
+                  disabled={arbeitet}
+                  className="w-full h-11 rounded-xl bg-navy text-white font-semibold
+                             text-sm flex items-center justify-center gap-2
+                             disabled:opacity-50">
+                  {arbeitet ? <Loader2 size={15} className="animate-spin" />
+                    : <Send size={15} />}
+                  Bei {eintrag.personName.split(' ')[0]} anfordern
+                </button>
+                <p className="text-[11px] text-gray-400">
+                  Sie bekommt eine Nachricht, lädt den Nachweis hoch, und ihr
+                  nehmt ihn hier ab — dann ist die Frist erfüllt.
+                </p>
+              </>
+            )}
+          </div>
         )}
 
         {eintrag.stand !== 'befreit' && (

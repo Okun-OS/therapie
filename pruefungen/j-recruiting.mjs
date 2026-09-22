@@ -23,7 +23,10 @@ const { check, bilanz } = pruefer()
 const gf = await login('gf@rheinblick-reha.de')
 const leitung = await login('leitung@rheinblick-reha.de')
 const anna = await login('anna.fischer@rheinblick-reha.de')
-const fremdeLeitung = await login('susi.sonnenschein@kita-sonnenschein.de')
+// Ein fremder Betrieb: die Leitung dort und eine Person dort. Beide
+// müssen draußen bleiben — die Leitung ist der schärfere Fall.
+const fremdeLeitung = await login('leitung@kita-sonnenschein.de')
+const fremdePerson = await login('susi.sonnenschein@kita-sonnenschein.de')
 
 const EIGEN = `J-Recruiting ${Date.now().toString(36)}`
 const SLUG = `j-pruefung-${Date.now().toString(36)}`
@@ -291,6 +294,11 @@ const fremdAendern = await sende(fremdeLeitung, '/api/bewerbungen', 'PATCH', {
 check('Und ändert schon gar nichts daran',
   fremdAendern.status === 404 || fremdAendern.status === 403,
   `HTTP ${fremdAendern.status}`)
+
+const fremdePersonZugriff = await hole(fremdePerson, `/api/bewerbungen/${eingang.body.id}`)
+check('Ein Mitarbeiter eines fremden Betriebs erst recht nicht',
+  fremdePersonZugriff.status === 403 || fremdePersonZugriff.status === 404,
+  `HTTP ${fremdePersonZugriff.status}`)
 
 // ── J6 Die Pipeline und die Löschfrist ─────────────────────────────────────
 console.log('\n=== J6 Der Weg durch das Verfahren ===')
