@@ -2089,6 +2089,60 @@ Gesamtlauf: **1125/1125 in 32 Prüfungen**, 727 Modultests, Bauen sauber.
   Mehrfachbeschäftigung, Bescheinigungen
 - Danach: ein Musterregelpaket für den Demo-Zugang
 
+## Block §153 (25.09.) — Impressum und Datenschutzerklärung
+
+**Der Hinweis stand schon da — er zeigte nur ins Leere.** Am Fuß der
+Anmeldeseite stand „© 2026 OKUN Workforce · Datenschutz · Impressum", als
+reiner Text, ohne Ziel. Das ist schlechter als gar nichts: Es sieht nach
+Erfüllung aus. §5 DDG verlangt „leicht erkennbar, unmittelbar erreichbar und
+ständig verfügbar".
+
+### Zwei Ebenen, die gern verwechselt werden
+- Für die Daten **seiner Mitarbeiter** ist der Kunde Verantwortlicher. Er
+  informiert sie nach Art. 13, nicht wir. Was wir dabei tun, steht in seinem
+  Verarbeitungsverzeichnis (§152) und im Vertrag zur Auftragsverarbeitung.
+- Für **diese Webseite** ist OKUN Verantwortlicher — für den Abruf der
+  Anmeldeseite, die öffentlichen Karriereseiten und die Protokolle, die dabei
+  entstehen. Dafür braucht es ein eigenes Impressum und eine eigene Erklärung.
+
+Beides liegt jetzt unter `/impressum` und `/datenschutz`, **ohne Anmeldung
+erreichbar**, verlinkt von der Anmeldeseite und aus der App unter „Ich".
+
+### Der Abschnitt, den die meisten Erklärungen auslassen
+**Art. 22 — automatisierte Entscheidungen.** Ein pauschales „findet nicht
+statt" wäre bequem und falsch: Das Programm rechnet Dienstpläne. Die Erklärung
+sagt deshalb genau, was gerechnet wird und wo die Grenze verläuft — der Plan ist
+ein *Vorschlag*, er wird angezeigt, kann geändert werden und wird erst wirksam,
+wenn ein Mensch ihn veröffentlicht. Genau darauf stellt Art. 22 Abs. 1 ab.
+
+Dazu der Workforce Score (freiwillig, ohne Wirkung auf Entgelt oder
+Arbeitsverhältnis) und der Hilfe-Assistent (sieht keine Betriebsdaten, bekommt
+nur den Text der Frage).
+
+### Was aus Daten wächst, steht nur an einer Stelle
+Die Liste der Dienstleister und die Aufbewahrungsfristen veralten am
+schnellsten. Beide werden aus dem Datenkatalog (§128) und dem
+Verarbeitungsverzeichnis (§152) erzeugt. Ein von Hand geschriebener Absatz
+daneben wäre nach dem nächsten Umbau falsch — und eine falsche
+Datenschutzerklärung ist schlechter als eine knappe.
+
+### Die Seiten zeigen ihre eigenen Lücken
+Solange Pflichtangaben fehlen, steht oben ein Kasten, der sie benennt — mit der
+Vorschrift dazu. Ein Impressum, das seine Unvollständigkeit verschweigt, wiegt
+in falscher Sicherheit; genau dafür werden Abmahnungen geschrieben.
+
+**Zu setzen sind** (in `.env.example` dokumentiert): `OKUN_FIRMA`,
+`OKUN_ANSCHRIFT`, `OKUN_VERTRETEN`, `OKUN_KONTAKT`, dazu `OKUN_REGISTER` und
+`OKUN_USTID`, sobald vorhanden, und `OKUN_DSB`, sobald ein
+Datenschutzbeauftragter benannt ist.
+
+Nachweis: 24 Modultests und 13 weitere Prüfungen in
+`pruefungen/g2-dsgvo-dokumente.mjs`. Gesamtlauf: **1138/1138 in 32 Prüfungen**,
+751 Modultests, Bauen sauber.
+
+> Die Texte sind sorgfältig hergeleitet und mit Fundstellen belegt. Die Freigabe
+> durch einen Anwalt oder Datenschutzbeauftragten ersetzt das nicht.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

@@ -231,4 +231,49 @@ const sauber = await hole(okun, `/api/anmeldeschutz?email=${encodeURIComponent(O
 check('Die Prüfung hinterlässt keine Sperre', sauber.body.gesperrt === false,
   JSON.stringify(sauber.body))
 
+// ── G2.7 Impressum und Datenschutzerklärung ────────────────────────────────
+//
+// Beide müssen OHNE Anmeldung erreichbar sein. §5 DDG verlangt „leicht
+// erkennbar, unmittelbar erreichbar und ständig verfügbar" — hinter einer
+// Anmeldung ist ein Impressum keines von dreien.
+console.log('\n=== G2.7 Impressum und Datenschutzerklärung ===')
+
+const oeffentlich = async (pfad) => {
+  const r = await fetch(`${BASIS}${pfad}`)
+  return { status: r.status, text: r.ok ? await r.text() : '' }
+}
+
+const imp = await oeffentlich('/impressum')
+check('Das Impressum lädt ohne Anmeldung', imp.status === 200, `HTTP ${imp.status}`)
+check('Es beruft sich auf §5 DDG', /§5 DDG/.test(imp.text))
+check('Es nennt den Anbieter', /OKUN Workforce/.test(imp.text))
+check('Und sagt etwas zur Streitbeilegung', /VSBG/.test(imp.text))
+
+const dse = await oeffentlich('/datenschutz')
+check('Die Datenschutzerklärung lädt ohne Anmeldung', dse.status === 200,
+  `HTTP ${dse.status}`)
+check('Sie nennt die Betroffenenrechte', /Art\. 15/.test(dse.text))
+check('Und das Beschwerderecht bei der Aufsichtsbehörde',
+  /Aufsichtsbehörde/.test(dse.text))
+check('Sie trennt die eigene Rolle von der des Arbeitgebers',
+  /Art\. 28/.test(dse.text) && /Verantwortliche/.test(dse.text))
+
+// Der Abschnitt, den die meisten Erklärungen auslassen — und der hier
+// besonders zählt, weil das Programm Dienstpläne rechnet.
+check('Sie erklärt, was automatisch gerechnet wird (Art. 22)',
+  /Art\. 22/.test(dse.text) && /Dienstpläne/.test(dse.text))
+check('Und dass ein Mensch entscheidet, nicht die Maschine',
+  /veröffentlicht/.test(dse.text))
+
+check('Sie führt die Dienstleister namentlich auf',
+  /Railway/.test(dse.text) && /Anthropic/.test(dse.text))
+check('Und nennt die Aufbewahrungsfristen mit Vorschrift',
+  /6 Jahre/.test(dse.text) && /EStG/.test(dse.text))
+
+// Von der Anmeldeseite aus erreichbar — sonst findet sie niemand.
+const anmeldeseite = await oeffentlich('/login')
+check('Die Anmeldeseite verlinkt beide Seiten',
+  /href="\/impressum"/.test(anmeldeseite.text)
+  && /href="\/datenschutz"/.test(anmeldeseite.text))
+
 process.exit(bilanz() ? 1 : 0)

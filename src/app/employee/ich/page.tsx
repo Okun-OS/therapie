@@ -133,6 +133,11 @@ export default function Ich() {
           titel="Meine Daten" text="Auskunft, Mitnehmen und Löschung beantragen" />
         <Zeile href="/funde" icon={<Shield size={18} className="text-gray-400" />}
           titel="Etwas melden" text="Fehler oder Verbesserungsvorschlag" />
+        {/* §153 Auch in der App erreichbar — nicht nur auf der Anmeldeseite.
+            Wer angemeldet ist, kommt sonst nie wieder daran vorbei. */}
+        <Zeile href="/datenschutz" extern
+          icon={<Shield size={18} className="text-gray-400" />}
+          titel="Datenschutz & Impressum" text="Wer verarbeitet was, und wer haftet" />
       </Gruppe>
 
       <button

@@ -279,8 +279,15 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* §153 Vorher stand hier nur der Text „Datenschutz · Impressum",
+              ohne Ziel. Ein Hinweis, der ins Leere zeigt, ist schlechter als
+              keiner: Er sieht nach Erfüllung aus. §5 DDG verlangt „leicht
+              erkennbar, unmittelbar erreichbar und ständig verfügbar". */}
           <p className="text-center text-navy-100 text-xs mt-6">
-            © 2026 OKUN Workforce · Datenschutz · Impressum
+            © {new Date().getFullYear()} OKUN Workforce{' · '}
+            <Link href="/datenschutz" className="hover:underline">Datenschutz</Link>
+            {' · '}
+            <Link href="/impressum" className="hover:underline">Impressum</Link>
           </p>
         </div>
       </div>
