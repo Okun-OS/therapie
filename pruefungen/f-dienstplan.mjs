@@ -66,7 +66,18 @@ if (lauf.body.sessionId) {
     await new Promise(r => setTimeout(r, 3000))
     const stand = await hole(leitung, `/api/planning-sessions/${lauf.body.sessionId}`)
     const st = stand.body.session?.status ?? stand.body.status
-    if (st && st !== 'queued' && st !== 'running') { ergebnis = stand.body; break }
+    // Die Zwischenstände vollständig, nicht nur die zwei naheliegenden.
+    //
+    // Nach dem Rechnen geht die Sitzung in den Stand `verifying` — dort wird
+    // der Plan gegen die Regeln gehalten, und erst danach steht er in `week`.
+    // Diese Prüfung kannte nur `queued` und `running`, brach deshalb sofort ab
+    // und las einen leeren Plan. Bestanden hat sie nur, wenn die Prüfung des
+    // Plans zufällig in denselben Drei-Sekunden-Takt fiel. Tagelang sah das
+    // nach einem trägen Rechendienst aus und war ein Lesefehler.
+    if (st && !['queued', 'running', 'verifying'].includes(st)) {
+      ergebnis = stand.body
+      break
+    }
   }
 }
 check('Der Lauf kommt zu einem Ergebnis', !!ergebnis,

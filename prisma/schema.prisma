@@ -2138,3 +2138,29 @@ model BelehrungBestaetigung {
   @@index([employeeId, bestaetigtAm])
   @@index([customerId])
 }
+
+/// §152 Ein fehlgeschlagener Anmeldeversuch — die Grundlage der Bremse.
+///
+/// WARUM EINE EIGENE TABELLE UND NICHT DAS PROTOKOLL
+/// Im `AuditLog` steht, WAS geschehen ist, und er wird drei Jahre aufbewahrt
+/// (Art. 5 Abs. 2 DSGVO). Hier steht nur, WIE OFT in den letzten Minuten —
+/// eine Arbeitszahl, die nach einer Viertelstunde niemanden mehr interessiert.
+/// Beides in einer Tabelle hiesse, bei jeder Anmeldung eine wachsende
+/// Protokolltabelle zu durchsuchen.
+///
+/// WAS HIER NICHT STEHT
+/// Kein Passwort, auch kein falsches. Und die Adresse nur als gesalzenes
+/// Kuerzel: Gebraucht wird die Frage „dieselbe wie eben?", nicht die Adresse
+/// selbst. Eine Liste, aus der sich ablesen liesse, wer sich von wo angemeldet
+/// hat, soll gar nicht erst entstehen.
+model Anmeldeversuch {
+  id        String   @id @default(cuid())
+  /// konto | adresse
+  art       String
+  /// Bei `konto` die kleingeschriebene E-Mail, bei `adresse` das Kuerzel
+  kennung   String
+  createdAt DateTime @default(now())
+
+  @@index([art, kennung, createdAt])
+  @@index([createdAt])
+}

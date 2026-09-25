@@ -1995,6 +1995,100 @@ durch), aber sie wachsen mit jedem Lauf. Eigener Vorgang.
 Stand nach diesem Block: **1080/1080 in 31 Prüfungen**, 686 Modultests, Bauen
 sauber, und zusätzlich 50 Schritte im Browser über drei Rollen und drei Abläufe.
 
+## Block §152 (25.09.) — Artikel 30 und 32: erst die Maßnahme, dann das Dokument
+
+Beim Schreiben der technischen und organisatorischen Maßnahmen fiel die Lücke
+auf, die sie hätten beschreiben sollen: **Die Anmeldung hatte keine Bremse.**
+Beliebig viele Passwortversuche, und ein Fehlversuch hinterließ keine Spur —
+obwohl der Protokolltyp `login_failed` seit Langem existierte und nie
+geschrieben wurde. Außerdem lief bei unbekannter E-Mail kein bcrypt, die
+Antwortzeit verriet also, welche Adressen ein Konto haben.
+
+TOMs zu schreiben, die Schutz vor unbefugtem Zugriff behaupten, wäre damit
+schlicht falsch gewesen. Also erst die Maßnahme.
+
+### Die Bremse
+- [x] **Zwei Zähler, nicht einer.** Je Konto (zehn Fehlversuche in einer
+      Viertelstunde) und je Absenderadresse (vierzig). Ein Zähler allein sieht
+      einen der beiden Angriffe nie: Wer zehn Versuche auf vierhundert Konten
+      verteilt, bleibt unter jeder Kontogrenze; wer aus einem Botnetz kommt,
+      hat für jeden Versuch eine neue Adresse.
+- [x] **Die Sperre läuft ab.** Eine dauerhafte Kontosperre wäre eine Waffe: Wer
+      die E-Mail-Adresse einer Standortleitung kennt, sperrt sie sonst mit zehn
+      falschen Versuchen dauerhaft aus. Nach einer Viertelstunde geht sie von
+      selbst auf — das kostet einen Angreifer vierzig Versuche pro Stunde und
+      einen Vertipper eine Kaffeepause.
+- [x] **Erst prüfen, dann rechnen.** Die Sperre greift VOR dem bcrypt-Vergleich.
+      Andersherum wäre die Bremse selbst der Hebel für eine Überlastung — jeder
+      Versuch kostet Kostenfaktor 12.
+- [x] **Gleiche Antwort für unbekannte und bekannte Adressen**, samt
+      Leerlauf-Vergleich, damit auch die Antwortzeit nichts verrät.
+- [x] **Die Adresse wird nur als gesalzenes Kürzel abgelegt.** Gebraucht wird
+      „dieselbe wie eben?", nicht die Adresse. Eine Liste, wer sich von wo
+      angemeldet hat, soll gar nicht erst entstehen.
+- [x] **Aufsperren als Supportfall.** Die Unternehmensebene hebt die Sperre
+      eigener Leute auf, OKUN auch die einer ganzen Verbindung — der Fall, dass
+      eine Einrichtung hinter einem Anschluss sich gemeinsam ausgesperrt hat.
+      Jede Aufhebung wird protokolliert, sonst bliebe genau der Angriff
+      unsichtbar, gegen den die Bremse gebaut ist.
+
+### Verzeichnis von Verarbeitungstätigkeiten (Art. 30)
+**Zwei Verzeichnisse, nicht eines.** Art. 30 kennt zwei Rollen, und wir sind
+beide: Der Kunde ist Verantwortlicher (Abs. 1), OKUN ist Auftragsverarbeiter
+(Abs. 2).
+
+Das Verzeichnis des Kunden **erzeugen wir ihm** aus dem Datenkatalog (§128) —
+je Datenart Zweck, Rechtsgrundlage mit Fundstelle, betroffene Personen, Daten,
+Empfänger und Löschung. Das ist kein Gefallen, sondern der Grund, warum ein
+Betrieb so ein Programm kauft: Er bekommt eine Pflicht erledigt, statt eine neue
+zu bekommen. Abrufbar unter *Datenschutz → Verarbeitungsverzeichnis*, druckbar
+als PDF.
+
+Es **gibt sich ausdrücklich nicht für vollständig aus**. Der Betrieb verarbeitet
+auch außerhalb dieses Programms — Bewerbungen auf Papier, eine Videoanlage am
+Eingang, die Telefonliste im Flur. Ein erzeugtes Verzeichnis, das das
+verschweigt, wäre gefährlicher als keines.
+
+### Maßnahmen (Art. 32)
+Zwanzig Maßnahmen in neun Rubriken — gegliedert nach der alten Anlage zu §9
+BDSG, weil ein Prüfer diese Gliederung wiedererkennt. Jede trägt einen **Beleg:
+den Pfad zu der Datei, in der sie tatsächlich steht.** Ein Test prüft, dass es
+die Datei gibt. Wer eine Maßnahme entfernt, ohne den Eintrag zu ändern, bekommt
+einen roten Lauf statt ein stilles Dokument.
+
+**Der Stand ist ehrlich gehalten:** 14 umgesetzt, 3 durch den Betreiber
+(Verschlüsselung im Ruhezustand, Sicherungen, Netz — das als eigene Leistung
+auszugeben wäre gelogen), 3 teilweise. Zu jeder nicht umgesetzten Maßnahme ist
+die Lücke benannt; ein Test erzwingt das. Eine TOM-Liste ohne offene Punkte
+glaubt niemand — zu Recht, sie sagt nur, dass niemand genau hingesehen hat.
+
+Die drei benannten Lücken: der zweite Faktor ist freiwillig und nicht erzwungen,
+die Sitzung gilt dreißig Tage, und ein dokumentierter Wiederherstellungstest der
+Sicherung fehlt — eine Sicherung, die nie zurückgespielt wurde, ist eine
+Vermutung.
+
+### Nebenbei gefunden: der Fehler hinter der „trägen" Dienstplanung
+`f-dienstplan` fiel seit Tagen sporadisch mit „0 Zuweisungen" um, und ich habe
+das der Aufwärmphase des Rechendiensts zugeschrieben. Falsch. Nach dem Rechnen
+geht die Sitzung in den Stand **`verifying`** — dort wird der Plan gegen die
+Regeln gehalten, und erst danach steht er in `week`. Die Prüfung kannte nur
+`queued` und `running`, brach deshalb sofort ab und las einen leeren Plan.
+Bestanden hat sie nur, wenn die Verifikation zufällig in denselben
+Drei-Sekunden-Takt fiel.
+
+Nachweis: 44 Modultests (Bremse, Vollständigkeit der Dokumente, Belegpfade) und
+45 Prüfungen am laufenden System (`pruefungen/g2-dsgvo-dokumente.mjs`) —
+darunter die Gegenprobe, dass ein anderes Konto von einer Sperre unberührt
+bleibt, und dass auch das richtige Passwort eine Sperre nicht aushebelt.
+Gesamtlauf: **1125/1125 in 32 Prüfungen**, 727 Modultests, Bauen sauber.
+
+### Noch offen aus diesem Auftrag
+- Datenschutzerklärung und Impressum für das Produkt selbst
+- Die Löschfristen einzeln gegen ihre Vorschrift prüfen
+- Lohn: Pfändung, betriebliche Altersvorsorge, Kurzarbeitergeld,
+  Mehrfachbeschäftigung, Bescheinigungen
+- Danach: ein Musterregelpaket für den Demo-Zugang
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

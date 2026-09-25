@@ -85,6 +85,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `f-dienstplan.mjs` | Rechenkern, Dienstwünsche, Schichttausch |
 | `f5-regelpakete.mjs` | Regelpakete je Kunde, Freischaltung der Dienstplanung |
 | `g1-dsgvo.mjs` | Auskunft, Löschkonzept, Sperre statt Löschung |
+| `g2-dsgvo-dokumente.mjs` | Anmeldeschutz, Verarbeitungsverzeichnis, Maßnahmen |
 | `h-funde.mjs` | Funde melden, bewerten, freigeben, nachfragen |
 | `h2-fundelauf.mjs` | Der Zugang für den stündlichen Lauf und seine Grenzen |
 | `h3-behebung.mjs` | Was der Lauf selbst beheben darf — und was nie |

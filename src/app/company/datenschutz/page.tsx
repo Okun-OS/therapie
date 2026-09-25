@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Shield, Lock, Trash2, FileDown, AlertTriangle, Check, Search } from 'lucide-react'
+import { Shield, Lock, Trash2, FileDown, AlertTriangle, Check, Search, ScrollText, Users } from 'lucide-react'
+import { Verarbeitungsverzeichnis } from '@/components/datenschutz/Verarbeitungsverzeichnis'
 
 /**
  * §128 Datenschutz: Auskunft geben und löschen.
@@ -77,6 +78,7 @@ export default function Datenschutz() {
   const [laedt, setLaedt] = useState(false)
   const [arbeitet, setArbeitet] = useState(false)
   const [fehler, setFehler] = useState('')
+  const [sicht, setSicht] = useState<'personen' | 'verzeichnis'>('personen')
   const [erfolg, setErfolg] = useState('')
   const [sicherheitsfrage, setSicherheitsfrage] = useState(false)
   const [tippfeld, setTippfeld] = useState('')
@@ -201,11 +203,39 @@ export default function Datenschutz() {
           <Shield size={20} className="text-teal-600" /> Datenschutz
         </h1>
         <p className="text-sm text-gray-500 mt-1 max-w-2xl">
-          Auskunft geben, was über eine Person gespeichert ist, und ihre Daten nach dem
-          Austritt löschen. Was das Steuer- und Sozialrecht aufzubewahren verlangt, wird
-          dabei nicht gelöscht, sondern gesperrt — die Vorschau zeigt vorher, was bleibt.
+          {sicht === 'personen'
+            ? 'Auskunft geben, was über eine Person gespeichert ist, und ihre Daten '
+              + 'nach dem Austritt löschen. Was das Steuer- und Sozialrecht '
+              + 'aufzubewahren verlangt, wird dabei nicht gelöscht, sondern gesperrt '
+              + '— die Vorschau zeigt vorher, was bleibt.'
+            : 'Das Verzeichnis, das ihr als Verantwortliche führen müsst '
+              + '(Art. 30 DSGVO) — samt den Maßnahmen des Auftragsverarbeiters '
+              + 'als Anlage (Art. 32 DSGVO).'}
         </p>
       </div>
+
+      {/* §152 Zwei getrennte Dinge auf einer Seite: die Rechte der einzelnen
+          Person und die Pflichten des Betriebs als Ganzes. Sie gehören
+          zusammen, aber nicht untereinander. */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit print:hidden">
+        {([
+          ['personen', 'Einzelne Personen', <Users key="a" size={13} />],
+          ['verzeichnis', 'Verarbeitungsverzeichnis', <ScrollText key="b" size={13} />],
+        ] as const).map(([wert, text, sym]) => (
+          <button
+            key={wert}
+            onClick={() => setSicht(wert)}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2
+                        rounded-lg ${sicht === wert ? 'bg-white text-navy shadow-sm'
+              : 'text-gray-500'}`}>
+            {sym} {text}
+          </button>
+        ))}
+      </div>
+
+      {sicht === 'verzeichnis' && <Verarbeitungsverzeichnis />}
+      {sicht === 'personen' && (
+      <>
 
       {fehler && (
         <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
@@ -543,6 +573,8 @@ export default function Datenschutz() {
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   )
 }
