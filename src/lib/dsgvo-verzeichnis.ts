@@ -353,6 +353,16 @@ const ZWECKE: Record<string, { zweck: string; rechtsgrundlage: string; empfaenge
       + 'und ArbMedVV, §26 BDSG',
     empfaenger: ['Aufsichtsbehörden im Prüfungsfall', 'Unfallversicherungsträger'],
   },
+  belehrungsnachweis: {
+    zweck:
+      'Nachweis, dass die vorgeschriebenen Unterweisungen und Belehrungen '
+      + 'durchgeführt wurden.',
+    rechtsgrundlage:
+      'Art. 6 Abs. 1 lit. c DSGVO i.V.m. §12 ArbSchG, §43 IfSG und DGUV '
+      + 'Vorschrift 1; Aufbewahrung gestützt auf Art. 17 Abs. 3 lit. e DSGVO '
+      + 'i.V.m. §195 BGB',
+    empfaenger: ['Aufsichtsbehörden und Unfallversicherungsträger im Prüfungsfall'],
+  },
   bem: {
     zweck:
       'Durchführung des betrieblichen Eingliederungsmanagements und Erhalt '

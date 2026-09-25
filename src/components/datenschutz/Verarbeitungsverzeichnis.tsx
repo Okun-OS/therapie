@@ -64,6 +64,20 @@ interface Antwort {
     zusammenfassung: Record<string, number>
   }
   auftragsverarbeiter?: { name: string }
+  fristen?: {
+    sicherheitText: Record<string, string>
+    pruefungen: Fristpruefung[]
+    offeneFragen: Fristpruefung[]
+    befunde: Fristpruefung[]
+  }
+}
+
+interface Fristpruefung {
+  id: string
+  herleitung: string
+  sicherheit: string
+  frage?: string
+  befund?: string
 }
 
 const STAND_FARBE: Record<string, string> = {
@@ -330,6 +344,70 @@ export function Verarbeitungsverzeichnis() {
           })}
         </div>
       </section>
+
+      {/* §154 Die Prüfung der Fristen — der Teil, den man dem Steuerberater
+          und dem Datenschutzbeauftragten vorlegt. Die offenen Fragen stehen
+          zuerst, weil sie das sind, was man mitnimmt. */}
+      {d.fristen && (
+        <section className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6
+                            space-y-4 print:border-0 print:p-0">
+          <div>
+            <h3 className="font-bold text-navy">Prüfung der Löschfristen</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Jede Frist gegen ihre Vorschrift gehalten — mit der Herleitung und
+              einer ehrlichen Angabe, wie belastbar sie ist.
+            </p>
+          </div>
+
+          {d.fristen.offeneFragen.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <p className="font-semibold text-amber-900 text-sm">
+                {d.fristen.offeneFragen.length} Fragen für den Steuerberater
+                oder den Datenschutzbeauftragten
+              </p>
+              <ul className="mt-2.5 space-y-3">
+                {d.fristen.offeneFragen.map(f => (
+                  <li key={f.id} className="text-sm text-amber-900">
+                    <strong>{f.id}:</strong> {f.frage}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <details className="print:open">
+            <summary className="text-sm font-semibold text-gray-600 cursor-pointer
+                                print:hidden">
+              Alle {d.fristen.pruefungen.length} Herleitungen anzeigen
+            </summary>
+            <ul className="mt-3 space-y-3">
+              {d.fristen.pruefungen.map(f => (
+                <li key={f.id}
+                  className="border border-gray-100 rounded-xl p-3.5 break-inside-avoid">
+                  <p className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-navy text-sm">{f.id}</span>
+                    <span className={`text-[11px] font-semibold px-2 py-0.5
+                                      rounded-full ${f.sicherheit === 'sicher'
+                      ? 'bg-teal-50 text-teal-700'
+                      : f.sicherheit === 'auslegung'
+                        ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-800'}`}>
+                      {d.fristen!.sicherheitText[f.sicherheit]}
+                    </span>
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">
+                    {f.herleitung}
+                  </p>
+                  {f.befund && (
+                    <p className="text-sm text-amber-800 mt-1.5 leading-relaxed">
+                      <strong>Befund:</strong> {f.befund}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
+        </section>
+      )}
 
       <p className="text-xs text-gray-400 flex items-start gap-2 print:hidden">
         <FileText size={13} className="shrink-0 mt-0.5" />

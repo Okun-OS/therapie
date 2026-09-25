@@ -2143,6 +2143,66 @@ Nachweis: 24 Modultests und 13 weitere Prüfungen in
 > Die Texte sind sorgfältig hergeleitet und mit Fundstellen belegt. Die Freigabe
 > durch einen Anwalt oder Datenschutzbeauftragten ersetzt das nicht.
 
+## Block §154 (25.09.) — Die Löschfristen einzeln geprüft
+
+Jede der siebzehn Fristen gegen ihre Vorschrift gehalten, mit Herleitung und
+einer ehrlichen Angabe, wie belastbar sie ist: **sicher** (die Vorschrift nennt
+die Zahl), **Auslegung** (aus einer Wertung hergeleitet, vertretbar aber nicht
+zwingend) oder **zu klären** (da gehört die Antwort eines Fachmanns her).
+
+Ein Test hält die Prüfung an den Katalog: Eine neue Datenart ohne geprüfte Frist
+lässt den Lauf rot werden. Und jede Herleitung muss eine Fundstelle nennen — der
+Test hat beim Schreiben vier Einträge gefunden, in denen ich behauptet hatte,
+es gebe keine Vorschrift, ohne die Norm zu nennen, aus der das folgt.
+
+### Der Reflex, der falsch ist
+Im Zweifel länger aufbewahren — dem Finanzamt kann man dann nichts vorwerfen.
+Art. 5 Abs. 1 lit. e DSGVO sieht das anders: Daten dürfen nur so lange bleiben,
+wie der Zweck es verlangt. **Eine zu lange Frist ist genauso ein Verstoß wie
+eine zu kurze — nur einer, den niemand bemerkt.**
+
+### Was die Prüfung gefunden hat
+
+**Behoben — und es war mein eigener Fehler:** Die Bestätigung einer Belehrung
+wurde beim Ausscheiden gelöscht. Das ist genau der Beleg, für den §150 gebaut
+wurde: Behauptet ein ehemaliger Beschäftigter später, nie unterwiesen worden zu
+sein, stünde der Betrieb ohne Nachweis da. Art. 17 Abs. 3 lit. e DSGVO nimmt die
+Löschung dafür ausdrücklich zurück. Jetzt eine eigene Datenart, drei Jahre
+gesperrt (§195 BGB), danach gelöscht.
+
+**Vier Fragen für den Steuerberater und den Datenschutzbeauftragten** — sie
+stehen als Fragen da, nicht als Feststellungen, und sind im Programm unter
+*Datenschutz → Verarbeitungsverzeichnis* abrufbar:
+
+1. **Zeiterfassung, zwei Jahre — möglicherweise zu kurz.** §16 Abs. 2 ArbZG und
+   §17 MiLoG sagen „mindestens zwei Jahre". Die Aufzeichnungen sind aber die
+   Grundlage der Lohnabrechnung, und nach §147 Abs. 1 Nr. 5 AO sind Unterlagen,
+   die für die Besteuerung von Bedeutung sind, sechs Jahre aufzubewahren. Kommt
+   die Betriebsprüfung im vierten Jahr, liegt die Abrechnung vor — ihr Nachweis
+   ist gelöscht.
+2. **Personalakte, zehn Jahre — zu grob und vermutlich zu lang.** Die Akte wird
+   als ein Block mit der längsten denkbaren Frist behandelt. Eine
+   Lohnabrechnung ist ein Buchungsbeleg, ein Arbeitszeugnis nicht. Und die
+   Frist für Buchungsbelege wurde durch das Vierte
+   Bürokratieentlastungsgesetz von zehn auf **acht** Jahre verkürzt (§147
+   Abs. 3 AO, §257 Abs. 4 HGB, seit 1.1.2025). Die Kategorien sind im Programm
+   bereits vorhanden — die Unterscheidung lässt sich umsetzen, sobald die
+   Zahlen feststehen.
+3. **Lohnkonto: §28f SGB IV knüpft nicht an sechs Jahre an**, sondern an die
+   letzte Betriebsprüfung. Prüfungen finden etwa alle vier Jahre statt, also
+   liegt man meist richtig — aber eben nur meist.
+4. **Belehrungsnachweis: Genügen drei Jahre?** Bei Personenschäden aus einer
+   unterbliebenen Unterweisung reicht §199 Abs. 2 BGB bis zu dreißig Jahre.
+
+Dazu drei Anmerkungen ohne Handlungsbedarf: warum Krankheitszeiten sechs Jahre
+bleiben (Bestandteil der Abrechnung, nie eine Diagnose), warum ein Gespräch zu
+zweit ganz verschwindet, und warum der Löschantrag bei den Protokollen steht und
+nicht bei den Kontodaten.
+
+Nachweis: 18 Modultests und 8 weitere Prüfungen in
+`pruefungen/g2-dsgvo-dokumente.mjs`. Gesamtlauf: **1146/1146 in 32 Prüfungen**,
+769 Modultests, Bauen sauber.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

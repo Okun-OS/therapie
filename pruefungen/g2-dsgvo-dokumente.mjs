@@ -276,4 +276,32 @@ check('Die Anmeldeseite verlinkt beide Seiten',
   /href="\/impressum"/.test(anmeldeseite.text)
   && /href="\/datenschutz"/.test(anmeldeseite.text))
 
+// ── G2.8 Die Prüfung der Löschfristen ──────────────────────────────────────
+console.log('\n=== G2.8 Prüfung der Löschfristen ===')
+
+const f = alsUnternehmen.body.fristen ?? {}
+check('Die Fristenprüfung liegt dem Verzeichnis bei',
+  (f.pruefungen ?? []).length > 10, `${(f.pruefungen ?? []).length} Prüfungen`)
+check('Jede Herleitung nennt eine Fundstelle',
+  (f.pruefungen ?? []).every(p => /§|Art\.|Erwägungsgrund/.test(p.herleitung ?? '')))
+check('Die offenen Fragen sind einzeln benannt',
+  (f.offeneFragen ?? []).length > 0, `${(f.offeneFragen ?? []).length} Fragen`)
+check('Jede Frage hat einen Adressaten',
+  (f.offeneFragen ?? []).every(
+    p => /Steuerberater|Datenschutzbeauftragten|Anwalt/.test(p.frage ?? '')))
+check('Die Befunde stehen drin, statt verschwiegen zu werden',
+  (f.befunde ?? []).length > 2, `${(f.befunde ?? []).length} Befunde`)
+
+// Der Befund, der die eigene Arbeit betrifft: Der Nachweis einer Belehrung
+// wurde beim Austritt gelöscht — genau der Beleg, für den §150 gebaut wurde.
+const belehrung = (alsUnternehmen.body.verzeichnis?.taetigkeiten ?? [])
+  .find(t => t.id === 'belehrungsnachweis')
+check('Der Nachweis einer Belehrung ist eine eigene Tätigkeit', !!belehrung)
+check('Er wird gesperrt statt gelöscht',
+  /gesperrt/.test(belehrung?.loeschung ?? ''), belehrung?.loeschung)
+check('Und stützt sich auf die Ausnahme in Art. 17 Abs. 3',
+  /Art\. 17 Abs\. 3/.test(belehrung?.loeschung ?? '')
+  || /Art\. 17 Abs\. 3/.test(JSON.stringify(f.pruefungen ?? [])),
+  belehrung?.loeschung)
+
 process.exit(bilanz() ? 1 : 0)

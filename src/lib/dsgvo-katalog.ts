@@ -216,23 +216,37 @@ export const DATENARTEN: Datenart[] = [
     beschreibung:
       'Ihre Schulungen, Unterweisungen und Zeugnisse samt Gültigkeitsdauer — '
       + 'etwa Erste Hilfe, Infektionsschutz oder das Führungszeugnis. Dazu die '
-      + 'Aufforderungen, etwas einzureichen, was dazu geschrieben wurde, und '
-      + 'Ihre Kenntnisnahmen samt Zeitpunkt.',
+      + 'Aufforderungen, etwas einzureichen, und was dazu geschrieben wurde.',
     // §149 Die Reihenfolge zaehlt: Das Gespraech haengt an der Kennung der
     // Aufforderung und muss vor ihr weg.
-    // §150 Die Bestaetigung einer Belehrung steht hier mit: Fuer den
-    // Betroffenen ist es dieselbe Sache — was er an Schulungen und
-    // Unterweisungen hinter sich hat.
-    modelle: ['AnforderungBeitrag', 'Anforderung', 'BelehrungBestaetigung', 'Frist'],
+    modelle: ['AnforderungBeitrag', 'Anforderung', 'Frist'],
     behandlung: 'loeschen',
     fristJahre: 0,
     begruendung:
       'Die Unterlagen selbst liegen in Ihrer Personalakte und folgen deren '
       + 'Aufbewahrung. Die Einträge hier sind die Erinnerung daran, wann etwas '
-      + 'aufgefrischt werden muss, der Schriftwechsel darüber, was eingereicht '
-      + 'werden sollte, und der Nachweis Ihrer Kenntnisnahmen. Das alles wird '
-      + 'nach Ihrem Ausscheiden gelöscht — der Nachweis einer Unterweisung '
-      + 'nützt dem Betrieb nur, solange Sie dort arbeiten.',
+      + 'aufgefrischt werden muss, und der Schriftwechsel darüber, was '
+      + 'eingereicht werden sollte — beides wird gelöscht.',
+  },
+  {
+    id: 'belehrungsnachweis',
+    bezeichnung: 'Bestätigte Belehrungen',
+    beschreibung:
+      'Welche Unterweisung Sie wann zur Kenntnis genommen haben — mit dem '
+      + 'Wortlaut, den Sie damals bestätigt haben. Keine Inhalte über Sie, '
+      + 'nur die Tatsache und der Zeitpunkt.',
+    modelle: ['BelehrungBestaetigung'],
+    behandlung: 'sperren',
+    fristJahre: 3,
+    grundlage: 'Art. 17 Abs. 3 lit. e DSGVO, §195 BGB (Regelverjährung)',
+    begruendung:
+      'Diese Bestätigung ist der Nachweis des Betriebs, dass er seiner '
+      + 'Unterweisungspflicht nachgekommen ist (§12 ArbSchG, §43 IfSG, DGUV '
+      + 'Vorschrift 1). Würde sie mit dem Ausscheiden gelöscht, stünde er ohne '
+      + 'Beleg da, wenn später behauptet wird, es sei nie unterwiesen worden. '
+      + 'Art. 17 Abs. 3 lit. e DSGVO nimmt die Löschung genau dafür zurück. '
+      + 'Sie wird deshalb nicht gelöscht, sondern drei Jahre gesperrt — so '
+      + 'lange, wie Ansprüche regelmäßig verjähren — und danach entfernt.',
   },
   {
     id: 'bem',

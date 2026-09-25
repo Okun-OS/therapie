@@ -6,6 +6,9 @@ import {
   verzeichnisFuerKunden, verzeichnisAlsAuftragsverarbeiter, anbieter,
 } from '@/lib/dsgvo-verzeichnis'
 import { MASSNAHMEN, RUBRIKEN, STAND_TEXT, zusammenfassung } from '@/lib/dsgvo-tom'
+import {
+  PRUEFUNGEN, SICHERHEIT_TEXT, offeneFragen, befunde,
+} from '@/lib/dsgvo-fristenpruefung'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +48,15 @@ export async function GET(req: NextRequest) {
     zusammenfassung: zusammenfassung(),
   }
 
+  // §154 Die Prüfung der Löschfristen liegt bei — sie ist der Teil, den man
+  // dem Steuerberater und dem Datenschutzbeauftragten vorlegt.
+  const fristen = {
+    sicherheitText: SICHERHEIT_TEXT,
+    pruefungen: PRUEFUNGEN,
+    offeneFragen: offeneFragen(),
+    befunde: befunde(),
+  }
+
   if (session.role === 'okun') {
     const v = verzeichnisAlsAuftragsverarbeiter()
     await logAudit({
@@ -52,7 +64,9 @@ export async function GET(req: NextRequest) {
       action: 'export', entityType: 'Verarbeitungsverzeichnis',
       details: { art: 'auftragsverarbeiter' },
     }).catch(() => undefined)
-    return NextResponse.json({ art: 'auftragsverarbeiter', verzeichnis: v, massnahmen })
+    return NextResponse.json({
+      art: 'auftragsverarbeiter', verzeichnis: v, massnahmen, fristen,
+    })
   }
 
   const customerId = await resolveCustomerId(session)
@@ -90,6 +104,7 @@ export async function GET(req: NextRequest) {
     art: 'verantwortlicher',
     verzeichnis: v,
     massnahmen,
+    fristen,
     // Damit im Dokument steht, wer der Auftragsverarbeiter ist — ohne dass
     // die Oberfläche das wissen muss.
     auftragsverarbeiter: anbieter(),
