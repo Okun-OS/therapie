@@ -2519,11 +2519,66 @@ Nachweis: 18 Modultests und 30 Prüfungen am laufenden System
 Arbeitgeberkosten erhöhen und das Netto des Arbeitnehmers nicht anrühren.
 Gesamtlauf: **1315/1315 in 37 Prüfungen**, 914 Modultests, Bauen sauber.
 
-### Noch offen im Lohn-Block
-- Bescheinigungen (Arbeitsbescheinigung §312 SGB III, Entgeltbescheinigung für
-  Krankengeld und Mutterschaftsgeld)
-- Eine Oberfläche für Pfändung, Entgeltumwandlung, Kurzarbeit und die
-  Umlagesätze: alles vier ist derzeit nur über die Schnittstelle erfassbar.
+## Block §160 (26.09.) — Lohn Teil 6: die Bescheinigungen
+
+**Eine Bescheinigung ist keine Gefälligkeit.** Wer sie falsch ausstellt, kostet
+einen Menschen Geld: ein zu niedriges Regelentgelt heißt ein zu niedriges
+Krankengeld für bis zu 78 Wochen, ein falscher Beendigungsgrund eine Sperrzeit
+von bis zu zwölf Wochen. Und wer sie zu spät ausstellt, verzögert die Leistung
+bei jemandem, der gerade kein Einkommen hat.
+
+### Was das Programm tut — und was nicht
+Alle drei gehen heute elektronisch: die Arbeitsbescheinigung über **BEA**, die
+Entgeltbescheinigungen über **EEL**. Beides braucht einen zertifizierten
+Zugang, den wir nach derselben Überlegung wie bei den SV-Meldungen nicht
+anstreben: *wir rechnen, der Steuerberater meldet.*
+
+Was hier entsteht, sind die **Zahlen** — vollständig, aus den abgerechneten
+Monaten gezogen, mit der Vorschrift daneben, aus der sie folgen. Wer sie
+einträgt, muss nichts suchen und nichts nachrechnen.
+
+### Arbeitsbescheinigung (§312 SGB III)
+Bemessungsentgelt aus den letzten zwölf abgerechneten Monaten, je Kalendertag,
+**einschließlich Einmalzahlungen**. Reicht der Rahmen nicht, sagt die Antwort,
+dass die Agentur ihn auf zwei Jahre erweitert (§150 Abs. 3 SGB III).
+
+Fünf Angaben bleiben **ausdrücklich offen**, weil sie in keinen Daten stehen
+und nicht geraten werden dürfen: Beendigungsgrund (§159 SGB III — Sperrzeit),
+Kündigungsfrist (§158 SGB III — Ruhen), Abfindung, Urlaubsabgeltung
+(§157 Abs. 2 SGB III) und ob ordentlich kündbar war. Sie stehen als Fragen da,
+nicht als leere Felder.
+
+### Entgeltbescheinigung Krankengeld (§47 SGB V, §23c SGB IV)
+Regelentgelt = Entgelt des letzten abgerechneten Zeitraums ÷ 30, **plus die
+Einmalzahlungen der letzten zwölf Monate ÷ 360** (§47 Abs. 2 Satz 6 SGB V) —
+das Vergessen dieser Zeile ist der häufigste Fehler und kostet bei einem
+Weihnachtsgeld schnell zehn Euro am Tag. Gedeckelt auf die
+Beitragsbemessungsgrenze der Krankenversicherung.
+
+Die Vorschau zeigt 70 % des Regelentgelts, höchstens 90 % des Nettoentgelts —
+ausdrücklich als Vorschau, damit ein Zahlendreher auffällt, bevor er beim
+Menschen ankommt. Rechnen tut die Kasse.
+
+### Zuschuss zum Mutterschaftsgeld (§20 MuSchG)
+Kalendertägliches Nettoentgelt aus den letzten **drei** abgerechneten Monaten,
+minus das Mutterschaftsgeld der Kasse von höchstens **13 € je Kalendertag**;
+den Rest zahlt der Arbeitgeber. **Einmalzahlungen bleiben außer Ansatz**
+(§21 Abs. 1 Satz 2 MuSchG) — wer sie mitrechnet, setzt den Zuschuss zu hoch an
+und bekommt die Differenz nicht erstattet.
+
+Erstattet wird der Zuschuss über die **U2 zu 100 %** (§159) — das schließt den
+Kreis zum vorigen Block: Deshalb zahlen alle Arbeitgeber diese Umlage.
+
+Nachweis: 22 Modultests und 30 Prüfungen am laufenden System
+(`pruefungen/d22-bescheinigungen.mjs`) — darunter, dass ein Weihnachtsgeld das
+Regelentgelt um genau ein Dreihundertsechzigstel je Kalendertag erhöht.
+Gesamtlauf: **1345/1345 in 38 Prüfungen**, 936 Modultests, Bauen sauber.
+
+### Damit ist der Lohn-Block abgeschlossen
+Offen bleibt bewusst nur eines: eine **Oberfläche** für Pfändung,
+Entgeltumwandlung, Kurzarbeit und die Umlagesätze. Alles vier ist derzeit nur
+über die Schnittstelle erfassbar. Die Rechenwege stehen, sind geprüft und
+belegt — was fehlt, sind Eingabemasken.
 
 ## Zur Zertifizierung — Stand der Überlegung
 
