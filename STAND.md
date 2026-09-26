@@ -17,7 +17,7 @@ Zuletzt aktualisiert: **26.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §163 Kundenpaket Kita: zwei Etagen, acht Gruppen — Abnahme in drei Läufen |
+| **Zuletzt fertig** | §165 Kita-Paket: Vertretung zuerst auf der eigenen Etage |
 | **Als Nächstes** | Das Kita-Paket einem Demo-Account zuordnen und ausprobieren |
 | **Danach** | Was sich dabei zeigt. Parallel: App in die Stores (wartet auf D-U-N-S) |
 
@@ -108,6 +108,9 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [x] ~~**Kundenpaket Kita (zwei Etagen, acht Gruppen)**~~ ✅ §163 — Regelpakete
       können jetzt bewerten statt nur zu verbieten. Die Abnahme fand vier
       Fehler, darunter einen, der jeden Plan dieser Kita unbrauchbar machte
+- [x] ~~**Kita-Paket, zweite Runde**~~ ✅ §164/§165 — Nachmittagsbesetzung bis
+      15:30, keine Dienstenden zwischen 15:30 und 17:00, Springerin nur zur
+      Kernzeit, Leitungsstatus im Bericht, Vertretung zuerst auf der Etage
 
 ### Sonst offen
 - [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon),

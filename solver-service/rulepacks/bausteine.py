@@ -1035,3 +1035,49 @@ def nur_dienstarten(ctx: PlanKontext, name: str, *typen: str) -> None:
         f"{ctx.employees[ei].get('name', name)} arbeitet nur in Diensten der "
         f"Art: {', '.join(typen)}."
     )
+
+
+# ── §165 Vertretung sucht man zuerst nebenan ────────────────────────────────
+
+def vertretung_zuerst_auf_der_etage(ctx: PlanKontext,
+                                    gewicht_etage: int = 2_500) -> None:
+    """
+    Faellt jemand aus, wird die Luecke zuerst auf derselben Etage geschlossen.
+
+    WARUM DAS NICHT VON SELBST PASSIERT
+    Der Rechendienst bestraft das Verlassen der Stammgruppe schon: 300 im Haus,
+    800 ueber die Etage hinweg. Das reicht, solange nur eine Luecke zu fuellen
+    ist. Sind es zwei, wird die Rechnung schnell knapp, und dann zieht er
+    jemanden hoch oder runter, obwohl nebenan jemand frei gewesen waere.
+
+    WARUM DAS IM BETRIEB ZAEHLT
+    Wer die Etage wechselt, kennt die Kinder nicht, weiss nicht, wer wo
+    schlaeft, wer was nicht isst und wer wen beisst. Eine Vertretung aus der
+    Nachbargruppe ist eine Vertretung; eine von der anderen Etage ist ein
+    fremdes Gesicht. Beides ist besser als eine unbesetzte Gruppe — aber in
+    dieser Reihenfolge.
+
+    Der Aufschlag kommt ZU den 800 des Rechendienstes hinzu. Er liegt bewusst
+    unter der Strafe fuer eine unbesetzte Gruppe (10 000): Wenn es auf der
+    eigenen Etage niemanden gibt, wird trotzdem jemand geholt.
+    """
+    etage_von_gruppe = {g["id"]: g.get("etageId") for g in ctx.gruppen}
+    betroffen = 0
+    for ei, emp in enumerate(ctx.employees):
+        stamm = emp.get("stammEinheitId")
+        if not stamm or stamm not in etage_von_gruppe:
+            continue          # Springer und Leitung haben keine eigene Etage
+        eigene_etage = etage_von_gruppe[stamm]
+        if not eigene_etage:
+            continue
+        betroffen += 1
+        for gi, g in enumerate(ctx.gruppen):
+            if g.get("etageId") == eigene_etage:
+                continue
+            for di in range(ctx.n_days):
+                ctx.strafe(gewicht_etage, ctx.G[ei, di, gi])
+
+    ctx.notiere(
+        f"Vertretung zuerst auf der eigenen Etage: Ein Wechsel über die Etage "
+        f"hinweg kostet zusätzlich ({betroffen} Personen mit fester Etage)."
+    )

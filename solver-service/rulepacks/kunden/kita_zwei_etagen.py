@@ -48,12 +48,13 @@ from ..context import RegelFehler
 
 META = {
     "kunde": "Kita – zwei Etagen, acht Gruppen",
-    "version": 2,
+    "version": 3,
     "beschreibung":
         "16 Kräfte auf zwei Etagen. Feste Tagesmuster statt frei verteilter "
         "Wochenstunden, genau ein Früh- und Spätdienst je Etage, bis 15:30 "
         "genug Leute für den Nachmittag, Gruppe 1 nie unter zwei Personen, "
-        "Springerin nur zur Kernzeit, Leitung nur im Notfall — und Fairness "
+        "Springerin nur zur Kernzeit, Leitung nur im Notfall, Vertretung "
+        "zuerst auf der eigenen Etage — und Fairness "
         "über die Zeitraumgrenze hinweg, den Freitag eigens gezählt.",
     "aufgenommen": "2026-09-26",
 }
@@ -202,7 +203,14 @@ def apply(ctx) -> None:
     # (300 je Tag, 800 über die Etage hinweg). Eine zweite Regel daneben wäre
     # doppelt gemoppelt und beim nächsten Umzug einer Kraft veraltet.
     #
-    # Was das Paket beisteuert, sind die beiden Ausnahmen von dieser Ordnung:
+    # Was das Paket beisteuert, ist die REIHENFOLGE beim Vertreten: Fällt
+    # jemand aus, wird die Lücke zuerst auf derselben Etage geschlossen. Wer
+    # die Etage wechselt, kennt die Kinder nicht — weiß nicht, wer wo schläft,
+    # wer was nicht isst und wer wen beißt. Beides ist besser als eine
+    # unbesetzte Gruppe, aber in dieser Reihenfolge.
+    b.versuche(ctx, b.vertretung_zuerst_auf_der_etage)
+
+    # Dazu die beiden Ausnahmen von der Stammgruppen-Ordnung:
     if _eindeutig(ctx, SPRINGERIN) is not None:
         b.versuche(ctx, b.springer, SPRINGERIN, "untere", "Gruppe 1")
         # Sie kommt zur Kernzeit — nicht zum Aufschließen und nicht zum

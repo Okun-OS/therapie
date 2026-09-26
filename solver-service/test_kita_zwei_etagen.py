@@ -484,10 +484,27 @@ def test_schwer_volle_wochen_treffen_die_sollzeit_trotzdem(schwer):
 
 
 def test_schwer_die_vorbelastung_verschiebt_die_fruehdienste(schwer):
-    # Marin brachte acht Frühdienste mit. Bei sonst gleichwertigen Lösungen
-    # bekommt sie jetzt weniger als jemand ohne Vorbelastung.
-    assert schwer.typen("Marin Berg").count("frueh") == 0, \
-        "Marin bekommt trotz Vorbelastung Frühdienste"
+    """
+    Marin brachte acht Frühdienste mit. Wo eine Wahl besteht, entscheidet die
+    Vorgeschichte — wo keine besteht, kann sie nichts entscheiden.
+
+    Diese Prüfung verlangte zuerst NULL Frühdienste über beide Wochen. Das
+    war eine Forderung an das Ergebnis, nicht an die Regel, und sie wurde
+    falsch, als eine andere Regel dazukam:
+
+        KW 41 — sieben Kräfte auf der unteren Etage, fünf Frühdienste.
+                Marin kann verschont werden, und sie wird es auch.
+        KW 42 — Kristine im Urlaub, Stephanie und Christina krank: fünf
+                Kräfte, fünf Frühdienste, höchstens einer je Person und
+                Woche. Jede muss einen nehmen, auch Marin.
+
+    Geprüft wird deshalb die Woche, in der es eine Wahl gibt.
+    """
+    assert schwer.typen("Marin Berg", WOCHE1).count("frueh") == 0, \
+        "In einer Woche mit sieben Kräften bekommt Marin trotz Vorbelastung "
+    # Und in der knappen Woche bleibt es bei höchstens einem — die
+    # Fairnessregel gibt nach, sie bricht nicht.
+    assert schwer.typen("Marin Berg", WOCHE2).count("frueh") <= 1
 
 
 def test_schwer_die_freitagsvorbelastung_wirkt_eigenstaendig(schwer):
@@ -713,3 +730,84 @@ def test_schwer_der_nachmittag_haelt(schwer):
         for etage in (UNTEN, OBEN):
             assert schwer.bis_uhrzeit(t, etage, "15:30") >= 1, \
                 f"{etage} am {t}: niemand bis 15:30"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §165 Vertretung sucht man zuerst nebenan
+#
+# Gruppe 8 steht am Mittwoch ohne eigene Kraft da: Katrin hat fest frei, Felix
+# fällt aus. Jemand muss einspringen — und zwar von der oberen Etage, nicht
+# von unten. Wer die Etage wechselt, kennt die Kinder nicht.
+# ════════════════════════════════════════════════════════════════════════════
+
+MITTWOCH1, MITTWOCH2 = WOCHE1[2], WOCHE2[2]
+
+
+@pytest.fixture(scope="module")
+def gruppe8() -> Plan:
+    p = Plan(rechne(regelmodell(abwesend={"Felix": [MITTWOCH1, MITTWOCH2]})))
+    assert p.paket.get("angewendet") is True, p.paket.get("fehler")
+    return p
+
+
+def test_g8_die_gruppe_bleibt_besetzt(gruppe8):
+    """Erst einmal: Sie wird nicht einfach zugemacht."""
+    for t in (MITTWOCH1, MITTWOCH2):
+        assert gruppe8.in_gruppe(t, "g8") >= 1, \
+            f"Gruppe 8 am {t} unbesetzt — Katrin frei, Felix krank"
+
+
+def test_g8_die_vertretung_kommt_von_der_eigenen_etage(gruppe8):
+    """
+    Der Kern der Regel: nicht jemanden hochziehen, wenn nebenan jemand frei ist.
+
+    Der Rechendienst bestraft den Etagenwechsel schon von sich aus (800 statt
+    300). Das reicht, solange nur eine Lücke zu füllen ist — bei zweien wird
+    die Rechnung knapp. Deshalb legt das Paket noch etwas drauf.
+    """
+    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    for t in (MITTWOCH1, MITTWOCH2):
+        vertreter = [
+            name for name, *_ in BELEGSCHAFT
+            if gruppe8.gruppe(name, t) == "g8" and stamm.get(name) != "g8"
+        ]
+        assert vertreter, f"am {t} vertritt niemand in Gruppe 8"
+        for v in vertreter:
+            herkunft = ETAGE_VON_GRUPPE[stamm[v]]
+            assert herkunft == OBEN, \
+                f"{v} wurde am {t} von der unteren Etage hochgezogen"
+
+
+def test_g8_niemand_wechselt_ohne_not_die_etage(gruppe8):
+    """Im ganzen Plan gibt es keinen einzigen Etagenwechsel."""
+    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    wechsel = [
+        (name, t, gruppe8.gruppe(name, t))
+        for name, g in stamm.items()
+        for t in gruppe8.tage(name)
+        if gruppe8.gruppe(name, t)
+        and ETAGE_VON_GRUPPE[gruppe8.gruppe(name, t)] != ETAGE_VON_GRUPPE[g]
+    ]
+    assert wechsel == [], f"Etagenwechsel ohne Not: {wechsel}"
+
+
+def test_g8_der_ausfall_kostet_nur_den_betroffenen_seine_stunden(gruppe8):
+    """Alle anderen arbeiten ihre Sollzeit weiter — die Lücke wird nicht
+    auf die Kollegen umgelegt."""
+    for name, stunden, _, rolle in BELEGSCHAFT:
+        if rolle == "leitung" or name.startswith("Felix"):
+            continue
+        for woche in (WOCHE1, WOCHE2):
+            assert gruppe8.minuten(name, woche) == stunden * 60, \
+                f"{name}: {gruppe8.minuten(name, woche)} statt {stunden * 60}"
+
+
+def test_g8_der_nachmittag_haelt_auch_hier(gruppe8):
+    for t in TAGE:
+        for etage in (UNTEN, OBEN):
+            assert gruppe8.bis_uhrzeit(t, etage, "15:30") >= 1, \
+                f"{etage} am {t}: niemand bis 15:30"
+
+
+def test_g8_keine_harte_verletzung(gruppe8):
+    assert gruppe8.verletzungen("hart") == [], gruppe8.verletzungen("hart")

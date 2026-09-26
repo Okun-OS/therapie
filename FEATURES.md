@@ -2811,6 +2811,54 @@ Der Kunde hat keinen Namen genannt — das Paket heißt `kita_zwei_etagen` und
 trägt den Anzeigenamen „Kita – zwei Etagen, acht Gruppen". Sobald der richtige
 Name feststeht, gehört er in `META`.
 
+## Block §165 (26.09.) — Vertretung sucht man zuerst nebenan
+
+**Die Regel.** Fällt jemand aus, wird die Lücke zuerst auf derselben Etage
+geschlossen. Erst wenn dort niemand frei ist, wird jemand hoch- oder
+runtergezogen.
+
+Der Rechendienst bestraft den Wechsel schon von sich aus — 300 im Haus, 800
+über die Etage hinweg. Das reicht, solange **eine** Lücke zu füllen ist; bei
+zweien wird die Rechnung knapp, und dann holt er jemanden von der anderen
+Etage, obwohl nebenan jemand frei gewesen wäre. Das Paket legt deshalb 2.500
+drauf — unter der Strafe für eine unbesetzte Gruppe (10.000), damit die
+Reihenfolge stimmt und trotzdem jemand kommt, wenn es sein muss.
+
+Im Betrieb zählt das: Wer die Etage wechselt, kennt die Kinder nicht — weiß
+nicht, wer wo schläft, wer was nicht isst und wer wen beißt.
+
+### Die Probe: Gruppe 8 am Mittwoch
+Katrin hat mittwochs fest frei, Felix fällt aus. Gruppe 8 steht an beiden
+Mittwochen ohne eigene Kraft da. Ergebnis:
+
+| | Vertretung | Herkunft |
+|---|---|---|
+| Mi 7.10. | Daniel, 07:30–15:00 | Gruppe 7 — **obere Etage** |
+| Mi 14.10. | Heike, 07:00–15:30 | Gruppe 5 — **obere Etage** |
+
+Kein einziger Etagenwechsel im ganzen Plan. Alle übrigen treffen ihre Sollzeit
+weiter auf die Minute — die Lücke wird nicht auf die Kollegen umgelegt. Nur
+Felix steht bei 32:00 statt 40:00, und das ist richtig so.
+
+### Nebenbei: ein Test, der ein Ergebnis verlangte statt einer Regel
+Die neue Regel ließ eine bestehende Prüfung umkippen: *„Marin bekommt trotz
+Vorbelastung keinen einzigen Frühdienst."* Das war eine Forderung an das
+**Ergebnis**, nicht an die Regel — und sie wurde falsch, sobald sich etwas
+anderes verschob:
+
+- **KW 41** — sieben Kräfte auf der unteren Etage, fünf Frühdienste. Marin
+  kann verschont werden, und sie wird es auch. Die Vorgeschichte wirkt.
+- **KW 42** — Kristine im Urlaub, Stephanie und Christina krank: fünf Kräfte,
+  fünf Frühdienste, höchstens einer je Person. **Jede muss einen nehmen.**
+  Keine Fairnessregel der Welt ändert daran etwas.
+
+Geprüft wird jetzt die Woche, in der es eine Wahl gibt — und dass die
+Fairnessregel in der knappen Woche *nachgibt* statt zu brechen.
+
+Nachweis: 66 Prüfungen am gelösten Plan (davon 6 neu für diese Regel), 106
+Tests im Rechendienst. Gesamtlauf: **1358/1358 in 38 Prüfungen**, 941
+Modultests.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:
