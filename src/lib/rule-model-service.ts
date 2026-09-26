@@ -196,6 +196,10 @@ export async function buildRuleModel(
     erforderlicheQualifikationen: [],
     aufgaben: [],
     etageId: u.parentId ?? undefined,
+    // §166 Gibt diese Gruppe jemanden ab? Der Rechendienst braucht es, um
+    // eine Gruppe in der Eingewoehnung in Ruhe zu lassen.
+    abgabeGesperrtBis: u.abgabeGesperrtBis ?? undefined,
+    abgabeGrund: u.abgabeGrund ?? undefined,
   }))
 
   // §71 Stammgruppen-Auflösung: Employee.gruppe hält Unit-ID oder -Name

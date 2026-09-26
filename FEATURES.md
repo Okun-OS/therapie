@@ -2859,6 +2859,82 @@ Nachweis: 66 Prüfungen am gelösten Plan (davon 6 neu für diese Regel), 106
 Tests im Rechendienst. Gesamtlauf: **1358/1358 in 38 Prüfungen**, 941
 Modultests.
 
+## Block §166/§167 (26.09.) — Wenn es nicht mehr reicht
+
+Drei Regeln aus dem Betrieb und die Antwort auf die Frage, was passiert, wenn
+kein gültiger Plan mehr möglich ist.
+
+### Höchstens eine fremde Kraft je Gruppe
+Nicht „höchstens einer wechselt die Etage". Müssen zwei Gruppen besetzt
+werden, dürfen auch zwei Leute kommen — aber **je eine in jede**, nicht zwei in
+dieselbe. Eine Gruppe, die nur aus Vertretungen besteht, ist keine Gruppe mehr:
+Dann kennt niemand die Kinder.
+
+### Jede Gruppe ist besetzt — und eine Lücke wird gemeldet
+Der Rechendienst bestrafte eine leere Gruppe schon mit 10.000 Punkten, **meldete
+sie aber nicht**. In der letzten Abnahme stand Gruppe 7 zwei Tage leer, und der
+Bericht sagte *„hart verletzt: 0"*. Ein Plan, in dem eine Gruppe fehlt, sah aus
+wie ein normaler Plan.
+
+Jetzt gibt es die Meldung — mit der **Rechnung dazu**:
+
+> *Gruppe 7 am 8.10. unbesetzt — auf dieser Etage waren 3 Kräfte eingeteilt für
+> 4 Gruppen.*
+
+Eine Leitung, die um sechs Uhr morgens entscheiden muss, braucht die Lücke in
+Zahlen, nicht ein rotes Ausrufezeichen.
+
+### Aus der Eingewöhnung wird niemand abgezogen
+Eine Gruppe kann als *„gibt niemanden ab"* markiert werden — mit **Ablaufdatum**,
+weil eine Sperre ohne eines in zwei Jahren noch dasteht. Die Kinder lernen
+gerade ein Gesicht; wer es ihnen wegnimmt, fängt von vorne an. Zu pflegen im
+Etagen- und Gruppeneditor unter *Modell*.
+
+### Der Vorschlag — und warum er nachgerechnet ist
+Reißt eine harte Regel, bleibt es nicht bei der Meldung. Der Rechendienst
+rechnet **ein zweites Mal**, diesmal mit den Maßnahmen, die zu den gemeldeten
+Lücken passen:
+
+> **Nicht regulär umsetzbar — 4 Lücken**
+> Gruppe 5 am 9.10. unbesetzt — 3 Kräfte für 4 Gruppen · …
+> **Vorschlag — nachgerechnet: damit ist der Plan umsetzbar.**
+> Gruppe 5 am 9.10. aufteilen — die Kinder nach dem internen Aufteilungsplan
+> auf die anderen Gruppen · …
+
+`loest: true` ist keine Vermutung. Ein Vorschlag, den man nicht nachprüfen kann,
+hilft um sechs Uhr morgens niemandem.
+
+**Aufteilen heißt nicht zusammenlegen.** Die Gruppe entfällt für diesen Tag, die
+Kinder gehen nach dem internen Aufteilungsplan der Einrichtung in andere
+Gruppen. Welches Kind wohin, entscheidet das System nicht — das steht im Plan
+der Kita und bleibt dort.
+
+Die Reihenfolge, in der nachgegeben wird, steht in den Gewichten: erst
+Vertretung aus der Nachbargruppe (300), dann von der anderen Etage (3.300),
+dann die Leitung (9.000), dann eine unbesetzte Gruppe (25.000) — und erst dann
+der Vorschlag, aufzuteilen.
+
+### Zwei Szenarien aus dem Betrieb, durchgerechnet
+
+**Geht auf:** Beide Katrins im Urlaub, Heike krank, Daniel Do+Fr weg, Stephanie
+freitags weg, Gruppe 1, 3 und 4 in der Eingewöhnung. → Christina geht aus
+Gruppe 2 hoch in Gruppe 7; freitags, wenn Stephanie fehlt, übernimmt **Nicole
+Gruppe 2**. Keine Verletzung, alle Sollzeiten auf die Minute.
+
+**Geht nicht auf:** zusätzlich Nicole und Corinna krank, auch Gruppe 2 gesperrt.
+→ 4 Lücken benannt, Franke springt an 4 Tagen ein, Vorschlag: Gruppe 5 und 7 an
+vier Tagen aufteilen — nachgerechnet, dann trägt der Plan.
+
+### Nebenbei gefunden: ein Vorschlag, der nie kam
+Die Zählung der harten Verletzungen stand im Rechendienst **unter** der Stelle,
+die sie abfragt. `pack_report.get("hartVerletzt")` war beim Probelauf noch
+`None` — der Vorschlag blieb still aus, obwohl vier Gruppen leer standen.
+Aufgefallen ist es nur, weil das Szenario durchgespielt wurde.
+
+Nachweis: 76 Prüfungen am gelösten Plan (davon 10 neu), 116 Tests im
+Rechendienst, 944 Modultests. Gesamtlauf: **1358/1358 in 38 Prüfungen**, Bauen
+sauber.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

@@ -46,6 +46,15 @@ export interface PlanungsEinheit {
   aufgaben: string[]
   // §71 hierarchy: for typ 'gruppe' the parent Etage/Bereich unit id
   etageId?: string
+  /**
+   * §166 Diese Gruppe gibt bis zu diesem Tag niemanden an andere Gruppen ab.
+   *
+   * Eine Kita in der Eingewöhnung gibt niemanden ab — die Kinder lernen
+   * gerade ein Gesicht. Mit Ablaufdatum, weil eine Sperre ohne eines in zwei
+   * Jahren noch dasteht.
+   */
+  abgabeGesperrtBis?: string
+  abgabeGrund?: string
 }
 
 export interface SchichtDefinition {
@@ -310,6 +319,19 @@ export interface GenerierterPlan {
     // schiefging. „Die Leitung hat an allen zehn Tagen Leitungsdienst" ist
     // keine Verletzung, aber genau das, was die Leitung wissen will.
     hinweise?: string[]
+    /**
+     * §167 Was zu tun wäre, wenn eine harte Regel gerissen ist — und ob es
+     * dann aufgeht.
+     *
+     * `loest` ist keine Vermutung: Der Rechendienst hat mit diesen Maßnahmen
+     * ein zweites Mal gerechnet. Ein Vorschlag, den man nicht nachprüfen
+     * kann, hilft um sechs Uhr morgens niemandem.
+     */
+    vorschlag?: {
+      massnahmen: Array<{ typ: string; ziel: string; tag: string; text: string }>
+      loest: boolean
+      restVerletzungen: Array<{ art: string; text: string; anzahl: number }>
+    } | null
   } | null
 }
 

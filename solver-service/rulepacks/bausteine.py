@@ -581,6 +581,15 @@ def genau_einer_je_etage(ctx: PlanKontext, dienst_typ: str,
             continue
         et_name = et.get("name", et.get("id"))
         for di in range(ctx.n_days):
+            tag = ctx.days[di]
+            # §167 Faellt der Dienst fuer diesen Tag aus (geaenderte
+            # Oeffnungszeit), wird er auch nicht verlangt.
+            if ctx.massnahme_aktiv(f"{dienst_typ}_entfaellt", et.get("id"), tag):
+                ctx.notiere(
+                    f"„{et_name}“ am {tag}: „{dienst_typ}“ entfällt "
+                    "(geänderte Öffnungszeit)."
+                )
+                continue
             # Wer auf dieser Etage in diesem Dienst steht: Dienst UND Gruppe
             # dieser Etage muessen zusammenkommen.
             #
@@ -608,11 +617,24 @@ def genau_einer_je_etage(ctx: PlanKontext, dienst_typ: str,
             # Einer zu viel ist ein Planungsfehler, kein Notstand — er kostet
             # spuerbar, aber lange nicht so viel wie eine unbesetzte Etage.
             ctx.strafe(max(1, gewicht // 20), zuviel)
+            spaet = not dienst_typ.startswith("frueh")
             ctx.melde_wenn(
                 fehlt, "hart",
                 f"{et_name}: kein {dienst_typ.capitalize()}dienst am "
-                f"{ctx.days[di]} — die Etage wird nicht "
-                + ("geöffnet." if dienst_typ.startswith("frueh") else "geschlossen."),
+                f"{tag} — die Etage wird nicht "
+                + ("geschlossen." if spaet else "geöffnet."),
+                massnahme={
+                    "typ": f"{dienst_typ}_entfaellt",
+                    "ziel": et.get("id"),
+                    "tag": tag,
+                    "text": (
+                        f"{et_name} am {tag} um 15:30 schließen statt um 17:00 — "
+                        "betroffene Familien benachrichtigen."
+                        if spaet else
+                        f"{et_name} am {tag} später öffnen als 06:00 — "
+                        "betroffene Familien benachrichtigen."
+                    ),
+                },
             )
 
     ctx.notiere(
@@ -1081,3 +1103,134 @@ def vertretung_zuerst_auf_der_etage(ctx: PlanKontext,
         f"Vertretung zuerst auf der eigenen Etage: Ein Wechsel über die Etage "
         f"hinweg kostet zusätzlich ({betroffen} Personen mit fester Etage)."
     )
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §166 Wer darf wo einspringen — und wer darf nicht weg
+# ════════════════════════════════════════════════════════════════════════════
+
+def hoechstens_eine_vertretung_je_gruppe(ctx: PlanKontext, anzahl: int = 1) -> None:
+    """
+    In einer Gruppe steht hoechstens eine fremde Kraft.
+
+    NICHT: hoechstens einer wechselt die Etage. Muessen zwei Gruppen besetzt
+    werden, duerfen auch zwei Leute kommen — aber je eine in jede, nicht zwei
+    in dieselbe.
+
+    Der Grund steht nicht in der Rechnung, sondern in der Gruppe: Eine Gruppe,
+    die nur noch aus Vertretungen besteht, ist keine Gruppe mehr. Dann kennt
+    niemand die Kinder, niemand weiss, wer wo schlaeft und wer was nicht isst.
+    Eine fremde Kraft neben den eigenen Leuten ist Vertretung; zwei sind eine
+    Uebernahme — und dann ist der ehrlichere Weg, die Gruppe aufzuteilen.
+
+    Als fremd zaehlt, wer diese Gruppe nicht als Stammgruppe hat. Auch die
+    Springerin und die Leitung: Sie gehoeren zum Haus, aber nicht zu dieser
+    Gruppe.
+    """
+    for gi, g in enumerate(ctx.gruppen):
+        fremde = [ei for ei in range(ctx.n_emp) if ei not in set(ctx.stammkraefte(gi))]
+        if not fremde:
+            continue
+        for di in range(ctx.n_days):
+            ctx.model.add(sum(ctx.G[ei, di, gi] for ei in fremde) <= anzahl)
+    ctx.notiere(
+        f"In jeder Gruppe steht höchstens {anzahl} fremde Kraft — mehrere "
+        "dürfen die Etage wechseln, aber nie zwei in dieselbe Gruppe."
+    )
+
+
+def jede_gruppe_besetzt(ctx: PlanKontext, anzahl: int = 1,
+                        gewicht: int = 25_000) -> None:
+    """
+    Jede Gruppe ist an jedem Plantag besetzt.
+
+    Der Rechendienst kennt zwar eine Mindestbesetzung je Gruppe und bestraft
+    ihre Unterschreitung mit 10 000 — aber er MELDET sie nicht. Genau das ist
+    in der Abnahme aufgefallen: Gruppe 7 stand zwei Tage leer, und der Bericht
+    sagte „hart verletzt: 0". Ein Plan, in dem eine Gruppe fehlt, sieht dann
+    aus wie ein normaler Plan.
+
+    Hier wird beides nachgeholt: ein eigenes Gewicht und vor allem eine
+    Meldung, die sagt, welche Gruppe an welchem Tag leer steht — und wie viele
+    Kraefte auf dieser Etage ueberhaupt zur Verfuegung standen. Aus „unbesetzt"
+    wird damit eine Rechnung, aus der sich etwas ableiten laesst.
+    """
+    for gi, g in enumerate(ctx.gruppen):
+        name = g.get("name", g.get("id"))
+        etage_id = g.get("etageId")
+        gleiche_etage = [
+            gj for gj, x in enumerate(ctx.gruppen) if x.get("etageId") == etage_id
+        ]
+        for di in range(ctx.n_days):
+            tag = ctx.days[di]
+            # §167 Ist die Gruppe fuer diesen Tag aufgeteilt, braucht sie keine
+            # Besetzung mehr — die Kinder sind nach dem internen
+            # Aufteilungsplan in anderen Gruppen.
+            if ctx.massnahme_aktiv("aufteilen", g.get("id"), tag):
+                ctx.notiere(f"„{name}“ ist am {tag} aufgeteilt — keine Besetzung nötig.")
+                continue
+
+            fehlt = ctx.model.new_int_var(0, anzahl, f"grp_fehlt_{di}_{gi}")
+            ctx.model.add(
+                sum(ctx.G[ei, di, gi] for ei in range(ctx.n_emp)) + fehlt >= anzahl
+            )
+            ctx.strafe(gewicht, fehlt)
+
+            # Die Rechnung dazu: Wie viele standen an diesem Tag auf dieser
+            # Etage, und wie viele Gruppen wollten besetzt werden?
+            auf_etage = ctx.model.new_int_var(0, ctx.n_emp, f"etzahl_{di}_{etage_id}")
+            ctx.model.add(auf_etage == sum(
+                ctx.G[ei, di, gj] for ei in range(ctx.n_emp) for gj in gleiche_etage
+            ))
+            ctx.melde_wenn(
+                fehlt, "hart",
+                f"{name} am {tag} unbesetzt — auf dieser Etage waren "
+                f"{{da}} Kräfte eingeteilt für {len(gleiche_etage)} Gruppen.",
+                zahlen={"da": auf_etage},
+                massnahme={
+                    "typ": "aufteilen",
+                    "ziel": g.get("id"),
+                    "tag": tag,
+                    "text": f"{name} am {tag} aufteilen — die Kinder nach dem "
+                            "internen Aufteilungsplan auf die anderen Gruppen.",
+                },
+            )
+    ctx.notiere(
+        f"Jede der {ctx.n_groups} Gruppen ist an jedem Tag mit mindestens "
+        f"{anzahl} Person besetzt — und eine Lücke wird mit der Rechnung dazu "
+        "gemeldet."
+    )
+
+
+def abgabesperre_beachten(ctx: PlanKontext) -> None:
+    """
+    Aus einer gesperrten Gruppe wird niemand abgezogen.
+
+    Eine Kita in der Eingewoehnung gibt niemanden ab: Die Kinder lernen gerade
+    ein Gesicht, und wer es ihnen wegnimmt, faengt von vorne an. Das ist keine
+    Planungsgroesse, sondern eine paedagogische Entscheidung — sie steht in den
+    Stammdaten der Gruppe und hat ein Ablaufdatum.
+
+    Die Sperre gilt nur fuer das ABGEBEN. Wer in einer gesperrten Gruppe
+    arbeitet, bleibt dort; wer von aussen hilft, darf trotzdem kommen.
+    """
+    gesperrt = 0
+    for gi, g in enumerate(ctx.gruppen):
+        eigene = ctx.stammkraefte(gi)
+        if not eigene:
+            continue
+        tage = [di for di in range(ctx.n_days) if ctx.gibt_niemanden_ab(gi, ctx.days[di])]
+        if not tage:
+            continue
+        gesperrt += 1
+        for ei in eigene:
+            for di in tage:
+                for gj in range(ctx.n_groups):
+                    if gj != gi:
+                        ctx.model.add(ctx.G[ei, di, gj] == 0)
+        ctx.notiere(
+            f"„{g.get('name', gi)}“ gibt bis {g.get('abgabeGesperrtBis')} "
+            f"niemanden ab ({g.get('abgabeGrund') or 'ohne Angabe'})."
+        )
+    if gesperrt == 0:
+        ctx.notiere("Keine Gruppe ist für Abgaben gesperrt.")

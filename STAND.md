@@ -17,7 +17,7 @@ Zuletzt aktualisiert: **26.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §165 Kita-Paket: Vertretung zuerst auf der eigenen Etage |
+| **Zuletzt fertig** | §166/§167 Kita: jede Gruppe besetzt, Abgabesperre, nachgerechnete Maßnahmenvorschläge |
 | **Als Nächstes** | Das Kita-Paket einem Demo-Account zuordnen und ausprobieren |
 | **Danach** | Was sich dabei zeigt. Parallel: App in die Stores (wartet auf D-U-N-S) |
 
@@ -111,6 +111,10 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [x] ~~**Kita-Paket, zweite Runde**~~ ✅ §164/§165 — Nachmittagsbesetzung bis
       15:30, keine Dienstenden zwischen 15:30 und 17:00, Springerin nur zur
       Kernzeit, Leitungsstatus im Bericht, Vertretung zuerst auf der Etage
+- [x] ~~**Kita-Paket, dritte Runde**~~ ✅ §166/§167 — höchstens eine fremde
+      Kraft je Gruppe, jede Gruppe besetzt (mit Rechnung in der Meldung),
+      Abgabesperre bei Eingewöhnung, und ein Maßnahmenvorschlag, der vor dem
+      Anzeigen nachgerechnet wird
 
 ### Sonst offen
 - [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon),

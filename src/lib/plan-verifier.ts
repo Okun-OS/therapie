@@ -322,6 +322,27 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
     })
   }
 
+  // §167 Der Vorschlag: Wenn eine harte Regel gerissen ist, bleibt es nicht
+  // bei der Meldung. Der Rechendienst hat mit einer Maßnahme ein zweites Mal
+  // gerechnet und weiß, ob es dann aufgeht.
+  //
+  // Eine Leitung, die um sechs Uhr morgens entscheiden muss, kann mit
+  // „Gruppe 7 unbesetzt" wenig anfangen. Mit „Gruppe 7 aufteilen, dann geht
+  // der Tag auf" kann sie etwas anfangen.
+  const vorschlag = paket?.vorschlag
+  if (vorschlag && vorschlag.massnahmen.length > 0) {
+    const was = vorschlag.massnahmen.map(m => m.text).join(' · ')
+    verletzungen.push({
+      schwere: vorschlag.loest ? 'mittel' : 'hoch',
+      regelId: `paket-vorschlag-${paket?.id ?? '?'}`,
+      beschreibung: vorschlag.loest
+        ? `Vorschlag, nachgerechnet: ${was} — damit ist der Plan umsetzbar.`
+        : `Vorschlag: ${was} — auch damit bleibt es bei `
+          + `${vorschlag.restVerletzungen.length} offenen Stellen.`,
+      betrifft: [],
+    })
+  }
+
   // §97: Veralteter Rechendienst — individuelle Regeln können wirkungslos sein,
   // ohne dass ein Fehler auftaucht. Das ist der gefährlichste Zustand überhaupt,
   // weil der Plan völlig unauffällig aussieht.

@@ -8,7 +8,7 @@ import { useToast } from '@/lib/toast-context'
 import {
   ShieldAlert, Plus, Trash2, Loader2, Clock, Users, MessageCircle,
   Save, Brain, CalendarDays, Pencil, Check, X, Send, Bot, ChevronDown, ChevronUp,
-  Code2, Zap, XCircle, AlertTriangle, RotateCcw, Layers,
+  Code2, Zap, XCircle, AlertTriangle, RotateCcw, Layers, Lock,
 } from 'lucide-react'
 import type { LocationModel, HarteRegel, WochentagKuerzel } from '@/lib/company-model-types'
 import Link from 'next/link'
@@ -65,6 +65,9 @@ interface PlanningUnitRow {
   parentId: string | null
   minStaff: number
   sortOrder: number
+  // §166 Diese Gruppe gibt bis zu diesem Tag niemanden ab
+  abgabeGesperrtBis?: string | null
+  abgabeGrund?: string | null
 }
 
 export default function AdminModelPage() {
@@ -445,6 +448,30 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, minStaff }),
+      })
+    } catch {
+      showToast('Speichern fehlgeschlagen', 'error')
+    }
+  }
+
+  /**
+   * §166 Die Abgabesperre einer Gruppe.
+   *
+   * Eine Kita in der Eingewöhnung gibt niemanden ab: Die Kinder lernen gerade
+   * ein Gesicht, und wer es ihnen wegnimmt, fängt von vorne an. Der
+   * Dienstplan zieht aus einer gesperrten Gruppe dann niemanden ab — auch
+   * wenn es woanders eng wird.
+   *
+   * Immer mit Datum. Eine Sperre ohne Ablauf steht in zwei Jahren noch da,
+   * und dann fragt sich jemand, warum nie jemand aus dieser Gruppe hilft.
+   */
+  const handleUnitSperre = async (id: string, bis: string) => {
+    setUnits(prev => prev.map(u => u.id === id ? { ...u, abgabeGesperrtBis: bis || null } : u))
+    try {
+      await fetch('/api/planning-units', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, abgabeGesperrtBis: bis || null }),
       })
     } catch {
       showToast('Speichern fehlgeschlagen', 'error')
@@ -885,6 +912,22 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                             type="number" min={0} max={50} value={u.minStaff}
                             onChange={e => handleUnitMinStaff(u.id, Math.max(0, parseInt(e.target.value) || 0))}
                             className="w-12 text-center text-xs border border-gray-200 rounded-lg px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          />
+                        </div>
+                      )}
+                      {/* §166 Gibt diese Gruppe jemanden ab? In der
+                          Eingewöhnung nicht — dann bleibt das Team zusammen. */}
+                      {u.type !== 'etage' && (
+                        <div
+                          className="flex items-center gap-1"
+                          title="Gibt bis zu diesem Tag niemanden an andere Gruppen ab (z. B. Eingewöhnung). Leer = gibt ab."
+                        >
+                          <Lock size={11} className={u.abgabeGesperrtBis ? 'text-amber-600' : 'text-gray-300'} />
+                          <input
+                            type="date"
+                            value={u.abgabeGesperrtBis ?? ''}
+                            onChange={e => handleUnitSperre(u.id, e.target.value)}
+                            className="text-[11px] border border-gray-200 rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
                           />
                         </div>
                       )}

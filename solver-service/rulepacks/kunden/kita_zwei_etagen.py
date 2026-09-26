@@ -48,7 +48,7 @@ from ..context import RegelFehler
 
 META = {
     "kunde": "Kita – zwei Etagen, acht Gruppen",
-    "version": 3,
+    "version": 4,
     "beschreibung":
         "16 Kräfte auf zwei Etagen. Feste Tagesmuster statt frei verteilter "
         "Wochenstunden, genau ein Früh- und Spätdienst je Etage, bis 15:30 "
@@ -195,6 +195,28 @@ def apply(ctx) -> None:
     # Fällt Marin oder Shelley aus, wird Ersatz organisiert — Nicole, eine
     # Kraft aus einer anderen Gruppe, im Notfall die Leitung.
     b.versuche(ctx, b.mindestens_in_gruppe, "Gruppe 1", 2)
+
+    # ── 3b. Jede andere Gruppe ──────────────────────────────────────────────
+    #
+    # Jede Gruppe ist an jedem Tag besetzt — mindestens eine Person. Der
+    # Rechendienst bestrafte das schon, MELDETE es aber nicht: In der Abnahme
+    # stand Gruppe 7 zwei Tage leer, und der Bericht sagte „hart verletzt: 0".
+    # Ein Plan, in dem eine Gruppe fehlt, sah aus wie ein normaler Plan.
+    b.versuche(ctx, b.jede_gruppe_besetzt, 1)
+
+    # ── 3c. Wer einspringt und wer nicht weg darf ───────────────────────────
+    #
+    # In einer Gruppe steht höchstens EINE fremde Kraft. Müssen zwei Gruppen
+    # besetzt werden, dürfen auch zwei Leute kommen — aber je eine in jede.
+    # Eine Gruppe, die nur aus Vertretungen besteht, ist keine Gruppe mehr:
+    # Dann kennt niemand die Kinder.
+    b.versuche(ctx, b.hoechstens_eine_vertretung_je_gruppe, 1)
+
+    # Und aus einer Gruppe in der Eingewöhnung wird niemand abgezogen. Die
+    # Kinder lernen gerade ein Gesicht; wer es ihnen wegnimmt, fängt von vorne
+    # an. Die Sperre steht in den Stammdaten der Gruppe und hat ein
+    # Ablaufdatum — eine ohne wäre in zwei Jahren noch da.
+    b.versuche(ctx, b.abgabesperre_beachten)
 
     # ── 4. Wer wo steht ─────────────────────────────────────────────────────
     #

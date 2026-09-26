@@ -555,6 +555,9 @@ def solve(rule_model: dict) -> dict:
         # §163 Netto-Arbeitsminuten je Dienst. Sie haengen nur am Dienst, nicht
         # an der Person — die Pausenregel kennt keine Namen.
         netto_je_dienst=[_net_of_gross(_shift_dur(s)) for s in shifts],
+        # §167 Massnahmen, die fuer diesen Lauf schon genehmigt sind. Beim
+        # ersten Lauf leer — dann gelten alle Regeln.
+        massnahmen=rule_model.get("massnahmen") or [],
     )
     pack_report = apply_pack(rule_model.get("rulePackId"), kontext)
 
@@ -1079,6 +1082,7 @@ def solve(rule_model: dict) -> dict:
     # uebersehen wird.
     if pack_report and pack_report.get("angewendet"):
         verletzungen: list[dict] = []
+        massnahme_kandidaten: list[dict] = []
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             for a in kontext.anzeiger:
                 try:
@@ -1086,12 +1090,35 @@ def solve(rule_model: dict) -> dict:
                 except Exception:      # Variable nicht im Modell gelandet
                     continue
                 if wert and wert > 0:
+                    # §166 Die Rechnung zur Meldung: Platzhalter im Text mit den
+                    # geloesten Werten fuellen. „Gruppe 7 unbesetzt" laesst eine
+                    # Leitung raten; „Gruppe 7 unbesetzt — 3 Kraefte fuer 4
+                    # Gruppen" sagt ihr, dass genau eine Person fehlt.
+                    text = a["text"]
+                    if a.get("zahlen"):
+                        try:
+                            text = text.format(**{
+                                k: int(solver_inst.value(v))
+                                for k, v in a["zahlen"].items()
+                            })
+                        except Exception:
+                            pass
                     verletzungen.append({
                         "art": a["art"],
-                        "text": a["text"],
+                        "text": text,
                         "anzahl": int(wert),
                     })
+                    if a.get("massnahme"):
+                        massnahme_kandidaten.append(a["massnahme"])
         pack_report["verletzungen"] = verletzungen
+        # §167 Die Zaehlung steht HIER und nicht am Ende: Der Probelauf unten
+        # fragt sie ab. Stand sie weiter unten, war sie zu diesem Zeitpunkt
+        # None — und der Vorschlag blieb still aus, obwohl vier Gruppen leer
+        # standen. Aufgefallen ist es erst am Szenario.
+        pack_report["hartVerletzt"] = sum(
+            1 for v in verletzungen if v["art"] == "hart")
+        pack_report["weichVerletzt"] = sum(
+            1 for v in verletzungen if v["art"] == "weich")
         # §164 Angaben, die immer in den Bericht gehoeren — auch wenn nichts
         # schiefging.
         hinweise: list[str] = []
@@ -1103,10 +1130,42 @@ def solve(rule_model: dict) -> dict:
                     continue
                 hinweise.append(h["vorlage"].format(n=wert))
         pack_report["hinweise"] = hinweise
-        pack_report["hartVerletzt"] = sum(
-            1 for v in verletzungen if v["art"] == "hart")
-        pack_report["weichVerletzt"] = sum(
-            1 for v in verletzungen if v["art"] == "weich")
+
+        # §167 Wenn etwas Hartes gerissen ist: nicht bei der Meldung stehen
+        # bleiben, sondern nachrechnen, ob es MIT einer Massnahme aufgeht.
+        #
+        # Eine Leitung, die um sechs Uhr morgens entscheiden muss, kann mit
+        # „Gruppe 7 unbesetzt" wenig anfangen. Mit „Gruppe 7 aufteilen, dann
+        # geht der Tag auf — hier ist der Plan" kann sie etwas anfangen.
+        #
+        # Genau EIN zweiter Lauf, mit allen Massnahmen zu allen gemeldeten
+        # Luecken zusammen. Jede einzeln durchzurechnen waere genauer und
+        # dauerte bei acht Gruppen und zehn Tagen laenger, als der Betrieb
+        # warten kann.
+        if (
+            pack_report.get("hartVerletzt")
+            and massnahme_kandidaten
+            and not rule_model.get("_probelauf")
+        ):
+            probe_modell = dict(rule_model)
+            probe_modell["massnahmen"] = massnahme_kandidaten
+            probe_modell["_probelauf"] = True
+            try:
+                probe = solve(probe_modell)
+            except Exception as exc:          # ein Probelauf darf nie den Plan kippen
+                log.warning("[solver] Probelauf fehlgeschlagen: %s", exc)
+                probe = None
+            if probe:
+                probe_paket = probe.get("regelpaket") or {}
+                pack_report["vorschlag"] = {
+                    "massnahmen": massnahme_kandidaten,
+                    "loest": probe_paket.get("hartVerletzt", 1) == 0,
+                    "restVerletzungen": [
+                        v for v in (probe_paket.get("verletzungen") or [])
+                        if v["art"] == "hart"
+                    ],
+                    "eintraege": probe.get("eintraege", []),
+                }
 
     obj_str = (
         f"{solver_inst.objective_value:.0f}"

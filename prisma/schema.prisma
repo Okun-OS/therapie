@@ -914,6 +914,15 @@ model PlanningUnit {
   parentId    String?
   // §71 minimum staff that must cover this unit in every shift it is open
   minStaff    Int      @default(1)
+  // §166 Diese Gruppe gibt bis zu diesem Tag niemanden an andere Gruppen ab.
+  //
+  // Eine Kita in der Eingewoehnung gibt niemanden ab: Die Kinder lernen
+  // gerade ein Gesicht, und wer es ihnen wegnimmt, faengt von vorne an. Das
+  // ist keine Planungsgroesse, sondern eine paedagogische Entscheidung.
+  //
+  // Mit Ablaufdatum, weil eine Sperre ohne eines in zwei Jahren noch dasteht.
+  abgabeGesperrtBis String?
+  abgabeGrund       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

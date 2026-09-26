@@ -811,3 +811,148 @@ def test_g8_der_nachmittag_haelt_auch_hier(gruppe8):
 
 def test_g8_keine_harte_verletzung(gruppe8):
     assert gruppe8.verletzungen("hart") == [], gruppe8.verletzungen("hart")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §166/§167 Wer einspringen darf, wer nicht weg darf — und was vorgeschlagen
+# wird, wenn es nicht mehr reicht
+# ════════════════════════════════════════════════════════════════════════════
+
+DONNERSTAGE = [WOCHE1[3], WOCHE2[3]]
+FREITAGE = [WOCHE1[4], WOCHE2[4]]
+
+
+def modell_mit_sperre(abwesend: dict, gesperrt: tuple[str, ...]) -> dict:
+    m = regelmodell(abwesend=abwesend)
+    for e in m["einheiten"]:
+        if e.get("id") in gesperrt:
+            e["abgabeGesperrtBis"] = TAGE[-1]
+            e["abgabeGrund"] = "Eingewöhnung"
+    return m
+
+
+@pytest.fixture(scope="module")
+def obere_etage_bricht_weg() -> Plan:
+    """
+    Der Fall aus dem Betrieb: Beide Katrins im Urlaub, Heike krank, Daniel
+    donnerstags und freitags weg, Stephanie freitags weg — und Gruppe 1, 3
+    und 4 geben niemanden ab (Eingewöhnung).
+
+    Auf der oberen Etage bleiben damit an manchen Tagen drei Kräfte für vier
+    Gruppen. Helfen darf nur, wer aus Gruppe 2 kommt — oder die Springerin.
+    """
+    p = Plan(rechne(modell_mit_sperre(
+        {"Katrin": TAGE, "Heike": TAGE,
+         "Daniel": DONNERSTAGE + FREITAGE, "Stephanie": FREITAGE},
+        ("g1", "g3", "g4"),
+    )))
+    assert p.paket.get("angewendet") is True, p.paket.get("fehler")
+    return p
+
+
+def test_sperre_niemand_verlaesst_eine_gesperrte_gruppe(obere_etage_bricht_weg):
+    """Aus der Eingewöhnung wird niemand abgezogen — egal wie eng es wird."""
+    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    for name, g in stamm.items():
+        if g not in ("g1", "g3", "g4"):
+            continue
+        for t in obere_etage_bricht_weg.tage(name):
+            assert obere_etage_bricht_weg.gruppe(name, t) == g, \
+                f"{name} wurde am {t} aus der gesperrten {g} abgezogen"
+
+
+def test_sperre_der_plan_geht_trotzdem_auf(obere_etage_bricht_weg):
+    assert obere_etage_bricht_weg.verletzungen("hart") == [], \
+        obere_etage_bricht_weg.verletzungen("hart")
+
+
+def test_sperre_jede_gruppe_ist_besetzt(obere_etage_bricht_weg):
+    for t in TAGE:
+        for gid in ("g1", "g2", "g3", "g4", "g5", "g6", "g7", "g8"):
+            mindest = 2 if gid == "g1" else 1
+            assert obere_etage_bricht_weg.in_gruppe(t, gid) >= mindest, \
+                f"{gid} am {t}: {obere_etage_bricht_weg.in_gruppe(t, gid)} Personen"
+
+
+def test_hoechstens_eine_fremde_kraft_je_gruppe(obere_etage_bricht_weg):
+    """
+    Mehrere dürfen die Etage wechseln — aber nie zwei in dieselbe Gruppe.
+    Eine Gruppe, die nur aus Vertretungen besteht, ist keine Gruppe mehr.
+    """
+    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    for t in TAGE:
+        for gid in ("g1", "g2", "g3", "g4", "g5", "g6", "g7", "g8"):
+            fremde = [
+                name for name, *_ in BELEGSCHAFT
+                if obere_etage_bricht_weg.gruppe(name, t) == gid
+                and stamm.get(name) != gid
+            ]
+            assert len(fremde) <= 1, f"{gid} am {t}: {fremde}"
+
+
+# ── Wenn es wirklich nicht mehr reicht ──────────────────────────────────────
+
+@pytest.fixture(scope="module")
+def nicht_mehr_loesbar() -> Plan:
+    """Zusätzlich fallen die Springerin und Corinna aus, und Gruppe 2 ist
+    ebenfalls gesperrt. Jetzt bleibt eine Gruppe übrig, für die niemand da
+    ist."""
+    p = Plan(rechne(modell_mit_sperre(
+        {"Katrin": TAGE, "Heike": TAGE,
+         "Daniel": DONNERSTAGE + FREITAGE, "Stephanie": FREITAGE,
+         "Nicole": TAGE, "Corinna": TAGE},
+        ("g1", "g2", "g3", "g4"),
+    )))
+    assert p.paket.get("angewendet") is True, p.paket.get("fehler")
+    return p
+
+
+def test_notfall_die_luecke_wird_benannt(nicht_mehr_loesbar):
+    hart = nicht_mehr_loesbar.verletzungen("hart")
+    assert hart, "Eine Gruppe steht leer und niemand sagt es"
+    assert all("unbesetzt" in v["text"] for v in hart), hart
+
+
+def test_notfall_die_rechnung_steht_dabei(nicht_mehr_loesbar):
+    """
+    Nicht „Gruppe 7 unbesetzt", sondern „3 Kräfte für 4 Gruppen". Eine
+    Leitung, die um sechs Uhr morgens entscheiden muss, braucht die Lücke in
+    Zahlen, nicht ein rotes Ausrufezeichen.
+    """
+    for v in nicht_mehr_loesbar.verletzungen("hart"):
+        assert "Kräfte eingeteilt für" in v["text"], v["text"]
+        # Der Platzhalter muss gefüllt sein, nicht als {da} dastehen
+        assert "{" not in v["text"], v["text"]
+
+
+def test_notfall_es_gibt_einen_vorschlag(nicht_mehr_loesbar):
+    v = nicht_mehr_loesbar.paket.get("vorschlag")
+    assert v, "keine harte Verletzung ohne Vorschlag"
+    assert v["massnahmen"], v
+    assert all(m["typ"] == "aufteilen" for m in v["massnahmen"]), v["massnahmen"]
+
+
+def test_notfall_der_vorschlag_ist_nachgerechnet(nicht_mehr_loesbar):
+    """
+    Der Kern: Es ist keine Vermutung. Der Dienst hat mit der Maßnahme ein
+    zweites Mal gerechnet und weiß, ob es dann aufgeht.
+    """
+    v = nicht_mehr_loesbar.paket["vorschlag"]
+    assert v["loest"] is True, v["restVerletzungen"]
+    assert v["eintraege"], "zum Vorschlag gehört der Plan, der daraus folgt"
+
+
+def test_notfall_aufteilen_heisst_nicht_zusammenlegen(nicht_mehr_loesbar):
+    """Die Kinder gehen nach dem internen Aufteilungsplan in andere Gruppen —
+    die Gruppe verschmilzt nicht mit einer anderen."""
+    v = nicht_mehr_loesbar.paket["vorschlag"]
+    text = " ".join(m["text"] for m in v["massnahmen"])
+    assert "aufteilen" in text
+    assert "Aufteilungsplan" in text
+    assert "zusammenlegen" not in text
+
+
+def test_notfall_die_leitung_springt_vorher_ein(nicht_mehr_loesbar):
+    """Bevor eine Gruppe aufgeteilt wird, ist die Leitung dran."""
+    assert nicht_mehr_loesbar.tage("Franke Leitner"), \
+        "Die Leitung blieb im Büro, während eine Gruppe leer stand"

@@ -463,3 +463,50 @@ describe('Verletzungen des Regelpakets (§163)', () => {
       .toHaveLength(0)
   })
 })
+
+describe('Der nachgerechnete Vorschlag (§167)', () => {
+  const model = makeModel(
+    [makeEmp('emp1', { wochenstundenSoll: 8 })],
+    [makeSchicht('frueh', '06:00', '14:00')],
+    ['2024-01-08'],
+  )
+  const mitVorschlag = (loest: boolean, rest: number) => ({
+    ...makePlan([makeEintrag('emp1', '2024-01-08', 'frueh')]),
+    regelpaket: {
+      id: 'kita', name: 'Kita (v4)', angewendet: true,
+      regeln: ['Eine Regel griff'],
+      verletzungen: [{ art: 'hart' as const, anzahl: 1, text: 'Gruppe 7 am 8.10. unbesetzt.' }],
+      vorschlag: {
+        massnahmen: [{
+          typ: 'aufteilen', ziel: 'g7', tag: '2024-01-08',
+          text: 'Gruppe 7 am 2024-01-08 aufteilen — die Kinder nach dem internen Aufteilungsplan.',
+        }],
+        loest,
+        restVerletzungen: Array.from({ length: rest }, () => ({
+          art: 'hart', text: 'Gruppe 5 unbesetzt.', anzahl: 1,
+        })),
+      },
+    },
+  })
+
+  it('nennt die Maßnahme und dass sie das Problem löst', () => {
+    const e = verifyPlan(mitVorschlag(true, 0), model)
+    const t = e.verletzungen.find(v => v.regelId.startsWith('paket-vorschlag'))
+    expect(t?.beschreibung).toMatch(/aufteilen/)
+    expect(t?.beschreibung).toMatch(/damit ist der Plan umsetzbar/)
+    // Ein Vorschlag, der trägt, ist kein Alarm.
+    expect(t?.schwere).toBe('mittel')
+  })
+
+  it('sagt es lauter, wenn auch die Maßnahme nicht reicht', () => {
+    const e = verifyPlan(mitVorschlag(false, 2), model)
+    const t = e.verletzungen.find(v => v.regelId.startsWith('paket-vorschlag'))
+    expect(t?.beschreibung).toMatch(/2 offenen Stellen/)
+    expect(t?.schwere).toBe('hoch')
+  })
+
+  it('schweigt ohne Vorschlag', () => {
+    const e = verifyPlan(makePlan([makeEintrag('emp1', '2024-01-08', 'frueh')]), model)
+    expect(e.verletzungen.filter(v => v.regelId.startsWith('paket-vorschlag'))).toHaveLength(0)
+  })
+})

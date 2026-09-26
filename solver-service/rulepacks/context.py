@@ -68,6 +68,14 @@ class PlanKontext:
     # §164 Zwischenspeicher fuer geteilte Hilfsvariablen (siehe auf_etage).
     _auf_etage: dict = field(default_factory=dict)
 
+    # §167 Massnahmen, die fuer DIESEN Lauf schon genehmigt sind.
+    #
+    # Ein Probelauf: Das System hat im ersten Anlauf gemeldet, dass eine
+    # Gruppe nicht besetzt werden kann, und rechnet jetzt nach, ob es mit
+    # dieser Massnahme aufginge. Erst dann ist der Vorschlag mehr als eine
+    # Vermutung.
+    massnahmen: list = field(default_factory=list)
+
     # §164 Angaben, die IMMER in den Bericht gehoeren — nicht nur, wenn etwas
     # schiefging. „Die Leitung hat an allen zehn Tagen Leitungsdienst" ist
     # keine Verletzung, aber es ist genau das, was die Leitung wissen will.
@@ -118,7 +126,22 @@ class PlanKontext:
         """
         self.berichte.append({"variable": variable, "vorlage": vorlage})
 
-    def melde_wenn(self, variable, art: str, text: str) -> None:
+    def massnahme_aktiv(self, typ: str, ziel: str, tag: str) -> bool:
+        """
+        §167 Ist diese Massnahme fuer diesen Lauf genehmigt?
+
+        Beim ersten Lauf ist die Liste leer — dann gelten alle Regeln. Meldet
+        er eine Luecke, rechnet der Dienst ein zweites Mal, diesmal mit den
+        Massnahmen, die zu den gemeldeten Luecken passen. Was dann herauskommt,
+        ist kein Vorschlag mehr, sondern ein Plan, den man ansehen kann.
+        """
+        return any(
+            m.get("typ") == typ and m.get("ziel") == ziel and m.get("tag") == tag
+            for m in self.massnahmen
+        )
+
+    def melde_wenn(self, variable, art: str, text: str, zahlen: dict | None = None,
+                   massnahme: dict | None = None) -> None:
         """
         Nach dem Loesen melden, falls diese Variable nicht null ist.
 
@@ -126,10 +149,27 @@ class PlanKontext:
         Eine gerissene Fairnessregel ist etwas anderes als eine Gruppe, die
         nicht besetzt werden konnte — und wer beides gleich anzeigt, bringt
         niemanden dazu, das Zweite ernst zu nehmen.
+
+        §164 `zahlen` macht aus einer Meldung eine Rechnung. Der Text enthaelt
+        Platzhalter wie `{da}` und `{gebraucht}`, und dazu ein Woerterbuch mit
+        Variablen, die der Solver nach dem Loesen ausliest.
+
+        Der Unterschied im Betrieb ist erheblich. „Gruppe 7 unbesetzt" laesst
+        eine Leitung raten. „Gruppe 7 unbesetzt — auf der oberen Etage sind 3
+        Kraefte da, gebraucht werden 4" sagt ihr, dass genau eine Person fehlt,
+        und sie weiss sofort, wen sie anrufen muss.
         """
         if art not in ("hart", "weich"):
             raise RegelFehler(f'Unbekannte Art "{art}" — erlaubt sind "hart" und "weich".')
-        self.anzeiger.append({"variable": variable, "art": art, "text": text})
+        self.anzeiger.append({
+            "variable": variable, "art": art, "text": text,
+            "zahlen": zahlen or {},
+            # §167 Was man tun koennte, wenn diese Meldung kommt. Sie haengt am
+            # Anzeiger und nicht an einer Textsuche: Wer aus „Gruppe 7 am
+            # Freitag unbesetzt" per Mustererkennung eine Massnahme ableitet,
+            # hat beim naechsten Umformulieren ein stilles Loch.
+            "massnahme": massnahme,
+        })
 
     # ── Zeit ─────────────────────────────────────────────────────────────────
     def netto(self, si: int) -> int:
@@ -316,6 +356,28 @@ class PlanKontext:
     @property
     def gruppen_aktiv(self) -> bool:
         return self.n_groups > 0
+
+    def stammkraefte(self, gi: int) -> list[int]:
+        """Wer diese Gruppe als Stammgruppe hat."""
+        gid = self.gruppen[gi].get("id")
+        return [ei for ei, e in enumerate(self.employees)
+                if e.get("stammEinheitId") == gid]
+
+    def gibt_niemanden_ab(self, gi: int, tag: str) -> bool:
+        """
+        §166 Ist diese Gruppe an diesem Tag fuer Abgaben gesperrt?
+
+        Eine Kita in der Eingewoehnung gibt niemanden ab — die Kinder sind
+        gerade dabei, ein Gesicht zu lernen, und wer es ihnen wegnimmt, faengt
+        von vorne an. Das ist keine Planungsgroesse, sondern eine paedagogische
+        Entscheidung, und sie steht deshalb in den Stammdaten.
+
+        Die Sperre hat ein Ablaufdatum. Eine ohne waere in zwei Jahren noch da.
+        """
+        bis = self.gruppen[gi].get("abgabeGesperrtBis")
+        if not bis:
+            return False
+        return tag <= str(bis)
 
     def auf_etage(self, ei: int, di: int, etage_id: str):
         """

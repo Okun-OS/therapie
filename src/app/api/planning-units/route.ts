@@ -48,7 +48,7 @@ export async function PUT(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
-  let body: { id?: string; name?: string; parentId?: string | null; minStaff?: number }
+  let body: { id?: string; name?: string; parentId?: string | null; minStaff?: number; abgabeGesperrtBis?: string | null; abgabeGrund?: string | null }
   try {
     body = await req.json()
   } catch {
@@ -60,6 +60,14 @@ export async function PUT(req: NextRequest) {
     name: body.name,
     parentId: body.parentId,
     minStaff: body.minStaff,
+    // §166 Die Abgabesperre. Ein leerer Wert hebt sie auf — eine Sperre ohne
+    // Ablaufdatum staende in zwei Jahren noch da.
+    ...(body.abgabeGesperrtBis !== undefined
+      ? { abgabeGesperrtBis: body.abgabeGesperrtBis || null }
+      : {}),
+    ...(body.abgabeGrund !== undefined
+      ? { abgabeGrund: body.abgabeGrund || null }
+      : {}),
   })
   if (!unit) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
   return NextResponse.json({ unit })
