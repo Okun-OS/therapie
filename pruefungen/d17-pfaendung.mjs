@@ -203,6 +203,26 @@ check('Die Pfändung steht in der Auskunft nach Art. 15 DSGVO', !!pfBlock,
 check('Mit den Abzügen, die sie betrifft', (pfBlock?.anzahl ?? 0) > 0,
   `${pfBlock?.anzahl} Einträge`)
 
+// ── §162 Ein fehlendes Feld darf nicht als Text „undefined" landen ────────
+//
+// Gefunden, als die Oberfläche gebaut wurde: In der Liste stand „undefined"
+// statt der Pfändungsart. Der Rückfall wurde auf dem gedefaulteten Wert
+// geprüft, übernommen aber der rohe — `String(undefined ?? 'normal')` besteht
+// die Prüfung, `String(body.art)` ist trotzdem "undefined".
+console.log('\n=== Ohne Angabe der Art gilt der Rückfall ===')
+
+const ohneArt = await sende(gf, '/api/payroll/pfaendung', 'POST', {
+  employeeId: personId, glaeubiger: `Ohne Art ${MARKE}`,
+  zugestelltAm: '2026-01-15', forderung: 500,
+})
+check('Eine Pfändung ohne Angabe der Art wird angelegt',
+  ohneArt.status === 200, ohneArt.body.error)
+check('Und sie ist eine gewöhnliche Pfändung, nicht „undefined"',
+  ohneArt.body.pfaendung?.art === 'normal', `art = ${ohneArt.body.pfaendung?.art}`)
+if (ohneArt.body.pfaendung?.id) {
+  await loeschen(gf, `/api/payroll/pfaendung?id=${ohneArt.body.pfaendung.id}`)
+}
+
 // ── Aufräumen ──────────────────────────────────────────────────────────────
 //
 // Die Testperson samt Pfändung und Abzügen wieder weg. Eine Pfändung, die aus

@@ -97,8 +97,12 @@ export async function POST(req: NextRequest) {
   const employeeId = String(body.employeeId ?? '')
   const glaeubiger = String(body.glaeubiger ?? '').trim()
   const zugestelltAm = String(body.zugestelltAm ?? '').slice(0, 10)
-  const art = (String(body.art ?? 'normal') in ARTEN
-    ? String(body.art) : 'normal') as Pfaendungsart
+  // Erst den Wert bilden, dann pruefen — sonst geht bei fehlendem Feld die
+  // Zeichenkette "undefined" in die Spalte: `String(undefined ?? 'normal')`
+  // ist 'normal' und besteht die Pruefung, uebernommen wurde aber
+  // `String(body.art)`.
+  const artRoh = String(body.art ?? 'normal')
+  const art = (artRoh in ARTEN ? artRoh : 'normal') as Pfaendungsart
 
   if (!employeeId) {
     return NextResponse.json({ error: 'Für wen?' }, { status: 400 })

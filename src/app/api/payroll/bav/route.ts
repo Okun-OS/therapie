@@ -105,8 +105,11 @@ export async function POST(req: NextRequest) {
   const anbieter = String(body.anbieter ?? '').trim()
   const monatsbetrag = Number(body.monatsbetrag ?? 0)
   const beginn = String(body.beginn ?? '').slice(0, 10)
-  const weg = (String(body.weg ?? 'direktversicherung') in WEGE
-    ? String(body.weg) : 'direktversicherung') as Durchfuehrungsweg
+  // Derselbe Fehler wie bei der Pfaendung (§162): Der Rueckfall wurde auf dem
+  // gedefaulteten Wert geprueft, uebernommen aber der rohe — ohne Angabe
+  // stand "undefined" als Durchfuehrungsweg in der Datenbank.
+  const wegRoh = String(body.weg ?? 'direktversicherung')
+  const weg = (wegRoh in WEGE ? wegRoh : 'direktversicherung') as Durchfuehrungsweg
 
   if (!employeeId) return NextResponse.json({ error: 'Für wen?' }, { status: 400 })
   if (!anbieter) {

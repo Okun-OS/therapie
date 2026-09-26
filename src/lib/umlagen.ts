@@ -112,7 +112,8 @@ export function betriebsgroesse(
         + 'nimmt am U1-Verfahren teil. Maßgeblich ist das Vorjahr — '
         + 'festgestellt wird es von der Krankenkasse zu Jahresbeginn, und die '
         + 'Feststellung gilt dann für das ganze Jahr.'
-      : `Gewichtet ${zahl.toLocaleString('de-DE')} Arbeitnehmer — mehr als `
+      : `Gewichtet ${zahl.toLocaleString('de-DE')} Arbeitnehmer (§3 AAG: `
+        + 'Teilzeit anteilig, Auszubildende zählen nicht mit) — mehr als '
         + `${U1_GRENZE}. Es wird keine U1 erhoben und nichts erstattet `
         + '(§1 Abs. 1 AAG). Die U2 bleibt davon unberührt: Sie gilt für alle '
         + 'Arbeitgeber.',

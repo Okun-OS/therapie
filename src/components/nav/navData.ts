@@ -147,6 +147,11 @@ const companyDock: DockItem[] = [
       sections: [
         { items: [
           { href: '/company/payroll',    label: 'Lohnabrechnung',   description: 'Abrechnungen aller Standorte', icon: '💰' },
+          // §162 Pfaendung, bAV, Kurzarbeit und die Umlagesaetze liegen auf
+          // einer eigenen Seite: Es sind Stammdaten statt Monatsarbeit — und
+          // eine Pfaendung darf die Standortleitung nicht sehen, die
+          // /company/payroll mitbenutzt.
+          { href: '/company/lohnverwaltung', label: 'Pfändung, bAV & Umlagen', description: 'Was nicht in jede Abrechnung gehört', icon: '⚖️' },
           { href: '/company/surcharges', label: 'Zuschlags-Engine', description: 'Zuschläge, Prämien & Sonderzahlungen', icon: '⚡' },
         ]},
       ],

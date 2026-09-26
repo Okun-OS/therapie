@@ -247,6 +247,22 @@ check('Ein abgerechneter Vertrag lässt sich nicht löschen',
 check('Weil sonst ein Beleg auf einen Vertrag zeigt, den es nicht gibt',
   /nicht mehr gibt/.test(geloescht.body.error ?? ''), geloescht.body.error)
 
+// ── §162 Derselbe Fehler beim Durchführungsweg ────────────────────────────
+console.log('\n=== Ohne Angabe des Weges gilt der Rückfall ===')
+
+const ohneWeg = await sende(gf, '/api/payroll/bav', 'POST', {
+  employeeId: personId, anbieter: `Ohne Weg ${MARKE}`,
+  monatsbetrag: 50, beginn: '2024-03-01',
+})
+check('Ein Vertrag ohne Angabe des Weges wird angelegt',
+  ohneWeg.status === 200, ohneWeg.body.error)
+check('Und er ist eine Direktversicherung, nicht „undefined"',
+  ohneWeg.body.vertrag?.weg === 'direktversicherung',
+  `weg = ${ohneWeg.body.vertrag?.weg}`)
+if (ohneWeg.body.vertrag?.id) {
+  await loeschen(gf, `/api/payroll/bav?id=${ohneWeg.body.vertrag.id}`)
+}
+
 // ── Aufräumen ──────────────────────────────────────────────────────────────
 console.log('\n=== Aufräumen ===')
 

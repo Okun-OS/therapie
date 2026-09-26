@@ -2642,6 +2642,61 @@ Geprüft wird nicht, ob ein Baustein durchläuft, sondern ob der **gelöste Plan
 sich daran hält. Gesamtlauf: **1351/1351 in 38 Prüfungen**, 936 Modultests,
 Bauen sauber.
 
+## Block §162 (26.09.) — Die vier fehlenden Masken
+
+**Die Rechenwege standen, erfassen konnte man sie nicht.** Pfändung,
+Entgeltumwandlung, Kurzarbeit und die Umlagesätze waren nur über die
+Schnittstelle erreichbar — und keine Lohnbuchhaltung in einem Pflegeheim setzt
+einen HTTP-Aufruf ab. Jetzt liegen alle vier auf einer Seite:
+`/company/lohnverwaltung`.
+
+### Warum eine eigene Seite und nicht die Lohnabrechnung
+Zwei Gründe, und der zweite wiegt schwerer. Erstens sind es **Stammdaten**,
+keine Monatsarbeit: Ein bAV-Vertrag läuft Jahre, ein Umlagesatz ändert sich
+einmal im Jahr. Zweitens die **Rolle**: `/company/payroll` ist dieselbe Seite
+wie `/admin/payroll`, die Standortleitung sieht sie — und eine Pfändung darf
+sie nicht sehen (§155). Die Seite liegt deshalb allein unter `/company`, und
+die Schnittstellen dahinter prüfen die Rolle noch einmal selbst. Eine Seite,
+die man nicht verlinkt, ist keine Sicherung.
+
+### Was die Masken sagen, bevor ein Fehler passiert
+- **bAV**: beide Grenzen stehen oben, *bevor* ein Betrag eingetragen ist — und
+  während des Tippens rechnet die Maske mit: „600 € liegen über der
+  monatlichen Beitragsgrenze von 338 €. Beitragsfrei bleiben davon 338 €, der
+  Rest ist steuerfrei, aber beitragspflichtig." Wer das erst auf der
+  Abrechnung liest, hat den Vertrag schon unterschrieben.
+- **Umlagen**: die Seite zeigt von sich aus, welche Kassen bei den eigenen
+  Beschäftigten vorkommen und für welche noch nichts hinterlegt ist. Dazu die
+  gewichtete Betriebsgröße mit der Zählweise nach §3 AAG.
+- **Pfändung**: der Hinweis, dass die Standortleitung sie nicht sieht; bei
+  einer Unterhaltspfändung erscheint das Pflichtfeld aus dem Beschluss mit dem
+  Satz, dass ohne ihn nichts einbehalten wird.
+- **Kurzarbeit**: die Ausschlussfrist steht ungefragt oben — „noch 96 Tage" —
+  und färbt sich, wenn es knapp wird. Die Monatsfelder erscheinen erst, wenn
+  eine Anzeige da ist, denn ohne sie besteht kein Anspruch.
+
+### Nebenbei gefunden: „undefined" als Pfändungsart
+Die erste Ansicht der neuen Liste zeigte `undefined · Stadtkasse …`. Der
+Grund war in zwei Schnittstellen derselbe:
+
+```ts
+const art = (String(body.art ?? 'normal') in ARTEN ? String(body.art) : 'normal')
+```
+
+Der Rückfall wird auf dem **gedefaulteten** Wert geprüft — `'normal'` besteht
+die Prüfung — übernommen wird aber der **rohe**: `String(undefined)` ist die
+Zeichenkette `"undefined"`. Fehlte das Feld, stand sie in der Spalte. Dieselbe
+Zeile gab es beim Durchführungsweg der bAV. Beides korrigiert, beides hat
+jetzt seine Gegenprüfung (`d17`, `d18`).
+
+Das ist genau, wofür eine Oberfläche gut ist: Die HTTP-Prüfungen schickten das
+Feld immer mit, weil sie wussten, dass es existiert.
+
+Nachweis: 24 Prüfungen im echten Browser
+(`pruefungen/browser/lohnverwaltung.mjs`, bewusst außerhalb des Gesamtlaufs —
+Playwright ist keine Projektabhängigkeit) und zwei neue Gegenprüfungen im
+Gesamtlauf. **1355/1355 in 38 Prüfungen**, 938 Modultests, Bauen sauber.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

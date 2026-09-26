@@ -16,17 +16,16 @@ Zuletzt aktualisiert: **26.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | Keine — der Lohn-Block ist abgeschlossen |
-| **Zuletzt fertig** | §161 Musterregelpaket: womit ein neuer Kunde anfängt |
+| **Baustelle** | Keine |
+| **Zuletzt fertig** | §162 Die Masken für Pfändung, bAV, Kurzarbeit und Umlagesätze |
 | **Als Nächstes** | Das Musterregelpaket an einem Demo-Account ausprobieren |
-| **Danach** | Oberflächen für Pfändung, bAV, Kurzarbeit und Umlagesätze. Parallel: App in die Stores (wartet auf D-U-N-S) |
+| **Danach** | Was sich dabei zeigt. Parallel: App in die Stores (wartet auf D-U-N-S) |
 
-> **Der Lohn-Block ist vollständig** (§155–§160). Pfändung, betriebliche
+> **Der Lohn-Block ist vollständig** (§155–§162). Pfändung, betriebliche
 > Altersvorsorge, Kurzarbeitergeld, Mehrfachbeschäftigung, Abfindung, die
-> Umlagen U1/U2/Insolvenzgeld und die drei Bescheinigungen. Die Rechenwege
-> stehen und sind belegt; was fehlt, sind Eingabemasken für vier davon.
-> Gemeldet wird weiterhin über den Steuerberater — bis zur Zertifizierung
-> (Fahrplan Teil 4/5).
+> Umlagen U1/U2/Insolvenzgeld und die drei Bescheinigungen — mit Masken zum
+> Erfassen. Gemeldet wird weiterhin über den Steuerberater, bis zur
+> Zertifizierung (Fahrplan Teil 4/5).
 
 > **Verkaufsfertig aus Sicht des Datenschutzes** (§152–§154): Verzeichnis der
 > Verarbeitungstätigkeiten (Art. 30), technische und organisatorische
@@ -45,7 +44,7 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 | **Mitarbeiter & Stammdaten** (A) | ✅ fertig, nachgewiesen | — |
 | **Arbeitszeit** (B) | ✅ fertig, nachgewiesen | — |
 | **Abwesenheit** (C) | ✅ fertig, nachgewiesen | — |
-| **Lohn** (D) | ✅ vollständig (§155–§160) | Oberflächen für Pfändung, bAV, Kurzarbeit, Umlagen |
+| **Lohn** (D) | ✅ vollständig (§155–§162) | — |
 | **Kommunikation** (E) | ✅ fertig, nachgewiesen | — |
 | **Dienstplanung** (F) | ✅ fertig, nachgewiesen | — |
 | **Grundlagen & Betrieb** (G) | ✅ fertig, nachgewiesen | Vier Fristen gegenzeichnen lassen (§154) |
@@ -86,8 +85,9 @@ Nach Dringlichkeit, nicht nach Bereich.
       jeder Arbeitgeber zahlt sie, und sie standen nirgends
 - [x] ~~**Bescheinigungen**~~ ✅ §160 — Arbeitsbescheinigung, Krankengeld,
       Mutterschaftszuschuss. Übermittelt wird über den Steuerberater
-- [ ] **Oberflächen** für Pfändung, bAV, Kurzarbeit und Umlagesätze — alle vier
-      sind derzeit nur über die Schnittstelle erfassbar
+- [x] ~~**Oberflächen** für Pfändung, bAV, Kurzarbeit und Umlagesätze~~ ✅ §162 —
+      alle vier auf `/company/lohnverwaltung`. Dabei fand sich ein Fehler, den
+      die HTTP-Prüfungen nicht finden konnten: „undefined" als Pfändungsart
 - [ ] Beitragsnachweis und DEÜV-Daten — Teil 3 (Meilenstein 2)
 - [ ] Alles Weitere: siehe `FAHRPLAN-KOMPLETTLOESUNG.md`
 

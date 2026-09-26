@@ -86,6 +86,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `d20-mehrfach-abfindung.mjs` | Zwei Arbeitgeber: geteilte Grenze · Abfindung ohne Fünftelregelung |
 | `d21-umlagen.mjs` | U1, U2 und Insolvenzgeld: Sätze je Kasse, Betriebsgröße, Arbeitgeberkosten |
 | `d22-bescheinigungen.mjs` | Arbeitsbescheinigung, Krankengeld, Mutterschaftszuschuss |
+| `browser/lohnverwaltung.mjs` | **Nicht im Gesamtlauf** — die Masken im echten Browser. Braucht Playwright: `node pruefungen/browser/lohnverwaltung.mjs` |
 | `e-kommunikation.mjs` | Benachrichtigungen, Einspringen, Push |
 | `e5-chat.mjs` | Nachrichten, Gruppen, wer nicht mitlesen darf |
 | `f-dienstplan.mjs` | Rechenkern, Dienstwünsche, Schichttausch |
