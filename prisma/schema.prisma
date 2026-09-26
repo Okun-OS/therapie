@@ -1486,6 +1486,15 @@ model PayrollEntry {
   bavMinderungSv   Float @default(0)
   /// Der Zuschuss des Arbeitgebers — er mindert das Entgelt nicht
   bavZuschussAG    Float @default(0)
+  // §157 Kurzarbeitergeld. Es ist steuer- und beitragsfrei und deshalb weder
+  // im Brutto noch im Netto enthalten — es kommt zur Auszahlung hinzu. Der
+  // Progressionsvorbehalt (§32b EStG) macht es trotzdem bescheinigungs-
+  // pflichtig, darum steht es als eigene Zahl da.
+  kugBetrag        Float @default(0)
+  /// Das fiktive Entgelt, auf das Beitraege anfallen (80 % des Ausfalls)
+  kugFiktivEntgelt Float @default(0)
+  /// Die Beitraege darauf — traegt der Arbeitgeber allein, ohne Erstattung
+  kugSvAG          Float @default(0)
   // §155 Was wegen einer Lohnpfaendung einbehalten wurde. Es mindert den
   // Auszahlungsbetrag, NICHT das Netto — steuerlich und sozialversicherungs-
   // rechtlich ist das Geld verdient, es geht nur an jemand anderen.
@@ -2287,4 +2296,80 @@ model BavVertrag {
 
   @@index([employeeId, aktiv])
   @@index([customerId])
+}
+
+/// §157 Die Anzeige über Arbeitsausfall (§99 SGB III).
+///
+/// Ohne sie gibt es kein Kurzarbeitergeld. Sie geht an die Agentur fuer Arbeit
+/// des Betriebssitzes, und das Geld gibt es fruehestens ab dem Kalendermonat,
+/// in dem sie dort eingegangen ist — nicht rueckwirkend. Deshalb steht das
+/// Eingangsdatum hier und nicht nur im Aktenordner: Aus ihm folgt, ab welchem
+/// Monat ueberhaupt abgerechnet werden darf.
+model Kurzarbeit {
+  id             String    @id @default(cuid())
+  customerId     String
+  /// Der betroffene Betrieb bzw. Betriebsteil. Leer heisst: das ganze
+  /// Unternehmen.
+  locationId     String?
+  bezeichnung    String
+  /// wirtschaftlich | unabwendbar — §96 Abs. 1 Nr. 1 SGB III
+  grund          String    @default("wirtschaftlich")
+  /// Tag, an dem die Anzeige bei der Agentur eingegangen ist
+  angezeigtAm    String
+  /// Das Kug-Aktenzeichen der Agentur. Ohne es findet spaeter niemand die Akte.
+  aktenzeichen   String?
+  /// Zeitraum der Kurzarbeit
+  von            String
+  bis            String?
+  aktiv          Boolean   @default(true)
+  notiz          String?
+  angelegtVon    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([customerId, aktiv])
+}
+
+/// §157 Ein Monat Kurzarbeit fuer eine Person.
+///
+/// WARUM SOLL- UND ISTENTGELT EINGETRAGEN WERDEN UND NICHT GERATEN
+/// Das Sollentgelt ist das, was OHNE den Arbeitsausfall verdient worden waere,
+/// vermindert um Entgelt fuer Mehrarbeit (§106 Abs. 1 SGB III). Das laesst
+/// sich aus der Zeiterfassung nicht ableiten — sie zeigt ja gerade den
+/// Ausfall. Wer es aus dem Vormonat fortschreibt, rechnet bei jeder
+/// Gehaltsaenderung, jedem Urlaub und jeder Krankheit falsch.
+///
+/// WARUM DER BETRAG AUS DER TABELLE EIN EIGENES FELD HAT
+/// Die Agentur rechnet nach ihrer amtlichen Tabelle. Wer sie ablesen kann,
+/// traegt den Wert ein; dann gilt er. Das Programm rechnet trotzdem mit und
+/// nennt die Abweichung, damit ein systematischer Fehler auffaellt.
+model KurzarbeitMonat {
+  id             String    @id @default(cuid())
+  kurzarbeitId   String
+  employeeId     String
+  customerId     String
+  jahr           Int
+  monat          Int
+  /// Die Stunden — nur zur Nachvollziehbarkeit, gerechnet wird mit Entgelt
+  sollStunden    Float     @default(0)
+  istStunden     Float     @default(0)
+  sollEntgelt    Float
+  istEntgelt     Float     @default(0)
+  /// Abgelesen aus der amtlichen Tabelle; leer heisst: gerechnet
+  kugAusTabelle  Float?
+  /// Das Ergebnis, festgeschrieben beim Lohnlauf
+  nettoSoll      Float     @default(0)
+  nettoIst       Float     @default(0)
+  leistungssatz  Float     @default(0.6)
+  kug            Float     @default(0)
+  fiktivEntgelt  Float     @default(0)
+  /// Die Beitraege auf das fiktive Entgelt — traegt der Arbeitgeber allein
+  svAgFiktiv     Float     @default(0)
+  hinweis        String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([employeeId, jahr, monat])
+  @@index([kurzarbeitId])
+  @@index([customerId, jahr, monat])
 }

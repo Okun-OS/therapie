@@ -2336,11 +2336,79 @@ Nachweis: 28 Modultests für die Rechenwege und 36 Prüfungen am laufenden Syste
 das Beitragsbrutto über dem Steuerbrutto liegt, und ein Beitrag über dem
 Jahresrahmen.
 
+## Block §157 (26.09.) — Lohn Teil 3: Kurzarbeitergeld (§§95 ff. SGB III)
+
+**Zwei Fehler, die in entgegengesetzte Richtungen Geld kosten.**
+
+### Fehler eins: zweimal zahlen
+Wer in einem Monat mit Kurzarbeit das volle Monatsgehalt abrechnet und
+obendrein Kurzarbeitergeld auszahlt, zahlt zweimal — und das zweite bekommt er
+nicht erstattet. Abgerechnet wird deshalb das **Istentgelt**: das tatsächlich
+erzielte Bruttoarbeitsentgelt (§106 Abs. 1 SGB III). Es tritt an die Stelle des
+vertraglichen Entgelts, und die Abrechnung sagt das auf dem Beleg.
+
+### Fehler zwei: auf der Bruttodifferenz rechnen
+Kurzarbeitergeld ist **nicht** 60 % der Differenz der Bruttobeträge, sondern
+60 % (mit Kind 67 %) der Differenz der **pauschalierten Nettobeträge**
+(§§105, 106 SGB III). Bei 4.000 € Soll und 2.000 € Ist sind das nicht 1.200 €,
+sondern rund 696 €. Wer nach Brutto rechnet, zahlt über 500 € im Monat aus
+eigener Tasche — je Person.
+
+Das pauschalierte Netto ist eine eigene Größe (§153 SGB III): Bruttoentgelt
+minus 20 % Sozialversicherungspauschale, minus Lohnsteuer, minus Soli — **ohne
+Kirchensteuer** und unabhängig davon, was tatsächlich abgeführt wird.
+
+### Was fast immer vergessen wird
+Auf das **fiktive Entgelt** — 80 % des Ausfalls — fallen Beiträge zu Renten-,
+Kranken- und Pflegeversicherung an, und die trägt der **Arbeitgeber allein**
+(§249 Abs. 2 SGB V, §168 Abs. 1 Nr. 1a SGB VI). Die Erstattung aus der Pandemie
+ist ausgelaufen. Im Beispiel oben sind das 616 € im Monat, die in den
+Arbeitgeberkosten stehen — sonst sähe Kurzarbeit billiger aus, als sie ist.
+Zur Arbeitslosenversicherung fallen keine Beiträge an.
+
+### Die Fristen, an denen es scheitert
+- **§99 Abs. 2 SGB III** — Geld gibt es frühestens ab dem Kalendermonat, in dem
+  die Anzeige bei der Agentur eingegangen ist. Deshalb ist das Eingangsdatum
+  ein Pflichtfeld, und deshalb sagt der Lohnlauf es, wenn ein Monat davor liegt.
+- **§109 Abs. 1 SGB III** — der Leistungsantrag muss binnen drei Monaten nach
+  Ablauf des Abrechnungsmonats gestellt sein. Das ist eine **Ausschlussfrist**:
+  danach ist der Anspruch erloschen. Die Frist steht an jeder Antwort, und ab
+  30 Tagen davor wird sie beim Eintragen genannt.
+
+### Der Betrag aus der amtlichen Tabelle geht vor
+Die Agentur rechnet nach ihrer „Tabelle zur Berechnung des
+Kurzarbeitergeldes". Sie entsteht aus demselben Programmablaufplan, aber mit
+einer eingeschränkten Vorsorgepauschale (§153 Abs. 1 Satz 2 Nr. 2 SGB III
+verweist nur auf §39b Abs. 2 Satz 5 Nr. 3 Buchstabe a und b EStG). Bei üblichen
+Entgelten stimmt das Ergebnis überein, bei niedrigen kann es um einige Euro
+abweichen. Wer den Tabellenwert abliest, trägt ihn ein — dann gilt er, und das
+Programm nennt die eigene Abweichung, damit ein systematischer Fehler auffällt
+statt sich zwölf Monate zu wiederholen.
+
+### Nebenbei geregelt: Pfändung trifft Kurzarbeit
+Kurzarbeitergeld tritt an die Stelle des ausgefallenen Entgelts und ist deshalb
+pfändbar wie Arbeitseinkommen (§850 Abs. 4 ZPO). Es geht in die
+Pfändungsbemessung ein — sonst bliebe bei Kurzarbeit zu wenig einbehalten, und
+dafür haftet der Betrieb dem Gläubiger persönlich (§840 ZPO).
+
+### Für die Agentur
+Die **Abrechnungsliste** je Monat: Person, Personalnummer, Soll- und
+Iststunden, Soll- und Istentgelt, Ausfall in Prozent, Leistungssatz,
+Kurzarbeitergeld und die Beiträge auf das fiktive Entgelt, mit Summen und der
+Betriebsschwelle nach §96 Abs. 1 Nr. 4 SGB III. Sie stellt die
+Unternehmensebene; die Standortleitung sieht ihre Leute, aber stellt keinen
+Antrag.
+
+Nachweis: 34 Modultests und 45 Prüfungen am laufenden System
+(`pruefungen/d19-kurzarbeit.mjs`) — darunter, dass das Kurzarbeitergeld weder
+im Steuer- noch im Beitragsbrutto noch im Netto steht und dass es unter
+60 % der Bruttodifferenz bleibt. Gesamtlauf: **1258/1258 in 35 Prüfungen**,
+872 Modultests, Bauen sauber.
+
 ### Noch offen im Lohn-Block
-- Kurzarbeitergeld
 - Mehrfachbeschäftigung, Abfindung, Bescheinigungen
-- Eine Oberfläche für Pfändung und Entgeltumwandlung: beides ist derzeit nur
-  über die Schnittstelle erfassbar.
+- Eine Oberfläche für Pfändung, Entgeltumwandlung und Kurzarbeit: alle drei
+  sind derzeit nur über die Schnittstelle erfassbar.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

@@ -164,6 +164,8 @@ export async function POST(req: NextRequest) {
           grundlage: a.grundlage ?? undefined,
           korrekturNetto: a.korrekturNetto,
           auszahlungsbetrag: a.auszahlungsbetrag || a.netto,
+          // §157 Kurzarbeitergeld — steuerfrei, aber bescheinigungspflichtig.
+          kugBetrag: a.kugBetrag,
           // §155 Die Pfändungszeilen des Monats — je Gläubiger eine.
           pfaendungBetrag: a.pfaendungBetrag,
           pfaendungen: pfaendungenJeMitarbeiter.get(a.employeeId) ?? [],

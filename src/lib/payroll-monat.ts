@@ -341,6 +341,8 @@ export function abrechnungRechnen(
   monat?: number,
   /** §156 Was zur betrieblichen Altersvorsorge umgewandelt wird */
   bav?: { umwandlung: number; minderungSteuer: number; minderungSv: number },
+  /** §157 Kurzarbeitergeld und die Beiträge auf das fiktive Entgelt */
+  kurzarbeit?: { kug: number; svAgFiktiv: number; istEntgelt?: number | null },
 ): { eingabe: PayrollInput; ergebnis: PayrollResult } {
   // Der Grundlohn je Stunde ist der Maßstab für die Steuerfreiheit der
   // Zuschläge — beim Monatsgehalt aus Gehalt und Wochenstunden abgeleitet.
@@ -350,6 +352,9 @@ export function abrechnungRechnen(
     bavUmwandlung: bav?.umwandlung ?? 0,
     bavMinderungSteuer: bav?.minderungSteuer ?? 0,
     bavMinderungSv: bav?.minderungSv ?? 0,
+    kug: kurzarbeit?.kug ?? 0,
+    kugSvAG: kurzarbeit?.svAgFiktiv ?? 0,
+    kurzarbeitIstEntgelt: kurzarbeit?.istEntgelt ?? undefined,
     svTage: g.svTage,
     sonstigeBezuege: g.sonstigeBezuege,
     sonstigeBezuegeBeitragsfrei: g.sonstigeBezuegeBeitragsfrei,
@@ -418,6 +423,8 @@ export function abrechnungsFelder(g: MonatsGrundlage, r: PayrollResult) {
     brutto: r.brutto,
     surchargesTotal: r.surchargesTotal,
     bavUmwandlung: r.bavUmwandlung,
+    kugBetrag: r.kug,
+    kugSvAG: r.kugSvAG,
     grundlage: r.grundlage,
     svTage: r.svTage,
     beschaeftigungsart: r.beschaeftigungsart,

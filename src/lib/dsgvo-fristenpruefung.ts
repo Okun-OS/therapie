@@ -251,6 +251,19 @@ export const PRUEFUNGEN: Fristpruefung[] = [
       + 'Entgeltabrechnung, den sie sehen darf.',
   },
   {
+    id: 'kurzarbeit',
+    sicherheit: 'sicher',
+    herleitung:
+      'Sechs Jahre wie das Lohnkonto (§41 Abs. 1 EStG). Die Agentur für '
+      + 'Arbeit prüft die Abrechnungslisten nach (§§108, 320 SGB III), und '
+      + 'das Kurzarbeitergeld steht wegen des Progressionsvorbehalts in der '
+      + 'Lohnsteuerbescheinigung.',
+    befund:
+      'Die Anzeige über Arbeitsausfall selbst hängt am Betrieb und nicht an '
+      + 'einer Person. Sie enthält keine Personendaten und bleibt beim '
+      + 'Ausscheiden eines Beschäftigten unberührt.',
+  },
+  {
     id: 'bav',
     sicherheit: 'sicher',
     herleitung:

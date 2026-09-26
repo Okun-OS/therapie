@@ -209,6 +209,18 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
       hinweis: true,
     },
   }),
+  // §157 Die Monate in Kurzarbeit. Die Zahlen bestimmen, was ausgezahlt
+  // wurde, und stehen in der Lohnsteuerbescheinigung — die Person hat ein
+  // Recht darauf, sie nachzurechnen.
+  KurzarbeitMonat: id => prisma.kurzarbeitMonat.findMany({
+    where: { employeeId: id },
+    orderBy: [{ jahr: 'asc' }, { monat: 'asc' }],
+    select: {
+      id: true, jahr: true, monat: true, sollStunden: true, istStunden: true,
+      sollEntgelt: true, istEntgelt: true, nettoSoll: true, nettoIst: true,
+      leistungssatz: true, kug: true, fiktivEntgelt: true, hinweis: true,
+    },
+  }),
   // §156 Die Entgeltumwandlung. Sie mindert das Entgelt, deshalb gehört sie
   // in eine Auskunft — mit Anbieter, Weg und Betrag, damit die Person die
   // Zahlen auf ihrer Abrechnung nachvollziehen kann.

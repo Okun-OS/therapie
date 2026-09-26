@@ -5,6 +5,7 @@ import { allowedLocationScope } from '@/lib/scope'
 import { monatsGrundlagen, abrechnungRechnen, abrechnungsFelder } from '@/lib/payroll-monat'
 import { pfaendungFuerMonat } from '@/lib/pfaendung-lauf'
 import { bavFuerMonat } from '@/lib/bav-lauf'
+import { kurzarbeitFuerMonat, kurzarbeitFestschreiben } from '@/lib/kurzarbeit-lauf'
 import { elstamStandBewerten } from '@/lib/elstam'
 import { korrekturText } from '@/lib/aufrollung'
 import { freigabelagen } from '@/lib/monatsfreigabe'
@@ -236,6 +237,25 @@ export async function POST(req: NextRequest) {
       for (const h of bav.hinweise) hinweise.push({ name: m.name, text: h })
     }
 
+    // §157 Kurzarbeitergeld. Es geht weder ins Steuer- noch ins Beitragsbrutto,
+    // deshalb steht es neben der Rechnung und nicht in ihr — aber die Beiträge
+    // auf das fiktive Entgelt gehören in die Arbeitgeberkosten.
+    const kurzarbeit = await kurzarbeitFuerMonat(
+      m.id, customerId, year, month, lohnjahrOderFehler(year),
+      { ...p!, hatKinder: p!.hatKinder ?? m.hasChildren },
+    ).catch(fehler => {
+      // Eine fehlerhafte Kurzarbeit-Zeile darf den Lohnlauf nicht kippen.
+      hinweise.push({
+        name: m.name,
+        text: 'Das Kurzarbeitergeld konnte nicht gerechnet werden: '
+          + (fehler instanceof Error ? fehler.message : String(fehler)),
+      })
+      return null
+    })
+    if (kurzarbeit) {
+      for (const h of kurzarbeit.hinweise) hinweise.push({ name: m.name, text: h })
+    }
+
     let ergebnis
     try {
       ergebnis = abrechnungRechnen(
@@ -244,6 +264,7 @@ export async function POST(req: NextRequest) {
         year,
         month,
         bav ?? undefined,
+        kurzarbeit ?? undefined,
       ).ergebnis
     } catch (fehler) {
       // Ein unbekanntes Abrechnungsjahr ist kein Serverfehler, sondern eine
@@ -286,10 +307,16 @@ export async function POST(req: NextRequest) {
     // denn das ist der Betrag, der tatsächlich zur Auszahlung anstünde.
     const nettoNachKorrektur = Math.round(
       (gerechnet.netto + korrekturNetto) * 100) / 100
+    // §157 Kurzarbeitergeld tritt an die Stelle des ausgefallenen Entgelts und
+    // ist deshalb pfändbar wie Arbeitseinkommen (§850 Abs. 4 ZPO). Es gehört in
+    // die Bemessung — sonst bliebe bei Kurzarbeit zu wenig einbehalten, und
+    // dafür haftet der Arbeitgeber dem Gläubiger persönlich (§840 ZPO).
+    const pfaendungsNetto = Math.round(
+      (nettoNachKorrektur + (kurzarbeit?.kug ?? 0)) * 100) / 100
     const pfaendung = await pfaendungFuerMonat(
       m.id, customerId, year, month,
       {
-        netto: nettoNachKorrektur,
+        netto: pfaendungsNetto,
         nachtzuschlag: grundlage.nightSurcharge,
         sonntagszuschlag: grundlage.sundaySurcharge,
         feiertagszuschlag: grundlage.holidaySurcharge,
@@ -312,8 +339,15 @@ export async function POST(req: NextRequest) {
       hinweise.push({ name: m.name, text: pfaendung.fehler })
     }
 
+    // §157 Das Kurzarbeitergeld kommt zur Auszahlung hinzu: Der Betrieb zahlt
+    // es aus und holt es sich von der Agentur zurück.
     const auszahlungsbetrag = Math.round(
-      (nettoNachKorrektur - pfaendung.einbehalten) * 100) / 100
+      (nettoNachKorrektur + (kurzarbeit?.kug ?? 0) - pfaendung.einbehalten)
+      * 100) / 100
+
+    const kugFelder = {
+      kugFiktivEntgelt: kurzarbeit?.fiktivEntgelt ?? 0,
+    }
 
     const eintrag = await prisma.payrollEntry.upsert({
       where: { employeeId_year_month: { employeeId: m.id, year, month } },
@@ -323,6 +357,7 @@ export async function POST(req: NextRequest) {
         bavMinderungSteuer: bav?.minderungSteuer ?? 0,
         bavMinderungSv: bav?.minderungSv ?? 0,
         bavZuschussAG: bav?.zuschussAG ?? 0,
+        ...kugFelder,
       },
       update: {
         ...stammFelder, ...gerechnet,
@@ -330,8 +365,16 @@ export async function POST(req: NextRequest) {
         bavMinderungSteuer: bav?.minderungSteuer ?? 0,
         bavMinderungSv: bav?.minderungSv ?? 0,
         bavZuschussAG: bav?.zuschussAG ?? 0,
+        ...kugFelder,
       },
     })
+
+    // Das Ergebnis der Kurzarbeit wird erst festgeschrieben, wenn die
+    // Abrechnung steht — sonst zeigte die Abrechnungsliste für die Agentur
+    // Zahlen, die auf keinem Beleg stehen.
+    if (kurzarbeit?.monatId) {
+      await kurzarbeitFestschreiben(kurzarbeit.monatId, kurzarbeit)
+    }
 
     // Erst wenn die Korrektur wirklich an einer Abrechnung haengt, gilt sie als
     // ausgeglichen. Sonst waere sie verbucht, ohne dass jemand Geld bekommt.

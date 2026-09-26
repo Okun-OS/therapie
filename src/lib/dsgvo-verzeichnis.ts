@@ -361,6 +361,18 @@ const ZWECKE: Record<string, { zweck: string; rechtsgrundlage: string; empfaenge
       'Art. 6 Abs. 1 lit. c DSGVO i.V.m. §§829, 835, 840, 850 ff. ZPO, §26 BDSG',
     empfaenger: ['Der jeweilige Gläubiger', 'Vollstreckungsgericht'],
   },
+  kurzarbeit: {
+    zweck:
+      'Berechnung, Auszahlung und Abrechnung des Kurzarbeitergeldes gegenüber '
+      + 'der Agentur für Arbeit.',
+    rechtsgrundlage:
+      'Art. 6 Abs. 1 lit. c DSGVO i.V.m. §§95 ff., 108, 320 SGB III, '
+      + '§41 Abs. 1 EStG, §26 BDSG',
+    empfaenger: [
+      'Agentur für Arbeit (Leistungsantrag und Abrechnungsliste)',
+      'Finanzamt über die Lohnsteuerbescheinigung (Progressionsvorbehalt)',
+    ],
+  },
   bav: {
     zweck:
       'Durchführung der Entgeltumwandlung zur betrieblichen Altersvorsorge '

@@ -247,6 +247,24 @@ export const DATENARTEN: Datenart[] = [
       + 'die Standortleitung nichts an.',
   },
   {
+    id: 'kurzarbeit',
+    bezeichnung: 'Kurzarbeit',
+    beschreibung:
+      'Für welche Monate Kurzarbeit abgerechnet wurde: Soll- und Iststunden, '
+      + 'Soll- und Istentgelt und das ausgezahlte Kurzarbeitergeld.',
+    modelle: ['KurzarbeitMonat'],
+    behandlung: 'sperren',
+    fristJahre: 6,
+    grundlage: '§41 Abs.1 EStG (Lohnkonto), §§108, 320 SGB III, §28f SGB IV',
+    begruendung:
+      'Die Agentur für Arbeit prüft die Abrechnungslisten nach — teils Jahre '
+      + 'später. Ohne diese Zeilen könnte der Betrieb nicht belegen, wofür er '
+      + 'eine Erstattung bekommen hat, und müsste sie zurückzahlen. Das '
+      + 'Kurzarbeitergeld steht außerdem in Ihrer Lohnsteuerbescheinigung, '
+      + 'weil es dem Progressionsvorbehalt unterliegt. Beides bindet die '
+      + 'Angaben an die Frist des Lohnkontos.',
+  },
+  {
     id: 'bav',
     bezeichnung: 'Betriebliche Altersvorsorge',
     beschreibung:

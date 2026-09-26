@@ -130,6 +130,26 @@ export interface PayrollInput {
   bavUmwandlung?: number
   bavMinderungSteuer?: number
   bavMinderungSv?: number
+  /**
+   * §157 Kurzarbeitergeld dieses Monats.
+   *
+   * Es ist steuerfrei (§3 Nr. 2a EStG) und beitragsfrei — es geht deshalb
+   * weder ins Steuer- noch ins Beitragsbrutto und auch nicht ins Netto. Es
+   * kommt zur AUSZAHLUNG hinzu, und es gehoert in die Lohnsteuer-
+   * bescheinigung, weil der Progressionsvorbehalt (§32b EStG) daran haengt.
+   */
+  kug?: number
+  /** Die Beitraege auf das fiktive Entgelt — der Arbeitgeber traegt sie allein */
+  kugSvAG?: number
+  /**
+   * §157 Das Istentgelt aus der Kurzarbeit-Zeile: das tatsaechlich erzielte
+   * Bruttoarbeitsentgelt des Monats (§106 Abs. 1 SGB III).
+   *
+   * Es TRITT AN DIE STELLE des vertraglichen Entgelts. Wer in Kurzarbeit das
+   * volle Monatsgehalt abrechnet und obendrein Kurzarbeitergeld auszahlt,
+   * zahlt zweimal — und bekommt das zweite nicht erstattet.
+   */
+  kurzarbeitIstEntgelt?: number
   /** Voraussichtlicher Jahresarbeitslohn ohne die Einmalzahlung */
   jahresArbeitslohn?: number
   /** Bisher beitragspflichtiges Entgelt des Jahres bis zum Vormonat */
@@ -184,6 +204,10 @@ export interface PayrollResult {
   svBrutto: number          // Brutto, auf das Sozialabgaben erhoben werden
   /** §156 Was zur betrieblichen Altersvorsorge umgewandelt wurde */
   bavUmwandlung: number
+  /** §157 Kurzarbeitergeld — steuerfrei, beitragsfrei, kommt zur Auszahlung hinzu */
+  kug: number
+  /** §157 Beitraege auf das fiktive Entgelt, allein vom Arbeitgeber getragen */
+  kugSvAG: number
   // §120 Einmalzahlungen und ihr Anteil an Steuer und Beitrag. Die Gesamtwerte
   // unten enthalten sie bereits — das hier ist die Aufgliederung, die der
   // Steuerberater und der Beleg brauchen.
@@ -260,6 +284,22 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     + (input.saturdaySurcharge ?? 0)
     + (input.overtimeSurcharge ?? 0)
     + (input.otherSurcharge ?? 0)
+
+  // §157 In einem Monat mit Kurzarbeit wird nicht das vertragliche Entgelt
+  // abgerechnet, sondern das tatsächlich erzielte. Die Zuschläge stehen schon
+  // darin — sie werden abgezogen, damit das laufende Brutto am Ende genau dem
+  // Istentgelt entspricht und Abrechnung und Abrechnungsliste dieselbe Zahl
+  // zeigen.
+  if (input.kurzarbeitIstEntgelt != null) {
+    const ist = Math.max(0, input.kurzarbeitIstEntgelt)
+    regularPay = round2(Math.max(0, ist - surchargesTotal))
+    warnings.push(
+      `Kurzarbeit: Abgerechnet wurde das Istentgelt von ${ist.toFixed(2)} € `
+      + 'aus der Kurzarbeit-Zeile, nicht das vertragliche Entgelt '
+      + '(§106 Abs. 1 SGB III). Es ist das tatsächlich erzielte Brutto und '
+      + 'enthält Zuschläge und Mehrarbeit.',
+    )
+  }
 
   const overtimePay = (input.hourlyWage ?? 0) * input.overtimeHours
   // §120 Einmalzahlungen gehören ins Gesamtbrutto, werden aber getrennt
@@ -460,9 +500,16 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   // §156 Das umgewandelte Entgelt ist für den Arbeitgeber weiterhin Aufwand —
   // es fließt nur an die Versorgungseinrichtung statt an den Beschäftigten.
   // Deshalb bleibt es in den Arbeitgeberkosten stehen.
+  // §157 Die Beiträge auf das fiktive Entgelt sind echter Aufwand des
+  // Betriebs: Er trägt sie allein und bekommt sie nicht erstattet. Sie hier
+  // wegzulassen ließe Kurzarbeit billiger aussehen, als sie ist.
+  const kug = Math.max(0, input.kug ?? 0)
+  const kugSvAG = Math.max(0, input.kugSvAG ?? 0)
+
   const totalAgCost = brutto + agRv + agKv + agPv + agAv
     + (bonusSv?.svAG ?? 0)
     + (sonderBeitraege?.pauschsteuerAG ?? 0)
+    + kugSvAG
 
   return {
     brutto: round2(brutto),
@@ -475,6 +522,8 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     steuerBrutto: round2(steuerBrutto),
     svBrutto: round2(svBrutto),
     bavUmwandlung: round2(bavUmwandlung),
+    kug: round2(kug),
+    kugSvAG: round2(kugSvAG),
     sonstigeBezuege: round2(sonstigeBezuege),
     lohnsteuerSonstige: steuer.lohnsteuerSonstige,
     kirchensteuerSonstige,

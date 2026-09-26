@@ -56,6 +56,8 @@ export interface BelegAbrechnung {
   /** §119 Korrektur aus einem aufgerollten Monat und der daraus folgende Betrag */
   korrekturNetto?: number
   auszahlungsbetrag?: number
+  /** §157 Kurzarbeitergeld — steuerfrei, aber mit Progressionsvorbehalt */
+  kugBetrag?: number
   /** §155 Was wegen einer Lohnpfändung einbehalten wurde */
   pfaendungBetrag?: number
   /** Je Gläubiger eine Zeile — ohne sie bliebe der Abzug unerklärt */
@@ -372,13 +374,39 @@ export async function erzeugeLohnbeleg(
   // Abrechnung vermeiden soll.
   const korrektur = abrechnung.korrekturNetto ?? 0
   const zeigeKorrektur = Math.abs(korrektur) >= 0.005
-  if (zeigeKorrektur) {
+  const kug = abrechnung.kugBetrag ?? 0
+  const zeigeKug = kug >= 0.005
+  let nettoGezeigt = false
+  const nettoZeile = () => {
+    if (nettoGezeigt) return
     text('Nettoentgelt', RAND, 9, normal)
     rechts(`${euro(abrechnung.netto)} EUR`, SP_BETRAG, 9, normal)
     y -= 13
+    nettoGezeigt = true
+  }
+
+  if (zeigeKorrektur) {
+    nettoZeile()
     text(abrechnung.korrekturText ?? 'Korrektur aus Vormonat', RAND, 9, normal)
     rechts(`${korrektur >= 0 ? '+' : '- '}${euro(Math.abs(korrektur))} EUR`, SP_BETRAG, 9, normal)
     y -= 13
+  }
+
+  // §157 Kurzarbeitergeld steht NACH dem Netto: Es ist steuerfrei und
+  // beitragsfrei und war nie Teil des Entgelts — der Betrieb zahlt es für die
+  // Agentur aus. Der Hinweis auf den Progressionsvorbehalt gehört daneben,
+  // sonst kommt die Nachzahlung im nächsten Frühjahr überraschend.
+  if (zeigeKug) {
+    nettoZeile()
+    text('Kurzarbeitergeld', RAND, 9, normal)
+    rechts(`+ ${euro(kug)} EUR`, SP_BETRAG, 9, normal)
+    y -= 13
+    text(
+      'steuerfrei nach §3 Nr. 2a EStG, unterliegt dem Progressionsvorbehalt '
+      + '(§32b EStG)',
+      RAND, 7, normal, grau,
+    )
+    y -= 11
   }
 
   // §155 Die Lohnpfändung. Sie steht NACH dem Netto und vor der Auszahlung,
@@ -391,11 +419,7 @@ export async function erzeugeLohnbeleg(
   // Reihenfolge stimmt.
   const pfaendung = abrechnung.pfaendungBetrag ?? 0
   if (pfaendung >= 0.005) {
-    if (!zeigeKorrektur) {
-      text('Nettoentgelt', RAND, 9, normal)
-      rechts(`${euro(abrechnung.netto)} EUR`, SP_BETRAG, 9, normal)
-      y -= 13
-    }
+    nettoZeile()
     for (const z of abrechnung.pfaendungen ?? []) {
       text(`Pfändung ${z.glaeubiger}`, RAND, 9, normal)
       rechts(`- ${euro(z.betrag)} EUR`, SP_BETRAG, 9, normal)

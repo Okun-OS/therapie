@@ -270,6 +270,16 @@ const ZUGRIFF: Record<string, Zugriff> = {
       where: { employeeId: k.employeeId },
     }).then(zahl),
   },
+  // §157 Die Monate in Kurzarbeit. Die Anzeige selbst haengt am Betrieb und
+  // nicht an einer Person — sie bleibt.
+  KurzarbeitMonat: {
+    zaehlen: (db, k) => db.kurzarbeitMonat.count({
+      where: { employeeId: k.employeeId },
+    }),
+    loeschen: (db, k) => db.kurzarbeitMonat.deleteMany({
+      where: { employeeId: k.employeeId },
+    }).then(zahl),
+  },
   // §156 Der Vertrag zur Entgeltumwandlung. Die Anwartschaft liegt bei der
   // Versorgungseinrichtung und bleibt davon unberuehrt — hier steht nur, was
   // die Abrechnung gebraucht hat.
