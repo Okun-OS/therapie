@@ -118,6 +118,18 @@ export interface PayrollInput {
   sonstigeBezuege?: number
   /** Davon beitragsfrei (z. B. echte Abfindungen) */
   sonstigeBezuegeBeitragsfrei?: number
+  /**
+   * §156 Entgeltumwandlung zur betrieblichen Altersvorsorge.
+   *
+   * Der Betrag verlaesst das Entgelt und geht an die Versorgungseinrichtung —
+   * deshalb mindert er das Brutto. Steuer- und Beitragsbemessung sinken aber
+   * UNTERSCHIEDLICH: steuerfrei bis 8 % der Beitragsbemessungsgrenze
+   * (§3 Nr. 63 EStG), beitragsfrei nur bis 4 % (§1 Abs. 1 Satz 1 Nr. 9 SvEV).
+   * Deshalb drei Zahlen und nicht eine.
+   */
+  bavUmwandlung?: number
+  bavMinderungSteuer?: number
+  bavMinderungSv?: number
   /** Voraussichtlicher Jahresarbeitslohn ohne die Einmalzahlung */
   jahresArbeitslohn?: number
   /** Bisher beitragspflichtiges Entgelt des Jahres bis zum Vormonat */
@@ -170,6 +182,8 @@ export interface PayrollResult {
   svfreieZuschlaege: number
   steuerBrutto: number      // Brutto, auf das Lohnsteuer erhoben wird
   svBrutto: number          // Brutto, auf das Sozialabgaben erhoben werden
+  /** §156 Was zur betrieblichen Altersvorsorge umgewandelt wurde */
+  bavUmwandlung: number
   // §120 Einmalzahlungen und ihr Anteil an Steuer und Beitrag. Die Gesamtwerte
   // unten enthalten sie bereits — das hier ist die Aufgliederung, die der
   // Steuerberater und der Beleg brauchen.
@@ -259,8 +273,16 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   if (frei.hinweis) warnings.push(frei.hinweis)
   // Steuer- und Beitragsbrutto meinen den LAUFENDEN Lohn: die Einmalzahlung
   // hat ihre eigene Bemessung und würde die Monatsgrenzen sonst verfälschen.
-  const steuerBrutto = Math.max(0, laufendesBrutto - frei.steuerfrei)
-  const svBrutto = Math.max(0, laufendesBrutto - frei.svfrei)
+  // §156 Die Entgeltumwandlung mindert beide Bemessungen — aber verschieden
+  // stark. Wer hier mit einer Zahl rechnet, zieht im Bereich zwischen der
+  // Beitrags- und der Steuergrenze zu wenig Sozialversicherung ab.
+  const bavUmwandlung = Math.max(0, input.bavUmwandlung ?? 0)
+  const bavMinderungSteuer = Math.max(0, input.bavMinderungSteuer ?? 0)
+  const bavMinderungSv = Math.max(0, input.bavMinderungSv ?? 0)
+
+  const steuerBrutto = Math.max(
+    0, laufendesBrutto - frei.steuerfrei - bavMinderungSteuer)
+  const svBrutto = Math.max(0, laufendesBrutto - frei.svfrei - bavMinderungSv)
 
   // §121 Welche Beschäftigungsart gilt wirklich? Der Übergangsbereich ist keine
   // Wahl, sondern folgt aus dem Entgelt.
@@ -428,9 +450,16 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
 
   // ─ 4. Net ─────────────────────────────────────────────────────────────────
   const totalDeductions = svTotal + lohnsteuerMonthly + soliMonthly + kirchensteuerMonthly
-  const netto = Math.max(0, brutto - totalDeductions)
+  // §156 Der umgewandelte Betrag ist bereits an die Versorgungseinrichtung
+  // geflossen — er steht nicht mehr zur Auszahlung. Der Zuschuss des
+  // Arbeitgebers mindert das Netto NICHT: Er kommt obendrauf und war nie Teil
+  // des Entgelts.
+  const netto = Math.max(0, brutto - bavUmwandlung - totalDeductions)
 
   // ─ 5. Employer costs ──────────────────────────────────────────────────────
+  // §156 Das umgewandelte Entgelt ist für den Arbeitgeber weiterhin Aufwand —
+  // es fließt nur an die Versorgungseinrichtung statt an den Beschäftigten.
+  // Deshalb bleibt es in den Arbeitgeberkosten stehen.
   const totalAgCost = brutto + agRv + agKv + agPv + agAv
     + (bonusSv?.svAG ?? 0)
     + (sonderBeitraege?.pauschsteuerAG ?? 0)
@@ -445,6 +474,7 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     svfreieZuschlaege: frei.svfrei,
     steuerBrutto: round2(steuerBrutto),
     svBrutto: round2(svBrutto),
+    bavUmwandlung: round2(bavUmwandlung),
     sonstigeBezuege: round2(sonstigeBezuege),
     lohnsteuerSonstige: steuer.lohnsteuerSonstige,
     kirchensteuerSonstige,

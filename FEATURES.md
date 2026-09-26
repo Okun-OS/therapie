@@ -2267,10 +2267,80 @@ ein zweiter Lohnlauf den Abzug nicht verdoppelt und dass die Standortleitung
 keine Pfändung sieht. Gesamtlauf: **1177/1177 in 33 Prüfungen**, 810
 Modultests, Bauen sauber.
 
+## Block §156 (26.09.) — Lohn Teil 2: Betriebliche Altersvorsorge
+
+**Der Fehler, den fast jede selbstgebaute Abrechnung macht.** Man merkt sich
+„acht Prozent sind frei" und rechnet damit. Das ist zweimal zur Hälfte richtig
+— und deshalb besonders gefährlich.
+
+### Zwei Grenzen in der Höhe
+- **Steuerfrei** sind Beiträge bis **8 %** der Beitragsbemessungsgrenze RV
+  (§3 Nr. 63 EStG).
+- **Beitragsfrei** in der Sozialversicherung sind sie nur bis **4 %**
+  (§1 Abs. 1 Satz 1 Nr. 9 SvEV).
+
+Dazwischen liegt ein Bereich, in dem der Beitrag steuerfrei ist und trotzdem
+verbeitragt wird. **Steuerbrutto und Beitragsbrutto sinken unterschiedlich
+stark.** Wer eine Zahl führt, zieht dort zu wenig Sozialversicherung ab — und
+das fällt erst bei der Betriebsprüfung auf, dann vier Jahre rückwirkend.
+
+### Zwei Grenzen im Zeitraum — derselbe Fehler in der anderen Achse
+- **Steuerlich** ist der Höchstbetrag ein **Jahresbetrag**. Er darf jederzeit
+  ausgeschöpft werden, auch auf einen Schlag im Dezember (R 3.63 LStR). Was ein
+  Monat nicht braucht, bleibt nutzbar.
+- **Beitragsrechtlich** wird bei laufendem Entgelt **monatlich** gerechnet: ein
+  Zwölftel der 4 % je Monat, **ohne Nachholung**. Was ein Monat nicht
+  ausschöpft, ist verfallen.
+
+Wer beide als Jahresbetrag führt, lässt im Januar das Zwölffache beitragsfrei
+durchlaufen. Das Programm führt deshalb zwei getrennte Zähler:
+`steuerfreiBisherImJahr` für die Steuer, `svfreiBisherImMonat` für die
+Beiträge. Beitragsfrei kann außerdem nur sein, was steuerfrei ist — ist der
+Jahresrahmen erschöpft, ist der Monatsrahmen gegenstandslos.
+
+Beispiel bei einer BBG von 8.450 € im Monat (2026): 8.112 € steuerfrei im
+Jahr, 338 € beitragsfrei im Monat. Wandelt jemand 507 € um, sinkt das
+Steuerbrutto um 507 €, das Beitragsbrutto aber nur um 338 €.
+
+### Der Zuschuss ist nicht einfach 15 %
+§1a Abs. 1a BetrAVG verpflichtet den Arbeitgeber, 15 % weiterzugeben — aber
+nur, *„soweit er durch die Entgeltumwandlung Sozialversicherungsbeiträge
+einspart"*. Oberhalb der 4-%-Grenze spart er nichts, also schuldet er dort
+auch nichts. Das Programm nennt **beide Zahlen**: die Pflicht und das, was
+vereinbart ist. Wer weniger vereinbart, bekommt es beim Anlegen gesagt — nicht
+erst auf der Abrechnung, wenn schon unterschrieben ist.
+
+Ein pauschaler Zuschuss auf den ganzen Betrag ist zulässig und wird oft
+vereinbart; er ist dann freiwillig, und genau so steht er da.
+
+### Was das Programm bewusst NICHT tut
+- **Altverträge nach §40b EStG a.F.** (vor 2005 geschlossen) werden nicht
+  gerechnet. Sie laufen nach eigenen Regeln. Das Programm erkennt sie, weist
+  die Umwandlung aus, mindert aber nichts und sagt, dass Beiträge und
+  Pauschsteuer von Hand gehören — statt sie still falsch zu rechnen.
+- **Es löscht keinen abgerechneten Vertrag.** Wurde damit schon ein Monat
+  abgerechnet, wird er beendet, nicht gelöscht — sonst weist ein Beleg eine
+  Umwandlung aus, deren Vertrag es nicht mehr gibt.
+- **Der Zuschuss mindert das Entgelt nicht.** Er kommt obendrauf: mehr an die
+  Versorgung, gleiches Brutto.
+
+### Wer was darf
+Anlegen und ändern darf die Unternehmensebene. Die Standortleitung sieht ihren
+Standort mit — anders als bei einer Pfändung (§155), denn eine Entgelt&shy;um&shy;wandlung
+ist nichts Belastendes, sondern ein Anspruch (§1a Abs. 1 BetrAVG), und sie
+verändert das Brutto. Der Beschäftigte sieht seinen eigenen Vertrag; er hat ihn
+schließlich geschlossen.
+
+Nachweis: 28 Modultests für die Rechenwege und 36 Prüfungen am laufenden System
+(`pruefungen/d18-bav.mjs`) — darunter der Bereich zwischen 4 % und 8 %, in dem
+das Beitragsbrutto über dem Steuerbrutto liegt, und ein Beitrag über dem
+Jahresrahmen.
+
 ### Noch offen im Lohn-Block
-- Betriebliche Altersvorsorge (Entgeltumwandlung, §3 Nr. 63 EStG, 15-%-Zuschuss)
 - Kurzarbeitergeld
 - Mehrfachbeschäftigung, Abfindung, Bescheinigungen
+- Eine Oberfläche für Pfändung und Entgeltumwandlung: beides ist derzeit nur
+  über die Schnittstelle erfassbar.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

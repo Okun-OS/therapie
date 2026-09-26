@@ -247,6 +247,25 @@ export const DATENARTEN: Datenart[] = [
       + 'die Standortleitung nichts an.',
   },
   {
+    id: 'bav',
+    bezeichnung: 'Betriebliche Altersvorsorge',
+    beschreibung:
+      'Ihre Entgeltumwandlung: welcher Anbieter, welcher Durchführungsweg, '
+      + 'welcher Monatsbetrag und welcher Zuschuss vereinbart ist.',
+    modelle: ['BavVertrag'],
+    behandlung: 'sperren',
+    fristJahre: 6,
+    grundlage: '§41 Abs.1 EStG (Lohnkonto), §4 LStDV, §28f SGB IV',
+    begruendung:
+      'Der umgewandelte Betrag hat Ihr Steuer- und Beitragsbrutto verändert '
+      + 'und steht deshalb auf jeder Abrechnung. Ohne den Vertrag dahinter '
+      + 'ließe sich bei einer Lohnsteuer-Außenprüfung oder einer '
+      + 'Betriebsprüfung der Rentenversicherung nicht mehr erklären, warum. '
+      + 'Er teilt darum die Frist der Entgeltabrechnung. Die Anwartschaft '
+      + 'selbst liegt bei der Versorgungseinrichtung, nicht hier — was hier '
+      + 'nach der Frist entfernt wird, ist nur die Abrechnungsgrundlage.',
+  },
+  {
     id: 'belehrungsnachweis',
     bezeichnung: 'Bestätigte Belehrungen',
     beschreibung:

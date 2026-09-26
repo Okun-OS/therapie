@@ -270,6 +270,15 @@ const ZUGRIFF: Record<string, Zugriff> = {
       where: { employeeId: k.employeeId },
     }).then(zahl),
   },
+  // §156 Der Vertrag zur Entgeltumwandlung. Die Anwartschaft liegt bei der
+  // Versorgungseinrichtung und bleibt davon unberuehrt — hier steht nur, was
+  // die Abrechnung gebraucht hat.
+  BavVertrag: {
+    zaehlen: (db, k) => db.bavVertrag.count({ where: { employeeId: k.employeeId } }),
+    loeschen: (db, k) => db.bavVertrag.deleteMany({
+      where: { employeeId: k.employeeId },
+    }).then(zahl),
+  },
   // §150 Der Nachweis der Kenntnisnahme.
   //
   // Er geht mit dem Ausscheiden: Eine Unterweisung belegt, dass jemand

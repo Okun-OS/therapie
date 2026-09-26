@@ -1478,6 +1478,14 @@ model PayrollEntry {
   soliSonstige          Float @default(0)
   svANSonstige          Float @default(0)
   svAGSonstige          Float @default(0)
+  // §156 Betriebliche Altersvorsorge: was umgewandelt wurde und wie stark es
+  // Steuer- und Beitragsbemessung gemindert hat. Drei Zahlen, weil die
+  // Grenzen verschieden sind (8 % steuerfrei, 4 % beitragsfrei).
+  bavUmwandlung    Float @default(0)
+  bavMinderungSteuer Float @default(0)
+  bavMinderungSv   Float @default(0)
+  /// Der Zuschuss des Arbeitgebers — er mindert das Entgelt nicht
+  bavZuschussAG    Float @default(0)
   // §155 Was wegen einer Lohnpfaendung einbehalten wurde. Es mindert den
   // Auszahlungsbetrag, NICHT das Netto — steuerlich und sozialversicherungs-
   // rechtlich ist das Geld verdient, es geht nur an jemand anderen.
@@ -2239,4 +2247,44 @@ model PfaendungsAbzug {
 
   @@unique([pfaendungId, jahr, monat])
   @@index([employeeId, jahr, monat])
+}
+
+/// §156 Ein Vertrag zur betrieblichen Altersvorsorge (§1a BetrAVG).
+///
+/// WARUM DER DURCHFUEHRUNGSWEG DRINSTEHT
+/// Weil er ueber die Besteuerung entscheidet. Direktversicherung,
+/// Pensionskasse und Pensionsfonds laufen nach §3 Nr. 63 EStG; ein Altvertrag
+/// von vor 2005 nach §40b EStG in der alten Fassung, mit ganz anderen Regeln.
+/// Beide gleich zu behandeln waere der Fehler, den man erst bei der
+/// Betriebspruefung bemerkt.
+///
+/// WARUM DER ZUSCHUSSSATZ EIN FELD IST
+/// §1a Abs. 1a BetrAVG verlangt 15 %, aber nur „soweit der Arbeitgeber
+/// Sozialversicherungsbeitraege einspart". Viele Betriebe vereinbaren mehr
+/// oder zahlen pauschal auf den vollen Betrag. Beides ist zulaessig; was gilt,
+/// steht in der Vereinbarung und nicht im Programm.
+model BavVertrag {
+  id            String    @id @default(cuid())
+  employeeId    String
+  customerId    String
+  /// direktversicherung | pensionskasse | pensionsfonds | altvertrag_40b
+  weg           String    @default("direktversicherung")
+  anbieter      String
+  vertragsnummer String?
+  /// Was monatlich umgewandelt wird
+  monatsbetrag  Float
+  /// Der vereinbarte Zuschusssatz des Arbeitgebers, als Anteil (0.15 = 15 %)
+  zuschussSatz  Float     @default(0.15)
+  /// Ob der Zuschuss auf den vollen Betrag geht statt nur auf den
+  /// beitragsfreien Teil — das ist freiwillig und kommt vor.
+  zuschussAufGesamt Boolean @default(false)
+  beginn        String
+  ende          String?
+  aktiv         Boolean   @default(true)
+  notiz         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([employeeId, aktiv])
+  @@index([customerId])
 }

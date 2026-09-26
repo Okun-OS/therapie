@@ -339,12 +339,17 @@ export function abrechnungRechnen(
   g: MonatsGrundlage,
   jahr: number,
   monat?: number,
+  /** §156 Was zur betrieblichen Altersvorsorge umgewandelt wird */
+  bav?: { umwandlung: number; minderungSteuer: number; minderungSv: number },
 ): { eingabe: PayrollInput; ergebnis: PayrollResult } {
   // Der Grundlohn je Stunde ist der Maßstab für die Steuerfreiheit der
   // Zuschläge — beim Monatsgehalt aus Gehalt und Wochenstunden abgeleitet.
   const eingabe: PayrollInput = {
     jahr,
     monat,
+    bavUmwandlung: bav?.umwandlung ?? 0,
+    bavMinderungSteuer: bav?.minderungSteuer ?? 0,
+    bavMinderungSv: bav?.minderungSv ?? 0,
     svTage: g.svTage,
     sonstigeBezuege: g.sonstigeBezuege,
     sonstigeBezuegeBeitragsfrei: g.sonstigeBezuegeBeitragsfrei,
@@ -412,6 +417,7 @@ export function abrechnungsFelder(g: MonatsGrundlage, r: PayrollResult) {
     sickDays: Math.round(g.sickDays),
     brutto: r.brutto,
     surchargesTotal: r.surchargesTotal,
+    bavUmwandlung: r.bavUmwandlung,
     grundlage: r.grundlage,
     svTage: r.svTage,
     beschaeftigungsart: r.beschaeftigungsart,

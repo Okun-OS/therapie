@@ -209,6 +209,18 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
       hinweis: true,
     },
   }),
+  // §156 Die Entgeltumwandlung. Sie mindert das Entgelt, deshalb gehört sie
+  // in eine Auskunft — mit Anbieter, Weg und Betrag, damit die Person die
+  // Zahlen auf ihrer Abrechnung nachvollziehen kann.
+  BavVertrag: id => prisma.bavVertrag.findMany({
+    where: { employeeId: id },
+    orderBy: { beginn: 'asc' },
+    select: {
+      id: true, weg: true, anbieter: true, vertragsnummer: true,
+      monatsbetrag: true, zuschussSatz: true, zuschussAufGesamt: true,
+      beginn: true, ende: true, aktiv: true, notiz: true,
+    },
+  }),
   // §150 Welche Belehrungen die Person zur Kenntnis genommen hat — mit dem
   // Wortlaut, den sie damals bestätigt hat, und dem Zeitpunkt. Genau das ist
   // der Nachweis; sie hat ein Recht darauf, ihn selbst zu sehen.

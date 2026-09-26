@@ -251,6 +251,19 @@ export const PRUEFUNGEN: Fristpruefung[] = [
       + 'Entgeltabrechnung, den sie sehen darf.',
   },
   {
+    id: 'bav',
+    sicherheit: 'sicher',
+    herleitung:
+      'Die Entgeltumwandlung verändert Steuer- und Beitragsbrutto und gehört '
+      + 'deshalb zu den Unterlagen, aus denen sich die Abrechnung erklärt '
+      + '(§41 Abs. 1 EStG, §4 LStDV, §28f SGB IV). Sie teilt die Frist des '
+      + 'Lohnkontos: sechs Jahre.',
+    befund:
+      'Der Vertrag mit der Versorgungseinrichtung selbst liegt nicht hier. '
+      + 'Gelöscht wird nur die Abrechnungsgrundlage — die Anwartschaft der '
+      + 'Person bleibt davon unberührt, und das steht so auch in der Auskunft.',
+  },
+  {
     id: 'belehrungsnachweis',
     sicherheit: 'auslegung',
     herleitung:

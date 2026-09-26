@@ -361,6 +361,19 @@ const ZWECKE: Record<string, { zweck: string; rechtsgrundlage: string; empfaenge
       'Art. 6 Abs. 1 lit. c DSGVO i.V.m. §§829, 835, 840, 850 ff. ZPO, §26 BDSG',
     empfaenger: ['Der jeweilige Gläubiger', 'Vollstreckungsgericht'],
   },
+  bav: {
+    zweck:
+      'Durchführung der Entgeltumwandlung zur betrieblichen Altersvorsorge '
+      + 'und Nachweis der steuer- und beitragsrechtlichen Behandlung.',
+    rechtsgrundlage:
+      'Art. 6 Abs. 1 lit. b DSGVO (Durchführung der Entgeltumwandlung) und '
+      + 'lit. c i.V.m. §1a BetrAVG, §3 Nr. 63 EStG, §41 Abs. 1 EStG, '
+      + '§1 Abs. 1 Satz 1 Nr. 9 SvEV, §26 BDSG',
+    empfaenger: [
+      'Die gewählte Versorgungseinrichtung',
+      'Finanzamt und Rentenversicherung im Prüfungsfall',
+    ],
+  },
   belehrungsnachweis: {
     zweck:
       'Nachweis, dass die vorgeschriebenen Unterweisungen und Belehrungen '

@@ -81,6 +81,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `d15-jahresabschluss.mjs` | Jahreswerte, Übersicht für den Mitarbeiter |
 | `d16-monatsfreigabe.mjs` | Kein Lohn ohne freigegebenen Monat, Monatsgrenze |
 | `d17-pfaendung.mjs` | Lohnpfändung: Freigrenzen, Rangfolge, Nachweis |
+| `d18-bav.mjs` | Betriebliche Altersvorsorge: 8 % Steuer im Jahr, 4 % Beiträge im Monat |
 | `e-kommunikation.mjs` | Benachrichtigungen, Einspringen, Push |
 | `e5-chat.mjs` | Nachrichten, Gruppen, wer nicht mitlesen darf |
 | `f-dienstplan.mjs` | Rechenkern, Dienstwünsche, Schichttausch |

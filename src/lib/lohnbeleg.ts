@@ -72,6 +72,11 @@ export interface BelegAbrechnung {
   /** §124 Pauschsteuer des Arbeitgebers beim Minijob — kein Abzug beim Arbeitnehmer */
   pauschsteuerAG?: number
   steuerBrutto?: number
+  /** §156 Was zur betrieblichen Altersvorsorge umgewandelt wurde */
+  bavUmwandlung?: number
+  bavZuschussAG?: number
+  /** Je Vertrag eine Zeile — sonst bleibt die Minderung unerklärt */
+  bavVertraege?: { anbieter: string; weg: string; betrag: number }[]
   svBrutto?: number
   regularHours: number
   overtimeHours: number
@@ -263,7 +268,33 @@ export async function erzeugeLohnbeleg(
   text('Gesamtbrutto', RAND, 10, fett)
   rechts(`${euro(abrechnung.brutto)} EUR`, SP_BETRAG, 10, fett)
   y -= 14
-  if (steuerfrei > 0) {
+
+  // §156 Die Entgeltumwandlung. Sie muss hier stehen, weil sie erklärt, warum
+  // das steuerpflichtige Brutto unter dem Gesamtbrutto liegt — und weil der
+  // Beschäftigte sehen soll, dass sein Geld nicht weg ist, sondern in seiner
+  // Altersversorgung.
+  const bav = abrechnung.bavUmwandlung ?? 0
+  if (bav >= 0.005) {
+    for (const v of abrechnung.bavVertraege ?? []) {
+      text(`Entgeltumwandlung ${v.anbieter}`, RAND, 9, normal)
+      rechts(`- ${euro(v.betrag)} EUR`, SP_BETRAG, 9, normal)
+      y -= 13
+    }
+    if (!(abrechnung.bavVertraege ?? []).length) {
+      text('Entgeltumwandlung (betriebliche Altersvorsorge)', RAND, 9, normal)
+      rechts(`- ${euro(bav)} EUR`, SP_BETRAG, 9, normal)
+      y -= 13
+    }
+    const zuschuss = abrechnung.bavZuschussAG ?? 0
+    if (zuschuss >= 0.005) {
+      text('davon Zuschuss des Arbeitgebers (§1a Abs. 1a BetrAVG)',
+        RAND, 7, normal, grau)
+      rechts(`+ ${euro(zuschuss)} EUR`, SP_BETRAG, 7, normal, grau)
+      y -= 11
+    }
+  }
+
+  if (steuerfrei > 0 || bav >= 0.005) {
     text('Steuerpflichtiges Brutto', RAND, 8, normal, grau)
     rechts(`${euro(abrechnung.steuerBrutto ?? abrechnung.brutto)} EUR`, SP_BETRAG, 8, normal, grau)
     y -= 12

@@ -4,6 +4,7 @@ import { requireRole, resolveCustomerId } from '@/lib/session'
 import { allowedLocationScope } from '@/lib/scope'
 import { monatsGrundlagen, abrechnungRechnen, abrechnungsFelder } from '@/lib/payroll-monat'
 import { pfaendungFuerMonat } from '@/lib/pfaendung-lauf'
+import { bavFuerMonat } from '@/lib/bav-lauf'
 import { elstamStandBewerten } from '@/lib/elstam'
 import { korrekturText } from '@/lib/aufrollung'
 import { freigabelagen } from '@/lib/monatsfreigabe'
@@ -225,6 +226,16 @@ export async function POST(req: NextRequest) {
     }
     // Fuer die Pflegeversicherung zaehlt, ob jemand Kinder hat — die Angabe am
     // Lohnprofil geht vor, sonst das Merkmal am Mitarbeiter.
+    // §156 Was zur betrieblichen Altersvorsorge umgewandelt wird. Es mindert
+    // Steuer- und Beitragsbemessung UNTERSCHIEDLICH — deshalb muss es vor der
+    // Berechnung feststehen und nicht danach abgezogen werden.
+    const bav = await bavFuerMonat(
+      m.id, customerId, year, month, lohnjahrOderFehler(year),
+    ).catch(() => null)
+    if (bav) {
+      for (const h of bav.hinweise) hinweise.push({ name: m.name, text: h })
+    }
+
     let ergebnis
     try {
       ergebnis = abrechnungRechnen(
@@ -232,6 +243,7 @@ export async function POST(req: NextRequest) {
         grundlage,
         year,
         month,
+        bav ?? undefined,
       ).ergebnis
     } catch (fehler) {
       // Ein unbekanntes Abrechnungsjahr ist kein Serverfehler, sondern eine
@@ -308,10 +320,16 @@ export async function POST(req: NextRequest) {
       create: {
         employeeId: m.id, year, month, status: 'draft', ...stammFelder, ...gerechnet,
         korrekturNetto, pfaendungBetrag: pfaendung.einbehalten, auszahlungsbetrag,
+        bavMinderungSteuer: bav?.minderungSteuer ?? 0,
+        bavMinderungSv: bav?.minderungSv ?? 0,
+        bavZuschussAG: bav?.zuschussAG ?? 0,
       },
       update: {
         ...stammFelder, ...gerechnet,
         korrekturNetto, pfaendungBetrag: pfaendung.einbehalten, auszahlungsbetrag,
+        bavMinderungSteuer: bav?.minderungSteuer ?? 0,
+        bavMinderungSv: bav?.minderungSv ?? 0,
+        bavZuschussAG: bav?.zuschussAG ?? 0,
       },
     })
 

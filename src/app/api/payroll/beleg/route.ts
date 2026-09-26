@@ -109,6 +109,22 @@ export async function POST(req: NextRequest) {
     pfaendungenJeMitarbeiter.set(z.employeeId, liste)
   }
 
+  // §156 Die laufenden Verträge zur betrieblichen Altersvorsorge.
+  const bavVertraege = await prisma.bavVertrag.findMany({
+    where: {
+      customerId, aktiv: true,
+      employeeId: { in: abrechnungen.map(a => a.employeeId) },
+    },
+    select: { employeeId: true, anbieter: true, weg: true, monatsbetrag: true },
+    orderBy: { beginn: 'asc' },
+  })
+  const bavJeMitarbeiter = new Map<string, { anbieter: string; weg: string; betrag: number }[]>()
+  for (const v of bavVertraege) {
+    const liste = bavJeMitarbeiter.get(v.employeeId) ?? []
+    liste.push({ anbieter: v.anbieter, weg: v.weg, betrag: v.monatsbetrag })
+    bavJeMitarbeiter.set(v.employeeId, liste)
+  }
+
   const erzeugt: { name: string; dateiId: string }[] = []
   const uebersprungen: { name: string; grund: string }[] = []
 
@@ -151,6 +167,10 @@ export async function POST(req: NextRequest) {
           // §155 Die Pfändungszeilen des Monats — je Gläubiger eine.
           pfaendungBetrag: a.pfaendungBetrag,
           pfaendungen: pfaendungenJeMitarbeiter.get(a.employeeId) ?? [],
+          // §156 Die Entgeltumwandlung, je Vertrag eine Zeile.
+          bavUmwandlung: a.bavUmwandlung,
+          bavZuschussAG: a.bavZuschussAG,
+          bavVertraege: bavJeMitarbeiter.get(a.employeeId) ?? [],
           korrekturText: korrekturHinweis.get(a.employeeId),
           sonstigeBezuege: a.sonstigeBezuege,
           sonstigeBezuegeText: einmalHinweis.get(a.employeeId),
