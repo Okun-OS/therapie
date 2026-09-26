@@ -1,0 +1,1121 @@
+'use client'
+
+// §78 Einrichtungs-Wizard — deterministische Konfiguration in 5 Schritten.
+// Die KI ist ausschließlich Ausfüllhilfe: sie liefert Vorschläge mit Checkboxen,
+// geschrieben wird nur, was der Mensch auswählt und bestätigt — über dieselben
+// CRUD-Endpoints wie die manuellen Editoren.
+
+import { useEffect, useState, useCallback } from 'react'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { useToast } from '@/lib/toast-context'
+import {
+  CalendarDays, Clock, Layers, Users, ShieldAlert, Sparkles, Check,
+  ChevronRight, ChevronLeft, Loader2, Plus, Trash2, ExternalLink, Pencil,
+  Zap, XCircle, Code2, ChevronDown, ChevronUp, RotateCcw,
+} from 'lucide-react'
+import Link from 'next/link'
+import type { WochentagKuerzel } from '@/lib/company-model-types'
+
+interface WizShift { id: string; name: string; type?: string; startTime: string; endTime: string; minStaff: number }
+interface WizUnit { id: string; name: string; type: string; parentId: string | null; minStaff: number }
+interface WizEmployee { id: string; name: string; gruppe?: string | null }
+// §95: Code-Regeln werden im Wizard selbst geprüft und aktiviert.
+interface WizConstraint { id: string; name: string; description: string; code: string; status: string; errorLog?: string | null }
+interface Proposal {
+  arbeitstage?: string[]
+  schichten: { name: string; von: string; bis: string; minStaff?: number }[]
+  etagen: { name: string; minStaffFruehSpaet?: number }[]
+  gruppen: { name: string; etage?: string; minStaffProTag?: number }[]
+  basiswerte?: { maxWeeklyHours?: number; restHours?: number; maxConsecutiveDays?: number }
+  regeln: string[]
+}
+
+const STEPS = [
+  { key: 'betrieb', label: 'Betriebsform', icon: CalendarDays },
+  { key: 'struktur', label: 'Struktur', icon: Layers },
+  { key: 'dienste', label: 'Dienste', icon: Clock },
+  { key: 'team', label: 'Team', icon: Users },
+  { key: 'regeln', label: 'Regeln', icon: ShieldAlert },
+]
+
+// §83: Employee.gruppe hält je nach Herkunft den Gruppennamen oder die Unit-ID.
+// Beides akzeptieren, damit die Zuordnung in echten Bestandsdaten sichtbar wird.
+const normKey = (v?: string | null) => (v ?? '').trim().toLowerCase()
+function matchesUnit(emp: { gruppe?: string | null }, unit: { id: string; name: string }): boolean {
+  const g = normKey(emp.gruppe)
+  if (!g) return false
+  return g === normKey(unit.name) || g === normKey(unit.id)
+}
+
+// §94: Vorlagen für häufige Regeln — anklicken statt frei formulieren.
+// Bewusst so formuliert, wie der Code-Generator sie zuverlässig übersetzt.
+const REGEL_VORLAGEN: { titel: string; text: string }[] = [
+  {
+    titel: 'Max. 1 Früh- und 1 Spätdienst pro Woche',
+    text: 'Jeder Mitarbeiter hat pro Woche höchstens einen Frühdienst und höchstens einen Spätdienst; alle übrigen Dienste sind Tagdienste.',
+  },
+  {
+    titel: 'Kein Frühdienst nach Spätdienst',
+    text: 'Nach einem Spätdienst darf am nächsten Tag kein Frühdienst folgen.',
+  },
+  {
+    titel: 'Nicht zwei Spätdienste hintereinander',
+    text: 'Kein Mitarbeiter hat an zwei aufeinanderfolgenden Tagen einen Spätdienst.',
+  },
+  {
+    titel: 'Bestimmte Person immer Frühdienst',
+    text: 'Anna Beispiel arbeitet ausschließlich im Frühdienst.',
+  },
+  {
+    titel: 'Leitung nicht in die Gruppen einteilen',
+    text: 'Franka Beispiel ist die Leitung und wird keiner Gruppe zugeteilt; sie zählt nicht zur Gruppenbesetzung.',
+  },
+  {
+    titel: 'Person hat nur einen festen Dienst',
+    text: 'Franka Beispiel arbeitet ausschließlich den Leitungsdienst und keinen Früh- oder Spätdienst.',
+  },
+  {
+    titel: 'Mittwochs mehr Besetzung',
+    text: 'Mittwochs müssen mindestens 4 Mitarbeiter im Frühdienst sein (Teambesprechung).',
+  },
+]
+
+// §95: Status der Code-Regeln in Klartext — der Wizard zeigt sie direkt an.
+const CC_BADGE: Record<string, { label: string; cls: string }> = {
+  active: { label: 'Aktiv', cls: 'text-green-600 bg-green-50' },
+  pending: { label: 'Bitte prüfen', cls: 'text-amber-600 bg-amber-50' },
+  rejected: { label: 'Abgelehnt', cls: 'text-gray-500 bg-gray-100' },
+  error: { label: 'Fehlgeschlagen', cls: 'text-red-600 bg-red-50' },
+  generating: { label: 'Wird erstellt…', cls: 'text-blue-600 bg-blue-50 animate-pulse' },
+}
+
+const BETRIEBSFORMEN: { label: string; hint: string; tage: WochentagKuerzel[] }[] = [
+  { label: 'Montag – Freitag', hint: 'Klassischer Wochenbetrieb (Kita, Praxis, Büro)', tage: ['Mo', 'Di', 'Mi', 'Do', 'Fr'] },
+  { label: 'Montag – Samstag', hint: '6-Tage-Betrieb (Handel, Gastronomie)', tage: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] },
+  { label: '7 Tage', hint: 'Durchgehender Betrieb (Pflege, Klinik, Hotel)', tage: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] },
+]
+
+export default function SetupWizardPage() {
+  const { showToast } = useToast()
+  const [step, setStep] = useState(0)
+  const [locationId, setLocationId] = useState<string | null>(null)
+  // §132 Ob die Dienstplanung dieses Standorts schon von OKUN gebaut wurde.
+  const [planungFrei, setPlanungFrei] = useState<boolean | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const [arbeitstage, setArbeitstage] = useState<WochentagKuerzel[]>([])
+  const [shifts, setShifts] = useState<WizShift[]>([])
+  const [units, setUnits] = useState<WizUnit[]>([])
+  const [employees, setEmployees] = useState<WizEmployee[]>([])
+  const [baseRules, setBaseRules] = useState({ maxWeeklyHours: 40, restHours: 11, maxConsecutiveDays: 5 })
+  const [constraints, setConstraints] = useState<WizConstraint[]>([])
+
+  const load = useCallback(async () => {
+    const me = await fetch('/api/auth/me').then(r => r.json()).catch(() => null)
+    const locId = me?.user?.locationId as string | undefined
+    fetch('/api/locations')
+      .then(r => r.json())
+      .then(d => {
+        const eigener = (d.locations ?? []).find((l: { id: string }) => l.id === locId)
+        setPlanungFrei(eigener ? eigener.dienstplanungFrei !== false : null)
+      })
+      .catch(() => setPlanungFrei(null))
+    if (!locId) { setLoading(false); return }
+    setLocationId(locId)
+    const [modelRes, shiftsRes, unitsRes, empRes, rulesRes, ccRes] = await Promise.all([
+      fetch('/api/location-model').then(r => r.json()).catch(() => ({})),
+      fetch('/api/shifts').then(r => r.json()).catch(() => ({})),
+      fetch(`/api/planning-units?locationId=${locId}`).then(r => r.json()).catch(() => ({})),
+      fetch(`/api/employees?locationId=${locId}`).then(r => r.json()).catch(() => ({})),
+      fetch(`/api/planning-rules?locationId=${locId}`).then(r => r.json()).catch(() => ({})),
+      fetch('/api/admin/custom-constraints').then(r => r.json()).catch(() => ({})),
+    ])
+    setArbeitstage((modelRes.model?.schichtmodell?.arbeitstage as WochentagKuerzel[]) ?? [])
+    setShifts((shiftsRes.shifts as WizShift[]) ?? [])
+    setUnits((unitsRes.units as WizUnit[]) ?? [])
+    setEmployees(((empRes.employees ?? []) as WizEmployee[]))
+    if (rulesRes.rules) {
+      setBaseRules({
+        maxWeeklyHours: rulesRes.rules.maxWeeklyHours ?? 40,
+        restHours: rulesRes.rules.restHours ?? 11,
+        maxConsecutiveDays: rulesRes.rules.maxConsecutiveDays ?? 5,
+      })
+    }
+    setConstraints((ccRes.constraints ?? []) as WizConstraint[])
+    setLoading(false)
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  // ── Schritt 1: Betriebsform ───────────────────────────────────────────────
+  const [savingDays, setSavingDays] = useState(false)
+  const applyBetriebsform = async (tage: WochentagKuerzel[]) => {
+    setSavingDays(true)
+    try {
+      const res = await fetch('/api/location-model', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ arbeitstage: tage }),
+      })
+      if (!res.ok) throw new Error()
+      setArbeitstage(tage)
+      showToast('Arbeitstage gespeichert', 'success')
+    } catch { showToast('Speichern fehlgeschlagen', 'error') } finally { setSavingDays(false) }
+  }
+
+  // ── Schritt 2: Dienste ────────────────────────────────────────────────────
+  // §80 Zeitanker: 'early' = Beginn fix (Ende ergibt sich aus den Stunden),
+  // 'late' = Ende fix (Beginn ergibt sich). Nur die verankerte Zeit ist Pflicht;
+  // die andere Seite ist der Rahmen und wird sinnvoll vorbelegt.
+  const [newShift, setNewShift] = useState({
+    name: '', anchor: 'early' as 'early' | 'late', startTime: '07:00', endTime: '15:30', minStaff: 1,
+  })
+  const [addingShift, setAddingShift] = useState(false)
+
+  const shiftMinutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+  const fmtTime = (mins: number) => {
+    const m = ((mins % 1440) + 1440) % 1440
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+  }
+  // Rahmen (9h) für die nicht-verankerte Seite: großzügig genug für Vollzeit,
+  // der Solver kürzt pro Person auf deren Tagessoll
+  const FRAME_MIN = 9 * 60
+  const setAnchor = (anchor: 'early' | 'late') => setNewShift(p => ({
+    ...p,
+    anchor,
+    ...(anchor === 'early'
+      ? { endTime: fmtTime(shiftMinutes(p.startTime) + FRAME_MIN) }
+      : { startTime: fmtTime(shiftMinutes(p.endTime) - FRAME_MIN) }),
+  }))
+
+  const addShift = async (data?: { name: string; startTime: string; endTime: string; minStaff?: number; type?: string }) => {
+    const payload = data ?? { ...newShift, type: newShift.anchor }
+    if (!payload.name.trim() || !locationId) return false
+    if (shifts.some(s => s.name.trim().toLowerCase() === payload.name.trim().toLowerCase())) {
+      showToast(`„${payload.name}" existiert bereits`, 'error')
+      return false
+    }
+    const res = await fetch('/api/shifts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: payload.name, startTime: payload.startTime, endTime: payload.endTime,
+        minStaff: payload.minStaff ?? 1, type: payload.type ?? 'mid', locationId,
+      }),
+    })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      showToast(d.error ?? 'Dienst konnte nicht angelegt werden', 'error')
+      return false
+    }
+    const d = await res.json()
+    setShifts(prev => [...prev, d.shift])
+    return true
+  }
+  const deleteShift = async (id: string) => {
+    const res = await fetch(`/api/shifts/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setShifts(prev => prev.filter(s => s.id !== id))
+      showToast('Dienst gelöscht', 'success')
+    } else {
+      const d = await res.json().catch(() => ({}))
+      showToast(d.error ?? 'Löschen fehlgeschlagen', 'error')
+    }
+  }
+
+  // ── Schritt 3: Struktur ───────────────────────────────────────────────────
+  const [newUnit, setNewUnit] = useState({ name: '', type: 'gruppe' as 'gruppe' | 'etage', parentId: '', minStaff: 1 })
+  const addUnit = async (data?: { name: string; type: string; parentId?: string | null; minStaff?: number }) => {
+    const payload = data ?? { ...newUnit, parentId: newUnit.type === 'gruppe' && newUnit.parentId ? newUnit.parentId : null }
+    if (!payload.name.trim() || !locationId) return null
+    if (units.some(u => u.name.trim().toLowerCase() === payload.name.trim().toLowerCase())) {
+      showToast(`„${payload.name}" existiert bereits`, 'error')
+      return null
+    }
+    const res = await fetch('/api/planning-units', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locationId, name: payload.name.trim(), type: payload.type, parentId: payload.parentId ?? null, minStaff: payload.minStaff ?? 1 }),
+    })
+    if (!res.ok) return null
+    const d = await res.json()
+    setUnits(prev => [...prev.filter(u => u.id !== d.unit.id), d.unit])
+    return d.unit as WizUnit
+  }
+  // §85: bestehende Etagen/Gruppen bearbeiten (Name, Besetzung, Etage)
+  const [editUnitId, setEditUnitId] = useState<string | null>(null)
+  const [unitDraft, setUnitDraft] = useState<{ name: string; minStaff: number; parentId: string }>({ name: '', minStaff: 1, parentId: '' })
+
+  const startEditUnit = (u: WizUnit) => {
+    setEditUnitId(u.id)
+    setUnitDraft({ name: u.name, minStaff: u.minStaff, parentId: u.parentId ?? '' })
+  }
+
+  const saveUnit = async () => {
+    if (!editUnitId || !unitDraft.name.trim()) return
+    const target = units.find(u => u.id === editUnitId)
+    try {
+      const res = await fetch('/api/planning-units', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editUnitId,
+          name: unitDraft.name.trim(),
+          minStaff: unitDraft.minStaff,
+          ...(target?.type !== 'etage' ? { parentId: unitDraft.parentId || null } : {}),
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const d = await res.json()
+      setUnits(prev => prev.map(u => u.id === editUnitId ? { ...u, ...d.unit } : u))
+      setEditUnitId(null)
+      showToast('Gespeichert', 'success')
+    } catch {
+      showToast('Speichern fehlgeschlagen', 'error')
+    }
+  }
+
+  const deleteUnit = async (id: string) => {
+    const res = await fetch(`/api/planning-units?id=${id}`, { method: 'DELETE' })
+    if (res.ok) setUnits(prev => prev.filter(u => u.id !== id).map(u => u.parentId === id ? { ...u, parentId: null } : u))
+  }
+
+  // ── Schritt 5: Regeln ─────────────────────────────────────────────────────
+  const [savingBase, setSavingBase] = useState(false)
+  const saveBaseRules = async () => {
+    if (!locationId) return
+    setSavingBase(true)
+    try {
+      const res = await fetch('/api/planning-rules', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId, ...baseRules }),
+      })
+      if (!res.ok) throw new Error()
+      showToast('Basiswerte gespeichert', 'success')
+    } catch { showToast('Speichern fehlgeschlagen', 'error') } finally { setSavingBase(false) }
+  }
+  const [rulesText, setRulesText] = useState('')
+  const [submittingRules, setSubmittingRules] = useState(false)
+  const [ruleResults, setRuleResults] = useState<{ text: string; ok: boolean; info: string }[]>([])
+  const submitRules = async (lines?: string[]) => {
+    const items = (lines ?? rulesText.split('\n')).map(l => l.trim()).filter(Boolean)
+    if (items.length === 0) return
+    setSubmittingRules(true)
+    const results: { text: string; ok: boolean; info: string }[] = []
+    for (const line of items) {
+      try {
+        const res = await fetch('/api/admin/custom-constraints', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: line.length > 60 ? `${line.slice(0, 57)}…` : line, description: line }),
+        })
+        const d = await res.json().catch(() => ({}))
+        if (res.ok && d.constraint) {
+          results.push({ text: line, ok: true, info: 'Code erstellt — unten prüfen und aktivieren' })
+          // §95: direkt in die Prüfliste im Wizard einreihen, aufgeklappt
+          setConstraints(prev => [d.constraint as WizConstraint, ...prev])
+          setCcExpandedId((d.constraint as WizConstraint).id)
+        } else results.push({ text: line, ok: false, info: d.error ?? 'Fehlgeschlagen' })
+      } catch { results.push({ text: line, ok: false, info: 'Netzwerkfehler' }) }
+      setRuleResults([...results])
+    }
+    setSubmittingRules(false)
+    setRulesText('')
+  }
+
+  // §95: Prüfen und Aktivieren passiert im Wizard selbst — kein Sprung in ein
+  // anderes Menü. Der Bestätigungsschritt bleibt bewusst erhalten: erzeugter
+  // Code geht nie ungesehen in die Planung.
+  const [ccExpandedId, setCcExpandedId] = useState<string | null>(null)
+  const [ccActioning, setCcActioning] = useState<string | null>(null)
+  const [ccBulk, setCcBulk] = useState(false)
+
+  const ccAction = async (id: string, action: 'active' | 'rejected' | 'delete' | 'regenerate') => {
+    setCcActioning(id)
+    try {
+      if (action === 'delete') {
+        const res = await fetch(`/api/admin/custom-constraints/${id}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error()
+        setConstraints(prev => prev.filter(c => c.id !== id))
+        showToast('Regel gelöscht', 'success')
+        return
+      }
+      const body = action === 'regenerate' ? { action: 'regenerate' } : { status: action }
+      if (action === 'regenerate') setConstraints(prev => prev.map(c => c.id === id ? { ...c, status: 'generating' } : c))
+      const res = await fetch(`/api/admin/custom-constraints/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const d = await res.json().catch(() => ({}))
+      // §98: Aktivierung wird abgelehnt, wenn die Regel beim Prüflauf abbricht.
+      // Den Grund im Klartext zeigen statt nur "Aktion fehlgeschlagen".
+      if (res.status === 422 && d.error) {
+        setConstraints(prev => prev.map(c => c.id === id
+          ? { ...c, status: 'error', errorLog: d.error as string }
+          : c))
+        setCcExpandedId(id)
+        showToast('Regel konnte nicht aktiviert werden — sie läuft nicht durch', 'error')
+        return
+      }
+      if (!res.ok) throw new Error()
+      setConstraints(prev => prev.map(c => c.id === id ? { ...c, ...(d.constraint as WizConstraint) } : c))
+      if (action === 'active') showToast('Regel aktiv — sie wirkt ab dem nächsten Dienstplan', 'success')
+      else if (action === 'rejected') showToast('Regel abgelehnt — sie wird nicht angewendet', 'success')
+    } catch {
+      showToast('Aktion fehlgeschlagen', 'error')
+    } finally { setCcActioning(null) }
+  }
+
+  const activateAllPending = async () => {
+    const offen = constraints.filter(c => c.status === 'pending' && c.code)
+    if (offen.length === 0) return
+    setCcBulk(true)
+    let ok = 0
+    for (const c of offen) {
+      try {
+        const res = await fetch(`/api/admin/custom-constraints/${c.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'active' }),
+        })
+        if (res.ok) { ok++; setConstraints(prev => prev.map(x => x.id === c.id ? { ...x, status: 'active' } : x)) }
+      } catch { /* nächste Regel */ }
+    }
+    setCcBulk(false)
+    showToast(`${ok} von ${offen.length} Regeln aktiviert`, ok === offen.length ? 'success' : 'error')
+  }
+
+  // ── KI-Ausfüllhilfe ───────────────────────────────────────────────────────
+  const [aiOpen, setAiOpen] = useState(false)
+  const [aiText, setAiText] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [proposal, setProposal] = useState<Proposal | null>(null)
+  const [checked, setChecked] = useState<Record<string, boolean>>({})
+  const [applying, setApplying] = useState(false)
+
+  const analyze = async (useOnboarding: boolean) => {
+    setAiLoading(true)
+    setProposal(null)
+    try {
+      const res = await fetch('/api/admin/setup-extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: useOnboarding ? undefined : aiText }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error)
+      const p = d.proposal as Proposal
+      setProposal(p)
+      const init: Record<string, boolean> = {}
+      p.schichten.forEach((_, i) => { init[`s${i}`] = true })
+      p.etagen.forEach((_, i) => { init[`e${i}`] = true })
+      p.gruppen.forEach((_, i) => { init[`g${i}`] = true })
+      p.regeln.forEach((_, i) => { init[`r${i}`] = true })
+      if (p.arbeitstage?.length) init['tage'] = true
+      if (p.basiswerte) init['basis'] = true
+      setChecked(init)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Analyse fehlgeschlagen', 'error')
+    } finally { setAiLoading(false) }
+  }
+
+  const applyProposal = async () => {
+    if (!proposal) return
+    setApplying(true)
+    let applied = 0
+    try {
+      if (checked['tage'] && proposal.arbeitstage?.length) {
+        await applyBetriebsform(proposal.arbeitstage as WochentagKuerzel[]); applied++
+      }
+      // Etagen zuerst (Gruppen brauchen die IDs)
+      const etageIdByName = new Map<string, string>()
+      units.filter(u => u.type === 'etage').forEach(u => etageIdByName.set(u.name.toLowerCase(), u.id))
+      for (let i = 0; i < proposal.etagen.length; i++) {
+        if (!checked[`e${i}`]) continue
+        const e = proposal.etagen[i]
+        const existing = units.find(u => u.name.toLowerCase() === e.name.toLowerCase())
+        if (existing) { etageIdByName.set(e.name.toLowerCase(), existing.id); continue }
+        const created = await addUnit({ name: e.name, type: 'etage', minStaff: e.minStaffFruehSpaet ?? 1 })
+        if (created) { etageIdByName.set(e.name.toLowerCase(), created.id); applied++ }
+      }
+      for (let i = 0; i < proposal.gruppen.length; i++) {
+        if (!checked[`g${i}`]) continue
+        const g = proposal.gruppen[i]
+        const parentId = g.etage ? etageIdByName.get(g.etage.toLowerCase()) ?? null : null
+        const created = await addUnit({ name: g.name, type: 'gruppe', parentId, minStaff: g.minStaffProTag ?? 1 })
+        if (created) applied++
+      }
+      for (let i = 0; i < proposal.schichten.length; i++) {
+        if (!checked[`s${i}`]) continue
+        const s = proposal.schichten[i]
+        const ok = await addShift({ name: s.name, startTime: s.von, endTime: s.bis, minStaff: s.minStaff })
+        if (ok) applied++
+      }
+      if (checked['basis'] && proposal.basiswerte && locationId) {
+        const next = {
+          maxWeeklyHours: proposal.basiswerte.maxWeeklyHours ?? baseRules.maxWeeklyHours,
+          restHours: proposal.basiswerte.restHours ?? baseRules.restHours,
+          maxConsecutiveDays: proposal.basiswerte.maxConsecutiveDays ?? baseRules.maxConsecutiveDays,
+        }
+        setBaseRules(next)
+        await fetch('/api/planning-rules', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locationId, ...next }),
+        })
+        applied++
+      }
+      const regelLines = proposal.regeln.filter((_, i) => checked[`r${i}`])
+      if (regelLines.length > 0) {
+        await submitRules(regelLines)
+        applied += regelLines.length
+      }
+      showToast(`${applied} Position(en) übernommen`, 'success')
+      setProposal(null)
+    } catch {
+      showToast('Übernahme teilweise fehlgeschlagen — Listen prüfen', 'error')
+    } finally { setApplying(false) }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return <div className="p-6 flex justify-center min-h-[300px] items-center"><Loader2 size={24} className="animate-spin text-brand" /></div>
+  }
+
+  const etagen = units.filter(u => u.type === 'etage')
+  const gruppen = units.filter(u => u.type !== 'etage')
+  // §83: Mitarbeiter ↔ Gruppe zuverlässig verknüpfen (Name ODER ID, normalisiert)
+  const zugeordnet = employees.filter(e => gruppen.some(g => matchesUnit(e, g)))
+  const ohneGruppe = employees.filter(e => !(e.gruppe ?? '').trim())
+  const unpassend = employees.filter(e => (e.gruppe ?? '').trim() && !gruppen.some(g => matchesUnit(e, g)))
+  // Klartext, was die Etagen-Besetzung konkret bedeutet (Schritt 2 ↔ 3 verzahnt)
+  const etagenSummary = etagen.length > 0
+    ? etagen.map(e => `${e.name}: je ${e.minStaff} Person${e.minStaff === 1 ? '' : 'en'} im Früh- und im Spätdienst`).join(' · ')
+    : ''
+  const ohneStammgruppe = employees.filter(e => !e.gruppe?.trim()).length
+  const currentForm = BETRIEBSFORMEN.find(b => b.tage.length === arbeitstage.length && b.tage.every(t => arbeitstage.includes(t)))
+  // §95: Zähler für die Prüfliste im Regeln-Schritt
+  const ccAktiv = constraints.filter(c => c.status === 'active').length
+  const ccOffen = constraints.filter(c => c.status === 'pending' && !!c.code).length
+
+  return (
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
+      <div>
+        <h1 className="font-bold text-navy text-xl">Standort einrichten</h1>
+        <p className="text-sm text-gray-500">
+          {planungFrei === false
+            ? 'Hier tragen Sie die Grunddaten Ihres Betriebs ein: Arbeitstage, Struktur, Dienste und Team. Alles, was Sie eintragen, gilt exakt so — nichts wird automatisch verändert.'
+            : 'Fünf Schritte zur fertigen Dienstplanung. Alles, was du hier einträgst, gilt exakt so — nichts wird automatisch verändert.'}
+        </p>
+        <p className="text-[10px] text-gray-300 mt-1">Version {process.env.NEXT_PUBLIC_BUILD_ID}</p>
+      </div>
+
+      {/*
+        §132 Solange die Dienstplanung nicht freigeschaltet ist, verspricht
+        "Fünf Schritte zur fertigen Dienstplanung" etwas, was am Ende nicht
+        passiert. Der Kunde trägt dann Regeln ein und wundert sich, dass kein
+        Plan entsteht. Die Planungslogik bauen wir — was er hier einträgt, sind
+        die Grunddaten, auf denen wir aufsetzen.
+      */}
+      {planungFrei === false && (
+        <div className="flex items-start gap-2 rounded-2xl border border-teal-200 bg-teal-50 p-3">
+          <Sparkles size={16} className="text-teal-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-semibold text-teal-900">
+              Die Dienstplanung bauen wir für Sie
+            </p>
+            <p className="text-xs text-teal-900 mt-0.5">
+              Ihre Planungslogik wird von OKUN passgenau programmiert — Sie müssen sie
+              hier nicht selbst zusammenstellen. Was Sie eintragen, sind die Grunddaten:
+              Arbeitstage, Struktur, Dienste und Team. Darauf setzen wir auf. Der Schritt
+              &bdquo;Regeln&ldquo; ist deshalb nur als Notiz für uns gedacht.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Stepper */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        {STEPS.map((s, i) => {
+          const Icon = s.icon
+          return (
+            <button
+              key={s.key}
+              onClick={() => setStep(i)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                i === step ? 'bg-navy text-white' : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <Icon size={13} />{i + 1}. {s.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* KI-Ausfüllhilfe */}
+      <Card padding="md" className="border-purple-100">
+        <button onClick={() => setAiOpen(o => !o)} className="w-full flex items-center gap-2 text-left">
+          <Sparkles size={14} className="text-purple-500" />
+          <span className="text-xs font-semibold text-gray-600">KI-Ausfüllhilfe — Betrieb beschreiben, Vorschläge prüfen, übernehmen</span>
+          <span className="ml-auto text-[10px] text-purple-400 bg-purple-50 rounded-full px-2 py-0.5">schreibt nichts ohne dein OK</span>
+        </button>
+        {aiOpen && (
+          <div className="mt-3 space-y-3">
+            <textarea
+              value={aiText}
+              onChange={e => setAiText(e.target.value)}
+              rows={4}
+              placeholder='Beschreibe deinen Betrieb frei, z.B. "Kita mit zwei Etagen, oben 4 Gruppen, unten 4 Gruppen, je zwei Erzieher pro Gruppe. Frühdienst ab 6:00, Spätdienst bis 17:00…"'
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300/40 placeholder:text-gray-300 resize-none"
+            />
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" onClick={() => analyze(false)} disabled={aiLoading || !aiText.trim()} className="gap-1.5 bg-purple-600 hover:bg-purple-700 text-white border-0">
+                {aiLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}Text analysieren
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => analyze(true)} disabled={aiLoading} className="gap-1.5">
+                {aiLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}Vorhandenes Onboarding analysieren
+              </Button>
+            </div>
+
+            {proposal && (
+              <div className="border border-purple-100 rounded-xl p-3 space-y-3 bg-purple-50/30">
+                <p className="text-xs font-semibold text-purple-700">Vorschläge — Haken setzen und übernehmen:</p>
+                {proposal.arbeitstage && proposal.arbeitstage.length > 0 && (
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="checkbox" checked={!!checked['tage']} onChange={e => setChecked(p => ({ ...p, tage: e.target.checked }))} className="accent-purple-600" />
+                    <span><b>Arbeitstage:</b> {proposal.arbeitstage.join(', ')}</span>
+                  </label>
+                )}
+                {proposal.schichten.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-gray-500 uppercase">Dienste</p>
+                    {proposal.schichten.map((s, i) => (
+                      <label key={i} className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={!!checked[`s${i}`]} onChange={e => setChecked(p => ({ ...p, [`s${i}`]: e.target.checked }))} className="accent-purple-600" />
+                        <span>{s.name} · {s.von}–{s.bis}{s.minStaff ? ` · min. ${s.minStaff}` : ''}</span>
+                        {shifts.some(x => x.name.toLowerCase() === s.name.toLowerCase()) && <span className="text-[10px] text-gray-400">(existiert schon)</span>}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {(proposal.etagen.length > 0 || proposal.gruppen.length > 0) && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-gray-500 uppercase">Struktur</p>
+                    {proposal.etagen.map((e, i) => (
+                      <label key={i} className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={!!checked[`e${i}`]} onChange={ev => setChecked(p => ({ ...p, [`e${i}`]: ev.target.checked }))} className="accent-purple-600" />
+                        <span>🏢 Etage {e.name}{e.minStaffFruehSpaet ? ` · Früh/Spät je ${e.minStaffFruehSpaet}` : ''}</span>
+                      </label>
+                    ))}
+                    {proposal.gruppen.map((g, i) => (
+                      <label key={i} className="flex items-center gap-2 text-xs cursor-pointer pl-4">
+                        <input type="checkbox" checked={!!checked[`g${i}`]} onChange={ev => setChecked(p => ({ ...p, [`g${i}`]: ev.target.checked }))} className="accent-purple-600" />
+                        <span>👥 {g.name}{g.etage ? ` (${g.etage})` : ''}{g.minStaffProTag ? ` · ${g.minStaffProTag}/Tag` : ''}</span>
+                        {units.some(x => x.name.toLowerCase() === g.name.toLowerCase()) && <span className="text-[10px] text-gray-400">(existiert schon)</span>}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {proposal.basiswerte && (
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="checkbox" checked={!!checked['basis']} onChange={e => setChecked(p => ({ ...p, basis: e.target.checked }))} className="accent-purple-600" />
+                    <span><b>Basiswerte:</b> {proposal.basiswerte.maxWeeklyHours ?? '–'}h/Woche · {proposal.basiswerte.restHours ?? '–'}h Ruhe · max. {proposal.basiswerte.maxConsecutiveDays ?? '–'} Tage</span>
+                  </label>
+                )}
+                {proposal.regeln.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-gray-500 uppercase">Individuelle Regeln → werden zu Code (mit Prüfung)</p>
+                    {proposal.regeln.map((r, i) => (
+                      <label key={i} className="flex items-start gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={!!checked[`r${i}`]} onChange={e => setChecked(p => ({ ...p, [`r${i}`]: e.target.checked }))} className="accent-purple-600 mt-0.5" />
+                        <span>{r}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <Button size="sm" onClick={applyProposal} disabled={applying} className="gap-1.5">
+                  {applying ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                  Ausgewählte übernehmen
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Schritt-Inhalte */}
+      {step === 0 && (
+        <Card padding="lg">
+          <p className="text-sm font-semibold text-navy mb-1">An welchen Tagen wird gearbeitet?</p>
+          <p className="text-xs text-gray-400 mb-4">Nur markierte Tage werden verplant. Später jederzeit änderbar.</p>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {BETRIEBSFORMEN.map(b => (
+              <button
+                key={b.label}
+                onClick={() => applyBetriebsform(b.tage)}
+                disabled={savingDays}
+                className={`text-left border rounded-xl p-3 transition-all ${
+                  currentForm?.label === b.label ? 'border-brand bg-brand/5 ring-2 ring-brand/20' : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <p className="text-sm font-semibold text-navy">{b.label}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">{b.hint}</p>
+                {currentForm?.label === b.label && <p className="text-[10px] text-brand font-semibold mt-1">✓ Aktiv</p>}
+              </button>
+            ))}
+          </div>
+          {arbeitstage.length > 0 && !currentForm && (
+            <p className="text-xs text-gray-500 mt-3">Aktuell individuell: {arbeitstage.join(', ')} — Feinjustierung im <Link href="/admin/model" className="text-brand hover:underline">Planungsmodell</Link>.</p>
+          )}
+        </Card>
+      )}
+
+      {step === 2 && (
+        <Card padding="lg">
+          <p className="text-sm font-semibold text-navy mb-1">Welche Dienste gibt es?</p>
+          <p className="text-xs text-gray-400 mb-4">
+            Trage exakt die Dienste ein, die es wirklich gibt. Du gibst nur die Zeit an, die <b>wirklich feststeht</b> —
+            ob das der Beginn oder das Ende ist, wählst du je Dienst.
+          </p>
+          <div className="space-y-1.5 mb-4">
+            {shifts.map(s => (
+              <div key={s.id} className="flex items-center gap-3 border border-gray-100 rounded-xl px-3 py-2 group">
+                <span className="text-sm font-medium text-navy flex-1">{s.name}</span>
+                <span className="text-xs text-gray-500">
+                  {s.type === 'early' ? (
+                    <>ab <b className="text-navy">{s.startTime}</b> <span className="text-gray-400">(bis max. {s.endTime})</span></>
+                  ) : s.type === 'late' ? (
+                    <><span className="text-gray-400">(ab frühestens {s.startTime})</span> bis <b className="text-navy">{s.endTime}</b></>
+                  ) : (
+                    <>{s.startTime} – {s.endTime}</>
+                  )}
+                </span>
+                <span className="text-[10px] text-gray-400">min. {s.minStaff}</span>
+                <button onClick={() => deleteShift(s.id)} className="p-1 rounded-lg text-gray-400 hover:text-red-600 transition-opacity">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+            {shifts.length === 0 && <p className="text-sm text-gray-400 italic">Noch keine Dienste angelegt.</p>}
+          </div>
+          <div className="border-t border-gray-100 pt-3 space-y-3">
+            <div>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase block mb-1.5">Welche Zeit steht fest?</label>
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  ['early', 'Der Beginn', 'z.B. Frühdienst: startet immer 06:00, Ende je nach Stunden'],
+                  ['late', 'Das Ende', 'z.B. Spätdienst: endet immer 17:00, Beginn je nach Stunden'],
+                ] as const).map(([val, label, hint]) => (
+                  <button
+                    key={val}
+                    onClick={() => setAnchor(val)}
+                    className={`text-left border rounded-xl px-3 py-2 flex-1 min-w-[200px] transition-all ${
+                      newShift.anchor === val ? 'border-brand bg-brand/5 ring-2 ring-brand/20' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <p className="text-xs font-semibold text-navy">{label} steht fest</p>
+                    <p className="text-[10px] text-gray-400 leading-tight mt-0.5">{hint}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase">Name</label>
+                <input value={newShift.name} onChange={e => setNewShift(p => ({ ...p, name: e.target.value }))}
+                  placeholder={newShift.anchor === 'early' ? 'z.B. Frühdienst' : 'z.B. Spätdienst'}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+              </div>
+              {newShift.anchor === 'early' ? (
+                <>
+                  <div>
+                    <label className="text-[10px] font-semibold text-brand uppercase">Beginn (fest)</label>
+                    <input type="time" value={newShift.startTime}
+                      onChange={e => setNewShift(p => ({ ...p, startTime: e.target.value, endTime: fmtTime(shiftMinutes(e.target.value) + FRAME_MIN) }))}
+                      className="text-sm border-2 border-brand/40 rounded-lg px-2 py-1 block font-semibold" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase">Ende spätestens</label>
+                    <input type="time" value={newShift.endTime} onChange={e => setNewShift(p => ({ ...p, endTime: e.target.value }))}
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 block text-gray-500" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase">Beginn frühestens</label>
+                    <input type="time" value={newShift.startTime} onChange={e => setNewShift(p => ({ ...p, startTime: e.target.value }))}
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 block text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-brand uppercase">Ende (fest)</label>
+                    <input type="time" value={newShift.endTime}
+                      onChange={e => setNewShift(p => ({ ...p, endTime: e.target.value, startTime: fmtTime(shiftMinutes(e.target.value) - FRAME_MIN) }))}
+                      className="text-sm border-2 border-brand/40 rounded-lg px-2 py-1 block font-semibold" />
+                  </div>
+                </>
+              )}
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase" title="Mindestbesetzung im ganzen Haus">Min. gesamt</label>
+                <input type="number" min={0} max={50} value={newShift.minStaff} onChange={e => setNewShift(p => ({ ...p, minStaff: Math.max(0, parseInt(e.target.value) || 0) }))}
+                  className="w-20 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-center block" />
+              </div>
+              <Button size="sm" onClick={async () => { setAddingShift(true); if (await addShift()) setNewShift(p => ({ ...p, name: '' })); setAddingShift(false) }}
+                disabled={!newShift.name.trim() || addingShift} className="gap-1">
+                {addingShift ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}Anlegen
+              </Button>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              Nur die <span className="text-brand font-semibold">fett markierte</span> Zeit ist verbindlich. Die andere Seite
+              ist der Rahmen — wie lange jemand tatsächlich bleibt, ergibt sich aus seinen Wochenstunden (inkl. Pause).
+            </p>
+            <div className="flex items-start gap-2 text-[11px] text-navy bg-brand/5 border border-brand/20 rounded-lg px-2.5 py-2">
+              <Layers size={13} className="flex-shrink-0 mt-0.5 text-brand" />
+              <span>
+                <b>&bdquo;Min. gesamt&ldquo; gilt fürs ganze Haus.</b> Brauchst du <b>pro Etage oder Bereich</b> eine eigene
+                Besetzung (z.&nbsp;B. je Etage ein Frühdienst und ein Spätdienst), stellst du das im nächsten Schritt
+                &bdquo;Struktur&ldquo; direkt bei der Etage ein — das ist die stärkere Regel und wird zusätzlich eingehalten.
+                {etagenSummary && <><br /><span className="text-gray-500">Aktuell konfiguriert: {etagenSummary}</span></>}
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {step === 1 && (
+        <Card padding="lg">
+          <p className="text-sm font-semibold text-navy mb-1">Gibt es Etagen, Bereiche oder Gruppen?</p>
+          <p className="text-xs text-gray-400 mb-3">
+            Hier legst du fest, was <b>je Etage</b> und <b>je Gruppe</b> besetzt sein muss — unabhängig davon, wie viele
+            Personen insgesamt im Haus sind. Ohne Etagen/Gruppen einfach weiter zu Schritt 4.
+          </p>
+          <div className="text-[11px] text-navy bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-2 mb-4 space-y-1">
+            <p><b>🏢 Etage</b> — die Zahl bedeutet: so viele Personen <b>je Früh- und je Spätdienst auf dieser Etage</b>.
+              Bei „1&ldquo; heißt das: jede Etage hat jeden Tag einen eigenen Frühdienst und einen eigenen Spätdienst.</p>
+            <p><b>👥 Gruppe</b> — die Zahl bedeutet: so viele Personen <b>pro Tag in dieser Gruppe</b> (Kernzeit-Besetzung,
+              verteilt über die Dienste).</p>
+          </div>
+          {etagenSummary && (
+            <p className="text-[11px] text-gray-500 mb-3">Ergibt aktuell: {etagenSummary}</p>
+          )}
+          {gruppen.length > 0 && employees.length > 0 && (
+            <div className="text-[11px] mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className={zugeordnet.length === employees.length ? 'text-green-600' : 'text-navy'}>
+                <b>{zugeordnet.length} von {employees.length}</b> Mitarbeitern einer Gruppe zugeordnet
+              </span>
+              {ohneGruppe.length > 0 && (
+                <span className="text-amber-700">
+                  {ohneGruppe.length} ohne Gruppe: {ohneGruppe.slice(0, 4).map(e => e.name).join(', ')}{ohneGruppe.length > 4 ? ' …' : ''}
+                </span>
+              )}
+              {unpassend.length > 0 && (
+                <span className="text-red-600">
+                  {unpassend.length} mit unbekannter Gruppe ({Array.from(new Set(unpassend.map(e => (e.gruppe ?? '').trim()))).slice(0, 3).join(', ')})
+                </span>
+              )}
+              <Link href="/admin/employees" className="text-brand hover:underline">Zuordnung bearbeiten →</Link>
+            </div>
+          )}
+          {units.length > 0 && (
+            <div className="rounded-xl border border-gray-100 divide-y divide-gray-100 mb-4">
+              {[...etagen, ...gruppen.filter(g => !g.parentId)].map(top => {
+                const children = top.type === 'etage' ? gruppen.filter(g => g.parentId === top.id) : []
+                return [top, ...children].map(u => {
+                  // §83 Zuordnung sichtbar machen: welche Mitarbeiter stehen in dieser Gruppe?
+                  // Robust: Employee.gruppe enthält je nach Herkunft den NAMEN
+                  // (Formular, Import) oder die Unit-ID (ältere KI-Läufe).
+                  const members = u.type === 'etage' ? [] : employees.filter(e => matchesUnit(e, u))
+                  return (
+                    <div key={u.id} className={u.type === 'etage' ? 'bg-gray-50/60' : ''}>
+                      {editUnitId === u.id ? (
+                        <div className="flex flex-wrap items-end gap-2 px-3 py-2 bg-brand/5">
+                          <div className="flex-1 min-w-[140px]">
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase">Name</label>
+                            <input value={unitDraft.name} onChange={e => setUnitDraft(p => ({ ...p, name: e.target.value }))}
+                              className="w-full text-sm border border-brand/30 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+                          </div>
+                          {u.type !== 'etage' && etagen.length > 0 && (
+                            <div>
+                              <label className="text-[10px] font-semibold text-gray-400 uppercase">Etage</label>
+                              <select value={unitDraft.parentId} onChange={e => setUnitDraft(p => ({ ...p, parentId: e.target.value }))}
+                                className="text-sm border border-gray-200 rounded-lg px-2 py-1 block">
+                                <option value="">Keine</option>
+                                {etagen.map(et => <option key={et.id} value={et.id}>{et.name}</option>)}
+                              </select>
+                            </div>
+                          )}
+                          <div>
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase">
+                              {u.type === 'etage' ? 'Je Früh-/Spätdienst' : 'Personen pro Tag'}
+                            </label>
+                            <input type="number" min={0} max={50} value={unitDraft.minStaff}
+                              onChange={e => setUnitDraft(p => ({ ...p, minStaff: Math.max(0, parseInt(e.target.value) || 0) }))}
+                              className="w-24 text-sm border border-brand/30 rounded-lg px-2 py-1 text-center block" />
+                          </div>
+                          <Button size="sm" onClick={saveUnit} disabled={!unitDraft.name.trim()} className="gap-1"><Check size={13} />Speichern</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditUnitId(null)}>Abbrechen</Button>
+                        </div>
+                      ) : (
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <span className={`text-sm ${u.id !== top.id ? 'pl-5' : ''} ${u.type === 'etage' ? 'font-semibold' : ''} text-navy`}>
+                          {u.type === 'etage' ? '🏢 ' : '👥 '}{u.name}
+                        </span>
+                        {/* §83: leere Etage = fast immer eine Altlast (z.B. „Oben" neben „Bereich Oben") */}
+                        {u.type === 'etage' && gruppen.filter(g => g.parentId === u.id).length === 0 && (
+                          <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                            keine Gruppen — vermutlich überflüssig
+                          </span>
+                        )}
+                        <span className="ml-auto text-[10px] text-gray-500">{u.type === 'etage' ? `${u.minStaff} je Früh- und Spätdienst` : `${u.minStaff} pro Tag`}</span>
+                        <button onClick={() => startEditUnit(u)} title="Bearbeiten" className="p-1 rounded-lg text-gray-400 hover:text-navy">
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={() => deleteUnit(u.id)} title="Löschen" className="p-1 rounded-lg text-gray-400 hover:text-red-600">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                      )}
+                      {u.type !== 'etage' && (
+                        <div className={`px-3 pb-2 ${u.id !== top.id ? 'pl-10' : 'pl-8'}`}>
+                          {members.length === 0 ? (
+                            <span className="text-[11px] text-amber-600">
+                              Noch niemand zugeordnet — im <Link href="/admin/employees" className="underline">Mitarbeiterprofil</Link> die Gruppe &bdquo;{u.name}&ldquo; wählen
+                            </span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {members.map(m => (
+                                <span key={m.id} className="text-[11px] bg-white border border-gray-200 rounded-full px-2 py-0.5 text-gray-600">
+                                  {m.name}
+                                </span>
+                              ))}
+                              <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${members.length < u.minStaff ? 'text-red-600 bg-red-50' : 'text-gray-400'}`}>
+                                {members.length} von mind. {u.minStaff}
+                                {members.length < u.minStaff ? ' — zu wenig für tägliche Besetzung' : ''}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              })}
+            </div>
+          )}
+          <div className="flex flex-wrap items-end gap-2 border-t border-gray-100 pt-3">
+            <div>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase">Typ</label>
+              <select value={newUnit.type} onChange={e => setNewUnit(p => ({ ...p, type: e.target.value as 'gruppe' | 'etage' }))}
+                className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 block">
+                <option value="gruppe">Gruppe</option>
+                <option value="etage">Etage</option>
+              </select>
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <label className="text-[10px] font-semibold text-gray-400 uppercase">Name</label>
+              <input value={newUnit.name} onChange={e => setNewUnit(p => ({ ...p, name: e.target.value }))} placeholder={newUnit.type === 'etage' ? 'z.B. Erdgeschoss' : 'z.B. Igelgruppe'}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+            </div>
+            {newUnit.type === 'gruppe' && etagen.length > 0 && (
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase">Etage</label>
+                <select value={newUnit.parentId} onChange={e => setNewUnit(p => ({ ...p, parentId: e.target.value }))}
+                  className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 block">
+                  <option value="">Keine</option>
+                  {etagen.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase">{newUnit.type === 'etage' ? 'Je Früh-/Spätdienst' : 'Personen pro Tag'}</label>
+              <input type="number" min={0} max={50} value={newUnit.minStaff} onChange={e => setNewUnit(p => ({ ...p, minStaff: Math.max(0, parseInt(e.target.value) || 0) }))}
+                className="w-28 text-sm border border-gray-200 rounded-lg px-2 py-1.5 text-center block" />
+            </div>
+            <Button size="sm" onClick={async () => { if (await addUnit()) setNewUnit(p => ({ ...p, name: '' })) }} disabled={!newUnit.name.trim()} className="gap-1">
+              <Plus size={13} />Anlegen
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {step === 3 && (
+        <Card padding="lg">
+          <p className="text-sm font-semibold text-navy mb-1">Dein Team</p>
+          <p className="text-xs text-gray-400 mb-4">
+            Mitarbeiter mit Wochenstunden, Arbeitstagen, festen freien Tagen und Stammgruppe — das Herzstück der Planung.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3 mb-4">
+            <div className="border border-gray-100 rounded-xl p-3">
+              <p className="text-2xl font-bold text-navy">{employees.length}</p>
+              <p className="text-xs text-gray-500">Mitarbeiter angelegt</p>
+            </div>
+            <div className={`border rounded-xl p-3 ${ohneStammgruppe > 0 && gruppen.length > 0 ? 'border-amber-200 bg-amber-50/50' : 'border-gray-100'}`}>
+              <p className="text-2xl font-bold text-navy">{gruppen.length > 0 ? ohneStammgruppe : '—'}</p>
+              <p className="text-xs text-gray-500">{gruppen.length > 0 ? 'davon ohne Stammgruppe' : 'Keine Gruppen konfiguriert'}</p>
+            </div>
+          </div>
+          <Link href="/admin/employees">
+            <Button size="sm" className="gap-1.5"><ExternalLink size={13} />Mitarbeiter verwalten</Button>
+          </Link>
+        </Card>
+      )}
+
+      {step === 4 && (
+        <Card padding="lg">
+          <p className="text-sm font-semibold text-navy mb-1">Regeln</p>
+          <p className="text-xs text-gray-400 mb-4">
+            Drei gesetzliche Basiswerte — plus deine individuellen Regeln, die als geprüfter Code in den Planer einfließen.
+          </p>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            {([
+              ['maxWeeklyHours', 'Max. Std./Woche'],
+              ['restHours', 'Ruhezeit (Std.)'],
+              ['maxConsecutiveDays', 'Max. Folgetage'],
+            ] as const).map(([key, label]) => (
+              <div key={key}>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase">{label}</label>
+                <input type="number" min={1} max={80} value={baseRules[key]}
+                  onChange={e => setBaseRules(p => ({ ...p, [key]: Math.max(1, parseInt(e.target.value) || 1) }))}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-center focus:outline-none focus:ring-2 focus:ring-brand/20" />
+              </div>
+            ))}
+          </div>
+          <Button size="sm" variant="secondary" onClick={saveBaseRules} disabled={savingBase} className="gap-1.5 mb-5">
+            {savingBase ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}Basiswerte speichern
+          </Button>
+
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Individuelle Regeln (eine pro Zeile)</p>
+            <p className="text-[11px] text-gray-400 mb-2">
+              Werden in Rechenregeln übersetzt. Du prüfst und aktivierst sie gleich hier unten — erst dann wirken sie im Dienstplan.
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {REGEL_VORLAGEN.map(v => (
+                <button
+                  key={v.titel}
+                  onClick={() => setRulesText(t => (t.trim() ? t.replace(/\n*$/, '\n') : '') + v.text)}
+                  title={v.text}
+                  className="text-[11px] border border-gray-200 rounded-full px-2.5 py-1 text-gray-600 hover:border-brand hover:text-brand transition-colors"
+                >
+                  + {v.titel}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={rulesText}
+              onChange={e => setRulesText(e.target.value)}
+              rows={4}
+              placeholder={'Franka arbeitet täglich 7:00–15:30\nKatrin ist dienstags im Bereich Unten\nJede Gruppe braucht ab 8:00 mindestens 2 Kräfte'}
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/20 placeholder:text-gray-300 resize-none"
+            />
+            <Button size="sm" onClick={() => submitRules()} disabled={submittingRules || !rulesText.trim()} className="gap-1.5 mt-2">
+              {submittingRules ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}Als Code-Regeln erstellen
+            </Button>
+            {ruleResults.filter(r => !r.ok).length > 0 && (
+              <div className="mt-3 space-y-1">
+                {ruleResults.filter(r => !r.ok).map((r, i) => (
+                  <p key={i} className="text-xs text-red-500">✕ {r.text.slice(0, 70)} — {r.info}</p>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* §95 Prüfen & Aktivieren — direkt im Wizard */}
+          <div className="border-t border-gray-100 mt-5 pt-4">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Deine Regeln prüfen</p>
+              <span className="text-[11px] text-gray-400">
+                {ccAktiv} aktiv{ccOffen > 0 ? ` · ${ccOffen} offen` : ''}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-400 mb-3">
+              Nur <b>aktive</b> Regeln fließen in die Dienstplanung ein. Auf eine Regel klicken zeigt die erzeugte Rechenvorschrift.
+            </p>
+
+            {ccOffen > 0 && (
+              <Button size="sm" onClick={activateAllPending} disabled={ccBulk} className="gap-1.5 mb-3">
+                {ccBulk ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+                Alle {ccOffen} offenen Regeln aktivieren
+              </Button>
+            )}
+
+            {constraints.length === 0 ? (
+              <p className="text-xs text-gray-400">Noch keine individuellen Regeln angelegt.</p>
+            ) : (
+              <div className="space-y-2">
+                {constraints.map(c => {
+                  const offen = ccExpandedId === c.id
+                  const busy = ccActioning === c.id
+                  const badge = CC_BADGE[c.status] ?? { label: c.status, cls: 'text-gray-500 bg-gray-100' }
+                  return (
+                    <div key={c.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50/50">
+                        <button onClick={() => setCcExpandedId(offen ? null : c.id)} className="flex-1 flex items-center gap-2 text-left min-w-0">
+                          <Code2 size={13} className="text-purple-400 flex-shrink-0" />
+                          <span className="text-sm text-navy truncate">{c.name}</span>
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${badge.cls}`}>{badge.label}</span>
+                          {offen ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
+                        </button>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {(c.status === 'error' || c.status === 'generating') && (
+                            <button onClick={() => ccAction(c.id, 'regenerate')} disabled={busy} title="Neu erzeugen"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                              {busy ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+                            </button>
+                          )}
+                          {c.status !== 'active' && !!c.code && (
+                            <button onClick={() => ccAction(c.id, 'active')} disabled={busy} title="Aktivieren"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors">
+                              {busy ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+                            </button>
+                          )}
+                          {c.status !== 'rejected' && (
+                            <button onClick={() => ccAction(c.id, 'rejected')} disabled={busy} title="Ablehnen"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-colors">
+                              <XCircle size={13} />
+                            </button>
+                          )}
+                          <button onClick={() => ccAction(c.id, 'delete')} disabled={busy} title="Löschen"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                      {offen && (
+                        <div className="border-t border-gray-100">
+                          <p className="text-[11px] text-gray-500 px-3 py-2">{c.description}</p>
+                          <div className="bg-gray-950 px-3 py-3">
+                            <p className="text-[10px] text-gray-400 mb-1.5 font-mono uppercase tracking-wide">Erzeugte Rechenvorschrift</p>
+                            <pre className="text-[11px] text-green-300 font-mono whitespace-pre-wrap leading-relaxed overflow-x-auto">{c.code || '—'}</pre>
+                            {c.errorLog && <p className="text-[10px] text-red-400 mt-2 font-mono">{c.errorLog}</p>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* Navigation */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0} className="gap-1">
+          <ChevronLeft size={14} />Zurück
+        </Button>
+        {step < STEPS.length - 1 ? (
+          <Button size="sm" onClick={() => setStep(s => Math.min(STEPS.length - 1, s + 1))} className="gap-1">
+            Weiter<ChevronRight size={14} />
+          </Button>
+        ) : (
+          <Link href="/admin/schedule">
+            <Button size="sm" className="gap-1.5"><Check size={14} />Fertig — zum Dienstplan</Button>
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}

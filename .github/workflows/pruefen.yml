@@ -1,0 +1,88 @@
+# §123 Automatische Prüfung vor dem Ausrollen.
+#
+# Railway rollt bei jedem Push auf den Branch automatisch aus — und dabei laufen
+# Migrationen gegen die Produktionsdatenbank. Ohne einen Lauf, der vorher
+# feststellt, ob noch alles stimmt, ist jeder Push ein Sprung ins Dunkle.
+#
+# Geprüft wird in drei Stufen, jede strenger als die vorige:
+#   1. Baut es überhaupt und stimmen die Typen?
+#   2. Stimmen die Rechenwege? (Modultests)
+#   3. Stimmt das Zusammenspiel am laufenden System? (Nachweise)
+#
+# Die dritte Stufe ist die wichtigste: nur sie merkt, wenn eine fremde Leitung
+# an fremde Lohndaten kommt.
+
+name: Pruefen
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: therapie_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/therapie_test
+      SESSION_SECRET: nur-fuer-die-pruefung-nicht-fuer-den-betrieb
+      SETUP_SECRET: nur-fuer-die-pruefung
+      APP_URL: http://localhost:3000
+      EMAIL_FROM: pruefung@example.invalid
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Abhängigkeiten
+        run: npm ci
+
+      - name: Typen prüfen
+        run: npx tsc --noEmit
+
+      - name: Datenbank aufsetzen
+        run: npx prisma migrate deploy
+
+      - name: Testdaten laden
+        run: npm run seed
+
+      - name: Modultests
+        run: npm test
+
+      - name: Bauen
+        run: npm run build
+
+      - name: System starten
+        run: |
+          npm start &
+          # Warten bis es antwortet — 401 ohne Anmeldung ist die richtige Antwort
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/auth/me || true)
+            if [ "$code" = "401" ]; then echo "bereit nach ${i}s"; exit 0; fi
+            sleep 1
+          done
+          echo "Das System ist nicht hochgekommen."
+          exit 1
+
+      - name: Nachweise am laufenden System
+        run: npm run pruefen

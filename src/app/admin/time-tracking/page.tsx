@@ -1,0 +1,782 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { Textarea } from '@/components/ui/Textarea'
+import { useAuth } from '@/lib/auth-context'
+import { useToast } from '@/lib/toast-context'
+import type { OvertimeRequest, Absence, AbsenceType, MonthlyClosing, TimeLog, Employee } from '@/lib/types'
+import {
+  AlertCircle, CheckCircle, XCircle, Clock, Stethoscope, FileText, ChevronDown, ChevronUp,
+  MessageSquare, ShieldCheck, ShieldX, Pencil, CalendarPlus, AlertTriangle, Printer,
+  Download, Paperclip,
+} from 'lucide-react'
+import { formatDate, formatTime } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/EmptyState'
+
+const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+
+const ABSENCE_TYPE_LABEL: Record<AbsenceType, string> = {
+  krankheit: 'Krankheit',
+  fortbildung: 'Fortbildung',
+  sonstige: 'Sonstige Abwesenheit',
+  entschuldigt: 'Entschuldigte Fehlzeit',
+  unentschuldigt: 'Unentschuldigte Fehlzeit',
+}
+
+const CLOSING_STATUS_LABEL: Record<string, { label: string; variant: 'warning' | 'success' | 'info' }> = {
+  offen: { label: 'Offen', variant: 'warning' },
+  geprueft: { label: 'Geprüft', variant: 'info' },
+  freigegeben: { label: 'Freigegeben', variant: 'success' },
+}
+
+type Tab = 'overtime' | 'absences' | 'closings'
+
+export default function AdminTimeTracking() {
+  const { user } = useAuth()
+  const { showToast } = useToast()
+  const locationId = user?.locationId
+
+  const [tab, setTab] = useState<Tab>('overtime')
+
+  const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([])
+  const pendingOvertimeCount = overtimeRequests.filter(o => o.status === 'pending').length
+
+  const [absences, setAbsences] = useState<Absence[]>([])
+  const openAbsenceCount = absences.filter(a => a.verificationStatus === 'offen').length
+
+  // §130 Die Arbeitsunfaehigkeitsbescheinigungen zur geoeffneten Fehlzeit.
+  const [nachweise, setNachweise] = useState<{
+    id: string; dateiname: string; gueltigVon: string | null; gueltigBis: string | null
+    hochgeladenVonName: string | null; createdAt: string
+  }[]>([])
+
+  const loadOvertimeRequests = () => {
+    if (!locationId) return
+    fetch(`/api/overtime-requests?locationId=${locationId}`).then(r => r.json()).then(d => setOvertimeRequests(d.requests ?? []))
+  }
+  const loadAbsences = () => {
+    if (!locationId) return
+    fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => setAbsences(d.absences ?? []))
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadOvertimeRequests() }, [locationId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAbsences() }, [locationId])
+
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([])
+  useEffect(() => {
+    fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
+  }, [])
+  const employees = allEmployees.filter(e => e.locationId === locationId && (e.role === 'employee' || e.role === 'admin'))
+
+  const [closings, setClosings] = useState<MonthlyClosing[]>([])
+  const loadClosings = () => {
+    if (!locationId) return
+    fetch(`/api/monthly-closings?locationId=${locationId}`).then(r => r.json()).then(d => setClosings(d.closings ?? []))
+  }
+
+  useEffect(() => {
+    if (!locationId || employees.length === 0) return
+    const now = new Date()
+    Promise.all(
+      employees.flatMap(emp =>
+        Array.from({ length: 3 }, (_, i) => {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+          return fetch('/api/monthly-closings/get-or-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employeeId: emp.id, year: d.getFullYear(), month: d.getMonth() + 1, employeeInfo: emp }),
+          })
+        })
+      )
+    ).then(loadClosings)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees.length, locationId])
+
+  const [timeLogsByClosing, setTimeLogsByClosing] = useState<Record<string, TimeLog[]>>({})
+  useEffect(() => {
+    closings.forEach(closing => {
+      fetch(`/api/time-logs?employeeId=${closing.employeeId}&year=${closing.year}&month=${closing.month}`)
+        .then(r => r.json())
+        .then(d => setTimeLogsByClosing(prev => ({ ...prev, [closing.id]: d.logs ?? [] })))
+    })
+  }, [closings])
+
+  const [selectedOvertime, setSelectedOvertime] = useState<OvertimeRequest | null>(null)
+  const [approvedMinutes, setApprovedMinutes] = useState(0)
+  const [adminComment, setAdminComment] = useState('')
+
+  const [selectedAbsence, setSelectedAbsence] = useState<Absence | null>(null)
+
+  const [expandedClosing, setExpandedClosing] = useState<string | null>(null)
+  const [closingComment, setClosingComment] = useState('')
+  const [editingLog, setEditingLog] = useState<TimeLog | null>(null)
+  const [editingClosingId, setEditingClosingId] = useState<string | null>(null)
+  const [editClockIn, setEditClockIn] = useState('')
+  const [editClockOut, setEditClockOut] = useState('')
+  const [editBreakMinutes, setEditBreakMinutes] = useState(0)
+
+  const [backfillClosing, setBackfillClosing] = useState<MonthlyClosing | null>(null)
+  const [backfillDate, setBackfillDate] = useState('')
+  const [backfillClockIn, setBackfillClockIn] = useState('')
+  const [backfillClockOut, setBackfillClockOut] = useState('')
+  const [backfillBreakMinutes, setBackfillBreakMinutes] = useState(0)
+  const [backfillNote, setBackfillNote] = useState('')
+  const [backfillSaving, setBackfillSaving] = useState(false)
+
+  const openOvertimeModal = (req: OvertimeRequest) => {
+    setSelectedOvertime(req)
+    setApprovedMinutes(req.overtimeMinutes)
+    setAdminComment('')
+  }
+
+  const handleRespondOvertime = async (status: 'approved' | 'denied' | 'partial') => {
+    if (!selectedOvertime || !user) return
+    await fetch(`/api/overtime-requests/${selectedOvertime.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status,
+        respondedBy: user.name,
+        approvedMinutes: status === 'partial' ? approvedMinutes : undefined,
+        adminComment: adminComment.trim() || undefined,
+      }),
+    })
+    setSelectedOvertime(null)
+    showToast(
+      status === 'approved' ? 'Überstunden genehmigt' : status === 'denied' ? 'Überstunden abgelehnt' : 'Überstunden teilweise genehmigt',
+      status === 'denied' ? 'info' : 'success'
+    )
+    loadOvertimeRequests()
+  }
+
+  const handleVerifyAbsence = async (status: 'geprueft' | 'abgelehnt', type?: AbsenceType) => {
+    if (!selectedAbsence || !user) return
+    await fetch(`/api/absences/${selectedAbsence.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        verificationStatus: status,
+        type: type ?? selectedAbsence.type,
+        verifiedBy: user.name,
+        verifiedAt: new Date().toISOString(),
+      }),
+    })
+    setSelectedAbsence(null)
+    showToast('Abwesenheit aktualisiert', 'success')
+    loadAbsences()
+  }
+
+  const handleDeleteAbsence = async () => {
+    if (!selectedAbsence) return
+    if (!confirm(
+      `Die Fehlzeit von ${selectedAbsence.employeeName} vom `
+      + `${formatDate(selectedAbsence.startDate)} bis ${formatDate(selectedAbsence.endDate)} `
+      + 'wirklich entfernen? Eingereichte Bescheinigungen bleiben in der Personalakte.',
+    )) return
+    const res = await fetch(`/api/absences/${selectedAbsence.id}`, { method: 'DELETE' })
+    if (!res.ok) { showToast('Entfernen fehlgeschlagen', 'error'); return }
+    setSelectedAbsence(null)
+    showToast('Fehlzeit entfernt', 'success')
+    loadAbsences()
+  }
+
+  const handleAddClosingComment = async (closing: MonthlyClosing) => {
+    if (!closingComment.trim() || !user) return
+    await fetch(`/api/monthly-closings/${closing.id}/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ author: user.name, text: closingComment.trim() }),
+    })
+    setClosingComment('')
+    showToast('Kommentar hinzugefügt', 'success')
+    loadClosings()
+  }
+
+  const handleReleaseClosing = async (closing: MonthlyClosing) => {
+    if (!user) return
+    await fetch('/api/time-tracking/release-closing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ closingId: closing.id, releasedBy: user.name }),
+    })
+    showToast('Monatsabschluss freigegeben – Stundenkonto wurde aktualisiert', 'success')
+    loadClosings()
+  }
+
+  const openEditLog = (log: TimeLog, closingId: string) => {
+    setEditingLog(log)
+    setEditingClosingId(closingId)
+    setEditClockIn(log.clockIn)
+    setEditClockOut(log.clockOut ?? '')
+    setEditBreakMinutes(log.breakMinutes ?? 0)
+  }
+
+  const handleSaveCorrection = async () => {
+    if (!editingLog || !editingClosingId || !user) return
+    await fetch(`/api/monthly-closings/${editingClosingId}/correct`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        timeLogId: editingLog.id,
+        updates: { clockIn: editClockIn, clockOut: editClockOut || undefined, breakMinutes: editBreakMinutes },
+        correctedBy: user.name,
+      }),
+    })
+    setEditingLog(null)
+    setEditingClosingId(null)
+    showToast('Korrektur gespeichert', 'success')
+    loadClosings()
+  }
+
+  const openBackfill = (closing: MonthlyClosing) => {
+    setBackfillClosing(closing)
+    const today = new Date()
+    const isCurrentMonth = today.getFullYear() === closing.year && today.getMonth() + 1 === closing.month
+    const defaultDate = isCurrentMonth
+      ? today.toISOString().slice(0, 10)
+      : `${closing.year}-${String(closing.month).padStart(2, '0')}-01`
+    setBackfillDate(defaultDate)
+    setBackfillClockIn('')
+    setBackfillClockOut('')
+    setBackfillBreakMinutes(0)
+    setBackfillNote('')
+  }
+
+  const handleSaveBackfill = async () => {
+    if (!backfillClosing || !user || !backfillDate || !backfillClockIn || !backfillClockOut) return
+    setBackfillSaving(true)
+    const res = await fetch('/api/time-logs/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeId: backfillClosing.employeeId,
+        date: backfillDate,
+        clockIn: backfillClockIn,
+        clockOut: backfillClockOut,
+        breakMinutes: backfillBreakMinutes,
+        note: backfillNote.trim() || undefined,
+        locationId: backfillClosing.locationId,
+        createdBy: user.name,
+      }),
+    })
+    const data = await res.json()
+    setBackfillSaving(false)
+    if (!res.ok) {
+      showToast(data.error || 'Nacherfassung fehlgeschlagen', 'error')
+      return
+    }
+    setBackfillClosing(null)
+    showToast('Eintrag nacherfasst', 'success')
+    loadClosings()
+  }
+
+  if (!locationId) {
+    return (
+      <>
+        
+        <div className="p-4 sm:p-6">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Dein Account ist noch keinem Standort zugeordnet"
+            description="Ein OKUN-Administrator muss deinen Account einmalig einem Standort zuordnen, bevor hier Zeiterfassungsdaten angezeigt werden können. Bitte wende dich an die OKUN-Plattformverwaltung."
+          />
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      
+      <div className="p-4 sm:p-6 space-y-4">
+
+        {/* Tab bar */}
+        <div className="flex bg-white border border-gray-100 rounded-2xl p-1">
+          {([
+            { key: 'overtime', label: 'Überstunden', badge: pendingOvertimeCount },
+            { key: 'absences', label: 'Abwesenheiten', badge: openAbsenceCount },
+            { key: 'closings', label: 'Monatsabschluss', badge: 0 },
+          ] as const).map(({ key, label, badge }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all ${tab === key ? 'bg-navy text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              {label}
+              {badge > 0 && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${tab === key ? 'bg-brand text-navy' : 'bg-red-100 text-red-600'}`}>
+                  {badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ── ÜBERSTUNDEN ──────────────────────────────────────── */}
+        {tab === 'overtime' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Überstundenanträge</CardTitle>
+              <Badge variant="default">{overtimeRequests.length}</Badge>
+            </CardHeader>
+            <div className="space-y-2">
+              {overtimeRequests.length === 0 ? (
+                <EmptyState icon={Clock} title="Keine Überstundenanträge" />
+              ) : (
+                overtimeRequests.map(req => {
+                  const statusCfg = {
+                    pending: { label: 'Ausstehend', variant: 'warning' as const },
+                    approved: { label: 'Genehmigt', variant: 'success' as const },
+                    denied: { label: 'Abgelehnt', variant: 'danger' as const },
+                    partial: { label: 'Teilweise genehmigt', variant: 'info' as const },
+                  }[req.status]
+                  return (
+                    <div
+                      key={req.id}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                      onClick={() => req.status === 'pending' && openOvertimeModal(req)}
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                        <AlertCircle size={16} className="text-amber-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-navy">{req.employeeName} · {formatDate(req.date)}</p>
+                        <p className="text-xs text-gray-500">+{formatTime(req.overtimeMinutes)} · {req.reason}</p>
+                        {req.comment && <p className="text-xs text-gray-400 italic">{req.comment}</p>}
+                      </div>
+                      <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* ── ABWESENHEITEN ────────────────────────────────────── */}
+        {tab === 'absences' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Krankheiten und Abwesenheiten</CardTitle>
+              <Badge variant="default">{absences.length}</Badge>
+            </CardHeader>
+            <div className="space-y-2">
+              {absences.length === 0 ? (
+                <EmptyState icon={Stethoscope} title="Keine Meldungen" />
+              ) : (
+                absences.map(absence => {
+                  const statusCfg = {
+                    offen: { label: 'Offen', variant: 'warning' as const },
+                    geprueft: { label: 'Geprüft', variant: 'success' as const },
+                    abgelehnt: { label: 'Abgelehnt', variant: 'danger' as const },
+                  }[absence.verificationStatus]
+                  return (
+                    <div
+                      key={absence.id}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                      onClick={() => {
+                        setSelectedAbsence(absence)
+                        setNachweise([])
+                        fetch(`/api/absences/${absence.id}/nachweise`)
+                          .then(r => r.ok ? r.json() : { nachweise: [] })
+                          .then(d => setNachweise(d.nachweise ?? []))
+                          .catch(() => setNachweise([]))
+                      }}
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
+                        <Stethoscope size={16} className="text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-navy">{absence.employeeName} · {ABSENCE_TYPE_LABEL[absence.type]}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDate(absence.startDate)} – {formatDate(absence.endDate)} ({absence.days} Tage)
+                        </p>
+                        {/*
+                          §130 Statt "Nachweis vorhanden: ja/nein" die tatsaechliche
+                          Lage. Eine dreiwoechige Krankheit mit einer Bescheinigung
+                          ueber eine Woche sah vorher aus wie eine vollstaendig belegte.
+                        */}
+                        {absence.nachweisLage && absence.nachweisLage.deckung !== 'nicht_noetig' && (
+                          <p className={`text-[11px] mt-0.5 ${
+                            absence.nachweisLage.deckung === 'vollstaendig'
+                              ? 'text-green-700'
+                              : 'text-amber-700 font-semibold'}`}>
+                            {absence.nachweisLage.deckung === 'vollstaendig'
+                              ? '✓ Bescheinigung vollständig'
+                              : absence.nachweisLage.deckung === 'teilweise'
+                                ? '! Bescheinigung deckt nicht alles ab'
+                                : '! Keine Bescheinigung'}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* ── MONATSABSCHLUSS ──────────────────────────────────── */}
+        {tab === 'closings' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Monatsabschluss</CardTitle>
+              <Badge variant="default">{closings.length}</Badge>
+            </CardHeader>
+            <div className="space-y-2">
+              {closings.map(closing => {
+                const key = closing.id
+                const isOpen = expandedClosing === key
+                const status = CLOSING_STATUS_LABEL[closing.status]
+                return (
+                  <div key={closing.id} className="rounded-xl bg-gray-50 overflow-hidden">
+                    <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => setExpandedClosing(isOpen ? null : key)}>
+                      <div className="w-9 h-9 rounded-xl bg-navy flex items-center justify-center flex-shrink-0">
+                        <FileText size={16} className="text-brand" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-navy">{closing.employeeName} · {MONTH_NAMES[closing.month - 1]} {closing.year}</p>
+                        <p className="text-xs text-gray-500">{closing.arbeitstage} Arbeitstage · {closing.approvalsCount} Genehmigungen</p>
+                      </div>
+                      <Badge variant={status.variant}>{status.label}</Badge>
+                      {isOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                    </div>
+                    {isOpen && (
+                      <div className="px-3 pb-3 space-y-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                          <p>Soll: <span className="font-semibold text-navy">{formatTime(closing.sollMinutes)}</span></p>
+                          <p>Ist: <span className="font-semibold text-navy">{formatTime(closing.istMinutes)}</span></p>
+                          <p>Pausen: <span className="font-semibold text-navy">{formatTime(closing.breakMinutes)}</span></p>
+                          <p>Überstunden: <span className="font-semibold text-navy">{formatTime(closing.overtimeMinutes)}</span></p>
+                          <p>Minusstunden: <span className="font-semibold text-navy">{formatTime(closing.undertimeMinutes)}</span></p>
+                          <p>Urlaub: <span className="font-semibold text-navy">{closing.vacationDays} Tage</span></p>
+                          <p>Krankheit: <span className="font-semibold text-navy">{closing.sickDays} Tage</span></p>
+                          <p>Fehlzeiten: <span className="font-semibold text-navy">{closing.otherAbsenceDays} Tage</span></p>
+                        </div>
+                        <div className="space-y-1 pt-1 border-t border-gray-200">
+                          <p className="text-xs font-semibold text-navy pt-2">Gebuchte Zeiten</p>
+                          {(timeLogsByClosing[closing.id] ?? []).map(log => (
+                            <div key={log.id} className="flex items-center gap-2 text-xs text-gray-600">
+                              <span className="flex-1">{formatDate(log.date)} · {log.clockIn}–{log.clockOut ?? '–'} Uhr{log.breakMinutes ? ` · ${log.breakMinutes} Min. Pause` : ''}</span>
+                              {closing.status !== 'freigegeben' && (
+                                <button onClick={() => openEditLog(log, closing.id)} className="text-gray-400 hover:text-navy">
+                                  <Pencil size={12} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          {closing.status !== 'freigegeben' && (
+                            <button
+                              onClick={() => openBackfill(closing)}
+                              className="flex items-center gap-1.5 text-xs font-semibold text-navy hover:text-brand-dark pt-1.5"
+                            >
+                              <CalendarPlus size={13} />
+                              Eintrag nacherfassen
+                            </button>
+                          )}
+                        </div>
+                        {closing.comments.length > 0 && (
+                          <div className="space-y-1 pt-1 border-t border-gray-200">
+                            {closing.comments.map((c, i) => (
+                              <p key={i} className="text-xs text-gray-500"><span className="font-semibold text-navy">{c.author}:</span> {c.text}</p>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => window.open(`/print/time-document?employeeId=${closing.employeeId}&year=${closing.year}&month=${closing.month}`, '_blank')}
+                          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-navy transition-colors"
+                        >
+                          <Printer size={12} />
+                          Stundennachweis PDF
+                        </button>
+                        {closing.status !== 'freigegeben' && (
+                          <>
+                            <div>
+                              <Input
+                                icon={MessageSquare}
+                                value={closingComment}
+                                onChange={e => setClosingComment(e.target.value)}
+                                placeholder="Kommentar ergänzen..."
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="ghost" className="flex-1 border border-gray-200" onClick={() => handleAddClosingComment(closing)}>Kommentar speichern</Button>
+                              <Button size="sm" variant="success" className="flex-1 gap-1.5" onClick={() => handleReleaseClosing(closing)}>
+                                <CheckCircle size={13} />
+                                Freigeben
+                              </Button>
+                            </div>
+                            <button
+                              onClick={() => window.open(`/print/time-document?employeeId=${closing.employeeId}&year=${closing.year}&month=${closing.month}`, '_blank')}
+                              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-navy transition-colors"
+                            >
+                              <Printer size={12} />
+                              Stundennachweis drucken / PDF
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* Überstunden-Genehmigung */}
+      <Modal open={!!selectedOvertime} onClose={() => setSelectedOvertime(null)} title="Überstundenantrag prüfen">
+        {selectedOvertime && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-2xl p-4">
+              <p className="text-lg font-bold text-navy">{selectedOvertime.employeeName}</p>
+              <p className="text-gray-600 text-sm mt-1">{formatDate(selectedOvertime.date)} · +{formatTime(selectedOvertime.overtimeMinutes)}</p>
+              <p className="text-gray-500 text-sm">{selectedOvertime.reason}</p>
+              {selectedOvertime.comment && <p className="text-sm text-gray-600 mt-2 italic">&bdquo;{selectedOvertime.comment}&ldquo;</p>}
+            </div>
+            <div>
+              <Input
+                label="Genehmigte Minuten (bei Teilgenehmigung)"
+                type="number"
+                min={0}
+                max={selectedOvertime.overtimeMinutes}
+                value={approvedMinutes}
+                onChange={e => setApprovedMinutes(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <Textarea
+                label="Kommentar (optional)"
+                value={adminComment}
+                onChange={e => setAdminComment(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="danger" className="flex-1 gap-1.5" onClick={() => handleRespondOvertime('denied')}>
+                <XCircle size={15} />
+                Ablehnen
+              </Button>
+              <Button variant="ghost" className="flex-1 border border-gray-200 gap-1.5" onClick={() => handleRespondOvertime('partial')}>
+                <Clock size={15} />
+                Teilweise
+              </Button>
+              <Button variant="success" className="flex-1 gap-1.5" onClick={() => handleRespondOvertime('approved')}>
+                <CheckCircle size={15} />
+                Genehmigen
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Abwesenheit prüfen */}
+      <Modal open={!!selectedAbsence} onClose={() => setSelectedAbsence(null)} title="Abwesenheit prüfen">
+        {selectedAbsence && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-2xl p-4">
+              <p className="text-lg font-bold text-navy">{selectedAbsence.employeeName}</p>
+              <p className="text-gray-600 text-sm mt-1">{ABSENCE_TYPE_LABEL[selectedAbsence.type]}</p>
+              <p className="text-gray-500 text-sm">{formatDate(selectedAbsence.startDate)} – {formatDate(selectedAbsence.endDate)} ({selectedAbsence.days} Tage)</p>
+              {selectedAbsence.note && <p className="text-sm text-gray-600 mt-2 italic">&bdquo;{selectedAbsence.note}&ldquo;</p>}
+            </div>
+
+            {/* §130 Die Bescheinigungen zu dieser Fehlzeit */}
+            <div className="rounded-2xl border border-gray-100 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Paperclip size={14} className="text-gray-400" />
+                <p className="text-sm font-semibold text-navy flex-1">Arbeitsunfähigkeitsbescheinigung</p>
+              </div>
+              {selectedAbsence.nachweisLage && (
+                <p className={`text-xs ${
+                  selectedAbsence.nachweisLage.deckung === 'vollstaendig'
+                    ? 'text-green-700'
+                    : selectedAbsence.nachweisLage.deckung === 'nicht_noetig'
+                      ? 'text-gray-500'
+                      : 'text-amber-700'}`}>
+                  {selectedAbsence.nachweisLage.text}
+                </p>
+              )}
+              {nachweise.length > 0 && (
+                <div className="divide-y divide-gray-100">
+                  {nachweise.map(n => (
+                    <div key={n.id} className="flex items-center gap-2 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-navy truncate">{n.dateiname}</p>
+                        <p className="text-[11px] text-gray-400">
+                          {n.gueltigVon && n.gueltigBis
+                            ? `${formatDate(n.gueltigVon)} – ${formatDate(n.gueltigBis)}`
+                            : 'ohne Gültigkeitszeitraum — deckt nichts ab'}
+                          {n.hochgeladenVonName ? ` · ${n.hochgeladenVonName}` : ''}
+                        </p>
+                      </div>
+                      <a
+                        href={`/api/files/${n.id}`} target="_blank" rel="noreferrer"
+                        title="Bescheinigung öffnen"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-brand hover:bg-gray-50"
+                      >
+                        <Download size={13} />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedAbsence.nachweisLage?.pflicht.spaetestensAm && nachweise.length === 0 && (
+                <p className="text-[11px] text-gray-400">
+                  Vorzulegen bis {formatDate(selectedAbsence.nachweisLage.pflicht.spaetestensAm)}.
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-navy mb-1.5">Art ändern</label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(ABSENCE_TYPE_LABEL) as AbsenceType[]).map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setSelectedAbsence({ ...selectedAbsence, type })}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-colors ${selectedAbsence.type === type ? 'bg-brand border-brand-dark text-navy' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                  >
+                    {ABSENCE_TYPE_LABEL[type]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="danger" className="flex-1 gap-1.5" onClick={() => handleVerifyAbsence('abgelehnt', selectedAbsence.type)}>
+                <ShieldX size={15} />
+                Ablehnen
+              </Button>
+              <Button variant="success" className="flex-1 gap-1.5" onClick={() => handleVerifyAbsence('geprueft', selectedAbsence.type)}>
+                <ShieldCheck size={15} />
+                Geprüft
+              </Button>
+            </div>
+
+            {/*
+              §130 Eine versehentlich erfasste Krankmeldung musste bisher stehen
+              bleiben — sie liess sich nur umdeuten. Sie fliesst aber in
+              Fehlzeitenquoten und in die Lohnabrechnung ein.
+            */}
+            <button
+              onClick={() => handleDeleteAbsence()}
+              className="w-full text-xs text-gray-400 hover:text-red-600 py-1"
+            >
+              Diese Fehlzeit war ein Versehen — entfernen
+            </button>
+          </div>
+        )}
+      </Modal>
+
+      {/* Zeitkorrektur (Monatsabschluss) */}
+      <Modal open={!!editingLog} onClose={() => { setEditingLog(null); setEditingClosingId(null) }} title="Zeit korrigieren">
+        {editingLog && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">{formatDate(editingLog.date)}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Input
+                  label="Kommt"
+                  type="time"
+                  value={editClockIn}
+                  onChange={e => setEditClockIn(e.target.value)}
+                />
+              </div>
+              <div>
+                <Input
+                  label="Geht"
+                  type="time"
+                  value={editClockOut}
+                  onChange={e => setEditClockOut(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Input
+                label="Pause (Minuten)"
+                type="number"
+                min={0}
+                value={editBreakMinutes}
+                onChange={e => setEditBreakMinutes(Number(e.target.value))}
+              />
+            </div>
+            <Button variant="success" className="w-full gap-1.5" onClick={handleSaveCorrection}>
+              <CheckCircle size={15} />
+              Korrektur speichern
+            </Button>
+          </div>
+        )}
+      </Modal>
+
+      {/* Nacherfassung (Monatsabschluss) */}
+      <Modal open={!!backfillClosing} onClose={() => setBackfillClosing(null)} title="Eintrag nacherfassen">
+        {backfillClosing && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">{backfillClosing.employeeName} · {MONTH_NAMES[backfillClosing.month - 1]} {backfillClosing.year}</p>
+            <div>
+              <Input
+                label="Datum"
+                type="date"
+                value={backfillDate}
+                onChange={e => setBackfillDate(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Input
+                  label="Kommt"
+                  type="time"
+                  value={backfillClockIn}
+                  onChange={e => setBackfillClockIn(e.target.value)}
+                />
+              </div>
+              <div>
+                <Input
+                  label="Geht"
+                  type="time"
+                  value={backfillClockOut}
+                  onChange={e => setBackfillClockOut(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Input
+                label="Pause (Minuten)"
+                type="number"
+                min={0}
+                value={backfillBreakMinutes}
+                onChange={e => setBackfillBreakMinutes(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <Textarea
+                label="Notiz (optional)"
+                value={backfillNote}
+                onChange={e => setBackfillNote(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <Button
+              variant="success"
+              className="w-full gap-1.5"
+              loading={backfillSaving}
+              disabled={!backfillDate || !backfillClockIn || !backfillClockOut}
+              onClick={handleSaveBackfill}
+            >
+              <CalendarPlus size={15} />
+              Eintrag speichern
+            </Button>
+          </div>
+        )}
+      </Modal>
+    </>
+  )
+}

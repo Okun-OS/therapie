@@ -1,0 +1,184 @@
+// Nachweis F5/F6: Regelpakete je Kunde und die Freischaltung der Dienstplanung.
+//
+// Das Geschäftsmodell aus PRODUKT-NOTIZEN.md: Alles außer der Dienstplanung ist
+// Standard. Die Dienstplanung wird je Kunde von Hand programmiert — bis dahin
+// bleibt sie gesperrt. Ein Kunde, der ungebaute Dienstplanung ausprobiert,
+// bekommt einen schlechten Plan und ein falsches Bild vom Produkt.
+import { pruefer, login, hole, sende } from './helfer.mjs'
+
+const { check, bilanz } = pruefer()
+
+const okun = await login('okun@okun.de')
+const gf = await login('gf@rheinblick-reha.de')
+const leitung = await login('leitung@rheinblick-reha.de')
+const kita = await login('leitung@kita-sonnenschein.de')
+
+const locationId = (await hole(leitung, '/api/auth/me')).body.user.locationId
+console.log(`Standort ${locationId}\n`)
+
+/**
+ * Der Ausgangszustand, den diese Prüfung gleich verändert.
+ *
+ * Sie ordnet diesem Standort das Regelpaket der Kita zu — das ist ihr Zweck.
+ * Zurückgenommen hat sie es nie, und das Paket blieb kleben. Die Folge fiel
+ * erst zwei Prüfungen später auf: `f-dienstplan` plant denselben Standort,
+ * der Rechendienst wendet das fremde Paket an, findet keine Erzieherinnen und
+ * liefert einen leeren Plan. Ein einziger abgebrochener Lauf vergiftete damit
+ * jeden folgenden — genau das, was Regel 1 der README verhindern soll.
+ */
+const paketVorher = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
+  ?.find(s => s.id === locationId)?.rulePackId ?? null
+
+async function zustandWiederherstellen() {
+  await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+    { locationId, rulePackId: paketVorher })
+}
+
+// ── Wer darf überhaupt hier hinein ─────────────────────────────────────────
+console.log('=== Nur OKUN verwaltet die Dienstplanung ===')
+for (const [wer, cookie] of [['Unternehmen', gf], ['Standortleitung', leitung]]) {
+  const r = await hole(cookie, '/api/okun/dienstplanung')
+  check(`${wer} kommt an die Verwaltung NICHT heran`, r.status === 403, `HTTP ${r.status}`)
+}
+
+const uebersicht = await hole(okun, '/api/okun/dienstplanung')
+check('OKUN sieht alle Standorte', uebersicht.status === 200,
+  `${uebersicht.body.standorte?.length ?? 0} Standorte`)
+check('Und die verfügbaren Regelpakete',
+  (uebersicht.body.pakete ?? []).some(p => p.id === 'kita_sonnenschein'),
+  uebersicht.body.hinweis)
+check('Der Rechendienst ist erreichbar', uebersicht.body.rechendienstErreichbar === true)
+
+const paket = (uebersicht.body.pakete ?? []).find(p => p.id === 'kita_sonnenschein')
+check('Ein Paket nennt Kunde und Version',
+  !!paket?.kunde && !!paket?.version, `${paket?.kunde} v${paket?.version}`)
+
+// ── Ein Paket zuordnen ─────────────────────────────────────────────────────
+console.log('\n=== Regelpaket zuordnen ===')
+const erfunden = await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+  { locationId, rulePackId: 'gibt_es_nicht' })
+check('Ein Paket, das es nicht gibt, wird abgelehnt', erfunden.status === 400,
+  erfunden.body.error)
+
+const zugeordnet = await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+  { locationId, rulePackId: 'kita_sonnenschein' })
+check('Ein vorhandenes Paket wird zugeordnet', zugeordnet.status === 200,
+  zugeordnet.body.hinweis ?? zugeordnet.body.error)
+check('Es steht am Standort', zugeordnet.body.standort?.rulePackId === 'kita_sonnenschein')
+
+// ── Sperre ─────────────────────────────────────────────────────────────────
+console.log('\n=== Gesperrte Dienstplanung ===')
+await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+  { locationId, dienstplanungFrei: false })
+
+const heute = new Date()
+const von = new Date(heute.getTime() + 7 * 86400000).toISOString().slice(0, 10)
+const bis = new Date(heute.getTime() + 13 * 86400000).toISOString().slice(0, 10)
+
+const gesperrt = await sende(leitung, '/api/planning/runs', 'POST', { locationId, von, bis })
+check('Die Leitung kann keinen Plan erzeugen', gesperrt.status === 423,
+  `HTTP ${gesperrt.status}`)
+check('Die Meldung erklärt es verständlich',
+  /freigeschaltet|eingerichtet/.test(gesperrt.body.error ?? ''),
+  gesperrt.body.error)
+check('Sie ist als Sperre gekennzeichnet', gesperrt.body.gesperrt === true)
+
+const gfGesperrt = await sende(gf, '/api/planning/runs', 'POST', { locationId, von, bis })
+check('Auch das Unternehmen kommt nicht daran vorbei', gfGesperrt.status === 423)
+
+// ── Ein eigener Hinweistext ────────────────────────────────────────────────
+console.log('\n=== Eigener Hinweis für den Kunden ===')
+await sende(okun, '/api/okun/dienstplanung', 'PATCH', {
+  locationId,
+  hinweis: 'Ihre Dienstplanung wird gerade eingerichtet. Wir melden uns nächste Woche.',
+})
+const mitHinweis = await sende(leitung, '/api/planning/runs', 'POST', { locationId, von, bis })
+check('Der Kunde sieht den hinterlegten Text',
+  mitHinweis.body.error?.includes('nächste Woche'), mitHinweis.body.error)
+
+// ── Freischalten ───────────────────────────────────────────────────────────
+console.log('\n=== Freischalten ===')
+const frei = await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+  { locationId, dienstplanungFrei: true, hinweis: '' })
+check('OKUN schaltet frei', frei.status === 200, frei.body.hinweis)
+check('Wer freigeschaltet hat, steht fest', !!frei.body.standort?.dienstplanungFreiVon,
+  frei.body.standort?.dienstplanungFreiVon)
+check('Und seit wann', !!frei.body.standort?.dienstplanungFreiSeit,
+  frei.body.standort?.dienstplanungFreiSeit)
+
+const lauf = await sende(leitung, '/api/planning/runs', 'POST', { locationId, von, bis })
+// 202 = angenommen; der Lauf rechnet im Hintergrund weiter
+check('Danach läuft die Planung', lauf.status === 202, `HTTP ${lauf.status}`)
+
+// ── Abschottung ────────────────────────────────────────────────────────────
+console.log('\n=== Abschottung ===')
+const fremdSchaltet = await sende(kita, '/api/okun/dienstplanung', 'PATCH',
+  { locationId, dienstplanungFrei: false })
+check('Eine fremde Leitung kann nicht sperren', fremdSchaltet.status === 403,
+  `HTTP ${fremdSchaltet.status}`)
+
+const selbstSchaltet = await sende(gf, '/api/okun/dienstplanung', 'PATCH',
+  { locationId, rulePackId: 'kita_sonnenschein' })
+check('Der Kunde kann sich kein Paket selbst zuordnen', selbstSchaltet.status === 403,
+  `HTTP ${selbstSchaltet.status}`)
+
+const nochFrei = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
+  .find(s => s.id === locationId)
+check('Der Stand ist unverändert', nochFrei?.dienstplanungFrei === true)
+
+// ── §161 Das Musterregelpaket ──────────────────────────────────────────────
+//
+// Ein neuer Kunde steht bis zum Gespräch über seinen Betriebsablauf ohne
+// Regelpaket da. Der Rechendienst kennt dann nur die allgemeinen Grenzen und
+// weiß nichts über Fachkraftquoten, Leitung oder Auszubildende — sein erster
+// Plan sieht gut aus und ist fachlich falsch. Das Musterpaket schließt die
+// Lücke.
+console.log('\n=== Musterregelpaket ===')
+
+const musterPaket = (uebersicht.body.pakete ?? []).find(p => p.id === 'muster_pflege')
+check('Das Musterpaket steht zur Auswahl', !!musterPaket,
+  (uebersicht.body.pakete ?? []).map(p => p.id).join(', '))
+check('Es ist als Vorlage gekennzeichnet', musterPaket?.muster === true,
+  JSON.stringify(musterPaket))
+check('Und seine Beschreibung sagt, was es abdeckt',
+  /Fachkraft/.test(musterPaket?.beschreibung ?? ''), musterPaket?.beschreibung)
+
+const musterZu = await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+  { locationId, rulePackId: 'muster_pflege' })
+check('Es lässt sich einem Standort zuordnen', musterZu.status === 200,
+  musterZu.body.error)
+check('Und steht danach am Standort',
+  musterZu.body.standort?.rulePackId === 'muster_pflege',
+  musterZu.body.standort?.rulePackId)
+
+const mitMuster = await sende(leitung, '/api/planning/runs', 'POST',
+  { locationId, von, bis })
+check('Ein Plan mit dem Musterpaket läuft an', mitMuster.status === 202,
+  `HTTP ${mitMuster.status}`)
+
+// ── §163 Das Kundenpaket der Kita ──────────────────────────────────────────
+//
+// Hier wird nur geprüft, dass es da und zuordenbar ist. Ob es RICHTIG rechnet,
+// lässt sich an diesem Standort nicht prüfen — dafür bräuchte es die acht
+// Gruppen, zwei Etagen und sechzehn Verträge dieser Kita. Genau das tut die
+// Abnahme im Rechendienst (solver-service/test_kita_zwei_etagen.py) an einem
+// vollständigen Betrieb und am wirklich gelösten Plan.
+console.log('\n=== Kundenpaket Kita ===')
+
+const kitaPaket = (uebersicht.body.pakete ?? []).find(p => p.id === 'kita_zwei_etagen')
+check('Das Kita-Paket steht zur Auswahl', !!kitaPaket,
+  (uebersicht.body.pakete ?? []).map(p => p.id).join(', '))
+check('Es ist kein Musterpaket, sondern ein Kundenpaket',
+  kitaPaket?.muster !== true, JSON.stringify(kitaPaket?.muster))
+check('Seine Beschreibung nennt, was es ausmacht',
+  /Tagesmuster/.test(kitaPaket?.beschreibung ?? ''), kitaPaket?.beschreibung)
+
+// ── Aufräumen ──────────────────────────────────────────────────────────────
+await zustandWiederherstellen()
+const danach = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
+  ?.find(s => s.id === locationId)
+check('Das Regelpaket ist wieder wie vorher',
+  (danach?.rulePackId ?? null) === paketVorher,
+  `jetzt ${danach?.rulePackId ?? 'keins'}, vorher ${paketVorher ?? 'keins'}`)
+
+process.exit(bilanz() ? 1 : 0)

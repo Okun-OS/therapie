@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-feature-settings: 'cv11', 'ss01', 'tnum';
+  }
+
+  * {
+    @apply box-border;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: -0.01em;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+@layer utilities {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* ── Floating Dock Animations ─────────────────────────────────── */
+
+@keyframes panel-in {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(16px) scale(0.97); }
+  60%  { opacity: 1; transform: translateX(-50%) translateY(-3px) scale(1.007); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1); }
+}
+
+@keyframes panel-out {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(12px) scale(0.97); }
+}
+
+@keyframes gold-glitch {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  12%  { filter: brightness(1.45) saturate(2) hue-rotate(-6deg); }
+  25%  { filter: brightness(0.8)  saturate(1.2); }
+  38%  { filter: brightness(1.6)  saturate(2.4) hue-rotate(4deg); }
+  52%  { filter: brightness(1.1)  saturate(1.5); }
+  68%  { filter: brightness(1.4)  saturate(1.9) hue-rotate(-3deg); }
+  82%  { filter: brightness(0.9)  saturate(1.1); }
+}
+
+@keyframes badge-fly-out {
+  0%   { transform: translateY(0)    scale(1);   opacity: 1; }
+  100% { transform: translateY(-14px) scale(0.6); opacity: 0; }
+}
+
+@keyframes badge-spring-in {
+  0%   { transform: translateY(14px) scale(0.4); opacity: 0; }
+  65%  { transform: translateY(-3px) scale(1.15); opacity: 1; }
+  100% { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+
+@keyframes ripple-fill {
+  0%   { transform: scale(0);   opacity: 0.32; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+
+@keyframes ripple-ring {
+  0%   { transform: scale(0.4); opacity: 0.55; }
+  100% { transform: scale(3);   opacity: 0; }
+}
+
+@keyframes dock-glow {
+  0%   { box-shadow: 0 0 0 0   rgba(38,198,198,0.55); }
+  60%  { box-shadow: 0 0 0 14px rgba(38,198,198,0); }
+  100% { box-shadow: 0 0 0 0   rgba(38,198,198,0); }
+}
+
+@keyframes dock-glow-gold {
+  0%   { box-shadow: 0 0 0 0   rgba(200,156,91,0.65); }
+  60%  { box-shadow: 0 0 0 16px rgba(200,156,91,0); }
+  100% { box-shadow: 0 0 0 0   rgba(200,156,91,0); }
+}
+
+@keyframes tooltip-up {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(5px); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes modal-in {
+  0%   { opacity: 0; transform: translateY(12px) scale(0.97); }
+  65%  { opacity: 1; transform: translateY(-2px) scale(1.007); }
+  100% { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* ── Page transitions ─────────────────────────────────────────── */
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-in { animation: page-in 0.22s ease-out forwards; }
+
+/* ── CommandRail label crossfade ──────────────────────────────── */
+
+@keyframes label-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Ambient dot-grid background ─────────────────────────────── */
+
+.bg-dot-grid {
+  background-image: radial-gradient(circle, rgba(0,0,0,0.055) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* ── Hide scrollbar on dock scroll wrapper (mobile) ──────────── */
+.dock-scroll::-webkit-scrollbar { display: none; }
+
+.animate-panel-in  { animation: panel-in  0.38s cubic-bezier(.34,1.4,.64,1) forwards; }
+.animate-panel-out { animation: panel-out 0.2s  ease-in               forwards; }
+.animate-gold-glitch { animation: gold-glitch 2.4s ease-in-out infinite; }
+.animate-dock-glow      { animation: dock-glow      0.5s ease-out forwards; }
+.animate-dock-glow-gold { animation: dock-glow-gold 0.5s ease-out forwards; }
