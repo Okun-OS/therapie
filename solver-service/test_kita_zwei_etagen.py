@@ -65,25 +65,34 @@ ETAGEN = [
 
 # Die Dienstzeiten des Betriebs: geöffnet 06:00–17:00. Acht Arbeitsstunden sind
 # achteinhalb Stunden Anwesenheit; fünf Stunden gehen ohne Pause.
+# §164 Kein Dienst endet zwischen 15:30 und 17:00. Der Tag hört entweder mit
+# dem Spätdienst auf, mit dem Nachmittag um 15:30 oder 15:00 — oder früher,
+# weil jemand um sechs angefangen hat oder weniger Stunden arbeitet.
+#
+# Die Springerin hat keine Früh- und Spätdienste, deshalb gibt es auch keine
+# Fünfstundenvarianten davon.
 SCHICHTEN = [
     {"id": "f8", "name": "Frühdienst 8", "typ": "frueh", "von": "06:00", "bis": "14:30"},
     {"id": "f7", "name": "Frühdienst 7", "typ": "frueh", "von": "06:00", "bis": "13:30"},
     {"id": "f6", "name": "Frühdienst 6", "typ": "frueh", "von": "06:00", "bis": "12:30"},
-    {"id": "f5", "name": "Frühdienst 5", "typ": "frueh", "von": "06:00", "bis": "11:00"},
     {"id": "s8", "name": "Spätdienst 8", "typ": "spaet", "von": "08:30", "bis": "17:00"},
     {"id": "s7", "name": "Spätdienst 7", "typ": "spaet", "von": "09:30", "bis": "17:00"},
     {"id": "s6", "name": "Spätdienst 6", "typ": "spaet", "von": "10:30", "bis": "17:00"},
-    {"id": "s5", "name": "Spätdienst 5", "typ": "spaet", "von": "12:00", "bis": "17:00"},
     {"id": "t8", "name": "Tagdienst 8", "typ": "mittel", "von": "07:00", "bis": "15:30"},
+    # §164 Der Nachmittagsdienst für die Siebenstundenkräfte: Er endet um
+    # 15:30 statt um 15:00 und zählt damit für die Nachmittagsbesetzung mit.
+    {"id": "t7n", "name": "Nachmittag 7", "typ": "mittel", "von": "08:00", "bis": "15:30"},
     {"id": "t7", "name": "Tagdienst 7", "typ": "mittel", "von": "07:30", "bis": "15:00"},
     {"id": "t6", "name": "Tagdienst 6", "typ": "mittel", "von": "08:00", "bis": "14:30"},
-    {"id": "t5", "name": "Tagdienst 5", "typ": "mittel", "von": "09:00", "bis": "14:00"},
+    {"id": "t5", "name": "Kernzeit 5 (9 Uhr)", "typ": "mittel", "von": "09:00", "bis": "14:00"},
+    {"id": "t5f", "name": "Kernzeit 5 (8 Uhr)", "typ": "mittel", "von": "08:00", "bis": "13:00"},
 ]
 
 TYP = {s["id"]: s["typ"] for s in SCHICHTEN}
-NETTO = {"f8": 480, "f7": 420, "f6": 360, "f5": 300,
-         "s8": 480, "s7": 420, "s6": 360, "s5": 300,
-         "t8": 480, "t7": 420, "t6": 360, "t5": 300}
+SCHICHTEN_NACH_ID = {s["id"]: s for s in SCHICHTEN}
+NETTO = {"f8": 480, "f7": 420, "f6": 360,
+         "s8": 480, "s7": 420, "s6": 360,
+         "t8": 480, "t7n": 420, "t7": 420, "t6": 360, "t5": 300, "t5f": 300}
 ETAGE_VON_GRUPPE = {g["id"]: g["etageId"] for g in GRUPPEN}
 
 # Vorname, Wochenstunden, Stammgruppe, Rolle.
@@ -182,8 +191,8 @@ def regelmodell(abwesend: dict[str, list[str]] | None = None,
     }
 
 
-def rechne(modell: dict) -> dict:
-    os.environ["SOLVER_MAX_SECONDS"] = "90"
+def rechne(modell: dict, sekunden: str = "30") -> dict:
+    os.environ["SOLVER_MAX_SECONDS"] = sekunden
     return solve(modell)
 
 
@@ -231,6 +240,18 @@ class Plan:
     def in_gruppe(self, tag: str, gruppe: str) -> int:
         return sum(1 for (mid, t), e in self.eintrag.items()
                    if t == tag and e.get("einheitId") == gruppe)
+
+    def ende(self, name: str, tag: str) -> str:
+        return SCHICHTEN_NACH_ID[self.dienst(name, tag)]["bis"]
+
+    def bis_uhrzeit(self, tag: str, etage: str, uhrzeit: str) -> int:
+        """Wie viele Personen auf dieser Etage an diesem Tag bis dahin bleiben."""
+        return sum(
+            1 for (mid, t), e in self.eintrag.items()
+            if t == tag
+            and SCHICHTEN_NACH_ID[e["schichtId"]]["bis"] == uhrzeit
+            and ETAGE_VON_GRUPPE.get(e.get("einheitId") or "") == etage
+        )
 
     def verletzungen(self, art: str | None = None) -> list[dict]:
         alle = self.paket.get("verletzungen") or []
@@ -556,11 +577,14 @@ def notlage() -> Plan:
     einspringt und dass beides im Bericht steht.
     """
     bleiben = {"Marin", "Shelley", "Felix", "Katrin", "Franke"}
+    # Knapperes Zeitbudget als sonst: Hier geht es nicht um den besten Plan,
+    # sondern darum, DASS einer entsteht und dass das Nachgeben gemeldet wird.
+    # Der Solver sucht in dieser Lage sehr lange nach kleinen Verbesserungen.
     p = Plan(rechne(regelmodell(abwesend={
         name.split()[0]: WOCHE1
         for name, *_ in BELEGSCHAFT
         if name.split()[0] not in bleiben
-    })))
+    }), sekunden="20"))
     assert p.paket.get("angewendet") is True, p.paket.get("fehler")
     return p
 
@@ -616,3 +640,76 @@ def test_notlage_niemand_bekommt_eine_fremde_dienstlaenge(notlage):
         for t in notlage.tage(name):
             laenge = NETTO[notlage.dienst(name, t)]
             assert laenge in (300, 360, 420, 480), f"{name} am {t}: {laenge}"
+
+# ════════════════════════════════════════════════════════════════════════════
+# §164 Der Nachmittag, die Dienstenden und die Springerin
+# ════════════════════════════════════════════════════════════════════════════
+
+def test_leer_niemand_geht_zwischen_halb_vier_und_fuenf(leer):
+    """
+    Es gibt genau drei Arten, den Tag zu beenden: Spätdienst um 17:00,
+    Nachmittag um 15:30 oder 15:00, oder früher. Ein Dienst, der um 16:00
+    endet, lässt jemanden gehen, wenn die Ablösung noch nicht da ist.
+    """
+    for name, *_ in BELEGSCHAFT:
+        for t in leer.tage(name):
+            ende = leer.ende(name, t)
+            assert not ("15:30" < ende < "17:00"), \
+                f"{name} am {t}: Dienstende {ende}"
+
+
+@pytest.mark.parametrize("etage,etikett", [(UNTEN, "untere"), (OBEN, "obere")])
+def test_leer_der_nachmittag_ist_besetzt(leer, etage, etikett):
+    """Neben dem Spätdienst bleibt mindestens eine Kraft bis 15:30."""
+    for t in TAGE:
+        assert leer.bis_uhrzeit(t, etage, "15:30") >= 1, \
+            f"{etikett} Etage am {t}: niemand bleibt bis 15:30"
+
+
+def test_leer_meistens_bleiben_sogar_zwei_bis_halb_vier(leer):
+    """
+    Zwei sind der Wunsch, nicht die Pflicht. Bei voller Besetzung sollte er
+    fast immer erfüllt sein — sonst ist das Gewicht zu schwach gewählt.
+    """
+    erfuellt = sum(1 for t in TAGE for etage in (UNTEN, OBEN)
+                   if leer.bis_uhrzeit(t, etage, "15:30") >= 2)
+    assert erfuellt >= 18, f"nur {erfuellt} von 20 Etagentagen mit zwei bis 15:30"
+
+
+def test_leer_der_nachmittagsdienst_wird_wirklich_benutzt(leer):
+    """
+    Der Dienst von 08:00 bis 15:30 ist für die Siebenstundenkräfte neu. Wenn
+    er nie vorkommt, war die ganze Übung umsonst.
+    """
+    benutzt = sum(1 for name, *_ in BELEGSCHAFT for t in leer.tage(name)
+                  if leer.dienst(name, t) == "t7n")
+    assert benutzt >= 3, f"der Nachmittagsdienst kommt nur {benutzt}× vor"
+
+
+def test_leer_nicole_hat_keine_frueh_und_spaetdienste(leer):
+    """
+    Die Springerin kommt zur Kernzeit. Wer sie ins Aufschließen steckt, hat
+    eine Kraft weniger, wenn alle Kinder da sind.
+    """
+    typen = leer.typen("Nicole Sprung")
+    assert "frueh" not in typen, typen
+    assert "spaet" not in typen, typen
+
+
+def test_leer_nicole_faengt_um_acht_oder_neun_an(leer):
+    for t in leer.tage("Nicole Sprung"):
+        beginn = SCHICHTEN_NACH_ID[leer.dienst("Nicole Sprung", t)]["von"]
+        assert beginn in ("08:00", "09:00"), f"Nicole beginnt am {t} um {beginn}"
+
+
+def test_schwer_nicole_bleibt_auch_unter_druck_in_der_kernzeit(schwer):
+    typen = schwer.typen("Nicole Sprung")
+    assert "frueh" not in typen and "spaet" not in typen, typen
+
+
+def test_schwer_der_nachmittag_haelt(schwer):
+    """Vier Ausfälle ändern nichts daran, dass jemand bis 15:30 bleibt."""
+    for t in TAGE:
+        for etage in (UNTEN, OBEN):
+            assert schwer.bis_uhrzeit(t, etage, "15:30") >= 1, \
+                f"{etage} am {t}: niemand bis 15:30"

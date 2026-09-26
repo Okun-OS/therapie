@@ -1092,6 +1092,17 @@ def solve(rule_model: dict) -> dict:
                         "anzahl": int(wert),
                     })
         pack_report["verletzungen"] = verletzungen
+        # §164 Angaben, die immer in den Bericht gehoeren — auch wenn nichts
+        # schiefging.
+        hinweise: list[str] = []
+        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            for h in kontext.berichte:
+                try:
+                    wert = int(solver_inst.value(h["variable"]))
+                except Exception:
+                    continue
+                hinweise.append(h["vorlage"].format(n=wert))
+        pack_report["hinweise"] = hinweise
         pack_report["hartVerletzt"] = sum(
             1 for v in verletzungen if v["art"] == "hart")
         pack_report["weichVerletzt"] = sum(

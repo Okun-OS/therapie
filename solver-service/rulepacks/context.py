@@ -65,6 +65,14 @@ class PlanKontext:
     # machen" nicht mehr als ein Vorsatz.
     anzeiger: list = field(default_factory=list)
 
+    # §164 Zwischenspeicher fuer geteilte Hilfsvariablen (siehe auf_etage).
+    _auf_etage: dict = field(default_factory=dict)
+
+    # §164 Angaben, die IMMER in den Bericht gehoeren — nicht nur, wenn etwas
+    # schiefging. „Die Leitung hat an allen zehn Tagen Leitungsdienst" ist
+    # keine Verletzung, aber es ist genau das, was die Leitung wissen will.
+    berichte: list = field(default_factory=list)
+
     # ── Dimensionen ──────────────────────────────────────────────────────────
     @property
     def n_emp(self) -> int: return len(self.employees)
@@ -99,6 +107,16 @@ class PlanKontext:
         if gewicht <= 0:
             return
         self.kosten.append(gewicht * term)
+
+    def melde_immer(self, variable, vorlage: str) -> None:
+        """
+        Nach dem Loesen berichten, was auch immer herauskam.
+
+        `vorlage` enthaelt `{n}` fuer den Wert der Variablen. Anders als
+        `melde_wenn` schweigt das hier nicht, wenn nichts passiert ist — eine
+        Null ist hier eine Aussage: „hat an keinem Tag ausgeholfen".
+        """
+        self.berichte.append({"variable": variable, "vorlage": vorlage})
 
     def melde_wenn(self, variable, art: str, text: str) -> None:
         """
@@ -143,6 +161,31 @@ class PlanKontext:
 
     def ist_freitag(self, di: int) -> bool:
         return self.weekdays[di] == 4
+
+    # ── Dienstzeiten ─────────────────────────────────────────────────────────
+    @staticmethod
+    def _minuten(zeit: str) -> int:
+        h, m = zeit.split(":")
+        return int(h) * 60 + int(m)
+
+    def dienstende(self, si: int) -> int:
+        """Das Ende eines Dienstes in Minuten seit Mitternacht."""
+        return self._minuten(self.shifts[si].get("bis", "00:00"))
+
+    def dienstbeginn(self, si: int) -> int:
+        return self._minuten(self.shifts[si].get("von", "00:00"))
+
+    def dienste_bis(self, uhrzeit: str) -> list[int]:
+        """
+        Alle Dienste, die genau zu dieser Uhrzeit enden.
+
+        §164 Fuer die Nachmittagsbesetzung: In einer Kita ist nicht wichtig,
+        WIE LANGE jemand da ist, sondern BIS WANN. Morgens passiert wenig,
+        nachmittags viel — wer um 14:30 geht, hilft am Nachmittag niemandem,
+        auch wenn er acht Stunden gearbeitet hat.
+        """
+        ziel = self._minuten(uhrzeit)
+        return [si for si in range(self.n_shifts) if self.dienstende(si) == ziel]
 
     def historie(self, ei: int, schluessel: str) -> int:
         """Ein Zaehler aus der Belastungshistorie, 0 wenn er fehlt."""
@@ -273,6 +316,27 @@ class PlanKontext:
     @property
     def gruppen_aktiv(self) -> bool:
         return self.n_groups > 0
+
+    def auf_etage(self, ei: int, di: int, etage_id: str):
+        """
+        §164 Hilfsvariable: Steht diese Person an diesem Tag auf dieser Etage?
+
+        Sie wird EINMAL gebaut und dann geteilt. Vorher legte jede Regel, die
+        ueber Etagen spricht, ihre eigene an — die Etagenbesetzung und die
+        Nachmittagsbesetzung rechneten dasselbe doppelt. Das kostete nicht nur
+        Speicher: Der Solver konnte zwischen zwei Variablen, die dasselbe
+        bedeuten, nichts folgern, und der schwere Fall brauchte statt Sekunden
+        eine halbe Minute.
+        """
+        schluessel = (ei, di, etage_id)
+        if schluessel in self._auf_etage:
+            return self._auf_etage[schluessel]
+        gis = [gi for gi, g in enumerate(self.gruppen) if g.get("etageId") == etage_id]
+        v = self.model.new_bool_var(f"aufet_{ei}_{di}_{etage_id}")
+        # Hoechstens eine Gruppe je Person und Tag — die Summe ist also 0 oder 1.
+        self.model.add(v == sum(self.G[ei, di, gi] for gi in gis))
+        self._auf_etage[schluessel] = v
+        return v
 
     def gruppe(self, name_teil: str) -> int:
         treffer = [

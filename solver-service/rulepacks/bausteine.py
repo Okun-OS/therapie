@@ -594,7 +594,7 @@ def genau_einer_je_etage(ctx: PlanKontext, dienst_typ: str,
             hier = []
             for ei in range(ctx.n_emp):
                 im_dienst = sum(ctx.X[ei, di, si] for si in si_liste)
-                auf_etage = sum(ctx.G[ei, di, gi] for gi in gis)
+                auf_etage = ctx.auf_etage(ei, di, et.get("id"))
                 z = ctx.model.new_bool_var(f"et_{dienst_typ}_{di}_{ei}_{et.get('id')}")
                 ctx.model.add(z <= im_dienst)
                 ctx.model.add(z <= auf_etage)
@@ -754,6 +754,14 @@ def nur_im_notfall(ctx: PlanKontext, name: str, gewicht: int = 9_000) -> None:
         gesamt, "weich",
         f"{person} musste als Notfallreserve in die Gruppenbesetzung.",
     )
+    # §164 Und immer, auch wenn nichts war: Die Leitung will wissen, ob sie
+    # in der kommenden Woche Leitungsdienst hat oder irgendwo aushelfen muss.
+    # Eine Null ist hier eine Aussage, keine Stille.
+    ctx.melde_immer(
+        gesamt,
+        f"{person}: an {{n}} von {ctx.n_days} Tagen als Aushilfe in der "
+        f"Gruppenbesetzung, sonst Leitungsdienst.",
+    )
     ctx.notiere(f"{person} wird nur im Notfall eingeplant.")
 
 
@@ -888,3 +896,142 @@ def person_in_gruppe_frei_an(ctx: PlanKontext, name: str, gruppe_teil: str,
     """Wie `person_frei_an`, aber ueber Name UND Stammgruppe eindeutig."""
     ei = ctx.person_in_gruppe(name, gruppe_teil)
     person_frei_an(ctx, ctx.employees[ei]["name"], *wochentage)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §164 Wann jemand geht, zaehlt mehr als wie lange er da war
+#
+# In einer Kita ist der Nachmittag die anstrengende Zeit: Die Kinder sind wach,
+# die Eltern kommen, es wird abgeholt und erzaehlt. Morgens passiert wenig.
+#
+# Der Rechendienst kennt aber nur Stundenzahlen. Fuer ihn ist eine
+# Achtstundenkraft von 06:00 bis 14:30 dasselbe wie eine von 07:00 bis 15:30 —
+# fuer den Betrieb ist es der Unterschied zwischen einem ruhigen und einem
+# ueberforderten Nachmittag.
+# ════════════════════════════════════════════════════════════════════════════
+
+def genug_bis_uhrzeit(ctx: PlanKontext, uhrzeit: str, mindestens: int = 1,
+                      am_besten: int = 2, gewicht_mindest: int = 20_000,
+                      gewicht_wunsch: int = 3_000) -> None:
+    """
+    Auf jeder Etage bleiben genug Leute bis zu dieser Uhrzeit.
+
+    Zwei Stufen, und beide braucht es:
+
+      MINDESTENS — darunter geht es nicht. Wer allein mit dem Spaetdienst
+      dasteht, kann sich nicht kurz abwenden, und genau dann passiert etwas.
+
+      AM BESTEN — das ist der Normalfall, den man anstreben will. Er ist
+      bewusst weich: An einem Tag mit zwei Krankmeldungen ist er nicht zu
+      halten, und dann soll der Plan trotzdem entstehen.
+
+    Der Spaetdienst zaehlt hier NICHT mit: Er endet spaeter und ist ohnehin da.
+    Gemeint sind die Kraefte, die neben ihm bis zum Nachmittag bleiben.
+    """
+    if not ctx.etagen:
+        raise RegelFehler(
+            "Keine Etagen hinterlegt — eine Regel je Etage liefe ins Leere."
+        )
+    si_liste = ctx.dienste_bis(uhrzeit)
+    if not si_liste:
+        enden = sorted({ctx.shifts[si].get("bis", "?") for si in range(ctx.n_shifts)})
+        raise RegelFehler(
+            f"Kein Dienst endet um {uhrzeit}. Vorhandene Dienstenden: {enden}. "
+            "Ohne einen solchen Dienst kann die Regel nichts bewirken — er "
+            "gehoert am Standort angelegt."
+        )
+
+    for et in ctx.etagen:
+        gis = [gi for gi, g in enumerate(ctx.gruppen) if g.get("etageId") == et.get("id")]
+        if not gis:
+            continue
+        et_name = et.get("name", et.get("id"))
+        for di in range(ctx.n_days):
+            hier = []
+            for ei in range(ctx.n_emp):
+                bis_dann = sum(ctx.X[ei, di, si] for si in si_liste)
+                auf_etage = ctx.auf_etage(ei, di, et.get("id"))
+                z = ctx.model.new_bool_var(f"bis_{uhrzeit}_{di}_{ei}_{et.get('id')}")
+                ctx.model.add(z <= bis_dann)
+                ctx.model.add(z <= auf_etage)
+                ctx.model.add(z >= bis_dann + auf_etage - 1)
+                hier.append(z)
+            anzahl = sum(hier)
+
+            fehlt = ctx.model.new_int_var(0, mindestens, f"bismin_{di}_{et.get('id')}")
+            ctx.model.add(anzahl + fehlt >= mindestens)
+            ctx.strafe(gewicht_mindest, fehlt)
+            ctx.melde_wenn(
+                fehlt, "hart",
+                f"{et_name} am {ctx.days[di]}: niemand bleibt bis {uhrzeit} — "
+                "der Nachmittag haengt allein am Spätdienst.",
+            )
+
+            if am_besten > mindestens:
+                knapp = ctx.model.new_int_var(0, am_besten, f"bissoll_{di}_{et.get('id')}")
+                ctx.model.add(anzahl + knapp >= am_besten)
+                ctx.strafe(gewicht_wunsch, knapp)
+
+    ctx.notiere(
+        f"Auf jeder Etage bleiben bis {uhrzeit} mindestens {mindestens}, "
+        f"am besten {am_besten} Personen (neben dem Spätdienst)."
+    )
+
+
+def kein_dienstende_zwischen(ctx: PlanKontext, nach: str, vor: str) -> None:
+    """
+    In diesem Zeitfenster endet kein Dienst.
+
+    Der Betrieb kennt genau drei Arten, einen Tag zu beenden: mit dem
+    Spaetdienst um 17:00, mit dem Nachmittag um 15:30 oder um 15:00, oder
+    frueher, weil jemand um sechs angefangen hat oder weniger Stunden hat.
+    Ein Dienst, der um 16:00 endet, gehoert in keine dieser Schubladen — er
+    laesst jemanden gehen, wenn die Ablösung noch nicht da ist.
+
+    Die Regel sperrt solche Dienste fuer alle, statt sich darauf zu verlassen,
+    dass niemand sie anlegt. Genau das passiert naemlich irgendwann.
+    """
+    von_min = ctx._minuten(nach)
+    bis_min = ctx._minuten(vor)
+    betroffen = [
+        si for si in range(ctx.n_shifts)
+        if von_min < ctx.dienstende(si) < bis_min
+    ]
+    if not betroffen:
+        ctx.notiere(
+            f"Kein Dienst endet zwischen {nach} und {vor} — nichts zu sperren."
+        )
+        return
+    for si in betroffen:
+        for ei in range(ctx.n_emp):
+            for di in range(ctx.n_days):
+                ctx.model.add(ctx.X[ei, di, si] == 0)
+    namen = ", ".join(ctx.shifts[si].get("name", "?") for si in betroffen)
+    ctx.notiere(
+        f"Gesperrt, weil zwischen {nach} und {vor} endend: {namen}."
+    )
+
+
+def nur_dienstarten(ctx: PlanKontext, name: str, *typen: str) -> None:
+    """
+    Diese Person arbeitet nur in Diensten dieser Art.
+
+    Fuer die Springerin: Sie kommt zur Kernzeit, nicht zum Aufschliessen und
+    nicht zum Abschliessen. Wer sie in den Fruehdienst steckt, hat eine Kraft
+    weniger, wenn alle Kinder da sind — und das Aufschliessen soll ohnehin
+    jemand machen, der die Gruppe kennt.
+    """
+    ei = ctx.person(name)
+    erlaubt: set[int] = set()
+    for t in typen:
+        erlaubt.update(ctx.dienste_vom_typ(t))
+    if not erlaubt:
+        raise RegelFehler(f"Keine Dienste der Art {typen} gefunden.")
+    for di in range(ctx.n_days):
+        for si in range(ctx.n_shifts):
+            if si not in erlaubt:
+                ctx.model.add(ctx.X[ei, di, si] == 0)
+    ctx.notiere(
+        f"{ctx.employees[ei].get('name', name)} arbeitet nur in Diensten der "
+        f"Art: {', '.join(typen)}."
+    )

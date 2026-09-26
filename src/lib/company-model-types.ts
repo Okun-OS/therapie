@@ -306,6 +306,10 @@ export interface GenerierterPlan {
     verletzungen?: Array<{ art: 'hart' | 'weich'; text: string; anzahl: number }>
     hartVerletzt?: number
     weichVerletzt?: number
+    // §164 Angaben, die IMMER in den Bericht gehören — auch wenn nichts
+    // schiefging. „Die Leitung hat an allen zehn Tagen Leitungsdienst" ist
+    // keine Verletzung, aber genau das, was die Leitung wissen will.
+    hinweise?: string[]
   } | null
 }
 

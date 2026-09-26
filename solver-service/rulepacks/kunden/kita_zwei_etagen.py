@@ -48,12 +48,13 @@ from ..context import RegelFehler
 
 META = {
     "kunde": "Kita – zwei Etagen, acht Gruppen",
-    "version": 1,
+    "version": 2,
     "beschreibung":
         "16 Kräfte auf zwei Etagen. Feste Tagesmuster statt frei verteilter "
-        "Wochenstunden, genau ein Früh- und Spätdienst je Etage, Gruppe 1 nie "
-        "unter zwei Personen, Springerin unten, Leitung nur im Notfall — und "
-        "Fairness über die Zeitraumgrenze hinweg, den Freitag eigens gezählt.",
+        "Wochenstunden, genau ein Früh- und Spätdienst je Etage, bis 15:30 "
+        "genug Leute für den Nachmittag, Gruppe 1 nie unter zwei Personen, "
+        "Springerin nur zur Kernzeit, Leitung nur im Notfall — und Fairness "
+        "über die Zeitraumgrenze hinweg, den Freitag eigens gezählt.",
     "aufgenommen": "2026-09-26",
 }
 
@@ -166,6 +167,27 @@ def apply(ctx) -> None:
     b.versuche(ctx, b.genau_einer_je_etage, "frueh")
     b.versuche(ctx, b.genau_einer_je_etage, "spaet")
 
+    # ── 2b. Der Nachmittag ──────────────────────────────────────────────────
+    #
+    # Morgens passiert wenig, nachmittags viel: Die Kinder sind wach, die
+    # Eltern kommen, es wird abgeholt und erzählt. Deshalb zählt nicht, WIE
+    # LANGE jemand da war, sondern BIS WANN.
+    #
+    # Neben dem Spätdienst bleibt auf jeder Etage mindestens eine Kraft bis
+    # 15:30 — am besten zwei. Die zweite ist bewusst ein Wunsch und kein
+    # Muss: An einem Tag mit zwei Krankmeldungen ist sie nicht zu halten, und
+    # dann soll der Plan trotzdem entstehen.
+    b.versuche(ctx, b.genug_bis_uhrzeit, "15:30", 1, 2)
+
+    # Es gibt genau drei Arten, den Tag zu beenden: mit dem Spätdienst um
+    # 17:00, mit dem Nachmittag um 15:30 oder 15:00, oder früher, weil jemand
+    # um sechs angefangen hat. Ein Dienst, der um 16:00 endet, passt in keine
+    # davon — er lässt jemanden gehen, wenn die Ablösung noch nicht da ist.
+    #
+    # Gesperrt wird es hier und nicht dem Zufall überlassen, dass niemand so
+    # einen Dienst anlegt. Genau das passiert nämlich irgendwann.
+    b.versuche(ctx, b.kein_dienstende_zwischen, "15:30", "17:00")
+
     # ── 3. Gruppe 1 ─────────────────────────────────────────────────────────
     #
     # Die einzige Gruppe, bei der die Mindestbesetzung nicht verhandelbar ist.
@@ -183,6 +205,11 @@ def apply(ctx) -> None:
     # Was das Paket beisteuert, sind die beiden Ausnahmen von dieser Ordnung:
     if _eindeutig(ctx, SPRINGERIN) is not None:
         b.versuche(ctx, b.springer, SPRINGERIN, "untere", "Gruppe 1")
+        # Sie kommt zur Kernzeit — nicht zum Aufschließen und nicht zum
+        # Abschließen. Wer sie in den Frühdienst steckt, hat eine Kraft
+        # weniger, wenn alle Kinder da sind; und das Aufschließen soll
+        # jemand machen, der die Gruppe kennt.
+        b.versuche(ctx, b.nur_dienstarten, SPRINGERIN, "mittel")
 
     # Die Leitung: NUR über das Gewicht, nicht über ein Verbot.
     #
