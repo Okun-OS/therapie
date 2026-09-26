@@ -307,6 +307,21 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
     })
   }
 
+  // §163 Was das Regelpaket im fertigen Plan reißen musste.
+  //
+  // Der Unterschied zwischen hart und weich ist der ganze Punkt: Eine Etage
+  // ohne Frühdienst macht morgens nicht auf — das ist kritisch. Ein zweiter
+  // Spätdienst in einer Woche ist unschön und war nötig — das ist ein Hinweis.
+  // Beides gleich laut zu melden sorgt dafür, dass das Erste untergeht.
+  for (const v of paket?.verletzungen ?? []) {
+    verletzungen.push({
+      schwere: v.art === 'hart' ? 'kritisch' : 'niedrig',
+      regelId: `paket-${v.art}-${paket?.id ?? '?'}`,
+      beschreibung: v.anzahl > 1 ? `${v.text} (${v.anzahl}×)` : v.text,
+      betrifft: [],
+    })
+  }
+
   // §97: Veralteter Rechendienst — individuelle Regeln können wirkungslos sein,
   // ohne dass ein Fehler auftaucht. Das ist der gefährlichste Zustand überhaupt,
   // weil der Plan völlig unauffällig aussieht.

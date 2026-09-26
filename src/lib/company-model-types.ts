@@ -181,6 +181,11 @@ export interface PlanungsMitarbeiter {
     nachtSchichten: number    // count in last 5 weeks
     wochenendDienste: number  // count in last 5 weeks
     spaetDienste: number      // count in last 5 weeks
+    // §163 Der Rechendienst gleicht nur INNERHALB des geplanten Zeitraums aus.
+    // Diese Zähler tragen die Vorgeschichte über die Zeitraumgrenze.
+    fruehDienste?: number
+    freitagFrueh?: number
+    freitagSpaet?: number
   }
 }
 
@@ -290,6 +295,17 @@ export interface GenerierterPlan {
     angewendet: boolean
     fehler?: string
     regeln?: string[]
+    // §163 Was der fertige Plan an Regeln reißen musste. Erst nach dem Lösen
+    // bekannt — vorher ist es eine Möglichkeit, keine Tatsache.
+    //
+    // „hart" heißt: etwas, das nicht passieren darf, ist passiert (eine Etage
+    // ohne Frühdienst, eine Gruppe unter der Mindestbesetzung). „weich" heißt:
+    // eine Regel musste weichen, damit es überhaupt einen Plan gibt (jemand
+    // bekam zwei Spätdienste in einer Woche). Wer beides gleich anzeigt, sorgt
+    // dafür, dass das Erste übersehen wird.
+    verletzungen?: Array<{ art: 'hart' | 'weich'; text: string; anzahl: number }>
+    hartVerletzt?: number
+    weichVerletzt?: number
   } | null
 }
 

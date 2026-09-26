@@ -17,8 +17,8 @@ Zuletzt aktualisiert: **26.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §162 Die Masken für Pfändung, bAV, Kurzarbeit und Umlagesätze |
-| **Als Nächstes** | Das Musterregelpaket an einem Demo-Account ausprobieren |
+| **Zuletzt fertig** | §163 Kundenpaket Kita: zwei Etagen, acht Gruppen — Abnahme in drei Läufen |
+| **Als Nächstes** | Das Kita-Paket einem Demo-Account zuordnen und ausprobieren |
 | **Danach** | Was sich dabei zeigt. Parallel: App in die Stores (wartet auf D-U-N-S) |
 
 > **Der Lohn-Block ist vollständig** (§155–§162). Pfändung, betriebliche
@@ -105,6 +105,9 @@ Nach Dringlichkeit, nicht nach Bereich.
 ### Dienstplanung
 - [x] ~~**Musterregelpaket**~~ ✅ §161 — womit ein neuer Kunde anfängt, bis
       sein eigenes Paket aus dem Gespräch entsteht
+- [x] ~~**Kundenpaket Kita (zwei Etagen, acht Gruppen)**~~ ✅ §163 — Regelpakete
+      können jetzt bewerten statt nur zu verbieten. Die Abnahme fand vier
+      Fehler, darunter einen, der jeden Plan dieser Kita unbrauchbar machte
 
 ### Sonst offen
 - [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon),

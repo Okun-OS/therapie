@@ -411,3 +411,55 @@ describe('verifyPlan', () => {
     })
   })
 })
+
+/**
+ * §163 Was das Regelpaket im fertigen Plan reißen musste.
+ *
+ * Der Unterschied zwischen hart und weich entscheidet, ob jemand hinsieht.
+ */
+describe('Verletzungen des Regelpakets (§163)', () => {
+  const model = makeModel(
+    [makeEmp('emp1', { wochenstundenSoll: 8 })],
+    [makeSchicht('frueh', '06:00', '14:00')],
+    ['2024-01-08'],
+  )
+  const plan = (verletzungen: Array<{ art: 'hart' | 'weich'; text: string; anzahl: number }>) => ({
+    ...makePlan([makeEintrag('emp1', '2024-01-08', 'frueh')]),
+    regelpaket: {
+      id: 'kita', name: 'Kita (v1)', angewendet: true,
+      regeln: ['Eine Regel griff'],
+      verletzungen,
+    },
+  })
+
+  it('meldet eine harte Verletzung als kritisch', () => {
+    const ergebnis = verifyPlan(plan([{
+      art: 'hart', anzahl: 1,
+      text: 'obere Etage: kein Frühdienst am 2026-10-06 — die Etage wird nicht geöffnet.',
+    }]), model)
+    const treffer = ergebnis.verletzungen.filter(v => v.regelId.startsWith('paket-hart'))
+    expect(treffer).toHaveLength(1)
+    expect(treffer[0].schwere).toBe('kritisch')
+    expect(treffer[0].beschreibung).toMatch(/Frühdienst/)
+  })
+
+  it('meldet eine weiche Verletzung leiser — sie war nötig', () => {
+    const ergebnis = verifyPlan(plan([{
+      art: 'weich', anzahl: 2,
+      text: 'Marin Berg: mehr als 1× Frühdienst in der Woche — Fairnessregel überschritten.',
+    }]), model)
+    const treffer = ergebnis.verletzungen.filter(v => v.regelId.startsWith('paket-weich'))
+    expect(treffer).toHaveLength(1)
+    expect(treffer[0].schwere).toBe('niedrig')
+    // Die Zahl gehört dazu: einmal ist ein Ausrutscher, fünfmal ein Muster.
+    expect(treffer[0].beschreibung).toMatch(/\(2×\)/)
+  })
+
+  it('schweigt, wenn nichts gerissen ist', () => {
+    const ergebnis = verifyPlan(plan([]), model)
+    expect(ergebnis.verletzungen.filter(v => v.regelId.startsWith('paket-hart')))
+      .toHaveLength(0)
+    expect(ergebnis.verletzungen.filter(v => v.regelId.startsWith('paket-weich')))
+      .toHaveLength(0)
+  })
+})

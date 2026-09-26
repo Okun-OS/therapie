@@ -2697,6 +2697,120 @@ Nachweis: 24 Prüfungen im echten Browser
 Playwright ist keine Projektabhängigkeit) und zwei neue Gegenprüfungen im
 Gesamtlauf. **1355/1355 in 38 Prüfungen**, 938 Modultests, Bauen sauber.
 
+## Block §163 (26.09.) — Kundenpaket Kita: zwei Etagen, acht Gruppen
+
+Das erste Regelpaket, das ein vollständiges schriftliches Regelwerk eines
+Kunden abbildet: 16 Kräfte, zwei Etagen, acht Gruppen, geöffnet 06:00–17:00.
+
+### Regelpakete konnten bisher nur verbieten
+Das war die eigentliche Arbeit. Ein Baustein konnte sagen „das ist nicht
+erlaubt" — und damit lässt sich die Hälfte dessen, was ein Betrieb über seinen
+Dienstplan sagt, nicht ausdrücken: *möglichst nicht*, *fair über die Wochen*,
+*nur im Notfall* sind Bewertungen, keine Verbote. Wer ein Verbot daraus macht,
+bekommt einen unlösbaren Plan oder eine Regel, die im Ernstfall alles
+blockiert.
+
+`PlanKontext` hat deshalb drei neue Fähigkeiten:
+- **`strafe(gewicht, term)`** — das Paket steuert Kostenterme zum Ziel des
+  Solvers bei, im Verhältnis zu dessen eigenen Gewichten (unbesetzte Stelle
+  10.000, Gruppenwechsel 300, Minute über der Sollzeit 30).
+- **`melde_wenn(variable, art, text)`** — Anzeiger, die **nach** dem Lösen
+  ausgewertet werden. Ob eine weiche Regel wirklich gerissen ist, weiß man
+  erst, wenn der Plan steht.
+- **Netto-Arbeitszeit je Dienst** — 06:00–14:30 sind 8:30 Anwesenheit und 8:00
+  Arbeitszeit. Wer mit der Anwesenheit rechnet, schreibt jedem Achtstündler
+  zweieinhalb Stunden Mehrarbeit in die Woche.
+
+### Die Gewichtsleiter — sie ist die eigentliche Fachlichkeit
+| Gewicht | Was |
+|---|---|
+| 50.000 | Gruppe 1 unter zwei Personen |
+| 30.000 | Eine Etage wird nicht geöffnet oder geschlossen |
+| 10.000 | Eine Gruppe unbesetzt *(Rechendienst)* |
+| **9.000** | **Die Leitung springt ein** |
+| 8.000 | Jemand bekommt einen zweiten Früh- oder Spätdienst in der Woche |
+| 2.000 | Eine persönliche Vorliebe wird verletzt |
+| 1.500 | Die Springerin verlässt ihre Etage |
+| 800 / 300 | Gruppenwechsel über die Etage / innerhalb *(Rechendienst)* |
+| 200 | Die Springerin verlässt ihre Lieblingsgruppe |
+
+Die Leitung steht bewusst zwischen „zweiter Spätdienst" und „Gruppe
+unbesetzt": Sie ist die **letzte** Reserve, aber sie ist eine. Ein höherer
+Wert macht sie zur Zierde — dann bleibt lieber eine Gruppe leer.
+
+### Vier Fehler, die die Abnahme gefunden hat
+**1. `ctx.etagen` war immer leer.** Der Rechendienst las sie aus
+`rule_model["etagen"]` — den Schlüssel schickt die App gar nicht, die Etagen
+stehen in `einheiten` mit `typ: "etage"`. Jede Paketregel über Etagen lief ins
+Leere, ohne dass etwas auffiel.
+
+**2. Eine Mindestbesetzung von 0 war nicht ausdrückbar.** `max(1, minStaff)`
+machte aus jeder ausdrücklichen Null eine Eins. Diese Kita führt von jeder
+Dienstart vier Längen (8, 7, 6, 5 Stunden je nach Vertrag) — der Solver
+verlangte für **jede** Variante täglich eine Besetzung, obwohl der Betrieb
+genau einen Frühdienst je Etage braucht. Ergebnis: 400.000 Strafpunkte, die
+sich nicht abbauen ließen, und weil sie alles überdeckten, kam der Solver in
+seinen 15 Sekunden nicht mehr zum Feinschliff.
+
+> **Vorher:** 60 Sekunden, `FEASIBLE`, Kosten 581.100.
+> **Nachher:** 1,2 Sekunden, `OPTIMAL`, Kosten 97.100.
+
+Sichtbar wurde es daran, dass eine Vorliebe nicht durchkam, die leicht zu
+erfüllen gewesen wäre.
+
+**3. Das Paket widersprach sich selbst.** „Leitung keiner Gruppe zuordnen" und
+„Leitung darf im Notfall die Gruppe abdecken" standen beide drin. Das Verbot
+gewann — und damit konnte sie auch dann nicht einspringen, wenn eine Etage
+sonst zubliebe. Jetzt regelt es allein das Gewicht.
+
+**4. Zwei Kolleginnen heißen Katrin.** Das Regelwerk nennt sie „Katrin K" und
+„Katrin"; nach dem zweiten allein zu suchen trifft beide. `person()` weigert
+sich zu Recht zu raten — die Regel wurde still übersprungen. Neu:
+`person_in_gruppe(name, gruppe)`. Absichtlich nicht der Nachname: Wer heiratet,
+heißt anders, und dann läuft die Regel ins Leere.
+
+### Was das Paket bewusst NICHT festlegt
+Die Dienstzeiten — sie stehen in den Schichten des Standorts. Das Paket spricht
+über **Arbeitsstunden** und findet die passenden Dienste selbst; legt der
+Betrieb eine weitere Achtstundenschicht an, gilt die Regel weiter. Und welcher
+von Heikes vier Arbeitstagen der Sechsstundentag ist: Das Regelwerk lässt es
+offen, also entscheidet es der Plan. Eine erfundene Festlegung wäre schlimmer
+als keine.
+
+### Die Abnahme: drei Läufe am wirklich gelösten Plan
+`solver-service/test_kita_zwei_etagen.py` — **51 Prüfungen**, gegen den echten
+`solve()`, nicht gegen ein nachgebautes Modell. (Der erste Anlauf *war* ein
+Nachbau und meldete prompt zwei Fehler, die es im echten Modell nie gab: Die
+Hälfte dessen, was einen brauchbaren Plan ausmacht, steuert der Rechendienst
+selbst bei.)
+
+- **Der leere Lauf** — alle da. Jede harte Regel muss punktgenau sitzen:
+  Wochenstunden auf die Minute, Tagesmuster, feste freie Tage, genau ein Früh-
+  und Spätdienst je Etage, Gruppe 1 zu zweit, Leitung außen vor, keine einzige
+  gemeldete Verletzung.
+- **Der schwere Lauf** — zwei Wochen Urlaub, drei Krankmeldungen, Gruppe 2
+  fällt eine Woche komplett aus, Wunschliste, Vorbelastung aus den Vorwochen.
+  Geprüft: die harten Regeln halten, die Springerin verlässt Gruppe 1 und
+  besetzt Gruppe 2, die Vorbelastung verschiebt die Frühdienste, keine harte
+  Verletzung.
+- **Der Notlauf** — nur noch vier Kräfte. Dienstags steht die obere Etage mit
+  einer einzigen Person da, die nicht gleichzeitig öffnen und schließen kann.
+  Geprüft: es gibt trotzdem einen Plan, die Leitung springt ein, **und es steht
+  im Bericht**. Der feste freie Tag gilt auch jetzt.
+
+Die Verletzungen laufen bis in die Oberfläche durch: `plan-verifier` meldet
+harte als **kritisch**, weiche als **niedrig** — „obere Etage: kein Frühdienst
+am 6.10." ist etwas anderes als „Marin: zweiter Frühdienst in der Woche, wegen
+Unterbesetzung".
+
+Gesamtlauf: **1358/1358 in 38 Prüfungen**, 941 Modultests, 91 Tests im
+Rechendienst, Bauen sauber.
+
+### Offen und bewusst benannt
+Der Kunde hat keinen Namen genannt — das Paket heißt `kita_zwei_etagen` und
+trägt den Anzeigenamen „Kita – zwei Etagen, acht Gruppen". Sobald der richtige
+Name feststeht, gehört er in `META`.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

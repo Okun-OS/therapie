@@ -39,6 +39,32 @@ class PlanKontext:
     weeks: list[list[int]]           # Tages-Indizes je Kalenderwoche
     protokoll: list[str] = field(default_factory=list)
 
+    # §163 Netto-Arbeitsminuten je Dienst — Anwesenheit minus Pause.
+    #
+    # Ein Regelpaket, das ueber Arbeitszeit spricht, muss den Unterschied
+    # kennen: 06:00–14:30 sind 8:30 Anwesenheit und 8:00 Arbeitszeit. Wer mit
+    # der Anwesenheit rechnet, baut jedem Achtstuendler eine halbe Stunde
+    # Ueberzeit in die Woche.
+    netto_je_dienst: list[int] = field(default_factory=list)
+
+    # §163 Kostenterme, die das Paket zum Ziel des Solvers beisteuert.
+    #
+    # Bisher konnte ein Regelpaket nur VERBIETEN. Fuer die Haelfte dessen, was
+    # ein Betrieb ueber seinen Dienstplan sagt, reicht das nicht: „moeglichst
+    # nicht", „fair ueber die Wochen", „nur im Notfall" sind Bewertungen, keine
+    # Verbote. Ein Verbot daraus zu machen erzeugt entweder einen unloesbaren
+    # Plan oder eine stillschweigend ignorierte Regel.
+    kosten: list = field(default_factory=list)
+
+    # §163 Anzeiger, die nach dem Loesen ausgewertet werden.
+    #
+    # Ob eine weiche Regel wirklich gerissen ist, weiss man erst, wenn der Plan
+    # steht. Hier merkt sich das Paket die Variablen, an denen man es ablesen
+    # kann — der Solver wertet sie nach dem Loesen aus und schreibt das
+    # Ergebnis in den Bericht. Ohne das waere „Regelverletzungen transparent
+    # machen" nicht mehr als ein Vorsatz.
+    anzeiger: list = field(default_factory=list)
+
     # ── Dimensionen ──────────────────────────────────────────────────────────
     @property
     def n_emp(self) -> int: return len(self.employees)
@@ -51,6 +77,94 @@ class PlanKontext:
 
     def notiere(self, text: str) -> None:
         self.protokoll.append(text)
+
+    # ── Bewerten statt verbieten (§163) ──────────────────────────────────────
+    def strafe(self, gewicht: int, term) -> None:
+        """
+        Einen Kostenterm zum Ziel des Solvers beisteuern.
+
+        Je hoeher das Gewicht, desto unwilliger weicht der Plan davon ab. Zur
+        Einordnung, was der Solver selbst schon vergibt:
+
+            10 000  eine unbesetzte Pflichtstelle
+               500  Arbeit ohne Gruppenzuordnung
+               300  Verlassen der Stammgruppe (800 ueber die Etage hinweg)
+               200  Abweichung vom bestehenden Plan
+                30  eine Minute ueber der Wochensollzeit
+                20  eine Minute darunter
+
+        Wer hier 1 000 000 vergibt, hat kein starkes Gewicht gewaehlt, sondern
+        ein Verbot gebaut — dann gehoert es auch als Verbot geschrieben.
+        """
+        if gewicht <= 0:
+            return
+        self.kosten.append(gewicht * term)
+
+    def melde_wenn(self, variable, art: str, text: str) -> None:
+        """
+        Nach dem Loesen melden, falls diese Variable nicht null ist.
+
+        `art` ist "hart" oder "weich". Der Unterschied gehoert in den Bericht:
+        Eine gerissene Fairnessregel ist etwas anderes als eine Gruppe, die
+        nicht besetzt werden konnte — und wer beides gleich anzeigt, bringt
+        niemanden dazu, das Zweite ernst zu nehmen.
+        """
+        if art not in ("hart", "weich"):
+            raise RegelFehler(f'Unbekannte Art "{art}" — erlaubt sind "hart" und "weich".')
+        self.anzeiger.append({"variable": variable, "art": art, "text": text})
+
+    # ── Zeit ─────────────────────────────────────────────────────────────────
+    def netto(self, si: int) -> int:
+        """Netto-Arbeitsminuten eines Dienstes (ohne Pause)."""
+        if not self.netto_je_dienst:
+            raise RegelFehler(
+                "Dieser Rechendienst liefert keine Netto-Arbeitszeiten. "
+                "Regeln ueber Arbeitsstunden brauchen sie — Version pruefen."
+            )
+        return self.netto_je_dienst[si]
+
+    def dienste_mit_stunden(self, *stunden: float) -> list[int]:
+        """
+        Dienste, deren NETTO-Arbeitszeit einer dieser Stundenzahlen entspricht.
+
+        Damit laesst sich ein Tagesmuster ausdruecken, ohne die Dienste beim
+        Namen zu nennen: „Marin arbeitet Dienste zu acht Stunden" gilt auch
+        dann noch, wenn der Betrieb eine weitere Achtstundenschicht anlegt.
+        """
+        gesucht = {int(round(st * 60)) for st in stunden}
+        treffer = [si for si in range(self.n_shifts) if self.netto(si) in gesucht]
+        if not treffer:
+            vorhanden = sorted({self.netto(si) / 60 for si in range(self.n_shifts)})
+            raise RegelFehler(
+                f"Kein Dienst mit {list(stunden)} Arbeitsstunden. "
+                f"Vorhanden sind: {vorhanden} Stunden."
+            )
+        return treffer
+
+    def ist_freitag(self, di: int) -> bool:
+        return self.weekdays[di] == 4
+
+    def historie(self, ei: int, schluessel: str) -> int:
+        """Ein Zaehler aus der Belastungshistorie, 0 wenn er fehlt."""
+        h = self.employees[ei].get("belastungsHistorie") or {}
+        try:
+            return max(0, int(h.get(schluessel, 0) or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    def abwesend_an(self, ei: int) -> set:
+        """Tage, an denen diese Person ohnehin nicht planbar ist."""
+        e = self.employees[ei]
+        raus = set(e.get("urlaubAn") or []) | set(e.get("nichtVerfuegbarAn") or [])
+        for w in e.get("wuensche") or []:
+            if w.get("typ") == "wunschfrei" and w.get("datum"):
+                raus.add(w["datum"])
+        return raus
+
+    def volle_woche(self, ei: int, woche: list[int]) -> bool:
+        """Ist diese Person in dieser Woche an keinem Tag abwesend?"""
+        raus = self.abwesend_an(ei)
+        return not any(self.days[di] in raus for di in woche)
 
     # ── Personen finden ──────────────────────────────────────────────────────
     def person(self, name: str) -> int:
@@ -77,6 +191,42 @@ class PlanKontext:
             bekannt = ", ".join(str(e.get("name", "?")) for e in self.employees[:12])
             raise RegelFehler(f'Niemand gefunden für {list(namensteile)}. Vorhanden sind: {bekannt}')
         return treffer
+
+    def person_in_gruppe(self, name: str, gruppe_teil: str) -> int:
+        """
+        §163 Eine Person ueber Namen UND Stammgruppe finden.
+
+        Zwei Kolleginnen heissen Katrin. Ein Regelwerk, das nur Vornamen
+        nennt, ist damit mehrdeutig — und `person()` weigert sich zu Recht,
+        eine davon zu raten. Die Stammgruppe entscheidet: Sie steht in den
+        Stammdaten, wird dort gepflegt und ist eindeutig.
+
+        Das ist ausdruecklich besser als ein Nachname im Regelpaket: Wer
+        heiratet, heisst anders, und dann laeuft die Regel ins Leere.
+        """
+        gi = self.gruppe(gruppe_teil)
+        gruppen_id = self.gruppen[gi].get("id")
+        gesucht = name.strip().lower()
+        treffer = [
+            ei for ei, e in enumerate(self.employees)
+            if gesucht in str(e.get("name", "")).lower()
+            and e.get("stammEinheitId") == gruppen_id
+        ]
+        if not treffer:
+            in_gruppe = ", ".join(
+                str(e.get("name", "?")) for e in self.employees
+                if e.get("stammEinheitId") == gruppen_id
+            ) or "niemand"
+            raise RegelFehler(
+                f'Niemand namens „{name}" in Gruppe '
+                f'„{self.gruppen[gi].get("name", gruppe_teil)}". Dort stehen: {in_gruppe}'
+            )
+        if len(treffer) > 1:
+            namen = ", ".join(self.employees[i].get("name", "?") for i in treffer)
+            raise RegelFehler(
+                f'„{name}" passt in dieser Gruppe auf mehrere Personen: {namen}.'
+            )
+        return treffer[0]
 
     def person_optional(self, name: str) -> int | None:
         """Wie person(), aber ohne Fehler — für Regeln, die nur manchmal greifen."""

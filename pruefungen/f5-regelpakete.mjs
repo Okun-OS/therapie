@@ -156,6 +156,23 @@ const mitMuster = await sende(leitung, '/api/planning/runs', 'POST',
 check('Ein Plan mit dem Musterpaket läuft an', mitMuster.status === 202,
   `HTTP ${mitMuster.status}`)
 
+// ── §163 Das Kundenpaket der Kita ──────────────────────────────────────────
+//
+// Hier wird nur geprüft, dass es da und zuordenbar ist. Ob es RICHTIG rechnet,
+// lässt sich an diesem Standort nicht prüfen — dafür bräuchte es die acht
+// Gruppen, zwei Etagen und sechzehn Verträge dieser Kita. Genau das tut die
+// Abnahme im Rechendienst (solver-service/test_kita_zwei_etagen.py) an einem
+// vollständigen Betrieb und am wirklich gelösten Plan.
+console.log('\n=== Kundenpaket Kita ===')
+
+const kitaPaket = (uebersicht.body.pakete ?? []).find(p => p.id === 'kita_zwei_etagen')
+check('Das Kita-Paket steht zur Auswahl', !!kitaPaket,
+  (uebersicht.body.pakete ?? []).map(p => p.id).join(', '))
+check('Es ist kein Musterpaket, sondern ein Kundenpaket',
+  kitaPaket?.muster !== true, JSON.stringify(kitaPaket?.muster))
+check('Seine Beschreibung nennt, was es ausmacht',
+  /Tagesmuster/.test(kitaPaket?.beschreibung ?? ''), kitaPaket?.beschreibung)
+
 // ── Aufräumen ──────────────────────────────────────────────────────────────
 await zustandWiederherstellen()
 const danach = (await hole(okun, '/api/okun/dienstplanung')).body.standorte

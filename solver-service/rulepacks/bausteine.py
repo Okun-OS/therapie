@@ -424,3 +424,467 @@ def versuche(ctx: PlanKontext, regel, *args, **kwargs) -> bool:
     except RegelFehler as fehler:
         ctx.notiere(f"Übersprungen ({regel.__name__}): {fehler}")
         return False
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §163 Bausteine, die BEWERTEN statt zu verbieten
+#
+# Die Bausteine oben setzen Verbote: etwas ist erlaubt oder nicht. Die Haelfte
+# dessen, was ein Betrieb ueber seinen Dienstplan sagt, laesst sich so nicht
+# ausdruecken — „moeglichst nicht“, „fair ueber die Wochen“, „nur im Notfall“.
+# Wer daraus ein Verbot macht, bekommt entweder einen unloesbaren Plan oder
+# eine Regel, die im Ernstfall alles blockiert.
+#
+# Diese Bausteine geben dem Solver stattdessen Gewichte und merken sich, woran
+# man nach dem Loesen ablesen kann, ob die Regel gehalten hat.
+# ════════════════════════════════════════════════════════════════════════════
+
+
+# ── Arbeitszeit: das Tagesmuster ────────────────────────────────────────────
+
+def tagesmuster(ctx: PlanKontext, name: str,
+                muster: dict[float, int]) -> None:
+    """
+    Das verbindliche Wochenmuster einer Person in Arbeitsstunden je Tag.
+
+        tagesmuster(ctx, "Heike", {8: 3, 6: 1})
+
+    heisst: drei Tage zu acht Arbeitsstunden, ein Tag zu sechs — jede Woche,
+    nicht im Durchschnitt.
+
+    WARUM DAS EIN EIGENER BAUSTEIN IST
+    Ohne ihn verteilt der Solver die Wochenstunden beliebig: zehn Stunden am
+    Montag, sechs am Dienstag, neun am Mittwoch. Rechnerisch stimmt die Woche,
+    im Betrieb ist der Plan unbrauchbar — und arbeitszeitrechtlich meist auch
+    nicht haltbar.
+
+    Gerechnet wird in NETTO-Arbeitsstunden. Ein Achtstundendienst dauert
+    achteinhalb Stunden Anwesenheit; wer nach Anwesenheit sucht, findet ihn
+    nicht.
+
+    In Wochen mit Abwesenheit gilt das Muster NICHT: Wer drei Tage Urlaub hat,
+    kann keine vier Tage arbeiten. Dann greifen die ueblichen weichen Regeln.
+    """
+    ei = ctx.person(name)
+    person = ctx.employees[ei].get("name", name)
+
+    gruppen_si = {}
+    for stunden, anzahl in muster.items():
+        gruppen_si[stunden] = ctx.dienste_mit_stunden(stunden)
+
+    alle_erlaubt = set()
+    for si_liste in gruppen_si.values():
+        alle_erlaubt.update(si_liste)
+
+    # Alles andere ist fuer diese Person gesperrt — sonst fuellt der Solver die
+    # Luecke mit einer Dienstlaenge, die es im Vertrag nicht gibt.
+    for di in range(ctx.n_days):
+        for si in range(ctx.n_shifts):
+            if si not in alle_erlaubt:
+                ctx.model.add(ctx.X[ei, di, si] == 0)
+
+    for woche in ctx.weeks:
+        if not ctx.volle_woche(ei, woche):
+            continue
+        for stunden, anzahl in muster.items():
+            ctx.model.add(
+                sum(ctx.X[ei, di, si] for di in woche for si in gruppen_si[stunden])
+                == anzahl
+            )
+
+    teile = ", ".join(f"{a}× {st} Std." for st, a in sorted(muster.items(), reverse=True))
+    ctx.notiere(f"{person} arbeitet je volle Woche genau: {teile}.")
+
+
+def exakte_wochenstunden(ctx: PlanKontext, abweichung_minuten: int = 0,
+                         ausser: tuple[str, ...] = ()) -> None:
+    """
+    Die Wochenarbeitszeit muss die Sollzeit exakt treffen.
+
+    Der Solver bestraft Abweichungen sonst nur (20 Cent je Minute darunter,
+    30 darueber) — er nimmt sie also in Kauf, wenn es anderswo mehr spart. Ein
+    Betrieb, der keine Ueber- und Minusstunden aus der Planung will, braucht
+    daraus eine Bedingung.
+
+    Nur fuer volle Wochen ohne Abwesenheit: Wer Urlaub hat, kann die Sollzeit
+    nicht erreichen, und eine Bedingung, die das verlangt, macht den ganzen
+    Plan unloesbar.
+
+    `ausser` nimmt Personen aus, deren Wochenstunden NICHT im Dienstplan
+    stehen — die Leitung etwa arbeitet vierzig Stunden, aber nicht in der
+    Gruppenbesetzung. Ohne diese Ausnahme zwaenge die Regel sie genau dorthin,
+    wo sie nicht hingehoert.
+    """
+    ausgenommen: set[int] = set()
+    for name in ausser:
+        try:
+            ausgenommen.add(ctx.person(name))
+        except RegelFehler:
+            continue
+
+    getroffen = 0
+    for ei, emp in enumerate(ctx.employees):
+        if ei in ausgenommen:
+            continue
+        soll = int(round(float(emp.get("wochenstundenSoll", 0) or 0) * 60))
+        if soll <= 0:
+            continue
+        for woche in ctx.weeks:
+            if not ctx.volle_woche(ei, woche):
+                continue
+            ist = sum(
+                ctx.X[ei, di, si] * ctx.netto(si)
+                for di in woche
+                for si in range(ctx.n_shifts)
+            )
+            ctx.model.add(ist >= soll - abweichung_minuten)
+            ctx.model.add(ist <= soll + abweichung_minuten)
+            getroffen += 1
+    ctx.notiere(
+        f"Die Wochenarbeitszeit trifft die Sollzeit exakt "
+        f"({getroffen} Personenwochen ohne Abwesenheit"
+        + (f", {len(ausgenommen)} ausgenommen" if ausgenommen else "")
+        + (f", Toleranz {abweichung_minuten} Min." if abweichung_minuten else "")
+        + ")."
+    )
+
+
+# ── Besetzung: genau so viele, nicht mindestens ─────────────────────────────
+
+def genau_einer_je_etage(ctx: PlanKontext, dienst_typ: str,
+                         gewicht: int = 30_000) -> None:
+    """
+    Auf jeder Etage genau eine Person in diesem Dienst — an jedem Plantag.
+
+    „Genau eine“ und nicht „mindestens eine“: Zwei Frühdienste auf derselben
+    Etage sind keine bessere Besetzung, sondern eine verschenkte Kraft am
+    Vormittag, wenn alle Kinder da sind.
+
+    WARUM MIT GEWICHT UND NICHT ALS VERBOT
+    Weil ein Verbot den Plan unloesbar macht, sobald auf einer Etage niemand
+    verfuegbar ist — und ein Betrieb mit vier Kranken braucht dann trotzdem
+    einen Plan, nur eben mit einem deutlichen Hinweis. Das Gewicht liegt
+    dreifach ueber der Unterbesetzungsstrafe des Solvers: Der Plan gibt diese
+    Stelle erst auf, wenn es gar nicht anders geht. Und er meldet es.
+    """
+    if not ctx.etagen:
+        raise RegelFehler(
+            "Keine Etagen hinterlegt — eine Regel je Etage liefe ins Leere."
+        )
+    si_liste = ctx.dienste_vom_typ(dienst_typ)
+    if not si_liste:
+        si_liste = ctx.dienste(dienst_typ)
+
+    for et in ctx.etagen:
+        gis = [gi for gi, g in enumerate(ctx.gruppen) if g.get("etageId") == et.get("id")]
+        if not gis:
+            continue
+        et_name = et.get("name", et.get("id"))
+        for di in range(ctx.n_days):
+            # Wer auf dieser Etage in diesem Dienst steht: Dienst UND Gruppe
+            # dieser Etage muessen zusammenkommen.
+            #
+            # Gezaehlt wird je PERSON, nicht je Person und Gruppe. Beide Summen
+            # sind ohnehin hoechstens eins — niemand hat zwei Dienste an einem
+            # Tag, niemand steht in zwei Gruppen. Die erste Fassung legte eine
+            # Hilfsvariable je Gruppe an und blies das Modell auf das Vierfache
+            # auf; der Rechendienst fand in seinen fuenfzehn Sekunden dann nur
+            # noch irgendeinen gueltigen Plan statt des besten. Sichtbar wurde
+            # es daran, dass eine Vorliebe nicht mehr durchkam.
+            hier = []
+            for ei in range(ctx.n_emp):
+                im_dienst = sum(ctx.X[ei, di, si] for si in si_liste)
+                auf_etage = sum(ctx.G[ei, di, gi] for gi in gis)
+                z = ctx.model.new_bool_var(f"et_{dienst_typ}_{di}_{ei}_{et.get('id')}")
+                ctx.model.add(z <= im_dienst)
+                ctx.model.add(z <= auf_etage)
+                ctx.model.add(z >= im_dienst + auf_etage - 1)
+                hier.append(z)
+
+            fehlt = ctx.model.new_int_var(0, 1, f"etfehlt_{dienst_typ}_{di}_{et.get('id')}")
+            zuviel = ctx.model.new_int_var(0, ctx.n_emp, f"etzuviel_{dienst_typ}_{di}_{et.get('id')}")
+            ctx.model.add(sum(hier) + fehlt - zuviel == 1)
+            ctx.strafe(gewicht, fehlt)
+            # Einer zu viel ist ein Planungsfehler, kein Notstand — er kostet
+            # spuerbar, aber lange nicht so viel wie eine unbesetzte Etage.
+            ctx.strafe(max(1, gewicht // 20), zuviel)
+            ctx.melde_wenn(
+                fehlt, "hart",
+                f"{et_name}: kein {dienst_typ.capitalize()}dienst am "
+                f"{ctx.days[di]} — die Etage wird nicht "
+                + ("geöffnet." if dienst_typ.startswith("frueh") else "geschlossen."),
+            )
+
+    ctx.notiere(
+        f"Auf jeder der {len(ctx.etagen)} Etagen genau ein „{dienst_typ}“ je Tag."
+    )
+
+
+def mindestens_in_gruppe(ctx: PlanKontext, gruppe_teil: str, anzahl: int,
+                         gewicht: int = 50_000) -> None:
+    """
+    Diese Gruppe ist nie mit weniger als so vielen Personen besetzt.
+
+    Der Solver kennt schon eine Mindestbesetzung je Gruppe. Dieser Baustein
+    ist fuer die eine Gruppe, bei der es wirklich nicht verhandelbar ist —
+    etwa weil dort die Jüngsten betreut werden. Er wiegt fuenfmal schwerer als
+    die allgemeine Unterbesetzung und meldet sich, wenn er reisst.
+    """
+    gi = ctx.gruppe(gruppe_teil)
+    name = ctx.gruppen[gi].get("name", gruppe_teil)
+    for di in range(ctx.n_days):
+        fehlt = ctx.model.new_int_var(0, anzahl, f"g1fehlt_{di}_{gi}")
+        ctx.model.add(
+            sum(ctx.G[ei, di, gi] for ei in range(ctx.n_emp)) + fehlt >= anzahl
+        )
+        ctx.strafe(gewicht, fehlt)
+        ctx.melde_wenn(
+            fehlt, "hart",
+            f"{name} am {ctx.days[di]} unter der Mindestbesetzung von {anzahl}.",
+        )
+    ctx.notiere(f"„{name}“ ist immer mit mindestens {anzahl} Personen besetzt.")
+
+
+# ── Haeufigkeit mit Ausnahme ────────────────────────────────────────────────
+
+def hoechstens_pro_woche_weich(ctx: PlanKontext, dienst_typ: str, anzahl: int,
+                               gewicht: int = 8_000) -> None:
+    """
+    Höchstens so oft je Woche — aufweichbar, wenn es nicht anders geht.
+
+    Der harte Bruder dieses Bausteins (`hoechstens_pro_woche`) ist richtig,
+    solange genug Leute da sind. Fallen vier aus, macht er den Plan unloesbar,
+    und der Betrieb steht ohne alles da.
+
+    Hier darf die Grenze ueberschritten werden — es kostet, und es steht
+    hinterher im Bericht, bei wem und wie oft. Das ist der Unterschied
+    zwischen „die Regel gilt nicht“ und „die Regel musste weichen“.
+    """
+    si_liste = ctx.dienste_vom_typ(dienst_typ) or ctx.dienste(dienst_typ)
+    for ei in range(ctx.n_emp):
+        person = ctx.employees[ei].get("name", ei)
+        for wi, woche in enumerate(ctx.weeks):
+            ueber = ctx.model.new_int_var(0, len(woche), f"ueber_{dienst_typ}_{ei}_{wi}")
+            ctx.model.add(
+                sum(ctx.X[ei, di, si] for di in woche for si in si_liste)
+                <= anzahl + ueber
+            )
+            ctx.strafe(gewicht, ueber)
+            ctx.melde_wenn(
+                ueber, "weich",
+                f"{person}: mehr als {anzahl}× „{dienst_typ}“ in der Woche ab "
+                f"{ctx.days[woche[0]]} — Fairnessregel wegen personeller "
+                "Unterbesetzung überschritten.",
+            )
+    ctx.notiere(
+        f"Höchstens {anzahl}× „{dienst_typ}“ je Woche — bei Unterbesetzung "
+        "überschreitbar, dann sichtbar im Bericht."
+    )
+
+
+# ── Vorlieben ───────────────────────────────────────────────────────────────
+
+def moeglichst_nicht(ctx: PlanKontext, name: str, dienst_typ: str,
+                     gewicht: int = 2_000) -> None:
+    """
+    Diese Person bekommt diesen Dienst möglichst nicht.
+
+    Eine Vorliebe, kein Verbot: Wenn es sonst keinen gueltigen Plan gibt,
+    bekommt sie ihn trotzdem. Das Gewicht liegt unter dem einer unbesetzten
+    Stelle — sonst waere aus der Vorliebe ein Verbot geworden, das sich nur
+    anders schreibt.
+    """
+    ei = ctx.person(name)
+    si_liste = ctx.dienste_vom_typ(dienst_typ) or ctx.dienste(dienst_typ)
+    for di in range(ctx.n_days):
+        for si in si_liste:
+            ctx.strafe(gewicht, ctx.X[ei, di, si])
+    ctx.notiere(
+        f"{ctx.employees[ei].get('name', name)} bekommt „{dienst_typ}“ "
+        "möglichst nicht (Vorliebe, kein Verbot)."
+    )
+
+
+def nur_im_notfall(ctx: PlanKontext, name: str, gewicht: int = 9_000) -> None:
+    """
+    Diese Person wird nur eingeplant, wenn es ohne sie nicht geht.
+
+    Fuer die Leitung: Sie gehoert ins Haus, aber nicht in den Gruppenplan. Wer
+    sie als normale Kraft verplant, hat eine Stelle mehr besetzt und eine
+    Leitung weniger — und das faellt erst auf, wenn niemand ans Telefon geht.
+
+    WO DAS GEWICHT IN DER LEITER STEHT, IST DER GANZE PUNKT
+    Sie ist die LETZTE Reserve, nicht die erste. Vor ihr kommen: jemanden in
+    eine andere Gruppe schicken (300, ueber die Etage 800) und jemandem einen
+    zweiten Frueh- oder Spaetdienst zumuten (8 000). Nach ihr kommt, was
+    wirklich nicht passieren darf: eine unbesetzte Gruppe (10 000), eine Etage,
+    die nicht geoeffnet wird (30 000), Gruppe 1 unter zwei Personen (50 000).
+
+    Mit 9 000 liegt sie genau dazwischen. Ein hoeherer Wert macht sie zur
+    Zierde — dann bleibt lieber eine Gruppe leer, als dass die Leitung
+    einspringt, und das will niemand.
+
+    ACHTUNG BEI DEN STAMMDATEN
+    Steht die Leitung mit ihren vollen Wochenstunden im System, zieht das
+    Stundenziel des Rechendienstes gegen diese Regel: Eine nicht erreichte
+    Wochensollzeit kostet 20 je Minute, bei 40 Stunden also 48 000 in der
+    Woche — mehr, als ihr Einsatz kostet. Dann wird sie doch verplant.
+    Leitungszeit gehoert nicht in den Dienstplan; die Wochenstunden im
+    Lohnprofil bleiben davon unberuehrt.
+    """
+    ei = ctx.person(name)
+    person = ctx.employees[ei].get("name", name)
+    soll = float(ctx.employees[ei].get("wochenstundenSoll", 0) or 0)
+    if soll > 0:
+        ctx.notiere(
+            f"ACHTUNG: {person} soll nur im Notfall eingeplant werden, steht "
+            f"aber mit {soll:g} Wochenstunden im Dienstplan. Das Stundenziel "
+            "zieht gegen die Regel — die Sollzeit für die Dienstplanung "
+            "gehört auf null, ihre Leitungszeit steht im Lohnprofil."
+        )
+    eingesetzt = []
+    for di in range(ctx.n_days):
+        arbeitet = ctx.model.new_bool_var(f"notfall_{ei}_{di}")
+        ctx.model.add(arbeitet == sum(ctx.X[ei, di, si] for si in range(ctx.n_shifts)))
+        ctx.strafe(gewicht, arbeitet)
+        eingesetzt.append(arbeitet)
+    gesamt = ctx.model.new_int_var(0, ctx.n_days, f"notfall_summe_{ei}")
+    ctx.model.add(gesamt == sum(eingesetzt))
+    ctx.melde_wenn(
+        gesamt, "weich",
+        f"{person} musste als Notfallreserve in die Gruppenbesetzung.",
+    )
+    ctx.notiere(f"{person} wird nur im Notfall eingeplant.")
+
+
+def springer(ctx: PlanKontext, name: str, etage_teil: str,
+             lieblingsgruppe: str | None = None,
+             gewicht_etage: int = 1_500, gewicht_gruppe: int = 200) -> None:
+    """
+    Eine Springerin: kein fester Platz, aber ein bevorzugter Bereich.
+
+    Zwei Gewichte, und die Reihenfolge ist der ganze Punkt:
+
+      * Die Etage wiegt schwer — sie ist der Bereich, den die Person kennt.
+      * Die Lieblingsgruppe wiegt leicht. Dort steht sie, WENN nichts anderes
+        ansteht. Sobald anderswo jemand fehlt, gibt sie den Platz auf, weil
+        die Unterbesetzung dort tausendfach mehr kostet.
+
+    Waeren beide Gewichte gleich schwer, klebte die Springerin in ihrer
+    Lieblingsgruppe fest und waere keine Springerin mehr.
+    """
+    ei = ctx.person(name)
+    person = ctx.employees[ei].get("name", name)
+    eigene = set(ctx.gruppen_der_etage(etage_teil))
+    for di in range(ctx.n_days):
+        for gi in range(ctx.n_groups):
+            if gi not in eigene:
+                ctx.strafe(gewicht_etage, ctx.G[ei, di, gi])
+
+    if lieblingsgruppe:
+        lieb = ctx.gruppe(lieblingsgruppe)
+        for di in range(ctx.n_days):
+            for gi in range(ctx.n_groups):
+                if gi != lieb:
+                    ctx.strafe(gewicht_gruppe, ctx.G[ei, di, gi])
+        ctx.notiere(
+            f"{person} springt vorrangig auf „{etage_teil}“ ein und steht sonst "
+            f"in „{ctx.gruppen[lieb].get('name', lieblingsgruppe)}“."
+        )
+    else:
+        ctx.notiere(f"{person} springt vorrangig auf „{etage_teil}“ ein.")
+
+
+# ── Fairness ueber die Wochen ───────────────────────────────────────────────
+
+def historische_fairness(ctx: PlanKontext, dienst_typ: str, schluessel: str,
+                         gewicht: int = 120) -> None:
+    """
+    Wer diesen Dienst zuletzt oft hatte, bekommt ihn jetzt seltener.
+
+    Der Solver gleicht Dienste INNERHALB des geplanten Zeitraums aus. Über die
+    Zeitraumgrenze hinweg sieht er nichts: Wer vier Wochen in Folge den
+    Spaetdienst hatte, faengt in jeder neuen Planung bei null an. Für die
+    Betroffenen ist das der Unterschied zwischen einem fairen Plan und einem,
+    der sich fair ausrechnet.
+
+    Gezaehlt wird aus der Belastungshistorie, die die App mitliefert. Das
+    Gewicht wird MIT dem Zaehler multipliziert: Wer zehn hatte, zahlt
+    zehnfach.
+    """
+    si_liste = ctx.dienste_vom_typ(dienst_typ) or ctx.dienste(dienst_typ)
+    belastet = 0
+    for ei in range(ctx.n_emp):
+        last = ctx.historie(ei, schluessel)
+        if last <= 0:
+            continue
+        belastet += 1
+        for di in range(ctx.n_days):
+            for si in si_liste:
+                ctx.strafe(gewicht * last, ctx.X[ei, di, si])
+    ctx.notiere(
+        f"Historische Fairness „{dienst_typ}“: {belastet} Personen bringen eine "
+        f"Vorbelastung aus „{schluessel}“ mit."
+    )
+
+
+def freitagsfairness(ctx: PlanKontext, dienst_typ: str, schluessel: str,
+                     gewicht: int = 400) -> None:
+    """
+    Der Freitag wird eigens fair verteilt.
+
+    Ein Freitagsspaetdienst ist nicht dasselbe wie ein Dienstagsspaetdienst —
+    er kostet das Wochenende seinen Anfang. Wer ihn dreimal hintereinander
+    hatte, hat rechnerisch genauso viele Spaetdienste wie alle anderen und
+    trotzdem dreimal kein Wochenende.
+
+    Deshalb ein eigener Zaehler und ein eigenes Gewicht, deutlich ueber dem
+    der gewoehnlichen Verteilung.
+    """
+    si_liste = ctx.dienste_vom_typ(dienst_typ) or ctx.dienste(dienst_typ)
+    freitage = [di for di in range(ctx.n_days) if ctx.ist_freitag(di)]
+    if not freitage:
+        ctx.notiere(f"Freitagsfairness „{dienst_typ}“: kein Freitag im Plan.")
+        return
+
+    # Vorbelastung aus der Historie
+    for ei in range(ctx.n_emp):
+        last = ctx.historie(ei, schluessel)
+        if last > 0:
+            for di in freitage:
+                for si in si_liste:
+                    ctx.strafe(gewicht * last, ctx.X[ei, di, si])
+
+    # Und innerhalb des Zeitraums: die Spanne zwischen dem, der die meisten
+    # Freitagsdienste hat, und dem mit den wenigsten.
+    if len(freitage) >= 2 and ctx.n_emp >= 2:
+        hoch = ctx.model.new_int_var(0, len(freitage), f"fr_max_{dienst_typ}")
+        tief = ctx.model.new_int_var(0, len(freitage), f"fr_min_{dienst_typ}")
+        for ei in range(ctx.n_emp):
+            cnt = sum(ctx.X[ei, di, si] for di in freitage for si in si_liste)
+            ctx.model.add(hoch >= cnt)
+            ctx.model.add(tief <= cnt)
+        spanne = ctx.model.new_int_var(0, len(freitage), f"fr_spanne_{dienst_typ}")
+        ctx.model.add(spanne == hoch - tief)
+        ctx.strafe(gewicht, spanne)
+
+    ctx.notiere(
+        f"Freitagsfairness „{dienst_typ}“: {len(freitage)} Freitage im Plan, "
+        "eigener Zähler und eigenes Gewicht."
+    )
+
+
+# ── Wenn zwei gleich heissen ────────────────────────────────────────────────
+
+def tagesmuster_in_gruppe(ctx: PlanKontext, name: str, gruppe_teil: str,
+                          muster: dict[float, int]) -> None:
+    """Wie `tagesmuster`, aber ueber Name UND Stammgruppe eindeutig gemacht."""
+    ei = ctx.person_in_gruppe(name, gruppe_teil)
+    tagesmuster(ctx, ctx.employees[ei]["name"], muster)
+
+
+def person_in_gruppe_frei_an(ctx: PlanKontext, name: str, gruppe_teil: str,
+                             *wochentage: int) -> None:
+    """Wie `person_frei_an`, aber ueber Name UND Stammgruppe eindeutig."""
+    ei = ctx.person_in_gruppe(name, gruppe_teil)
+    person_frei_an(ctx, ctx.employees[ei]["name"], *wochentage)

@@ -537,13 +537,24 @@ def solve(rule_model: dict) -> dict:
     # §126 Regelpaket des Kunden — von OKUN programmierte Dienstplanlogik.
     # Es läuft NACH den Custom-Constraints: was der Kunde selbst eingestellt hat,
     # steht schon im Modell, und das Paket kann darauf aufbauen.
+    # §163 Die Etagen kamen hier bisher aus `rule_model["etagen"]` — den Schluessel
+    # schickt die App gar nicht. Sie stehen in `einheiten` mit typ "etage", so wie
+    # die Gruppen. `ctx.etagen` war damit IMMER leer, und jede Paketregel ueber
+    # Etagen lief ins Leere, ohne dass etwas auffiel. Genau der Fehler, vor dem
+    # die lauten Sucher schuetzen sollen — nur eine Ebene tiefer.
+    etagen_liste = [
+        u for u in (rule_model.get("einheiten") or []) if u.get("typ") == "etage"
+    ]
     kontext = PlanKontext(
         model=model, X=X, G=G,
         employees=employees, shifts=shifts,
-        gruppen=gruppen, etagen=rule_model.get("etagen") or [],
+        gruppen=gruppen, etagen=etagen_liste,
         days=days,
         weekdays=[date.fromisoformat(d).weekday() for d in days],
         weeks=list(weeks.values()),
+        # §163 Netto-Arbeitsminuten je Dienst. Sie haengen nur am Dienst, nicht
+        # an der Person — die Pausenregel kennt keine Namen.
+        netto_je_dienst=[_net_of_gross(_shift_dur(s)) for s in shifts],
     )
     pack_report = apply_pack(rule_model.get("rulePackId"), kontext)
 
@@ -624,9 +635,27 @@ def solve(rule_model: dict) -> dict:
     cost.extend(group_gap_cost)  # §96: Arbeit ohne Gruppenzuordnung
 
     # C1: Understaffing — heavy penalty (soft, not hard → always find a plan)
+    #
+    # §163 Eine ausdrueckliche 0 heisst jetzt „diese Schicht braucht niemanden".
+    # Vorher machte `max(1, ...)` daraus eine 1, und eine Mindestbesetzung von
+    # null war nicht ausdrueckbar.
+    #
+    # Aufgefallen ist es an einer Kita, die von jeder Dienstart vier Laengen
+    # fuehrt — Frueh 8, 7, 6 und 5 Stunden, je nach Vertrag. Der Solver verlangte
+    # fuer JEDE dieser vier Varianten taeglich eine Besetzung, obwohl der Betrieb
+    # genau EINEN Fruehdienst je Etage braucht. Der Plan zahlte dafuer 400.000
+    # Strafpunkte, die sich nicht abbauen liessen — und weil sie alles andere
+    # ueberdeckten, kam der Solver in seinen fuenfzehn Sekunden nicht mehr dazu,
+    # die kleinen Dinge zu optimieren. Sichtbar wurde es daran, dass eine
+    # Vorliebe nicht durchkam, die leicht zu erfuellen gewesen waere.
+    #
+    # Fehlt die Angabe ganz, bleibt es bei 1 wie bisher.
     for di in range(n_days):
         for si, shift in enumerate(shifts):
-            min_staff = max(1, shift.get("minBesetzungGesamt", 1))
+            roh = shift.get("minBesetzungGesamt", 1)
+            min_staff = 1 if roh is None else int(roh)
+            if min_staff <= 0:
+                continue
             shortage = model.new_int_var(0, n_emp, f"short_{di}_{si}")
             model.add(sum(X[e, di, si] for e in range(n_emp)) + shortage >= min_staff)
             cost.append(10_000 * shortage)
@@ -821,6 +850,11 @@ def solve(rule_model: dict) -> dict:
             changed = model.new_bool_var(f"chg_{ei}_{di}")
             model.add(changed == 1 - X[ei, di, si])
             cost.append(200 * changed)  # 200 per changed assignment
+
+    # §163 Was das Regelpaket bewertet hat. Es steht bewusst am Ende: Das Paket
+    # kennt die Gewichte des Solvers und setzt seine eigenen dazu ins
+    # Verhaeltnis.
+    cost.extend(kontext.kosten)
 
     if cost:
         model.minimize(sum(cost))
@@ -1034,6 +1068,34 @@ def solve(rule_model: dict) -> dict:
                             "einen passenden Teilzeit-Dienst anlegen oder die Arbeitstage anpassen."
                         ),
                     })
+
+    # §163 Die Anzeiger des Regelpakets auswerten. Ob eine weiche Regel wirklich
+    # gerissen ist, steht erst im geloesten Plan — vorher ist es eine Moeglichkeit.
+    #
+    # Getrennt nach hart und weich, weil der Unterschied fuer den Betrieb
+    # entscheidend ist: „Fairnessregel wegen Unterbesetzung ueberschritten" ist
+    # ein Hinweis, „Gruppe 1 konnte nicht mit zwei Personen besetzt werden" ist
+    # ein Problem. Wer beides gleich anzeigt, sorgt dafuer, dass das Zweite
+    # uebersehen wird.
+    if pack_report and pack_report.get("angewendet"):
+        verletzungen: list[dict] = []
+        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            for a in kontext.anzeiger:
+                try:
+                    wert = solver_inst.value(a["variable"])
+                except Exception:      # Variable nicht im Modell gelandet
+                    continue
+                if wert and wert > 0:
+                    verletzungen.append({
+                        "art": a["art"],
+                        "text": a["text"],
+                        "anzahl": int(wert),
+                    })
+        pack_report["verletzungen"] = verletzungen
+        pack_report["hartVerletzt"] = sum(
+            1 for v in verletzungen if v["art"] == "hart")
+        pack_report["weichVerletzt"] = sum(
+            1 for v in verletzungen if v["art"] == "weich")
 
     obj_str = (
         f"{solver_inst.objective_value:.0f}"

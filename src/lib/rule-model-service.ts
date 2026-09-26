@@ -448,6 +448,32 @@ export async function buildRuleModel(
       return dow === 0 || dow === 6
     }).length
 
+    // §163 Frühdienste und die Freitage eigens gezählt.
+    //
+    // Der Rechendienst gleicht Dienste INNERHALB des geplanten Zeitraums aus.
+    // Über dessen Grenze sieht er nichts: Wer vier Wochen in Folge den
+    // Spätdienst hatte, fängt in jeder neuen Planung bei null an. Für die
+    // Betroffenen ist das der Unterschied zwischen einem fairen Plan und
+    // einem, der sich fair ausrechnet.
+    //
+    // Der Freitag bekommt einen eigenen Zähler, weil er nicht wie die anderen
+    // Tage ist: Ein Freitagsspätdienst kostet das Wochenende seinen Anfang.
+    // Wer ihn dreimal hintereinander hatte, hat rechnerisch genauso viele
+    // Spätdienste wie alle anderen und trotzdem dreimal kein Wochenende.
+    const fruehDienste = empRecent.filter(e => {
+      const s = schichten.find(sh => sh.id === e.shiftId)
+      return s?.typ === 'frueh'
+    }).length
+
+    const anFreitag = (typ: string) => empRecent.filter(e => {
+      if (new Date(e.date).getDay() !== 5) return false
+      const s = schichten.find(sh => sh.id === e.shiftId)
+      return s?.typ === typ
+    }).length
+
+    const freitagFrueh = anFreitag('frueh')
+    const freitagSpaet = anFreitag('spaet')
+
     const empEinheiten: string[] = []
     if (emp.gruppe) empEinheiten.push(emp.gruppe)
     if (emp.bereich) empEinheiten.push(emp.bereich)
@@ -493,7 +519,10 @@ export async function buildRuleModel(
       wuensche: empWishes,
       besonderheiten: [emp.fixedLocations ?? null, profileText].filter(Boolean).join('; ') || undefined,
       letzteSchichten,
-      belastungsHistorie: { nachtSchichten, wochenendDienste, spaetDienste },
+      belastungsHistorie: {
+        nachtSchichten, wochenendDienste, spaetDienste,
+        fruehDienste, freitagFrueh, freitagSpaet,
+      },
     }
   })
 
