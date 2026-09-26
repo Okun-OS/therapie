@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Lock, Unlock, Package, AlertTriangle, Check } from 'lucide-react'
+import { paketName, musterHinweis } from '@/lib/regelpakete'
 
 /**
  * §126/§127 Dienstplanung je Standort einrichten und freischalten.
@@ -32,6 +33,8 @@ interface Paket {
   kunde?: string
   version?: number
   beschreibung?: string
+  /** §161 Vorlage statt Kundenpaket — sie ueberspringt, was nicht passt. */
+  muster?: boolean
 }
 
 export default function DienstplanungVerwalten() {
@@ -177,7 +180,7 @@ export default function DienstplanungVerwalten() {
                     <option value="">— keines (Standardregeln) —</option>
                     {pakete.map(p => (
                       <option key={p.id} value={p.id}>
-                        {p.kunde ?? p.id}{p.version ? ` (v${p.version})` : ''}
+                        {paketName(p)}
                       </option>
                     ))}
                   </select>
@@ -211,6 +214,18 @@ export default function DienstplanungVerwalten() {
                   <Package size={12} />
                   {pakete.find(p => p.id === s.rulePackId)?.beschreibung ?? s.rulePackId}
                 </p>
+              )}
+
+              {/* §161 Ein zugeordnetes Musterpaket ist ein Zwischenstand. Wer
+                  es zuordnet und dann vergisst, plant dauerhaft mit Regeln,
+                  die fuer niemanden gemacht wurden. */}
+              {musterHinweis(pakete.find(p => p.id === s.rulePackId)) && (
+                <div className="flex items-start gap-2 rounded-xl bg-sky-50 border border-sky-200 p-2.5">
+                  <Package size={14} className="text-sky-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-sky-900">
+                    {musterHinweis(pakete.find(p => p.id === s.rulePackId))}
+                  </p>
+                </div>
               )}
             </div>
           ))}

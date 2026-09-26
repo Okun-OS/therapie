@@ -324,3 +324,245 @@ def test_fehler_im_paket_verhindert_die_planung_nicht():
         assert "absichtlich kaputt" in bericht["fehler"]
     finally:
         del sys.modules["rulepacks.kunden.kaputt"]
+
+
+# ── §161 Rollenbasierte Bausteine und das Musterpaket ───────────────────────
+
+def pflege_kontext(tage=14, mit_gruppen=True, mit_nacht=True, mit_azubi=True):
+    """
+    Eine Pflegeeinrichtung statt einer Kita — das Musterpaket ist dafür
+    gebaut. Bewusst mit Nachtdienst und einer Person in Ausbildung, weil
+    genau daran die Regeln hängen, die es hinzufügt.
+    """
+    ctx = baue_kontext(tage=tage, mit_gruppen=mit_gruppen)
+    ctx.employees = [
+        {"id": "e1", "name": "Frauke Leit", "rolle": "leitung"},
+        {"id": "e2", "name": "Anna Fischer", "rolle": "pflegefachkraft"},
+        {"id": "e3", "name": "Bea Klein", "rolle": "pflegefachkraft"},
+        {"id": "e4", "name": "Carl Ohm", "rolle": "pflegehilfskraft"},
+        {"id": "e5", "name": "Dana Neu", "rolle": "pflegehilfskraft"},
+    ]
+    if mit_azubi:
+        ctx.employees.append({"id": "e6", "name": "Emil Lern", "rolle": "auszubildender"})
+
+    ctx.shifts = [
+        {"id": "s1", "name": "Frühdienst", "typ": "frueh"},
+        {"id": "s2", "name": "Spätdienst", "typ": "spaet"},
+    ]
+    if mit_nacht:
+        ctx.shifts.append({"id": "s3", "name": "Nachtdienst", "typ": "nacht"})
+
+    # Variablen neu aufbauen, weil sich Personen und Dienste geändert haben.
+    from ortools.sat.python import cp_model as cm
+    model = cm.CpModel()
+    ctx.model = model
+    ctx.X = {
+        (ei, di, si): model.new_bool_var(f"x{ei}_{di}_{si}")
+        for ei in range(len(ctx.employees))
+        for di in range(ctx.n_days)
+        for si in range(len(ctx.shifts))
+    }
+    ctx.G = {
+        (ei, di, gi): model.new_bool_var(f"g{ei}_{di}_{gi}")
+        for ei in range(len(ctx.employees))
+        for di in range(ctx.n_days)
+        for gi in range(ctx.n_groups)
+    }
+    for ei in range(len(ctx.employees)):
+        for di in range(ctx.n_days):
+            model.add(sum(ctx.X[ei, di, si] for si in range(len(ctx.shifts))) <= 1)
+    ctx.protokoll = []
+    return ctx
+
+
+def test_rolle_ohne_gruppe_trifft_ueber_die_rolle():
+    ctx = pflege_kontext()
+    b.rolle_ohne_gruppe(ctx, "leitung")
+    solver = loese(ctx)
+    for di in range(ctx.n_days):
+        for gi in range(ctx.n_groups):
+            assert solver.value(ctx.G[0, di, gi]) == 0
+
+
+def test_rolle_ohne_gruppe_wirft_wenn_die_rolle_fehlt():
+    ctx = pflege_kontext()
+    with pytest.raises(RegelFehler):
+        b.rolle_ohne_gruppe(ctx, "hausmeister")
+
+
+def test_rolle_niemals_dienst():
+    ctx = pflege_kontext()
+    b.rolle_niemals_dienst(ctx, "nacht", "auszubildend")
+    solver = loese(ctx)
+    azubi = len(ctx.employees) - 1
+    nacht = ctx.dienst("Nacht")
+    for di in range(ctx.n_days):
+        assert solver.value(ctx.X[azubi, di, nacht]) == 0
+
+
+def test_hoechstens_am_stueck_begrenzt_den_block():
+    ctx = pflege_kontext()
+    nacht = ctx.dienst("Nacht")
+    # Damit die Grenze überhaupt greifen MUSS: möglichst viele Nächte
+    for ei in range(ctx.n_emp):
+        for di in range(ctx.n_days):
+            ctx.model.add(ctx.X[ei, di, nacht] == 1).only_enforce_if(
+                ctx.model.new_bool_var(f"frei{ei}_{di}").negated())
+    b.hoechstens_am_stueck(ctx, "nacht", 3)
+    solver = loese(ctx)
+    for ei in range(ctx.n_emp):
+        folge = 0
+        for di in range(ctx.n_days):
+            folge = folge + 1 if solver.value(ctx.X[ei, di, nacht]) == 1 else 0
+            assert folge <= 3, f"{ctx.employees[ei]['name']} hat {folge} Nächte am Stück"
+
+
+def test_freies_wochenende_laesst_ein_ganzes_frei():
+    ctx = pflege_kontext()
+    # Ohne Gegendruck waere ein leerer Plan die einfachste Loesung. Deshalb
+    # wird verlangt, dass jede Person an moeglichst vielen Tagen arbeitet —
+    # erst dann zeigt sich, ob die Regel wirklich ein Wochenende freihaelt.
+    for ei in range(ctx.n_emp):
+        ctx.model.add(
+            sum(ctx.X[ei, di, si]
+                for di in range(ctx.n_days)
+                for si in range(len(ctx.shifts))) >= ctx.n_days - 2)
+    b.freies_wochenende(ctx, 1)
+    solver = loese(ctx)
+    for ei in range(ctx.n_emp):
+        frei = 0
+        for di in range(ctx.n_days - 1):
+            if ctx.weekdays[di] != 5:
+                continue
+            sa = sum(solver.value(ctx.X[ei, di, si]) for si in range(len(ctx.shifts)))
+            so = sum(solver.value(ctx.X[ei, di + 1, si]) for si in range(len(ctx.shifts)))
+            if sa == 0 and so == 0:
+                frei += 1
+        assert frei >= 1, f"{ctx.employees[ei]['name']} hat kein ganzes Wochenende frei"
+
+
+def test_freies_wochenende_ohne_wochenende_im_plan():
+    # Ein Plan von Montag bis Freitag enthaelt kein vollstaendiges Wochenende.
+    ctx = pflege_kontext(tage=5)
+    b.freies_wochenende(ctx, 1)
+    assert any("nichts zu tun" in z and "Wochenende" in z for z in ctx.protokoll)
+
+
+def test_freies_wochenende_wirft_wenn_es_nicht_reichen_kann():
+    ctx = pflege_kontext(tage=14)
+    with pytest.raises(RegelFehler):
+        b.freies_wochenende(ctx, 5)
+
+
+def test_nie_allein_stellt_begleitung_sicher():
+    ctx = pflege_kontext()
+    azubi = len(ctx.employees) - 1
+    # Der Azubi soll moeglichst oft eingeteilt werden — sonst waere die Regel
+    # dadurch erfuellt, dass er gar nicht arbeitet.
+    ctx.model.add(
+        sum(ctx.X[azubi, di, si]
+            for di in range(ctx.n_days)
+            for si in range(len(ctx.shifts))) >= 8)
+    b.nie_allein(ctx, "auszubildend")
+    solver = loese(ctx)
+    eingeteilt_tage = 0
+    for di in range(ctx.n_days):
+        for si in range(len(ctx.shifts)):
+            if solver.value(ctx.X[azubi, di, si]) != 1:
+                continue
+            eingeteilt_tage += 1
+            andere = sum(
+                solver.value(ctx.X[a, di, si])
+                for a in range(ctx.n_emp) if a != azubi)
+            assert andere >= 1, "Azubi steht allein im Dienst"
+    assert eingeteilt_tage >= 8
+
+
+def test_nie_allein_wirft_wenn_niemand_begleiten_kann():
+    ctx = pflege_kontext()
+    for e in ctx.employees:
+        e["rolle"] = "auszubildender"
+    with pytest.raises(RegelFehler):
+        b.nie_allein(ctx, "auszubildend")
+
+
+# ── versuche(): fuer Musterpakete, nicht fuer Kundenpakete ──────────────────
+
+def test_versuche_ueberspringt_und_protokolliert():
+    ctx = pflege_kontext()
+    erfolg = b.versuche(ctx, b.rolle_ohne_gruppe, "hausmeister")
+    assert erfolg is False
+    assert any("bersprungen" in z for z in ctx.protokoll)
+    # Der Grund muss dabeistehen, sonst hilft das Protokoll niemandem
+    assert any("hausmeister" in z for z in ctx.protokoll)
+
+
+def test_versuche_meldet_erfolg():
+    ctx = pflege_kontext()
+    assert b.versuche(ctx, b.rolle_ohne_gruppe, "leitung") is True
+
+
+# ── Das Musterpaket als Ganzes ──────────────────────────────────────────────
+
+def test_musterpaket_ist_auffindbar():
+    ids = [p["id"] for p in verfuegbare_pakete()]
+    assert "muster_pflege" in ids
+    muster = [p for p in verfuegbare_pakete() if p["id"] == "muster_pflege"][0]
+    assert muster.get("muster") is True
+
+
+def test_musterpaket_laeuft_auf_einer_pflegeeinrichtung():
+    ctx = pflege_kontext()
+    bericht = apply_pack("muster_pflege", ctx)
+    assert bericht["angewendet"] is True, bericht.get("fehler")
+    loese(ctx)
+    text = " ".join(bericht["regeln"])
+    assert "Fachkraft" in text
+    assert "Nie allein" in text
+    assert "Wochenende" in text
+
+
+def test_musterpaket_haelt_seine_regeln_im_geloesten_plan_ein():
+    ctx = pflege_kontext()
+    azubi = len(ctx.employees) - 1
+    nacht = ctx.dienst("Nacht")
+    # Gegendruck: moeglichst viel Arbeit, sonst beweist ein leerer Plan nichts.
+    for ei in range(ctx.n_emp):
+        ctx.model.add(
+            sum(ctx.X[ei, di, si]
+                for di in range(ctx.n_days)
+                for si in range(len(ctx.shifts))) >= 8)
+    apply_pack("muster_pflege", ctx)
+    solver = loese(ctx)
+
+    for di in range(ctx.n_days):
+        # Der Azubi ist nie im Nachtdienst und nie allein
+        assert solver.value(ctx.X[azubi, di, nacht]) == 0
+        # Die Leitung auch nicht
+        assert solver.value(ctx.X[0, di, nacht]) == 0
+        for si in range(len(ctx.shifts)):
+            if solver.value(ctx.X[azubi, di, si]) == 1:
+                begleitung = sum(
+                    solver.value(ctx.X[a, di, si])
+                    for a in range(ctx.n_emp) if a != azubi)
+                assert begleitung >= 1
+
+
+def test_musterpaket_ueberspringt_was_nicht_passt():
+    # Eine Einrichtung ohne Nachtdienst, ohne Gruppen und ohne Azubi: Das
+    # Musterpaket muss trotzdem durchlaufen und sagen, was es ausgelassen hat.
+    ctx = pflege_kontext(mit_gruppen=False, mit_nacht=False, mit_azubi=False)
+    bericht = apply_pack("muster_pflege", ctx)
+    assert bericht["angewendet"] is True, bericht.get("fehler")
+    text = " ".join(bericht["regeln"])
+    assert "bersprungen" in text
+    loese(ctx)
+
+
+def test_kundenpaket_scheitert_weiterhin_laut():
+    # Das Gegenstueck: Ein Kundenpaket, dessen Person es nicht gibt, darf
+    # NICHT stillschweigend durchlaufen.
+    ctx = pflege_kontext()
+    bericht = apply_pack("kita_sonnenschein", ctx)
+    assert bericht["angewendet"] is False
+    assert bericht["fehler"]

@@ -126,6 +126,36 @@ const nochFrei = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
   .find(s => s.id === locationId)
 check('Der Stand ist unverändert', nochFrei?.dienstplanungFrei === true)
 
+// ── §161 Das Musterregelpaket ──────────────────────────────────────────────
+//
+// Ein neuer Kunde steht bis zum Gespräch über seinen Betriebsablauf ohne
+// Regelpaket da. Der Rechendienst kennt dann nur die allgemeinen Grenzen und
+// weiß nichts über Fachkraftquoten, Leitung oder Auszubildende — sein erster
+// Plan sieht gut aus und ist fachlich falsch. Das Musterpaket schließt die
+// Lücke.
+console.log('\n=== Musterregelpaket ===')
+
+const musterPaket = (uebersicht.body.pakete ?? []).find(p => p.id === 'muster_pflege')
+check('Das Musterpaket steht zur Auswahl', !!musterPaket,
+  (uebersicht.body.pakete ?? []).map(p => p.id).join(', '))
+check('Es ist als Vorlage gekennzeichnet', musterPaket?.muster === true,
+  JSON.stringify(musterPaket))
+check('Und seine Beschreibung sagt, was es abdeckt',
+  /Fachkraft/.test(musterPaket?.beschreibung ?? ''), musterPaket?.beschreibung)
+
+const musterZu = await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+  { locationId, rulePackId: 'muster_pflege' })
+check('Es lässt sich einem Standort zuordnen', musterZu.status === 200,
+  musterZu.body.error)
+check('Und steht danach am Standort',
+  musterZu.body.standort?.rulePackId === 'muster_pflege',
+  musterZu.body.standort?.rulePackId)
+
+const mitMuster = await sende(leitung, '/api/planning/runs', 'POST',
+  { locationId, von, bis })
+check('Ein Plan mit dem Musterpaket läuft an', mitMuster.status === 202,
+  `HTTP ${mitMuster.status}`)
+
 // ── Aufräumen ──────────────────────────────────────────────────────────────
 await zustandWiederherstellen()
 const danach = (await hole(okun, '/api/okun/dienstplanung')).body.standorte

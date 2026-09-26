@@ -2580,6 +2580,68 @@ Entgeltumwandlung, Kurzarbeit und die Umlagesätze. Alles vier ist derzeit nur
 über die Schnittstelle erfassbar. Die Rechenwege stehen, sind geprüft und
 belegt — was fehlt, sind Eingabemasken.
 
+## Block §161 (26.09.) — Das Musterregelpaket
+
+**Die Lücke zwischen Vertragsabschluss und Aufnahmegespräch.** Ein Regelpaket
+entsteht im Gespräch über den Betriebsablauf. Bis dieses Gespräch stattgefunden
+hat, steht ein neuer Kunde ohne Paket da: Der Rechendienst kennt nur die
+allgemeinen Grenzen — Arbeitszeit, Ruhezeit, Tage am Stück — und weiß nichts
+über Fachkraftquoten, Leitung oder Auszubildende. Sein erster Plan sieht gut
+aus und ist fachlich falsch. Das ist der schlechteste denkbare erste Eindruck.
+
+### Was das Musterpaket abdeckt
+Sechs Regeln, die in fast jeder Einrichtung gelten:
+
+| Regel | Warum |
+|---|---|
+| In Früh-, Spät- und Nachtdienst mindestens eine Fachkraft | Rechnerisch ist eine Schicht nur aus Hilfskräften besetzt; fachlich ist sie ein Kunstfehler |
+| Wer in Ausbildung ist, steht nie allein im Dienst | Wer allein steht und nicht verantworten darf, ist im Ernstfall ausgeliefert |
+| Und nie im Nachtdienst | Nachts ist niemand da, den man fragen kann |
+| Leitung ohne feste Gruppe | Sonst sieht der Plan besetzt aus und ist es nicht |
+| Leitung nicht im Nachtdienst | Sie muss am nächsten Vormittag erreichbar sein |
+| Höchstens drei Nachtdienste am Stück | Drei Nächte sind etwas anderes als drei Frühdienste |
+| Mindestens ein ganzes Wochenende frei | Wer jeden Samstag arbeitet und jeden Sonntag frei hat, hat nie ein Wochenende |
+
+### Der Unterschied zum Kundenpaket — und warum er wichtig ist
+| Musterpaket | Kundenpaket |
+|---|---|
+| kennt den Betrieb nicht | entsteht aus dem Gespräch |
+| spricht über **Rollen** | spricht über **Namen** |
+| **überspringt**, was nicht passt | **scheitert laut**, wenn etwas fehlt |
+| für alle gleich | für diesen einen Betrieb |
+
+Bisher galt im Rechendienst ein einziger Grundsatz: *Eine Regel, die ins Leere
+läuft, ist der teuerste Fehler überhaupt — sie sieht aus, als würde sie
+wirken.* Für ein Kundenpaket bleibt das so. Ein Musterpaket kennt den Betrieb
+aber nicht: Ob es Nachtdienste gibt, ob mit Gruppen geplant wird, ob jemand als
+Auszubildender geführt ist — das weiß es nicht, und dass eine Regel nicht
+greift, ist dort der Normalfall.
+
+Deshalb gibt es `versuche()`: Passt eine Regel nicht, steht im Plan-Protokoll,
+**warum** sie übersprungen wurde. **Diese Liste ist die Tagesordnung für das
+Gespräch**, aus dem das eigene Paket entsteht. Die Prüfung zeigt beides: Das
+Musterpaket läuft auch auf einer Einrichtung ohne Nachtdienst, ohne Gruppen
+und ohne Azubi durch — das Kundenpaket der Kita scheitert auf derselben
+Einrichtung weiterhin laut.
+
+### Neue Bausteine
+`rolle_ohne_gruppe`, `rolle_niemals_dienst` (dieselben Regeln über die Rolle
+statt über den Namen), `hoechstens_am_stueck` (Blöcke einer Dienstart über
+Kalendertage), `freies_wochenende` (ganze Wochenenden, nicht einzelne Tage),
+`nie_allein` und `versuche`.
+
+### In der Oberfläche
+Das Paket heißt in der Auswahl *„Muster Pflege (Vorlage) — Vorlage"* und trägt
+am zugeordneten Standort einen Hinweis: Es ist ein Ausgangspunkt, kein
+Kundenpaket. Wer es zuordnet und dann vergisst, plant dauerhaft mit Regeln, die
+für niemanden gemacht wurden — und merkt es nicht, weil der Plan ja entsteht.
+
+Nachweis: 40 Tests im Rechendienst (`solver-service/test_rulepacks.py`, davon
+19 neu) und 6 Prüfungen am laufenden System in `pruefungen/f5-regelpakete.mjs`.
+Geprüft wird nicht, ob ein Baustein durchläuft, sondern ob der **gelöste Plan**
+sich daran hält. Gesamtlauf: **1351/1351 in 38 Prüfungen**, 936 Modultests,
+Bauen sauber.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

@@ -18,6 +18,15 @@ export interface Regelpaket {
   version?: number
   beschreibung?: string
   aufgenommen?: string
+  /**
+   * §161 Ein Musterpaket ist eine Vorlage, kein Kundenpaket.
+   *
+   * Es kennt den Betrieb nicht und überspringt, was nicht passt, statt laut
+   * zu scheitern. Das ist für den Anfang richtig und auf Dauer zu wenig —
+   * deshalb muss in der Oberfläche zu sehen sein, dass hier noch ein
+   * Gespräch aussteht.
+   */
+  muster?: boolean
 }
 
 /**
@@ -50,5 +59,21 @@ export async function verfuegbareRegelpakete(): Promise<{
 /** Anzeigename eines Pakets für die Oberfläche. */
 export function paketName(p: Regelpaket): string {
   const kunde = p.kunde ?? p.id
-  return p.version ? `${kunde} (v${p.version})` : kunde
+  const name = p.version ? `${kunde} (v${p.version})` : kunde
+  return p.muster ? `${name} — Vorlage` : name
+}
+
+/**
+ * §161 Was zu einem zugeordneten Musterpaket gesagt werden muss.
+ *
+ * Ein Musterpaket ist ein Ausgangspunkt. Wer es zuordnet und dann vergisst,
+ * plant dauerhaft mit Regeln, die für niemanden gemacht wurden — und merkt es
+ * nicht, weil der Plan ja entsteht.
+ */
+export function musterHinweis(p: Regelpaket | undefined): string | null {
+  if (!p?.muster) return null
+  return 'Das ist eine Vorlage, kein Kundenpaket. Sie deckt ab, was in fast '
+    + 'jeder Einrichtung gilt, und überspringt alles, was zu diesem Betrieb '
+    + 'nicht passt — im Plan steht dann, was übersprungen wurde. Diese Liste '
+    + 'ist die Tagesordnung für das Gespräch, aus dem das eigene Paket wird.'
 }
