@@ -17,7 +17,7 @@ Zuletzt aktualisiert: **26.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §166/§167 Kita: jede Gruppe besetzt, Abgabesperre, nachgerechnete Maßnahmenvorschläge |
+| **Zuletzt fertig** | §168 Kita: wer geht, lässt jemanden zurück |
 | **Als Nächstes** | Das Kita-Paket einem Demo-Account zuordnen und ausprobieren |
 | **Danach** | Was sich dabei zeigt. Parallel: App in die Stores (wartet auf D-U-N-S) |
 
@@ -115,6 +115,9 @@ Nach Dringlichkeit, nicht nach Bereich.
       Kraft je Gruppe, jede Gruppe besetzt (mit Rechnung in der Meldung),
       Abgabesperre bei Eingewöhnung, und ein Maßnahmenvorschlag, der vor dem
       Anzeigen nachgerechnet wird
+- [x] ~~**Kita-Paket, vierte Runde**~~ ✅ §168 — eine Kraft verlässt ihre
+      Stammgruppe nur, wenn dort eine eigene bleibt. „Jede Gruppe ist besetzt"
+      reichte nicht: Sie kann von einer Fremden besetzt sein
 
 ### Sonst offen
 - [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon),

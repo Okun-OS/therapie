@@ -48,7 +48,7 @@ from ..context import RegelFehler
 
 META = {
     "kunde": "Kita – zwei Etagen, acht Gruppen",
-    "version": 4,
+    "version": 5,
     "beschreibung":
         "16 Kräfte auf zwei Etagen. Feste Tagesmuster statt frei verteilter "
         "Wochenstunden, genau ein Früh- und Spätdienst je Etage, bis 15:30 "
@@ -211,6 +211,15 @@ def apply(ctx) -> None:
     # Eine Gruppe, die nur aus Vertretungen besteht, ist keine Gruppe mehr:
     # Dann kennt niemand die Kinder.
     b.versuche(ctx, b.hoechstens_eine_vertretung_je_gruppe, 1)
+
+    # Und: Wer geht, lässt jemanden zurück. „Jede Gruppe ist besetzt" reicht
+    # nicht — die Gruppe kann besetzt sein, aber nur noch von einer Fremden.
+    # Genau das ist passiert: Stephanie krank, Christina nach oben geschickt,
+    # die Springerin rückte in Gruppe 2 nach. Auf dem Papier war alles besetzt;
+    # in Wirklichkeit stand eine Gruppe, deren eigene Kraft da war, den ganzen
+    # Tag mit einer Fremden da — und oben hätte die Springerin genauso gut
+    # selbst einspringen können.
+    b.versuche(ctx, b.nur_abgeben_wenn_jemand_bleibt)
 
     # Und aus einer Gruppe in der Eingewöhnung wird niemand abgezogen. Die
     # Kinder lernen gerade ein Gesicht; wer es ihnen wegnimmt, fängt von vorne

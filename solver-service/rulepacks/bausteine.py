@@ -1234,3 +1234,52 @@ def abgabesperre_beachten(ctx: PlanKontext) -> None:
         )
     if gesperrt == 0:
         ctx.notiere("Keine Gruppe ist für Abgaben gesperrt.")
+
+
+def nur_abgeben_wenn_jemand_bleibt(ctx: PlanKontext) -> None:
+    """
+    §168 Eine Kraft verlaesst ihre Gruppe nur, wenn dort eine eigene bleibt.
+
+    DER FEHLER, DEN DIESE REGEL SCHLIESST
+    „Jede Gruppe ist besetzt" reicht nicht. Die Gruppe kann besetzt sein — von
+    einer Fremden. Genau das ist passiert: Stephanie war krank, Christina wurde
+    aus Gruppe 2 nach oben geschickt, und die Springerin rueckte in Gruppe 2
+    nach. Auf dem Papier war jede Gruppe besetzt. In Wirklichkeit stand eine
+    Gruppe, deren eigene Kraft da war, den ganzen Tag mit einer Fremden da.
+
+    Das ist doppelt falsch: Die Kinder in Gruppe 2 verlieren ihr Gesicht, und
+    die Vertretung oben haette genauso die Springerin uebernehmen koennen.
+
+    WAS DIE REGEL NICHT VERBIETET
+    Dass eine Gruppe von einer einzelnen Fremden gefuehrt wird, wenn von ihren
+    eigenen Leuten NIEMAND da ist. Dann gibt es keine Wahl, und die Vertretung
+    ist besser als eine geschlossene Gruppe.
+
+    Ist die Gruppe fuer den Tag aufgeteilt, gilt die Regel nicht — dann sind
+    die Kinder ohnehin woanders.
+    """
+    betroffen = 0
+    for gi, g in enumerate(ctx.gruppen):
+        eigene = ctx.stammkraefte(gi)
+        if len(eigene) < 2:
+            # Mit nur einer eigenen Kraft kann nie jemand abgegeben werden,
+            # ohne die Gruppe fremd zu besetzen — das erledigt die Regel
+            # unten von selbst (andere_da ist dann immer 0).
+            pass
+        for ei in eigene:
+            betroffen += 1
+            for di in range(ctx.n_days):
+                if ctx.massnahme_aktiv("aufteilen", g.get("id"), ctx.days[di]):
+                    continue
+                # Arbeitet sie an diesem Tag in einer ANDEREN Gruppe?
+                weg = sum(
+                    ctx.G[ei, di, gj] for gj in range(ctx.n_groups) if gj != gi
+                )
+                # Bleibt eine andere eigene Kraft in der Stammgruppe?
+                bleibt = sum(ctx.G[ek, di, gi] for ek in eigene if ek != ei)
+                ctx.model.add(weg <= bleibt)
+    ctx.notiere(
+        f"Eine Kraft verlässt ihre Stammgruppe nur, wenn dort eine andere "
+        f"eigene Kraft bleibt ({betroffen} Personenbindungen). Ist niemand "
+        "von der Gruppe da, darf eine Fremde übernehmen."
+    )

@@ -2935,6 +2935,46 @@ Nachweis: 76 Prüfungen am gelösten Plan (davon 10 neu), 116 Tests im
 Rechendienst, 944 Modultests. Gesamtlauf: **1358/1358 in 38 Prüfungen**, Bauen
 sauber.
 
+## Block §168 (26.09.) — Wer geht, lässt jemanden zurück
+
+**Ein Fehler, den erst der Betrieb im Plan gesehen hat.** Im Szenario mit der
+ausgefallenen oberen Etage schickte der Plan Christina aus Gruppe 2 nach oben
+— auch am Freitag, an dem Stephanie krank war. Gruppe 2 blieb formal besetzt:
+Die Springerin rückte nach.
+
+Auf dem Papier war alles in Ordnung. Jede Gruppe besetzt, keine Verletzung.
+In Wirklichkeit stand eine Gruppe, deren eigene Kraft anwesend war, den ganzen
+Tag mit einer Fremden da — und oben hätte die Springerin genauso gut selbst
+einspringen können.
+
+### Meine falsche Annahme
+Im Block davor hatte ich geschrieben, die Regel *„jede Gruppe ist besetzt"*
+erzwinge schon, dass die Herkunftsgruppe hält. Das stimmt nicht: Die Gruppe
+kann besetzt sein — von einer Vertretung. Die beiden Regeln greifen aneinander
+vorbei.
+
+### Die Regel
+> **Eine Kraft verlässt ihre Stammgruppe nur, wenn dort eine andere eigene
+> Kraft bleibt.**
+
+Sie verbietet *nicht*, dass eine Fremde eine Gruppe allein führt, wenn von
+deren eigenen Leuten niemand da ist — dann gibt es keine Wahl, und eine
+Vertretung ist besser als eine geschlossene Gruppe. Und ist die Gruppe für den
+Tag aufgeteilt, gilt sie nicht: Dann sind die Kinder ohnehin woanders.
+
+### Was der Plan jetzt macht
+| | Gruppe 2 | Gruppe 7 |
+|---|---|---|
+| **Do** (Stephanie da) | Christina bleibt | **Stephanie** hilft aus |
+| **Fr** (Stephanie krank) | **Christina bleibt** | **Nicole** hilft aus |
+
+Genau die Reihenfolge, die eine Leitung von Hand wählen würde — erst die
+Kollegin aus der Nachbargruppe, und wenn die gebraucht wird, die Springerin.
+
+Nachweis: 80 Prüfungen am gelösten Plan (davon 4 neu, darunter der konkrete
+Freitag), 120 Tests im Rechendienst, 944 Modultests. Gesamtlauf:
+**1358/1358 in 38 Prüfungen**, Bauen sauber.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

@@ -956,3 +956,62 @@ def test_notfall_die_leitung_springt_vorher_ein(nicht_mehr_loesbar):
     """Bevor eine Gruppe aufgeteilt wird, ist die Leitung dran."""
     assert nicht_mehr_loesbar.tage("Franke Leitner"), \
         "Die Leitung blieb im Büro, während eine Gruppe leer stand"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §168 Wer geht, lässt jemanden zurück
+#
+# „Jede Gruppe ist besetzt" reicht nicht: Die Gruppe kann besetzt sein — von
+# einer Fremden. Genau das war der Fehler im ersten Anlauf.
+# ════════════════════════════════════════════════════════════════════════════
+
+def test_niemand_verlaesst_die_gruppe_als_letzte_eigene_kraft(obere_etage_bricht_weg):
+    """
+    Christina darf donnerstags hoch, weil Stephanie in Gruppe 2 bleibt.
+    Freitags ist Stephanie krank — dann bleibt Christina.
+    """
+    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    p = obere_etage_bricht_weg
+    for name, eigene in stamm.items():
+        for t in p.tage(name):
+            if p.gruppe(name, t) == eigene:
+                continue                      # steht in der eigenen Gruppe
+            # Sie ist woanders — dann muss eine andere eigene Kraft dableiben.
+            kollegen = [
+                k for k, g in stamm.items()
+                if g == eigene and k != name and p.gruppe(k, t) == eigene
+            ]
+            assert kollegen, (
+                f"{name} verlässt am {t} {eigene} als letzte eigene Kraft — "
+                f"dort steht dann nur noch eine Fremde."
+            )
+
+
+def test_freitags_bleibt_christina_und_nicole_geht_hoch(obere_etage_bricht_weg):
+    """Der konkrete Fall, an dem der Fehler aufgefallen ist."""
+    p = obere_etage_bricht_weg
+    for freitag in FREITAGE:
+        assert p.gruppe("Christina Weiß", freitag) == "g2", \
+            f"Christina steht am {freitag} in {p.gruppe('Christina Weiß', freitag)}"
+        assert p.gruppe("Nicole Sprung", freitag) == "g7", \
+            f"Nicole steht am {freitag} in {p.gruppe('Nicole Sprung', freitag)}"
+
+
+def test_donnerstags_darf_christina_hoch(obere_etage_bricht_weg):
+    """Die Regel ist kein Verbot der Vertretung — sie bindet sie an eine
+    Bedingung. Ist Stephanie da, darf Christina gehen."""
+    p = obere_etage_bricht_weg
+    hoch = [t for t in DONNERSTAGE if p.gruppe("Christina Weiß", t) == "g7"]
+    assert hoch, "Christina hilft an keinem Donnerstag aus, obwohl sie könnte"
+
+
+def test_eine_gruppe_ohne_eigene_leute_darf_fremd_besetzt_sein(obere_etage_bricht_weg):
+    """
+    Die Regel verbietet NICHT, dass eine Fremde eine Gruppe allein führt,
+    wenn von deren eigenen Leuten niemand da ist. Gruppe 7 ist genau das:
+    Katrin im Urlaub, Daniel krank, Annika hat fest frei.
+    """
+    p = obere_etage_bricht_weg
+    for freitag in FREITAGE:
+        assert p.in_gruppe(freitag, "g7") >= 1, \
+            "Gruppe 7 steht leer, obwohl eine Vertretung erlaubt wäre"
