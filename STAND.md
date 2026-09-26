@@ -3,7 +3,7 @@
 **Diese Seite ist die Wahrheit.** Nicht das Gespräch, nicht die Erinnerung.
 Wer wissen will, wo etwas steht, liest hier — und nur hier.
 
-Zuletzt aktualisiert: **12.09.2026**
+Zuletzt aktualisiert: **26.09.2026**
 
 > **Regel für Claude:** Diese Datei wird bei **jedem** abgeschlossenen Punkt
 > aktualisiert, im selben Commit wie die Arbeit. Nie später, nie gesammelt.
@@ -16,15 +16,23 @@ Zuletzt aktualisiert: **12.09.2026**
 
 | | |
 |---|---|
-| **Baustelle** | HR-Modul — Stufen 1–3 fertig (Fristen, Sichtbarkeit, BEM) |
-| **Zuletzt fertig** | §147 HR Stufe 3: BEM aus den Fehlzeiten (§167 Abs. 2 SGB IX) |
-| **Als Nächstes** | HR Stufe 4: Recruiting — zwei Fragen offen (Domain, Zusatzmodul) |
-| **Danach** | Onboarding-Checklisten. Parallel: App in die Stores (wartet auf D-U-N-S) |
+| **Baustelle** | Keine — der Lohn-Block ist abgeschlossen |
+| **Zuletzt fertig** | §161 Musterregelpaket: womit ein neuer Kunde anfängt |
+| **Als Nächstes** | Das Musterregelpaket an einem Demo-Account ausprobieren |
+| **Danach** | Oberflächen für Pfändung, bAV, Kurzarbeit und Umlagesätze. Parallel: App in die Stores (wartet auf D-U-N-S) |
 
-> **Die Übergangsversion beim Lohn ist vollständig** (Meilenstein 1 von 4).
-> Rechnen, Beleg zustellen, ELStAM nachführen, rückwirkend korrigieren, DATEV an
-> den Berater, SEPA an die Bank, Jahr abschließen. Gemeldet wird über den
-> Steuerberater — bis zur Zertifizierung (Fahrplan Teil 4/5).
+> **Der Lohn-Block ist vollständig** (§155–§160). Pfändung, betriebliche
+> Altersvorsorge, Kurzarbeitergeld, Mehrfachbeschäftigung, Abfindung, die
+> Umlagen U1/U2/Insolvenzgeld und die drei Bescheinigungen. Die Rechenwege
+> stehen und sind belegt; was fehlt, sind Eingabemasken für vier davon.
+> Gemeldet wird weiterhin über den Steuerberater — bis zur Zertifizierung
+> (Fahrplan Teil 4/5).
+
+> **Verkaufsfertig aus Sicht des Datenschutzes** (§152–§154): Verzeichnis der
+> Verarbeitungstätigkeiten (Art. 30), technische und organisatorische
+> Maßnahmen (Art. 32), Impressum und Datenschutzerklärung für das Produkt
+> selbst, und alle Löschfristen einmal durchgeprüft. Vier Fristen warten noch
+> auf die Gegenzeichnung.
 
 Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 
@@ -37,10 +45,11 @@ Der ausführliche Plan: `FAHRPLAN-KOMPLETTLOESUNG.md`
 | **Mitarbeiter & Stammdaten** (A) | ✅ fertig, nachgewiesen | — |
 | **Arbeitszeit** (B) | ✅ fertig, nachgewiesen | — |
 | **Abwesenheit** (C) | ✅ fertig, nachgewiesen | — |
-| **Lohn** (D) | ✅ Übergangsversion fertig | Beitragsnachweis, Bescheinigungen |
+| **Lohn** (D) | ✅ vollständig (§155–§160) | Oberflächen für Pfändung, bAV, Kurzarbeit, Umlagen |
 | **Kommunikation** (E) | ✅ fertig, nachgewiesen | — |
 | **Dienstplanung** (F) | ✅ fertig, nachgewiesen | — |
-| **Grundlagen & Betrieb** (G) | ✅ fertig, nachgewiesen | Fristen vom Datenschutzbeauftragten gegenzeichnen lassen |
+| **Grundlagen & Betrieb** (G) | ✅ fertig, nachgewiesen | Vier Fristen gegenzeichnen lassen (§154) |
+| **Personal & Recruiting** (I/J) | ✅ fertig, nachgewiesen | — |
 
 ✅ fertig · 🔨 in Arbeit · ⚠️ offen
 
@@ -64,9 +73,38 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [x] ~~**Kein Lohn ohne freigegebenen Monat**~~ ✅ — die Standortleitung gibt
       den Monat frei, erst dann fließen die Zuschläge aus der Zeiterfassung in
       die Abrechnung. Wer aufgehalten wird, steht mit Namen und Grund da
-- [ ] Geldwerte Vorteile, bAV, Pfändungen — Teil 1.4–1.6
-- [ ] Beitragsnachweis, AAG, DEÜV-Daten — Teil 3 (Meilenstein 2)
+- [x] ~~**Pfändung**~~ ✅ §155 — §§850 ff. ZPO, Nachtzuschläge unpfändbar,
+      Sonntagszuschläge nicht (BAG 10 AZR 859/16), Rangfolge nach Zustellung
+- [x] ~~**Betriebliche Altersvorsorge**~~ ✅ §156 — 8 % steuerfrei im JAHR,
+      4 % beitragsfrei im MONAT: zwei Grenzen, zwei Zeiträume
+- [x] ~~**Kurzarbeitergeld**~~ ✅ §157 — auf der pauschalierten Nettodifferenz,
+      fiktives Entgelt, Abrechnungsliste für die Agentur, beide Fristen
+- [x] ~~**Mehrfachbeschäftigung und Abfindung**~~ ✅ §158 — geteilte
+      Beitragsbemessungsgrenze; Fünftelregelung entfällt seit 2025 im
+      Lohnsteuerabzug
+- [x] ~~**Umlagen U1, U2 und Insolvenzgeld**~~ ✅ §159 — waren eine Lücke:
+      jeder Arbeitgeber zahlt sie, und sie standen nirgends
+- [x] ~~**Bescheinigungen**~~ ✅ §160 — Arbeitsbescheinigung, Krankengeld,
+      Mutterschaftszuschuss. Übermittelt wird über den Steuerberater
+- [ ] **Oberflächen** für Pfändung, bAV, Kurzarbeit und Umlagesätze — alle vier
+      sind derzeit nur über die Schnittstelle erfassbar
+- [ ] Beitragsnachweis und DEÜV-Daten — Teil 3 (Meilenstein 2)
 - [ ] Alles Weitere: siehe `FAHRPLAN-KOMPLETTLOESUNG.md`
+
+### Datenschutz — abgeschlossen
+- [x] ~~**Verzeichnis der Verarbeitungstätigkeiten (Art. 30)**~~ ✅ §152 — für
+      OKUN als Auftragsverarbeiter und je Kunde als Verantwortlicher
+- [x] ~~**Technische und organisatorische Maßnahmen (Art. 32)**~~ ✅ §152 —
+      20 Maßnahmen, jede mit Beleg im Code statt mit einer Behauptung
+- [x] ~~**Anmeldeschutz**~~ ✅ §152 — Sperre nach Fehlversuchen, je Konto und
+      je Adresse, Prüfung VOR dem Passwortvergleich
+- [x] ~~**Impressum und Datenschutzerklärung für das Produkt**~~ ✅ §153
+- [x] ~~**Löschfristen geprüft**~~ ✅ §154 — jede Frist mit Herleitung und
+      Sicherheitsgrad; vier Fragen bleiben für den Steuerberater offen
+
+### Dienstplanung
+- [x] ~~**Musterregelpaket**~~ ✅ §161 — womit ein neuer Kunde anfängt, bis
+      sein eigenes Paket aus dem Gespräch entsteht
 
 ### Sonst offen
 - [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon),
@@ -126,6 +164,12 @@ Ohne diese Punkte kommt die Arbeit an bestimmten Stellen nicht weiter.
 | 🟡 | Google-Play-Entwicklerkonto (25 $ einmalig) | den Play Store |
 | 🟡 | Datenschutzerklärung und Impressum öffentlich erreichbar | beide Stores |
 | 🟢 | Unternehmensdaten je Kunde vollständig eintragen | SEPA und DATEV je Kunde |
+| 🔴 | **Umlagesätze U1/U2 je Krankenkasse eintragen** (§159) | jede korrekte Arbeitgeberkostenrechnung — sie stehen in der Satzung jeder Kasse, das Programm rät sie nicht |
+| 🟡 | **Insolvenzgeldumlage 2026 bestätigen** — 0,15 % sind aus 2025 fortgeschrieben, nicht gegen die Rechtsverordnung geprüft | den Jahresabschluss |
+| 🟡 | **Pfändungsfreigrenzen ab Juli 2026 gegen das Bundesgesetzblatt prüfen** (§155) | die erste echte Pfändung |
+| 🟡 | **Mindestlohn 2026 (13,90 €) bestätigen** — aus ihm folgt die Geringfügigkeitsgrenze | den ersten Minijob |
+| 🟡 | **`OKUN_*`-Angaben bei Railway setzen** (Firma, Anschrift, Vertretung, Register, USt-IdNr., Datenschutzbeauftragter) | Impressum und Datenschutzerklärung — ohne sie steht dort, was fehlt |
+| 🟡 | **AVVs mit den Dienstleistern** (Claude, Hosting, Push) | den ersten echten Kunden |
 
 🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt
 
