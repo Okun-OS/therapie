@@ -353,6 +353,14 @@ const ZWECKE: Record<string, { zweck: string; rechtsgrundlage: string; empfaenge
       + 'und ArbMedVV, §26 BDSG',
     empfaenger: ['Aufsichtsbehörden im Prüfungsfall', 'Unfallversicherungsträger'],
   },
+  pfaendung: {
+    zweck:
+      'Erfüllung eines Pfändungs- und Überweisungsbeschlusses und Nachweis '
+      + 'gegenüber dem Gläubiger.',
+    rechtsgrundlage:
+      'Art. 6 Abs. 1 lit. c DSGVO i.V.m. §§829, 835, 840, 850 ff. ZPO, §26 BDSG',
+    empfaenger: ['Der jeweilige Gläubiger', 'Vollstreckungsgericht'],
+  },
   belehrungsnachweis: {
     zweck:
       'Nachweis, dass die vorgeschriebenen Unterweisungen und Belehrungen '

@@ -3,6 +3,7 @@ import { getEmployeeById, updateEmployee, deleteEmployee } from '@/lib/entities'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { restlosEntfernen } from '@/lib/dsgvo-loeschung'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,6 +60,20 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (session instanceof NextResponse) return session
 
   try {
+    // §155 Erst alles, was an der Person hängt — dann sie selbst.
+    //
+    // Vorher entfernte `deleteEmployee` NUR die Zeile in `Employee`.
+    // Lohnabrechnungen, Zeitbuchungen, Pfändungen und Dateien blieben liegen:
+    // unsichtbar in der Oberfläche, vorhanden in der Datenbank. Ein Mensch,
+    // der gelöscht ist und dessen Lohnkonto noch daliegt, ist nicht gelöscht.
+    //
+    // Das ist bewusst der HARTE Weg, und nur OKUN darf ihn gehen — für Daten,
+    // die es nie hätte geben dürfen: ein Testdatensatz, ein doppelt angelegter
+    // Mensch, ein falscher Mandant. Die Löschung eines ausgeschiedenen
+    // Beschäftigten ist eine andere und läuft über /api/dsgvo/loeschung: Sie
+    // sperrt, wo das Gesetz aufbewahren heißt, und hinterlässt einen Bericht.
+    const entfernt = await restlosEntfernen(params.id)
+
     const deleted = await deleteEmployee(params.id)
     if (!deleted) return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
 
@@ -74,7 +89,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       },
     })
 
-    return NextResponse.json({ deleted: true })
+    return NextResponse.json({
+      deleted: true,
+      // Was mit entfernt wurde — damit im Protokoll und in der Antwort steht,
+      // dass es nicht nur die eine Zeile war.
+      entfernt: entfernt.reduce((s2, e) => s2 + e.anzahl, 0),
+      tabellen: entfernt.length,
+    })
+
   } catch (err: unknown) {
     console.error('employees DELETE', err)
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'

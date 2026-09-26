@@ -191,6 +191,24 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
       },
     })
   },
+  // §155 Was wegen einer Pfaendung einbehalten wurde. Die Person hat ein
+  // Recht darauf zu erfahren, wer wie viel von ihrem Entgelt bekommen hat.
+  Pfaendung: id => prisma.pfaendung.findMany({
+    where: { employeeId: id },
+    select: {
+      id: true, art: true, glaeubiger: true, aktenzeichen: true,
+      zugestelltAm: true, forderung: true, getilgt: true, aktiv: true,
+      erledigtAm: true,
+    },
+  }),
+  PfaendungsAbzug: id => prisma.pfaendungsAbzug.findMany({
+    where: { employeeId: id },
+    orderBy: [{ jahr: 'asc' }, { monat: 'asc' }],
+    select: {
+      id: true, jahr: true, monat: true, betrag: true, glaeubiger: true,
+      hinweis: true,
+    },
+  }),
   // §150 Welche Belehrungen die Person zur Kenntnis genommen hat — mit dem
   // Wortlaut, den sie damals bestätigt hat, und dem Zeitpunkt. Genau das ist
   // der Nachweis; sie hat ein Recht darauf, ihn selbst zu sehen.

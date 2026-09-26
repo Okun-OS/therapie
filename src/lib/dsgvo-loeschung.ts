@@ -252,6 +252,24 @@ const ZUGRIFF: Record<string, Zugriff> = {
     zaehlen: (db, k) => db.loeschvorgang.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.loeschvorgang.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
   },
+  // §155 Die Pfaendung und was in welchem Monat einbehalten wurde.
+  //
+  // Der Abzug muss VOR der Pfaendung weg — er haengt an deren Kennung. Die
+  // Reihenfolge bestimmt die Liste `modelle` im Katalog, dort steht er zuerst.
+  PfaendungsAbzug: {
+    zaehlen: (db, k) => db.pfaendungsAbzug.count({
+      where: { employeeId: k.employeeId },
+    }),
+    loeschen: (db, k) => db.pfaendungsAbzug.deleteMany({
+      where: { employeeId: k.employeeId },
+    }).then(zahl),
+  },
+  Pfaendung: {
+    zaehlen: (db, k) => db.pfaendung.count({ where: { employeeId: k.employeeId } }),
+    loeschen: (db, k) => db.pfaendung.deleteMany({
+      where: { employeeId: k.employeeId },
+    }).then(zahl),
+  },
   // §150 Der Nachweis der Kenntnisnahme.
   //
   // Er geht mit dem Ausscheiden: Eine Unterweisung belegt, dass jemand
@@ -441,6 +459,48 @@ async function kontextLaden(employeeId: string): Promise<Kontext | null> {
     userIds: konten.map(u => u.id),
     pseudonym: `anonym-${randomBytes(9).toString('hex')}`,
   }
+}
+
+/**
+ * §155 Restlos entfernen — der harte Weg.
+ *
+ * WAS DAS IST UND WAS NICHT
+ * Das ist NICHT die Löschung nach Art. 17 DSGVO. Die sperrt, wo das Gesetz
+ * eine Aufbewahrung verlangt, und hinterlässt einen Bericht — dafür gibt es
+ * `loeschungAusfuehren()`.
+ *
+ * Das hier ist der Weg für Daten, die es nie hätte geben dürfen: ein
+ * versehentlich doppelt angelegter Mensch, ein Testdatensatz, ein falscher
+ * Mandant. Dafür gibt es `DELETE /api/employees/[id]`, und die Rolle dafür hat
+ * nur OKUN.
+ *
+ * WARUM ES DIESE FUNKTION BRAUCHT
+ * Weil der harte Löschweg vorher NUR die Zeile in `Employee` entfernt hat.
+ * Alles andere — Lohnabrechnungen, Zeitbuchungen, Pfändungen, Dateien — blieb
+ * liegen, unsichtbar in der Oberfläche und vorhanden in der Datenbank. Ein
+ * Mensch, der gelöscht ist und dessen Lohnkonto noch daliegt, ist nicht
+ * gelöscht. Aufgefallen ist es, weil eine Prüfung nach dem Aufräumen eine
+ * laufende Pfändung zurückbehalten hat.
+ *
+ * Die Reihenfolge kommt aus dem Katalog, damit abhängige Zeilen vor ihren
+ * Eltern verschwinden.
+ */
+export async function restlosEntfernen(
+  employeeId: string,
+): Promise<{ modell: string; anzahl: number }[]> {
+  const k = await kontextLaden(employeeId)
+  if (!k) return []
+
+  const entfernt: { modell: string; anzahl: number }[] = []
+  for (const art of DATENARTEN) {
+    for (const modell of art.modelle) {
+      const zugriff = ZUGRIFF[modell]
+      if (!zugriff) continue
+      const anzahl = await zugriff.loeschen(prisma, k).catch(() => 0)
+      if (anzahl > 0) entfernt.push({ modell, anzahl })
+    }
+  }
+  return entfernt
 }
 
 async function anzahlJeArt(k: Kontext, art: Datenart): Promise<number> {

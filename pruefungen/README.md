@@ -80,6 +80,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `d14-beleg-vollstaendig.mjs` | Beleg mit Minijob, Teilmonat, Arbeitgeberanteilen |
 | `d15-jahresabschluss.mjs` | Jahreswerte, Übersicht für den Mitarbeiter |
 | `d16-monatsfreigabe.mjs` | Kein Lohn ohne freigegebenen Monat, Monatsgrenze |
+| `d17-pfaendung.mjs` | Lohnpfändung: Freigrenzen, Rangfolge, Nachweis |
 | `e-kommunikation.mjs` | Benachrichtigungen, Einspringen, Push |
 | `e5-chat.mjs` | Nachrichten, Gruppen, wer nicht mitlesen darf |
 | `f-dienstplan.mjs` | Rechenkern, Dienstwünsche, Schichttausch |

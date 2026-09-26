@@ -229,6 +229,24 @@ export const DATENARTEN: Datenart[] = [
       + 'eingereicht werden sollte — beides wird gelöscht.',
   },
   {
+    id: 'pfaendung',
+    bezeichnung: 'Lohnpfändungen',
+    beschreibung:
+      'Ob und für welchen Gläubiger ein Teil Ihres Entgelts einbehalten wurde, '
+      + 'und wie viel in welchem Monat.',
+    modelle: ['PfaendungsAbzug', 'Pfaendung'],
+    behandlung: 'sperren',
+    fristJahre: 6,
+    grundlage: '§41 Abs.1 EStG (Lohnkonto), §840 ZPO (Drittschuldnererklärung)',
+    begruendung:
+      'Der einbehaltene Betrag gehört zur Entgeltabrechnung und teilt deren '
+      + 'Frist. Der Arbeitgeber muss dem Gläubiger außerdem auf Verlangen '
+      + 'erklären, was er einbehalten hat (§840 ZPO) — ohne die Aufzeichnung '
+      + 'könnte er das nicht. Der Kreis der Mitwissenden ist bewusst klein: '
+      + 'Eine Pfändung sagt etwas über Ihre wirtschaftliche Lage, und das geht '
+      + 'die Standortleitung nichts an.',
+  },
+  {
     id: 'belehrungsnachweis',
     bezeichnung: 'Bestätigte Belehrungen',
     beschreibung:

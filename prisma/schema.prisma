@@ -1478,6 +1478,10 @@ model PayrollEntry {
   soliSonstige          Float @default(0)
   svANSonstige          Float @default(0)
   svAGSonstige          Float @default(0)
+  // §155 Was wegen einer Lohnpfaendung einbehalten wurde. Es mindert den
+  // Auszahlungsbetrag, NICHT das Netto — steuerlich und sozialversicherungs-
+  // rechtlich ist das Geld verdient, es geht nur an jemand anderen.
+  pfaendungBetrag Float   @default(0)
   // Meta
   approvedBy      String?
   approvedAt      String?
@@ -2163,4 +2167,76 @@ model Anmeldeversuch {
 
   @@index([art, kennung, createdAt])
   @@index([createdAt])
+}
+
+/// §155 Eine Lohnpfändung (§§850 ff. ZPO).
+///
+/// WARUM DAS EINE EIGENE TABELLE IST UND KEIN FELD AM MITARBEITER
+/// Weil es mehrere gleichzeitig geben kann und die Reihenfolge zaehlt: Bei
+/// mehreren Pfaendungen geht die aeltere vor (§804 Abs. 3 ZPO), und
+/// Unterhaltsforderungen stehen noch davor (§850d ZPO). Ein einzelnes Feld
+/// koennte das nicht abbilden — und die falsche Reihenfolge ist hier kein
+/// Schoenheitsfehler, sondern eine Haftung des Arbeitgebers.
+///
+/// WAS HIER NICHT ENTSCHIEDEN WIRD
+/// Ob die Pfaendung wirksam ist und welcher Betrag tituliert wurde. Das steht
+/// im Beschluss, und den liest ein Mensch. Das Programm rechnet nur aus, was
+/// davon einbehalten werden darf.
+model Pfaendung {
+  id             String    @id @default(cuid())
+  employeeId     String
+  customerId     String
+  /// normal | unterhalt | insolvenz
+  art            String    @default("normal")
+  glaeubiger     String
+  /// Aktenzeichen des Beschlusses — ohne es findet spaeter niemand die Akte
+  aktenzeichen   String?
+  /// Der Tag der Zustellung. Aus ihm folgt der Rang, nicht aus dem Anlegen
+  /// im Programm.
+  zugestelltAm   String
+  /// Die titulierte Forderung. Leer bei laufendem Unterhalt — der hat keine
+  /// Gesamtsumme, sondern faellt monatlich neu an.
+  forderung      Float?
+  /// Was davon schon einbehalten wurde
+  getilgt        Float     @default(0)
+  /// §850d Abs. 1 Satz 2 ZPO: der Betrag, der der Person verbleiben muss.
+  /// Er steht im Beschluss und wird NICHT gerechnet — das Gericht setzt ihn
+  /// fest. Fehlt er bei einer Unterhaltspfaendung, wird nichts einbehalten.
+  notwendigerUnterhalt Float?
+  /// Wie viele Personen unterhaltsberechtigt sind (§850c Abs. 2 ZPO).
+  /// Steht hier und nicht am Mitarbeiter, weil der Beschluss es feststellt.
+  unterhaltspflichten  Int?
+  aktiv          Boolean   @default(true)
+  erledigtAm     DateTime?
+  notiz          String?
+  angelegtVon    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([employeeId, aktiv])
+  @@index([customerId])
+}
+
+/// §155 Was in einem Monat tatsaechlich einbehalten wurde.
+///
+/// Getrennt von der Pfaendung selbst, weil es die Historie ist: Welcher
+/// Glaeubiger hat wann wie viel bekommen. Ohne diese Zeilen liesse sich
+/// gegenueber dem Glaeubiger nicht belegen, was abgefuehrt wurde — und die
+/// Drittschuldnererklaerung nach §840 ZPO waere nicht zu erstellen.
+model PfaendungsAbzug {
+  id           String   @id @default(cuid())
+  pfaendungId  String
+  employeeId   String
+  customerId   String
+  jahr         Int
+  monat        Int
+  betrag       Float
+  /// Kopie des Glaeubigers, damit die Zeile lesbar bleibt
+  glaeubiger   String
+  /// Wie der Betrag zustande kam — steht so auf dem Beleg
+  hinweis      String?
+  createdAt    DateTime @default(now())
+
+  @@unique([pfaendungId, jahr, monat])
+  @@index([employeeId, jahr, monat])
 }

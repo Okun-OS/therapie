@@ -91,6 +91,24 @@ export async function POST(req: NextRequest) {
     einmalHinweis.set(b.employeeId, bisher ? `${bisher}, ${b.bezeichnung}` : b.bezeichnung)
   }
 
+  // §155 Die Pfändungsabzüge des Monats, je Mitarbeiter. Sie stehen auf dem
+  // Beleg einzeln — ein Sammelposten „Pfändung" wäre bei mehreren Gläubigern
+  // nicht nachprüfbar.
+  const pfaendungsZeilen = await prisma.pfaendungsAbzug.findMany({
+    where: {
+      customerId, jahr: year, monat: month,
+      employeeId: { in: abrechnungen.map(a => a.employeeId) },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { employeeId: true, glaeubiger: true, betrag: true },
+  })
+  const pfaendungenJeMitarbeiter = new Map<string, { glaeubiger: string; betrag: number }[]>()
+  for (const z of pfaendungsZeilen) {
+    const liste = pfaendungenJeMitarbeiter.get(z.employeeId) ?? []
+    liste.push({ glaeubiger: z.glaeubiger, betrag: z.betrag })
+    pfaendungenJeMitarbeiter.set(z.employeeId, liste)
+  }
+
   const erzeugt: { name: string; dateiId: string }[] = []
   const uebersprungen: { name: string; grund: string }[] = []
 
@@ -130,6 +148,9 @@ export async function POST(req: NextRequest) {
           grundlage: a.grundlage ?? undefined,
           korrekturNetto: a.korrekturNetto,
           auszahlungsbetrag: a.auszahlungsbetrag || a.netto,
+          // §155 Die Pfändungszeilen des Monats — je Gläubiger eine.
+          pfaendungBetrag: a.pfaendungBetrag,
+          pfaendungen: pfaendungenJeMitarbeiter.get(a.employeeId) ?? [],
           korrekturText: korrekturHinweis.get(a.employeeId),
           sonstigeBezuege: a.sonstigeBezuege,
           sonstigeBezuegeText: einmalHinweis.get(a.employeeId),

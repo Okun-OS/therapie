@@ -296,6 +296,14 @@ export async function hardDeleteCustomer(id: string): Promise<boolean> {
 export async function deleteEmployee(id: string): Promise<{ name: string } | null> {
   const row = await prisma.employee.findUnique({ where: { id }, select: { name: true } })
   if (!row) return null
+  // §155 Was an der Person hängt, wird VORHER entfernt — aber nicht hier.
+  //
+  // Diese Datei wird über `fairness.ts` auch von Seiten mit 'use client'
+  // importiert. Der Löschweg zieht `node:crypto` nach sich, und das lässt sich
+  // nicht in ein Browser-Bündel packen — der Bau bricht ab. Deshalb ruft die
+  // Route `DELETE /api/employees/[id]` `restlosEntfernen()` selbst auf, bevor
+  // sie hierher kommt. Dieselbe Überlegung wie bei `invitations.ts`.
+
   await prisma.employee.delete({ where: { id } })
   return row
 }

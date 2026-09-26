@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { allowedLocationScope } from '@/lib/scope'
 import { monatsGrundlagen, abrechnungRechnen, abrechnungsFelder } from '@/lib/payroll-monat'
+import { pfaendungFuerMonat } from '@/lib/pfaendung-lauf'
 import { elstamStandBewerten } from '@/lib/elstam'
 import { korrekturText } from '@/lib/aufrollung'
 import { freigabelagen } from '@/lib/monatsfreigabe'
@@ -267,15 +268,50 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // §155 Lohnpfändung. Sie mindert den AUSZAHLUNGSBETRAG, nicht das Netto:
+    // Steuerlich und sozialversicherungsrechtlich ist das Geld verdient, es
+    // geht nur an jemand anderen. Gerechnet wird auf dem Netto nach Korrektur,
+    // denn das ist der Betrag, der tatsächlich zur Auszahlung anstünde.
+    const nettoNachKorrektur = Math.round(
+      (gerechnet.netto + korrekturNetto) * 100) / 100
+    const pfaendung = await pfaendungFuerMonat(
+      m.id, customerId, year, month,
+      {
+        netto: nettoNachKorrektur,
+        nachtzuschlag: grundlage.nightSurcharge,
+        sonntagszuschlag: grundlage.sundaySurcharge,
+        feiertagszuschlag: grundlage.holidaySurcharge,
+        samstagszuschlag: grundlage.saturdaySurcharge,
+        mehrarbeitszuschlag: grundlage.overtimeSurcharge,
+        // §850a Nr. 1: die Vergütung der Mehrarbeit, nicht ihr Zuschlag —
+        // der steht eine Zeile darüber.
+        mehrarbeitsverguetung:
+          (p!.stundenlohn ?? 0) * (grundlage.overtimeHours ?? 0),
+      },
+    ).catch(fehler => ({
+      // Eine Pfändung darf den ganzen Lohnlauf nicht kippen. Sie wird gemeldet
+      // und nichts einbehalten — zu wenig einzubehalten lässt sich nachholen,
+      // zu viel nicht.
+      einbehalten: 0, ergebnis: null, hinweise: [],
+      fehler: fehler instanceof Error ? fehler.message : String(fehler),
+    }))
+
+    if (pfaendung.fehler) {
+      hinweise.push({ name: m.name, text: pfaendung.fehler })
+    }
+
+    const auszahlungsbetrag = Math.round(
+      (nettoNachKorrektur - pfaendung.einbehalten) * 100) / 100
+
     const eintrag = await prisma.payrollEntry.upsert({
       where: { employeeId_year_month: { employeeId: m.id, year, month } },
       create: {
         employeeId: m.id, year, month, status: 'draft', ...stammFelder, ...gerechnet,
-        korrekturNetto, auszahlungsbetrag: Math.round((gerechnet.netto + korrekturNetto) * 100) / 100,
+        korrekturNetto, pfaendungBetrag: pfaendung.einbehalten, auszahlungsbetrag,
       },
       update: {
         ...stammFelder, ...gerechnet,
-        korrekturNetto, auszahlungsbetrag: Math.round((gerechnet.netto + korrekturNetto) * 100) / 100,
+        korrekturNetto, pfaendungBetrag: pfaendung.einbehalten, auszahlungsbetrag,
       },
     })
 

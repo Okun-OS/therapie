@@ -2203,6 +2203,75 @@ Nachweis: 18 Modultests und 8 weitere Prüfungen in
 `pruefungen/g2-dsgvo-dokumente.mjs`. Gesamtlauf: **1146/1146 in 32 Prüfungen**,
 769 Modultests, Bauen sauber.
 
+## Block §155 (26.09.) — Lohn Teil 1: Pfändung (§§850 ff. ZPO)
+
+**Warum das gefährlicher ist als der Rest der Abrechnung.** Bei jedem anderen
+Rechenfehler merkt es irgendwann jemand. Hier nicht: Zu viel einbehalten heißt,
+dass jemandem das Existenzminimum fehlt. Zu wenig einbehalten heißt, dass der
+**Arbeitgeber dem Gläubiger persönlich haftet** (§840 ZPO). Es gibt keine
+Seite, auf der ein Fehler harmlos wäre.
+
+### Drei Schritte, die gern verwechselt werden
+1. **Was ist überhaupt pfändbares Einkommen?** (§850a) Nicht alles, was
+   ausgezahlt wird, darf angefasst werden — die Hälfte der Mehrarbeit, das
+   Urlaubsgeld, Erschwerniszulagen bleiben außen vor.
+2. **Wie viel davon?** (§850c) Grundfreibetrag, der mit jeder Unterhaltspflicht
+   steigt; vom Rest bleiben drei bis neun Zehntel frei; oberhalb eines
+   Höchstbetrags ist alles pfändbar.
+3. **Wer bekommt es?** (§804 Abs. 3, §850d) Die ältere Pfändung geht vor,
+   Unterhalt steht davor — und für den gilt die Tabelle aus Schritt 2 gar nicht.
+
+### Die Unterscheidung, die in der Pflege Geld ausmacht
+**Nachtzuschläge sind unpfändbar, Sonntags- und Feiertagszuschläge nicht.** Das
+hat das Bundesarbeitsgericht ausdrücklich so entschieden (23.08.2017 –
+10 AZR 859/16): Nachtarbeit ist gesundheitlich belastend, der Zuschlag gleicht
+eine *Erschwernis* aus (§850a Nr. 3). Sonntagszuschläge gleichen keine
+Erschwernis aus, sondern die *Lage* der Arbeitszeit.
+
+Wer beides gleich behandelt, rechnet entweder zulasten des Beschäftigten oder
+zulasten des Gläubigers — und im zweiten Fall haftet der Betrieb dafür.
+
+### Was das Programm bewusst NICHT tut
+- **Es rät keinen notwendigen Unterhalt.** Bei einer Unterhaltspfändung setzt
+  das Gericht diesen Betrag fest. Fehlt er, wird **nichts** einbehalten und
+  die Oberfläche sagt warum — lieber gar nichts als eine geratene Zahl.
+- **Es rechnet nicht ohne geprüfte Tabelle.** Die Freigrenzen werden zum
+  1. Juli angepasst (§850c Abs. 4). Fehlt der Eintrag, wird der Abzug
+  verweigert statt mit veralteten Zahlen gerechnet.
+- **Es mindert nicht das Netto**, sondern den Auszahlungsbetrag. Steuerlich und
+  sozialversicherungsrechtlich ist das Geld verdient — es geht nur an jemand
+  anderen. Auf dem Beleg steht es als eigene Zeile je Gläubiger.
+
+> **Vor der ersten echten Pfändung zu prüfen:** Die Tabellenwerte sind nicht
+> gegen die amtliche Bekanntmachung im Bundesgesetzblatt abgeglichen; der
+> Eintrag ab Juli 2026 ist sogar nur fortgeschrieben. Es sind vier Zahlen je
+> Zeitraum — `ungepruefteTabellen()` listet sie auf.
+
+### Nebenbei gefunden: Löschen löschte nicht
+Die Prüfung ließ nach dem Aufräumen eine laufende Pfändung zurück. Der Grund
+war größer als erwartet: **`DELETE /api/employees/[id]` entfernte nur die eine
+Zeile in `Employee`.** Lohnabrechnungen, Zeitbuchungen, Pfändungen und Dateien
+blieben liegen — unsichtbar in der Oberfläche, vorhanden in der Datenbank. In
+der Prüfdatenbank waren es zwei Abrechnungen, drei Zeitbuchungen und zwei
+Pfändungen ohne zugehörigen Menschen.
+
+Der harte Löschweg räumt jetzt über denselben Zugriffsplan ab, den das
+Löschkonzept (§128) ohnehin führt, und meldet zurück, wie viel entfernt wurde.
+Er bleibt ausdrücklich der Weg für Daten, die es nie hätte geben dürfen — die
+Löschung eines ausgeschiedenen Beschäftigten läuft weiter über
+`/api/dsgvo/loeschung` und sperrt dort, wo das Gesetz aufbewahren heißt.
+
+Nachweis: 41 Modultests für die Rechenwege (jeder Grenzfall einzeln) und 31
+Prüfungen am laufenden System (`pruefungen/d17-pfaendung.mjs`) — darunter, dass
+ein zweiter Lohnlauf den Abzug nicht verdoppelt und dass die Standortleitung
+keine Pfändung sieht. Gesamtlauf: **1177/1177 in 33 Prüfungen**, 810
+Modultests, Bauen sauber.
+
+### Noch offen im Lohn-Block
+- Betriebliche Altersvorsorge (Entgeltumwandlung, §3 Nr. 63 EStG, 15-%-Zuschuss)
+- Kurzarbeitergeld
+- Mehrfachbeschäftigung, Abfindung, Bescheinigungen
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

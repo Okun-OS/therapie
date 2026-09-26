@@ -237,6 +237,20 @@ export const PRUEFUNGEN: Fristpruefung[] = [
       + 'angemessen sein.',
   },
   {
+    id: 'pfaendung',
+    sicherheit: 'auslegung',
+    herleitung:
+      'Der einbehaltene Betrag steht auf der Entgeltabrechnung und gehört '
+      + 'damit zum Lohnkonto (§41 Abs. 1 EStG, sechs Jahre). Hinzu kommt §840 '
+      + 'ZPO: Der Arbeitgeber muss dem Gläubiger auf Verlangen erklären, ob '
+      + 'und wie viel er einbehalten hat — ohne Aufzeichnung ginge das nicht.',
+    befund:
+      'Eine Pfändung sagt etwas über die wirtschaftliche Lage einer Person. '
+      + 'Sie ist deshalb auf die Unternehmensebene beschränkt und für die '
+      + 'Standortleitung nicht sichtbar — anders als der Rest der '
+      + 'Entgeltabrechnung, den sie sehen darf.',
+  },
+  {
     id: 'belehrungsnachweis',
     sicherheit: 'auslegung',
     herleitung:

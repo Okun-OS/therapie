@@ -56,6 +56,10 @@ export interface BelegAbrechnung {
   /** §119 Korrektur aus einem aufgerollten Monat und der daraus folgende Betrag */
   korrekturNetto?: number
   auszahlungsbetrag?: number
+  /** §155 Was wegen einer Lohnpfändung einbehalten wurde */
+  pfaendungBetrag?: number
+  /** Je Gläubiger eine Zeile — ohne sie bliebe der Abzug unerklärt */
+  pfaendungen?: { glaeubiger: string; betrag: number }[]
   korrekturText?: string
   /** §120 Einmalzahlungen und die Steuer darauf */
   sonstigeBezuege?: number
@@ -345,6 +349,36 @@ export async function erzeugeLohnbeleg(
     rechts(`${korrektur >= 0 ? '+' : '- '}${euro(Math.abs(korrektur))} EUR`, SP_BETRAG, 9, normal)
     y -= 13
   }
+
+  // §155 Die Lohnpfändung. Sie steht NACH dem Netto und vor der Auszahlung,
+  // weil sie genau dort wirkt: Das Geld ist verdient und versteuert, es geht
+  // nur an jemand anderen.
+  //
+  // Je Gläubiger eine eigene Zeile. Ein Sammelposten „Pfändung" wäre der
+  // sicherste Weg zu einer Rückfrage, die niemand beantworten kann — und bei
+  // mehreren Gläubigern kann der Beschäftigte sonst nicht prüfen, ob die
+  // Reihenfolge stimmt.
+  const pfaendung = abrechnung.pfaendungBetrag ?? 0
+  if (pfaendung >= 0.005) {
+    if (!zeigeKorrektur) {
+      text('Nettoentgelt', RAND, 9, normal)
+      rechts(`${euro(abrechnung.netto)} EUR`, SP_BETRAG, 9, normal)
+      y -= 13
+    }
+    for (const z of abrechnung.pfaendungen ?? []) {
+      text(`Pfändung ${z.glaeubiger}`, RAND, 9, normal)
+      rechts(`- ${euro(z.betrag)} EUR`, SP_BETRAG, 9, normal)
+      y -= 13
+    }
+    if (!(abrechnung.pfaendungen ?? []).length) {
+      text('Lohnpfändung', RAND, 9, normal)
+      rechts(`- ${euro(pfaendung)} EUR`, SP_BETRAG, 9, normal)
+      y -= 13
+    }
+    text('einbehalten nach §§850 ff. ZPO', RAND, 7, normal, grau)
+    y -= 11
+  }
+
   y -= 6
 
   // ── Auszahlung ───────────────────────────────────────────────────────────
