@@ -15,6 +15,7 @@ import { prisma } from './prisma'
 import { voraussichtlicherJahreslohn, beschaeftigtSeitMonat } from './einmalbezug'
 import { svTageImMonat } from './teilmonat'
 import { calculatePayroll, type PayrollInput, type PayrollResult } from './payroll-engine'
+import type { Umlagesaetze } from './umlagen'
 import {
   computeWithRules, DEFAULT_SURCHARGE_RULES,
   type ConfiguredSurchargeRule,
@@ -355,6 +356,8 @@ export function abrechnungRechnen(
   bav?: { umwandlung: number; minderungSteuer: number; minderungSv: number },
   /** §157 Kurzarbeitergeld und die Beiträge auf das fiktive Entgelt */
   kurzarbeit?: { kug: number; svAgFiktiv: number; istEntgelt?: number | null },
+  /** §159 Umlagesätze der Kasse und Teilnahme am U1-Verfahren */
+  umlage?: { saetze: Umlagesaetze; pflichtigU1: boolean },
 ): { eingabe: PayrollInput; ergebnis: PayrollResult } {
   // Der Grundlohn je Stunde ist der Maßstab für die Steuerfreiheit der
   // Zuschläge — beim Monatsgehalt aus Gehalt und Wochenstunden abgeleitet.
@@ -404,6 +407,8 @@ export function abrechnungRechnen(
     pauschalsteuer: stamm.pauschalsteuer ?? undefined,
     weiteresEntgelt: stamm.weiteresEntgelt ?? undefined,
     nebenbeschaeftigung: stamm.nebenbeschaeftigung ?? undefined,
+    umlagesaetze: umlage?.saetze,
+    umlagepflichtigU1: umlage?.pflichtigU1,
     grundlohnHourly: g.zuschlagsStundenlohn ?? undefined,
     jahresArbeitslohn: monat != null
       ? voraussichtlicherJahreslohn({
@@ -439,6 +444,9 @@ export function abrechnungsFelder(g: MonatsGrundlage, r: PayrollResult) {
     bavUmwandlung: r.bavUmwandlung,
     kugBetrag: r.kug,
     kugSvAG: r.kugSvAG,
+    umlageU1: r.umlageU1,
+    umlageU2: r.umlageU2,
+    insolvenzgeldUmlage: r.insolvenzgeldUmlage,
     grundlage: r.grundlage,
     svTage: r.svTage,
     beschaeftigungsart: r.beschaeftigungsart,

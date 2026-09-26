@@ -1486,6 +1486,11 @@ model PayrollEntry {
   bavMinderungSv   Float @default(0)
   /// Der Zuschuss des Arbeitgebers — er mindert das Entgelt nicht
   bavZuschussAG    Float @default(0)
+  // §159 Die Umlagen. Jeder Arbeitgeber zahlt sie, jeden Monat — sie gehoeren
+  // in die Arbeitgeberkosten, sonst zeigt die Abrechnung sie zu niedrig.
+  umlageU1        Float @default(0)
+  umlageU2        Float @default(0)
+  insolvenzgeldUmlage Float @default(0)
   // §157 Kurzarbeitergeld. Es ist steuer- und beitragsfrei und deshalb weder
   // im Brutto noch im Netto enthalten — es kommt zur Auszahlung hinzu. Der
   // Progressionsvorbehalt (§32b EStG) macht es trotzdem bescheinigungs-
@@ -2384,4 +2389,33 @@ model KurzarbeitMonat {
   @@unique([employeeId, jahr, monat])
   @@index([kurzarbeitId])
   @@index([customerId, jahr, monat])
+}
+
+/// §159 Die Umlagesaetze einer Krankenkasse.
+///
+/// U1 und U2 stehen nicht im Gesetz, sondern in der Satzung jeder einzelnen
+/// Kasse — U1 zwischen rund 1 % und 3 %, oft in mehreren Erstattungsstufen zur
+/// Wahl. Sie werden deshalb je Kasse hinterlegt und nicht geraten: Eine
+/// erfundene Umlage faellt niemandem auf, eine fehlende schon.
+///
+/// Gefuehrt je Kunde, weil derselbe Kassenname bei verschiedenen Traegern
+/// verschiedene Stufen haben kann — die Stufe waehlt der Betrieb.
+model Krankenkassensatz {
+  id           String   @id @default(cuid())
+  customerId   String
+  /// Name der Kasse, wie er am Lohnprofil steht
+  kasse        String
+  /// Umlagesatz U1 als Anteil (0.02 = 2 %)
+  u1Satz       Float?
+  /// Gewaehlte Erstattungsstufe der U1 als Anteil (0.8 = 80 %)
+  u1Erstattung Float?
+  /// Umlagesatz U2 als Anteil
+  u2Satz       Float?
+  gueltigAb    String
+  notiz        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([customerId, kasse])
+  @@index([customerId])
 }

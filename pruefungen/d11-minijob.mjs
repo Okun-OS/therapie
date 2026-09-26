@@ -71,8 +71,13 @@ check('Die Pauschsteuer von 2 % trägt der Arbeitgeber',
   Math.abs(mini.pauschsteuerAG - 10) < 0.02, `${mini.pauschsteuerAG} EUR`)
 check('Vom Minijob bleiben 482 EUR', Math.abs(mini.netto - 482) < 0.02,
   `${mini.netto} EUR`)
-check('Den Arbeitgeber kostet er 650 EUR',
-  Math.abs(mini.totalAgCost - 650) < 0.02, `${mini.totalAgCost} EUR`)
+// §159 Dazu kommt die Insolvenzgeldumlage — sie faellt auch beim Minijob an,
+// weil das Entgelt rentenversicherungspflichtig ist (§358 Abs. 2 SGB III).
+check('Den Arbeitgeber kostet er 650 EUR plus Insolvenzgeldumlage',
+  Math.abs(mini.totalAgCost - 650 - (mini.insolvenzgeldUmlage ?? 0)) < 0.02,
+  `${mini.totalAgCost} EUR, davon ${mini.insolvenzgeldUmlage} Umlage`)
+check('Und die Insolvenzgeldumlage ist wirklich angefallen',
+  (mini.insolvenzgeldUmlage ?? 0) > 0, `${mini.insolvenzgeldUmlage} EUR`)
 
 console.log('\n=== Minijob mit Befreiung von der Rentenversicherung ===')
 await stammdaten({ monatsgehalt: 500, beschaeftigungsart: 'minijob', pauschalsteuer: true, rvBefreiung: true })
@@ -93,6 +98,10 @@ check('Sie ist beitragsfrei in allen Zweigen',
 check('Versteuert wird sie trotzdem', kurz.lohnsteuer > 0, `${kurz.lohnsteuer} EUR`)
 check('Der Arbeitgeber zahlt nur das Brutto',
   Math.abs(kurz.totalAgCost - 2000) < 0.02, `${kurz.totalAgCost} EUR`)
+// §159 Auch keine Insolvenzgeldumlage: Sie bemisst sich nach dem
+// rentenversicherungspflichtigen Entgelt, und das gibt es hier nicht.
+check('Und keine Insolvenzgeldumlage, weil kein RV-pflichtiges Entgelt vorliegt',
+  (kurz.insolvenzgeldUmlage ?? 0) === 0, `${kurz.insolvenzgeldUmlage} EUR`)
 
 // ── Übergangsbereich ───────────────────────────────────────────────────────
 console.log('\n=== Übergangsbereich (Gesetz, keine Wahl) ===')

@@ -52,6 +52,20 @@ export interface Lohnjahr {
   mindestlohn: number
   /** Obere Grenze des Übergangsbereichs (§20 Abs.2 SGB IV), seit 2023 fest */
   uebergangsbereichObergrenze: number
+  /**
+   * §159 Umlagesatz zur Insolvenzgeldumlage (§358 SGB III).
+   *
+   * Anders als U1 und U2 ist er bundeseinheitlich und wird durch
+   * Rechtsverordnung festgesetzt — er gehört deshalb hierher und nicht in die
+   * Satzung einer Krankenkasse.
+   */
+  insolvenzgeldUmlage: number
+  /**
+   * Ist dieser Satz gegen die Rechtsverordnung abgeglichen? `false` heißt:
+   * aus dem Vorjahr fortgeschrieben. Dann wird zwar gerechnet, aber deutlich
+   * gesagt, dass die Zahl zu bestätigen ist.
+   */
+  insolvenzgeldUmlageGeprueft: boolean
   quelle: string
   geprueft: string
 }
@@ -74,6 +88,8 @@ const JAHRE: Record<number, Lohnjahr> = {
     sonderausgabenPauschbetrag: 36,
     mindestlohn: 12.82,
     uebergangsbereichObergrenze: 2000,
+    insolvenzgeldUmlage: 0.0015,   // Rechtsverordnung 2025: 0,15 %
+    insolvenzgeldUmlageGeprueft: true,
     quelle: 'BMF-Programmablaufplan 2025 (MPARA) und Sozialversicherungsrechengrößen-Verordnung 2025',
     geprueft: '2026-09-10 · gegen den Programmablaufplan abgeglichen (Grundfreibetrag 12.096 €, Soli-Freigrenze 19.950 €). '
       + 'Mindestlohn 12,82 € ergibt die Geringfügigkeitsgrenze 556 € — stimmt mit der amtlichen Grenze überein.',
@@ -95,6 +111,9 @@ const JAHRE: Record<number, Lohnjahr> = {
     sonderausgabenPauschbetrag: 36,
     mindestlohn: 13.90,
     uebergangsbereichObergrenze: 2000,
+    // Aus 2025 fortgeschrieben und NICHT gegen die Rechtsverordnung geprüft.
+    insolvenzgeldUmlage: 0.0015,
+    insolvenzgeldUmlageGeprueft: false,
     quelle: 'BMF-Programmablaufplan 2026 (MPARA) und Sozialversicherungsrechengrößen-Verordnung 2026',
     geprueft: '2026-09-10 · gegen den Programmablaufplan abgeglichen (Grundfreibetrag 12.348 €, Soli-Freigrenze 20.350 €). '
       + 'ACHTUNG: Der Mindestlohn 2026 (13,90 €) ist NICHT gegen eine amtliche Quelle geprüft — '

@@ -293,7 +293,11 @@ describe('Brutto, Netto und Arbeitgeberkosten', () => {
 
   it('weist die Arbeitgeberkosten über dem Brutto aus', () => {
     const r = calculatePayroll({ ...basis, zusatzbeitragPercent: 1.7 })
-    expect(r.totalAgCost).toBeCloseTo(r.brutto + r.rvAG + r.kvAG + r.pvAG + r.avAG, 2)
+    // §159 Die Umlagen gehören dazu — sie sind Arbeitgeberkosten wie die
+    // Beitragsanteile, auch wenn sie keine Beiträge sind.
+    expect(r.totalAgCost).toBeCloseTo(
+      r.brutto + r.rvAG + r.kvAG + r.pvAG + r.avAG
+      + r.umlageU1 + r.umlageU2 + r.insolvenzgeldUmlage, 2)
     expect(r.totalAgCost).toBeGreaterThan(r.brutto)
   })
 

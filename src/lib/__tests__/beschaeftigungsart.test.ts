@@ -245,8 +245,10 @@ describe('In der ganzen Abrechnung', () => {
     const r = calculatePayroll({
       ...basis, monthlyWage: 500, beschaeftigungsart: 'minijob', pauschalsteuer: true,
     })
-    // 500 + 75 Rente + 65 Kranken + 10 Pauschsteuer = 650
-    expect(r.totalAgCost).toBeCloseTo(650, 2)
+    // 500 + 75 Rente + 65 Kranken + 10 Pauschsteuer = 650, dazu §159 die
+    // Insolvenzgeldumlage — sie faellt auch beim Minijob an.
+    expect(r.totalAgCost).toBeCloseTo(650 + r.insolvenzgeldUmlage, 2)
+    expect(r.insolvenzgeldUmlage).toBeGreaterThan(0)
   })
 
   it('zahlt eine kurzfristige Beschäftigung ohne Beiträge aus', () => {

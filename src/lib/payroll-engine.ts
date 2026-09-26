@@ -23,6 +23,7 @@ import { einmalbezugBeitraege } from './einmalbezug'
 import { artBestimmen, beitraegeNachArt, individuellBesteuert } from './beschaeftigungsart'
 import { anteiligeBbg, type TeilmonatErgebnis } from './teilmonat'
 import { anteiligeGrenze, lage as mehrfachLage } from './mehrfachbeschaeftigung'
+import { berechne as umlagenBerechnen, type Umlagesaetze } from './umlagen'
 
 // Kirchensteuer: 8 % in Bayern und Baden-Württemberg, sonst 9 %.
 // Die Feiertagslogik nutzt ausgeschriebene Ländernamen — beide Schreibweisen
@@ -162,6 +163,15 @@ export interface PayrollInput {
   weiteresEntgelt?: number
   /** §158 Ist dies das zweite (oder spaetere) Dienstverhaeltnis der Person? */
   nebenbeschaeftigung?: boolean
+  /**
+   * §159 Die Umlagesaetze der Krankenkasse und ob der Betrieb am
+   * U1-Verfahren teilnimmt. Sie stehen in der Satzung jeder Kasse und werden
+   * deshalb uebergeben, nicht geraten.
+   */
+  umlagesaetze?: Umlagesaetze
+  umlagepflichtigU1?: boolean
+  /** Oeffentliche Arbeitgeber zahlen keine Insolvenzgeldumlage (§358 SGB III) */
+  insolvenzgeldpflichtig?: boolean
   /** Voraussichtlicher Jahresarbeitslohn ohne die Einmalzahlung */
   jahresArbeitslohn?: number
   /** Bisher beitragspflichtiges Entgelt des Jahres bis zum Vormonat */
@@ -220,6 +230,12 @@ export interface PayrollResult {
   kug: number
   /** §157 Beitraege auf das fiktive Entgelt, allein vom Arbeitgeber getragen */
   kugSvAG: number
+  /** §159 Umlage U1 (Entgeltfortzahlung), nur fuer kleine Betriebe */
+  umlageU1: number
+  /** §159 Umlage U2 (Mutterschaft), fuer alle Arbeitgeber */
+  umlageU2: number
+  /** §159 Insolvenzgeldumlage (§358 SGB III) */
+  insolvenzgeldUmlage: number
   // §120 Einmalzahlungen und ihr Anteil an Steuer und Beitrag. Die Gesamtwerte
   // unten enthalten sie bereits — das hier ist die Aufgliederung, die der
   // Steuerberater und der Beleg brauchen.
@@ -548,10 +564,25 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
   const kug = Math.max(0, input.kug ?? 0)
   const kugSvAG = Math.max(0, input.kugSvAG ?? 0)
 
+  // §159 Die Umlagen. Sie sind keine Sozialversicherungsbeiträge und tauchen
+  // beim Arbeitnehmer nirgends auf — es sind reine Arbeitgeberkosten, die
+  // jeden Monat anfallen. Wer sie weglässt, rechnet die Personalkosten zu
+  // niedrig und führt Geld nicht ab, das die Prüfung nachfordert.
+  const umlagen = umlagenBerechnen(
+    svBrutto,
+    input.umlagesaetze ?? { u1: null, u2: null },
+    jahr,
+    input.umlagepflichtigU1 !== false,
+    input.insolvenzgeldpflichtig !== false,
+    art,
+  )
+  warnings.push(...umlagen.hinweise)
+
   const totalAgCost = brutto + agRv + agKv + agPv + agAv
     + (bonusSv?.svAG ?? 0)
     + (sonderBeitraege?.pauschsteuerAG ?? 0)
     + kugSvAG
+    + umlagen.gesamt
 
   return {
     brutto: round2(brutto),
@@ -566,6 +597,9 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
     bavUmwandlung: round2(bavUmwandlung),
     kug: round2(kug),
     kugSvAG: round2(kugSvAG),
+    umlageU1: umlagen.u1,
+    umlageU2: umlagen.u2,
+    insolvenzgeldUmlage: umlagen.insolvenzgeld,
     sonstigeBezuege: round2(sonstigeBezuege),
     lohnsteuerSonstige: steuer.lohnsteuerSonstige,
     kirchensteuerSonstige,

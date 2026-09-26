@@ -2461,11 +2461,69 @@ Nachweis: 24 Modultests und 25 Prüfungen am laufenden System
 hohen Entgelten genau die Hälfte der Beiträge anfällt. Gesamtlauf:
 **1283/1283 in 36 Prüfungen**, 896 Modultests, Bauen sauber.
 
+## Block §159 (26.09.) — Lohn Teil 5: die Umlagen U1, U2 und Insolvenzgeld
+
+**Eine Lücke, die beim Aufräumen auffiel.** Jeder Arbeitgeber zahlt diese drei
+Umlagen, jeden Monat, auf jedes Entgelt — und sie standen nirgends. Eine
+Abrechnung ohne sie zeigt die Arbeitgeberkosten zu niedrig, und bei der
+Betriebsprüfung fehlt Geld, das nie abgeführt wurde.
+
+### Drei Umlagen, drei verschiedene Regeln
+- **U1** — Entgeltfortzahlung im Krankheitsfall (§1 Abs. 1 AAG). Nur für
+  **kleine** Betriebe bis 30 Arbeitnehmer. Dafür erstattet die Kasse einen
+  Teil der fortgezahlten Vergütung.
+- **U2** — Mutterschaft (§1 Abs. 2 AAG). Für **alle** Arbeitgeber, ohne
+  Größengrenze. Dafür erstattet die Kasse Mutterschutzlohn und Zuschuss zum
+  Mutterschaftsgeld zu 100 % — genau deshalb gibt es sie für alle: Sonst wäre
+  die Einstellung einer Frau im gebärfähigen Alter für einen kleinen Betrieb
+  ein Risiko.
+- **Insolvenzgeldumlage** (§358 SGB III). Bundeseinheitlicher Satz durch
+  Rechtsverordnung, für alle außer der öffentlichen Hand.
+
+### Die Betriebsgröße wird nicht nach Köpfen gezählt
+§3 AAG rechnet Teilzeit **anteilig**: bis 10 Wochenstunden 0,25, bis 20 dann
+0,5, bis 30 dann 0,75, darüber 1,0 — und Auszubildende zählen gar nicht mit.
+Eine Einrichtung mit 40 Teilzeitkräften zu je 20 Stunden hat 20 Arbeitnehmer
+im Sinne des AAG und nimmt am U1-Verfahren teil. Wer nach Köpfen zählt,
+verzichtet auf eine Erstattung, die ihm zusteht.
+
+### Die Sätze stehen nicht im Gesetz
+U1 und U2 legt **jede Krankenkasse in ihrer Satzung** fest — U1 zwischen rund
+1 % und 3 %, oft in mehreren Erstattungsstufen zur Wahl. Sie werden deshalb je
+Kasse hinterlegt und **nicht geraten**: Eine erfundene Umlage fällt niemandem
+auf, eine fehlende schon. Fehlt ein Satz, wird nichts gerechnet und der
+Lohnlauf sagt es — einmal für das Unternehmen, nicht hundertmal je Person.
+
+Die Übersicht zeigt dazu, welche Kassen bei den eigenen Beschäftigten
+überhaupt vorkommen und für welche davon noch nichts hinterlegt ist. Eine
+Einstellung, die man erst suchen muss, wird nicht gepflegt.
+
+### Die Feinheiten, die sonst untergehen
+- Beim **Minijob** rechnet die Minijob-Zentrale mit eigenen,
+  bundeseinheitlichen Sätzen ab. Das Programm rechnet mit denen der Kasse und
+  sagt, dass der Betrag mit dem Beitragsnachweis abzugleichen ist.
+- Bei einer **kurzfristigen Beschäftigung** fällt **keine**
+  Insolvenzgeldumlage an: Sie bemisst sich nach dem
+  rentenversicherungspflichtigen Entgelt (§358 Abs. 2 SGB III), und das gibt es
+  dort nicht. Die U1 setzt einen Anspruch auf Entgeltfortzahlung voraus, den es
+  erst nach vier Wochen gibt (§3 Abs. 3 EFZG) — auch das steht als Hinweis da.
+- Bemessungsgrundlage ist das Entgelt **bis zur Beitragsbemessungsgrenze der
+  Rentenversicherung** (§7 Abs. 2 AAG).
+
+> **Vor dem Jahresabschluss zu prüfen:** Der Satz der Insolvenzgeldumlage für
+> 2026 ist aus 2025 fortgeschrieben (0,15 %) und **nicht** gegen die
+> Rechtsverordnung abgeglichen. Der Lohnlauf sagt das bei jedem Durchgang.
+
+Nachweis: 18 Modultests und 30 Prüfungen am laufenden System
+(`pruefungen/d21-umlagen.mjs`) — darunter, dass die Umlagen die
+Arbeitgeberkosten erhöhen und das Netto des Arbeitnehmers nicht anrühren.
+Gesamtlauf: **1315/1315 in 37 Prüfungen**, 914 Modultests, Bauen sauber.
+
 ### Noch offen im Lohn-Block
 - Bescheinigungen (Arbeitsbescheinigung §312 SGB III, Entgeltbescheinigung für
   Krankengeld und Mutterschaftsgeld)
-- Eine Oberfläche für Pfändung, Entgeltumwandlung und Kurzarbeit: alle drei
-  sind derzeit nur über die Schnittstelle erfassbar.
+- Eine Oberfläche für Pfändung, Entgeltumwandlung, Kurzarbeit und die
+  Umlagesätze: alles vier ist derzeit nur über die Schnittstelle erfassbar.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

@@ -7,6 +7,7 @@ import { pfaendungFuerMonat } from '@/lib/pfaendung-lauf'
 import { bavFuerMonat } from '@/lib/bav-lauf'
 import { kurzarbeitFuerMonat, kurzarbeitFestschreiben } from '@/lib/kurzarbeit-lauf'
 import { hinweise as abfindungHinweise } from '@/lib/abfindung'
+import { betriebsgroesse, type Umlagesaetze } from '@/lib/umlagen'
 import { elstamStandBewerten } from '@/lib/elstam'
 import { korrekturText } from '@/lib/aufrollung'
 import { freigabelagen } from '@/lib/monatsfreigabe'
@@ -68,6 +69,34 @@ export async function POST(req: NextRequest) {
     where: { employeeId: { in: mitarbeiter.map(m => m.id) } },
   })
   const profilVon = new Map(profile.map(p => [p.employeeId, p]))
+
+  // §159 Die Umlagen. Zwei Dinge werden einmal fuer den ganzen Lauf bestimmt:
+  // die Saetze je Krankenkasse (sie stehen in deren Satzung) und die
+  // Betriebsgroesse (sie entscheidet ueber die Teilnahme am U1-Verfahren).
+  //
+  // Gezaehlt wird ueber ALLE aktiven Beschaeftigten des Unternehmens, nicht
+  // nur ueber die des abgerechneten Standorts: §3 AAG stellt auf den
+  // Arbeitgeber ab, nicht auf den Betriebsteil.
+  const alleFuerGroesse = await prisma.employee.findMany({
+    where: { customerId, active: true },
+    select: { weeklyHours: true },
+  })
+  const groesse = betriebsgroesse(
+    alleFuerGroesse.map(e => ({ wochenstunden: e.weeklyHours ?? 0 })))
+
+  const kassensaetze = await prisma.krankenkassensatz.findMany({
+    where: { customerId },
+  })
+  const satzVon = new Map(kassensaetze.map(k => [k.kasse.toLowerCase(), k]))
+  const umlageFuer = (kasse?: string | null): Umlagesaetze => {
+    const k = kasse ? satzVon.get(kasse.toLowerCase()) : undefined
+    return {
+      u1: k?.u1Satz ?? null,
+      u2: k?.u2Satz ?? null,
+      u1Erstattung: k?.u1Erstattung ?? null,
+      kasse: kasse ?? undefined,
+    }
+  }
 
   // Stunden, Abwesenheiten und Zuschläge des Monats — ein Durchlauf für alle
   const grundlagen = await monatsGrundlagen(customerId, year, month, mitarbeiter.map(m => {
@@ -156,6 +185,10 @@ export async function POST(req: NextRequest) {
   )
 
   // §158 Die Abfindungen dieses Monats — einmal geladen für alle.
+  // §159 Hinweise, die den Betrieb betreffen und nicht die einzelne Person.
+  const UNTERNEHMENSSACHE = /U1-Satz|U2-Satz|Insolvenzgeldumlage f\u00fcr/
+  const betriebshinweise = new Set<string>()
+
   const abfindungen = await prisma.payrollBonus.findMany({
     where: {
       customerId, jahr: year, monat: month, art: 'abfindung',
@@ -275,6 +308,10 @@ export async function POST(req: NextRequest) {
         month,
         bav ?? undefined,
         kurzarbeit ?? undefined,
+        {
+          saetze: umlageFuer(p!.krankenkasse),
+          pflichtigU1: groesse.u1Pflichtig,
+        },
       ).ergebnis
     } catch (fehler) {
       // Ein unbekanntes Abrechnungsjahr ist kein Serverfehler, sondern eine
@@ -284,7 +321,13 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       )
     }
-    for (const w of ergebnis.warnings) hinweise.push({ name: m.name, text: w })
+    for (const w of ergebnis.warnings) {
+      // §159 Fehlende Umlagesätze sind eine Sache des Unternehmens, nicht
+      // einer Person. Einmal gesagt reicht — sonst steht derselbe Satz
+      // hundertmal in der Liste und niemand liest sie mehr.
+      if (UNTERNEHMENSSACHE.test(w)) betriebshinweise.add(w)
+      else hinweise.push({ name: m.name, text: w })
+    }
 
     // §158 Abfindungen dieses Monats. Der Hinweis auf die entfallene
     // Fünftelregelung gehört in jeden Lauf, nicht nur ins Anlegen — die
@@ -432,6 +475,8 @@ export async function POST(req: NextRequest) {
     teile.push(`${ausgeglichen.length} Korrekturen ausgeglichen `
       + `(${summe >= 0 ? '+' : ''}${summe.toFixed(2)} EUR)`)
   }
+
+  for (const t of Array.from(betriebshinweise)) hinweise.push({ name: "Unternehmen", text: t })
 
   return NextResponse.json({
     angelegt: angelegt.length,
