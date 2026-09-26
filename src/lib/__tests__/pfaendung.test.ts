@@ -46,8 +46,11 @@ describe('Die Tabelle gilt ab dem 1. Juli, nicht ab Januar', () => {
 
   it('sagt, welche Tabellen noch ungeprüft sind', () => {
     // Ein fortgeschriebener Wert sieht im Programm aus wie ein geprüfter.
-    // Genau das ist die Gefahr, also muss es abrufbar sein.
-    expect(ungepruefteTabellen().length).toBeGreaterThan(0)
+    // Genau das ist die Gefahr, also muss es abrufbar sein. Seit dem
+    // Abgleich am 26.09.2026 ist keine Tabelle mehr offen — die Liste muss
+    // es trotzdem geben, denn im Juli kommt die nächste.
+    expect(ungepruefteTabellen()).toEqual(
+      TABELLEN.filter(t => !t.bestaetigt))
   })
 
   it('sagt zu jeder Tabelle, ob sie geprüft ist', () => {
@@ -55,6 +58,22 @@ describe('Die Tabelle gilt ab dem 1. Juli, nicht ab Januar', () => {
       expect(t.quelle.length, t.ab).toBeGreaterThan(10)
       expect(t.geprueft.length, t.ab).toBeGreaterThan(10)
     }
+  })
+
+  it('führt keine unbestätigte Tabelle mehr', () => {
+    // Die Werte ab Juli 2025 und Juli 2026 waren fortgeschrieben und falsch:
+    // der Grundbetrag ab Juli 2026 um 31,31 € zu hoch. Bei jeder Pfändung in
+    // diesem Zeitraum wäre zu wenig einbehalten worden, und dafür haftet der
+    // Arbeitgeber dem Gläubiger persönlich (§840 ZPO).
+    expect(ungepruefteTabellen()).toEqual([])
+  })
+
+  it('kennt die geltenden Freigrenzen ab Juli 2026', () => {
+    const t = tabelleFuer('2026-09-26')
+    expect(t?.grundbetrag).toBe(1587.40)
+    expect(t?.ersteUnterhaltspflicht).toBe(597.42)
+    expect(t?.weitereUnterhaltspflicht).toBe(332.83)
+    expect(t?.hoechstbetrag).toBe(4866.30)
   })
 })
 
@@ -141,13 +160,13 @@ describe('§850c — der pfändbare Betrag', () => {
   })
 
   it('rechnet den Mehrbetrag ohne Unterhaltspflicht richtig', () => {
-    // 2.000 € − 1.559,99 € = 440,01 € Mehrbetrag. Davon 3/10 frei = 132,00 €,
-    // pfändbar also 308,01 €.
+    // 2.000 € − 1.555,00 € = 445,00 € Mehrbetrag. Davon 3/10 frei = 133,50 €,
+    // pfändbar also 311,50 €.
     const b = berechnePfaendbar(2000, 0, JULI25)
-    expect(b.freibetrag).toBe(1559.99)
-    expect(b.mehrbetrag).toBe(440.01)
-    expect(b.mehrbetragFrei).toBe(132)
-    expect(b.pfaendbar).toBe(308.01)
+    expect(b.freibetrag).toBe(1555.00)
+    expect(b.mehrbetrag).toBe(445.00)
+    expect(b.mehrbetragFrei).toBe(133.5)
+    expect(b.pfaendbar).toBe(311.5)
   })
 
   it('erhöht den Freibetrag mit jeder Unterhaltspflicht', () => {

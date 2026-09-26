@@ -51,6 +51,16 @@ export interface Pfaendungstabelle {
   hoechstbetrag: number
   quelle: string
   geprueft: string
+  /**
+   * Ist dieser Eintrag gegen die amtliche Bekanntmachung abgeglichen?
+   *
+   * Ein eigenes Feld und keine Textsuche im Prüfvermerk: Ob eine Zahl geprüft
+   * ist, darf nicht davon abhängen, ob jemand zufällig das Wort „NICHT"
+   * hineingeschrieben hat. Genau so ist es einmal passiert — die Tabelle ab
+   * Juli 2026 war fortgeschrieben und um 31 € zu hoch, und der Prüfvermerk
+   * hing an einer Zeichenkette.
+   */
+  bestaetigt: boolean
 }
 
 /**
@@ -68,41 +78,53 @@ export const TABELLEN: Pfaendungstabelle[] = [
     ersteUnterhaltspflicht: 527.76,
     weitereUnterhaltspflicht: 294.02,
     hoechstbetrag: 4298.81,
+    bestaetigt: true,
     quelle: 'Pfändungsfreigrenzenbekanntmachung 2023 (BGBl. I)',
-    geprueft: 'NICHT gegen die amtliche Bekanntmachung abgeglichen.',
+    geprueft:
+      '26.09.2026 · gegen zwei unabhängige Veröffentlichungen abgeglichen, '
+      + 'beide stimmen überein.',
   },
   {
     ab: '2024-07-01',
-    grundbetrag: 1491.73,
+    grundbetrag: 1491.75,
     ersteUnterhaltspflicht: 561.43,
     weitereUnterhaltspflicht: 312.78,
     hoechstbetrag: 4573.10,
-    quelle: 'Pfändungsfreigrenzenbekanntmachung 2024 (BGBl. I)',
-    geprueft: 'NICHT gegen die amtliche Bekanntmachung abgeglichen.',
+    bestaetigt: true,
+    quelle:
+      'Pfändungsfreigrenzenbekanntmachung 2024 vom 10.05.2024, berichtigt am '
+      + '23.05.2024 (BGBl. I)',
+    geprueft:
+      '26.09.2026 · abgeglichen. Der Grundbetrag stand hier mit 1.491,73 € '
+      + 'und war um zwei Cent falsch — korrigiert auf 1.491,75 €.',
   },
   {
     ab: '2025-07-01',
-    grundbetrag: 1559.99,
-    ersteUnterhaltspflicht: 587.07,
-    weitereUnterhaltspflicht: 327.02,
-    hoechstbetrag: 4786.52,
+    grundbetrag: 1555.00,
+    ersteUnterhaltspflicht: 585.23,
+    weitereUnterhaltspflicht: 326.04,
+    hoechstbetrag: 4766.99,
+    bestaetigt: true,
     quelle: 'Pfändungsfreigrenzenbekanntmachung 2025 (BGBl. I)',
-    geprueft: 'NICHT gegen die amtliche Bekanntmachung abgeglichen.',
+    geprueft:
+      '26.09.2026 · abgeglichen. Alle vier Werte waren zu hoch gegriffen '
+      + '(Grundbetrag 1.559,99 statt 1.555,00 €) — korrigiert.',
   },
   {
     ab: '2026-07-01',
-    grundbetrag: 1618.71,
-    ersteUnterhaltspflicht: 609.17,
-    weitereUnterhaltspflicht: 339.33,
-    hoechstbetrag: 4966.75,
-    quelle: 'Pfändungsfreigrenzenbekanntmachung 2026 (BGBl. I)',
+    grundbetrag: 1587.40,
+    ersteUnterhaltspflicht: 597.42,
+    weitereUnterhaltspflicht: 332.83,
+    hoechstbetrag: 4866.30,
+    bestaetigt: true,
+    quelle: 'Pfändungsfreigrenzenbekanntmachung 2026 vom 19.03.2026 (BGBl. I)',
     geprueft:
-      'ACHTUNG: Diese Werte sind FORTGESCHRIEBEN und NICHT gegen die amtliche '
-      + 'Bekanntmachung abgeglichen. Ohne diesen Eintrag würde jede Pfändung '
-      + 'ab Juli 2026 verweigert — das wäre gegenüber dem Gläubiger falsch. '
-      + 'Mit geschätzten Werten zu rechnen ist aber genauso falsch: Vor der '
-      + 'ERSTEN echten Pfändung in diesem Zeitraum gehören die vier Zahlen '
-      + 'gegen die Bekanntmachung im Bundesgesetzblatt geprüft.',
+      '26.09.2026 · abgeglichen. Vorher standen hier FORTGESCHRIEBENE Werte, '
+      + 'und sie waren deutlich zu hoch: Der Grundbetrag lag mit 1.618,71 € '
+      + 'um 31,31 € über dem tatsächlichen. Bei jeder Pfändung in diesem '
+      + 'Zeitraum wäre zu wenig einbehalten worden — dafür haftet der '
+      + 'Arbeitgeber dem Gläubiger persönlich (§840 ZPO). Genau davor sollte '
+      + 'der Prüfvermerk warnen, und genau deshalb steht er in jeder Zeile.',
   },
 ]
 
@@ -114,7 +136,7 @@ export const TABELLEN: Pfaendungstabelle[] = [
  * genau das ist die Gefahr.
  */
 export function ungepruefteTabellen(): Pfaendungstabelle[] {
-  return TABELLEN.filter(t => /NICHT|ACHTUNG/i.test(t.geprueft))
+  return TABELLEN.filter(t => !t.bestaetigt)
 }
 
 /**

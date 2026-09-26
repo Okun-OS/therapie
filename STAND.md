@@ -165,9 +165,7 @@ Ohne diese Punkte kommt die Arbeit an bestimmten Stellen nicht weiter.
 | 🟡 | Datenschutzerklärung und Impressum öffentlich erreichbar | beide Stores |
 | 🟢 | Unternehmensdaten je Kunde vollständig eintragen | SEPA und DATEV je Kunde |
 | 🔴 | **Umlagesätze U1/U2 je Krankenkasse eintragen** (§159) | jede korrekte Arbeitgeberkostenrechnung — sie stehen in der Satzung jeder Kasse, das Programm rät sie nicht |
-| 🟡 | **Insolvenzgeldumlage 2026 bestätigen** — 0,15 % sind aus 2025 fortgeschrieben, nicht gegen die Rechtsverordnung geprüft | den Jahresabschluss |
-| 🟡 | **Pfändungsfreigrenzen ab Juli 2026 gegen das Bundesgesetzblatt prüfen** (§155) | die erste echte Pfändung |
-| 🟡 | **Mindestlohn 2026 (13,90 €) bestätigen** — aus ihm folgt die Geringfügigkeitsgrenze | den ersten Minijob |
+| 🟢 | ~~Insolvenzgeldumlage 2026, Pfändungsfreigrenzen, Mindestlohn~~ ✅ **erledigt am 26.09.** — nachgeschlagen und abgeglichen. Zwei Pfändungstabellen waren falsch und sind korrigiert |
 | 🟡 | **`OKUN_*`-Angaben bei Railway setzen** (Firma, Anschrift, Vertretung, Register, USt-IdNr., Datenschutzbeauftragter) | Impressum und Datenschutzerklärung — ohne sie steht dort, was fehlt |
 | 🟡 | **AVVs mit den Dienstleistern** (Claude, Hosting, Push) | den ersten echten Kunden |
 

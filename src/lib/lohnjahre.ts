@@ -88,7 +88,7 @@ const JAHRE: Record<number, Lohnjahr> = {
     sonderausgabenPauschbetrag: 36,
     mindestlohn: 12.82,
     uebergangsbereichObergrenze: 2000,
-    insolvenzgeldUmlage: 0.0015,   // Rechtsverordnung 2025: 0,15 %
+    insolvenzgeldUmlage: 0.0015,   // §360 SGB III, gesetzlicher Satz
     insolvenzgeldUmlageGeprueft: true,
     quelle: 'BMF-Programmablaufplan 2025 (MPARA) und Sozialversicherungsrechengrößen-Verordnung 2025',
     geprueft: '2026-09-10 · gegen den Programmablaufplan abgeglichen (Grundfreibetrag 12.096 €, Soli-Freigrenze 19.950 €). '
@@ -111,13 +111,16 @@ const JAHRE: Record<number, Lohnjahr> = {
     sonderausgabenPauschbetrag: 36,
     mindestlohn: 13.90,
     uebergangsbereichObergrenze: 2000,
-    // Aus 2025 fortgeschrieben und NICHT gegen die Rechtsverordnung geprüft.
+    // §360 SGB III: 0,15 % ist der gesetzliche Satz seit 2013. Für 2023 und
+    // 2024 war er durch Rechtsverordnung auf 0,06 % gesenkt; für 2026 wurde
+    // keine abweichende Verordnung erlassen, es gilt wieder der gesetzliche.
     insolvenzgeldUmlage: 0.0015,
-    insolvenzgeldUmlageGeprueft: false,
+    insolvenzgeldUmlageGeprueft: true,
     quelle: 'BMF-Programmablaufplan 2026 (MPARA) und Sozialversicherungsrechengrößen-Verordnung 2026',
     geprueft: '2026-09-10 · gegen den Programmablaufplan abgeglichen (Grundfreibetrag 12.348 €, Soli-Freigrenze 20.350 €). '
-      + 'ACHTUNG: Der Mindestlohn 2026 (13,90 €) ist NICHT gegen eine amtliche Quelle geprüft — '
-      + 'aus ihm folgt die Geringfügigkeitsgrenze. Vor dem ersten Minijob bestätigen lassen.',
+      + '26.09.2026 · Mindestlohn 13,90 € gegen die Mitteilung des BMAS abgeglichen; '
+      + 'daraus folgt die Geringfügigkeitsgrenze von 603 € — sie stimmt mit der amtlichen überein. '
+      + 'Insolvenzgeldumlage 0,15 % (§360 SGB III, gesetzlicher Satz, keine abweichende Verordnung für 2026).',
   },
 }
 
