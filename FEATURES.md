@@ -2405,8 +2405,65 @@ im Steuer- noch im Beitragsbrutto noch im Netto steht und dass es unter
 60 % der Bruttodifferenz bleibt. Gesamtlauf: **1258/1258 in 35 Prüfungen**,
 872 Modultests, Bauen sauber.
 
+## Block §158 (26.09.) — Lohn Teil 4: Zwei Arbeitgeber und die Abfindung
+
+### Die Beitragsbemessungsgrenze gehört der Person, nicht dem Arbeitgeber
+Zwei halbe Stellen in zwei Häusern, Festanstellung plus Wochenenddienst beim
+Nachbarträger — in der Pflege der Normalfall. Wenn jeder Arbeitgeber die
+Grenze voll auf sein eigenes Entgelt anwendet, zahlt die Person auf denselben
+Euro **zweimal** Beiträge. §22 Abs. 2 SGB IV teilt die Grenze deshalb im
+Verhältnis der Entgelte auf: Wer die Hälfte des Gesamtentgelts zahlt,
+verbeitragt die Hälfte der Grenze.
+
+Ohne Angabe des anderen Entgelts wird ganz normal gerechnet — mit voller
+Grenze. Das ist bewusst der sichere Weg: Zu viel abgeführte Beiträge holt sich
+die Person über die Krankenkasse zurück, zu wenig abgeführte holt sich die
+Rentenversicherung beim Betrieb. Und das letzte Wort hat ohnehin die Kasse, die
+das Gesamtentgelt feststellt (§28i SGB IV); bis dahin ist die Zahl im Programm
+die Angabe des Beschäftigten, und die Abrechnung sagt das.
+
+Dazu die Regel, die am häufigsten überrascht: **Ein** Minijob neben einer
+Hauptbeschäftigung bleibt geringfügig, der **zweite** wird mit ihr
+zusammengerechnet und ist versicherungspflichtig (§8 Abs. 2 SGB IV) — nur die
+Arbeitslosenversicherung bleibt außen vor.
+
+### Die Abfindung: eine Änderung, die viele Programme noch nicht kennen
+Bis einschließlich 2024 durfte der Arbeitgeber die **Fünftelregelung** schon
+beim Lohnsteuerabzug anwenden. Das Wachstumschancengesetz hat die dafür nötige
+Vorschrift (**§39b Abs. 3 Satz 9 EStG**) zum **1. Januar 2025 gestrichen**.
+
+Seitdem versteuert der Arbeitgeber die Abfindung als gewöhnlichen sonstigen
+Bezug. Die Ermäßigung nach §34 EStG gibt es weiterhin — aber die Person holt
+sie sich über ihre Einkommensteuererklärung. Wer das nicht mitbekommen hat,
+behält zu wenig Lohnsteuer ein; das fehlt nicht dem Finanzamt, sondern der
+Person, die einen Bescheid mit einer Nachzahlung bekommt.
+
+Der Hinweis steht deshalb an drei Stellen: **beim Erfassen** (vor der
+Unterschrift), **im Lohnlauf** und **auf dem Beleg**, neben dem Betrag. Dazu
+eine Abschätzung der **Zusammenballung** (§34 Abs. 1, Abs. 2 Nr. 2 EStG) — ob
+die Abfindung die bis Jahresende entgangenen Einnahmen übersteigt. Das Programm
+entscheidet das nicht; es rechnet die Faustregel und sagt, wie es dazu kommt.
+
+Sozialversicherung: eine echte Abfindung ist **vollständig beitragsfrei**
+(§14 SGB IV) — kein Arbeitsentgelt, sondern Entschädigung. Restlohn,
+Urlaubsabgeltung oder Karenzentschädigung wären es dagegen nicht, und auch das
+steht dabei.
+
+### Nebenbei gefunden: die beitragsfreie Zahlung verbrauchte eine Grenze
+Die anteilige Jahres-Beitragsbemessungsgrenze für Einmalzahlungen wurde aus
+`svBrutto + sonstigeBezuege` der Vormonate gebildet — **einschließlich
+beitragsfreier** Zahlungen. Eine Abfindung im März verkleinerte damit den
+Rahmen für das Weihnachtsgeld im November, und das Weihnachtsgeld wurde zu
+niedrig verbeitragt. Beitragsfreie Bezüge werden jetzt abgezogen.
+
+Nachweis: 24 Modultests und 25 Prüfungen am laufenden System
+(`pruefungen/d20-mehrfach-abfindung.mjs`) — darunter, dass bei zwei gleich
+hohen Entgelten genau die Hälfte der Beiträge anfällt. Gesamtlauf:
+**1283/1283 in 36 Prüfungen**, 896 Modultests, Bauen sauber.
+
 ### Noch offen im Lohn-Block
-- Mehrfachbeschäftigung, Abfindung, Bescheinigungen
+- Bescheinigungen (Arbeitsbescheinigung §312 SGB III, Entgeltbescheinigung für
+  Krankengeld und Mutterschaftsgeld)
 - Eine Oberfläche für Pfändung, Entgeltumwandlung und Kurzarbeit: alle drei
   sind derzeit nur über die Schnittstelle erfassbar.
 

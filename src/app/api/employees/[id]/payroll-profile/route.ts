@@ -22,6 +22,7 @@ const FELDER = {
   elstamStand: true, elstamQuelle: true, elstamBestaetigtVon: true,
   freibetragMonat: true, hinzurechnungMonat: true, faktor: true,
   lohnart: true, stundenlohn: true, monatsgehalt: true,
+  weiteresEntgelt: true, weitererArbeitgeber: true, nebenbeschaeftigung: true,
   iban: true, bic: true, kontoinhaber: true, notiz: true, updatedAt: true,
 } as const
 
@@ -101,6 +102,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     lohnart: text(body.lohnart),
     stundenlohn: zahl(body.stundenlohn),
     monatsgehalt: zahl(body.monatsgehalt),
+    // §158 Mehrfachbeschaeftigung. Die Angabe stammt vom Beschaeftigten;
+    // verbindlich stellt das Gesamtentgelt die Krankenkasse fest (§28i SGB IV).
+    weiteresEntgelt: zahl(body.weiteresEntgelt),
+    weitererArbeitgeber: text(body.weitererArbeitgeber),
+    nebenbeschaeftigung: body.nebenbeschaeftigung === true,
     iban: text(body.iban)?.replace(/\s+/g, '').toUpperCase() ?? null,
     bic: text(body.bic)?.toUpperCase() ?? null,
     kontoinhaber: text(body.kontoinhaber),

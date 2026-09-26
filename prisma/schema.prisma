@@ -1857,6 +1857,18 @@ model EmployeePayrollProfile {
   stundenlohn         Float?
   monatsgehalt        Float?
 
+  // §158 Mehrfachbeschaeftigung (§22 Abs. 2 SGB IV). Das Entgelt aus einer
+  // weiteren Beschaeftigung bei einem ANDEREN Arbeitgeber. Die
+  // Beitragsbemessungsgrenze gehoert der Person, nicht dem Arbeitgeber —
+  // ueberschreitet die Summe sie, verbeitragt jeder nur seinen Anteil.
+  //
+  // Die Angabe stammt vom Beschaeftigten. Verbindlich stellt das
+  // Gesamtentgelt die Krankenkasse fest (§28i SGB IV).
+  weiteresEntgelt     Float?
+  weitererArbeitgeber String?
+  /// Ist dies das zweite (oder spaetere) Dienstverhaeltnis? Dann Steuerklasse VI.
+  nebenbeschaeftigung Boolean?
+
   // Zahlung — Grundlage fuer die spaetere SEPA-Datei
   iban                String?
   bic                 String?

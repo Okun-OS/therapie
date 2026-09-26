@@ -66,6 +66,13 @@ export interface BelegAbrechnung {
   /** §120 Einmalzahlungen und die Steuer darauf */
   sonstigeBezuege?: number
   sonstigeBezuegeText?: string
+  /**
+   * §158 Der Satz, der bei einer Abfindung auf den Beleg gehoert: Seit 2025
+   * wendet der Arbeitgeber die Fuenftelregelung nicht mehr an. Ohne ihn
+   * kommt die Rueckfrage — oder schlimmer: keine, und die Person holt sich
+   * die Ermaessigung nie.
+   */
+  abfindungHinweis?: string
   lohnsteuerSonstige?: number
   /** §124 SV-Tage des Monats — nach der Entgeltbescheinigungsverordnung Pflicht */
   svTage?: number
@@ -262,6 +269,14 @@ export async function erzeugeLohnbeleg(
     if (zusatz) seite.drawText(zusatz, { x: RAND + 180, y, size: 8, font: normal, color: grau })
     if (betrag > 0) rechts(euro(betrag), SP_BETRAG)
     y -= 14
+  }
+
+  if (abrechnung.abfindungHinweis) {
+    for (const zeile of umbrechen(abrechnung.abfindungHinweis, 110)) {
+      text(zeile, RAND, 7, normal, grau)
+      y -= 10
+    }
+    y -= 3
   }
 
   y -= 2
@@ -483,6 +498,29 @@ export async function erzeugeLohnbeleg(
   )
 
   return Buffer.from(await pdf.save())
+}
+
+/**
+ * Einen Satz auf mehrere Zeilen verteilen.
+ *
+ * Gezählt wird in Zeichen, nicht in Punkten: Der Beleg setzt diese Hinweise in
+ * 7 pt, und dort passen rund 110 Zeichen in eine Zeile. Genauer zu rechnen
+ * hieße, die Schriftbreite jedes Zeichens abzufragen — das ist es für eine
+ * Fußnote nicht wert, und zu kurz umgebrochen sieht besser aus als zu lang.
+ */
+function umbrechen(satz: string, zeichen: number): string[] {
+  const zeilen: string[] = []
+  let aktuell = ''
+  for (const wort of satz.split(/\s+/)) {
+    if (aktuell && (aktuell + ' ' + wort).length > zeichen) {
+      zeilen.push(aktuell)
+      aktuell = wort
+    } else {
+      aktuell = aktuell ? `${aktuell} ${wort}` : wort
+    }
+  }
+  if (aktuell) zeilen.push(aktuell)
+  return zeilen
 }
 
 /** Dateiname der Abrechnung — sortiert sich in der Akte von selbst. */

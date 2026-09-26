@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { hinweise as abfindungHinweise, zusammenballung } from '@/lib/abfindung'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { allowedLocationScope, assertEmployeeAccess } from '@/lib/scope'
 
@@ -116,8 +117,31 @@ export async function POST(req: NextRequest) {
     },
   })
 
+  // §158 Bei einer Abfindung steht die wichtigste Auskunft VOR der Abrechnung:
+  // Seit 2025 wendet der Arbeitgeber die Fünftelregelung nicht mehr an. Wer das
+  // erst auf dem Beleg liest, hat die Vereinbarung schon unterschrieben.
+  const hinweise: string[] = []
+  if (art === 'abfindung') {
+    hinweise.push(...abfindungHinweise(jahr, zahlung.betrag, zahlung.beitragsfrei))
+    const profil = await prisma.employeePayrollProfile.findUnique({
+      where: { employeeId }, select: { monatsgehalt: true, austrittsdatum: true },
+    })
+    if (profil?.monatsgehalt) {
+      const austritt = profil.austrittsdatum
+        ? Number(profil.austrittsdatum.slice(5, 7)) : monat
+      hinweise.push(zusammenballung(
+        zahlung.betrag, profil.monatsgehalt, austritt || monat).begruendung)
+    } else {
+      hinweise.push(
+        'Ohne hinterlegtes Monatsgehalt lässt sich nicht abschätzen, ob die '
+        + 'Zusammenballung nach §34 Abs. 1 EStG gegeben ist. Das entscheidet '
+        + 'ohnehin das Finanzamt — die Abschätzung wäre nur ein Anhalt.')
+    }
+  }
+
   return NextResponse.json({
     zahlung,
+    hinweise,
     hinweis: 'Erfasst. Sie wird beim nächsten Abrechnungslauf dieses Monats gerechnet.',
   })
 }

@@ -179,7 +179,7 @@ export async function monatsGrundlagen(
     }),
     prisma.payrollBonus.findMany({
       where: { customerId, jahr: year, monat: { lt: month }, employeeId: { in: mitarbeiter.map(m => m.employeeId) } },
-      select: { employeeId: true, betrag: true },
+      select: { employeeId: true, betrag: true, beitragsfrei: true },
     }),
   ])
 
@@ -218,8 +218,17 @@ export async function monatsGrundlagen(
 
     const vormonate = frueherImJahr.filter(e => e.employeeId === m.employeeId)
     g.bisherSteuerBrutto = Math.round(vormonate.reduce((s, e) => s + e.steuerBrutto, 0) * 100) / 100
-    g.bisherBeitragspflichtig = Math.round(
-      vormonate.reduce((s, e) => s + e.svBrutto + e.sonstigeBezuege, 0) * 100) / 100
+    // §158 Beitragsfreie Einmalzahlungen — vor allem echte Abfindungen — sind
+    // kein Arbeitsentgelt (§14 SGB IV). Sie verbrauchen deshalb nichts von der
+    // anteiligen Jahresgrenze. Sie mitzuzählen hieße, eine spätere
+    // Einmalzahlung zu niedrig zu verbeitragen.
+    const frueherBeitragsfrei = Math.round(
+      frueherBonusse
+        .filter(b => b.employeeId === m.employeeId && b.beitragsfrei)
+        .reduce((s, b) => s + b.betrag, 0) * 100) / 100
+    g.bisherBeitragspflichtig = Math.round(Math.max(0,
+      vormonate.reduce((s, e) => s + e.svBrutto + e.sonstigeBezuege, 0)
+      - frueherBeitragsfrei) * 100) / 100
     g.bisherigeEinmalzahlungen = Math.round(
       frueherBonusse.filter(b => b.employeeId === m.employeeId)
         .reduce((s, b) => s + b.betrag, 0) * 100) / 100
@@ -325,6 +334,9 @@ export interface AbrechnungsStammdaten {
   beschaeftigungsart?: string | null
   rvBefreiung?: boolean | null
   pauschalsteuer?: boolean | null
+  /** §158 Entgelt aus einer weiteren Beschäftigung bei einem anderen Arbeitgeber */
+  weiteresEntgelt?: number | null
+  nebenbeschaeftigung?: boolean | null
   /**
    * §134 Seit wann die Person beschäftigt ist. Wird gebraucht, um den
    * voraussichtlichen Jahresarbeitslohn zu schätzen, wenn die Monate davor
@@ -390,6 +402,8 @@ export function abrechnungRechnen(
     beschaeftigungsart: stamm.beschaeftigungsart ?? undefined,
     rvBefreiung: stamm.rvBefreiung ?? undefined,
     pauschalsteuer: stamm.pauschalsteuer ?? undefined,
+    weiteresEntgelt: stamm.weiteresEntgelt ?? undefined,
+    nebenbeschaeftigung: stamm.nebenbeschaeftigung ?? undefined,
     grundlohnHourly: g.zuschlagsStundenlohn ?? undefined,
     jahresArbeitslohn: monat != null
       ? voraussichtlicherJahreslohn({

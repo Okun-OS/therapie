@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { assertEmployeeAccess, locationFilter } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
+import { hinweise as abfindungTexte } from '@/lib/abfindung'
 import { notifyEmployee } from '@/lib/notify'
 import { dateiSpeichern } from '@/lib/file-storage'
 import { erzeugeLohnbeleg, belegDateiname } from '@/lib/lohnbeleg'
@@ -91,6 +92,16 @@ export async function POST(req: NextRequest) {
     einmalHinweis.set(b.employeeId, bisher ? `${bisher}, ${b.bezeichnung}` : b.bezeichnung)
   }
 
+  // §158 Bei einer Abfindung gehoert der Satz zur entfallenen
+  // Fuenftelregelung auf den Beleg. Sonst haelt die Person die hoehere
+  // Lohnsteuer fuer einen Fehler — und holt sich die Ermaessigung nie.
+  const abfindungHinweis = new Map<string, string>()
+  for (const b of einmalzahlungen.filter(x => x.art === 'abfindung')) {
+    abfindungHinweis.set(
+      b.employeeId,
+      abfindungTexte(year, b.betrag, b.beitragsfrei).join(' '))
+  }
+
   // §155 Die Pfändungsabzüge des Monats, je Mitarbeiter. Sie stehen auf dem
   // Beleg einzeln — ein Sammelposten „Pfändung" wäre bei mehreren Gläubigern
   // nicht nachprüfbar.
@@ -176,6 +187,7 @@ export async function POST(req: NextRequest) {
           korrekturText: korrekturHinweis.get(a.employeeId),
           sonstigeBezuege: a.sonstigeBezuege,
           sonstigeBezuegeText: einmalHinweis.get(a.employeeId),
+          abfindungHinweis: abfindungHinweis.get(a.employeeId),
           lohnsteuerSonstige: a.lohnsteuerSonstige,
           svTage: a.svTage,
           beschaeftigungsart: a.beschaeftigungsart,

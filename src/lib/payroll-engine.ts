@@ -22,6 +22,7 @@ import { lohnsteuerBerechnen, istSachsen, pflegeMerkmale } from './lohnsteuer-pa
 import { einmalbezugBeitraege } from './einmalbezug'
 import { artBestimmen, beitraegeNachArt, individuellBesteuert } from './beschaeftigungsart'
 import { anteiligeBbg, type TeilmonatErgebnis } from './teilmonat'
+import { anteiligeGrenze, lage as mehrfachLage } from './mehrfachbeschaeftigung'
 
 // Kirchensteuer: 8 % in Bayern und Baden-Württemberg, sonst 9 %.
 // Die Feiertagslogik nutzt ausgeschriebene Ländernamen — beide Schreibweisen
@@ -150,6 +151,17 @@ export interface PayrollInput {
    * zahlt zweimal — und bekommt das zweite nicht erstattet.
    */
   kurzarbeitIstEntgelt?: number
+  /**
+   * §158 Monatliches Arbeitsentgelt aus einer WEITEREN Beschaeftigung bei
+   * einem anderen Arbeitgeber.
+   *
+   * Die Beitragsbemessungsgrenze gilt je Person, nicht je Arbeitgeber. Wer
+   * sie nur auf das eigene Entgelt anwendet, fuehrt zusammen zu viel ab —
+   * §22 Abs. 2 SGB IV teilt sie im Verhaeltnis der Entgelte auf.
+   */
+  weiteresEntgelt?: number
+  /** §158 Ist dies das zweite (oder spaetere) Dienstverhaeltnis der Person? */
+  nebenbeschaeftigung?: boolean
   /** Voraussichtlicher Jahresarbeitslohn ohne die Einmalzahlung */
   jahresArbeitslohn?: number
   /** Bisher beitragspflichtiges Entgelt des Jahres bis zum Vormonat */
@@ -338,8 +350,24 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
 
   // ─ 2. Sozialversicherung ──────────────────────────────────────────────────
   // Bemessungsgrundlage ist das SV-Brutto: beitragsfreie Zuschläge zählen nicht.
-  const bbgRv = anteiligeBbg(jahr.bbgRvAvMonat, teil)
-  const bbgKv = anteiligeBbg(jahr.bbgKvPvMonat, teil)
+  const bbgRvMonat = anteiligeBbg(jahr.bbgRvAvMonat, teil)
+  const bbgKvMonat = anteiligeBbg(jahr.bbgKvPvMonat, teil)
+
+  // §158 Mehrfachbeschäftigung: Die Grenze gehört der Person, nicht dem
+  // Arbeitgeber. Liegt das Gesamtentgelt darüber, verbeitragt jeder nur
+  // seinen Anteil (§22 Abs. 2 SGB IV).
+  const weiteresEntgelt = Math.max(0, input.weiteresEntgelt ?? 0)
+  const teilungRv = anteiligeGrenze(svBrutto, weiteresEntgelt, bbgRvMonat)
+  const teilungKv = anteiligeGrenze(svBrutto, weiteresEntgelt, bbgKvMonat)
+  const bbgRv = teilungRv.grenze
+  const bbgKv = teilungKv.grenze
+  if (weiteresEntgelt > 0 || input.nebenbeschaeftigung) {
+    warnings.push(...mehrfachLage(
+      svBrutto, weiteresEntgelt, input.taxClass, jahr,
+      input.nebenbeschaeftigung === true,
+    ).hinweise)
+  }
+
   const rvBase = Math.min(svBrutto, bbgRv)
   const rvAN = input.rvExempt ? 0 : rvBase * (jahr.rvSatz / 2)
   const rvAG = input.rvExempt ? 0 : rvBase * (jahr.rvSatz / 2)
@@ -402,6 +430,20 @@ export function calculatePayroll(input: PayrollInput): PayrollResult {
       })
     : null
   if (bonusSv) warnings.push(...bonusSv.warnungen)
+  // §158 Die anteilige JAHRESgrenze für Einmalzahlungen wird hier noch mit der
+  // vollen Grenze gebildet. Bei Mehrfachbeschäftigung ist auch sie zu teilen —
+  // die Zahl dafür (das Gesamtentgelt des ganzen Jahres) liegt dem Betrieb
+  // nicht vor, sie kommt von der Krankenkasse (§28i SGB IV). Deshalb wird
+  // gesagt, was gerechnet wurde, statt eine Zahl zu erfinden.
+  if (bonusSv && weiteresEntgelt > 0) {
+    warnings.push(
+      'Einmalzahlung bei Mehrfachbeschäftigung: Die anteilige Jahres-'
+      + 'Beitragsbemessungsgrenze wurde mit der vollen Grenze gebildet. Das '
+      + 'Gesamtentgelt des Jahres stellt die Krankenkasse fest '
+      + '(§28i SGB IV) — der Beitrag auf diese Einmalzahlung gehört danach '
+      + 'geprüft.',
+    )
+  }
   if (sonstigeBezuege > 0 && input.monat == null) {
     warnings.push(
       'Ohne Abrechnungsmonat lässt sich die anteilige Jahres-Beitragsbemessungsgrenze '

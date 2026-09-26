@@ -6,6 +6,7 @@ import { monatsGrundlagen, abrechnungRechnen, abrechnungsFelder } from '@/lib/pa
 import { pfaendungFuerMonat } from '@/lib/pfaendung-lauf'
 import { bavFuerMonat } from '@/lib/bav-lauf'
 import { kurzarbeitFuerMonat, kurzarbeitFestschreiben } from '@/lib/kurzarbeit-lauf'
+import { hinweise as abfindungHinweise } from '@/lib/abfindung'
 import { elstamStandBewerten } from '@/lib/elstam'
 import { korrekturText } from '@/lib/aufrollung'
 import { freigabelagen } from '@/lib/monatsfreigabe'
@@ -154,6 +155,15 @@ export async function POST(req: NextRequest) {
     year, month,
   )
 
+  // §158 Die Abfindungen dieses Monats — einmal geladen für alle.
+  const abfindungen = await prisma.payrollBonus.findMany({
+    where: {
+      customerId, jahr: year, monat: month, art: 'abfindung',
+      employeeId: { in: mitarbeiter.map(m => m.id) },
+    },
+    select: { employeeId: true, betrag: true, beitragsfrei: true },
+  })
+
   for (const m of mitarbeiter) {
     const p = profilVon.get(m.id)
 
@@ -275,6 +285,15 @@ export async function POST(req: NextRequest) {
       )
     }
     for (const w of ergebnis.warnings) hinweise.push({ name: m.name, text: w })
+
+    // §158 Abfindungen dieses Monats. Der Hinweis auf die entfallene
+    // Fünftelregelung gehört in jeden Lauf, nicht nur ins Anlegen — die
+    // Abrechnung sieht oft jemand anders als die Vereinbarung.
+    for (const ab of abfindungen.filter(x => x.employeeId === m.id)) {
+      for (const t of abfindungHinweise(year, ab.betrag, ab.beitragsfrei)) {
+        hinweise.push({ name: m.name, text: t })
+      }
+    }
     if (ergebnis.svTage < 30) teilmonate.push({ name: m.name, svTage: ergebnis.svTage })
 
     const stammFelder = {

@@ -83,6 +83,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `d17-pfaendung.mjs` | Lohnpfändung: Freigrenzen, Rangfolge, Nachweis |
 | `d18-bav.mjs` | Betriebliche Altersvorsorge: 8 % Steuer im Jahr, 4 % Beiträge im Monat |
 | `d19-kurzarbeit.mjs` | Kurzarbeitergeld: Nettodifferenz, fiktives Entgelt, Abrechnungsliste |
+| `d20-mehrfach-abfindung.mjs` | Zwei Arbeitgeber: geteilte Grenze · Abfindung ohne Fünftelregelung |
 | `e-kommunikation.mjs` | Benachrichtigungen, Einspringen, Push |
 | `e5-chat.mjs` | Nachrichten, Gruppen, wer nicht mitlesen darf |
 | `f-dienstplan.mjs` | Rechenkern, Dienstwünsche, Schichttausch |
