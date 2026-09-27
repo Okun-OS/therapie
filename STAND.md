@@ -215,7 +215,7 @@ Die fünf, die am meisten aufhalten:
 | 🔴 | **D-U-N-S-Nummer beantragen** (kostenlos, 1–2 Wochen) | Apple-Konto → Push aufs iPhone → App Store → das beglaubigte `.dmg` |
 | 🔴 | **Eigene Domain einrichten** | Impressum, beide Stores, die Seite zum Herunterladen |
 | 🔴 | **Firebase anlegen, `FCM_SERVICE_ACCOUNT` setzen** | jede Benachrichtigung — ohne den Schlüssel verschickt das System nichts |
-| 🟡 | **Erstattungsstufe je Kasse wählen** (§175) | jede korrekte Arbeitgeberkostenrechnung. Die Sätze von 24 Kassen sind hinterlegt — zu tun bleibt: auswählen, welche Stufe der Betrieb vereinbart hat |
+| 🔴 | **Eine echte ELStAM-Änderungsliste besorgen** | den Import passgenau zu machen — geprüft ist er bisher nur an nachgebauten Dateien |
 | 🔴 | **Steuerberater die Rechnung gegenzeichnen lassen** | den ersten echten Kunden |
 
 🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt

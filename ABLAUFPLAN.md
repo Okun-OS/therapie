@@ -47,6 +47,11 @@ In OKUN unter *Unternehmen → Einstellungen*:
 - [ ] IBAN, BIC, Kontoinhaber — sonst gibt es keine SEPA-Datei
 - [ ] DATEV Berater- und Mandantennummer — sonst kann der Berater die Datei
       nicht zuordnen
+- [ ] **Erstattungsstufe je Krankenkasse** (Lohnverwaltung → Umlagesätze).
+      Die Sätze stehen im System; der Kunde wählt nur, welche Stufe er mit
+      welcher Kasse vereinbart hat. Ohne diese Wahl rechnet der Lohnlauf für
+      die betroffenen Beschäftigten keine U1 und keine U2 — und sagt es bei
+      jedem Durchgang
 
 ### 4. Je Mitarbeiter: die Angaben, die man nicht raten kann
 - [ ] **Steuer-Identifikationsnummer** — ohne sie ordnet der ELStAM-Import nur

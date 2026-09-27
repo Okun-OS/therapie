@@ -20,8 +20,10 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 5. Code-Signing    ─────────►  Windows-Programm ohne Warnung
 ```
 
-**Erledigt am 27.09.:** Die Umlagesätze U1/U2 sind keine Recherche mehr — 24
-Kassen stehen im System. Was bleibt, ist ein Auswahlfeld (Punkt 3 unten).
+**Erledigt am 27.09.:** Die Umlagesätze U1/U2 standen hier als deine Aufgabe.
+Das war falsch einsortiert — sie gehören dem Kunden, nicht dir (siehe unten
+unter *Wenn ein Kunde kommt*). Deine Recherche ist eingelesen, 24 Kassen
+stehen im System.
 
 Punkt 1 und 2 dauern Wochen und hängen an Dritten. **Damit anfangen**, alles
 andere läuft daneben.
@@ -99,27 +101,6 @@ E-Mail-Adresse.
 
 ## 3 · Zahlen und Unterschriften
 
-### 🟡 Erstattungsstufe je Krankenkasse wählen
-**Das meiste ist erledigt.** Die Sätze von 24 Kassen stehen jetzt im System —
-79 Stände, mit Quelle und Stichtag, aus deiner Recherche eingelesen. Vier
-Kassen habe ich gegen ihre eigene Veröffentlichung geprüft (TK, BARMER, DAK,
-Knappschaft), alle vier deckungsgleich.
-
-**Was bleibt:** je Kasse die **Erstattungsstufe** wählen, für die dein Betrieb
-sich entschieden hat — ein Auswahlfeld, keine Zahlen mehr.
-`/company/lohnverwaltung` → Umlagesätze. Dort steht auch, für welche Kassen
-deiner Belegschaft noch nichts hinterlegt ist.
-
-Höhere Stufe heißt höhere Umlage, aber mehr Erstattung bei langen
-Krankheitsfällen. Steht die Vereinbarung noch nicht fest, ist das eine
-Entscheidung mit deiner Kasse, keine Eingabe.
-
-Fehlt eine Kasse deiner Belegschaft im Katalog, trägst du ihre Sätze selbst
-ein — oder du schickst mir den Namen, dann hole ich sie nach. Der
-Rechercheauftrag dafür liegt weiter in `recherche-auftrag-umlagen.md`.
-
-**Blockiert:** jede korrekte Arbeitgeberkostenrechnung.
-
 ### 🔴 Steuerberater die Rechnung gegenzeichnen lassen
 Eine echte Abrechnung eines echten Monats, Zeile für Zeile. Solange das nicht
 jemand mit Berufshaftpflicht bestätigt hat, ist jede Zahl hier nur *von uns*
@@ -174,9 +155,30 @@ Domain und zur überarbeiteten Startseite.
 
 ## 5 · Wenn ein Kunde kommt
 
+> **Das hier machst nicht du, sondern der Kunde** — in seinem eigenen Zugang.
+> Es steht trotzdem auf dieser Liste, weil du beim Einrichten dabei bist und
+> es sonst niemand sagt.
+
 ### 🟢 Unternehmensdaten je Kunde vollständig eintragen
 Betriebsnummer, Steuernummer, IBAN, Berufsgenossenschaft. Ohne sie kein SEPA
 und kein DATEV-Export.
+
+### 🟢 Erstattungsstufe je Krankenkasse wählen (§175)
+Die **Sätze** stehen im System: 24 Kassen, 79 Stände, mit Quelle und
+Stichtag. Niemand muss mehr Zahlen aus Satzungen abtippen.
+
+Was der Kunde tut: für jede Krankenkasse **seiner** Beschäftigten die
+Erstattungsstufe auswählen, die **sein** Betrieb mit dieser Kasse vereinbart
+hat — 50 %, 70 %, 80 %. Ein Auswahlfeld unter *Lohnverwaltung → Umlagesätze*.
+Dort steht auch von selbst, für welche seiner Kassen noch nichts hinterlegt
+ist.
+
+Höhere Stufe heißt höhere Umlage, aber mehr Erstattung bei langen
+Krankheitsfällen. Steht die Vereinbarung noch nicht fest, ist das eine
+Sache zwischen dem Kunden und seiner Kasse, keine Eingabe.
+
+Fehlt eine seiner Kassen im Katalog, kann er ihre Sätze selbst eintragen —
+oder er sagt dir den Namen, und ich hole sie nach (siehe unten).
 
 ### 🟢 Je Mitarbeiter: die Angaben, die man nicht raten kann
 Steuer-ID, Sozialversicherungsnummer, Krankenkasse, Steuerklasse.
@@ -195,6 +197,20 @@ Für die Entscheidung, ob wir das Meldewesen selbst machen.
 
 ### 🟢 Lizenzierung für Steuer und Lohn anschreiben
 Erst wenn alles Übrige steht.
+
+### 🟢 Den Umlagekatalog aktuell halten — jedes Jahr, und wenn eine Kasse fehlt
+**Das ist eure Aufgabe, nicht die des Kunden.** Die Sätze gelten pro Jahr;
+manche Kassen ändern sie mitten im Jahr (2026 gleich drei).
+
+- **Jährlich, im Dezember/Januar:** neue Sätze holen, mit
+  `recherche-auftrag-umlagen.md`, und mit `npm run umlagen:import` einlesen.
+  Alte Stände bleiben stehen — Nachrechnungen für das Vorjahr brauchen sie.
+- **Wenn ein Kunde eine Kasse meldet, die fehlt:** dieselbe Recherche, nur
+  für diese eine Kasse.
+- **20 von 24 Kassen sind noch ungeprüft.** Geprüft heißt: jemand hat die Zahl
+  gegen die Veröffentlichung der Kasse gehalten. In der Maske steht bei diesen
+  „übernommen, ungeprüft". Bei den Pfändungstabellen waren zwei von acht
+  falsch — das Feld gibt es deshalb.
 
 ---
 
