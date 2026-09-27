@@ -110,6 +110,17 @@ const lauf = await sende(leitung, '/api/planning/runs', 'POST', { locationId, vo
 // 202 = angenommen; der Lauf rechnet im Hintergrund weiter
 check('Danach läuft die Planung', lauf.status === 202, `HTTP ${lauf.status}`)
 
+// §170 Während gerechnet wird, muss der Rechendienst weiter Auskunft geben.
+//
+// Er tat es nicht: `solve` rechnete direkt in der Ereignisschleife, und
+// solange blieb auch die Paketliste stumm. Die App fragt sie mit fünf
+// Sekunden Geduld ab — und meldete „nicht erreichbar", ausgerechnet während
+// er arbeitete. Genau hier ist es aufgefallen, ein paar Zeilen weiter unten.
+const waehrendGerechnetWird = await hole(okun, '/api/okun/dienstplanung')
+check('Auch während ein Plan gerechnet wird, ist die Paketliste abrufbar',
+  waehrendGerechnetWird.body.rechendienstErreichbar === true,
+  waehrendGerechnetWird.body?.hinweis ?? `HTTP ${waehrendGerechnetWird.status}`)
+
 // ── Abschottung ────────────────────────────────────────────────────────────
 console.log('\n=== Abschottung ===')
 const fremdSchaltet = await sende(kita, '/api/okun/dienstplanung', 'PATCH',

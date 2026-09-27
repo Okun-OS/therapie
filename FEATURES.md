@@ -2975,6 +2975,74 @@ Nachweis: 80 Prüfungen am gelösten Plan (davon 4 neu, darunter der konkrete
 Freitag), 120 Tests im Rechendienst, 944 Modultests. Gesamtlauf:
 **1358/1358 in 38 Prüfungen**, Bauen sauber.
 
+## Block §169/§170 (27.09.) — Die Maßnahme wird entschieden
+
+**Was fehlte.** Wenn eine Gruppe nicht besetzbar ist, rechnet das System die
+Aufteilung durch und zeigt sie an — nachgerechnet, nicht vermutet. Aber
+niemand konnte darauf antworten. Der Vorschlag stand da, und die Leitung
+klärte ihn außerhalb des Programms. Um sechs Uhr morgens ist das genau der
+Moment, in dem eine Software nützlich sein müsste.
+
+### Was jetzt geht
+Genehmigen, ablehnen, zurücknehmen — und einen Satz dazu schreiben. Wer
+entschieden hat und wann, steht dabei. Der Kommentar ist ein eigenes Feld,
+weil „nein" allein niemandem hilft: Wer in vier Wochen fragt, warum an diesem
+Donnerstag die Gruppe geschlossen blieb, findet hier den Satz der Leitung und
+nicht nur ein Kreuz.
+
+### Die Entscheidung hängt am Tag, nicht am Rechenlauf
+„Gruppe 7 ist am 8. Oktober aufgeteilt" ist eine Tatsache über diesen Tag,
+keine Eigenschaft eines Rechendurchgangs. Nach jeder Krankmeldung wird neu
+gerechnet — hinge die Entscheidung am Lauf, müsste die Leitung sie jedes Mal
+neu treffen. Gespeichert wird deshalb unter (Standort, Typ, Ziel, Tag).
+
+### Der Kreis schließt sich
+Genehmigte Maßnahmen gehen in das Regelmodell des **nächsten** Laufs. Das
+Kita-Paket fragt sie ab: Eine aufgeteilte Gruppe braucht keine Besetzung mehr
+und wird nicht erneut als Lücke gemeldet. Abgelehntes ändert nichts — sonst
+hätte „nein" dieselbe Wirkung wie „ja", und das wäre der schlimmste Fehler,
+den dieses Feld machen kann. Drei Prüfungen im Rechendienst decken genau das
+ab, einschließlich der Gegenprobe mit einer fremden Maßnahme.
+
+### §170 Ein Fund nebenbei
+Die Abnahme scheiterte an einer Stelle, die mit Maßnahmen nichts zu tun hat:
+Eine Paketzuordnung mitten in einem laufenden Plan meldete *„Der Rechendienst
+ist nicht erreichbar"*. Er war erreichbar — er antwortete nur nicht. `solve`
+rechnete direkt in der Ereignisschleife von FastAPI, und solange blieb auch
+`/health` und `/version` stumm. Die App fragt dort mit fünf Sekunden Geduld
+die Paketliste ab.
+
+Behoben: Das Rechnen läuft in einem Arbeitsfaden. CP-SAT rechnet in C++ und
+gibt die GIL dabei frei, deshalb wirkt das wirklich und nicht nur auf dem
+Papier. Die Prüfung dazu holt die Paketliste ab, **während** ein Plan
+gerechnet wird.
+
+### Zwei weitere Funde nebenbei
+**Das Löschkonzept hätte die neue Tabelle übersehen.** Die
+Vollständigkeitsprüfung aus §128 sucht nach Modellen mit `employeeId` —
+`PlanungsMassnahme` hat keine, hält aber fest, WER entschieden hat. Genau der
+stille Fehler, vor dem §128 warnt, nur an der Heuristik vorbei. Die Maßnahme
+steht jetzt im Katalog (`dienstplan`, anonymisieren): Warum eine Gruppe an
+einem Tag aufgeteilt war, bleibt eine Tatsache über den Betrieb — nur der
+Name der Leitung und ihr Kommentar verschwinden. Dafür steht neben dem
+Klartextnamen die Kennung des Kontos: Über einen Namen ist eine Person nicht
+sicher auffindbar, wer heiratet heißt anders, und zwei Menschen heißen gleich.
+
+**`d12-lohnrechnung` bestand nur aus Zufall.** Die Prüfung braucht einen
+freigegebenen Monatsabschluss, gab ihn aber nie selbst frei — sie lief nur,
+weil eine andere Prüfung ihn vorher zufällig freigegeben hatte. Nach dem
+ersten Zurücksetzen der Datenbank war das weg und die Prüfung brach ab. Sie
+stellt ihren Ausgangszustand jetzt selbst her (Regel 1 der README).
+
+Nachweis: 32 neue Prüfungen am laufenden System (`f6-massnahmen.mjs`) —
+entscheiden, umentscheiden, zurücknehmen, wiederfinden, und die Gegenproben:
+fremde Leitung, Mitarbeiter, erfundener Typ, erfundener Status, Datum in
+falscher Form, fehlendes Feld nicht als „undefined". Dazu 3 neue Prüfungen im
+Rechendienst und 1 in `f5-regelpakete`. Gesamtlauf: **1393/1393 in 39
+Prüfungen** — zum ersten Mal auf einer frisch aufgesetzten Datenbank, also
+ohne angesammelten Zustand aus früheren Läufen. 123 im Rechendienst,
+944 Modultests, Bauen sauber.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

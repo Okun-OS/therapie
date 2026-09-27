@@ -117,6 +117,9 @@ export async function POST(req: NextRequest) {
     week,
     decisions: result.finalPlan.decisions,
     bewertung: result.finalBewertung,
+    // §169 Die Maßnahmen gehören als Daten in die Oberfläche, nicht nur als
+    // Satz in der Verletzungsliste. Erst so kann jemand sie abhaken.
+    vorschlag: result.finalPlan.regelpaket?.vorschlag ?? null,
     sessionId: result.sessionId,
     iterationen: result.iterationen,
     gesamtScore: result.gesamtScore,

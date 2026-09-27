@@ -2428,3 +2428,49 @@ model Krankenkassensatz {
   @@unique([customerId, kasse])
   @@index([customerId])
 }
+
+/// §169 Eine Massnahme, die das System vorgeschlagen und ein Mensch
+/// entschieden hat.
+///
+/// WARUM SIE AM TAG HAENGT UND NICHT AM PLANUNGSLAUF
+/// „Gruppe 7 ist am 8. Oktober aufgeteilt" ist eine Tatsache ueber diesen Tag,
+/// keine Eigenschaft eines Rechenlaufs. Wird der Plan neu gerechnet — und das
+/// passiert bei jeder Krankmeldung — gilt die Entscheidung weiter. Haengte sie
+/// am Lauf, muesste die Leitung sie jedes Mal neu treffen.
+///
+/// WARUM DER KOMMENTAR EIN EIGENES FELD IST
+/// Weil „nein" allein niemandem hilft. Wer in vier Wochen fragt, warum an
+/// diesem Donnerstag die Gruppe geschlossen blieb, findet hier den Satz, den
+/// die Leitung damals geschrieben hat — und nicht nur ein Kreuz.
+model PlanungsMassnahme {
+  id           String   @id @default(cuid())
+  customerId   String
+  locationId   String
+  /// aufteilen | frueh_entfaellt | spaet_entfaellt
+  typ          String
+  /// Kennung der Gruppe oder Etage, um die es geht
+  ziel         String
+  /// Klartextname, damit die Liste auch lesbar bleibt, wenn die Gruppe
+  /// spaeter umbenannt oder geloescht wird
+  zielName     String?
+  /// Der Tag, fuer den sie gilt
+  tag          String
+  /// Der Vorschlagstext, wie das System ihn formuliert hat
+  text         String
+  /// offen | genehmigt | abgelehnt
+  status       String   @default("offen")
+  kommentar    String?
+  /// Klartextname für die Anzeige
+  entschiedenVon String?
+  /// §169 Die Kennung des Kontos daneben, damit das Löschkonzept die Person
+  /// auch findet. Über einen Klartextnamen ist sie nicht sicher auffindbar —
+  /// wer heiratet, heißt anders, und zwei Menschen heißen gleich.
+  entschiedenVonId String?
+  entschiedenAm  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([locationId, typ, ziel, tag])
+  @@index([customerId, tag])
+  @@index([entschiedenVonId])
+}

@@ -98,6 +98,29 @@ await prisma.payrollBonus.deleteMany({
 })
 
 const gf = await login('gf@rheinblick-reha.de')
+
+// §162 Ohne freigegebenen Monatsabschluss rechnet das System für diesen
+// Mitarbeiter nichts — und diese Prüfung stand ohne Abrechnung da. Sie lief
+// bisher nur deshalb, weil eine andere Prüfung den Monat zufällig vorher
+// freigegeben hatte. Nach dem ersten Zurücksetzen der Datenbank war das weg.
+// Regel 1 der README: Jede Prüfung stellt ihren Ausgangszustand selbst her.
+const abschluss = await fetch(`${BASIS}/api/monthly-closings/get-or-create`, {
+  method: 'POST', headers: { cookie: gf, 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    employeeId: mitarbeiter.id, year: jahr, month: monat,
+    employeeInfo: { employeeName: mitarbeiter.name },
+  }),
+})
+const abschlussDaten = await abschluss.json()
+if (abschlussDaten.closing?.id && abschlussDaten.closing.status !== 'freigegeben') {
+  await fetch(`${BASIS}/api/time-tracking/release-closing`, {
+    method: 'POST', headers: { cookie: gf, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ closingId: abschlussDaten.closing.id, releasedBy: 'Prüfung' }),
+  })
+}
+check('Der Monatsabschluss ist freigegeben', !!abschlussDaten.closing?.id,
+  abschlussDaten.error)
+
 const vorbereitet = await fetch(`${BASIS}/api/payroll/vorbereiten`, {
   method: 'POST', headers: { cookie: gf, 'Content-Type': 'application/json' },
   body: JSON.stringify({ year: jahr, month: monat }),

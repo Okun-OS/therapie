@@ -92,6 +92,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `e5-chat.mjs` | Nachrichten, Gruppen, wer nicht mitlesen darf |
 | `f-dienstplan.mjs` | Rechenkern, Dienstwünsche, Schichttausch |
 | `f5-regelpakete.mjs` | Regelpakete je Kunde, Freischaltung der Dienstplanung |
+| `f6-massnahmen.mjs` | Maßnahmen entscheiden: genehmigen, ablehnen, kommentieren — und wer nicht darf |
 | `g1-dsgvo.mjs` | Auskunft, Löschkonzept, Sperre statt Löschung |
 | `g2-dsgvo-dokumente.mjs` | Anmeldeschutz, Verarbeitungsverzeichnis, Maßnahmen |
 | `h-funde.mjs` | Funde melden, bewerten, freigeben, nachfragen |

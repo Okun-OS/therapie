@@ -8,6 +8,7 @@ import os
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 import uvicorn
 
 from solver import solve, capabilities, validate_constraint_code
@@ -36,9 +37,22 @@ async def validate_endpoint(request: Request) -> JSONResponse:
         body: dict = await request.json()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid JSON: {exc}") from exc
-    return JSONResponse(content=validate_constraint_code(body.get("code", "")))
+    geprueft = await run_in_threadpool(validate_constraint_code, body.get("code", ""))
+    return JSONResponse(content=geprueft)
 
 
+# §170 Rechnen blockiert die Auskunft nicht mehr.
+#
+# `solve` rechnet bis zu einer halben Minute und tat das bisher direkt in der
+# Ereignisschleife: Solange ein Plan gerechnet wurde, antwortete auch
+# /health und /version nicht mehr. Die App fragt dort aber ab, welche
+# Regelpakete es gibt — mit fünf Sekunden Geduld. Ergebnis: „Der Rechendienst
+# ist nicht erreichbar", ausgerechnet waehrend er arbeitet. In der Abnahme
+# ist genau das aufgefallen, als eine Zuordnung mitten in einem laufenden
+# Plan scheiterte.
+#
+# CP-SAT rechnet in C++ und gibt die GIL waehrenddessen frei, deshalb bringt
+# ein Arbeitsfaden hier wirklich etwas und nicht nur auf dem Papier.
 @app.post("/solve")
 async def solve_endpoint(request: Request) -> JSONResponse:
     try:
@@ -47,7 +61,7 @@ async def solve_endpoint(request: Request) -> JSONResponse:
         raise HTTPException(status_code=400, detail=f"Invalid JSON: {exc}") from exc
 
     try:
-        result = solve(body)
+        result = await run_in_threadpool(solve, body)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

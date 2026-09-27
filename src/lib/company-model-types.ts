@@ -231,6 +231,15 @@ export interface PlanningRuleModel {
    * schreiben wir.
    */
   rulePackId?: string
+  /**
+   * §169 Genehmigte Maßnahmen für diesen Zeitraum.
+   *
+   * Das Regelpaket fragt sie über `massnahme_aktiv` ab: Eine Gruppe, deren
+   * Aufteilung die Leitung genehmigt hat, muss am nächsten Morgen nicht mehr
+   * besetzt werden. Nur genehmigte kommen hier an — ein Vorschlag, den
+   * niemand entschieden hat, ändert nichts an der Rechnung.
+   */
+  massnahmen?: Array<{ typ: string; ziel: string; tag: string }>
   // §72 break rules: presence time above threshold contains an unpaid break,
   // so net working time = presence − deduction. Solver uses NET for all hour math.
   pausenRegeln?: { thresholdMinutes: number; deductionMinutes: number }
@@ -262,6 +271,22 @@ export interface PlanDecision {
   beschreibung: string
   betroffeneMitarbeiter?: string[]
   betroffenesDatum?: string
+}
+
+/**
+ * §167/§169 Was zu tun wäre, wenn eine harte Regel gerissen ist — und ob es
+ * dann aufgeht. Eigener Typ, weil die Oberfläche ihn braucht: Maßnahmen
+ * werden dort entschieden, nicht nur gelesen.
+ */
+export interface PaketVorschlag {
+  massnahmen: Array<{ typ: string; ziel: string; tag: string; text: string }>
+  /**
+   * Keine Vermutung: Der Rechendienst hat mit diesen Maßnahmen ein zweites
+   * Mal gerechnet. Ein Vorschlag, den man nicht nachprüfen kann, hilft um
+   * sechs Uhr morgens niemandem.
+   */
+  loest: boolean
+  restVerletzungen: Array<{ art: string; text: string; anzahl: number }>
 }
 
 export interface GenerierterPlan {
@@ -327,11 +352,7 @@ export interface GenerierterPlan {
      * ein zweites Mal gerechnet. Ein Vorschlag, den man nicht nachprüfen
      * kann, hilft um sechs Uhr morgens niemandem.
      */
-    vorschlag?: {
-      massnahmen: Array<{ typ: string; ziel: string; tag: string; text: string }>
-      loest: boolean
-      restVerletzungen: Array<{ art: string; text: string; anzahl: number }>
-    } | null
+    vorschlag?: PaketVorschlag | null
   } | null
 }
 

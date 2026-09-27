@@ -202,6 +202,15 @@ export async function buildRuleModel(
     abgabeGrund: u.abgabeGrund ?? undefined,
   }))
 
+  // §169 Genehmigte Maßnahmen für diesen Zeitraum. Sie stehen nicht am
+  // Rechenlauf, sondern am Tag: Wird nach einer Krankmeldung neu gerechnet,
+  // gilt die Entscheidung von gestern weiter. Nur `genehmigt` wird
+  // weitergereicht — offen und abgelehnt ändern an der Rechnung nichts.
+  const genehmigteMassnahmen = await prisma.planungsMassnahme.findMany({
+    where: { locationId, status: 'genehmigt', tag: { gte: von, lte: bis } },
+    select: { typ: true, ziel: true, tag: true },
+  })
+
   // §71 Stammgruppen-Auflösung: Employee.gruppe hält Unit-ID oder -Name
   const gruppenUnits = einheiten.filter(e => e.typ === 'gruppe')
   const unitLookup = new Map<string, string>()
@@ -560,6 +569,7 @@ export async function buildRuleModel(
     // §126 Das Regelpaket dieses Standorts — von OKUN programmierte
     // Dienstplanlogik, die im Rechendienst liegt und nicht in der Datenbank.
     rulePackId: standortDaten?.rulePackId ?? undefined,
+    massnahmen: genehmigteMassnahmen.length > 0 ? genehmigteMassnahmen : undefined,
     zeitraum: { von, bis, arbeitstage },
     einheiten,
     schichten,

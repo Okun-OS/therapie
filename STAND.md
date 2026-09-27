@@ -3,7 +3,7 @@
 **Diese Seite ist die Wahrheit.** Nicht das Gespräch, nicht die Erinnerung.
 Wer wissen will, wo etwas steht, liest hier — und nur hier.
 
-Zuletzt aktualisiert: **26.09.2026**
+Zuletzt aktualisiert: **27.09.2026**
 
 > **Regel für Claude:** Diese Datei wird bei **jedem** abgeschlossenen Punkt
 > aktualisiert, im selben Commit wie die Arbeit. Nie später, nie gesammelt.
@@ -17,9 +17,10 @@ Zuletzt aktualisiert: **26.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §168 Kita: wer geht, lässt jemanden zurück |
-| **Als Nächstes** | Das Kita-Paket einem Demo-Account zuordnen und ausprobieren |
-| **Danach** | Was sich dabei zeigt. Parallel: App in die Stores (wartet auf D-U-N-S) |
+| **Zuletzt fertig** | §169 Maßnahmen entscheiden · §170 Rechnen blockiert die Auskunft nicht mehr |
+| **Nachweisstand** | 1393/1393 in 39 Prüfungen, 123 im Rechendienst, 944 Modultests |
+| **Als Nächstes** | Die Startseite vor der Anmeldung überarbeiten |
+| **Danach** | Eigene Domain, dann eine herunterladbare Fassung fürs Gerät |
 
 > **Der Lohn-Block ist vollständig** (§155–§162). Pfändung, betriebliche
 > Altersvorsorge, Kurzarbeitergeld, Mehrfachbeschäftigung, Abfindung, die
@@ -118,8 +119,23 @@ Nach Dringlichkeit, nicht nach Bereich.
 - [x] ~~**Kita-Paket, vierte Runde**~~ ✅ §168 — eine Kraft verlässt ihre
       Stammgruppe nur, wenn dort eine eigene bleibt. „Jede Gruppe ist besetzt"
       reichte nicht: Sie kann von einer Fremden besetzt sein
+- [x] ~~**Maßnahmen entscheiden**~~ ✅ §169 — der Vorschlag „Gruppe 7 am
+      Donnerstag aufteilen" lässt sich genehmigen, ablehnen und kommentieren.
+      Die Entscheidung hängt am Tag, nicht am Rechenlauf: Nach der nächsten
+      Krankmeldung wird neu gerechnet, und sie steht noch. Genehmigtes geht in
+      die nächste Rechnung ein, Abgelehntes ändert nichts
+- [x] ~~**Rechnen blockiert die Auskunft nicht mehr**~~ ✅ §170 — der
+      Rechendienst rechnete bisher in seiner Ereignisschleife und schwieg
+      dabei auf `/health` und `/version`. Die App las das als „nicht
+      erreichbar" — ausgerechnet während er arbeitete. Aufgefallen in der
+      Abnahme, als eine Paketzuordnung mitten in einem laufenden Plan scheiterte
 
 ### Sonst offen
+- [ ] **Die Startseite vor der Anmeldung** — sie ist noch nicht die Seite, auf
+      der ein Interessent landen soll
+- [ ] **Eine herunterladbare Fassung fürs Gerät** — nicht nur über den
+      Browser, sondern etwas, das man installiert wie ein Programm. Windows
+      und macOS; die Stores decken nur das Telefon ab
 - [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon),
       Etappe 2 (Offline) und Etappe 3 (native Hülle) sind fertig. Offen ist
       nur noch das Einreichen selbst (4 Play Store, 5 App Store), und das
@@ -181,6 +197,8 @@ Ohne diese Punkte kommt die Arbeit an bestimmten Stellen nicht weiter.
 | 🟢 | ~~Insolvenzgeldumlage 2026, Pfändungsfreigrenzen, Mindestlohn~~ ✅ **erledigt am 26.09.** — nachgeschlagen und abgeglichen. Zwei Pfändungstabellen waren falsch und sind korrigiert |
 | 🟡 | **`OKUN_*`-Angaben bei Railway setzen** (Firma, Anschrift, Vertretung, Register, USt-IdNr., Datenschutzbeauftragter) | Impressum und Datenschutzerklärung — ohne sie steht dort, was fehlt |
 | 🟡 | **AVVs mit den Dienstleistern** (Claude, Hosting, Push) | den ersten echten Kunden |
+| 🟡 | **Eigene Domain einrichten** | Impressum, Stores und ein Produkt, das nicht nach Testaufbau aussieht |
+| 🟢 | Lizenzierung für Steuer und Lohn anschreiben | erst wenn alles Übrige steht |
 
 🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt
 

@@ -127,12 +127,17 @@ export const DATENARTEN: Datenart[] = [
     id: 'dienstplan',
     bezeichnung: 'Dienstplaneinträge',
     beschreibung: 'In welchen Schichten Sie eingeteilt waren.',
-    modelle: ['ScheduleEntry', 'PlanChange'],
+    // §169 Die Maßnahme gehört hierher, obwohl sie keine `employeeId` trägt:
+    // Sie hält fest, WER entschieden hat, eine Gruppe aufzuteilen. Die
+    // Vollständigkeitsprüfung sucht nach `employeeId` und hätte diese Tabelle
+    // übersehen — genau der stille Fehler, vor dem §128 warnt.
+    modelle: ['ScheduleEntry', 'PlanChange', 'PlanungsMassnahme'],
     behandlung: 'anonymisieren',
     fristJahre: 0,
     begruendung:
       'Der Betrieb braucht seine Plangeschichte weiter — etwa um Besetzungen früherer '
-      + 'Jahre nachzuvollziehen. Ihr Name wird dabei entfernt, die Schicht bleibt.',
+      + 'Jahre nachzuvollziehen, oder warum eine Gruppe an einem Tag aufgeteilt war. '
+      + 'Ihr Name wird dabei entfernt, die Schicht und die Entscheidung bleiben.',
   },
   {
     id: 'punkte',

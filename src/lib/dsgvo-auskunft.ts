@@ -115,6 +115,19 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
   }),
   ScheduleEntry: id => prisma.scheduleEntry.findMany({ where: { employeeId: id }, orderBy: { date: 'asc' } }),
   PlanChange: id => prisma.planChange.findMany({ where: { employeeId: id } }),
+  // §169 Maßnahmen der Dienstplanung, die diese Person entschieden hat.
+  // Der Bezug geht über das Benutzerkonto, nicht über die Mitarbeiterakte:
+  // entschieden hat eine Leitung, und die ist hier Handelnde, nicht Geplante.
+  PlanungsMassnahme: async id => {
+    const konten = await prisma.user.findMany({ where: { employeeId: id }, select: { id: true } })
+    if (konten.length === 0) return []
+    return prisma.planungsMassnahme.findMany({
+      where: { entschiedenVonId: { in: konten.map(k => k.id) } },
+      select: { typ: true, zielName: true, tag: true, text: true, status: true,
+        kommentar: true, entschiedenAm: true },
+      orderBy: { tag: 'asc' },
+    })
+  },
   ScoreEvent: id => prisma.scoreEvent.findMany({ where: { employeeId: id } }),
   Notification: id => prisma.notification.findMany({ where: { employeeId: id } }),
   PushSubscription: id => prisma.pushSubscription.findMany({

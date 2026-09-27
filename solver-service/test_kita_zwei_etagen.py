@@ -1015,3 +1015,68 @@ def test_eine_gruppe_ohne_eigene_leute_darf_fremd_besetzt_sein(obere_etage_brich
     for freitag in FREITAGE:
         assert p.in_gruppe(freitag, "g7") >= 1, \
             "Gruppe 7 steht leer, obwohl eine Vertretung erlaubt wäre"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §169 Die genehmigte Maßnahme wirkt
+#
+# Ein Vorschlag, den jemand abhakt, muss beim nächsten Rechnen auch etwas
+# ändern — sonst ist das Genehmigen eine Geste. Und die abgelehnte darf
+# NICHTS ändern, sonst hätte „nein" dieselbe Wirkung wie „ja".
+# ════════════════════════════════════════════════════════════════════════════
+
+def _notlage_modell() -> dict:
+    return modell_mit_sperre(
+        {"Katrin": TAGE, "Heike": TAGE,
+         "Daniel": DONNERSTAGE + FREITAGE, "Stephanie": FREITAGE,
+         "Nicole": TAGE, "Corinna": TAGE},
+        ("g1", "g2", "g3", "g4"),
+    )
+
+
+def test_genehmigte_massnahme_raeumt_die_meldung_ab(nicht_mehr_loesbar):
+    """
+    Die Leitung hakt genau das ab, was das System vorgeschlagen hat. Beim
+    nächsten Lauf — und der kommt nach jeder Krankmeldung — darf dieselbe
+    Lücke nicht erneut gemeldet werden.
+    """
+    vorher = nicht_mehr_loesbar.verletzungen("hart")
+    assert vorher, "Voraussetzung: es gab etwas zu genehmigen"
+
+    modell = _notlage_modell()
+    modell["massnahmen"] = [
+        {"typ": m["typ"], "ziel": m["ziel"], "tag": m["tag"]}
+        for m in nicht_mehr_loesbar.paket["vorschlag"]["massnahmen"]
+    ]
+    danach = Plan(rechne(modell))
+    assert danach.paket.get("angewendet") is True, danach.paket.get("fehler")
+    assert not danach.verletzungen("hart"), \
+        f"trotz Genehmigung gemeldet: {danach.verletzungen('hart')}"
+
+
+def test_genehmigte_massnahme_steht_im_protokoll(nicht_mehr_loesbar):
+    """Wer den Plan später liest, muss sehen, WARUM die Gruppe leer blieb."""
+    modell = _notlage_modell()
+    erste = nicht_mehr_loesbar.paket["vorschlag"]["massnahmen"][0]
+    modell["massnahmen"] = [
+        {"typ": erste["typ"], "ziel": erste["ziel"], "tag": erste["tag"]}
+    ]
+    danach = Plan(rechne(modell))
+    protokoll = " ".join(danach.paket.get("regeln") or [])
+    assert "aufgeteilt" in protokoll, protokoll[-600:]
+
+
+def test_eine_fremde_massnahme_raeumt_nichts_ab():
+    """
+    Die Gegenprobe: Eine Maßnahme für einen anderen Tag oder eine andere
+    Gruppe darf die Meldung nicht verschlucken. Sonst genügte irgendein
+    Häkchen, um jede Lücke verschwinden zu lassen.
+    """
+    modell = _notlage_modell()
+    modell["massnahmen"] = [
+        {"typ": "aufteilen", "ziel": "g7", "tag": "2019-01-01"},
+        {"typ": "aufteilen", "ziel": "gibt-es-nicht", "tag": TAGE[0]},
+    ]
+    p = Plan(rechne(modell))
+    assert p.verletzungen("hart"), \
+        "eine fremde Maßnahme hat die echte Lücke zum Schweigen gebracht"

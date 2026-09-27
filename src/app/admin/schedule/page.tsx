@@ -20,9 +20,10 @@ import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName
 import { getPublicHolidayName } from '@/lib/holidays'
 import { displayColors, SHIFT_PALETTE } from '@/lib/shift-colors'
 import { AusfallDialog, type AusfallDaten } from '@/components/schedule/AusfallDialog'
+import { MassnahmenPanel } from '@/components/schedule/MassnahmenPanel'
 import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, PlanningUnit, TaskBlock } from '@/lib/types'
 import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
-import type { PlanBewertung } from '@/lib/company-model-types'
+import type { PlanBewertung, PaketVorschlag } from '@/lib/company-model-types'
 import {
   ChevronLeft, ChevronRight, Sparkles, Download, Save, Send, Sun, Moon, MoonStar, Briefcase,
   CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle, LayoutGrid, Users, Plus, Trash2,
@@ -123,6 +124,9 @@ export default function AdminSchedule() {
   const [aiAssignmentReasons, setAiAssignmentReasons] = useState<Record<string, string>>({})
   const [planSessionId, setPlanSessionId] = useState<string | null>(null)
   const [planBewertung, setPlanBewertung] = useState<PlanBewertung | null>(null)
+  // §169 Die Maßnahmen, die der Rechendienst vorschlägt, wenn eine Gruppe
+  // nicht besetzbar ist. Sie werden hier entschieden, nicht nur angezeigt.
+  const [planVorschlag, setPlanVorschlag] = useState<PaketVorschlag | null>(null)
   const [planAlternativen, setPlanAlternativen] = useState<{ variante: string; week: Record<string, Record<string, ScheduleAssignment>>; bewertung: PlanBewertung }[] | null>(null)
   const [selectedVariante, setSelectedVariante] = useState<string>('ausgewogen')
   const [explainEntry, setExplainEntry] = useState<{ employeeId: string; employeeName: string; shiftName: string; dateStr: string; reason: string | null; gruppe?: string; funktion?: string; isSubstitution?: boolean; substitutionFor?: string; taskBlocks?: TaskBlock[] } | null>(null)
@@ -592,6 +596,7 @@ export default function AdminSchedule() {
     setFallbackHandled(false)
     setPlanSessionId(null)
     setPlanBewertung(null)
+    setPlanVorschlag(null)
     setPlanAlternativen(null)
     setSelectedVariante('ausgewogen')
     const effectiveKontext = kontextOverride !== undefined ? kontextOverride : lastUsedKontext
@@ -640,6 +645,7 @@ export default function AdminSchedule() {
       // Store session id, bewertung and alternatives
       if (data.sessionId) setPlanSessionId(data.sessionId as string)
       if (data.bewertung) setPlanBewertung(data.bewertung as PlanBewertung)
+      setPlanVorschlag((data.vorschlag as PaketVorschlag | null) ?? null)
       if (data.alternativen) {
         setPlanAlternativen(data.alternativen as { variante: string; week: Record<string, Record<string, ScheduleAssignment>>; bewertung: PlanBewertung }[])
       }
@@ -1375,7 +1381,7 @@ export default function AdminSchedule() {
                         </p>
                       )}
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setFallback(null); setFallbackHandled(false); setSaved(false); setPlanBewertung(null); setPlanAlternativen(null); setPlanSessionId(null) }} className="text-gray-500">
+                    <Button variant="ghost" size="sm" onClick={() => { setAiDone(false); setGeneratedSchedule(null); setAiReasoning(null); setAiDecisions([]); setAiWarnings([]); setFallback(null); setFallbackHandled(false); setSaved(false); setPlanBewertung(null); setPlanVorschlag(null); setPlanAlternativen(null); setPlanSessionId(null) }} className="text-gray-500">
                       Zurück
                     </Button>
                   </div>
@@ -1414,6 +1420,16 @@ export default function AdminSchedule() {
                           </div>
                         ))}
                     </div>
+                  )}
+
+                  {/* §169 Maßnahmen entscheiden — genehmigen, ablehnen, kommentieren */}
+                  {locationId && planVorschlag && planVorschlag.massnahmen.length > 0 && (
+                    <MassnahmenPanel
+                      locationId={locationId}
+                      vorschlaege={planVorschlag.massnahmen}
+                      loest={planVorschlag.loest}
+                      nameFuer={id => unitNameById.get(id)}
+                    />
                   )}
 
                   {/* §63: Plan alternatives picker */}

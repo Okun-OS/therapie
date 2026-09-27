@@ -57,7 +57,13 @@ export async function GET(
     response.alternativen = snap?.alternativen ?? null
 
     // Build week map for UI
-    const finalPlan = planningSession.finalPlan as { eintraege: Array<{ mitarbeiterId: string; datum: string; schichtId: string; einheitId?: string; funktion?: string; istVertretung?: boolean; hinweis?: string }> }
+    const finalPlan = planningSession.finalPlan as {
+      eintraege: Array<{ mitarbeiterId: string; datum: string; schichtId: string; einheitId?: string; funktion?: string; istVertretung?: boolean; hinweis?: string }>
+      // §169 Die vorgeschlagenen Maßnahmen — die Oberfläche braucht sie als
+      // Daten, um sie abhaken zu lassen.
+      regelpaket?: { vorschlag?: unknown } | null
+    }
+    response.vorschlag = finalPlan.regelpaket?.vorschlag ?? null
     const shifts = await prisma.shift.findMany({ where: { locationId: planningSession.locationId } })
     const shiftMap = new Map(shifts.map(s => [s.id, s]))
 

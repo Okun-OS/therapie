@@ -143,6 +143,30 @@ const ZUGRIFF: Record<string, Zugriff> = {
       data: { employeeId: k.pseudonym, reason: null },
     }).then(zahl),
   },
+  // §169 Die entschiedenen Maßnahmen der Dienstplanung. Personenbezug ist
+  // hier nicht der Geplante, sondern die Leitung, die entschieden hat.
+  // Gelöscht wird die Maßnahme NICHT: Warum eine Gruppe an einem Tag
+  // aufgeteilt war, bleibt eine Tatsache über den Betrieb. Nur wer es
+  // entschieden hat, verschwindet.
+  PlanungsMassnahme: {
+    zaehlen: (db, k) => k.userIds.length
+      ? db.planungsMassnahme.count({ where: { entschiedenVonId: { in: k.userIds } } })
+      : Promise.resolve(0),
+    loeschen: (db, k) => k.userIds.length
+      ? db.planungsMassnahme.updateMany({
+        where: { entschiedenVonId: { in: k.userIds } },
+        data: { entschiedenVon: null, entschiedenVonId: null, kommentar: null },
+      }).then(zahl)
+      : Promise.resolve(0),
+    anonymisieren: (db, k) => k.userIds.length
+      ? db.planungsMassnahme.updateMany({
+        where: { entschiedenVonId: { in: k.userIds } },
+        // Der Kommentar geht mit: Er ist frei geschriebener Text und nennt
+        // erfahrungsgemäß Namen.
+        data: { entschiedenVon: null, entschiedenVonId: k.pseudonym, kommentar: null },
+      }).then(zahl)
+      : Promise.resolve(0),
+  },
   ChatNachricht: {
     zaehlen: (db, k) => db.chatNachricht.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.chatNachricht.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
