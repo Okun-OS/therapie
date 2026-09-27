@@ -171,7 +171,16 @@ def regelmodell(abwesend: dict[str, list[str]] | None = None,
     return {
         "rulePackId": "kita_zwei_etagen",
         "zeitraum": {"von": TAGE[0], "bis": TAGE[-1], "arbeitstage": TAGE},
-        "einheiten": ETAGEN + GRUPPEN,
+        # §174 Kopien, keine Verweise.
+        #
+        # Hier standen die Modul-Dikts selbst. `modell_mit_sperre` schreibt
+        # eine Abgabesperre HINEIN — und traf damit nicht diesen einen Lauf,
+        # sondern die Vorlage: Jeder spätere Lauf erbte die Sperre, auch der
+        # Notlauf und der leere Lauf. Aufgefallen ist es, weil eine Prüfung
+        # allein bestand und im Gesamtlauf umfiel; die Ursache war nicht die
+        # Regel, sondern eine Gruppe, die aus einem fremden Fall noch
+        # gesperrt war. Regel 1 der Nachweis-README gilt auch hier.
+        "einheiten": [dict(e) for e in ETAGEN + GRUPPEN],
         "schichten": [
             # minBesetzungGesamt 0: Wie viele wo stehen, entscheiden die
             # Gruppen- und Etagenregeln — nicht eine Zahl je Dienstart.
@@ -191,9 +200,52 @@ def regelmodell(abwesend: dict[str, list[str]] | None = None,
     }
 
 
-def rechne(modell: dict, sekunden: str = "30") -> dict:
+# §174 Warum das Zeitbudget hier hoch liegt
+#
+# Das Paket rechnet zwei Wochen mit achtzehn Personen in unter zwei Sekunden.
+# Die 60 kosten auf einer freien Maschine also nichts — sie sind der Abstand
+# zur Grenze. Bei 30 Sekunden ist die Abnahme einmal umgekippt, waehrend
+# nebenher der Rechendienst und die Nachweise liefen: Der Loeser kam nicht
+# zum Optimum und lieferte einen brauchbaren, aber nicht den besten Plan.
+# Eine Pruefung, die von der Auslastung der Maschine abhaengt, ist kein
+# Sicherheitsnetz.
+def rechne(modell: dict, sekunden: str = "60") -> dict:
     os.environ["SOLVER_MAX_SECONDS"] = sekunden
     return solve(modell)
+
+
+def abnehmen(p: Plan, was: str, optimal: bool = True) -> Plan:
+    """
+    Der Lauf muss angekommen sein, bevor man sein Ergebnis befragt.
+
+    ZWEI DINGE, DIE NICHT DASSELBE SIND
+    „Das Paket lief" (`angewendet`) und „der Loeser ist fertig geworden"
+    (OPTIMAL). Die meisten Pruefungen darunter lesen WEICHE Entscheidungen ab
+    — „Christina hilft am Donnerstag aus, weil Stephanie bleibt". Solche
+    Saetze gelten nur fuer den BESTEN Plan. Bricht der Loeser vorher ab, ist
+    das Ergebnis brauchbar, aber nicht der beste — und die Pruefung schlaegt
+    fehl mit der Meldung, die Regel greife nicht. Das ist falsch und schickt
+    den naechsten Leser in die verkehrte Richtung. Genau das ist am 27.09.
+    einmal passiert, waehrend die Maschine nebenher die Nachweise rechnete.
+
+    `optimal=False` ist fuer die Laeufe, bei denen es NICHT um den besten Plan
+    geht, sondern darum, dass ueberhaupt einer entsteht und dass das Nachgeben
+    gemeldet wird. Dort darf dann aber auch keine Pruefung eine weiche
+    Entscheidung ablesen.
+    """
+    assert p.paket.get("angewendet") is True, (
+        f"{was}: Das Regelpaket lief nicht — {p.paket.get('fehler')}"
+    )
+    if optimal:
+        assert p.optimal, (
+            f"{was}: Der Rechendienst kam nicht zum Optimum, sondern brach mit "
+            f"„{p.solver_tag}“ ab. Das ist keine Aussage ueber die Regeln, "
+            "sondern ueber die Maschine: zu langsam oder zu beschaeftigt. Die "
+            "Pruefungen auf diesem Lauf lesen weiche Entscheidungen ab und "
+            "gelten nur fuer den besten Plan. Bitte das Zeitbudget in `rechne` "
+            "erhoehen oder den Lauf allein wiederholen."
+        )
+    return p
 
 
 # ── Auswertung ──────────────────────────────────────────────────────────────
@@ -257,11 +309,25 @@ class Plan:
         alle = self.paket.get("verletzungen") or []
         return [v for v in alle if art is None or v["art"] == art]
 
+    # §174 Der Rechenweg selbst, nicht nur sein Ergebnis.
+    #
+    # Der Rechendienst schreibt seinen Abschlusszustand in die Metadaten:
+    # „ortools-cpsat-v2 (OPTIMAL, cost=97100, 1.8s)". OPTIMAL heisst: Es gibt
+    # keinen besseren Plan. FEASIBLE heisst nur: Die Zeit war um, das hier war
+    # das Beste, was bis dahin gefunden wurde.
+    @property
+    def solver_tag(self) -> str:
+        return str((self.roh.get("metadaten") or {}).get("solver", ""))
+
+    @property
+    def optimal(self) -> bool:
+        return "OPTIMAL" in self.solver_tag
+
 
 @pytest.fixture(scope="module")
 def leer() -> Plan:
     p = Plan(rechne(regelmodell()))
-    assert p.paket.get("angewendet") is True, p.paket.get("fehler")
+    abnehmen(p, "Der leere Lauf")
     return p
 
 
@@ -298,7 +364,7 @@ def schwer() -> Plan:
             "Christina": {"spaetDienste": 7, "freitagSpaet": 4},
         },
     )))
-    assert p.paket.get("angewendet") is True, p.paket.get("fehler")
+    abnehmen(p, "Der schwere Lauf")
     return p
 
 
@@ -602,7 +668,10 @@ def notlage() -> Plan:
         for name, *_ in BELEGSCHAFT
         if name.split()[0] not in bleiben
     }), sekunden="20"))
-    assert p.paket.get("angewendet") is True, p.paket.get("fehler")
+    # §174 Hier ausdruecklich OHNE Optimum: Das knappe Budget ist Absicht (s.o.),
+    # und keine der Pruefungen auf diesem Lauf liest eine weiche Entscheidung ab
+    # — sie pruefen harte Regeln und den Bericht.
+    abnehmen(p, "Der Notlauf", optimal=False)
     return p
 
 
@@ -746,7 +815,7 @@ MITTWOCH1, MITTWOCH2 = WOCHE1[2], WOCHE2[2]
 @pytest.fixture(scope="module")
 def gruppe8() -> Plan:
     p = Plan(rechne(regelmodell(abwesend={"Felix": [MITTWOCH1, MITTWOCH2]})))
-    assert p.paket.get("angewendet") is True, p.paket.get("fehler")
+    abnehmen(p, "Gruppe 8 am Mittwoch")
     return p
 
 
@@ -846,7 +915,7 @@ def obere_etage_bricht_weg() -> Plan:
          "Daniel": DONNERSTAGE + FREITAGE, "Stephanie": FREITAGE},
         ("g1", "g3", "g4"),
     )))
-    assert p.paket.get("angewendet") is True, p.paket.get("fehler")
+    abnehmen(p, "Die obere Etage bricht weg")
     return p
 
 
@@ -903,7 +972,7 @@ def nicht_mehr_loesbar() -> Plan:
          "Nicole": TAGE, "Corinna": TAGE},
         ("g1", "g2", "g3", "g4"),
     )))
-    assert p.paket.get("angewendet") is True, p.paket.get("fehler")
+    abnehmen(p, "Der Lauf ohne Loesung")
     return p
 
 
@@ -997,12 +1066,63 @@ def test_freitags_bleibt_christina_und_nicole_geht_hoch(obere_etage_bricht_weg):
             f"Nicole steht am {freitag} in {p.gruppe('Nicole Sprung', freitag)}"
 
 
-def test_donnerstags_darf_christina_hoch(obere_etage_bricht_weg):
-    """Die Regel ist kein Verbot der Vertretung — sie bindet sie an eine
-    Bedingung. Ist Stephanie da, darf Christina gehen."""
-    p = obere_etage_bricht_weg
-    hoch = [t for t in DONNERSTAGE if p.gruppe("Christina Weiß", t) == "g7"]
-    assert hoch, "Christina hilft an keinem Donnerstag aus, obwohl sie könnte"
+@pytest.fixture(scope="module")
+def nur_christina_kann_hoch() -> Plan:
+    """
+    Dieselbe Notlage, aber ohne die Springerin.
+
+    §174 WARUM DIESER UMWEG
+    Die Vorgängerprüfung las am gewöhnlichen Lauf ab, ob Christina an
+    IRGENDEINEM Donnerstag aushilft — und kippte gelegentlich um. Der Grund
+    war nicht die Regel, sondern ein Gleichstand: Nicole hochzuschicken
+    kostet ungefähr so viel wie Christina, und bei gleichen Kosten wählt der
+    Löser irgendeine der gleich guten Lösungen. Die Prüfung hatte damit ein
+    ERGEBNIS erwartet statt eine REGEL geprüft — derselbe Fehler, der in
+    diesem Repo schon einmal aufgeschrieben wurde.
+
+    Geprüft werden soll: Das Verbot ist keines, sondern eine Bedingung. Ist
+    eine eigene Kraft da, die bleibt, DARF die andere gehen. Das lässt sich
+    ohne Gleichstand prüfen, indem man Christina zur einzigen Möglichkeit
+    macht: Nicole ist weg, Gruppe 7 hat niemanden Eigenes, und aus den
+    gesperrten Gruppen kommt keiner. Hilft Christina dann immer noch nicht,
+    ist die Regel ein Verbot — und Gruppe 7 bliebe leer.
+    """
+    p = Plan(rechne(modell_mit_sperre(
+        {"Katrin": TAGE, "Heike": TAGE,
+         "Daniel": DONNERSTAGE + FREITAGE, "Stephanie": FREITAGE,
+         "Nicole": DONNERSTAGE},
+        ("g1", "g3", "g4"),
+    )))
+    abnehmen(p, "Nur Christina kann hoch")
+    return p
+
+
+def test_donnerstags_darf_gruppe_zwei_jemanden_hochschicken(nur_christina_kann_hoch):
+    """
+    Die Regel ist kein Verbot der Vertretung — sie bindet sie an eine
+    Bedingung: Eine geht, die andere bleibt.
+
+    §174 WELCHE der beiden geht, steht NICHT in der Regel. Christina und
+    Stephanie sind beide Stammkräfte von Gruppe 2; für den Löser sind die
+    zwei Pläne gleich gut, und bei Gleichstand wählt er irgendeinen. Genau
+    daran ist die Vorgängerprüfung umgekippt. Geprüft wird deshalb, was die
+    Regel WIRKLICH sagt: genau eine von beiden oben, genau eine unten.
+    """
+    p = nur_christina_kann_hoch
+    for donnerstag in DONNERSTAGE:
+        oben = [n for n in ("Christina Weiß", "Stephanie Lang")
+                if p.gruppe(n, donnerstag) == "g7"]
+        unten = [n for n in ("Christina Weiß", "Stephanie Lang")
+                 if p.gruppe(n, donnerstag) == "g2"]
+        assert len(oben) == 1, (
+            f"Am {donnerstag} hilft niemand aus Gruppe 2 in Gruppe 7 aus, "
+            "obwohl nur von dort jemand kommen kann — die Bedingung ist zu "
+            f"einem Verbot geworden. Oben: {oben or 'niemand'}."
+        )
+        assert len(unten) == 1, (
+            f"Am {donnerstag} bleibt niemand Eigenes in Gruppe 2 zurück — "
+            f"unten: {unten or 'niemand'}."
+        )
 
 
 def test_eine_gruppe_ohne_eigene_leute_darf_fremd_besetzt_sein(obere_etage_bricht_weg):
@@ -1080,3 +1200,94 @@ def test_eine_fremde_massnahme_raeumt_nichts_ab():
     p = Plan(rechne(modell))
     assert p.verletzungen("hart"), \
         "eine fremde Maßnahme hat die echte Lücke zum Schweigen gebracht"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §174 Die Gegenprobe zur Abnahme selbst
+#
+# `abnehmen` soll verhindern, dass ein abgebrochener Rechenlauf wie eine
+# verletzte Regel aussieht. Eine Wache, die nie anschlägt, ist keine Wache —
+# deshalb wird hier geprüft, dass sie es tut.
+# ════════════════════════════════════════════════════════════════════════════
+
+def _lauf_mit_status(status: str) -> Plan:
+    """
+    Ein Ergebnis mit gesetztem Abschlusszustand, ohne zu rechnen.
+
+    Der erste Anlauf dieser Gegenprobe rechnete mit einer Sekunde Budget und
+    hoffte auf einen Abbruch. Auf dieser Maschine kam der Löser in einer
+    Sekunde durch — die Gegenprobe übersprang sich selbst und prüfte nichts.
+    Eine Prüfung, die von der Geschwindigkeit der Maschine abhängt, ist keine.
+    Hier wird deshalb genau das gesetzt, worum es geht.
+    """
+    return Plan({
+        "eintraege": [],
+        "metadaten": {"solver": f"ortools-cpsat-v2 ({status}, cost=1333250, 20.0s)"},
+        "regelpaket": {"id": "kita_zwei_etagen", "angewendet": True},
+    })
+
+
+def test_abnahme_meldet_einen_abgebrochenen_lauf():
+    """
+    Kommt der Löser nicht zum Optimum, muss die Abnahme das SAGEN — und zwar
+    so, dass niemand es für eine verletzte Regel hält.
+    """
+    with pytest.raises(AssertionError) as fehler:
+        abnehmen(_lauf_mit_status("FEASIBLE"), "Ein abgebrochener Lauf")
+
+    text = str(fehler.value)
+    assert "nicht zum Optimum" in text, text
+    assert "keine Aussage ueber die Regeln" in text, text
+    # Die Meldung muss den wirklichen Abschlusszustand nennen, sonst rät der
+    # Leser, woran es lag.
+    assert "FEASIBLE" in text, text
+    assert "Ein abgebrochener Lauf" in text, text
+
+
+def test_abnahme_laesst_den_fertigen_lauf_durch():
+    """Die Wache darf nicht immer anschlagen, sonst sagt sie nichts aus."""
+    abnehmen(_lauf_mit_status("OPTIMAL"), "Ein fertiger Lauf")
+
+
+def test_abnahme_laesst_einen_unfertigen_lauf_durch_wenn_er_gemeint_ist():
+    """
+    Die andere Hälfte: Wo ein brauchbarer Plan reicht, darf die Wache nicht
+    im Weg stehen. Sonst müsste man sie umgehen, und dann ist sie weg.
+    """
+    abnehmen(_lauf_mit_status("FEASIBLE"), "Ein Lauf ohne Anspruch aufs Optimum",
+             optimal=False)
+
+
+def test_abnahme_meldet_auch_ein_paket_das_gar_nicht_lief():
+    """Der andere Grund, aus dem ein Lauf nichts aussagt."""
+    kaputt = Plan({
+        "eintraege": [],
+        "metadaten": {"solver": "ortools-cpsat-v2 (OPTIMAL, cost=0, 0.1s)"},
+        "regelpaket": {"id": "kita_zwei_etagen", "angewendet": False,
+                       "fehler": "Niemand mit der Rolle „leitung“ gefunden"},
+    })
+    with pytest.raises(AssertionError) as fehler:
+        abnehmen(kaputt, "Ein Lauf ohne Paket")
+    assert "Regelpaket lief nicht" in str(fehler.value), str(fehler.value)
+    assert "leitung" in str(fehler.value), str(fehler.value)
+
+
+def test_eine_sperre_bleibt_in_ihrem_eigenen_lauf():
+    """
+    §174 Die Gegenprobe zu dem Fehler, der diese Prüfdatei drei Läufe lang
+    zum Flackern gebracht hat.
+
+    `modell_mit_sperre` schrieb die Abgabesperre in die Modul-Vorlage statt
+    in ein Modell. Jeder spätere Lauf erbte sie — auch der leere. Das kostete
+    eine Stunde Suche an der falschen Stelle: Eine Prüfung bestand allein und
+    fiel im Gesamtlauf um, und die Meldung sprach von einer Regel, während
+    die Ursache eine fremd gesperrte Gruppe war.
+    """
+    modell_mit_sperre({}, ("g1", "g2", "g3", "g4"))
+    danach = regelmodell()
+    gesperrt = [e.get("id") for e in danach["einheiten"] if e.get("abgabeGesperrtBis")]
+    assert gesperrt == [], (
+        f"Die Sperre aus einem anderen Lauf klebt an der Vorlage: {gesperrt}"
+    )
+    # Und die Vorlage selbst ist auch unberührt.
+    assert all("abgabeGesperrtBis" not in g for g in GRUPPEN), GRUPPEN

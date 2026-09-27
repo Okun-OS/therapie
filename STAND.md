@@ -18,7 +18,7 @@ Zuletzt aktualisiert: **27.09.2026**
 |---|---|
 | **Baustelle** | Keine |
 | **Zuletzt fertig** | §173 Das Programm zum Herunterladen (Windows, Linux; macOS braucht einen Mac) |
-| **Nachweisstand** | 1401/1401 in 39 Prüfungen, 22 im Browser, 17 am Programmfenster, 123 im Rechendienst, 944 Modultests |
+| **Nachweisstand** | 1401/1401 in 39 Prüfungen, 22 im Browser, 17 am Programmfenster, 128 im Rechendienst, 944 Modultests |
 | **Als Nächstes** | Die Startseite vor der Anmeldung |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
@@ -131,6 +131,12 @@ Nach Dringlichkeit, nicht nach Bereich.
       Regel lief ins Leere), die Leitung stand mit ihren 40 Vertragsstunden an
       jedem Tag in einer Gruppe, und das Planungsprofil stand jeder fremden
       Leitung offen
+- [x] ~~**Die flackernde Abnahme**~~ ✅ §174 — eine Prüfung kippte bei jedem
+      dritten Lauf um und sprach dabei von einer Regel. Drei Ursachen, keine
+      davon die Regel: Die Prüfung verlangte einen von zwei gleich guten
+      Plänen; eine Abgabesperre klebte an der Vorlage und vergiftete jeden
+      späteren Lauf; und ein abgebrochener Rechenlauf sah aus wie eine
+      verletzte Regel. Alle drei behoben, drei volle Läufe ohne Ausreißer
 - [x] ~~**Maßnahmen im echten Browser**~~ ✅ §172 — 22 Prüfungen über den
       ganzen Weg. Sie fanden, dass eine genehmigte Maßnahme beim nächsten
       Rechnen vom Bildschirm verschwand: richtig gerechnet, aber die Leitung

@@ -3169,6 +3169,54 @@ Code-Signing-Zertifikat, sonst warnt Windows vor einem „unbekannten
 Herausgeber". Das .dmg braucht einen Mac und die Beglaubigung über das
 Apple-Developer-Konto.
 
+## Block §174 (27.09.) — Eine flackernde Prüfung, drei Ursachen
+
+Bei einem von drei pytest-Läufen kippte `test_donnerstags_darf_christina_hoch`
+um. Die Meldung sprach von einer Regel, die nicht greife. Keine der drei
+wirklichen Ursachen hatte mit der Regel zu tun.
+
+### 1. Die Prüfung erwartete ein Ergebnis, keine Regel
+Christina und Stephanie sind beide Stammkräfte von Gruppe 2. Geht eine hoch,
+bleibt die andere — für den Rechendienst sind beide Pläne **exakt gleich gut**
+(Kosten 305.100 in jedem Lauf), und bei Gleichstand wählt er irgendeinen. Die
+Prüfung verlangte namentlich Christina.
+
+Das ist derselbe Fehler, der in diesem Repo schon einmal aufgeschrieben wurde,
+nur subtiler. Sie prüft jetzt, was die Regel wirklich sagt: **genau eine von
+beiden oben, genau eine unten.** Dazu ein eigener Lauf, in dem die Springerin
+donnerstags fehlt — sonst wäre gar keine Vertretung nötig und die Prüfung
+bewiese nichts.
+
+### 2. Eine Sperre klebte an der Vorlage
+`regelmodell()` gab die Modul-Dikts der Gruppen **als Verweis** zurück.
+`modell_mit_sperre` schrieb die Abgabesperre hinein — also nicht in einen
+Lauf, sondern in die Vorlage. **Jeder spätere Lauf erbte sie**, auch der leere
+und der Notlauf. Deshalb bestand die Prüfung allein und fiel im Gesamtlauf um:
+Gruppe 2 war aus einem fremden Fall noch gesperrt und durfte niemanden
+abgeben. Jetzt Kopien, mit eigener Gegenprobe.
+
+Das ist Regel 1 der Nachweis-README — „jede Prüfung stellt ihren
+Ausgangszustand selbst her" — an einer Stelle, an der niemand sie vermutet
+hätte.
+
+### 3. Ein abgebrochener Rechenlauf sah aus wie eine verletzte Regel
+Unter Last kam der Löser nicht immer zum Optimum und lieferte einen
+brauchbaren, aber nicht den besten Plan. Prüfungen, die weiche Entscheidungen
+ablesen, gelten nur für den besten — sie schlugen dann fehl und behaupteten,
+eine Regel greife nicht.
+
+Neu: **`abnehmen(plan, was)`** vor jedem Fixture. Kommt der Löser nicht zum
+Optimum, sagt die Abnahme genau das, nennt den Abschlusszustand
+(`FEASIBLE`, `UNKNOWN`) und schickt den Leser nicht in die falsche Richtung.
+`optimal=False` gibt es für den Notlauf, wo ein brauchbarer Plan der Punkt
+ist. Das Zeitbudget steht jetzt bei 60 Sekunden statt 30 — das Paket rechnet
+in unter zwei, die Differenz ist der Abstand zur Grenze.
+
+Nachweis: 128 im Rechendienst (5 neu, darunter vier Gegenproben zur Abnahme
+selbst und eine gegen die klebende Sperre), **drei vollständige Läufe
+hintereinander ohne Ausreißer**. Dazu unverändert 1401/1401 in 39 Prüfungen,
+22 im Browser, 17 am Programmfenster, 944 Modultests, Bauen sauber.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:
