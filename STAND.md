@@ -199,32 +199,24 @@ Nach Dringlichkeit, nicht nach Bereich.
 
 ## Was auf Daniel wartet
 
-Ohne diese Punkte kommt die Arbeit an bestimmten Stellen nicht weiter.
+**Die vollständige Liste zum Abhaken steht in `DEINE-LISTE.md`.** Sie ist nach
+Reihenfolge sortiert statt nach Bereich: Was oben steht, blockiert das meiste
+darunter.
+
+Die fünf, die am meisten aufhalten:
 
 | | Was | Blockiert |
 |---|---|---|
+| 🔴 | **D-U-N-S-Nummer beantragen** (kostenlos, 1–2 Wochen) | Apple-Konto → Push aufs iPhone → App Store → das beglaubigte `.dmg` |
+| 🔴 | **Eigene Domain einrichten** | Impressum, beide Stores, die Seite zum Herunterladen |
+| 🔴 | **Firebase anlegen, `FCM_SERVICE_ACCOUNT` setzen** | jede Benachrichtigung — ohne den Schlüssel verschickt das System nichts |
+| 🔴 | **Umlagesätze U1/U2 je Kasse eintragen** (§159) | jede korrekte Arbeitgeberkostenrechnung; sie stehen in der Satzung, das Programm rät sie nicht |
 | 🔴 | **Steuerberater die Rechnung gegenzeichnen lassen** | den ersten echten Kunden |
-| 🔴 | **Eine echte ELStAM-Änderungsliste besorgen** | den Import passgenau zu machen |
-| 🟡 | **Aufbewahrungsfristen gegenzeichnen lassen** (Steuerberater oder Datenschutzbeauftragter) | den ersten echten Kunden — die Fristen stehen mit Vorschrift in `src/lib/dsgvo-katalog.ts`, sind aber noch nicht geprüft |
-| 🟡 | Die drei Anfragen verschicken (ITSG, ELSTER, Steuerberater) | die Zertifizierungs-Entscheidung |
-| 🟡 | Vermögensschadenhaftpflicht klären | den ersten echten Kunden |
-| 🔴 | **D-U-N-S-Nummer beantragen** (kostenlos, dauert 1–2 Wochen) | das Apple Developer Program — und damit den App Store |
-| 🔴 | **Firebase-Projekt anlegen und `FCM_SERVICE_ACCOUNT` bei Railway setzen** | jede native Benachrichtigung — ohne den Schlüssel verschickt das System nichts und schreibt nur ins Protokoll |
-| 🟡 | Google-Play-Entwicklerkonto (25 $ einmalig) | den Play Store |
-| 🟡 | Datenschutzerklärung und Impressum öffentlich erreichbar | beide Stores |
-| 🟢 | Unternehmensdaten je Kunde vollständig eintragen | SEPA und DATEV je Kunde |
-| 🔴 | **Umlagesätze U1/U2 je Krankenkasse eintragen** (§159) | jede korrekte Arbeitgeberkostenrechnung — sie stehen in der Satzung jeder Kasse, das Programm rät sie nicht |
-| 🟢 | ~~Insolvenzgeldumlage 2026, Pfändungsfreigrenzen, Mindestlohn~~ ✅ **erledigt am 26.09.** — nachgeschlagen und abgeglichen. Zwei Pfändungstabellen waren falsch und sind korrigiert |
-| 🟡 | **`OKUN_*`-Angaben bei Railway setzen** (Firma, Anschrift, Vertretung, Register, USt-IdNr., Datenschutzbeauftragter) | Impressum und Datenschutzerklärung — ohne sie steht dort, was fehlt |
-| 🟡 | **AVVs mit den Dienstleistern** (Claude, Hosting, Push) | den ersten echten Kunden |
-| 🟡 | **Eigene Domain einrichten** | Impressum, Stores und ein Produkt, das nicht nach Testaufbau aussieht |
-| 🔴 | **Code-Signing-Zertifikat für Windows kaufen** | ohne Signatur warnt Windows beim ersten Start vor einem „unbekannten Herausgeber" — bei einem Lohnprogramm installiert das niemand |
-| 🟡 | **Das .dmg auf einem Mac bauen und beglaubigen** | die Fassung für macOS; hängt an derselben D-U-N-S-Nummer wie der App Store |
-| 🟢 | Lizenzierung für Steuer und Lohn anschreiben | erst wenn alles Übrige steht |
 
 🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt
 
-Ausführlich: `ABLAUFPLAN.md`
+Alles Weitere — Konten, Zertifikate, AVVs, Haftpflicht, Store-Einreichung —
+steht in `DEINE-LISTE.md`. Der Hintergrund zum Lohnteil: `ABLAUFPLAN.md`
 
 ---
 
@@ -239,6 +231,7 @@ Ausführlich: `ABLAUFPLAN.md`
 | `LOHN-ZERTIFIZIERUNG.md` | Zertifizierung, Kosten, Anfragelisten |
 | `PRODUKT-NOTIZEN.md` | Geschäftsmodell und Leitentscheidungen |
 | `FEHLERKREISLAUF.md` | Funde erfassen, auswerten, beheben — Stufe 1+2 gebaut |
+| `DEINE-LISTE.md` | **was Daniel erledigen muss** — Konten, Unterschriften, Zahlen, nach Reihenfolge |
 | `DESKTOP.md` | das Programm zum Herunterladen: bauen, einstellen, was offen ist |
 | `pruefungen/README.md` | wie die Nachweise laufen und wie man neue schreibt |
 
