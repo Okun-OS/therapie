@@ -3106,6 +3106,69 @@ dass die Notiz den zweiten Lauf übersteht. Dazu 8 neue Prüfungen am laufenden
 System für das Planungsprofil. Gesamtlauf: **1401/1401 in 39 Prüfungen**, 123
 im Rechendienst, 944 Modultests, Bauen sauber.
 
+## Block §173 (27.09.) — Zum Herunterladen
+
+**Was gebaut wurde.** OKUN Workforce als Programm für Windows, macOS und
+Linux: Symbol im Startmenü, eigenes Fenster, kein Browsertab zwischen zwanzig
+anderen. Hier gebaut und gestartet wurden das Installationsprogramm für
+Windows (112 MB, ohne Administratorrechte installierbar), ein AppImage
+(126 MB) und ein .deb (100 MB).
+
+### Es ist eine Hülle, und das ist der Punkt
+Dieselbe Überlegung wie bei der Telefon-App (§139): Die Seiten entstehen auf
+dem Server, dort liegen Lohn, Zeiten und Rechte. Ein Programm, das den Stand
+vom Tag der Auslieferung mitbrächte, wäre am Tag darauf falsch — und jede
+Korrektur an der Lohnabrechnung müsste den Weg über eine neue Installation bei
+jedem Kunden nehmen.
+
+Was es trotzdem bringt, ist nicht „dieselbe Seite ohne Adressleiste": ein
+Programm im Startmenü statt eines Lesezeichens, gemerkte Fenstergröße,
+**Drucken ohne Browserrand** (ein Lohnbeleg mit „1/2 — workforce.example/…"
+am Rand gehört nicht in eine Personalakte), eine **einstellbare Adresse** für
+Kunden mit eigenem Server, und eine Seite im Klartext statt einer weißen
+Fläche, wenn die Anlage nicht antwortet.
+
+Es hält **keine Daten auf dem Rechner** — kein Zwischenspeicher mit Gehältern
+in einem Ordner, den die nächste Datenrettung findet. Gespeichert werden zwei
+Kleinigkeiten: die Adresse und die Fenstergröße.
+
+### Der Fund beim Bauen: 280 MB, von denen 180 nicht hätten mitgehen dürfen
+Der erste Versuch ergab ein Paket von 280 MB. Der Grund war nicht Electron,
+sondern dass der Paketbauer **immer alle Produktionsabhängigkeiten des
+Projekts** einpackt — eine Liste in `files` ändert daran nichts. Mitgegangen
+wären Prisma samt Rechenkern, der Anthropic-Zugang und der Mailversand.
+
+Das ist keine Frage der Dateigröße. Jedes dieser Pakete läge auf jedem
+Kundenrechner und wäre dort auf Sicherheitslücken zu pflegen — für ein
+Fenster, das eine Webseite lädt. `desktop/` ist deshalb ein eigenes
+npm-Paket **ohne Abhängigkeiten**, gebaut mit `--project desktop`. Im fertigen
+Paket liegen sieben Dateien.
+
+### Sicherheit
+`nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`. Was die
+geladene Seite auf dem Rechner darf, steht vollständig in
+`desktop/bruecke.js`: die eigene Adresse erfragen, sie ändern, drucken, die
+Fassung erfragen. Fremde Adressen werden weder im Fenster noch in einem neuen
+Fenster geöffnet, sondern gehen in den Systembrowser — eine fremde Seite im
+selben Fenster sähe aus wie ein Teil des Programms. Kein `http` außer auf dem
+eigenen Rechner. Kamera, Mikrofon und Ort werden abgelehnt.
+
+**Keine Selbstaktualisierung, mit Absicht.** Die Hülle enthält keine
+Anwendung; Korrekturen gehen über den Server und sind beim nächsten Öffnen da.
+Eine Selbstaktualisierung bräuchte einen dauerhaft erreichbaren Ausgabekanal
+und eine Signatur — zwei Angriffsflächen für einen Nutzen, den es kaum gibt.
+
+Nachweis: 17 Prüfungen an einem echten Fenster (`pruefungen/desktop/huelle.mjs`,
+über Playwright gegen Electron) — welche Anlage gezeigt wird, dass fremde
+Adressen draußen bleiben, dass die Seite kein Node bekommt, und dass bei einer
+nicht erreichbaren Anlage eine Seite im Klartext erscheint. Das gebaute
+AppImage wurde zusätzlich von Hand gestartet. Ausführlich: `DESKTOP.md`.
+
+**Offen und nicht programmierbar:** Die .exe braucht ein
+Code-Signing-Zertifikat, sonst warnt Windows vor einem „unbekannten
+Herausgeber". Das .dmg braucht einen Mac und die Beglaubigung über das
+Apple-Developer-Konto.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

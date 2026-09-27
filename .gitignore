@@ -34,3 +34,7 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# §173 Die gebauten Programme fürs Gerät. Über hundert Megabyte je Datei,
+# und sie entstehen aus dem, was daneben liegt — sie gehören nicht ins Repo.
+/desktop/pakete/

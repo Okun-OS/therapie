@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { drucken } from '@/lib/drucken'
 
 interface DayRecord {
   date: string
@@ -96,7 +97,7 @@ export default function TimeDocumentPage() {
         .signature-box { border: 1px solid #ccc; width: 180px; height: 40px; display: inline-block; }
       `}</style>
 
-      <button className="no-print" onClick={() => window.print()}
+      <button className="no-print" onClick={() => drucken()}
         style={{ marginBottom: 16, padding: '6px 16px', background: '#003366', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
         Drucken / PDF speichern
       </button>

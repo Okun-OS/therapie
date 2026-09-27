@@ -2,6 +2,8 @@
   "name": "dienstplan-saas",
   "version": "0.1.0",
   "private": true,
+  "description": "OKUN Workforce — Dienstpläne, Zeiten und Lohn für Pflege, Kita und Eingliederungshilfe",
+  "author": "OKUN <kontakt@okun.de>",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,7 +18,13 @@
     "app:android": "cap sync android && cap open android",
     "postinstall": "prisma generate",
     "seed": "npx tsx --env-file-if-exists=.env prisma/seed.ts",
-    "seed:kita": "npx tsx --env-file-if-exists=.env prisma/seed-kita-demo.ts"
+    "seed:kita": "npx tsx --env-file-if-exists=.env prisma/seed-kita-demo.ts",
+    "desktop": "electron desktop/haupt.js",
+    "desktop:bauen": "electron-builder --project desktop --linux --win",
+    "desktop:linux": "electron-builder --project desktop --linux",
+    "desktop:win": "electron-builder --project desktop --win",
+    "desktop:mac": "electron-builder --project desktop --mac",
+    "desktop:pruefen": "xvfb-run -a --server-args=\"-screen 0 1400x900x24\" node pruefungen/desktop/huelle.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
@@ -55,6 +63,8 @@
     "@types/react-dom": "^18",
     "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.0.1",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "postcss": "^8",

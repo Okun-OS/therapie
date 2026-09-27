@@ -17,10 +17,10 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §171/§172 Der Kita-Demo-Mandant und der Weg durch die Oberfläche |
-| **Nachweisstand** | 1401/1401 in 39 Prüfungen, 22 im Browser, 123 im Rechendienst, 944 Modultests |
-| **Als Nächstes** | Die herunterladbare Fassung fürs Gerät |
-| **Danach** | Startseite vor der Anmeldung, eigene Domain |
+| **Zuletzt fertig** | §173 Das Programm zum Herunterladen (Windows, Linux; macOS braucht einen Mac) |
+| **Nachweisstand** | 1401/1401 in 39 Prüfungen, 22 im Browser, 17 am Programmfenster, 123 im Rechendienst, 944 Modultests |
+| **Als Nächstes** | Die Startseite vor der Anmeldung |
+| **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
 > **Der Lohn-Block ist vollständig** (§155–§162). Pfändung, betriebliche
 > Altersvorsorge, Kurzarbeitergeld, Mehrfachbeschäftigung, Abfindung, die
@@ -144,9 +144,12 @@ Nach Dringlichkeit, nicht nach Bereich.
 ### Sonst offen
 - [ ] **Die Startseite vor der Anmeldung** — sie ist noch nicht die Seite, auf
       der ein Interessent landen soll
-- [ ] **Eine herunterladbare Fassung fürs Gerät** — nicht nur über den
-      Browser, sondern etwas, das man installiert wie ein Programm. Windows
-      und macOS; die Stores decken nur das Telefon ab
+- [x] ~~**Eine herunterladbare Fassung fürs Gerät**~~ ✅ §173 — ein Programm
+      mit eigenem Symbol im Startmenü. `npm run desktop:win` baut das
+      Installationsprogramm für Windows (ohne Administratorrechte
+      installierbar), `npm run desktop:linux` AppImage und .deb. Beides hier
+      gebaut und gestartet. **Offen:** die .exe signieren (Zertifikat kaufen),
+      das .dmg braucht einen Mac. Ausführlich: `DESKTOP.md`
 - [ ] **Mitarbeiter-App in die Stores** — Etappe 1 (Umbau aufs Telefon),
       Etappe 2 (Offline) und Etappe 3 (native Hülle) sind fertig. Offen ist
       nur noch das Einreichen selbst (4 Play Store, 5 App Store), und das
@@ -209,6 +212,8 @@ Ohne diese Punkte kommt die Arbeit an bestimmten Stellen nicht weiter.
 | 🟡 | **`OKUN_*`-Angaben bei Railway setzen** (Firma, Anschrift, Vertretung, Register, USt-IdNr., Datenschutzbeauftragter) | Impressum und Datenschutzerklärung — ohne sie steht dort, was fehlt |
 | 🟡 | **AVVs mit den Dienstleistern** (Claude, Hosting, Push) | den ersten echten Kunden |
 | 🟡 | **Eigene Domain einrichten** | Impressum, Stores und ein Produkt, das nicht nach Testaufbau aussieht |
+| 🔴 | **Code-Signing-Zertifikat für Windows kaufen** | ohne Signatur warnt Windows beim ersten Start vor einem „unbekannten Herausgeber" — bei einem Lohnprogramm installiert das niemand |
+| 🟡 | **Das .dmg auf einem Mac bauen und beglaubigen** | die Fassung für macOS; hängt an derselben D-U-N-S-Nummer wie der App Store |
 | 🟢 | Lizenzierung für Steuer und Lohn anschreiben | erst wenn alles Übrige steht |
 
 🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt
@@ -228,6 +233,7 @@ Ausführlich: `ABLAUFPLAN.md`
 | `LOHN-ZERTIFIZIERUNG.md` | Zertifizierung, Kosten, Anfragelisten |
 | `PRODUKT-NOTIZEN.md` | Geschäftsmodell und Leitentscheidungen |
 | `FEHLERKREISLAUF.md` | Funde erfassen, auswerten, beheben — Stufe 1+2 gebaut |
+| `DESKTOP.md` | das Programm zum Herunterladen: bauen, einstellen, was offen ist |
 | `pruefungen/README.md` | wie die Nachweise laufen und wie man neue schreibt |
 
 ---

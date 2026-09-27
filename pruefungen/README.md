@@ -89,6 +89,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `../solver-service/test_kita_zwei_etagen.py` | **Im Rechendienst** — Abnahme des Kita-Regelpakets am wirklich gelösten Plan: leerer Lauf, schwerer Lauf, Notlauf (`python3 -m pytest test_kita_zwei_etagen.py -q`) |
 | `browser/lohnverwaltung.mjs` | **Nicht im Gesamtlauf** — die Masken im echten Browser. Braucht Playwright: `node pruefungen/browser/lohnverwaltung.mjs` |
 | `browser/massnahmen.mjs` | **Nicht im Gesamtlauf** — Maßnahmen im echten Dienstplan entscheiden. Braucht Playwright, den Rechendienst und `npm run seed:kita` |
+| `desktop/huelle.mjs` | **Nicht im Gesamtlauf** — das Programm für den Rechner: welche Anlage, welche Adressen draußen bleiben, was die Seite darf. Braucht Electron und einen Bildschirm: `npm run desktop:pruefen` |
 | `e-kommunikation.mjs` | Benachrichtigungen, Einspringen, Push |
 | `e5-chat.mjs` | Nachrichten, Gruppen, wer nicht mitlesen darf |
 | `f-dienstplan.mjs` | Rechenkern, Dienstwünsche, Schichttausch |

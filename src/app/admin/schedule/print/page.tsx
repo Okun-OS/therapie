@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { drucken } from '@/lib/drucken'
 
 interface PrintEmployee { id: string; name: string; weeklyHours: number }
 interface PrintShift { id: string; name: string; startTime: string; endTime: string }
@@ -49,7 +50,7 @@ export default function SchedulePrintPage() {
 
   useEffect(() => {
     if (data) {
-      const t = setTimeout(() => window.print(), 400)
+      const t = setTimeout(() => drucken(), 400)
       return () => clearTimeout(t)
     }
   }, [data])
@@ -84,7 +85,7 @@ export default function SchedulePrintPage() {
       {/* Print-only controls */}
       <div className="no-print flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-10">
         <button
-          onClick={() => window.print()}
+          onClick={() => drucken()}
           className="px-4 py-2 rounded-xl bg-[#1a1a2e] text-white text-sm font-semibold hover:opacity-90"
         >
           Drucken / Als PDF speichern

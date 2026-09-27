@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import {
   Loader2, FileText, Printer, AlertTriangle, ShieldCheck, ChevronDown,
 } from 'lucide-react'
+import { drucken } from '@/lib/drucken'
 
 /**
  * §152 Das Verarbeitungsverzeichnis, wie man es einer Aufsichtsbehörde vorlegt.
@@ -134,7 +135,7 @@ export function Verarbeitungsverzeichnis() {
               + 'Auftragsverarbeiter.'}
         </p>
         <button
-          onClick={() => window.print()}
+          onClick={() => drucken()}
           className="flex items-center gap-1.5 bg-navy text-white text-xs
                      font-semibold px-3.5 py-2 rounded-lg shrink-0">
           <Printer size={14} /> Drucken / als PDF sichern

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Printer, CheckCircle, XCircle } from 'lucide-react'
+import { drucken } from '@/lib/drucken'
 
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
@@ -157,7 +158,7 @@ export default function TimesheetPrintPage() {
       <div className="print:hidden bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => window.print()}
+            onClick={() => drucken()}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-navy text-white text-sm font-medium hover:opacity-90"
           >
             <Printer size={16} /> Als PDF speichern / Drucken

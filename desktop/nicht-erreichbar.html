@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>OKUN Workforce</title>
+  <!--
+    §173 Diese Seite liegt IM Programm, nicht auf dem Server — sie ist das
+    Einzige, was noch da ist, wenn die Anlage gar nicht antwortet. Deshalb
+    steht hier alles im Dokument selbst: kein Stilblatt, keine Schriftart und
+    kein Bild von außen, denn nichts davon käme an.
+
+    Sie sagt drei Dinge, die ein weißer Bildschirm nicht sagt: welche Adresse
+    versucht wurde, woran es lag, und was man jetzt tun kann.
+  -->
+  <style>
+    :root { color-scheme: dark }
+    * { box-sizing: border-box }
+    body {
+      margin: 0; min-height: 100vh; background: #1A1D1F; color: #fff;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; padding: 32px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-user-select: none; user-select: none;
+    }
+    .zeichen {
+      width: 76px; height: 76px; border-radius: 22px; margin-bottom: 24px;
+      background: rgba(45, 212, 191, .16);
+      display: flex; align-items: center; justify-content: center;
+    }
+    h1 { font-size: 22px; margin: 0 0 10px; font-weight: 700 }
+    p { margin: 0 0 8px; max-width: 30em; line-height: 1.55; color: rgba(255,255,255,.66); font-size: 15px }
+    code {
+      display: inline-block; margin-top: 4px; padding: 4px 10px; border-radius: 8px;
+      background: rgba(255,255,255,.07); font-size: 13px; color: rgba(255,255,255,.8);
+      user-select: text; -webkit-user-select: text;
+    }
+    .grund { font-size: 13px; color: rgba(255,255,255,.38); margin-top: 16px }
+    .knoepfe { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; justify-content: center }
+    button {
+      border: 0; border-radius: 14px; padding: 13px 26px; font-size: 15px;
+      font-weight: 700; font-family: inherit; cursor: pointer;
+    }
+    .haupt { background: #2DD4BF; color: #0F172A }
+    .neben { background: rgba(255,255,255,.08); color: #fff }
+    button:active { transform: scale(.98) }
+  </style>
+</head>
+<body>
+  <div class="zeichen" aria-hidden="true">
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="1" y1="1" x2="23" y2="23" />
+      <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
+      <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
+      <path d="M10.71 5.05A16 16 0 0 1 22.58 9" />
+      <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+      <line x1="12" y1="20" x2="12.01" y2="20" />
+    </svg>
+  </div>
+
+  <h1 data-test="nicht-erreichbar">Ihre Anlage antwortet nicht</h1>
+  <p>
+    Das Programm hat versucht, Ihre Anlage zu erreichen:
+    <br><code id="adresse">—</code>
+  </p>
+  <p>
+    Das liegt fast immer an der Verbindung dieses Rechners. Sind Sie im
+    Firmennetz? Läuft Ihr Server? Ihre Daten sind davon nicht berührt — sie
+    liegen dort und nicht hier.
+  </p>
+  <p class="grund" id="grund"></p>
+
+  <div class="knoepfe">
+    <button class="haupt" id="nochmal">Erneut versuchen</button>
+    <button class="neben" id="aendern">Adresse ändern</button>
+  </div>
+
+  <script>
+    const p = new URLSearchParams(location.search)
+    const adresse = p.get('adresse') || ''
+    document.getElementById('adresse').textContent = adresse || 'nicht eingestellt'
+    const grund = p.get('grund')
+    if (grund) document.getElementById('grund').textContent = 'Meldung des Systems: ' + grund
+
+    document.getElementById('nochmal').onclick = () => {
+      if (adresse) location.href = adresse
+    }
+    document.getElementById('aendern').onclick = () => {
+      location.href = 'adresse.html?adresse=' + encodeURIComponent(adresse)
+    }
+  </script>
+</body>
+</html>
