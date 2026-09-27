@@ -14,10 +14,12 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 ```
 1. D-U-N-S-Nummer  ─────────►  Apple-Konto  ─►  APNs-Schlüssel  ─►  App Store
                                              └─►  .dmg beglaubigen
-2. Eigene Domain   ─────────►  Impressum/Datenschutz öffentlich  ─►  beide Stores
-3. Firebase        ─────────►  Push auf Android (und mit Apple auch iOS)
-4. Steuerberater   ─────────►  erster echter Kunde
-5. Code-Signing    ─────────►  Windows-Programm ohne Warnung
+2. Eigene Domain   ─────────►  ┐
+3. Firmenangaben   ─────────►  ┴─► Impressum/Datenschutz öffentlich ─► Stores
+4. Startseite: was drauf soll ─►  ich baue sie ─► Download-Seite
+5. Firebase        ─────────►  Push auf Android (und mit Apple auch iOS)
+6. Steuerberater   ─────────►  erster echter Kunde
+7. Code-Signing    ─────────►  Windows-Programm ohne Warnung
 ```
 
 **Erledigt am 27.09.:** Die Umlagesätze U1/U2 standen hier als deine Aufgabe.
@@ -64,7 +66,7 @@ GlobalSign.
 
 ---
 
-## 2 · Konten und Schlüssel
+## 2 · Konten, Schlüssel und Firmenangaben
 
 ### 🔴 Firebase-Projekt anlegen und `FCM_SERVICE_ACCOUNT` setzen
 Kostenlos, ~20 Minuten. **Ohne diesen Schlüssel verschickt das System keine
@@ -86,16 +88,38 @@ Wartet auf die D-U-N-S-Nummer.
 ### 🟡 Google-Play-Entwicklerkonto — 25 $ einmalig
 Geht sofort, unabhängig von allem anderen.
 
-### 🟡 `OKUN_*`-Angaben bei Railway setzen
-Ohne sie steht im Impressum, was fehlt. Es sind:
+### 🔴 Firmenangaben für Impressum und Datenschutzerklärung
+**Es gibt eine Vorlage zum Ausfüllen: `impressum-angaben.md`.** Ausfüllen und
+mir schicken, oder direkt bei Railway unter *Variables* eintragen.
 
-`OKUN_FIRMA` · `OKUN_ANSCHRIFT` · `OKUN_VERTRETEN` · `OKUN_REGISTER` ·
-`OKUN_USTID` · `OKUN_KONTAKT` · `OKUN_DSB` · `OKUN_SUPPORT_EMAIL` ·
-`OKUN_ABSENDER` · `OKUN_NAME` · `OKUN_ART`
+Vier davon sind Pflicht nach §5 DDG und ohne sie ist das Impressum
+unvollständig:
 
-Dieselben Angaben braucht auch das `.deb`-Paket des Desktop-Programms
-(`OKUN_FIRMA`, `OKUN_KONTAKT`) — Debian verlangt einen Verantwortlichen mit
-E-Mail-Adresse.
+| | |
+|---|---|
+| `OKUN_FIRMA` | vollständiger Firmenname **mit Rechtsform**, wie im Register |
+| `OKUN_ANSCHRIFT` | ladungsfähige Anschrift — **kein Postfach** |
+| `OKUN_VERTRETEN` | vertretungsberechtigte Person, Vor- und Nachname |
+| `OKUN_KONTAKT` | E-Mail, die wirklich gelesen wird |
+
+Dazu, sobald vorhanden: `OKUN_REGISTER` (Gericht **und** Nummer), `OKUN_USTID`
+(die USt-IdNr., nicht die Steuernummer vom Finanzamt). Und für den
+Datenschutz: `OKUN_DSB` (nur ab 20 Personen Pflicht, §38 BDSG),
+`OKUN_SUPPORT_EMAIL`.
+
+**Acht Variablen, nicht elf.** In der ersten Fassung dieser Liste standen
+`OKUN_ABSENDER`, `OKUN_NAME` und `OKUN_ART` mit dabei — das war mein Fehler:
+Die sind Konstanten im Code, sie zu setzen hätte nichts bewirkt.
+
+`OKUN_FIRMA` und `OKUN_KONTAKT` braucht außerdem das `.deb`-Paket des
+Desktop-Programms — Debian verlangt einen Verantwortlichen mit E-Mail.
+
+**Solange sie fehlen, steht im Impressum, dass sie fehlen** — mit Paragraph.
+Das ist Absicht: Ein Impressum, das eine Pflichtangabe stillschweigend
+auslässt, ist abmahnbar.
+
+**Blockiert:** beide App Stores (die verlangen eine erreichbare URL),
+und rechtlich jeden echten Kunden.
 
 ---
 
@@ -129,7 +153,43 @@ Domain aus Punkt 1 und die `OKUN_*`-Angaben.
 
 ---
 
-## 4 · Ausliefern
+## 4 · Die Startseite vor der Anmeldung
+
+Heute gibt es keine. `/` leitet sofort auf `/login` weiter — wer die Adresse
+aufruft, sieht ein Anmeldeformular und sonst nichts. Für einen Interessenten,
+der zum ersten Mal kommt, ist das eine verschlossene Tür.
+
+**Bauen tue ich das.** Was ich aber nicht erfinden darf, sind die
+Entscheidungen dahinter — sie stehen auf einer Verkaufsseite und müssen
+stimmen:
+
+### 🟡 Was auf die Startseite gehört — deine Entscheidungen
+- [ ] **Kann man sich selbst anmelden, oder nur nach einem Gespräch?**
+      Das ist die wichtigste: Davon hängt ab, ob es einen Knopf
+      „Kostenlos testen" gibt oder einen „Termin vereinbaren". Bei einem
+      Programm, das Gehälter rechnet, spricht viel für das Gespräch — aber das
+      ist deine Entscheidung, nicht meine.
+- [ ] **Preise: auf der Seite oder auf Anfrage?** Wenn auf der Seite: welche
+      Staffeln, pro Mitarbeiter oder pro Standort, und was ist enthalten.
+- [ ] **Wie soll ein Interessent Kontakt aufnehmen?** Formular, E-Mail,
+      Telefon, Rückrufbitte — und wer liest es.
+- [ ] **Darf ein Kunde namentlich genannt werden?** Eine Referenz wirkt mehr
+      als jeder Satz über uns. Nur mit seiner Zustimmung.
+- [ ] **Welche drei Sätze sollen als erstes dastehen?** Wenn du sie nicht
+      schreiben willst, schreibe ich einen Vorschlag und du korrigierst ihn —
+      das ist meist schneller.
+
+Sobald das steht, baue ich die Seite: Startseite mit Anmeldung, Impressum und
+Datenschutz verlinkt (beide brauchen die Angaben aus Punkt 3), und die
+Download-Seite für das Windows-Programm gleich mit.
+
+**Blockiert:** dass jemand die Software von außen überhaupt versteht — und
+die Store-Einreichung, die eine öffentliche Seite mit Datenschutzerklärung
+verlangt.
+
+---
+
+## 5 · Ausliefern
 
 ### 🟡 Das `.dmg` auf einem Mac bauen und beglaubigen
 Das Windows-Programm und die Linux-Pakete baue ich hier. **macOS braucht
@@ -153,7 +213,7 @@ Domain und zur überarbeiteten Startseite.
 
 ---
 
-## 5 · Wenn ein Kunde kommt
+## 6 · Wenn ein Kunde kommt
 
 > **Das hier machst nicht du, sondern der Kunde** — in seinem eigenen Zugang.
 > Es steht trotzdem auf dieser Liste, weil du beim Einrichten dabei bist und
@@ -189,7 +249,7 @@ Wer die ELStAM holt, wer meldet, wer haftet. `ABLAUFPLAN.md`, Punkt 5.
 
 ---
 
-## 6 · Später, bewusst nach hinten
+## 7 · Später, bewusst nach hinten
 
 ### 🟢 Die drei Anfragen verschicken (ITSG, ELSTER, Steuerberater)
 Für die Entscheidung, ob wir das Meldewesen selbst machen.
@@ -219,10 +279,14 @@ manche Kassen ändern sie mitten im Jahr (2026 gleich drei).
 
 Damit du weißt, was du **nicht** übernehmen musst:
 
-1. Die Startseite vor der Anmeldung überarbeiten
+1. **Die Startseite bauen** — sobald du die fünf Fragen aus Punkt 4
+   entschieden hast. Ohne sie könnte ich bauen, müsste aber Preise und
+   Tonfall erfinden, und beides stünde dann falsch im Netz.
 2. Domain eintragen, sobald sie steht
-3. `google-services.json` einbauen, sobald Firebase da ist
-4. Die Seite zum Herunterladen bauen, sobald die Domain steht
+3. Die Firmenangaben eintragen, sobald du `impressum-angaben.md` ausgefüllt
+   hast — falls du sie nicht selbst bei Railway setzen willst
+4. `google-services.json` einbauen, sobald Firebase da ist
+5. Die Seite zum Herunterladen bauen, zusammen mit der Startseite
 
 ---
 
