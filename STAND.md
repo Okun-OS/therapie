@@ -17,7 +17,7 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §175 Umlagekatalog: der Betrieb wählt die Erstattungsstufe, statt Sätze abzutippen |
+| **Zuletzt fertig** | §176 Alle 79 Umlagesätze von 24 Kassen gegen die Quelle geprüft — keine Abweichung |
 | **Nachweisstand** | 1424/1424 in 39 Prüfungen, 22 im Browser, 17 am Programmfenster, 128 im Rechendienst, 958 Modultests |
 | **Als Nächstes** | Die Startseite vor der Anmeldung |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
@@ -131,6 +131,12 @@ Nach Dringlichkeit, nicht nach Bereich.
       Regel lief ins Leere), die Leitung stand mit ihren 40 Vertragsstunden an
       jedem Tag in einer Gruppe, und das Planungsprofil stand jeder fremden
       Leitung offen
+- [x] ~~**Den Umlagekatalog prüfen**~~ ✅ §176 — alle 79 Stände von 24 Kassen
+      gegen die Veröffentlichung der Kasse selbst gehalten, keine einzige
+      Abweichung. Zwei Stellen waren knifflig: VIACTIV führt die Sätze auf
+      der Webseite noch als Stand 2025, und die Knappschaft nennt im
+      Merkblatt keine Erstattungsstufe. Beides über eine zweite Quelle
+      geklärt und in der Prüfnotiz festgehalten
 - [x] ~~**Umlagekatalog und Erstattungsstufe**~~ ✅ §175 — die Sätze von 24
       Kassen sind hinterlegt, der Betrieb wählt nur noch seine Stufe aus einer
       Liste statt drei Zahlen abzutippen. Dabei kam heraus, dass Kassen ihre

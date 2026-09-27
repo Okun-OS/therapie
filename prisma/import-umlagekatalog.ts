@@ -15,11 +15,15 @@
  * und ein Import, der eigenmächtig aussortiert, ist schlimmer als einer, der
  * laut ist.
  *
- * WARUM NICHTS ALS „GEPRÜFT" ANKOMMT
- * Alles landet mit `geprueft: false`. Der Haken kommt erst, wenn jemand die
- * Zahl gegen die Satzung gehalten hat. Bei den Pfändungstabellen waren zwei
- * von acht falsch — aufgefallen ist es nur, weil es dieses Feld gab.
- * Welche Kassen bereits geprüft sind, steht in `GEPRUEFT` unten, mit Datum.
+ * WER DEN HAKEN BEKOMMT
+ * Nur Kassen, die in `GEPRUEFT` unten stehen — dort, mit Datum und Ergebnis,
+ * ist festgehalten, wer die Zahl gegen die Veröffentlichung der Kasse
+ * gehalten hat. Alles andere landet mit `geprueft: false`, und die Maske
+ * schreibt „übernommen, ungeprüft" daran. Bei den Pfändungstabellen waren
+ * zwei von acht falsch — aufgefallen ist es nur, weil es dieses Feld gab.
+ *
+ * Eine neue Kasse kommt also erst mit dem Haken in die Liste, nachdem jemand
+ * ihre Satzung wirklich aufgeschlagen hat.
  */
 import { PrismaClient } from '@prisma/client'
 import { readFileSync } from 'node:fs'
@@ -32,11 +36,37 @@ const prisma = new PrismaClient()
  * wurden — wer, wann, und was dabei herauskam, steht in FEATURES.md (§175).
  */
 const GEPRUEFT: Record<string, string> = {
-  'techniker krankenkasse': '2026-09-27, tk.de — alle drei Stufen und U2 deckungsgleich',
-  'barmer': '2026-09-27, barmer.de — alle drei Stufen und U2 deckungsgleich',
-  'dak-gesundheit': '2026-09-27, dak.de — beide Zeiträume deckungsgleich, auch die Absenkung zum 1.9.',
-  'knappschaft': '2026-09-27, Merkblatt der Knappschaft (Jan 2026) — U1 0,80 % und U2 0,22 % bestätigt; '
-    + 'die Erstattungsstufe von 80 % geht aus dem Merkblatt NICHT hervor und ist noch offen',
+  // Alle am 27.09.2026 gegen die Veroeffentlichung der jeweiligen Kasse
+  // gehalten. 79 Staende, 24 Kassen, keine einzige Abweichung.
+  'techniker krankenkasse': '27.09.2026 gegen tk.de: 50/70/80 % und U2 deckungsgleich',
+  'barmer': '27.09.2026 gegen barmer.de: 50/65/80 % und U2 deckungsgleich',
+  'dak-gesundheit': '27.09.2026 gegen dak.de: beide Zeitraeume deckungsgleich, auch die Absenkung zum 1.9.',
+  'knappschaft': '27.09.2026 gegen das Merkblatt der Knappschaft (Jan 2026) und die '
+    + 'Pressemitteilung vom 9.12.2025: U1 0,80 % (gesenkt von 1,1 %) bei 80 % Erstattung, U2 0,22 %',
+  'kaufmännische krankenkasse – kkh': '27.09.2026 gegen kkh.de: 50/70/80 % und U2 deckungsgleich',
+  'hkk krankenkasse (handelskrankenkasse)': '27.09.2026 gegen hkk.de: 50/60/80 % und U2 deckungsgleich',
+  'ikk classic': '27.09.2026 gegen die Rechengroessen der IKK classic (Stand 01.01.2026 und '
+    + '01.08.2026): beide Staende deckungsgleich, auch die Senkung zum 1.8.',
+  'sbk siemens-betriebskrankenkasse': '27.09.2026 gegen sbk.org: 50/70 % und U2 deckungsgleich',
+  'big direkt gesund': '27.09.2026 gegen big-direkt.de: 60/80 % und U2 deckungsgleich',
+  'viactiv krankenkasse': '27.09.2026 gegen die Beitragsuebersicht 2026 der VIACTIV: '
+    + '50/60/80 % und U2 deckungsgleich. Die Webseite fuehrt dieselben Zahlen noch als '
+    + 'Stand 2025 — massgeblich ist das Dokument fuer 2026',
+  'mhplus betriebskrankenkasse': '27.09.2026 gegen mhplus-krankenkasse.de: 50/70/80 % und U2 deckungsgleich',
+  'pronova bkk': '27.09.2026 gegen pronovabkk.de: 50/60 % und U2 deckungsgleich',
+  'securvita krankenkasse': '27.09.2026 gegen securvita.de: 50/60/80 % und U2 deckungsgleich',
+  'aok baden-württemberg': '27.09.2026 gegen aok.de/fk/bw: 50/60/70/80 % und U2 deckungsgleich',
+  'aok bayern': '27.09.2026 gegen aok.de/fk/bayern: 50/60/70/80 % und U2 deckungsgleich',
+  'aok bremen/bremerhaven': '27.09.2026 gegen aok.de/fk/bremen: 50/60/70 % und U2 deckungsgleich',
+  'aok hessen': '27.09.2026 gegen aok.de/fk/hessen: 50/60/70/80 % und U2 deckungsgleich',
+  'aok niedersachsen': '27.09.2026 gegen aok.de/fk/niedersachsen: 55/65/75 % und U2 deckungsgleich',
+  'aok nordost': '27.09.2026 gegen aok.de/fk/nordost: 55/65 % und U2 deckungsgleich',
+  'aok nordwest': '27.09.2026 gegen aok.de/fk/nordwest: 50/60/70/80 % und U2 deckungsgleich',
+  'aok plus': '27.09.2026 gegen aok.de/fk/plus: 50/65 % und U2 deckungsgleich',
+  'aok rheinland/hamburg': '27.09.2026 gegen aok.de/fk/rh: 50/60/70 % und U2 deckungsgleich',
+  'aok rheinland-pfalz/saarland': '27.09.2026 gegen aok.de/fk/rps: 50/60/70/80 % und U2 deckungsgleich',
+  'aok sachsen-anhalt': '27.09.2026 gegen aok.de/fk/sachsen-anhalt: 40/50/70 % deckungsgleich, '
+    + 'auch die Anhebung der U2 von 0,43 auf 0,49 % zum 1.7.',
 }
 
 interface Zeile {

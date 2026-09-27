@@ -3278,6 +3278,58 @@ das jemand ausführen muss, wird beim nächsten Aufsetzen vergessen, und dann
 rechnet eine Anlage still ohne Umlagen. Gesamtlauf: **1424/1424 in 39
 Prüfungen**, 958 Modultests, 128 im Rechendienst, Bauen sauber.
 
+## Block §176 (27.09.) — Der Katalog ist geprüft
+
+Nach dem Katalog standen 20 von 24 Kassen als „übernommen, ungeprüft" da.
+Geprüft heißt hier: jemand hat die Zahl gegen die Veröffentlichung der Kasse
+selbst gehalten — Webseite, Merkblatt oder Rechengrößen-PDF.
+
+**Alle 79 Stände von 24 Kassen nachgeschlagen. Keine einzige Abweichung.**
+
+Zum Vergleich: Bei den Pfändungsfreigrenzen (§155) waren zwei von acht
+Tabellen falsch, eine davon um 31,31 € — genug, um den Arbeitgeber nach §840
+ZPO haften zu lassen. Dass hier nichts daneben lag, ist ein gutes Zeichen für
+die Recherche und kein Argument gegen das Nachschlagen.
+
+### Zwei Stellen, an denen es hätte schiefgehen können
+
+**VIACTIV** führt auf ihrer Umlagen-Seite die Sätze noch als Stand
+*1. Januar 2025* und verweist auf eine „Rechengrößen 2026" zum Herunterladen.
+Die Zahlen sind identisch, aber die Seite belegt nicht das Jahr, für das wir
+sie eingetragen haben. Erst die Beitragsübersicht 2026 selbst bestätigt sie.
+Das steht so in der Prüfnotiz — wer nächstes Jahr nachzieht, weiß, dass die
+Seite hier hinterherhinkt.
+
+**Die Knappschaft** nennt in ihrem Merkblatt U1 0,80 % und U2 0,22 %, aber
+nicht die Erstattungsstufe. 0,80 % ist für eine 80-Prozent-Erstattung
+auffällig niedrig — der nächste Wert im Katalog liegt bei 1,50 %. Die
+Pressemitteilung vom 9.12.2025 klärt es: Die Knappschaft hat die U1 zum
+1. Januar 2026 von 1,1 auf 0,8 % gesenkt und erstattet weiterhin 80 %. Sie ist
+schlicht die günstigste im Katalog.
+
+### Drei Bestätigungen nebenbei
+Knappschaft, VIACTIV und IKK classic nennen alle drei die
+**Insolvenzgeldumlage mit 0,15 %** — derselbe Wert, den das System in
+`lohnjahre.ts` führt (§358 SGB III). Der stand dort bisher als geprüft, ohne
+dass drei unabhängige Quellen ihn bestätigt hätten.
+
+### Was das für die Oberfläche heißt
+Die Kennzeichnung „übernommen, ungeprüft" verschwindet — nicht weil sie
+abgeschafft wurde, sondern weil sie auf keinen Eintrag mehr zutrifft. Sie
+greift wieder, sobald eine neue Kasse dazukommt: Der Haken kommt erst, wenn
+jemand ihre Satzung wirklich aufgeschlagen hat. Die Prüfung in `d21` ist
+entsprechend umgestellt — sie verlangt jetzt, dass jeder Eintrag Auskunft
+gibt und dass der Erstbestand vollständig geprüft ist.
+
+Je Kasse hält eine Notiz fest, wogegen geprüft wurde und was herauskam. Wer
+nächstes Jahr die neuen Sätze holt, sieht daran, was beim letzten Mal wie
+belegt war. Der Haken kommt als Datenmigration, damit er überall ankommt und
+nicht nur hier.
+
+Nachweis: 53 Prüfungen in `d21-umlagen` unverändert grün, Gesamtlauf
+**1424/1424 in 39 Prüfungen**, 958 Modultests, 128 im Rechendienst, Bauen
+sauber.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

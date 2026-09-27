@@ -207,15 +207,18 @@ check('Die Techniker Krankenkasse steht drin', !!tk,
   katalog.map(k => k.kasse).slice(0, 5).join(', '))
 check('Mit mehreren Erstattungsstufen zur Wahl', (tk?.stufen?.length ?? 0) >= 2,
   JSON.stringify(tk?.stufen ?? []))
-// §175 Uebernommen ist nicht geprueft. Bei den Pfaendungstabellen waren zwei
-// von acht falsch — aufgefallen ist es nur, weil es dieses Feld gab.
+// §176 Uebernommen ist nicht geprueft — und die Oberflaeche muss es
+// unterscheiden koennen. Bei den Pfaendungstabellen waren zwei von acht
+// falsch; aufgefallen ist es nur, weil es dieses Feld gab.
 const alleStufen = katalog.flatMap(k => k.stufen ?? [])
-check('Der Katalog unterscheidet geprueft von uebernommen',
-  alleStufen.some(s => s.geprueft) && alleStufen.some(s => !s.geprueft),
-  `${alleStufen.filter(s => s.geprueft).length} geprueft, `
-  + `${alleStufen.filter(s => !s.geprueft).length} uebernommen`)
-check('Die geprueften Saetze der TK sind als geprueft gekennzeichnet',
-  (tk?.stufen ?? []).every(s => s.geprueft), JSON.stringify(tk?.stufen ?? []))
+check('Jeder Katalogeintrag sagt, ob er geprueft ist',
+  alleStufen.length > 0 && alleStufen.every(s => typeof s.geprueft === 'boolean'),
+  `${alleStufen.length} Stufen`)
+check('Der Erstbestand ist vollstaendig geprueft',
+  alleStufen.every(s => s.geprueft),
+  `${alleStufen.filter(s => !s.geprueft).length} ungeprueft: `
+  + katalog.filter(k => (k.stufen ?? []).some(s => !s.geprueft))
+    .map(k => k.kasse).join(', '))
 
 check('Und je Stufe einem eigenen U1-Satz',
   new Set((tk?.stufen ?? []).map(s => s.satz)).size === (tk?.stufen ?? []).length,

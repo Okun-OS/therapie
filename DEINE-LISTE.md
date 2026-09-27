@@ -207,10 +207,11 @@ manche Kassen ändern sie mitten im Jahr (2026 gleich drei).
   Alte Stände bleiben stehen — Nachrechnungen für das Vorjahr brauchen sie.
 - **Wenn ein Kunde eine Kasse meldet, die fehlt:** dieselbe Recherche, nur
   für diese eine Kasse.
-- **20 von 24 Kassen sind noch ungeprüft.** Geprüft heißt: jemand hat die Zahl
-  gegen die Veröffentlichung der Kasse gehalten. In der Maske steht bei diesen
-  „übernommen, ungeprüft". Bei den Pfändungstabellen waren zwei von acht
-  falsch — das Feld gibt es deshalb.
+- **Alle 24 Kassen sind geprüft** (Stand 27.09.2026): jede Zahl gegen die
+  Veröffentlichung der Kasse selbst gehalten, keine Abweichung. Bei einer neu
+  hinzukommenden Kasse steht in der Maske so lange „übernommen, ungeprüft",
+  bis jemand ihre Satzung wirklich aufgeschlagen hat. Bei den
+  Pfändungstabellen waren zwei von acht falsch — das Feld gibt es deshalb.
 
 ---
 
