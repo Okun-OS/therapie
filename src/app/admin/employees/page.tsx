@@ -34,6 +34,8 @@ interface PlanningProfile {
   maxConsecutiveDays: number
   weekendRule: string | null
   planningNote: string | null
+  /** §171 leer = Vertragsstunden aus den Stammdaten */
+  planungsStundenSoll: number | null
   surchargeMode: string
 }
 
@@ -581,6 +583,7 @@ export default function AdminEmployees() {
                       maxConsecutiveDays: 0,
                       weekendRule: null,
                       planningNote: null,
+                      planungsStundenSoll: null,
                       surchargeMode: 'unternehmensregel',
                     })
                   }
@@ -672,6 +675,30 @@ export default function AdminEmployees() {
                       onChange={e => setPlanningProfileDraft(d => d ? { ...d, maxConsecutiveDays: Number(e.target.value) } : d)}
                       className="w-20 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none"
                     />
+                  </div>
+
+                  {/* §171 Planstunden */}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">
+                      Planstunden pro Woche (leer = Vertragsstunden)
+                    </label>
+                    <input
+                      type="number"
+                      min={0} max={60} step={0.5}
+                      value={planningProfileDraft.planungsStundenSoll ?? ''}
+                      onChange={e => setPlanningProfileDraft(d => d ? {
+                        ...d,
+                        planungsStundenSoll: e.target.value === '' ? null : Number(e.target.value),
+                      } : d)}
+                      placeholder="Vertragsstunden"
+                      data-test="planstunden"
+                      className="w-24 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none"
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Für alle, deren Vertragszeit nicht ihre Planzeit ist — eine Leitung
+                      mit 40 Vertrags- und 0 Planstunden zum Beispiel. Leitungszeit
+                      gehört nicht in den Dienstplan.
+                    </p>
                   </div>
 
                   {/* Planungsnotiz */}

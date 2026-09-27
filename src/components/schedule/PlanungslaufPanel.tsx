@@ -170,7 +170,11 @@ export function PlanungslaufPanel({ locationId, onConfirm, onCancel }: Planungsl
 
       <div className="flex gap-2 pt-1">
         <Button variant="ghost" onClick={onCancel} className="flex-1">Abbrechen</Button>
-        <Button onClick={() => onConfirm({ overtimeDecisions: decisions, sondernotiz })} className="flex-1">
+        <Button
+          onClick={() => onConfirm({ overtimeDecisions: decisions, sondernotiz })}
+          className="flex-1"
+          data-test="planung-starten"
+        >
           Plan erstellen
         </Button>
       </div>

@@ -30,6 +30,8 @@ interface Gespeichert {
   typ: string
   ziel: string
   tag: string
+  text: string
+  zielName: string | null
   status: string
   kommentar: string | null
   entschiedenVon: string | null
@@ -38,6 +40,9 @@ interface Gespeichert {
 
 interface Props {
   locationId: string
+  /** Erster und letzter Tag des geplanten Zeitraums (JJJJ-MM-TT) */
+  von: string
+  bis: string
   vorschlaege: MassnahmenVorschlag[]
   /** Hat der Rechendienst nachgerechnet, dass es damit aufgeht? */
   loest: boolean
@@ -55,17 +60,13 @@ function schluessel(m: { typ: string; ziel: string; tag: string }) {
   return `${m.typ}|${m.ziel}|${m.tag}`
 }
 
-export function MassnahmenPanel({ locationId, vorschlaege, loest, nameFuer }: Props) {
+export function MassnahmenPanel({ locationId, von, bis, vorschlaege, loest, nameFuer }: Props) {
   const [stand, setStand] = useState<Record<string, Gespeichert>>({})
   const [entwurf, setEntwurf] = useState<Record<string, string>>({})
   const [offenerKommentar, setOffenerKommentar] = useState<string | null>(null)
   const [laeuft, setLaeuft] = useState<string | null>(null)
   const [laden, setLaden] = useState(true)
   const [fehler, setFehler] = useState<string | null>(null)
-
-  const tage = vorschlaege.map(v => v.tag).sort()
-  const von = tage[0]
-  const bis = tage[tage.length - 1]
 
   const holen = useCallback(async () => {
     if (!locationId || !von || !bis) { setLaden(false); return }
@@ -118,9 +119,27 @@ export function MassnahmenPanel({ locationId, vorschlaege, loest, nameFuer }: Pr
     }
   }
 
-  if (vorschlaege.length === 0) return null
+  // §172 Was hier steht, ist mehr als der aktuelle Vorschlag.
+  //
+  // Beim ersten Durchlauf fiel auf: Wer eine Aufteilung genehmigt, sieht sie
+  // beim nächsten Rechnen nicht mehr. Der Rechendienst schlägt sie ja nicht
+  // mehr vor — die Lücke ist zu. Damit verschwand die eigene Entscheidung aus
+  // dem Blick, und niemand konnte sie zurücknehmen oder nachlesen.
+  //
+  // Deshalb: die Vorschläge dieses Laufs UND alles, was für diesen Zeitraum
+  // schon entschieden wurde.
+  const bekannt = new Set(vorschlaege.map(schluessel))
+  const alle: Array<MassnahmenVorschlag & { nurGespeichert?: boolean }> = [
+    ...vorschlaege,
+    ...Object.values(stand)
+      .filter(m => !bekannt.has(schluessel(m)) && m.status !== 'offen')
+      .map(m => ({ typ: m.typ, ziel: m.ziel, tag: m.tag, text: m.text, nurGespeichert: true })),
+  ].sort((a, b) => a.tag.localeCompare(b.tag))
 
-  const entschieden = vorschlaege.filter(v => (stand[schluessel(v)]?.status ?? 'offen') !== 'offen').length
+  if (alle.length === 0) return null
+
+  const entschieden = alle.filter(v => (stand[schluessel(v)]?.status ?? 'offen') !== 'offen').length
+  const offeneVorschlaege = vorschlaege.length
 
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-3" data-test="massnahmen-panel">
@@ -130,13 +149,15 @@ export function MassnahmenPanel({ locationId, vorschlaege, loest, nameFuer }: Pr
             Maßnahmen zu entscheiden
           </p>
           <p className="text-xs text-amber-700 mt-0.5">
-            {loest
-              ? 'Der Rechendienst hat nachgerechnet: Mit diesen Maßnahmen geht der Plan auf.'
-              : 'Auch mit diesen Maßnahmen bleiben Lücken — sie sind die beste erreichbare Lösung.'}
+            {offeneVorschlaege === 0
+              ? 'Für diesen Zeitraum ist alles entschieden — der Plan geht damit auf.'
+              : loest
+                ? 'Der Rechendienst hat nachgerechnet: Mit diesen Maßnahmen geht der Plan auf.'
+                : 'Auch mit diesen Maßnahmen bleiben Lücken — sie sind die beste erreichbare Lösung.'}
           </p>
         </div>
         <span className="text-[11px] font-semibold text-amber-700 whitespace-nowrap">
-          {entschieden}/{vorschlaege.length} entschieden
+          {entschieden}/{alle.length} entschieden
         </span>
       </div>
 
@@ -148,7 +169,7 @@ export function MassnahmenPanel({ locationId, vorschlaege, loest, nameFuer }: Pr
         <p className="text-xs text-amber-700">Lade bisherige Entscheidungen…</p>
       ) : (
         <div className="space-y-2">
-          {vorschlaege.map(v => {
+          {alle.map(v => {
             const k = schluessel(v)
             const gespeichert = stand[k]
             const status = (gespeichert?.status ?? 'offen') as Status
@@ -167,6 +188,11 @@ export function MassnahmenPanel({ locationId, vorschlaege, loest, nameFuer }: Pr
                       {name ? ` · ${name}` : ''}
                     </p>
                     <p className="text-xs text-gray-800 mt-0.5">{v.text}</p>
+                    {v.nurGespeichert && (
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Früher entschieden — der Plan schlägt sie nicht mehr vor.
+                      </p>
+                    )}
                   </div>
                   <span
                     className={`flex items-center gap-1 text-[11px] font-semibold whitespace-nowrap rounded-full px-2 py-0.5 ${

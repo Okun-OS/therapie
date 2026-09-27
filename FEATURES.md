@@ -3043,6 +3043,69 @@ Prüfungen** — zum ersten Mal auf einer frisch aufgesetzten Datenbank, also
 ohne angesammelten Zustand aus früheren Läufen. 123 im Rechendienst,
 944 Modultests, Bauen sauber.
 
+## Block §171/§172 (27.09.) — Der Weg durch die Oberfläche
+
+**Warum das nötig war.** Die Maßnahmen-Schnittstelle war mit 32 Prüfungen
+abgedeckt, die Maske selbst hatte niemand angeklickt. Genau dort hatte eine
+Woche vorher der „undefined"-Fehler in der Pfändungsliste gesteckt, den keine
+HTTP-Prüfung finden konnte. Diesmal wurde der ganze Weg gegangen: anmelden,
+Woche vorblättern, rechnen lassen, Lücke sehen, genehmigen, Notiz schreiben,
+neu rechnen.
+
+Der Weg brauchte einen Betrieb, an dem das Kita-Regelpaket überhaupt läuft —
+den gab es in der App nicht. **`npm run seed:kita` legt ihn jetzt an**: ein
+eigener Mandant mit den zwei Etagen, acht Gruppen, achtzehn Kräften und zwölf
+Dienstzeiten aus dem Kundenregelwerk. Zugang `leitung@kita-regenbogen.de`.
+
+### §171 Der Fund, auf den es ankam: die Rolle fehlte
+Ein Regelpaket fragt nach der Funktion — *„die Leitung springt nur im
+Notfall ein"*, *„die Springerin hat keine Frühdienste"*. Der Rechendienst
+sucht dafür in `rolle`, `position` und `funktion`. **Die App schickte keins
+davon.** Jede rollenbasierte Regel des Pakets lief ins Leere.
+
+In der Abnahme am Rechendienst konnte das nicht auffallen: Deren Prüfmodell
+setzt die Felder von Hand. Erst der erste echte Lauf aus der App zeigte es —
+und zwar sofort, weil die Bausteine bei einer Regel ohne Treffer laut
+scheitern statt still zu schweigen.
+
+### §171 Der zweite Fund: Vertragszeit ist nicht Planzeit
+Danach stand die Leitung an **zehn von zehn Tagen** in einer Gruppe. Der
+Grund war keine Regel, sondern Arithmetik: Sie hat 40 Vertragsstunden, und
+die muss der Rechendienst irgendwo unterbringen. Leitungszeit ist aber keine
+Gruppenzeit.
+
+Neu im Planungsprofil: **Planstunden pro Woche**, leer = Vertragsstunden. Für
+alle, deren Vertragszeit nicht ihre Planzeit ist — eine Leitung, eine
+Freistellung, eine Einarbeitung. Eine ausdrückliche 0 ist ein gültiger Wert
+und fällt nicht auf die Vertragsstunden zurück; dafür gibt es eine eigene
+Prüfung. Danach: Leitung an **0 von 10 Tagen** in der Gruppenbesetzung, Plan
+ohne jede Verletzung, alle 43 Regeln des Pakets angewendet.
+
+### §171 Der dritte Fund, nebenbei: eine offene Tür
+`/api/employees/[id]/planning-profile` prüfte die Rolle, aber **nicht den
+Standort**. Jede Leitung konnte damit das Planungsprofil jedes Mitarbeiters
+lesen und überschreiben — auch beim Wettbewerber, sobald sie eine Kennung
+kannte. Schichtvorliebe, Wochenendvereinbarung, Kinderabholzeiten und
+Planungsnotiz sind dabei nicht harmlos: Aus ihnen lassen sich
+Familienverhältnisse ablesen. `assertEmployeeAccess` (§109) hat hier von
+Anfang an gefehlt und steht jetzt drin, mit vier Gegenproben.
+
+### §172 Was der Browser-Durchlauf selbst gefunden hat
+Nach dem Genehmigen wurde neu gerechnet — und die eigene Entscheidung war vom
+Bildschirm verschwunden. Richtig gerechnet hatte das System: Die Lücke war zu,
+also schlug es nichts mehr vor. Nur sah die Leitung damit nicht mehr, was sie
+entschieden hatte, und konnte es nicht zurücknehmen.
+
+Die Maske zeigt jetzt beides: die Vorschläge dieses Laufs **und** alles, was
+für den Zeitraum schon entschieden wurde, mit dem Zusatz *„Früher entschieden
+— der Plan schlägt sie nicht mehr vor."*
+
+Nachweis: 22 Prüfungen im echten Browser (`pruefungen/browser/massnahmen.mjs`)
+— darunter, dass für den genehmigten Tag keine Lücke mehr gemeldet wird und
+dass die Notiz den zweiten Lauf übersteht. Dazu 8 neue Prüfungen am laufenden
+System für das Planungsprofil. Gesamtlauf: **1401/1401 in 39 Prüfungen**, 123
+im Rechendienst, 944 Modultests, Bauen sauber.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

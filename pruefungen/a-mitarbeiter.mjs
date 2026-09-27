@@ -141,6 +141,53 @@ const protokoll = await hole(gf, '/api/admin/audit-log').catch(() => ({ status: 
 check('Prüfprotokoll ist abrufbar', protokoll.status === 200 || protokoll.status === 404,
   protokoll.status === 404 ? 'Keine Abruf-Route vorhanden — nur Schreiben in die Datenbank' : `${protokoll.body.entries?.length ?? 0} Einträge`)
 
+// ── §171 Das Planungsprofil gehört zum Standort ────────────────────────────
+//
+// Diese Route prüfte lange nur die Rolle und nicht den Standort: Jede Leitung
+// konnte damit das Planungsprofil JEDES Mitarbeiters lesen und überschreiben,
+// auch beim Wettbewerber. Schichtvorliebe, Wochenendvereinbarung,
+// Kinderabholzeiten und die dauerhafte Planungsnotiz sind dabei nicht
+// harmlos — aus ihnen lassen sich Familienverhältnisse ablesen.
+console.log('\n=== Planungsprofil: nur am eigenen Standort ===')
+
+const profilSchreiben = await sende(leitung, `/api/employees/${neuId}/planning-profile`, 'PUT', {
+  shiftPreference: 'frueh', maxConsecutiveDays: 4, planungsStundenSoll: 0,
+})
+check('Die eigene Leitung pflegt das Planungsprofil',
+  profilSchreiben.status === 200, `HTTP ${profilSchreiben.status}`)
+check('Planstunden lassen sich getrennt von den Vertragsstunden setzen',
+  profilSchreiben.body.profile?.planungsStundenSoll === 0,
+  JSON.stringify(profilSchreiben.body.profile?.planungsStundenSoll))
+
+// Eine ausdrückliche 0 heißt „wird nicht verplant" und darf nicht als
+// „nicht gesetzt" gelesen werden — sonst stünde die Leitung wieder jeden
+// Tag in einer Gruppe.
+const profilLesen = await hole(leitung, `/api/employees/${neuId}/planning-profile`)
+check('Die 0 bleibt eine 0 und wird nicht zu „nichts"',
+  profilLesen.body.profile?.planungsStundenSoll === 0,
+  JSON.stringify(profilLesen.body.profile?.planungsStundenSoll))
+
+const profilFremdLesen = await hole(kita, `/api/employees/${neuId}/planning-profile`)
+check('Eine fremde Leitung liest das Planungsprofil NICHT',
+  profilFremdLesen.status === 403, `HTTP ${profilFremdLesen.status}`)
+
+const profilFremdSchreiben = await sende(kita, `/api/employees/${neuId}/planning-profile`, 'PUT', {
+  shiftPreference: 'nacht', planningNote: 'fremd geschrieben',
+})
+check('Und überschreibt es auch NICHT',
+  profilFremdSchreiben.status === 403, `HTTP ${profilFremdSchreiben.status}`)
+
+const unveraendert = await hole(leitung, `/api/employees/${neuId}/planning-profile`)
+check('Das Profil steht unverändert da',
+  unveraendert.body.profile?.shiftPreference === 'frueh',
+  unveraendert.body.profile?.shiftPreference)
+
+const unsinn = await sende(leitung, `/api/employees/${neuId}/planning-profile`, 'PUT', {
+  planungsStundenSoll: 200,
+})
+check('Unmögliche Planstunden werden abgewiesen', unsinn.status === 400,
+  `HTTP ${unsinn.status}`)
+
 // ── Löschen ist der Plattformverwaltung vorbehalten ────────────────────────
 console.log('\n=== Deaktivieren statt löschen ===')
 const loeschVersuch = await sende(leitung, `/api/employees/${neuId}`, 'DELETE')

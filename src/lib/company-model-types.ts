@@ -174,6 +174,19 @@ export interface PlanungsWunsch {
 export interface PlanungsMitarbeiter {
   id: string
   name: string
+  /**
+   * §171 Die Funktion im Betrieb — „Erzieher", „Standortleitung", „Springer".
+   *
+   * Sie fehlte, und das war der teuerste stille Fehler dieser Schnittstelle:
+   * Ein Regelpaket fragt nach der Rolle („die Leitung springt nur im
+   * Notfall ein", „die Springerin hat keine Frühdienste"). Der Rechendienst
+   * sucht dafür in `rolle`, `position` und `funktion` — die App schickte
+   * keins davon. Jede rollenbasierte Regel lief damit ins Leere. In der
+   * Abnahme am Rechendienst fiel es nicht auf, weil deren Prüfmodell die
+   * Felder von Hand setzt.
+   */
+  position?: string
+  funktion?: string
   einheiten: string[]
   // §71 home group: preferred unit; assignments elsewhere count as "Springer"
   stammEinheitId?: string

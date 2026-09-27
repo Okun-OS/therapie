@@ -503,7 +503,14 @@ export async function buildRuleModel(
         : null,
     ].filter(Boolean).join('; ') : null
 
-    const baseWeeklyHours = emp.weeklyHours ?? 0
+    // §171 Planstunden schlagen Vertragsstunden. Leer heißt: es gibt keinen
+    // Unterschied. Eine ausdrückliche 0 ist ein gültiger Wert — „diese Person
+    // wird nicht verplant" — und darf nicht auf die Vertragsstunden
+    // zurückfallen.
+    const planStunden = empProfile?.planungsStundenSoll
+    const baseWeeklyHours = planStunden === null || planStunden === undefined
+      ? (emp.weeklyHours ?? 0)
+      : planStunden
     const daysPerWeek = emp.workDaysPerWeek ?? 5
     const dailyHours = daysPerWeek > 0 ? baseWeeklyHours / daysPerWeek : 0
     const overtimeDecision = overtimeDecisions?.[emp.id]
@@ -521,6 +528,12 @@ export async function buildRuleModel(
     return {
       id: emp.id,
       name: emp.name,
+      // §171 Ohne diese beiden findet ein Regelpaket weder Leitung noch
+      // Springerin. Beide werden mitgeschickt, weil Betriebe sie
+      // unterschiedlich pflegen: mal steht die Funktion in `position`,
+      // mal in `roleType`.
+      position: emp.position || undefined,
+      funktion: emp.roleType || undefined,
       einheiten: empEinheiten,
       stammEinheitId,
       verfuegbareSchichtTypen: (emp.workDays?.length ? ['frueh', 'spaet', 'mittel'] : ['frueh', 'spaet', 'nacht', 'mittel']) as SchichtTyp[],

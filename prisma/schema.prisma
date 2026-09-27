@@ -76,6 +76,15 @@ model EmployeePlanningProfile {
   weekendRule        String?
   // Zusätzliche Planungsnotiz (dauerhaft, nicht pro Lauf)
   planningNote       String?
+  /// §171 Wochenstunden, die im DIENSTPLAN belegt werden. Leer = die
+  /// Vertragsstunden aus den Stammdaten.
+  ///
+  /// Für alle, deren Vertragszeit nicht gleich ihrer Planzeit ist: eine
+  /// Leitung mit 40 Vertrags- und 0 Planstunden, eine Freistellung, eine
+  /// Einarbeitung. Ohne dieses Feld muss der Rechendienst die vollen
+  /// Vertragsstunden unterbringen und stellt die Leitung jeden Tag in eine
+  /// Gruppe — der Plan sieht besetzt aus und ist es nicht.
+  planungsStundenSoll Float?
   // Zuschlagsregelung
   surchargeMode      String   @default("unternehmensregel") // unternehmensregel | abweichungen | individuell
   surchargeOverrides Json? // nur abweichende Felder vom Unternehmensstandard

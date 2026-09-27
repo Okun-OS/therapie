@@ -17,10 +17,10 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §169 Maßnahmen entscheiden · §170 Rechnen blockiert die Auskunft nicht mehr |
-| **Nachweisstand** | 1393/1393 in 39 Prüfungen, 123 im Rechendienst, 944 Modultests |
-| **Als Nächstes** | Die Startseite vor der Anmeldung überarbeiten |
-| **Danach** | Eigene Domain, dann eine herunterladbare Fassung fürs Gerät |
+| **Zuletzt fertig** | §171/§172 Der Kita-Demo-Mandant und der Weg durch die Oberfläche |
+| **Nachweisstand** | 1401/1401 in 39 Prüfungen, 22 im Browser, 123 im Rechendienst, 944 Modultests |
+| **Als Nächstes** | Die herunterladbare Fassung fürs Gerät |
+| **Danach** | Startseite vor der Anmeldung, eigene Domain |
 
 > **Der Lohn-Block ist vollständig** (§155–§162). Pfändung, betriebliche
 > Altersvorsorge, Kurzarbeitergeld, Mehrfachbeschäftigung, Abfindung, die
@@ -124,6 +124,17 @@ Nach Dringlichkeit, nicht nach Bereich.
       Die Entscheidung hängt am Tag, nicht am Rechenlauf: Nach der nächsten
       Krankmeldung wird neu gerechnet, und sie steht noch. Genehmigtes geht in
       die nächste Rechnung ein, Abgelehntes ändert nichts
+- [x] ~~**Demo-Mandant für das Kita-Paket**~~ ✅ §171 — `npm run seed:kita`
+      legt den Betrieb aus dem Kundenregelwerk als eigenen Mandanten an. Der
+      erste Lauf daraus fand drei Fehler, die die Abnahme im Rechendienst
+      nicht finden konnte: Die Rolle wurde nie übertragen (jede rollenbasierte
+      Regel lief ins Leere), die Leitung stand mit ihren 40 Vertragsstunden an
+      jedem Tag in einer Gruppe, und das Planungsprofil stand jeder fremden
+      Leitung offen
+- [x] ~~**Maßnahmen im echten Browser**~~ ✅ §172 — 22 Prüfungen über den
+      ganzen Weg. Sie fanden, dass eine genehmigte Maßnahme beim nächsten
+      Rechnen vom Bildschirm verschwand: richtig gerechnet, aber die Leitung
+      konnte ihre eigene Entscheidung nicht mehr sehen
 - [x] ~~**Rechnen blockiert die Auskunft nicht mehr**~~ ✅ §170 — der
       Rechendienst rechnete bisher in seiner Ereignisschleife und schwieg
       dabei auf `/health` und `/version`. Die App las das als „nicht

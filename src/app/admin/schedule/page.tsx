@@ -1124,6 +1124,7 @@ export default function AdminSchedule() {
                   </span>
                 )}
                 <button onClick={() => shiftPeriod(1)} disabled={periodMode === 'custom' && (!customRange.start || !customRange.end)}
+                  data-test="woche-vor"
                   className="p-2 rounded-xl hover:bg-white border border-gray-200 transition-all disabled:opacity-40">
                   <ChevronRight size={18} className="text-gray-600" />
                 </button>
@@ -1423,11 +1424,16 @@ export default function AdminSchedule() {
                   )}
 
                   {/* §169 Maßnahmen entscheiden — genehmigen, ablehnen, kommentieren */}
-                  {locationId && planVorschlag && planVorschlag.massnahmen.length > 0 && (
+                  {/* §172 Auch ohne neuen Vorschlag: Was für diesen Zeitraum
+                      schon entschieden wurde, bleibt sichtbar. Sonst
+                      verschwindet die eigene Genehmigung beim nächsten Lauf. */}
+                  {locationId && aiDone && (
                     <MassnahmenPanel
                       locationId={locationId}
-                      vorschlaege={planVorschlag.massnahmen}
-                      loest={planVorschlag.loest}
+                      von={solverFrom}
+                      bis={solverTo}
+                      vorschlaege={planVorschlag?.massnahmen ?? []}
+                      loest={planVorschlag?.loest ?? false}
                       nameFuer={id => unitNameById.get(id)}
                     />
                   )}

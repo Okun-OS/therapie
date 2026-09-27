@@ -15,7 +15,8 @@
     "app:ios": "cap sync ios && cap open ios",
     "app:android": "cap sync android && cap open android",
     "postinstall": "prisma generate",
-    "seed": "npx tsx --env-file-if-exists=.env prisma/seed.ts"
+    "seed": "npx tsx --env-file-if-exists=.env prisma/seed.ts",
+    "seed:kita": "npx tsx --env-file-if-exists=.env prisma/seed-kita-demo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
