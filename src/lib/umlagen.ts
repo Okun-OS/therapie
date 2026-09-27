@@ -77,6 +77,108 @@ export function anrechnung(wochenstunden: number): number {
 
 export const U1_GRENZE = 30
 
+// ── §175 Welcher Satz gilt in welchem Monat ─────────────────────────────────
+
+/** Ein Stand mit Gültigkeitsbeginn — Katalogeintrag oder Wahl des Kunden. */
+export interface MitStichtag {
+  gueltigAb: string
+}
+
+/**
+ * Den Stand heraussuchen, der in diesem Monat gilt.
+ *
+ * WARUM DAS EINE EIGENE FUNKTION IST
+ * Krankenkassen ändern ihre Umlagesätze unterjährig. Allein 2026: die DAK zum
+ * 1. September (U1 von 3,90 auf 1,80 % bei 80 % Erstattung), die IKK classic
+ * zum 1. August, die AOK Sachsen-Anhalt die U2 zum 1. Juli. Wer immer „den
+ * einen" Satz nimmt, rechnet ab dem Stichtag jeden Monat falsch — und es
+ * fällt keinem auf, weil nichts fehlt und nichts warnt.
+ *
+ * Maßgeblich ist der ERSTE Tag des Abrechnungsmonats: Ein Satz, der zum
+ * 1. September gilt, gilt für die Septemberabrechnung ganz. Kassen ändern
+ * zum Monatsersten; einen Wechsel mitten im Monat gibt es in der Praxis
+ * nicht, und das Umlageverfahren rechnet ohnehin je Monat ab.
+ */
+export function standZumMonat<T extends MitStichtag>(
+  staende: T[],
+  jahr: number,
+  monat: number,
+): T | null {
+  const erster = `${jahr}-${String(monat).padStart(2, '0')}-01`
+  const gueltig = staende
+    .filter(s => s.gueltigAb <= erster)
+    .sort((a, b) => b.gueltigAb.localeCompare(a.gueltigAb))
+  return gueltig[0] ?? null
+}
+
+/** Ein Eintrag aus dem Katalog der Kassen. */
+export interface Katalogeintrag extends MitStichtag {
+  kasse: string
+  u1Erstattung: number
+  u1Satz: number
+  u2Satz: number | null
+  geprueft: boolean
+}
+
+/** Was ein Betrieb für eine Kasse gewählt hat. */
+export interface Kassenwahl extends MitStichtag {
+  kasse: string
+  u1Erstattung: number | null
+  /** Von Hand eingetragen — schlägt den Katalog */
+  u1Satz: number | null
+  u2Satz: number | null
+}
+
+/**
+ * Die Sätze einer Kasse für einen Abrechnungsmonat.
+ *
+ * DREI QUELLEN, EINE REIHENFOLGE
+ *   1. Was der Betrieb von Hand eingetragen hat. Es schlägt alles andere —
+ *      eine kleine BKK steht vielleicht nicht im Katalog, und dann soll
+ *      niemand warten müssen.
+ *   2. Der Katalogeintrag zur gewählten Stufe, gültig in diesem Monat.
+ *   3. Nichts. Dann wird auch nichts gerechnet, und der Lohnlauf sagt es.
+ *      Eine erfundene Umlage wäre schlimmer als eine fehlende.
+ */
+export function saetzeFuerMonat(
+  kasse: string,
+  wahlen: Kassenwahl[],
+  katalog: Katalogeintrag[],
+  jahr: number,
+  monat: number,
+): Umlagesaetze & { quelle: 'eigen' | 'katalog' | 'keine'; geprueft: boolean } {
+  const eigen = kasse.toLowerCase()
+  const wahl = standZumMonat(
+    wahlen.filter(w => w.kasse.toLowerCase() === eigen), jahr, monat)
+
+  const leer = {
+    u1: null, u2: null, u1Erstattung: wahl?.u1Erstattung ?? null, kasse,
+    quelle: 'keine' as const, geprueft: false,
+  }
+  if (!wahl) return leer
+
+  // 1. Handeintrag: Er gilt nur, wenn wirklich etwas eingetragen wurde.
+  if (wahl.u1Satz != null || wahl.u2Satz != null) {
+    return {
+      u1: wahl.u1Satz, u2: wahl.u2Satz, u1Erstattung: wahl.u1Erstattung,
+      kasse, quelle: 'eigen', geprueft: false,
+    }
+  }
+
+  // 2. Katalog — zur gewählten Stufe und zum Monat.
+  if (wahl.u1Erstattung == null) return leer
+  const passend = katalog.filter(k =>
+    k.kasse.toLowerCase() === eigen
+    && Math.abs(k.u1Erstattung - wahl.u1Erstattung!) < 1e-9)
+  const stand = standZumMonat(passend, jahr, monat)
+  if (!stand) return leer
+
+  return {
+    u1: stand.u1Satz, u2: stand.u2Satz, u1Erstattung: stand.u1Erstattung,
+    kasse, quelle: 'katalog', geprueft: stand.geprueft,
+  }
+}
+
 export interface Betriebsgroesse {
   /** Die gewichtete Zahl nach §3 AAG */
   zahl: number

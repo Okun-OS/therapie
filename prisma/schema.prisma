@@ -2418,23 +2418,77 @@ model KurzarbeitMonat {
 ///
 /// Gefuehrt je Kunde, weil derselbe Kassenname bei verschiedenen Traegern
 /// verschiedene Stufen haben kann — die Stufe waehlt der Betrieb.
+/// §175 Der Katalog der Umlagesaetze — die Satzung der Kasse.
+///
+/// WARUM DER KATALOG NICHT AM KUNDEN HAENGT
+/// Was die Techniker Krankenkasse fuer eine 80-Prozent-Erstattung verlangt,
+/// ist fuer jeden Arbeitgeber dieselbe Zahl. Sie einmal je Kunde eintippen zu
+/// lassen heisst: dreissig Kunden tippen dieselbe Zahl, und einer vertippt
+/// sich. Der Katalog steht deshalb einmal im System, gepflegt von OKUN und
+/// mit Quelle.
+///
+/// WARUM MIT DATUM
+/// Kassen aendern ihre Saetze unterjaehrig. Die DAK hat die U1 zum
+/// 1. September 2026 mehr als halbiert, die IKK classic zum 1. August, die
+/// AOK Sachsen-Anhalt die U2 zum 1. Juli. Eine Abrechnung fuer August muss
+/// den August-Satz nehmen. Ein Katalog ohne Datum rechnet ab dem Stichtag
+/// jeden Monat falsch, ohne dass es auffaellt.
+model UmlageKatalog {
+  id           String   @id @default(cuid())
+  /// Name der Kasse, wie sie sich selbst nennt
+  kasse        String
+  /// Erstattungsstufe der U1 als Anteil (0.8 = 80 %)
+  u1Erstattung Float
+  /// Umlagesatz U1 zu GENAU dieser Stufe, als Anteil
+  u1Satz       Float
+  /// Umlagesatz U2 als Anteil — je Kasse einer, unabhaengig von der Stufe
+  u2Satz       Float?
+  /// Ab wann dieser Stand gilt (JJJJ-MM-TT)
+  gueltigAb    String
+  /// Die Fundstelle, an der die Zahl steht
+  quelle       String?
+  /// §175 Gegen die Satzung der Kasse abgeglichen?
+  ///
+  /// Solange false, steht in der Maske, dass die Zahl uebernommen und nicht
+  /// geprueft ist. Derselbe Weg wie bei den Pfaendungstabellen: Dort waren
+  /// zwei von acht falsch, und nur weil das Feld existierte, ist es
+  /// aufgefallen.
+  geprueft     Boolean  @default(false)
+  notiz        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([kasse, u1Erstattung, gueltigAb])
+  @@index([kasse])
+}
+
+/// §175 Die Wahl des Kunden: welche Kasse, welche Erstattungsstufe, ab wann.
+///
+/// Die SAETZE stehen im Katalog. Hier steht nur, wofuer dieser Betrieb sich
+/// entschieden hat — die Stufe waehlt der Arbeitgeber, nicht die Kasse.
+///
+/// `u1Satz` und `u2Satz` bleiben als Uebersteuerung fuer Kassen, die (noch)
+/// nicht im Katalog stehen. Ein Betrieb mit einer kleinen BKK soll nicht
+/// warten muessen, bis wir sie aufgenommen haben.
 model Krankenkassensatz {
   id           String   @id @default(cuid())
   customerId   String
   /// Name der Kasse, wie er am Lohnprofil steht
   kasse        String
-  /// Umlagesatz U1 als Anteil (0.02 = 2 %)
+  /// Umlagesatz U1 als Anteil (0.02 = 2 %) — leer heisst: aus dem Katalog
   u1Satz       Float?
   /// Gewaehlte Erstattungsstufe der U1 als Anteil (0.8 = 80 %)
   u1Erstattung Float?
-  /// Umlagesatz U2 als Anteil
+  /// Umlagesatz U2 als Anteil — leer heisst: aus dem Katalog
   u2Satz       Float?
+  /// Ab wann diese Wahl gilt. Teil des Schluessels: Wer zum 1. Januar die
+  /// Stufe wechselt, muss den Dezember trotzdem noch nachrechnen koennen.
   gueltigAb    String
   notiz        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  @@unique([customerId, kasse])
+  @@unique([customerId, kasse, gueltigAb])
   @@index([customerId])
 }
 

@@ -17,8 +17,8 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §173 Das Programm zum Herunterladen (Windows, Linux; macOS braucht einen Mac) |
-| **Nachweisstand** | 1401/1401 in 39 Prüfungen, 22 im Browser, 17 am Programmfenster, 128 im Rechendienst, 944 Modultests |
+| **Zuletzt fertig** | §175 Umlagekatalog: der Betrieb wählt die Erstattungsstufe, statt Sätze abzutippen |
+| **Nachweisstand** | 1424/1424 in 39 Prüfungen, 22 im Browser, 17 am Programmfenster, 128 im Rechendienst, 958 Modultests |
 | **Als Nächstes** | Die Startseite vor der Anmeldung |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
@@ -131,6 +131,11 @@ Nach Dringlichkeit, nicht nach Bereich.
       Regel lief ins Leere), die Leitung stand mit ihren 40 Vertragsstunden an
       jedem Tag in einer Gruppe, und das Planungsprofil stand jeder fremden
       Leitung offen
+- [x] ~~**Umlagekatalog und Erstattungsstufe**~~ ✅ §175 — die Sätze von 24
+      Kassen sind hinterlegt, der Betrieb wählt nur noch seine Stufe aus einer
+      Liste statt drei Zahlen abzutippen. Dabei kam heraus, dass Kassen ihre
+      Sätze unterjährig ändern (2026 gleich drei) — der alte Bau konnte das
+      nicht abbilden und hätte ab dem Stichtag jeden Monat falsch gerechnet
 - [x] ~~**Die flackernde Abnahme**~~ ✅ §174 — eine Prüfung kippte bei jedem
       dritten Lauf um und sprach dabei von einer Regel. Drei Ursachen, keine
       davon die Regel: Die Prüfung verlangte einen von zwei gleich guten
@@ -210,7 +215,7 @@ Die fünf, die am meisten aufhalten:
 | 🔴 | **D-U-N-S-Nummer beantragen** (kostenlos, 1–2 Wochen) | Apple-Konto → Push aufs iPhone → App Store → das beglaubigte `.dmg` |
 | 🔴 | **Eigene Domain einrichten** | Impressum, beide Stores, die Seite zum Herunterladen |
 | 🔴 | **Firebase anlegen, `FCM_SERVICE_ACCOUNT` setzen** | jede Benachrichtigung — ohne den Schlüssel verschickt das System nichts |
-| 🔴 | **Umlagesätze U1/U2 je Kasse eintragen** (§159) | jede korrekte Arbeitgeberkostenrechnung; sie stehen in der Satzung, das Programm rät sie nicht |
+| 🟡 | **Erstattungsstufe je Kasse wählen** (§175) | jede korrekte Arbeitgeberkostenrechnung. Die Sätze von 24 Kassen sind hinterlegt — zu tun bleibt: auswählen, welche Stufe der Betrieb vereinbart hat |
 | 🔴 | **Steuerberater die Rechnung gegenzeichnen lassen** | den ersten echten Kunden |
 
 🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt

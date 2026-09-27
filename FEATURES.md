@@ -3217,6 +3217,67 @@ selbst und eine gegen die klebende Sperre), **drei vollständige Läufe
 hintereinander ohne Ausreißer**. Dazu unverändert 1401/1401 in 39 Prüfungen,
 22 im Browser, 17 am Programmfenster, 944 Modultests, Bauen sauber.
 
+## Block §175 (27.09.) — Die Erstattungsstufe wählen statt Zahlen tippen
+
+**Die Frage war: „Kann der Kunde bei uns die Stufe wählen?"** Die Antwort war
+nein. Die Maske hatte drei Eingabefelder — U1-Satz, Erstattung, U2-Satz —, und
+der Betrieb musste alle drei aus der Satzung abtippen. Was die Techniker
+Krankenkasse für eine 80-Prozent-Erstattung verlangt, ist aber für jeden
+Arbeitgeber dieselbe Zahl. Dreißig Kunden tippen dieselbe Zahl, und einer
+vertippt sich.
+
+### Der Katalog
+Neu ist `UmlageKatalog`: die Satzung der Kasse, einmal fürs ganze System, mit
+Quelle und Stichtag. Der Betrieb wählt jetzt aus einer Liste —
+*„80 % Erstattung → U1 3,20 % · U2 0,44 %"* — statt zu tippen. Eine Stufe,
+die es bei dieser Kasse nicht gibt, wird abgelehnt und die möglichen werden
+genannt.
+
+Für Kassen, die nicht im Katalog stehen, bleibt die Handeingabe. Ein Betrieb
+mit einer kleinen BKK soll nicht warten müssen, bis wir sie aufgenommen
+haben — und sein eigener Eintrag schlägt den Katalog, damit eine
+Sondervereinbarung nicht überstimmt wird.
+
+**Eingelesen sind 79 Sätze von 24 Kassen** aus einer Recherche, die der Kunde
+über `recherche-auftrag-umlagen.md` beauftragt hat. Vier Kassen wurden gegen
+ihre eigene Veröffentlichung geprüft (TK, BARMER, DAK, Knappschaft) — alle
+vier deckungsgleich. Der Rest trägt seine Quelle, aber keinen Haken:
+`geprueft: false`, und die Maske sagt es. Bei den Pfändungstabellen waren zwei
+von acht falsch; aufgefallen ist es nur, weil es dieses Feld gab.
+
+### Der ernstere Fund: unterjährige Änderungen
+Die Recherche brachte etwas zutage, das die alte Bauweise gar nicht abbilden
+konnte: **Kassen ändern ihre Sätze mitten im Jahr.** Allein 2026 die DAK zum
+1. September (U1 von 3,90 auf 1,80 % bei 80 % Erstattung), die IKK classic zum
+1. August, die AOK Sachsen-Anhalt die U2 zum 1. Juli.
+
+Der Schlüssel war `(Kunde, Kasse)` — **ein** Satz je Kasse, ohne Datum, und der
+Lohnlauf nahm ihn, egal für welchen Monat er rechnete. Eine Augustabrechnung
+mit dem Januarsatz wäre falsch gewesen, ohne dass etwas fehlt oder warnt.
+
+Jetzt trägt sowohl der Katalog als auch die Wahl des Betriebs einen Stichtag,
+und `saetzeFuerMonat` sucht den Stand heraus, der im Abrechnungsmonat gilt.
+Maßgeblich ist der Monatserste: Ein Satz ab 1. September gilt für den
+September ganz.
+
+### Die Falle, die dabei auffiel
+Sobald mehrere Stände möglich sind, entsteht eine neue: Wer im September einen
+Satz einträgt, den Vertipper bemerkt und ihn mit Stichtag 1. Januar neu
+einträgt, hat danach **zwei** Stände — und der falsche vom September ist der
+jüngere und gilt weiter. Gerechnet wird richtig, nur mit der falschen Zahl.
+
+Aufgefallen ist es in der eigenen Prüfung: Die U1 kam auf 630 statt 63 Euro.
+Die Maske zeigt deshalb bei mehreren Ständen jeden einzeln, mit Datum, welcher
+gilt, und einem eigenen Papierkorb daneben.
+
+Nachweis: 53 Prüfungen in `d21-umlagen` (11 neu) und 15 neue Modultests zum
+Stichtagswechsel — auch die Gegenproben: eine Stufe, die es nicht gibt; ein
+Monat vor dem ersten Stand; der eigene Eintrag, der den Katalog schlägt.
+Der Erstbestand kommt als **Datenmigration**, nicht als Skript: Ein Skript,
+das jemand ausführen muss, wird beim nächsten Aufsetzen vergessen, und dann
+rechnet eine Anlage still ohne Umlagen. Gesamtlauf: **1424/1424 in 39
+Prüfungen**, 958 Modultests, 128 im Rechendienst, Bauen sauber.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   anrechnung, betriebsgroesse, berechne, erstattung, U1_GRENZE,
+  saetzeFuerMonat, standZumMonat,
+  type Katalogeintrag, type Kassenwahl,
 } from '../umlagen'
 import { calculatePayroll } from '../payroll-engine'
 import { lohnjahrOderFehler } from '../lohnjahre'
@@ -154,5 +156,118 @@ describe('Die Umlagen in der Abrechnung', () => {
   it('sagt auf der Abrechnung, welcher Satz fehlt', () => {
     const r = calculatePayroll(basis)
     expect(r.warnings.join(' ')).toMatch(/U1-Satz/)
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// §175 Welcher Satz gilt in welchem Monat
+//
+// Krankenkassen ändern ihre Umlagesätze unterjährig. Allein 2026: die DAK zum
+// 1. September, die IKK classic zum 1. August, die AOK Sachsen-Anhalt die U2
+// zum 1. Juli. Wer immer „den einen" Satz nimmt, rechnet ab dem Stichtag
+// jeden Monat falsch — und es fällt keinem auf, weil nichts fehlt.
+// ════════════════════════════════════════════════════════════════════════════
+
+describe('§175 Der Satz zum Abrechnungsmonat', () => {
+  const DAK: Katalogeintrag[] = [
+    { kasse: 'DAK-Gesundheit', u1Erstattung: 0.8, u1Satz: 0.039, u2Satz: 0.0039, gueltigAb: '2026-01-01', geprueft: true },
+    { kasse: 'DAK-Gesundheit', u1Erstattung: 0.8, u1Satz: 0.018, u2Satz: 0.0039, gueltigAb: '2026-09-01', geprueft: true },
+    { kasse: 'DAK-Gesundheit', u1Erstattung: 0.5, u1Satz: 0.013, u2Satz: 0.0039, gueltigAb: '2026-01-01', geprueft: true },
+    { kasse: 'DAK-Gesundheit', u1Erstattung: 0.5, u1Satz: 0.008, u2Satz: 0.0039, gueltigAb: '2026-09-01', geprueft: true },
+  ]
+  const wahl: Kassenwahl[] = [
+    { kasse: 'DAK-Gesundheit', u1Erstattung: 0.8, u1Satz: null, u2Satz: null, gueltigAb: '2026-01-01' },
+  ]
+
+  it('nimmt im August noch den alten Satz', () => {
+    const s = saetzeFuerMonat('DAK-Gesundheit', wahl, DAK, 2026, 8)
+    expect(s.u1).toBe(0.039)
+    expect(s.quelle).toBe('katalog')
+  })
+
+  it('und im September den neuen — am Stichtag selbst, nicht erst danach', () => {
+    const s = saetzeFuerMonat('DAK-Gesundheit', wahl, DAK, 2026, 9)
+    expect(s.u1).toBe(0.018)
+  })
+
+  it('bleibt danach beim neuen', () => {
+    expect(saetzeFuerMonat('DAK-Gesundheit', wahl, DAK, 2026, 12).u1).toBe(0.018)
+    expect(saetzeFuerMonat('DAK-Gesundheit', wahl, DAK, 2027, 3).u1).toBe(0.018)
+  })
+
+  it('nimmt die gewählte Stufe und keine andere', () => {
+    const halb: Kassenwahl[] = [{ ...wahl[0], u1Erstattung: 0.5 }]
+    expect(saetzeFuerMonat('DAK-Gesundheit', halb, DAK, 2026, 8).u1).toBe(0.013)
+    expect(saetzeFuerMonat('DAK-Gesundheit', halb, DAK, 2026, 9).u1).toBe(0.008)
+  })
+
+  it('rechnet vor dem ersten Stand gar nichts, statt zu raten', () => {
+    const s = saetzeFuerMonat('DAK-Gesundheit', wahl, DAK, 2025, 12)
+    // Die WAHL gilt ab 2026-01-01 — davor gibt es sie nicht.
+    expect(s.u1).toBeNull()
+    expect(s.quelle).toBe('keine')
+  })
+
+  it('kennt eine Kasse nicht, wenn sie nicht gewählt wurde', () => {
+    const s = saetzeFuerMonat('BARMER', wahl, DAK, 2026, 8)
+    expect(s.u1).toBeNull()
+    expect(s.u2).toBeNull()
+    expect(s.quelle).toBe('keine')
+  })
+
+  it('unterscheidet Groß- und Kleinschreibung nicht — Kassennamen kommen aus Freitext', () => {
+    const anders: Kassenwahl[] = [{ ...wahl[0], kasse: 'dak-gesundheit' }]
+    expect(saetzeFuerMonat('DAK-Gesundheit', anders, DAK, 2026, 8).u1).toBe(0.039)
+  })
+
+  it('lässt den eigenen Eintrag den Katalog schlagen', () => {
+    const eigen: Kassenwahl[] = [
+      { kasse: 'DAK-Gesundheit', u1Erstattung: 0.8, u1Satz: 0.05, u2Satz: 0.004, gueltigAb: '2026-01-01' },
+    ]
+    const s = saetzeFuerMonat('DAK-Gesundheit', eigen, DAK, 2026, 9)
+    expect(s.u1).toBe(0.05)
+    expect(s.quelle).toBe('eigen')
+  })
+
+  it('meldet einen ungeprüften Katalogwert als ungeprüft', () => {
+    const roh: Katalogeintrag[] = [{ ...DAK[0], geprueft: false }]
+    expect(saetzeFuerMonat('DAK-Gesundheit', wahl, roh, 2026, 3).geprueft).toBe(false)
+    expect(saetzeFuerMonat('DAK-Gesundheit', wahl, DAK, 2026, 3).geprueft).toBe(true)
+  })
+
+  it('findet eine Stufe nicht, die es bei dieser Kasse nicht gibt', () => {
+    const unbekannt: Kassenwahl[] = [{ ...wahl[0], u1Erstattung: 0.7 }]
+    const s = saetzeFuerMonat('DAK-Gesundheit', unbekannt, DAK, 2026, 8)
+    expect(s.u1).toBeNull()
+    expect(s.quelle).toBe('keine')
+  })
+
+  it('nimmt bei mehreren Wahlen des Betriebs die zum Monat gültige', () => {
+    const gewechselt: Kassenwahl[] = [
+      { kasse: 'DAK-Gesundheit', u1Erstattung: 0.5, u1Satz: null, u2Satz: null, gueltigAb: '2026-01-01' },
+      { kasse: 'DAK-Gesundheit', u1Erstattung: 0.8, u1Satz: null, u2Satz: null, gueltigAb: '2026-07-01' },
+    ]
+    expect(saetzeFuerMonat('DAK-Gesundheit', gewechselt, DAK, 2026, 6).u1).toBe(0.013)
+    expect(saetzeFuerMonat('DAK-Gesundheit', gewechselt, DAK, 2026, 7).u1).toBe(0.039)
+    // Und ab September beides zusammen: neue Stufe, neuer Satz.
+    expect(saetzeFuerMonat('DAK-Gesundheit', gewechselt, DAK, 2026, 9).u1).toBe(0.018)
+  })
+})
+
+describe('§175 standZumMonat', () => {
+  const staende = [
+    { gueltigAb: '2026-01-01', wert: 'alt' },
+    { gueltigAb: '2026-09-01', wert: 'neu' },
+  ]
+  it('nimmt den jüngsten Stand, der nicht in der Zukunft liegt', () => {
+    expect(standZumMonat(staende, 2026, 8)?.wert).toBe('alt')
+    expect(standZumMonat(staende, 2026, 9)?.wert).toBe('neu')
+  })
+  it('gibt nichts zurück, wenn alle Stände in der Zukunft liegen', () => {
+    expect(standZumMonat(staende, 2025, 12)).toBeNull()
+  })
+  it('stört sich nicht an der Reihenfolge der Eingabe', () => {
+    const verdreht = [staende[1], staende[0]]
+    expect(standZumMonat(verdreht, 2026, 3)?.wert).toBe('alt')
   })
 })

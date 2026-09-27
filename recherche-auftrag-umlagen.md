@@ -3,6 +3,12 @@
 Diesen Text in einen anderen Chat kopieren (ChatGPT, Claude, Perplexity —
 etwas mit Websuche). Das Ergebnis kannst du mir dann unverändert schicken.
 
+> **Stand 27.09.2026: Die großen Kassen sind erledigt.** 24 Kassen mit 79
+> Ständen liegen im Katalog (`prisma/daten/umlagen-2026.csv`, eingelesen mit
+> `npm run umlagen:import`). Dieser Auftrag wird nur noch gebraucht, wenn eine
+> Kasse deiner Belegschaft fehlt oder ein neues Jahr ansteht — dann die
+> Kassenliste unten durch die fehlenden ersetzen.
+
 > **Warum das nicht das Programm macht:** U1 und U2 legt jede Krankenkasse in
 > ihrer **eigenen Satzung** fest. Sie stehen in keinem Gesetz und in keiner
 > Tabelle, die man einmal einbaut — sie ändern sich jedes Jahr und je Kasse.

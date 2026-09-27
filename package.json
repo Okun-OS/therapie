@@ -19,6 +19,7 @@
     "postinstall": "prisma generate",
     "seed": "npx tsx --env-file-if-exists=.env prisma/seed.ts",
     "seed:kita": "npx tsx --env-file-if-exists=.env prisma/seed-kita-demo.ts",
+    "umlagen:import": "npx tsx --env-file-if-exists=.env prisma/import-umlagekatalog.ts",
     "desktop": "electron desktop/haupt.js",
     "desktop:bauen": "electron-builder --project desktop --linux --win",
     "desktop:linux": "electron-builder --project desktop --linux",

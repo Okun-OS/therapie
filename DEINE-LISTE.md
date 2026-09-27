@@ -20,6 +20,9 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 5. Code-Signing    ─────────►  Windows-Programm ohne Warnung
 ```
 
+**Erledigt am 27.09.:** Die Umlagesätze U1/U2 sind keine Recherche mehr — 24
+Kassen stehen im System. Was bleibt, ist ein Auswahlfeld (Punkt 3 unten).
+
 Punkt 1 und 2 dauern Wochen und hängen an Dritten. **Damit anfangen**, alles
 andere läuft daneben.
 
@@ -96,16 +99,24 @@ E-Mail-Adresse.
 
 ## 3 · Zahlen und Unterschriften
 
-### 🔴 Umlagesätze U1/U2 je Krankenkasse eintragen
-Sie stehen in der **Satzung jeder einzelnen Kasse** und ändern sich jährlich.
-**Das Programm rät sie nicht** — es rechnet ohne sie falsch.
+### 🟡 Erstattungsstufe je Krankenkasse wählen
+**Das meiste ist erledigt.** Die Sätze von 24 Kassen stehen jetzt im System —
+79 Stände, mit Quelle und Stichtag, aus deiner Recherche eingelesen. Vier
+Kassen habe ich gegen ihre eigene Veröffentlichung geprüft (TK, BARMER, DAK,
+Knappschaft), alle vier deckungsgleich.
 
-Die Maske dafür ist gebaut: `/company/lohnverwaltung` → Umlagesätze. Dort
-steht auch, für welche Kassen deiner Belegschaft noch nichts hinterlegt ist.
+**Was bleibt:** je Kasse die **Erstattungsstufe** wählen, für die dein Betrieb
+sich entschieden hat — ein Auswahlfeld, keine Zahlen mehr.
+`/company/lohnverwaltung` → Umlagesätze. Dort steht auch, für welche Kassen
+deiner Belegschaft noch nichts hinterlegt ist.
 
-**Zum Zusammensuchen gibt es einen fertigen Rechercheauftrag:**
-`recherche-auftrag-umlagen.md` — in einen anderen Chat kopieren, das Ergebnis
-mir schicken, ich trage es ein.
+Höhere Stufe heißt höhere Umlage, aber mehr Erstattung bei langen
+Krankheitsfällen. Steht die Vereinbarung noch nicht fest, ist das eine
+Entscheidung mit deiner Kasse, keine Eingabe.
+
+Fehlt eine Kasse deiner Belegschaft im Katalog, trägst du ihre Sätze selbst
+ein — oder du schickst mir den Namen, dann hole ich sie nach. Der
+Rechercheauftrag dafür liegt weiter in `recherche-auftrag-umlagen.md`.
 
 **Blockiert:** jede korrekte Arbeitgeberkostenrechnung.
 

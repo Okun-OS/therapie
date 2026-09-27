@@ -7,7 +7,10 @@ import { pfaendungFuerMonat } from '@/lib/pfaendung-lauf'
 import { bavFuerMonat } from '@/lib/bav-lauf'
 import { kurzarbeitFuerMonat, kurzarbeitFestschreiben } from '@/lib/kurzarbeit-lauf'
 import { hinweise as abfindungHinweise } from '@/lib/abfindung'
-import { betriebsgroesse, type Umlagesaetze } from '@/lib/umlagen'
+import {
+  betriebsgroesse, saetzeFuerMonat,
+  type Umlagesaetze, type Katalogeintrag, type Kassenwahl,
+} from '@/lib/umlagen'
 import { elstamStandBewerten } from '@/lib/elstam'
 import { korrekturText } from '@/lib/aufrollung'
 import { freigabelagen } from '@/lib/monatsfreigabe'
@@ -84,18 +87,29 @@ export async function POST(req: NextRequest) {
   const groesse = betriebsgroesse(
     alleFuerGroesse.map(e => ({ wochenstunden: e.weeklyHours ?? 0 })))
 
-  const kassensaetze = await prisma.krankenkassensatz.findMany({
-    where: { customerId },
-  })
-  const satzVon = new Map(kassensaetze.map(k => [k.kasse.toLowerCase(), k]))
+  // §175 Die Umlagesätze DIESES Abrechnungsmonats.
+  //
+  // Vorher stand hier „der eine Satz je Kasse". Das ging so lange gut, wie
+  // keine Kasse ihre Sätze unterjährig ändert — allein 2026 tun das drei:
+  // die DAK zum 1. September (U1 von 3,90 auf 1,80 % bei 80 % Erstattung),
+  // die IKK classic zum 1. August, die AOK Sachsen-Anhalt die U2 zum 1. Juli.
+  // Eine Augustabrechnung mit dem Januarsatz wäre falsch, ohne dass etwas
+  // fehlt oder warnt.
+  const [kassenwahlen, katalogRoh] = await Promise.all([
+    prisma.krankenkassensatz.findMany({ where: { customerId } }),
+    prisma.umlageKatalog.findMany(),
+  ])
+  const wahlListe: Kassenwahl[] = kassenwahlen.map(w => ({
+    kasse: w.kasse, u1Erstattung: w.u1Erstattung, u1Satz: w.u1Satz,
+    u2Satz: w.u2Satz, gueltigAb: w.gueltigAb,
+  }))
+  const katalogListe: Katalogeintrag[] = katalogRoh.map(k => ({
+    kasse: k.kasse, u1Erstattung: k.u1Erstattung, u1Satz: k.u1Satz,
+    u2Satz: k.u2Satz, gueltigAb: k.gueltigAb, geprueft: k.geprueft,
+  }))
   const umlageFuer = (kasse?: string | null): Umlagesaetze => {
-    const k = kasse ? satzVon.get(kasse.toLowerCase()) : undefined
-    return {
-      u1: k?.u1Satz ?? null,
-      u2: k?.u2Satz ?? null,
-      u1Erstattung: k?.u1Erstattung ?? null,
-      kasse: kasse ?? undefined,
-    }
+    if (!kasse) return { u1: null, u2: null, u1Erstattung: null }
+    return saetzeFuerMonat(kasse, wahlListe, katalogListe, year, month)
   }
 
   // Stunden, Abwesenheiten und Zuschläge des Monats — ein Durchlauf für alle

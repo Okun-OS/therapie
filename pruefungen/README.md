@@ -84,7 +84,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `d18-bav.mjs` | Betriebliche Altersvorsorge: 8 % Steuer im Jahr, 4 % Beiträge im Monat |
 | `d19-kurzarbeit.mjs` | Kurzarbeitergeld: Nettodifferenz, fiktives Entgelt, Abrechnungsliste |
 | `d20-mehrfach-abfindung.mjs` | Zwei Arbeitgeber: geteilte Grenze · Abfindung ohne Fünftelregelung |
-| `d21-umlagen.mjs` | U1, U2 und Insolvenzgeld: Sätze je Kasse, Betriebsgröße, Arbeitgeberkosten |
+| `d21-umlagen.mjs` | U1, U2 und Insolvenzgeld: Katalog und Erstattungsstufe, Stichtagswechsel, Betriebsgröße, Arbeitgeberkosten |
 | `d22-bescheinigungen.mjs` | Arbeitsbescheinigung, Krankengeld, Mutterschaftszuschuss |
 | `../solver-service/test_kita_zwei_etagen.py` | **Im Rechendienst** — Abnahme des Kita-Regelpakets am wirklich gelösten Plan: leerer Lauf, schwerer Lauf, Notlauf (`python3 -m pytest test_kita_zwei_etagen.py -q`) |
 | `browser/lohnverwaltung.mjs` | **Nicht im Gesamtlauf** — die Masken im echten Browser. Braucht Playwright: `node pruefungen/browser/lohnverwaltung.mjs` |
