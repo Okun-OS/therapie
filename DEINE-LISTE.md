@@ -100,7 +100,12 @@ E-Mail-Adresse.
 Sie stehen in der **Satzung jeder einzelnen Kasse** und ändern sich jährlich.
 **Das Programm rät sie nicht** — es rechnet ohne sie falsch.
 
-Die Maske dafür ist gebaut: `/company/lohnverwaltung` → Umlagesätze.
+Die Maske dafür ist gebaut: `/company/lohnverwaltung` → Umlagesätze. Dort
+steht auch, für welche Kassen deiner Belegschaft noch nichts hinterlegt ist.
+
+**Zum Zusammensuchen gibt es einen fertigen Rechercheauftrag:**
+`recherche-auftrag-umlagen.md` — in einen anderen Chat kopieren, das Ergebnis
+mir schicken, ich trage es ein.
 
 **Blockiert:** jede korrekte Arbeitgeberkostenrechnung.
 

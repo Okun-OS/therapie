@@ -232,6 +232,7 @@ steht in `DEINE-LISTE.md`. Der Hintergrund zum Lohnteil: `ABLAUFPLAN.md`
 | `PRODUKT-NOTIZEN.md` | Geschäftsmodell und Leitentscheidungen |
 | `FEHLERKREISLAUF.md` | Funde erfassen, auswerten, beheben — Stufe 1+2 gebaut |
 | `DEINE-LISTE.md` | **was Daniel erledigen muss** — Konten, Unterschriften, Zahlen, nach Reihenfolge |
+| `recherche-auftrag-umlagen.md` | fertiger Auftragstext, um die U1/U2-Sätze je Kasse zusammensuchen zu lassen |
 | `DESKTOP.md` | das Programm zum Herunterladen: bauen, einstellen, was offen ist |
 | `pruefungen/README.md` | wie die Nachweise laufen und wie man neue schreibt |
 
