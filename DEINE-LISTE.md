@@ -14,7 +14,7 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 ```
 1. D-U-N-S-Nummer  ─────────►  Apple-Konto  ─►  APNs-Schlüssel  ─►  App Store
                                              └─►  .dmg beglaubigen
-2. Eigene Domain   ─────────►  ┐
+2. Domain verbinden ────────►  ┐
 3. Firmenangaben   ─────────►  ┴─► Impressum/Datenschutz öffentlich ─► Stores
 4. Startseite: was drauf soll ─►  ich baue sie ─► Download-Seite
 5. Firebase        ─────────►  Push auf Android (und mit Apple auch iOS)
@@ -43,15 +43,28 @@ als Organisation.
 
 → https://developer.apple.com/support/D-U-N-S/
 
-### 🔴 Eigene Domain einrichten
-Statt `…up.railway.app`. Nötig für Impressum, App-Links und dafür, dass das
-Produkt nicht nach Testaufbau aussieht.
+### 🔴 Domain verbinden — `okun-workforce.com`
+Gekauft bei Squarespace (28.09.). **Im Code ist sie schon überall
+eingetragen**, sie muss nur noch mit Railway verbunden werden.
+
+**Schritt für Schritt: `DOMAIN.md`.** Kurzfassung:
+
+1. Bei **Railway** die Domain anmelden (Service der App → Settings →
+   Networking → Custom Domain), für `okun-workforce.com` **und**
+   `www.okun-workforce.com`. Railway nennt dir dann die Werte.
+2. Bei **Squarespace** die alten A-Einträge auf `@` löschen — sie zeigen noch
+   auf Squarespace-Hosting und blockieren den neuen Eintrag.
+3. Neu setzen: **ALIAS** auf `@`, **CNAME** auf `www`, dazu den TXT von
+   Railway. Ohne den TXT gibt es einen 404.
+4. `APP_URL=https://okun-workforce.com` bei Railway als Variable — sonst
+   zeigen alle Links in verschickten E-Mails weiter auf die alte Adresse.
+
+> **Die nackte Domain geht**, ohne `app.` davor. Squarespace kann ALIAS auf
+> `@`, Railway akzeptiert ALIAS. Ich hatte zuerst das Gegenteil behauptet —
+> falsch, und auf Nachfrage korrigiert.
 
 **Blockiert:** Impressum und Datenschutzerklärung öffentlich, beide Stores,
 die Seite zum Herunterladen des Windows-Programms.
-
-**Wenn sie steht, sag mir Bescheid** — dann trage ich sie in
-`capacitor.config.ts` und in die Vorgabe des Desktop-Programms ein.
 
 ### 🔴 Code-Signing-Zertifikat für Windows kaufen
 Ohne Signatur zeigt Windows beim ersten Start „Unbekannter Herausgeber". Bei

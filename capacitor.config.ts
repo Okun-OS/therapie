@@ -23,13 +23,13 @@ import type { CapacitorConfig } from '@capacitor/cli'
  * (Richtlinie 4.2). Mit ihnen ist sie ein Werkzeug.
  *
  * DIE ADRESSE IST EINSTELLBAR
- * `OKUN_APP_URL` beim Bauen der Hülle setzen. Ohne Angabe zeigt sie auf die
- * laufende Anlage. Vor der Einreichung gehört hier eine eigene Domain hin —
- * siehe APP-STORES.md.
+ * `OKUN_APP_URL` beim Bauen der Hülle setzen. Ohne Angabe zeigt sie auf
+ * okun-workforce.com — die eigene Domain, seit 28.09.2026. Eine Testanlage
+ * erreicht man über die Variable, ohne den Code anzufassen.
  */
 
 const adresse = process.env.OKUN_APP_URL?.replace(/\/+$/, '')
-  || 'https://therapie-production.up.railway.app'
+  || 'https://okun-workforce.com'
 
 const config: CapacitorConfig = {
   appId: 'de.okun.workforce',

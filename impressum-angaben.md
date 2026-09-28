@@ -91,7 +91,7 @@ sondern auf den Rechner, der das Programm baut:
 
 | Variable | Wofür |
 |---|---|
-| `OKUN_APP_URL` | Die Adresse, auf die das Telefon- und das Desktop-Programm zeigen. Ohne Angabe die Anlage von OKUN. Wird **beim Bauen** mitgegeben (`OKUN_APP_URL=https://… npm run desktop:win`), nicht bei Railway gesetzt — und im Desktop-Programm lässt sie sich hinterher noch ändern. Wartet auf die eigene Domain. |
+| `OKUN_APP_URL` | Die Adresse, auf die das Telefon- und das Desktop-Programm zeigen. **Ohne Angabe `okun-workforce.com`** — seit 28.09. die Voreinstellung im Code. Wird **beim Bauen** mitgegeben (`OKUN_APP_URL=https://… npm run desktop:win`), nicht bei Railway gesetzt, und dient nur noch dazu, eine Testanlage anzusteuern. |
 
 ## Wie du prüfst, ob es angekommen ist
 

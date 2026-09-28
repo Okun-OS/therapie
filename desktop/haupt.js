@@ -44,7 +44,7 @@ const fs = require('node:fs')
  * mitgegeben wurde, dann die Anlage von OKUN. Ein Kunde, der selbst betreibt,
  * stellt sie im Programm ein — er soll dafür nichts neu bauen müssen.
  */
-const EINGEBAUT = process.env.OKUN_APP_URL || 'https://therapie-production.up.railway.app'
+const EINGEBAUT = process.env.OKUN_APP_URL || 'https://okun-workforce.com'
 
 const einstellungenDatei = () => path.join(app.getPath('userData'), 'einstellungen.json')
 

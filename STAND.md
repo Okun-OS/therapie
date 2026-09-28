@@ -222,7 +222,7 @@ Die sieben, die am meisten aufhalten:
 | | Was | Blockiert |
 |---|---|---|
 | 🔴 | **D-U-N-S-Nummer beantragen** (kostenlos, 1–2 Wochen) | Apple-Konto → Push aufs iPhone → App Store → das beglaubigte `.dmg` |
-| 🔴 | **Eigene Domain einrichten** | Impressum, beide Stores, die Seite zum Herunterladen |
+| 🔴 | **Domain `okun-workforce.com` mit Railway verbinden** (Anleitung: `DOMAIN.md`) | Impressum, beide Stores, die Seite zum Herunterladen. Im Code ist sie schon eingetragen |
 | 🔴 | **Firmenangaben für Impressum und Datenschutz** (Vorlage: `impressum-angaben.md`) | beide Stores und rechtlich jeden echten Kunden — vier Angaben sind Pflicht nach §5 DDG |
 | 🟡 | **Entscheiden, was auf die Startseite gehört** | dass ich sie baue: Selbstanmeldung oder Gespräch, Preise, Kontaktweg — Produktentscheidungen, keine Programmierarbeit |
 | 🔴 | **Firebase anlegen, `FCM_SERVICE_ACCOUNT` setzen** | jede Benachrichtigung — ohne den Schlüssel verschickt das System nichts |
@@ -250,6 +250,7 @@ steht in `DEINE-LISTE.md`. Der Hintergrund zum Lohnteil: `ABLAUFPLAN.md`
 | `DEINE-LISTE.md` | **was Daniel erledigen muss** — Konten, Unterschriften, Zahlen, nach Reihenfolge |
 | `impressum-angaben.md` | Vorlage zum Ausfüllen: die acht Angaben für Impressum und Datenschutzerklärung |
 | `recherche-auftrag-umlagen.md` | fertiger Auftragstext, um die U1/U2-Sätze je Kasse zusammensuchen zu lassen |
+| `DOMAIN.md` | die Domain mit Railway verbinden — Schritt für Schritt, mit den Einträgen bei Squarespace |
 | `DESKTOP.md` | das Programm zum Herunterladen: bauen, einstellen, was offen ist |
 | `pruefungen/README.md` | wie die Nachweise laufen und wie man neue schreibt |
 

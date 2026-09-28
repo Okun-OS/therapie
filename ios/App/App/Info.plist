@@ -76,7 +76,8 @@
 	</array>
 	<key>WKAppBoundDomains</key>
 	<array>
-		<string>therapie-production.up.railway.app</string>
+		<string>okun-workforce.com</string>
+		<string>www.okun-workforce.com</string>
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
