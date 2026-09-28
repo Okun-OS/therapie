@@ -45,11 +45,53 @@ unter *Variables* hinterlegen, dann ist es sofort da.
 
 ---
 
+## Zum Kopieren
+
+Railway hat unter *Variables* einen **Raw Editor** — dort kannst du diesen
+Block einfügen, nachdem du ihn ausgefüllt hast. Leere Zeilen einfach
+weglassen, sie werden sonst als leerer Wert gesetzt.
+
+```dotenv
+OKUN_FIRMA=
+OKUN_ANSCHRIFT=
+OKUN_VERTRETEN=
+OKUN_KONTAKT=
+OKUN_REGISTER=
+OKUN_USTID=
+OKUN_DSB=
+OKUN_SUPPORT_EMAIL=
+```
+
+Ausgefüllt sieht das etwa so aus — die Werte sind erfunden:
+
+```dotenv
+OKUN_FIRMA=OKUN Software GmbH
+OKUN_ANSCHRIFT=Musterstraße 12, 50667 Köln
+OKUN_VERTRETEN=Daniel Mustermann
+OKUN_KONTAKT=kontakt@okun.de
+OKUN_REGISTER=Amtsgericht Köln, HRB 123456
+OKUN_USTID=DE123456789
+OKUN_DSB=
+OKUN_SUPPORT_EMAIL=support@okun.de
+```
+
+**Anführungszeichen nur, wenn der Wert ein `#` oder ein Gleichheitszeichen
+enthält.** Kommas und Umlaute brauchen keine.
+
 ## Das sind alle
 
 **Acht Variablen, nicht mehr.** Falls in einer älteren Fassung dieser Liste
 `OKUN_ABSENDER`, `OKUN_NAME` oder `OKUN_ART` standen: Die sind Konstanten im
 Code und keine Umgebungsvariablen — sie zu setzen hätte keine Wirkung gehabt.
+
+## Nicht bei Railway — beim Bauen
+
+Eine neunte OKUN-Variable gibt es, sie gehört aber nicht in die Anlage,
+sondern auf den Rechner, der das Programm baut:
+
+| Variable | Wofür |
+|---|---|
+| `OKUN_APP_URL` | Die Adresse, auf die das Telefon- und das Desktop-Programm zeigen. Ohne Angabe die Anlage von OKUN. Wird **beim Bauen** mitgegeben (`OKUN_APP_URL=https://… npm run desktop:win`), nicht bei Railway gesetzt — und im Desktop-Programm lässt sie sich hinterher noch ändern. Wartet auf die eigene Domain. |
 
 ## Wie du prüfst, ob es angekommen ist
 
