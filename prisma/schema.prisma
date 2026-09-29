@@ -2537,3 +2537,31 @@ model PlanungsMassnahme {
   @@index([customerId, tag])
   @@index([entschiedenVonId])
 }
+
+/// §177 Eine Anfrage von der Website.
+///
+/// WARUM SIE GESPEICHERT WIRD UND NICHT NUR VERSCHICKT
+/// Eine E-Mail kann im Spam landen, beim Versand scheitern oder gelöscht
+/// werden. Eine Anfrage, die niemand beantwortet, weil sie nie ankam, ist
+/// ein verlorener Kunde, von dem man nicht einmal weiss. Deshalb wird sie
+/// zuerst abgelegt und dann verschickt — scheitert der Versand, steht sie
+/// trotzdem da.
+///
+/// WARUM SIE EINE FRIST HAT
+/// Es sind personenbezogene Daten von jemandem, der nie Kunde wurde. Nach
+/// sechs Monaten ohne Vertrag gibt es keinen Grund mehr, sie zu behalten
+/// (Art. 5 Abs. 1 lit. e DSGVO). Die Frist steht im Loeschkonzept.
+model Kontaktanfrage {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  einrichtung String?
+  telefon    String?
+  nachricht  String
+  /// Ob die Benachrichtigung an OKUN rausging. Falsch heisst: nachsehen.
+  zugestellt Boolean  @default(false)
+  fehler     String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}

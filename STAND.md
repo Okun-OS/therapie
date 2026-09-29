@@ -17,8 +17,8 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §176 Alle 79 Umlagesätze von 24 Kassen gegen die Quelle geprüft — keine Abweichung |
-| **Nachweisstand** | 1424/1424 in 39 Prüfungen, 22 im Browser, 17 am Programmfenster, 128 im Rechendienst, 958 Modultests |
+| **Zuletzt fertig** | §177 Die öffentliche Website: Startseite, Funktionen, Kontakt |
+| **Nachweisstand** | 1467/1467 in 40 Prüfungen, 22 im Browser, 17 am Programmfenster, 128 im Rechendienst, 958 Modultests |
 | **Als Nächstes** | Die Startseite vor der Anmeldung |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
@@ -159,11 +159,11 @@ Nach Dringlichkeit, nicht nach Bereich.
       Abnahme, als eine Paketzuordnung mitten in einem laufenden Plan scheiterte
 
 ### Sonst offen
-- [ ] **Die Startseite vor der Anmeldung** — es gibt keine: `/` leitet sofort
-      auf `/login` weiter. Wer die Adresse aufruft, sieht ein Anmeldeformular
-      und sonst nichts. Bauen kann ich sie erst, wenn fünf Fragen entschieden
-      sind — Selbstanmeldung oder Gespräch, Preise, Kontaktweg, Referenzen,
-      Tonfall. Sie stehen in `DEINE-LISTE.md`, Punkt 4
+- [x] ~~**Die Startseite vor der Anmeldung**~~ ✅ §177 — drei Seiten:
+      Startseite, „Das ganze Programm" mit allen 95 Funktionen, und Kontakt
+      mit Formular. Die Texte stehen in `src/lib/website-inhalt.ts`, zum
+      Ändern ohne Code. Offen bleibt: echte Screenshots aus der App — dafür
+      muss der Demo-Mandant erst einen veröffentlichten Plan haben
 - [x] ~~**Eine herunterladbare Fassung fürs Gerät**~~ ✅ §173 — ein Programm
       mit eigenem Symbol im Startmenü. `npm run desktop:win` baut das
       Installationsprogramm für Windows (ohne Administratorrechte

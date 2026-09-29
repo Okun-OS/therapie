@@ -106,6 +106,7 @@ PRUEF_BASIS=https://beispiel.example npm run pruefen
 | `i3-anforderung.mjs` | Nachweise anfordern: einreichen, nachfragen, abnehmen |
 | `i4-belehrung.mjs` | Belehrungen: verteilen, bestätigen, was der Beleg trägt |
 | `j-recruiting.mjs` | Stellen, Karriereseite, Bewerber — und die Tür ohne Anmeldung |
+| `k-website.mjs` | Die öffentliche Website: Startseite, Funktionen, Kontaktformular — und was ohne Anmeldung hereinkommt |
 
 ## Eine neue Prüfung schreiben
 

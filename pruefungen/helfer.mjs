@@ -39,7 +39,11 @@ export const hole = async (cookie, pfad) => {
 export const sende = async (cookie, pfad, methode, daten) => {
   const r = await fetch(`${BASIS}${pfad}`, {
     method: methode,
-    headers: { cookie, 'Content-Type': 'application/json' },
+    // §177 `cookie: null` waere ein Fehler in fetch. Eine Route ohne
+    // Anmeldung (das Kontaktformular) wird aber genau so aufgerufen — mit
+    // `sende(null, ...)`, damit im Nachweis sichtbar bleibt, dass hier
+    // absichtlich niemand angemeldet ist.
+    headers: { ...(cookie ? { cookie } : {}), 'Content-Type': 'application/json' },
     body: daten === undefined ? undefined : JSON.stringify(daten),
   })
   return { status: r.status, body: await r.json().catch(() => ({})) }

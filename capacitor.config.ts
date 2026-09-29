@@ -24,12 +24,17 @@ import type { CapacitorConfig } from '@capacitor/cli'
  *
  * DIE ADRESSE IST EINSTELLBAR
  * `OKUN_APP_URL` beim Bauen der Hülle setzen. Ohne Angabe zeigt sie auf
- * okun-workforce.com — die eigene Domain, seit 28.09.2026. Eine Testanlage
- * erreicht man über die Variable, ohne den Code anzufassen.
+ * okun-workforce.com/login — die eigene Domain, seit 28.09.2026.
+ *
+ * §177 WARUM AUF /login UND NICHT AUF DIE STARTSEITE
+ * Unter `/` steht seit dem 29.09. die Verkaufsseite. Eine Mitarbeiterin, die
+ * morgens die App öffnet, will sich anmelden und nicht lesen, warum ihr
+ * Arbeitgeber dieses Programm kaufen sollte. Wer schon angemeldet ist, wird
+ * von `/login` ohnehin sofort weitergereicht.
  */
 
 const adresse = process.env.OKUN_APP_URL?.replace(/\/+$/, '')
-  || 'https://okun-workforce.com'
+  || 'https://okun-workforce.com/login'
 
 const config: CapacitorConfig = {
   appId: 'de.okun.workforce',

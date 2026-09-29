@@ -44,7 +44,10 @@ const fs = require('node:fs')
  * mitgegeben wurde, dann die Anlage von OKUN. Ein Kunde, der selbst betreibt,
  * stellt sie im Programm ein — er soll dafür nichts neu bauen müssen.
  */
-const EINGEBAUT = process.env.OKUN_APP_URL || 'https://okun-workforce.com'
+// §177 `/login`, nicht `/`: Unter `/` steht die Verkaufsseite. Wer das
+// Programm öffnet, will arbeiten. Angemeldete werden von dort sofort
+// weitergereicht.
+const EINGEBAUT = process.env.OKUN_APP_URL || 'https://okun-workforce.com/login'
 
 const einstellungenDatei = () => path.join(app.getPath('userData'), 'einstellungen.json')
 
