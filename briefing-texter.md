@@ -11,8 +11,10 @@ OKUN Workforce ist ein Programm, mit dem ein Unternehmen seine Beschäftigten
 verwaltet: **Dienstpläne erstellen, Arbeitszeiten erfassen, Löhne abrechnen**
 — alles an einer Stelle, statt in drei Programmen und zwei Excel-Tabellen.
 
-Der Unterschied zu allem anderen am Markt: **Die Planungsregeln des Betriebs
-werden für ihn programmiert**, nicht in Formularen angekreuzt.
+Zwei Dinge unterscheiden es von allem anderen am Markt: **Die Planungsregeln
+des Betriebs werden für ihn programmiert** statt in Formularen angekreuzt —
+und **die erfassten Stunden landen ohne Umweg in der Lohnabrechnung**, samt
+aller Zuschläge.
 
 Es gibt es im Browser, als App fürs Telefon und als Programm für den Rechner.
 
@@ -98,6 +100,66 @@ Zwei Dinge, die daraus folgen und gut klingen, weil sie stimmen:
 
 ---
 
+## Der zweite große Punkt: Von der Stempeluhr direkt in den Lohn
+
+**Das ist das Argument, das bei jedem Betrieb mit Zuschlägen sofort sitzt.**
+
+### Wie es heute bei den meisten läuft
+
+Ein Mitarbeiter hat im Monat Nachtdienste, zwei Wochenenden, einen Feiertag
+und ein paar Überstunden. Am Monatsende muss jemand:
+
+1. die Stunden aus der Zeiterfassung ziehen — oder vom Stundenzettel abtippen
+2. **von Hand auseinanderrechnen**, wie viele davon nachts waren, wie viele
+   am Sonntag, wie viele am Feiertag
+3. die Zuschläge dafür ausrechnen, jeden mit seinem eigenen Satz
+4. prüfen, welcher Teil davon steuerfrei bleibt (§3b EStG hat Grenzen)
+5. alles in die Lohnsoftware übertragen — oder zum Steuerberater schicken
+
+Bei dreißig Beschäftigten ist das **ein bis zwei Tage Arbeit im Monat**. Wer
+noch mit Papier arbeitet, rechnet es mit dem Taschenrechner. Und jeder dieser
+Schritte ist eine Stelle, an der man sich vertippen kann — mit dem
+Unterschied, dass ein Tippfehler hier Geld ist, das jemandem fehlt oder zu
+viel gezahlt wird.
+
+### Wie es hier läuft
+
+**Gar nicht.** Zeiterfassung und Lohnabrechnung sind dasselbe Programm. Was
+gestempelt wurde, ist am Monatsende schon da:
+
+- die normalen Stunden und die Überstunden
+- **getrennt nach Nacht, Samstag, Sonntag und Feiertag** — das Programm weiß,
+  wann welche Schicht lag
+- die Zuschläge dazu, mit den Sätzen des Betriebs
+- und **welcher Anteil davon steuerfrei bleibt**, nach §3b EStG
+
+Die Leitung gibt den Monat frei, und die Abrechnung rechnet damit. **Kein
+Abtippen, kein Übertragen, keine zweite Software.**
+
+### Warum das mehr ist als Zeitersparnis
+
+- **Zuschlagsregeln sind individuell.** Der eine zahlt 25 % nachts, der
+  andere 30 % ab 23 Uhr, der dritte hat eine Betriebsvereinbarung mit
+  Staffelung. Das lässt sich je Unternehmen, Standort oder sogar Person
+  einstellen — und rechnet sich dann jeden Monat von selbst.
+- **§3b EStG hat Grenzen**, bis zu denen Zuschläge steuerfrei sind. Wer sie
+  überschreitet, zahlt nach. Das Programm kennt sie und weist den steuerfreien
+  Anteil auf dem Lohnbeleg getrennt aus — so, wie es das Gesetz verlangt.
+- **Ohne freigegebenen Monat keine Abrechnung.** Die Leitung muss die Zeiten
+  bestätigen, bevor daraus Geld wird. Wer aufgehalten wird, steht mit Namen
+  und Grund da.
+- **Rückwirkende Korrektur geht trotzdem.** Fällt im März auf, dass im Januar
+  eine Schicht falsch erfasst war, wird der Januar neu gerechnet und die
+  Differenz im laufenden Monat ausgeglichen — nachvollziehbar, nicht
+  stillschweigend.
+
+> **Für den Text:** Das ist das Argument für Betriebe mit vielen Zuschlägen —
+> Pflege, Sicherheitsdienst, Produktion im Dreischichtbetrieb, Gastronomie,
+> Rettungsdienst mit 24-Stunden-Diensten. Wer dort heute abtippt, versteht
+> sofort, was er spart.
+
+---
+
 ## Alle Funktionen
 
 ### 1 · Dienstplanung
@@ -122,7 +184,8 @@ Krankenschein und Fristenprüfung. Betriebsferien. Mutterschutz und
 Beschäftigungsverbote. Alles wirkt sofort auf den Dienstplan.
 
 ### 4 · Lohnabrechnung
-**Das ist ein eigenes vollwertiges Produkt, kein Anhängsel.** Lohnsteuer,
+**Das ist ein eigenes vollwertiges Produkt, kein Anhängsel — und es hängt
+direkt an der Zeiterfassung** (siehe Abschnitt oben). Lohnsteuer,
 Sozialversicherung, Minijob, kurzfristige Beschäftigung, Übergangsbereich,
 Teilmonate bei Ein- und Austritt, Einmalzahlungen, rückwirkende Änderungen
 mit Aufrollung, **Lohnpfändung**, **betriebliche Altersvorsorge**,
