@@ -22,7 +22,7 @@ unter *Variables* hinterlegen, dann ist es sofort da.
 |---|---|---|
 | `OKUN_FIRMA` | Der **vollständige** Firmenname mit Rechtsform, wie er im Register steht. Nicht „OKUN", sondern z. B. „OKUN Software GmbH" | |
 | `OKUN_ANSCHRIFT` | **Ladungsfähige** Anschrift: Straße, Hausnummer, PLZ, Ort. Kein Postfach — ein Gericht muss dort zustellen können | |
-| `OKUN_VERTRETEN` | Die vertretungsberechtigte Person mit Vor- und Nachname. Bei einer GmbH der Geschäftsführer, bei einem Einzelunternehmen du selbst | |
+| `OKUN_VERTRETEN` | Die vertretungsberechtigte Person mit Vor- und Nachname. Bei einer GmbH der Geschäftsführer, bei einem Einzelunternehmen du selbst. **`OKUN_VERTRETER` geht auch** — beide Schreibweisen werden gelesen, weil sich beide anbieten | |
 | `OKUN_KONTAKT` | Eine E-Mail-Adresse, die **schnell** erreichbar ist. §5 Abs. 1 Nr. 2 DDG verlangt „unmittelbare Kommunikation" — eine Adresse, die niemand liest, genügt nicht | |
 
 ---

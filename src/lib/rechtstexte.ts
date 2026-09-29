@@ -52,7 +52,7 @@ export function impressum(): Impressum {
     anbieter: anbieter(),
     register: wert('OKUN_REGISTER'),
     umsatzsteuerId: wert('OKUN_USTID'),
-    inhaltlichVerantwortlich: wert('OKUN_VERTRETEN'),
+    inhaltlichVerantwortlich: wert('OKUN_VERTRETEN') ?? wert('OKUN_VERTRETER'),
     streitbeilegung:
       'Zur Teilnahme an einem Streitbeilegungsverfahren vor einer '
       + 'Verbraucherschlichtungsstelle sind wir nicht verpflichtet und nicht '
@@ -75,7 +75,9 @@ export function fehltAmImpressum(i = impressum()): string[] {
     fehlt.push('Ladungsfähige Anschrift (OKUN_ANSCHRIFT) — §5 Abs. 1 Nr. 1 DDG')
   }
   if (!i.anbieter.vertreten) {
-    fehlt.push('Vertretungsberechtigte Person (OKUN_VERTRETEN) — §5 Abs. 1 Nr. 1 DDG')
+    fehlt.push(
+      'Vertretungsberechtigte Person (OKUN_VERTRETEN oder OKUN_VERTRETER) '
+      + '— §5 Abs. 1 Nr. 1 DDG')
   }
   if (!i.anbieter.kontakt) {
     fehlt.push('E-Mail-Adresse (OKUN_KONTAKT) — §5 Abs. 1 Nr. 2 DDG')

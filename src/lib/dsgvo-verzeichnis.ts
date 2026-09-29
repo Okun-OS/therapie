@@ -52,7 +52,15 @@ export function anbieter(): Anbieter {
   return {
     name: wert('OKUN_FIRMA') ?? 'OKUN Workforce',
     anschrift: wert('OKUN_ANSCHRIFT'),
-    vertreten: wert('OKUN_VERTRETEN'),
+    // §177 Beide Schreibweisen gelten.
+    //
+    // Die Variable hieß von Anfang an `OKUN_VERTRETEN` („vertreten durch"),
+    // und prompt wurde beim Einrichten `OKUN_VERTRETER` gesetzt — die Person,
+    // nicht die Eigenschaft. Beides ist naheliegend, und das Impressum
+    // meldete sich als unvollständig, obwohl der Wert längst da war.
+    // Eine Variable, deren Name man raten muss, ist ein Konstruktionsfehler:
+    // hier werden beide gelesen.
+    vertreten: wert('OKUN_VERTRETEN') ?? wert('OKUN_VERTRETER'),
     kontakt: wert('OKUN_KONTAKT') ?? wert('OKUN_SUPPORT_EMAIL'),
     datenschutzbeauftragter: wert('OKUN_DSB'),
   }
@@ -62,7 +70,7 @@ export function anbieter(): Anbieter {
 export function fehltAmAnbieter(a = anbieter()): string[] {
   const fehlt: string[] = []
   if (!a.anschrift) fehlt.push('Anschrift des Anbieters (OKUN_ANSCHRIFT)')
-  if (!a.vertreten) fehlt.push('Vertretungsberechtigte Person (OKUN_VERTRETEN)')
+  if (!a.vertreten) fehlt.push('Vertretungsberechtigte Person (OKUN_VERTRETEN oder OKUN_VERTRETER)')
   if (!a.kontakt) fehlt.push('Kontaktadresse für Betroffene (OKUN_KONTAKT)')
   // Der Datenschutzbeauftragte ist nicht für jeden Betrieb Pflicht (§38 BDSG:
   // ab zwanzig Personen mit ständiger automatisierter Verarbeitung). Deshalb
