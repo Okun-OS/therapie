@@ -4,6 +4,10 @@
 wie es ist. Schick mir die Datei zurück oder tipp es in den Chat — beides
 geht.
 
+> **Wer die Texte schreibt, sollte vorher `briefing-texter.md` lesen.** Dort
+> steht auf drei Seiten, was das System ist, alle Funktionen, das
+> Verkaufsargument — und was nicht behauptet werden darf.
+
 > **Der Grund für diese Liste:** Die erste Fassung war zu sehr auf
 > Dienstplanung zugeschnitten. Lohnabrechnung ist mindestens genauso groß,
 > und wer eine Lohnsoftware sucht, liest „Der Dienstplan kennt Ihre Regeln"
