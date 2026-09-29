@@ -100,7 +100,7 @@ export default function RegisterPage({ params }: { params: { token: string } }) 
           {!loading && invitation && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <p className="text-lg font-bold text-navy">Willkommen bei OKUN Workforce</p>
+                <p className="font-display text-lg font-bold text-navy">Willkommen bei OKUN Workforce</p>
                 <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
                   <Mail size={14} />
                   <span>{invitation.email}</span>

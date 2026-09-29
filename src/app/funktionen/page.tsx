@@ -48,10 +48,10 @@ export default function Funktionen() {
           style={{ background: 'radial-gradient(circle, #26C6C633, transparent 60%)' }}
         />
         <div className="relative mx-auto max-w-6xl px-5 py-16 sm:py-20">
-          <p className="max-w-2xl text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold">
+          <p className="max-w-2xl font-display text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold">
             {FUNKTIONEN_KOPF.vorspann}
           </p>
-          <h1 className="mt-5 text-4xl font-bold leading-tight text-white text-balance sm:text-5xl">
+          <h1 className="mt-5 font-display text-4xl font-bold leading-tight text-white text-balance sm:text-5xl">
             {FUNKTIONEN_KOPF.zeilen[0]}
             <br />
             <span className="text-brand">{FUNKTIONEN_KOPF.zeilen[1]}</span>
@@ -84,7 +84,7 @@ export default function Funktionen() {
                   <span className="text-sm font-bold text-gold">
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <h2 className="mt-2 text-2xl font-bold text-white text-balance">
+                  <h2 className="mt-2 font-display text-2xl font-bold text-white text-balance">
                     {b.titel}
                   </h2>
                   <p className="mt-3 text-sm leading-relaxed text-navy-400">
@@ -110,7 +110,7 @@ export default function Funktionen() {
 
         {/* ── Warum das geprüft ist ──────────────────────────────── */}
         <section className="mt-16 rounded-3xl border border-white/8 bg-navy-800/40 p-8 sm:p-10">
-          <h2 className="text-2xl font-bold text-white text-balance">
+          <h2 className="font-display text-2xl font-bold text-white text-balance">
             {FUNKTIONEN_SCHLUSS.titel}
           </h2>
           <p className="mt-4 max-w-3xl leading-relaxed text-navy-300">
@@ -132,7 +132,7 @@ export default function Funktionen() {
           />
           <div className="relative flex flex-col gap-7 md:flex-row md:items-center md:justify-between">
             <div className="max-w-2xl">
-              <h2 className="text-2xl font-bold leading-tight text-white text-balance sm:text-3xl">
+              <h2 className="font-display text-2xl font-bold leading-tight text-white text-balance sm:text-3xl">
                 {SCHLUSS.titel}
               </h2>
               <p className="mt-4 text-lg font-semibold text-brand">{SCHLUSS.betont}</p>

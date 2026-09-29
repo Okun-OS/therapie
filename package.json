@@ -2,7 +2,7 @@
   "name": "dienstplan-saas",
   "version": "0.1.0",
   "private": true,
-  "description": "OKUN Workforce — Dienstpläne, Zeiten und Lohn für Pflege, Kita und Eingliederungshilfe",
+  "description": "OKUN Workforce — Recruiting, Personalakte, Dienstplanung, Zeiterfassung und Lohnabrechnung in einem System",
   "author": "OKUN <kontakt@okun.de>",
   "scripts": {
     "dev": "next dev",
@@ -20,6 +20,7 @@
     "seed": "npx tsx --env-file-if-exists=.env prisma/seed.ts",
     "seed:kita": "npx tsx --env-file-if-exists=.env prisma/seed-kita-demo.ts",
     "umlagen:import": "npx tsx --env-file-if-exists=.env prisma/import-umlagekatalog.ts",
+    "logo:negativ": "node scripts/logo-negativ.mjs",
     "desktop": "electron desktop/haupt.js",
     "desktop:bauen": "electron-builder --project desktop --linux --win",
     "desktop:linux": "electron-builder --project desktop --linux",

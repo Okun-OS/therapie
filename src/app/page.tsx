@@ -59,10 +59,10 @@ export default function Startseite() {
             darf er umbrechen und bekommt eine Breite. Mit `tracking-[0.2em]`
             wie bei einem kurzen Wort wäre er auf dem Telefon unlesbar.
           */}
-          <p className="max-w-2xl text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold">
+          <p className="max-w-2xl font-display text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold">
             {KOPF.vorspann}
           </p>
-          <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.1] text-white text-balance sm:text-6xl">
+          <h1 className="mt-5 max-w-3xl font-display text-4xl font-bold leading-[1.1] text-white text-balance sm:text-6xl">
             {KOPF.zeilen[0]}
             <br />
             <span className="text-brand">{KOPF.zeilen[1]}</span>
@@ -96,7 +96,7 @@ export default function Startseite() {
         <div className="grid gap-px overflow-hidden rounded-3xl border border-white/8 bg-white/5 sm:grid-cols-2 lg:grid-cols-3">
           {STAERKEN.map(s => (
             <div key={s.titel} className="bg-navy-900 p-7">
-              <p className="font-bold leading-snug text-white text-balance">{s.titel}</p>
+              <p className="font-display font-bold leading-snug text-white text-balance">{s.titel}</p>
               <p className="mt-2.5 text-sm leading-relaxed text-navy-400">{s.text}</p>
             </div>
           ))}
@@ -108,10 +108,10 @@ export default function Startseite() {
         <div className="mx-auto max-w-6xl px-5 py-16 sm:py-24">
           <div className="grid gap-12 lg:grid-cols-2">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
+              <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-gold">
                 {KERN.vorspann}
               </p>
-              <h2 className="mt-4 text-3xl font-bold leading-tight text-white text-balance sm:text-4xl">
+              <h2 className="mt-4 font-display text-3xl font-bold leading-tight text-white text-balance sm:text-4xl">
                 {KERN.zeilen[0]}
                 <br />
                 <span className="text-brand">{KERN.zeilen[1]}</span>
@@ -142,7 +142,7 @@ export default function Startseite() {
 
       {/* ── So fangen wir an ───────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-5 py-16 sm:py-24">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
+        <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-gold">
           So fangen wir an
         </p>
 
@@ -152,7 +152,7 @@ export default function Startseite() {
               <span className="text-sm font-bold text-gold">
                 {String(i + 1).padStart(2, '0')}
               </span>
-              <p className="mt-3 font-bold leading-snug text-white text-balance">{s.titel}</p>
+              <p className="mt-3 font-display font-bold leading-snug text-white text-balance">{s.titel}</p>
               <p className="mt-2.5 text-sm leading-relaxed text-navy-400">{s.text}</p>
             </div>
           ))}
@@ -169,7 +169,7 @@ export default function Startseite() {
           />
           <div className="relative flex flex-col gap-7 md:flex-row md:items-center md:justify-between">
             <div className="max-w-2xl">
-              <h2 className="text-2xl font-bold leading-tight text-white text-balance sm:text-3xl">
+              <h2 className="font-display text-2xl font-bold leading-tight text-white text-balance sm:text-3xl">
                 {SCHLUSS.titel}
               </h2>
               <p className="mt-4 text-lg font-semibold text-brand">{SCHLUSS.betont}</p>

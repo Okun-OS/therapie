@@ -193,4 +193,59 @@ const ohneAnmeldung = await fetch(`${BASIS}/api/okun/kontaktanfragen`)
 check('Und ohne Anmeldung erst recht nicht', ohneAnmeldung.status === 401,
   `HTTP ${ohneAnmeldung.status}`)
 
+// ── K4 Die Marke ───────────────────────────────────────────────────────────
+console.log('\n=== K4 Wortmarke und Schrift ===')
+
+// §180 Bis hierher war die Wortmarke auf dunklem Grund nachgebauter Text:
+// `font-extrabold uppercase tracking-wide` in Inter. Das ist eine andere
+// Schrift als im Logo. Jetzt steht überall dieselbe Datei — und diese
+// Prüfungen halten das fest, damit es nicht beim nächsten Umbau zurückfällt.
+const kopfSeiten = [['/', 'Startseite'], ['/funktionen', 'Funktionen'],
+  ['/kontakt', 'Kontakt'], ['/login', 'Anmeldung']]
+
+for (const [pfad, name] of kopfSeiten) {
+  const seite = await ohne(pfad)
+  check(`${name} zeigt die Negativfassung des Logos`,
+    /logo-(horizontal|full-tagline)-negativ/.test(seite.text),
+    'Auf dunklem Grund gehört die Negativfassung hin, kein nachgebauter Text')
+  // Gegenprobe: der alte Nachbau ist wirklich weg.
+  check(`${name} baut die Wortmarke nicht mehr aus Text nach`,
+    !/font-extrabold uppercase tracking-wide/.test(seite.text),
+    'Das waren die Klassen der alten HTML-Wortmarke')
+}
+
+// Und umgekehrt: auf hellem Grund steht die helle Fassung, nicht das Negativ.
+const anwendung = await ohne('/impressum')
+check('Das Impressum lädt keine Negativfassung',
+  !/negativ/.test(anwendung.text),
+  'Weiße Schrift auf weißem Papier wäre unsichtbar')
+
+// Die Schrift des Logos — nicht nur angefordert, sondern auch definiert.
+const startSeite = await ohne('/')
+const stilblatt = [...startSeite.text.matchAll(/href="([^"]*\.css[^"]*)"/g)].map(m => m[1])
+check('Die Seite bindet ein Stilblatt ein', stilblatt.length > 0)
+
+let stil = ''
+for (const pfad of stilblatt) {
+  const r = await fetch(pfad.startsWith('http') ? pfad : `${BASIS}${pfad}`)
+  if (r.ok) stil += await r.text()
+}
+check('Das Stilblatt lädt Gantari — die Schrift des Logos',
+  /Gantari/.test(stil),
+  'Ohne sie fällt die Website auf Inter zurück und spricht wieder zwei Sprachen')
+check('Und definiert dafür eine eigene Familie',
+  /\.font-display\s*\{[^}]*Gantari/.test(stil),
+  'Die Klasse `font-display` muss es wirklich geben, nicht nur im Quelltext stehen')
+check('Inter bleibt für den Fließtext',
+  /Inter/.test(stil),
+  'Gantari ist die Überschriftenschrift, nicht die Textschrift')
+
+for (const [pfad, name] of [['/', 'Startseite'], ['/funktionen', 'Funktionen'],
+  ['/kontakt', 'Kontakt']]) {
+  const seite = await ohne(pfad)
+  check(`Die Überschrift der ${name} steht in der Schrift des Logos`,
+    /<h1[^>]*font-display/.test(seite.text),
+    'Sonst trägt die Marke oben links eine andere Schrift als die Seite darunter')
+}
+
 process.exit(bilanz() ? 1 : 0)

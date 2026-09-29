@@ -27,7 +27,7 @@ export default function DatenschutzSeite() {
       fehlt={d.fehlt}
     >
       <section>
-        <h2 className="font-bold text-navy">Verantwortlicher für diese Seiten</h2>
+        <h2 className="font-display font-bold text-navy">Verantwortlicher für diese Seiten</h2>
         <dl className="mt-3 space-y-2">
           <Angabe k="Name" w={d.anbieter.name} />
           <Angabe k="Anschrift" w={d.anbieter.anschrift} />
@@ -38,7 +38,7 @@ export default function DatenschutzSeite() {
 
       {d.abschnitte.map(a => (
         <section key={a.id}>
-          <h2 className="font-bold text-navy">{a.ueberschrift}</h2>
+          <h2 className="font-display font-bold text-navy">{a.ueberschrift}</h2>
           {a.grundlage && (
             <p className="text-xs text-gray-400 mt-0.5">{a.grundlage}</p>
           )}

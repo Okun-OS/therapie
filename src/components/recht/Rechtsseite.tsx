@@ -29,7 +29,7 @@ export function Rechtsseite({ titel, untertitel, fehlt, children }: {
           <ArrowLeft size={15} /> Zur Anmeldung
         </Link>
 
-        <h1 className="text-2xl sm:text-3xl font-bold text-navy mt-4 text-balance">
+        <h1 className="font-display text-2xl sm:text-3xl font-bold text-navy mt-4 text-balance">
           {titel}
         </h1>
         {untertitel && (

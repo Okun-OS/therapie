@@ -27,7 +27,7 @@ export default function ImpressumSeite() {
       fehlt={[...fehltAmImpressum(i), ...hinweise]}
     >
       <section>
-        <h2 className="font-bold text-navy">Anbieter</h2>
+        <h2 className="font-display font-bold text-navy">Anbieter</h2>
         <dl className="mt-3 space-y-2">
           <Angabe k="Name" w={i.anbieter.name} />
           <Angabe k="Anschrift" w={i.anbieter.anschrift} />
@@ -39,7 +39,7 @@ export default function ImpressumSeite() {
       </section>
 
       <section>
-        <h2 className="font-bold text-navy">
+        <h2 className="font-display font-bold text-navy">
           Inhaltlich verantwortlich (§18 Abs. 2 MStV)
         </h2>
         <dl className="mt-3">
@@ -48,7 +48,7 @@ export default function ImpressumSeite() {
       </section>
 
       <section>
-        <h2 className="font-bold text-navy">Datenschutz</h2>
+        <h2 className="font-display font-bold text-navy">Datenschutz</h2>
         <p className="mt-2 text-sm text-gray-700 leading-relaxed">
           Wie wir mit personenbezogenen Daten umgehen, steht in der{' '}
           <a href="/datenschutz" className="text-teal-700 underline">
@@ -60,7 +60,7 @@ export default function ImpressumSeite() {
       </section>
 
       <section>
-        <h2 className="font-bold text-navy">Streitbeilegung</h2>
+        <h2 className="font-display font-bold text-navy">Streitbeilegung</h2>
         <p className="mt-2 text-sm text-gray-700 leading-relaxed">
           {i.streitbeilegung}
         </p>

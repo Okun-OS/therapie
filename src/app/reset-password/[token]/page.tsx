@@ -82,7 +82,7 @@ export default function ResetPasswordPage({ params }: { params: { token: string 
           {!loading && !loadError && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <p className="text-lg font-bold text-navy">Neues Passwort vergeben</p>
+                <p className="font-display text-lg font-bold text-navy">Neues Passwort vergeben</p>
                 <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
                   <Mail size={14} />
                   <span>{email}</span>

@@ -4,7 +4,7 @@ Alles, was **nicht programmiert werden kann** — weil es ein Konto, eine
 Unterschrift, einen Kauf oder eine Zahl aus einer Satzung braucht. Nach
 Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 
-> Stand: 27.09.2026 · Was fertig ist, steht in `STAND.md`.
+> Stand: 29.09.2026 · Was fertig ist, steht in `STAND.md`.
 > Zum Abhaken: `- [ ]` zu `- [x]` machen.
 
 ---
@@ -16,7 +16,7 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
                                              └─►  .dmg beglaubigen
 2. Domain verbinden ────────►  ┐
 3. Firmenangaben   ─────────►  ┴─► Impressum/Datenschutz öffentlich ─► Stores
-4. Startseite: was drauf soll ─►  ich baue sie ─► Download-Seite
+4. Website steht ──────────►  Bildschirmfotos ─► Download-Seite
 5. Firebase        ─────────►  Push auf Android (und mit Apple auch iOS)
 6. Steuerberater   ─────────►  erster echter Kunde
 7. Code-Signing    ─────────►  Windows-Programm ohne Warnung
@@ -26,6 +26,10 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 Das war falsch einsortiert — sie gehören dem Kunden, nicht dir (siehe unten
 unter *Wenn ein Kunde kommt*). Deine Recherche ist eingelesen, 24 Kassen
 stehen im System.
+
+**Erledigt am 29.09.:** Die Website steht, und die Wortmarke ist überall die
+echte — auch auf dunklem Grund und im Kopf jeder E-Mail. Aus Punkt 4 sind
+dadurch nur noch zwei Fragen übrig.
 
 Punkt 1 und 2 dauern Wochen und hängen an Dritten. **Damit anfangen**, alles
 andere läuft daneben.
@@ -166,39 +170,41 @@ Domain aus Punkt 1 und die `OKUN_*`-Angaben.
 
 ---
 
-## 4 · Die Startseite vor der Anmeldung
+## 4 · Die Website
 
-Heute gibt es keine. `/` leitet sofort auf `/login` weiter — wer die Adresse
-aufruft, sieht ein Anmeldeformular und sonst nichts. Für einen Interessenten,
-der zum ersten Mal kommt, ist das eine verschlossene Tür.
+**Sie steht.** `okun-workforce.com` zeigt jetzt Startseite, „Alles, was
+Personal ausmacht" mit allen 95 Funktionen, Kontakt mit Formular, Impressum
+und Datenschutz — und oben rechts auf jeder Seite den Knopf „Anmelden". Die
+Texte sind deine und liegen in `src/lib/website-inhalt.ts`; wer sie ändern
+will, ändert diese eine Datei, keinen Code.
 
-**Bauen tue ich das.** Was ich aber nicht erfinden darf, sind die
-Entscheidungen dahinter — sie stehen auf einer Verkaufsseite und müssen
-stimmen:
+Entschieden ist damit auch: keine Selbstregistrierung, keine Preise auf der
+Seite, Kontakt über Formular und E-Mail. Was noch offen ist:
 
-### 🟡 Was auf die Startseite gehört — deine Entscheidungen
-- [ ] **Kann man sich selbst anmelden, oder nur nach einem Gespräch?**
-      Das ist die wichtigste: Davon hängt ab, ob es einen Knopf
-      „Kostenlos testen" gibt oder einen „Termin vereinbaren". Bei einem
-      Programm, das Gehälter rechnet, spricht viel für das Gespräch — aber das
-      ist deine Entscheidung, nicht meine.
-- [ ] **Preise: auf der Seite oder auf Anfrage?** Wenn auf der Seite: welche
-      Staffeln, pro Mitarbeiter oder pro Standort, und was ist enthalten.
-- [ ] **Wie soll ein Interessent Kontakt aufnehmen?** Formular, E-Mail,
-      Telefon, Rückrufbitte — und wer liest es.
+### 🟡 Das Logo als SVG besorgen
+- [ ] **Beim Gestalter nachfragen: gibt es das Logo als SVG?** Es geht auch
+      ohne — die PNG-Dateien sind freigestellt und mit 900 Pixeln Breite groß
+      genug für jede Stelle, an der sie heute stehen. Gebraucht wird eine
+      SVG-Fassung erst, wenn das Logo groß gedruckt werden soll (Messewand,
+      Briefbogen, Fahrzeug) oder wenn eine neue Farbfassung entstehen muss.
+      Dann gerne gleich alle vier: Zeichen allein, Zeichen mit Schriftzug,
+      mit und ohne den goldenen Zusatz.
+- [ ] **Und dabei fragen, welche Schrift der Schriftzug ist.** Nachgemessen
+      ist es Gantari im Schnitt 600 — die Buchstaben decken sich zu 94,5 %,
+      der nächstbeste Kandidat liegt bei 91,9 %. Genau diese Schrift steht
+      jetzt über den Überschriften der Website. Wenn der Gestalter eine andere
+      genannt bekommt, ist das eine Zeile Änderung.
+
+### 🟡 Referenz und Bildschirmfotos
 - [ ] **Darf ein Kunde namentlich genannt werden?** Eine Referenz wirkt mehr
       als jeder Satz über uns. Nur mit seiner Zustimmung.
-- [ ] **Welche drei Sätze sollen als erstes dastehen?** Wenn du sie nicht
-      schreiben willst, schreibe ich einen Vorschlag und du korrigierst ihn —
-      das ist meist schneller.
-
-Sobald das steht, baue ich die Seite: Startseite mit Anmeldung, Impressum und
-Datenschutz verlinkt (beide brauchen die Angaben aus Punkt 3), und die
-Download-Seite für das Windows-Programm gleich mit.
-
-**Blockiert:** dass jemand die Software von außen überhaupt versteht — und
-die Store-Einreichung, die eine öffentliche Seite mit Datenschutzerklärung
-verlangt.
+- [ ] **Echte Bildschirmfotos aus der App** gehören auf die Startseite. Dafür
+      muss der Demo-Mandant erst einen veröffentlichten Plan und gestempelte
+      Zeiten haben — das mache ich, sobald du sagst, welcher Ausschnitt
+      gezeigt werden soll (Dienstplan? Stempeluhr? Lohnabrechnung?).
+- [ ] **Die Download-Seite für das Windows-Programm** fehlt noch. Sie kommt,
+      sobald die .exe signiert ist (Punkt 1) — eine unsignierte Datei zum
+      Herunterladen anzubieten, schreckt mehr Leute ab, als sie überzeugt.
 
 ---
 

@@ -65,7 +65,7 @@ export function Kontaktformular() {
         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand/15">
           <Check size={20} className="text-brand" />
         </span>
-        <p className="mt-5 text-xl font-bold text-white">Angekommen.</p>
+        <p className="mt-5 font-display text-xl font-bold text-white">Angekommen.</p>
         <p className="mt-2 max-w-sm leading-relaxed text-navy-300">
           Wir melden uns innerhalb eines Werktags. Wenn es eilt, schreiben
           Sie uns gern zusätzlich direkt — die Adresse steht links.

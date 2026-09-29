@@ -2,7 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/*
+  §180 Zwei Schriften, ein Aufruf.
+
+  Inter setzt den Fließtext — sie ist auf Bildschirmgrößen gezeichnet und
+  bleibt in einer Tabelle mit Beträgen lesbar. Gantari steht über den
+  Überschriften der Website, weil das die Schrift des Logos ist: die
+  Buchstaben aus `logo-full-tagline.png` wurden gemessen und gegen siebzig
+  Familien gehalten — Breite zu Versalhöhe, Strichstärke, und am Ende die
+  Deckungsfläche Buchstabe für Buchstabe. Gantari im Schnitt 600 deckt das
+  „OKUN" zu 94,5 Prozent; der nächste Kandidat liegt bei 91,9. Wer es genau
+  wissen will, fragt den Gestalter — aber die Seite spricht damit dieselbe
+  Schrift wie die Marke oben links und nicht bloß eine ähnliche.
+
+  Nachgeprüft wird das Ergebnis in `pruefungen/browser/marke.mjs`: dort wird
+  gefragt, was der Browser wirklich auf die Überschrift legt.
+
+  Beide Familien in einem `@import`: zwei Aufrufe blockierten das Zeichnen
+  nacheinander statt gleichzeitig.
+*/
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Gantari:wght@500;600;700&display=swap');
 
 @layer base {
   html {

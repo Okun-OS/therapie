@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Logo } from '@/components/ui/Logo'
 import Link from 'next/link'
-import { Mail, Lock, ShieldCheck, ArrowLeft, MessageSquare } from 'lucide-react'
+import { Mail, Lock, ShieldCheck, ArrowLeft, MessageSquare, Check } from 'lucide-react'
+import { KOPF, STAERKEN } from '@/lib/website-inhalt'
 
 type LoginStep = 'credentials' | 'totp' | 'sms'
 
@@ -107,27 +108,37 @@ export default function LoginPage() {
             <Logo variant="wordmark" onDark iconSize={40} />
           </div>
 
+          {/*
+            §180 Hier stand „Dienstplanung, einfach smart." und darunter vier
+            Kacheln mit Emoji: Roboter, Telefon, Stoppuhr, Hochhaus. Beides war
+            älter als das Produkt. Die Anmeldeseite ist die Seite, die ein
+            Interessent direkt nach der Startseite sieht — und dort stand das
+            Programm plötzlich wieder als Dienstplansoftware da, obwohl eine
+            Bildschirmbreite weiter „Vom Bewerber bis zum Lohn" steht.
+
+            Der Text kommt jetzt aus derselben Quelle wie die Website. Nicht
+            abgeschrieben, sondern importiert: sonst laufen beide beim nächsten
+            Umbau wieder auseinander.
+          */}
           <div>
-            <h1 className="text-4xl font-bold text-white leading-tight mb-6">
-              Dienstplanung,<br />
-              <span className="text-brand">einfach smart.</span>
+            <p className="font-display text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold mb-5">
+              {KOPF.vorspann}
+            </p>
+            <h1 className="font-display text-4xl font-bold text-white leading-tight mb-6">
+              {KOPF.zeilen[0]}<br />
+              <span className="text-brand">{KOPF.zeilen[1]}</span>
             </h1>
             <p className="text-navy-100 text-lg leading-relaxed max-w-sm">
-              KI-gestützte Schichtplanung, Zeiterfassung und Urlaubsmanagement – alles in einer modernen App.
+              {KOPF.text}
             </p>
           </div>
         </div>
 
         <div className="relative z-10 space-y-3">
-          {[
-            { icon: '🤖', text: 'KI erstellt optimale Dienstpläne automatisch' },
-            { icon: '📱', text: 'Mobile-first, wie eine native App' },
-            { icon: '⏱️', text: 'Echtzeit-Zeiterfassung und Stundenkonten' },
-            { icon: '🏢', text: 'Multi-Standort für große Unternehmen' },
-          ].map((f, i) => (
-            <div key={i} className="flex items-center gap-3 bg-navy-light rounded-xl px-4 py-3">
-              <span className="text-xl">{f.icon}</span>
-              <span className="text-navy-100 text-sm">{f.text}</span>
+          {STAERKEN.slice(0, 4).map(s => (
+            <div key={s.titel} className="flex items-center gap-3 bg-navy-light rounded-xl px-4 py-3">
+              <Check size={15} className="shrink-0 text-brand" />
+              <span className="text-navy-100 text-sm">{s.titel}</span>
             </div>
           ))}
         </div>
@@ -143,7 +154,7 @@ export default function LoginPage() {
 
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
             <div className="px-6 pt-6 pb-2">
-              <p className="text-lg font-semibold text-navy">Anmelden</p>
+              <p className="font-display text-lg font-semibold text-navy">Anmelden</p>
               <p className="text-sm text-gray-500">Melde dich mit deinem OKUN Workforce Konto an.</p>
             </div>
 

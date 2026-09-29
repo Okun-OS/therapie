@@ -42,7 +42,7 @@ export function WebsiteKopf() {
             <Logo variant="icon" iconSize={30} />
           </span>
           <span className="hidden sm:block">
-            <Logo variant="wordmark" onDark iconSize={32} />
+            <Logo variant="wordmark" onDark iconSize={40} />
           </span>
         </Link>
 
@@ -104,14 +104,14 @@ export function WebsiteFuss({ kontakt }: { kontakt: string | null }) {
       <div className="mx-auto max-w-6xl px-5 py-12">
         <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
           <div className="max-w-sm">
-            <Logo variant="wordmark" onDark iconSize={32} />
-            <p className="mt-4 font-semibold text-white">{FUSS.claim}</p>
+            <Logo variant="wordmark" onDark iconSize={40} />
+            <p className="mt-4 font-display font-semibold text-white">{FUSS.claim}</p>
             <p className="mt-2 text-sm leading-relaxed text-navy-400">{FUSS.text}</p>
           </div>
 
           <div className="flex gap-12">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy-500">
+              <p className="font-display text-xs font-bold uppercase tracking-wider text-navy-500">
                 Programm
               </p>
               <div className="mt-3 flex flex-col gap-2.5">
@@ -121,7 +121,7 @@ export function WebsiteFuss({ kontakt }: { kontakt: string | null }) {
               </div>
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy-500">
+              <p className="font-display text-xs font-bold uppercase tracking-wider text-navy-500">
                 Rechtliches
               </p>
               <div className="mt-3 flex flex-col gap-2.5">

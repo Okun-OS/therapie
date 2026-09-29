@@ -17,9 +17,9 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §179 Die finale Textfassung der Website ist eingebaut |
-| **Nachweisstand** | 1482/1482 in 40 Prüfungen, 22 im Browser, 17 am Programmfenster, 128 im Rechendienst, 958 Modultests |
-| **Als Nächstes** | Die Startseite vor der Anmeldung |
+| **Zuletzt fertig** | §180 Überall dieselbe Wortmarke, und die Schrift des Logos auf der Website |
+| **Nachweisstand** | 1496/1496 in 40 Prüfungen, 44 im Browser, 17 am Programmfenster, 128 im Rechendienst, 976 Modultests |
+| **Als Nächstes** | Echte Bildschirmfotos aus der App auf die Website |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
 > **Der Lohn-Block ist vollständig** (§155–§162). Pfändung, betriebliche
@@ -159,6 +159,17 @@ Nach Dringlichkeit, nicht nach Bereich.
       Abnahme, als eine Paketzuordnung mitten in einem laufenden Plan scheiterte
 
 ### Sonst offen
+- [x] ~~**Die echte Wortmarke, überall**~~ ✅ §180 — auf dunklem Grund stand
+      bisher kein Logo, sondern nachgebauter HTML-Text in Inter: andere
+      Schrift, andere Sperrung, andere Strichstärke als im echten Logo. Der
+      Grund war real — „OKUN" steht im Logo fast schwarz und wäre auf #0F1112
+      unsichtbar. Die Antwort ist jetzt eine Negativfassung, die
+      `npm run logo:negativ` aus derselben Datei erzeugt: nur das Dunkel wird
+      gegen Weiß getauscht, das Zeichen bleibt Byte für Byte unberührt
+      (nachgewiesen in `src/lib/__tests__/marke.test.ts`). Dieselbe Marke steht
+      damit in Website, Anmeldung, Erstinstallation und im Kopf jeder E-Mail.
+      Dazu die Schrift des Logos — nachgemessen als Gantari 600 — über den
+      Überschriften der Website
 - [x] ~~**Die Startseite vor der Anmeldung**~~ ✅ §177/§179 — drei Seiten:
       Startseite, „Alles, was Personal ausmacht" mit allen 95 Funktionen,
       und Kontakt mit Formular. Die Texte kommen vom Eigentümer und stehen

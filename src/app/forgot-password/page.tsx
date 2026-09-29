@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <p className="text-lg font-bold text-navy">Passwort vergessen?</p>
+                <p className="font-display text-lg font-bold text-navy">Passwort vergessen?</p>
                 <p className="text-sm text-gray-500 mt-1">
                   Gib deine E-Mail-Adresse ein. Wir senden dir einen Link zum Zurücksetzen des Passworts.
                 </p>

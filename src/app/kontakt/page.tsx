@@ -37,10 +37,10 @@ export default function Kontakt() {
         <div className="relative mx-auto max-w-6xl px-5 py-16 sm:py-20">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.2fr]">
             <div>
-              <p className="text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold">
+              <p className="font-display text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold">
                 {KONTAKT.vorspann}
               </p>
-              <h1 className="mt-5 text-3xl font-bold leading-tight text-white text-balance sm:text-4xl">
+              <h1 className="mt-5 font-display text-3xl font-bold leading-tight text-white text-balance sm:text-4xl">
                 {KONTAKT.zeilen[0]}
                 <br />
                 <span className="text-brand">{KONTAKT.zeilen[1]}</span>

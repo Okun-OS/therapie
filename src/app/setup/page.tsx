@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Calendar, Mail, Lock, User, KeyRound, ArrowLeft } from 'lucide-react'
+import { Mail, Lock, User, KeyRound, ArrowLeft } from 'lucide-react'
+import { Logo } from '@/components/ui/Logo'
 
 export default function SetupPage() {
   const router = useRouter()
@@ -56,14 +57,16 @@ export default function SetupPage() {
   return (
     <div className="min-h-screen bg-navy flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center">
-            <Calendar size={20} className="text-navy" />
-          </div>
-          <div>
-            <p className="text-white font-bold text-lg">OKUN Workforce</p>
-            <p className="text-navy-100 text-xs">Erstinstallation</p>
-          </div>
+        {/*
+          §180 Hier stand ein Kalendersymbol in einem türkisen Kästchen und
+          daneben „OKUN Workforce" als Text — ein selbstgebautes Logo, das es
+          sonst nirgends gibt. Die Erstinstallation ist der erste Bildschirm,
+          den ein neuer Betrieb überhaupt sieht; ausgerechnet dort stand die
+          Marke falsch.
+        */}
+        <div className="flex flex-col items-center gap-2 mb-8">
+          <Logo variant="wordmark" onDark iconSize={44} />
+          <p className="text-navy-100 text-xs">Erstinstallation</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden p-6">

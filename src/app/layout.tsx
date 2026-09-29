@@ -3,13 +3,21 @@ import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
 import { ToastProvider } from '@/lib/toast-context'
 import { PwaInstallPrompt } from '@/components/PwaInstallPrompt'
+import { BESCHREIBUNG } from '@/lib/website-inhalt'
 
 export const metadata: Metadata = {
   title: {
     default: 'OKUN Workforce',
     template: '%s · OKUN Workforce',
   },
-  description: 'KI-gestützte Dienstplanung und Mitarbeiterverwaltung für soziale Einrichtungen',
+  /*
+    §180 Hier stand „… für soziale Einrichtungen". Das ist die Beschreibung,
+    die Google und jede Vorschau anzeigt — und sie schloss die Mehrzahl der
+    Betriebe aus, für die das Programm gebaut ist. Sie kommt jetzt aus
+    derselben Quelle wie die Website, damit beide nicht wieder auseinander-
+    laufen.
+  */
+  description: BESCHREIBUNG,
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
