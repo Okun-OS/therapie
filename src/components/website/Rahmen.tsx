@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Logo } from '@/components/ui/Logo'
-import { Menu, X, ArrowRight } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
+import { FUSS } from '@/lib/website-inhalt'
 
 /**
  * §177 Kopf und Fuß der öffentlichen Website.
@@ -29,9 +30,20 @@ export function WebsiteKopf() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/5 bg-navy-900/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-5 py-3.5">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-3.5 sm:gap-6">
+        {/*
+          §179 Auf dem Telefon nur das Zeichen, sonst die Wortmarke.
+          Bei 390 Pixeln passten Wortmarke, Anmelde-Knopf und Menü-Symbol
+          nicht nebeneinander — das Menü war angeschnitten und damit nicht
+          mehr bedienbar.
+        */}
         <Link href="/" className="shrink-0" aria-label="OKUN Workforce — zur Startseite">
-          <Logo variant="wordmark" onDark iconSize={32} />
+          <span className="sm:hidden">
+            <Logo variant="icon" iconSize={30} />
+          </span>
+          <span className="hidden sm:block">
+            <Logo variant="wordmark" onDark iconSize={32} />
+          </span>
         </Link>
 
         <nav className="ml-auto hidden items-center gap-1 md:flex">
@@ -53,7 +65,7 @@ export function WebsiteKopf() {
         <Link
           href="/login"
           data-test="kopf-anmelden"
-          className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-gold/40 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold-light transition-colors hover:bg-gold/20 md:ml-0"
+          className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-gold/40 bg-gold/10 px-3.5 py-2 text-sm font-semibold text-gold-light transition-colors hover:bg-gold/20 sm:px-4 md:ml-0"
         >
           Anmelden
         </Link>
@@ -93,11 +105,8 @@ export function WebsiteFuss({ kontakt }: { kontakt: string | null }) {
         <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
           <div className="max-w-sm">
             <Logo variant="wordmark" onDark iconSize={32} />
-            <p className="mt-4 text-sm leading-relaxed text-navy-400">
-              Dienstplanung, Zeiterfassung und Lohnabrechnung in einem
-              Programm — für Unternehmen, in denen ein falscher Dienstplan
-              mehr kaputt macht als einen Nachmittag.
-            </p>
+            <p className="mt-4 font-semibold text-white">{FUSS.claim}</p>
+            <p className="mt-2 text-sm leading-relaxed text-navy-400">{FUSS.text}</p>
           </div>
 
           <div className="flex gap-12">
@@ -129,39 +138,9 @@ export function WebsiteFuss({ kontakt }: { kontakt: string | null }) {
         </div>
 
         <p className="mt-10 border-t border-white/5 pt-6 text-xs text-navy-500">
-          © {new Date().getFullYear()} OKUN Workforce
+          © {new Date().getFullYear()} {FUSS.rechte}
         </p>
       </div>
     </footer>
-  )
-}
-
-/** Der wiederkehrende Aufruf zum Gespräch. */
-export function Gespraech({ titel, text }: { titel: string; text: string }) {
-  return (
-    <section className="mx-auto max-w-6xl px-5 py-16 sm:py-24">
-      <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-navy-800 to-navy-900 p-8 sm:p-14">
-        {/* Der Lichtbogen aus dem Entwurf — reines CSS, kein Bild. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full opacity-40 blur-3xl"
-          style={{ background: 'radial-gradient(circle, #C89C5B55, transparent 65%)' }}
-        />
-        <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-xl">
-            <h2 className="text-2xl font-bold text-white text-balance sm:text-3xl">{titel}</h2>
-            <p className="mt-3 leading-relaxed text-navy-300">{text}</p>
-          </div>
-          <Link
-            href="/kontakt"
-            data-test="gespraech-knopf"
-            className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-gold px-6 py-3.5 text-sm font-bold text-navy-900 transition-transform hover:scale-[1.02] md:self-auto"
-          >
-            Gespräch vereinbaren
-            <ArrowRight size={16} />
-          </Link>
-        </div>
-      </div>
-    </section>
   )
 }

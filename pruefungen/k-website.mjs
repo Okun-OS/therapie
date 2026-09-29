@@ -36,7 +36,17 @@ const start = await ohne('/')
 check('Die Startseite leitet nicht mehr sofort auf die Anmeldung um',
   start.status === 200 && start.text.length > 2000,
   `HTTP ${start.status}, ${start.text.length} Zeichen`)
-check('Sie nennt, worum es geht', /Dienstplan/i.test(start.text))
+// §179 Die Startseite positioniert das Produkt als durchgaengiges System
+// fuer Personalarbeit — nicht als Dienstplansoftware. Wer nur den Dienstplan
+// nennt, verliert jeden, der eine Lohnsoftware sucht.
+for (const bereich of [
+  'Recruiting', 'Personalplanung', 'Arbeitszeit', 'Lohnabrechnung',
+  'Abwesenheiten',
+]) {
+  check(`Die Startseite nennt „${bereich}"`,
+    new RegExp(bereich, 'i').test(start.text),
+    'Das Produkt ist mehr als Dienstplanung')
+}
 check('Und dass es um Unternehmen geht',
   /Unternehmen|Betrieb/i.test(start.text))
 

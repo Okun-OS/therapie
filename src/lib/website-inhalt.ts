@@ -1,37 +1,33 @@
 /**
- * §177 Was auf der Website steht — an einer Stelle, zum Ändern ohne Code.
+ * §179 Was auf der Website steht — an einer Stelle, zum Ändern ohne Code.
  *
- * WARUM DER TEXT NICHT IN DEN SEITEN STEHT
- * Eine Verkaufsseite wird geändert, nachdem man sie jemandem gezeigt hat.
- * Wer dafür durch JSX klettern muss, ändert sie nicht mehr. Hier steht sie
- * als lesbare Liste; die Seiten daneben ordnen sie nur an.
+ * DIE TEXTE SIND VOM EIGENTÜMER, NICHT VON MIR.
+ * Sie kamen am 29.09.2026 als fertige Fassung. Wer sie ändert, ändert die
+ * Positionierung des Produkts — das ist eine Entscheidung des Hauses, keine
+ * des Programmierers. Bitte nur nach Absprache anfassen.
  *
- * §178 ZWEI REGELN, DIE AUS EINEM FEHLER ENTSTANDEN SIND
+ * WAS SICH GEGENÜBER DER ERSTEN FASSUNG GEÄNDERT HAT
+ * Die war auf Dienstplanung zugeschnitten und damit zu klein: OKUN Workforce
+ * ist ein durchgängiges System für Personalarbeit — vom Recruiting über
+ * Personalakte, Planung und Zeit bis zur Lohnabrechnung. Wer eine
+ * Lohnsoftware sucht, liest „Der Dienstplan kennt Ihre Regeln" und klickt
+ * weg.
  *
- *   KEINE KUNDENINTERNA. In der ersten Fassung standen hier sechs Regeln
- *   aus dem Regelpaket eines echten Kunden — „Heike hat freitags fest
- *   frei", „in Gruppe 1 stehen zwei Personen". Das wirkte überzeugend und
- *   war trotzdem falsch: Es ist der Betriebsablauf eines Kunden, und der
- *   gehört ihm, nicht uns. Beispiele auf dieser Seite beschreiben die ART
- *   von Regel, nie eine konkrete aus einem echten Haus.
+ * §178 ZWEI REGELN, DIE AUS FEHLERN ENTSTANDEN SIND
  *
- *   KEINE EINENGUNG AUF EINE BRANCHE. Ebenfalls in der ersten Fassung stand
- *   überall „für Pflege, Kita und Eingliederungshilfe". Das war eine
- *   Erfindung: OKUN Workforce ist für jedes Unternehmen mit Personal und
- *   Schichten. Wer eine Branche nennt, schließt alle anderen aus — und ein
- *   Logistiker, der nach Dienstplanung sucht, liest nicht weiter.
+ *   KEINE KUNDENINTERNA. Hier standen einmal sechs Regeln aus dem
+ *   Regelpaket eines echten Betriebs. Das wirkte überzeugend und war
+ *   trotzdem falsch: Wie ein Kunde plant, gehört ihm, nicht uns.
  *
- * DREI DINGE, DIE HIER BEWUSST FEHLEN
- *   Preise — sie stehen nicht fest, und eine erfundene Zahl auf einer
- *   Verkaufsseite ist schlimmer als keine.
+ *   KEINE EINENGUNG AUF EINE BRANCHE. Ebenfalls einmal dagewesen: „für
+ *   Pflege, Kita und Eingliederungshilfe". Das Programm ist für jedes
+ *   Unternehmen mit Personal — wer eine Branche nennt, schließt die
+ *   anderen aus.
  *
- *   Referenzen — ein Kundenname gehört erst dorthin, wenn der Kunde
- *   zugestimmt hat.
- *
- *   „Jetzt kostenlos testen" — ein Betrieb kann sich hier nicht selbst
- *   anlegen, und das ist Absicht: Das Regelwerk entsteht im Gespräch
- *   (§126). Ein Knopf, der etwas verspricht, was das Programm nicht kann,
- *   ist eine Lüge im Schaufenster.
+ * DREI DINGE, DIE BEWUSST FEHLEN
+ *   Preise (stehen nicht fest), Referenzen (kein Kunde hat zugestimmt) und
+ *   „jetzt kostenlos testen" — ein Betrieb kann sich nicht selbst anlegen.
+ *   Zwei Prüfungen in `pruefungen/k-website.mjs` wachen darüber.
  */
 
 export interface Punkt {
@@ -42,135 +38,143 @@ export interface Punkt {
 // ── Startseite ──────────────────────────────────────────────────────────────
 
 export const KOPF = {
-  vorspann: 'Personalplanung für Unternehmen',
-  zeilen: ['Der Dienstplan', 'kennt Ihre Regeln.'],
+  vorspann: 'Ihr Team hat einen Arbeitsplatz. Ihre Personalabteilung jetzt auch.',
+  zeilen: ['Vom Bewerber bis zum Lohn.', 'Alles in einem System.'],
   text:
-    'Dienstplanung, Zeiterfassung und Lohnabrechnung in einem Programm. '
-    + 'Mit den Regeln Ihres Betriebs — nicht mit denen von der Stange.',
+    'OKUN Workforce verbindet Recruiting, Mitarbeiterverwaltung, '
+    + 'Personalplanung, Arbeitszeiten, Abwesenheiten, Kommunikation und '
+    + 'Lohnabrechnung auf einer Plattform. Weniger Programme. Weniger '
+    + 'Handarbeit. Mehr Überblick.',
 }
 
+/** Die sechs Kacheln unter dem Aufmacher. */
+export const STAERKEN: Punkt[] = [
+  {
+    titel: 'Planen, wie Ihr Unternehmen wirklich arbeitet',
+    text:
+      'Ob feste Arbeitszeiten, wechselnde Dienste oder komplexe '
+      + 'Besetzungsregeln: OKUN Workforce bildet Ihre tatsächlichen Abläufe '
+      + 'ab – statt Sie in starre Standards zu zwingen.',
+  },
+  {
+    titel: 'Alles zum Mitarbeiter. An einem Ort.',
+    text:
+      'Stammdaten, Verträge, Nachweise, Fristen, Rollen und Dokumente '
+      + 'zentral verwalten. Was fehlt oder abläuft, macht sich bemerkbar.',
+  },
+  {
+    titel: 'Arbeitszeit, die nicht weitergetragen werden muss',
+    text:
+      'Zeiten erfassen, Stundenkonten führen und Zuschläge berechnen – ohne '
+      + 'Daten zwischen verschiedenen Programmen hin und her zu übertragen.',
+  },
+  {
+    titel: 'Urlaub, Krankheit und Abwesenheiten im Griff',
+    text:
+      'Anträge, Resturlaub, Krankmeldungen und weitere Abwesenheiten digital '
+      + 'verwalten – und direkt dort berücksichtigen, wo sie relevant werden.',
+  },
+  {
+    titel: 'Von erfasster Zeit direkt zur Abrechnung',
+    text:
+      'Freigegebene Zeiten, Überstunden und Zuschläge stehen bereits dort '
+      + 'bereit, wo daraus Lohn wird. Kein monatliches Zusammensuchen und '
+      + 'Abtippen.',
+  },
+  {
+    titel: 'Vom Bewerber zum Mitarbeiter',
+    text:
+      'Stellen veröffentlichen, Bewerbungen begleiten und neue Mitarbeiter '
+      + 'nach der Einstellung direkt in den laufenden Personalprozess '
+      + 'übernehmen.',
+  },
+]
+
 /**
- * §126 Das Verkaufsargument, das sonst niemand hat.
+ * Der Abschnitt „Der Unterschied".
  *
- * Jede Software verteilt Schichten. Was hier anders ist: Die Regeln eines
- * Betriebs werden als Code geschrieben, geprüft und versioniert —
- * einschließlich derer, die nirgends aufgeschrieben stehen und die jede
- * Leitung trotzdem im Kopf hat.
+ * Er trägt zwei Argumente zugleich: die Lücken zwischen den Programmen —
+ * und dass die Regeln des Betriebs abgebildet werden, statt den Betrieb an
+ * die Software anzupassen.
  */
 export const KERN = {
   vorspann: 'Der Unterschied',
-  titel: 'Ihr Regelwerk wird gebaut, nicht angekreuzt.',
+  zeilen: ['Ihre Leute arbeiten zusammen.', 'Ihre Personalsoftware sollte das auch.'],
   absaetze: [
-    'In jedem Betrieb gelten Regeln, die in keinem Formular stehen. Wer an '
-    + 'welchem Tag nicht kann. Welche Qualifikation in jeder Schicht dabei '
-    + 'sein muss. Welche Abteilung niemanden abgeben darf, solange dort '
-    + 'eingearbeitet wird. Wer wen vertreten darf — und wer eben nicht.',
-    'Solche Regeln lassen sich nicht ankreuzen. Wir schreiben sie für Ihren '
-    + 'Betrieb auf, programmieren sie und prüfen sie an echten Plänen — '
-    + 'bevor jemand damit arbeitet.',
+    'In vielen Unternehmen liegt Personalarbeit heute verteilt: Bewerbungen '
+    + 'hier, Mitarbeiterdaten dort, Urlaub per Mail, Arbeitszeiten in einem '
+    + 'anderen Programm und die Abrechnung am Monatsende wieder woanders.',
+    'Das Problem sind nicht die einzelnen Programme. Das Problem sind die '
+    + 'Lücken dazwischen.',
+    'OKUN Workforce verbindet diese Abläufe in einem System. Was einmal '
+    + 'vorhanden ist, muss nicht an der nächsten Stelle wieder '
+    + 'zusammengesucht, übertragen oder neu eingegeben werden.',
+    'Und dort, wo Ihr Unternehmen eigene Regeln hat, beginnt OKUN Workforce '
+    + 'nicht mit einem Standardformular. Wir schauen uns an, wie Sie '
+    + 'tatsächlich arbeiten, und bilden diese Regeln im System ab. Besonders '
+    + 'bei der Personalplanung entsteht so ein Regelwerk, das zu Ihrem '
+    + 'Betrieb passt – statt Ihren Betrieb an die Software anzupassen.',
   ],
 }
 
-/**
- * §178 Die Art von Regel, nicht die Regel eines Kunden.
- *
- * Diese Liste steht auf der Startseite neben dem Text. Sie nennt bewusst
- * Kategorien statt Beispielen aus einem echten Haus: Was ein Betrieb mit
- * uns vereinbart, ist sein Betriebsablauf und gehört ihm.
- */
-export const REGELARTEN: string[] = [
-  'Feste freie Tage und Arbeitszeitmodelle einzelner Personen',
-  'Mindestbesetzung je Bereich, Schicht oder Tageszeit',
-  'Qualifikationen, die in jeder Schicht vertreten sein müssen',
-  'Wer wen vertreten darf — und aus welchem Bereich niemand abgezogen wird',
-  'Verteilung über Wochen: Früh, Spät, Wochenende, ungeliebte Tage',
-  'Was passieren soll, wenn es nicht aufgeht',
+/** Die Liste neben dem Abschnitt „Der Unterschied". */
+export const KERN_PUNKTE: string[] = [
+  'Ein System vom Recruiting bis zur Abrechnung',
+  'Daten einmal erfassen und anschließend weiterverwenden',
+  'Eigene Abläufe statt erzwungener Standardprozesse',
+  'Personalplanung nach den Regeln Ihres Unternehmens',
+  'Arbeitszeiten und Zuschläge direkt mit der Abrechnung verbunden',
+  'Verwaltung und Mitarbeiter arbeiten im selben System',
 ]
 
-/** Die Kacheln unter dem Aufmacher. */
-export const STAERKEN: Punkt[] = [
-  {
-    titel: 'Echter Rechenkern',
-    text:
-      'Kein Zufallsgenerator: Ein Optimierer prüft alle Möglichkeiten und '
-      + 'legt offen, warum er sich entschieden hat.',
-  },
-  {
-    titel: 'Ihr Regelwerk',
-    text:
-      'Die Regeln Ihres Betriebs werden programmiert und an echten Plänen '
-      + 'abgenommen — nicht in Formularen angekreuzt.',
-  },
-  {
-    titel: 'Lohn nach Recht',
-    text:
-      'Vom Minijob bis zur Pfändung: gerechnet nach EStG, SGB und ZPO, mit '
-      + 'Paragraph an jeder Zahl.',
-  },
-  {
-    titel: 'In der Hosentasche',
-    text:
-      'Mitarbeiter-App für iPhone und Android, Programm für den Rechner — '
-      + 'und alles funktioniert auch ohne Netz.',
-  },
-  {
-    titel: 'Datenschutz eingebaut',
-    text:
-      'Auskunft nach Art. 15 auf Knopfdruck, ein Löschkonzept über alle '
-      + 'Tabellen, Server in Deutschland.',
-  },
-  {
-    titel: 'Wir bleiben dran',
-    text:
-      'Ändern sich Ihre Regeln, ändern wir sie mit. Das ist kein '
-      + 'Zusatzauftrag, sondern der Kern der Sache.',
-  },
-]
-
-/** Wie eine Zusammenarbeit anfängt — ehrlich, inklusive der Wartezeit. */
+/** Wie eine Zusammenarbeit anfängt. */
 export const ABLAUF: Punkt[] = [
   {
-    titel: 'Zuhören',
+    titel: 'Sie zeigen uns Ihren Alltag',
     text:
-      'Wir lassen uns zeigen, wie bei Ihnen geplant wird. Nicht wie es im '
-      + 'Lehrbuch steht — wie es bei Ihnen läuft.',
+      'Wie arbeiten Sie heute? Wo entstehen doppelte Arbeit, Excel-Listen, '
+      + 'Rückfragen oder manuelle Übergaben?',
   },
   {
-    titel: 'Aufschreiben',
+    titel: 'Wir bilden Ihr Unternehmen ab',
     text:
-      'Ihre Regeln kommen als lesbares Dokument zurück. Erst wenn Sie sagen '
-      + '„so ist es richtig", wird programmiert.',
+      'Mitarbeiter, Standorte, Rollen, Arbeitszeiten, Regeln und Abläufe '
+      + 'werden so eingerichtet, dass OKUN Workforce zu Ihrem Betrieb passt.',
   },
   {
-    titel: 'Einrichten',
+    titel: 'Alles greift ineinander',
     text:
-      'Stammdaten, Bereiche, Dienstzeiten, Zugänge. Den ersten Plan rechnen '
-      + 'wir gemeinsam und sehen ihn zusammen durch.',
+      'Personalplanung, Abwesenheiten, Zeiten, Mitarbeiterdaten und '
+      + 'Abrechnung arbeiten anschließend mit denselben Informationen.',
   },
   {
-    titel: 'Dranbleiben',
+    titel: 'Der Alltag wird einfacher',
     text:
-      'Im Betrieb ändert sich etwas — eine neue Abteilung, eine neue '
-      + 'Vereinbarung. Wir ziehen das Regelwerk nach.',
+      'Ihre Mitarbeiter nutzen OKUN Workforce genauso wie Ihre Verwaltung – '
+      + 'jeweils mit den Funktionen und Informationen, die sie für ihre '
+      + 'Arbeit brauchen.',
   },
 ]
 
 export const SCHLUSS = {
-  titel: 'Sehen Sie es an Ihrem eigenen Dienstplan.',
+  titel: 'Wie viele Programme braucht es heute, um einen Mitarbeiter zu verwalten?',
+  betont: 'Mit OKUN Workforce reicht eines.',
   text:
-    'Im Gespräch rechnen wir eine echte Woche aus Ihrem Betrieb durch — mit '
-    + 'Ihren Regeln, Ihren Leuten, Ihren Ausfällen. Danach wissen Sie, ob '
-    + 'es passt.',
+    'Recruiting, Personalplanung, Arbeitszeit, Mitarbeiterverwaltung und '
+    + 'Lohnabrechnung – miteinander verbunden in einem System.',
+  knopf: 'OKUN Workforce kennenlernen',
 }
 
 // ── Funktionsseite ──────────────────────────────────────────────────────────
 
 export const FUNKTIONEN_KOPF = {
-  vorspann: 'Der volle Umfang',
-  titel: 'Das ganze Programm.',
+  vorspann: 'Ein Mitarbeiter. Ein System. Vom ersten Kontakt bis zum Lohn.',
+  zeilen: ['Alles, was Personal ausmacht.', 'Alles miteinander verbunden.'],
   text:
-    'Alles, was OKUN Workforce kann — ohne Auslassung. Jeder Punkt ist '
-    + 'gebaut und wird bei jeder Auslieferung automatisch nachgeprüft.',
+    'Recruiting, Personalakte, Planung, Zeiterfassung, Abwesenheiten, '
+    + 'Kommunikation, Auswertungen und Lohnabrechnung greifen in OKUN '
+    + 'Workforce ineinander – statt als einzelne Lösungen nebeneinander zu '
+    + 'stehen.',
 }
 
 export interface Bereich {
@@ -182,19 +186,22 @@ export interface Bereich {
 /**
  * §177 Vollständig, und das ist wörtlich gemeint.
  *
- * Die Liste ist aus der Navigation der Anwendung und dem Nachweisverzeichnis
- * (`pruefungen/README.md`) zusammengetragen. Wer hier etwas ergänzt, das es
- * nicht gibt, macht aus einer Übersicht ein Versprechen.
+ * Die Einleitungssätze sind vom Eigentümer. Die Funktionslisten darunter
+ * sind aus der Navigation der Anwendung und dem Nachweisverzeichnis
+ * (`pruefungen/README.md`) zusammengetragen: Wer eine Software für Lohn
+ * sucht, hat eine Liste im Kopf, die er abhaken will — fehlt sein Punkt,
+ * nimmt er an, es gibt ihn nicht, und ruft nicht an.
  *
- * §178 Die Begriffe sind branchenneutral: „Bereich" und „Abteilung" statt
- * „Etage" und „Gruppe". Ein Pflegeheim liest das eine mit, ein Logistiker
- * das andere — wer nur eine Branche bedient, verliert die andere.
+ * Wer hier etwas ergänzt, das es nicht gibt, macht aus einer Übersicht ein
+ * Versprechen.
  */
 export const BEREICHE: Bereich[] = [
   {
     titel: 'Dienstplanung',
     einleitung:
-      'Ein Optimierer verteilt die Dienste. Was er entscheidet, legt er offen.',
+      'Planen Sie Arbeitszeiten und Dienste nach den tatsächlichen Regeln '
+      + 'Ihres Unternehmens – mit Verfügbarkeiten, Qualifikationen, '
+      + 'Vertretungen und fairer Verteilung direkt in der Berechnung.',
     punkte: [
       'Wochen-, Zwei-Wochen- und Monatsplanung mit einem Rechenkern, der alle Möglichkeiten prüft',
       'Ihr eigenes Regelwerk als geprüfter Code — Arbeitszeitmodelle, feste freie Tage, Mindestbesetzung je Bereich',
@@ -213,7 +220,9 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Zeiterfassung',
     einleitung:
-      'Vom Stempeln bis zum Stundenkonto — auch ohne Netz.',
+      'Arbeitszeiten am Gerät oder Smartphone erfassen, Über- und '
+      + 'Minusstunden verfolgen und Zuschläge automatisch aus den '
+      + 'tatsächlichen Zeiten ableiten.',
     punkte: [
       'Stempeluhr am Gerät und im Telefon, mit Zeitstempel vom Gerät',
       'Warteschlange ohne Netz: nachgereicht, sobald wieder Empfang da ist',
@@ -229,7 +238,8 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Abwesenheiten',
     einleitung:
-      'Urlaub, Krankheit, Betriebsferien — beantragt im Telefon, sofort im Plan.',
+      'Urlaub, Krankheit, Betriebsferien und weitere Abwesenheiten zentral '
+      + 'verwalten – und unmittelbar in der Personalplanung berücksichtigen.',
     punkte: [
       'Urlaubsanträge mit Jahresplanung und Resturlaub',
       'Krankmeldung mit Krankenschein, Fristenprüfung nach §5 EntgFG',
@@ -242,7 +252,9 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Lohnabrechnung',
     einleitung:
-      'Vom Brutto bis zum Beleg, nach deutschem Recht und mit Paragraph an jeder Zahl.',
+      'Aus freigegebenen Arbeitszeiten wird die Abrechnung: mit Lohnsteuer, '
+      + 'Sozialversicherung, Zuschlägen, Korrekturen, Lohnbeleg sowie DATEV- '
+      + 'und SEPA-Ausgabe.',
     punkte: [
       'Lohnsteuer nach Steuerklasse, Kinderfreibeträgen und Kirchensteuer',
       'Sozialversicherung mit allen vier Zweigen und den Grenzen des Jahres',
@@ -266,7 +278,9 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Personalakte und Nachweise',
     einleitung:
-      'Was ablaufen kann, meldet sich von selbst — statt im Ordner zu verstauben.',
+      'Mitarbeiterdaten, Pflichtnachweise, Vertragsfristen und Belehrungen '
+      + 'zentral verwalten – inklusive Erinnerung, wenn etwas abläuft oder '
+      + 'fehlt.',
     punkte: [
       'Stammdaten, Rollen und Zugänge je Person',
       'Einladung per E-Mail mit eigenem Zugangslink',
@@ -280,7 +294,8 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Kommunikation',
     einleitung:
-      'Alles an einem Ort, statt in drei Messengern.',
+      'Chat, Ankündigungen und Einspringanfragen direkt dort organisieren, '
+      + 'wo auch Mitarbeiter, Teams und Standorte verwaltet werden.',
     punkte: [
       'Chat zwischen Beschäftigten, einzeln und in Gruppen',
       'Gespräche zu zweit sind für niemanden sonst einsehbar — auch nicht für die Leitung',
@@ -293,7 +308,8 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Auswertungen',
     einleitung:
-      'Zahlen, die eine Entscheidung tragen.',
+      'Verteilung, Belastung und Entwicklungen im Team sichtbar machen und '
+      + 'frühzeitig erkennen, wo personelle Engpässe entstehen können.',
     punkte: [
       'Team-Kennzahlen: Verteilung, Belastung, Trends',
       'Personalrisiko: wo es eng wird, bevor es eng wird',
@@ -305,7 +321,8 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Recruiting',
     einleitung:
-      'Von der Stelle bis zur Einstellung, ohne Medienbruch.',
+      'Stellen veröffentlichen, Bewerbungen begleiten und neue Mitarbeiter '
+      + 'nach der Einstellung direkt in OKUN Workforce übernehmen.',
     punkte: [
       'Stellen ausschreiben',
       'Eigene Karriereseite, ohne Anmeldung erreichbar',
@@ -316,7 +333,8 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Mehrere Standorte',
     einleitung:
-      'Für Unternehmen mit mehr als einem Haus.',
+      'Standorte, Bereiche und Verantwortlichkeiten getrennt verwalten und '
+      + 'gleichzeitig den Überblick über das gesamte Unternehmen behalten.',
     punkte: [
       'Standorte und Bereiche mit eigener Leitung',
       'Bereichsleitung sieht nur ihre Bereiche',
@@ -327,7 +345,8 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Datenschutz',
     einleitung:
-      'Nicht nachträglich draufgesetzt, sondern eingebaut.',
+      'Auskunft, Löschung, Aufbewahrung und Zugriffsschutz als fester '
+      + 'Bestandteil des Systems statt als nachträgliche Zusatzaufgabe.',
     punkte: [
       'Auskunft nach Art. 15 DSGVO auf Knopfdruck, als PDF und als Datei zum Mitnehmen',
       'Löschkonzept über alle Tabellen, mit Vorschau vor jeder Löschung',
@@ -341,7 +360,8 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Auf jedem Gerät',
     einleitung:
-      'Im Browser, auf dem Telefon, als Programm auf dem Rechner.',
+      'Im Browser, auf iPhone und Android sowie als Programm für Windows, '
+      + 'macOS und Linux – mit Funktionen, die auch offline weiterarbeiten.',
     punkte: [
       'Mitarbeiter-App für iPhone und Android',
       'Gesichts- oder Fingerabdruck-Sperre vor Lohn- und Personaldaten',
@@ -367,9 +387,27 @@ export const FUNKTIONEN_SCHLUSS = {
 // ── Kontakt ─────────────────────────────────────────────────────────────────
 
 export const KONTAKT = {
-  vorspann: 'Reden wir',
-  titel: 'Erzählen Sie uns von Ihrem Betrieb.',
+  vorspann: 'Schauen wir uns an, was Sie heute noch von Hand machen.',
+  zeilen: ['Ihre Abläufe zuerst.', 'Unsere Software danach.'],
   text:
-    'Wie viele Standorte, wie viele Beschäftigte, und was beim Planen jedes '
-    + 'Mal weh tut. Wir melden uns innerhalb eines Werktags.',
+    'Zeigen Sie uns, wie Sie heute Mitarbeiter verwalten, planen, Zeiten '
+    + 'erfassen und abrechnen. Wir zeigen Ihnen, wie OKUN Workforce daraus '
+    + 'einen durchgängigen Ablauf macht – passend zu Ihrem Unternehmen.',
+  knopf: 'Gespräch vereinbaren',
 }
+
+// ── Überall ─────────────────────────────────────────────────────────────────
+
+export const FUSS = {
+  claim: 'Ihre gesamte Personalarbeit. Ein System.',
+  text:
+    'Recruiting, Mitarbeiterverwaltung, Personalplanung, Arbeitszeit, '
+    + 'Abwesenheiten und Lohnabrechnung – miteinander verbunden.',
+  rechte: 'OKUN Systems. Alle Rechte vorbehalten.',
+}
+
+/** Der Text, den Google unter dem Link anzeigt. */
+export const BESCHREIBUNG =
+  'OKUN Workforce verbindet Recruiting, Mitarbeiterverwaltung, '
+  + 'Personalplanung, Zeiterfassung und Lohnabrechnung in einer zentralen '
+  + 'Plattform.'

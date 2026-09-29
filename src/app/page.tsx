@@ -2,12 +2,15 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { ArrowRight, Check } from 'lucide-react'
 import { anbieter } from '@/lib/dsgvo-verzeichnis'
-import { WebsiteKopf, WebsiteFuss, Gespraech } from '@/components/website/Rahmen'
+import { WebsiteKopf, WebsiteFuss } from '@/components/website/Rahmen'
 import { AngemeldeteWeiterleiten } from '@/components/website/AngemeldeteWeiterleiten'
-import { KOPF, KERN, REGELARTEN, STAERKEN, ABLAUF, SCHLUSS } from '@/lib/website-inhalt'
+import {
+  KOPF, STAERKEN, KERN, KERN_PUNKTE, ABLAUF, SCHLUSS, BESCHREIBUNG,
+} from '@/lib/website-inhalt'
 
 /**
- * §177 Die Startseite — die erste Seite, die jemand von OKUN Workforce sieht.
+ * §177/§179 Die Startseite — die erste Seite, die jemand von OKUN Workforce
+ * sieht.
  *
  * WAS HIER VORHER STAND
  * Eine Weiterleitung auf `/login`. Wer die Adresse aufrief, sah ein
@@ -25,10 +28,8 @@ import { KOPF, KERN, REGELARTEN, STAERKEN, ABLAUF, SCHLUSS } from '@/lib/website
  */
 
 export const metadata: Metadata = {
-  title: 'Dienstplanung, die Ihre Regeln kennt',
-  description:
-    'Dienstplanung, Zeiterfassung und Lohnabrechnung in einem Programm — '
-    + 'mit dem Regelwerk Ihres Betriebs, programmiert statt angekreuzt.',
+  title: 'Vom Bewerber bis zum Lohn',
+  description: BESCHREIBUNG,
 }
 
 export default function Startseite() {
@@ -53,7 +54,12 @@ export default function Startseite() {
         />
 
         <div className="relative mx-auto max-w-6xl px-5 pb-16 pt-16 sm:pb-24 sm:pt-24">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
+          {/*
+            §179 Der Vorspann ist ein ganzer Satz, kein Schlagwort — deshalb
+            darf er umbrechen und bekommt eine Breite. Mit `tracking-[0.2em]`
+            wie bei einem kurzen Wort wäre er auf dem Telefon unlesbar.
+          */}
+          <p className="max-w-2xl text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold">
             {KOPF.vorspann}
           </p>
           <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.1] text-white text-balance sm:text-6xl">
@@ -61,7 +67,7 @@ export default function Startseite() {
             <br />
             <span className="text-brand">{KOPF.zeilen[1]}</span>
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-navy-300">
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-navy-300">
             {KOPF.text}
           </p>
 
@@ -85,13 +91,13 @@ export default function Startseite() {
         </div>
       </section>
 
-      {/* ── Stärken ────────────────────────────────────────────────── */}
+      {/* ── Die sechs Kacheln ──────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-5 pb-16 sm:pb-24">
         <div className="grid gap-px overflow-hidden rounded-3xl border border-white/8 bg-white/5 sm:grid-cols-2 lg:grid-cols-3">
           {STAERKEN.map(s => (
             <div key={s.titel} className="bg-navy-900 p-7">
-              <p className="font-bold text-white">{s.titel}</p>
-              <p className="mt-2 text-sm leading-relaxed text-navy-400">{s.text}</p>
+              <p className="font-bold leading-snug text-white text-balance">{s.titel}</p>
+              <p className="mt-2.5 text-sm leading-relaxed text-navy-400">{s.text}</p>
             </div>
           ))}
         </div>
@@ -100,13 +106,15 @@ export default function Startseite() {
       {/* ── Der Unterschied ────────────────────────────────────────── */}
       <section className="border-y border-white/5 bg-navy-800/40">
         <div className="mx-auto max-w-6xl px-5 py-16 sm:py-24">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+          <div className="grid gap-12 lg:grid-cols-2">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
                 {KERN.vorspann}
               </p>
-              <h2 className="mt-4 text-3xl font-bold text-white text-balance sm:text-4xl">
-                {KERN.titel}
+              <h2 className="mt-4 text-3xl font-bold leading-tight text-white text-balance sm:text-4xl">
+                {KERN.zeilen[0]}
+                <br />
+                <span className="text-brand">{KERN.zeilen[1]}</span>
               </h2>
               {KERN.absaetze.map((p, i) => (
                 <p key={i} className="mt-4 leading-relaxed text-navy-300">{p}</p>
@@ -114,30 +122,19 @@ export default function Startseite() {
             </div>
 
             {/*
-              §178 Die ART von Regel, nicht die Regel eines Kunden.
-
-              Hier standen zuerst sechs Regeln aus dem Regelpaket eines
-              echten Betriebs. Das wirkte überzeugend und war trotzdem
-              falsch: Wie ein Kunde plant, ist sein Betriebsablauf. Er
-              gehört ihm, nicht uns, und schon gar nicht ins Schaufenster.
+              §178 Die Liste nennt, was das System zusammenhält — keine
+              Regeln aus einem echten Kundenbetrieb. Wie ein Kunde plant,
+              gehört ihm, nicht ins Schaufenster.
             */}
-            <div className="rounded-3xl border border-white/8 bg-navy-900 p-7">
-              <p className="text-xs font-bold uppercase tracking-wider text-navy-500">
-                Regeln, die wir bauen
-              </p>
-              <ul className="mt-5 space-y-3.5">
-                {REGELARTEN.map(regel => (
-                  <li key={regel} className="flex gap-3">
-                    <Check size={16} className="mt-0.5 shrink-0 text-brand" />
-                    <span className="text-sm leading-relaxed text-navy-200">{regel}</span>
+            <div className="self-start rounded-3xl border border-white/8 bg-navy-900 p-7 lg:sticky lg:top-24">
+              <ul className="space-y-4">
+                {KERN_PUNKTE.map(punkt => (
+                  <li key={punkt} className="flex gap-3">
+                    <Check size={17} className="mt-0.5 shrink-0 text-brand" />
+                    <span className="leading-relaxed text-navy-200">{punkt}</span>
                   </li>
                 ))}
               </ul>
-              <p className="mt-6 border-t border-white/5 pt-5 text-xs leading-relaxed text-navy-500">
-                Was für Ihren Betrieb gilt, besprechen wir mit Ihnen. Jede
-                vereinbarte Regel wird programmiert und bei jeder
-                Auslieferung an einem wirklich gerechneten Plan nachgeprüft.
-              </p>
             </div>
           </div>
         </div>
@@ -148,24 +145,48 @@ export default function Startseite() {
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
           So fangen wir an
         </p>
-        <h2 className="mt-4 max-w-2xl text-3xl font-bold text-white text-balance sm:text-4xl">
-          Erst verstehen. Dann bauen.
-        </h2>
 
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {ABLAUF.map((s, i) => (
             <div key={s.titel} className="rounded-2xl border border-white/8 bg-navy-800/40 p-6">
               <span className="text-sm font-bold text-gold">
                 {String(i + 1).padStart(2, '0')}
               </span>
-              <p className="mt-3 font-bold text-white">{s.titel}</p>
-              <p className="mt-2 text-sm leading-relaxed text-navy-400">{s.text}</p>
+              <p className="mt-3 font-bold leading-snug text-white text-balance">{s.titel}</p>
+              <p className="mt-2.5 text-sm leading-relaxed text-navy-400">{s.text}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <Gespraech titel={SCHLUSS.titel} text={SCHLUSS.text} />
+      {/* ── Schlussaufruf ──────────────────────────────────────────── */}
+      <section className="mx-auto max-w-6xl px-5 pb-16 sm:pb-24">
+        <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-navy-800 to-navy-900 p-8 sm:p-14">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full opacity-40 blur-3xl"
+            style={{ background: 'radial-gradient(circle, #C89C5B55, transparent 65%)' }}
+          />
+          <div className="relative flex flex-col gap-7 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl">
+              <h2 className="text-2xl font-bold leading-tight text-white text-balance sm:text-3xl">
+                {SCHLUSS.titel}
+              </h2>
+              <p className="mt-4 text-lg font-semibold text-brand">{SCHLUSS.betont}</p>
+              <p className="mt-2 leading-relaxed text-navy-300">{SCHLUSS.text}</p>
+            </div>
+            <Link
+              href="/kontakt"
+              data-test="schluss-knopf"
+              className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-gold px-6 py-3.5 text-sm font-bold text-navy-900 transition-transform hover:scale-[1.02] md:self-auto"
+            >
+              {SCHLUSS.knopf}
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <WebsiteFuss kontakt={a.kontakt} />
     </div>
   )

@@ -17,8 +17,8 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §177 Die öffentliche Website: Startseite, Funktionen, Kontakt |
-| **Nachweisstand** | 1467/1467 in 40 Prüfungen, 22 im Browser, 17 am Programmfenster, 128 im Rechendienst, 958 Modultests |
+| **Zuletzt fertig** | §179 Die finale Textfassung der Website ist eingebaut |
+| **Nachweisstand** | 1482/1482 in 40 Prüfungen, 22 im Browser, 17 am Programmfenster, 128 im Rechendienst, 958 Modultests |
 | **Als Nächstes** | Die Startseite vor der Anmeldung |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
@@ -159,11 +159,14 @@ Nach Dringlichkeit, nicht nach Bereich.
       Abnahme, als eine Paketzuordnung mitten in einem laufenden Plan scheiterte
 
 ### Sonst offen
-- [x] ~~**Die Startseite vor der Anmeldung**~~ ✅ §177 — drei Seiten:
-      Startseite, „Das ganze Programm" mit allen 95 Funktionen, und Kontakt
-      mit Formular. Die Texte stehen in `src/lib/website-inhalt.ts`, zum
-      Ändern ohne Code. Offen bleibt: echte Screenshots aus der App — dafür
-      muss der Demo-Mandant erst einen veröffentlichten Plan haben
+- [x] ~~**Die Startseite vor der Anmeldung**~~ ✅ §177/§179 — drei Seiten:
+      Startseite, „Alles, was Personal ausmacht" mit allen 95 Funktionen,
+      und Kontakt mit Formular. Die Texte kommen vom Eigentümer und stehen
+      in `src/lib/website-inhalt.ts`, zum Ändern ohne Code. Die
+      Positionierung ist bewusst größer als Dienstplanung: ein
+      durchgängiges System für Personalarbeit, vom Recruiting bis zum Lohn.
+      Offen bleibt: echte Screenshots aus der App — dafür muss der
+      Demo-Mandant erst einen veröffentlichten Plan haben
 - [x] ~~**Eine herunterladbare Fassung fürs Gerät**~~ ✅ §173 — ein Programm
       mit eigenem Symbol im Startmenü. `npm run desktop:win` baut das
       Installationsprogramm für Windows (ohne Administratorrechte

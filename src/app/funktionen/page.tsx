@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { Check } from 'lucide-react'
 import { anbieter } from '@/lib/dsgvo-verzeichnis'
-import { WebsiteKopf, WebsiteFuss, Gespraech } from '@/components/website/Rahmen'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
+import { WebsiteKopf, WebsiteFuss } from '@/components/website/Rahmen'
 import {
   FUNKTIONEN_KOPF, BEREICHE, FUNKTIONEN_SCHLUSS, SCHLUSS,
 } from '@/lib/website-inhalt'
@@ -24,11 +26,11 @@ import {
  */
 
 export const metadata: Metadata = {
-  title: 'Das ganze Programm',
+  title: 'Alles, was Personal ausmacht',
   description:
-    'Alle Funktionen von OKUN Workforce: Dienstplanung mit eigenem '
-    + 'Regelwerk, Zeiterfassung, Lohnabrechnung nach deutschem Recht, '
-    + 'Abwesenheiten, Nachweise, Recruiting und Datenschutz.',
+    'Alle Funktionen von OKUN Workforce: Recruiting, Personalakte, '
+    + 'Dienstplanung, Zeiterfassung, Abwesenheiten, Kommunikation, '
+    + 'Auswertungen und Lohnabrechnung — miteinander verbunden.',
 }
 
 export default function Funktionen() {
@@ -46,11 +48,13 @@ export default function Funktionen() {
           style={{ background: 'radial-gradient(circle, #26C6C633, transparent 60%)' }}
         />
         <div className="relative mx-auto max-w-6xl px-5 py-16 sm:py-20">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
+          <p className="max-w-2xl text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold">
             {FUNKTIONEN_KOPF.vorspann}
           </p>
-          <h1 className="mt-5 text-4xl font-bold text-white text-balance sm:text-5xl">
-            {FUNKTIONEN_KOPF.titel}
+          <h1 className="mt-5 text-4xl font-bold leading-tight text-white text-balance sm:text-5xl">
+            {FUNKTIONEN_KOPF.zeilen[0]}
+            <br />
+            <span className="text-brand">{FUNKTIONEN_KOPF.zeilen[1]}</span>
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-relaxed text-navy-300">
             {FUNKTIONEN_KOPF.text}
@@ -118,7 +122,34 @@ export default function Funktionen() {
         </section>
       </div>
 
-      <Gespraech titel={SCHLUSS.titel} text={SCHLUSS.text} />
+      {/* Schlussaufruf — derselbe Text wie auf der Startseite. */}
+      <section className="mx-auto max-w-6xl px-5 pb-16 sm:pb-24">
+        <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-navy-800 to-navy-900 p-8 sm:p-14">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full opacity-40 blur-3xl"
+            style={{ background: 'radial-gradient(circle, #C89C5B55, transparent 65%)' }}
+          />
+          <div className="relative flex flex-col gap-7 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl">
+              <h2 className="text-2xl font-bold leading-tight text-white text-balance sm:text-3xl">
+                {SCHLUSS.titel}
+              </h2>
+              <p className="mt-4 text-lg font-semibold text-brand">{SCHLUSS.betont}</p>
+              <p className="mt-2 leading-relaxed text-navy-300">{SCHLUSS.text}</p>
+            </div>
+            <Link
+              href="/kontakt"
+              data-test="schluss-knopf"
+              className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-gold px-6 py-3.5 text-sm font-bold text-navy-900 transition-transform hover:scale-[1.02] md:self-auto"
+            >
+              {SCHLUSS.knopf}
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <WebsiteFuss kontakt={a.kontakt} />
     </div>
   )

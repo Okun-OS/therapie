@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Check, AlertTriangle, Loader } from 'lucide-react'
+import { KONTAKT } from '@/lib/website-inhalt'
 
 /**
  * §177 Das Kontaktformular.
@@ -149,7 +150,7 @@ export function Kontaktformular() {
         className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gold px-6 py-3.5 text-sm font-bold text-navy-900 transition-transform hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100"
       >
         {laeuft && <Loader size={15} className="animate-spin" />}
-        {laeuft ? 'Wird gesendet …' : 'Anfrage senden'}
+        {laeuft ? 'Wird gesendet …' : KONTAKT.knopf}
       </button>
     </form>
   )
