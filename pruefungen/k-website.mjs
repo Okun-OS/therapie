@@ -37,7 +37,30 @@ check('Die Startseite leitet nicht mehr sofort auf die Anmeldung um',
   start.status === 200 && start.text.length > 2000,
   `HTTP ${start.status}, ${start.text.length} Zeichen`)
 check('Sie nennt, worum es geht', /Dienstplan/i.test(start.text))
-check('Und für wen', /Pflege|Kita|Eingliederungshilfe/i.test(start.text))
+check('Und dass es um Unternehmen geht',
+  /Unternehmen|Betrieb/i.test(start.text))
+
+// §178 Zwei Gegenproben zu Fehlern der ersten Fassung.
+//
+// ERSTENS: Keine Kundeninterna. Dort standen sechs Regeln aus dem
+// Regelpaket eines echten Betriebs — mit Vornamen und Gruppennummern. Das
+// wirkte ueberzeugend und war trotzdem falsch: Wie ein Kunde plant, ist
+// sein Betriebsablauf und gehoert ihm.
+const startText = start.text.replace(/<[^>]*>/g, ' ')
+for (const spur of ['Heike', 'Gruppe 1', 'Gruppe 7', 'Eingewöhnung', 'Springerin']) {
+  check(`Keine Kundeninterna auf der Startseite: „${spur}"`,
+    !startText.includes(spur),
+    'Wie ein Kunde plant, gehoert ihm — nicht ins Schaufenster')
+}
+
+// ZWEITENS: Keine Einengung auf eine Branche. OKUN Workforce ist fuer jedes
+// Unternehmen mit Personal und Schichten. Wer eine Branche nennt, schliesst
+// alle anderen aus — und ein Logistiker liest nicht weiter.
+for (const branche of ['Kita', 'Eingliederungshilfe', 'soziale Einrichtung']) {
+  check(`Die Startseite engt nicht auf „${branche}" ein`,
+    !new RegExp(branche, 'i').test(startText),
+    'Das Programm ist fuer alle Unternehmen')
+}
 check('Ein Weg zur Anmeldung steht auf der Seite',
   /href="\/login"/.test(start.text))
 check('Ein Weg zum Kontakt auch', /href="\/kontakt"/.test(start.text))
@@ -81,6 +104,15 @@ for (const [begriff, warum] of [
   check(`„${begriff}" wird genannt`,
     new RegExp(begriff, 'i').test(funktionen.text), warum)
 }
+
+const funktionenText = funktionen.text.replace(/<[^>]*>/g, ' ')
+for (const branche of ['Kita', 'Eingliederungshilfe']) {
+  check(`Die Funktionsseite engt nicht auf „${branche}" ein`,
+    !new RegExp(branche, 'i').test(funktionenText))
+}
+check('Sie spricht von Bereichen, nicht von Etagen und Gruppen',
+  /Bereich/i.test(funktionenText) && !/\bEtage/i.test(funktionenText),
+  'Branchenneutrale Begriffe: ein Pflegeheim liest das eine mit, ein Logistiker das andere')
 
 // ── K3 Das Kontaktformular ─────────────────────────────────────────────────
 console.log('\n=== K3 Das Kontaktformular ===')

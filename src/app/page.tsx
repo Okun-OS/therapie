@@ -4,7 +4,7 @@ import { ArrowRight, Check } from 'lucide-react'
 import { anbieter } from '@/lib/dsgvo-verzeichnis'
 import { WebsiteKopf, WebsiteFuss, Gespraech } from '@/components/website/Rahmen'
 import { AngemeldeteWeiterleiten } from '@/components/website/AngemeldeteWeiterleiten'
-import { KOPF, KERN, STAERKEN, ABLAUF, SCHLUSS } from '@/lib/website-inhalt'
+import { KOPF, KERN, REGELARTEN, STAERKEN, ABLAUF, SCHLUSS } from '@/lib/website-inhalt'
 
 /**
  * §177 Die Startseite — die erste Seite, die jemand von OKUN Workforce sieht.
@@ -27,9 +27,8 @@ import { KOPF, KERN, STAERKEN, ABLAUF, SCHLUSS } from '@/lib/website-inhalt'
 export const metadata: Metadata = {
   title: 'Dienstplanung, die Ihre Regeln kennt',
   description:
-    'Dienstplanung, Zeiterfassung und Lohnabrechnung für Pflege, Kita und '
-    + 'Eingliederungshilfe. Mit dem Regelwerk Ihrer Einrichtung — '
-    + 'programmiert, nicht angekreuzt.',
+    'Dienstplanung, Zeiterfassung und Lohnabrechnung in einem Programm — '
+    + 'mit dem Regelwerk Ihres Betriebs, programmiert statt angekreuzt.',
 }
 
 export default function Startseite() {
@@ -115,23 +114,19 @@ export default function Startseite() {
             </div>
 
             {/*
-              Ein echtes Beispiel statt einer Grafik. Diese Regeln stehen so
-              im Regelpaket einer Kita, die damit plant — sie sind nicht
-              ausgedacht, und genau das macht sie überzeugend.
+              §178 Die ART von Regel, nicht die Regel eines Kunden.
+
+              Hier standen zuerst sechs Regeln aus dem Regelpaket eines
+              echten Betriebs. Das wirkte überzeugend und war trotzdem
+              falsch: Wie ein Kunde plant, ist sein Betriebsablauf. Er
+              gehört ihm, nicht uns, und schon gar nicht ins Schaufenster.
             */}
             <div className="rounded-3xl border border-white/8 bg-navy-900 p-7">
               <p className="text-xs font-bold uppercase tracking-wider text-navy-500">
-                Aus einem echten Regelwerk
+                Regeln, die wir bauen
               </p>
               <ul className="mt-5 space-y-3.5">
-                {[
-                  'Heike hat freitags fest frei.',
-                  'In Gruppe 1 stehen zur Kernzeit immer zwei Personen.',
-                  'Kein Dienst endet zwischen 15:30 und 17:00.',
-                  'Wer seine Gruppe verlässt, lässt eine eigene Kraft zurück.',
-                  'Aus einer Gruppe in Eingewöhnung wird niemand abgezogen.',
-                  'Die Leitung springt nur im Notfall ein.',
-                ].map(regel => (
+                {REGELARTEN.map(regel => (
                   <li key={regel} className="flex gap-3">
                     <Check size={16} className="mt-0.5 shrink-0 text-brand" />
                     <span className="text-sm leading-relaxed text-navy-200">{regel}</span>
@@ -139,7 +134,8 @@ export default function Startseite() {
                 ))}
               </ul>
               <p className="mt-6 border-t border-white/5 pt-5 text-xs leading-relaxed text-navy-500">
-                Jede dieser Regeln ist programmiert und wird bei jeder
+                Was für Ihren Betrieb gilt, besprechen wir mit Ihnen. Jede
+                vereinbarte Regel wird programmiert und bei jeder
                 Auslieferung an einem wirklich gerechneten Plan nachgeprüft.
               </p>
             </div>

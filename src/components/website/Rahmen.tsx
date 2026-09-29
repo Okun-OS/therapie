@@ -94,9 +94,9 @@ export function WebsiteFuss({ kontakt }: { kontakt: string | null }) {
           <div className="max-w-sm">
             <Logo variant="wordmark" onDark iconSize={32} />
             <p className="mt-4 text-sm leading-relaxed text-navy-400">
-              Dienstplanung, Zeiterfassung und Lohnabrechnung für
-              Einrichtungen, in denen Menschen betreut werden — und in denen
-              ein falscher Dienstplan mehr kaputt macht als einen Nachmittag.
+              Dienstplanung, Zeiterfassung und Lohnabrechnung in einem
+              Programm — für Unternehmen, in denen ein falscher Dienstplan
+              mehr kaputt macht als einen Nachmittag.
             </p>
           </div>
 

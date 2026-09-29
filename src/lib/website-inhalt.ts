@@ -6,6 +6,21 @@
  * Wer dafür durch JSX klettern muss, ändert sie nicht mehr. Hier steht sie
  * als lesbare Liste; die Seiten daneben ordnen sie nur an.
  *
+ * §178 ZWEI REGELN, DIE AUS EINEM FEHLER ENTSTANDEN SIND
+ *
+ *   KEINE KUNDENINTERNA. In der ersten Fassung standen hier sechs Regeln
+ *   aus dem Regelpaket eines echten Kunden — „Heike hat freitags fest
+ *   frei", „in Gruppe 1 stehen zwei Personen". Das wirkte überzeugend und
+ *   war trotzdem falsch: Es ist der Betriebsablauf eines Kunden, und der
+ *   gehört ihm, nicht uns. Beispiele auf dieser Seite beschreiben die ART
+ *   von Regel, nie eine konkrete aus einem echten Haus.
+ *
+ *   KEINE EINENGUNG AUF EINE BRANCHE. Ebenfalls in der ersten Fassung stand
+ *   überall „für Pflege, Kita und Eingliederungshilfe". Das war eine
+ *   Erfindung: OKUN Workforce ist für jedes Unternehmen mit Personal und
+ *   Schichten. Wer eine Branche nennt, schließt alle anderen aus — und ein
+ *   Logistiker, der nach Dienstplanung sucht, liest nicht weiter.
+ *
  * DREI DINGE, DIE HIER BEWUSST FEHLEN
  *   Preise — sie stehen nicht fest, und eine erfundene Zahl auf einer
  *   Verkaufsseite ist schlimmer als keine.
@@ -14,9 +29,9 @@
  *   zugestimmt hat.
  *
  *   „Jetzt kostenlos testen" — ein Betrieb kann sich hier nicht selbst
- *   anlegen, und das ist Absicht: Die Dienstplanung wird je Kunde von Hand
- *   gebaut (§126). Ein Knopf, der etwas verspricht, was das Programm nicht
- *   kann, ist eine Lüge im Schaufenster.
+ *   anlegen, und das ist Absicht: Das Regelwerk entsteht im Gespräch
+ *   (§126). Ein Knopf, der etwas verspricht, was das Programm nicht kann,
+ *   ist eine Lüge im Schaufenster.
  */
 
 export interface Punkt {
@@ -27,17 +42,15 @@ export interface Punkt {
 // ── Startseite ──────────────────────────────────────────────────────────────
 
 export const KOPF = {
-  vorspann: 'Für Pflege, Kita und Eingliederungshilfe',
+  vorspann: 'Personalplanung für Unternehmen',
   zeilen: ['Der Dienstplan', 'kennt Ihre Regeln.'],
-  /** Diese Zeile wird farbig hervorgehoben — sie ist der Kern. */
-  betont: 'Ihre Regeln.',
   text:
     'Dienstplanung, Zeiterfassung und Lohnabrechnung in einem Programm. '
-    + 'Mit den Regeln Ihrer Einrichtung — nicht mit denen von der Stange.',
+    + 'Mit den Regeln Ihres Betriebs — nicht mit denen von der Stange.',
 }
 
 /**
- * §126/§163 Das Verkaufsargument, das sonst niemand hat.
+ * §126 Das Verkaufsargument, das sonst niemand hat.
  *
  * Jede Software verteilt Schichten. Was hier anders ist: Die Regeln eines
  * Betriebs werden als Code geschrieben, geprüft und versioniert —
@@ -48,15 +61,31 @@ export const KERN = {
   vorspann: 'Der Unterschied',
   titel: 'Ihr Regelwerk wird gebaut, nicht angekreuzt.',
   absaetze: [
-    'In jeder Einrichtung gelten Regeln, die in keinem Formular stehen. Wer '
-    + 'donnerstags fest frei hat. Dass in Gruppe 1 immer zwei Leute stehen '
-    + 'müssen. Dass eine Kraft ihre Gruppe nur verlässt, wenn eine andere '
-    + 'eigene bleibt. Dass in der Eingewöhnung niemand abgezogen wird.',
-    'Solche Regeln lassen sich nicht ankreuzen. Wir schreiben sie für Ihre '
-    + 'Einrichtung auf, programmieren sie und prüfen sie an echten Plänen — '
+    'In jedem Betrieb gelten Regeln, die in keinem Formular stehen. Wer an '
+    + 'welchem Tag nicht kann. Welche Qualifikation in jeder Schicht dabei '
+    + 'sein muss. Welche Abteilung niemanden abgeben darf, solange dort '
+    + 'eingearbeitet wird. Wer wen vertreten darf — und wer eben nicht.',
+    'Solche Regeln lassen sich nicht ankreuzen. Wir schreiben sie für Ihren '
+    + 'Betrieb auf, programmieren sie und prüfen sie an echten Plänen — '
     + 'bevor jemand damit arbeitet.',
   ],
 }
+
+/**
+ * §178 Die Art von Regel, nicht die Regel eines Kunden.
+ *
+ * Diese Liste steht auf der Startseite neben dem Text. Sie nennt bewusst
+ * Kategorien statt Beispielen aus einem echten Haus: Was ein Betrieb mit
+ * uns vereinbart, ist sein Betriebsablauf und gehört ihm.
+ */
+export const REGELARTEN: string[] = [
+  'Feste freie Tage und Arbeitszeitmodelle einzelner Personen',
+  'Mindestbesetzung je Bereich, Schicht oder Tageszeit',
+  'Qualifikationen, die in jeder Schicht vertreten sein müssen',
+  'Wer wen vertreten darf — und aus welchem Bereich niemand abgezogen wird',
+  'Verteilung über Wochen: Früh, Spät, Wochenende, ungeliebte Tage',
+  'Was passieren soll, wenn es nicht aufgeht',
+]
 
 /** Die Kacheln unter dem Aufmacher. */
 export const STAERKEN: Punkt[] = [
@@ -69,7 +98,7 @@ export const STAERKEN: Punkt[] = [
   {
     titel: 'Ihr Regelwerk',
     text:
-      'Die Regeln Ihres Hauses werden programmiert und an echten Plänen '
+      'Die Regeln Ihres Betriebs werden programmiert und an echten Plänen '
       + 'abgenommen — nicht in Formularen angekreuzt.',
   },
   {
@@ -115,13 +144,13 @@ export const ABLAUF: Punkt[] = [
   {
     titel: 'Einrichten',
     text:
-      'Stammdaten, Gruppen, Dienstzeiten, Zugänge. Den ersten Plan rechnen '
+      'Stammdaten, Bereiche, Dienstzeiten, Zugänge. Den ersten Plan rechnen '
       + 'wir gemeinsam und sehen ihn zusammen durch.',
   },
   {
     titel: 'Dranbleiben',
     text:
-      'Im Betrieb ändert sich etwas — eine neue Gruppe, eine neue '
+      'Im Betrieb ändert sich etwas — eine neue Abteilung, eine neue '
       + 'Vereinbarung. Wir ziehen das Regelwerk nach.',
   },
 ]
@@ -129,7 +158,7 @@ export const ABLAUF: Punkt[] = [
 export const SCHLUSS = {
   titel: 'Sehen Sie es an Ihrem eigenen Dienstplan.',
   text:
-    'Im Gespräch rechnen wir eine echte Woche aus Ihrem Haus durch — mit '
+    'Im Gespräch rechnen wir eine echte Woche aus Ihrem Betrieb durch — mit '
     + 'Ihren Regeln, Ihren Leuten, Ihren Ausfällen. Danach wissen Sie, ob '
     + 'es passt.',
 }
@@ -156,6 +185,10 @@ export interface Bereich {
  * Die Liste ist aus der Navigation der Anwendung und dem Nachweisverzeichnis
  * (`pruefungen/README.md`) zusammengetragen. Wer hier etwas ergänzt, das es
  * nicht gibt, macht aus einer Übersicht ein Versprechen.
+ *
+ * §178 Die Begriffe sind branchenneutral: „Bereich" und „Abteilung" statt
+ * „Etage" und „Gruppe". Ein Pflegeheim liest das eine mit, ein Logistiker
+ * das andere — wer nur eine Branche bedient, verliert die andere.
  */
 export const BEREICHE: Bereich[] = [
   {
@@ -164,13 +197,13 @@ export const BEREICHE: Bereich[] = [
       'Ein Optimierer verteilt die Dienste. Was er entscheidet, legt er offen.',
     punkte: [
       'Wochen-, Zwei-Wochen- und Monatsplanung mit einem Rechenkern, der alle Möglichkeiten prüft',
-      'Ihr eigenes Regelwerk als geprüfter Code — Tagesmuster, feste freie Tage, Mindestbesetzung je Gruppe',
-      'Etagen, Gruppen und Bereiche als Planungsstruktur',
+      'Ihr eigenes Regelwerk als geprüfter Code — Arbeitszeitmodelle, feste freie Tage, Mindestbesetzung je Bereich',
+      'Standorte, Bereiche und Teams als Planungsstruktur',
       'Dienstwünsche der Beschäftigten, mit nachvollziehbarer Abwägung',
-      'Fairness über Wochen hinweg: Früh-, Spät- und Freitagsdienste werden gleichmäßig verteilt',
+      'Fairness über Wochen hinweg: Früh-, Spät- und Wochenenddienste werden gleichmäßig verteilt',
       'Vertretung bei Ausfall: wer kann, wer darf, wer bleibt zurück',
       'Schichttausch zwischen Beschäftigten, mit Freigabe durch die Leitung',
-      'Maßnahmen-Vorschläge, wenn es nicht aufgeht — nachgerechnet, dann zum Genehmigen oder Ablehnen',
+      'Vorschläge, wenn es nicht aufgeht — nachgerechnet, dann zum Genehmigen oder Ablehnen',
       'Planvarianten zum Vergleich: ausgewogen, mitarbeiterfreundlich, maximal fair',
       'Aufgabenkatalog: To-dos und Checklisten je Dienst',
       'Veröffentlichen mit Benachrichtigung an alle Betroffenen',
@@ -180,7 +213,7 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Zeiterfassung',
     einleitung:
-      'Vom Stempeln bis zum Stundenkonto — auch im Funkloch.',
+      'Vom Stempeln bis zum Stundenkonto — auch ohne Netz.',
     punkte: [
       'Stempeluhr am Gerät und im Telefon, mit Zeitstempel vom Gerät',
       'Warteschlange ohne Netz: nachgereicht, sobald wieder Empfang da ist',
@@ -196,12 +229,12 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Abwesenheiten',
     einleitung:
-      'Urlaub, Krankheit, Schließzeiten — beantragt im Telefon, sofort im Plan.',
+      'Urlaub, Krankheit, Betriebsferien — beantragt im Telefon, sofort im Plan.',
     punkte: [
       'Urlaubsanträge mit Jahresplanung und Resturlaub',
       'Krankmeldung mit Krankenschein, Fristenprüfung nach §5 EntgFG',
       'Lücken bei fehlender Folgebescheinigung werden benannt',
-      'Schließzeiten und Pflichturlaub für den ganzen Betrieb',
+      'Betriebsferien und Pflichturlaub für den ganzen Betrieb',
       'Mutterschutz und Beschäftigungsverbote',
       'Abwesenheiten wirken sofort auf den Dienstplan',
     ],
@@ -237,9 +270,9 @@ export const BEREICHE: Bereich[] = [
     punkte: [
       'Stammdaten, Rollen und Zugänge je Person',
       'Einladung per E-Mail mit eigenem Zugangslink',
-      'Pflichtnachweise mit Ablaufdatum: Führungszeugnis, Erste Hilfe, Hygiene',
+      'Pflichtnachweise mit Ablaufdatum: Schulungen, Unterweisungen, Führerscheine, Zertifikate',
       'Nachweise anfordern, einreichen, nachfragen, abnehmen',
-      'Belehrungen verteilen und bestätigen lassen, mit Beleg',
+      'Belehrungen und Unterweisungen verteilen und bestätigen lassen, mit Beleg',
       'Eingliederungsmanagement (BEM) ab der gesetzlichen Schwelle — und abgeschirmt vor allen, die es nichts angeht',
       'Vertragsfristen mit Erinnerung',
     ],
@@ -253,7 +286,7 @@ export const BEREICHE: Bereich[] = [
       'Gespräche zu zweit sind für niemanden sonst einsehbar — auch nicht für die Leitung',
       'Tritt die Leitung einer Gruppe bei, steht das sichtbar im Verlauf',
       'Benachrichtigungen auf das Telefon, auch bei geschlossener App',
-      'Einspringen-Anfragen mit Eskalation: erst die Gruppe, dann die Etage, dann alle',
+      'Einspringen-Anfragen mit Eskalation: erst das Team, dann der Bereich, dann alle',
       'Ankündigungen an ganze Standorte',
     ],
   },
@@ -283,7 +316,7 @@ export const BEREICHE: Bereich[] = [
   {
     titel: 'Mehrere Standorte',
     einleitung:
-      'Für Träger mit mehr als einem Haus.',
+      'Für Unternehmen mit mehr als einem Haus.',
     punkte: [
       'Standorte und Bereiche mit eigener Leitung',
       'Bereichsleitung sieht nur ihre Bereiche',
@@ -312,7 +345,7 @@ export const BEREICHE: Bereich[] = [
     punkte: [
       'Mitarbeiter-App für iPhone und Android',
       'Gesichts- oder Fingerabdruck-Sperre vor Lohn- und Personaldaten',
-      'Kamera für den Krankenschein, ohne Umweg über die Dateiauswahl',
+      'Kamera für Nachweise und Bescheinigungen, ohne Umweg über die Dateiauswahl',
       'Programm für Windows, macOS und Linux — mit eigenem Symbol im Startmenü',
       'Drucken ohne Browserrand: ein Lohnbeleg für die Personalakte',
       'Funktioniert im Funkloch und reicht nach, sobald wieder Netz da ist',
@@ -335,7 +368,7 @@ export const FUNKTIONEN_SCHLUSS = {
 
 export const KONTAKT = {
   vorspann: 'Reden wir',
-  titel: 'Erzählen Sie uns von Ihrem Haus.',
+  titel: 'Erzählen Sie uns von Ihrem Betrieb.',
   text:
     'Wie viele Standorte, wie viele Beschäftigte, und was beim Planen jedes '
     + 'Mal weh tut. Wir melden uns innerhalb eines Werktags.',
