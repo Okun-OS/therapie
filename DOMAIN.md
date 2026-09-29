@@ -36,13 +36,24 @@ Werte, die du drüben eintragen musst.
 3. `okun-workforce.com` eintragen
 4. Dasselbe noch einmal für `www.okun-workforce.com`
 
-Railway zeigt dir daraufhin **zwei Zeilen je Domain**: einen Zielnamen (etwas
-wie `abc123.up.railway.app`) und einen TXT-Eintrag zur Bestätigung.
+Railway zeigt dir daraufhin unter **„Show DNS records"** zwei Zeilen je
+Domain — so sahen sie am 29.09.2026 aus:
 
-> **Beide sind nötig.** Ohne den TXT-Eintrag liefert die Domain später einen
-> 404 — die Seite ist dann da, aber Railway weiß nicht, dass sie dir gehört.
+| Type | Name | Value |
+|---|---|---|
+| CNAME | `@` | `moziea51.up.railway.app` |
+| TXT | **`_railway-verify`** | `railway-verify=a0e01073…` |
 
-**Schreib dir die vier Werte auf** oder lass das Fenster offen.
+> **Beide sind nötig.** Ohne den TXT liefert die Domain einen 404 — die Seite
+> ist da, aber Railway weiß nicht, dass sie dir gehört.
+
+> **Die Falle, in die wir gelaufen sind:** Der TXT gehört auf den Namen, den
+> Railway nennt — **`_railway-verify`**, mit Unterstrich davor. Nicht auf `@`,
+> nicht auf `www`. Er lag zuerst auf `www`, und Railway blieb gelb, obwohl
+> alles andere stimmte. Der Name steht in der Spalte *Name* des Dialogs; lies
+> ihn dort ab, statt zu raten.
+
+**Schreib dir die Werte auf** oder lass das Fenster offen.
 
 ---
 
@@ -81,11 +92,17 @@ Immer noch unter *Custom Records*, jetzt **Add record**:
 
 | Typ | Name | Data |
 |---|---|---|
-| **ALIAS** | `@` | der Zielname von Railway, z. B. `abc123.up.railway.app` |
+| **ALIAS** | `@` | der Zielname von Railway, z. B. `moziea51.up.railway.app` |
+| **TXT** | **`_railway-verify`** | der Bestätigungswert von Railway |
 | **CNAME** | `www` | derselbe Zielname von Railway |
-| **TXT** | wie Railway es nennt | der Bestätigungswert von Railway |
 
-Hat Railway für `www` einen eigenen TXT genannt, den auch.
+> **Railway schreibt bei der ersten Zeile „CNAME", Squarespace braucht
+> „ALIAS".** Der Zielwert ist derselbe. CNAME auf `@` verbieten die
+> DNS-Regeln selbst — ALIAS ist die Antwort darauf, und Squarespace bietet
+> ihn an.
+
+`www` braucht einen **eigenen** Bestätigungswert: Leg dafür in Railway eine
+zweite Custom Domain an, dann nennt Railway ihn.
 
 **Ohne Schrägstrich am Ende, ohne `https://` davor** — nur der nackte Name.
 
@@ -146,14 +163,17 @@ den Code anzufassen.
 
 ---
 
-## Wenn der ALIAS nicht greift
+## Der ALIAS funktioniert — nachgemessen
 
-Squarespace steht nicht auf Railways Liste der ausdrücklich unterstützten
-Anbieter — die nennt Cloudflare, DNSimple, Namecheap und bunny.net. Die
-Technik passt (Squarespace bietet ALIAS an, Railway akzeptiert ALIAS), aber
-eine Zusage von beiden Seiten ist das nicht.
+Am 29.09.2026 geprüft: `okun-workforce.com` und `moziea51.up.railway.app`
+lösen auf **dieselbe IP** auf, und Railway hat den Eintrag grün abgehakt.
+Squarespaces ALIAS zieht Railway korrekt nach.
 
-Sollte es nach zwei Stunden nicht gehen, ist der Ausweg kein Drama:
+Das ist erwähnenswert, weil Squarespace nicht auf Railways Liste der
+ausdrücklich unterstützten Anbieter steht — die nennt Cloudflare, DNSimple,
+Namecheap und bunny.net. Es geht trotzdem.
+
+## Falls es doch einmal klemmt: der Weg über Cloudflare
 
 1. Kostenloses Konto bei **Cloudflare**, Domain hinzufügen
 2. Cloudflare liest die vorhandenen Einträge ein und nennt zwei Nameserver
