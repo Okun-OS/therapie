@@ -249,3 +249,72 @@ describe('§46 Combined — hard violations always lower the gesamtScore', () =>
     }
   })
 })
+
+// ─── §181 Wer abwesend ist, verfehlt sein Soll nicht ─────────────────────────
+//
+// Beim Durchstich wurde eine Kraft fuer acht Wochen krankgeschrieben. Der Plan
+// war danach richtig — sie kam in keinem Dienst mehr vor. Der Bericht meldete
+// trotzdem „0 statt 35 Std. in der Woche ab …", mit der Schwere „hoch", also
+// so dringlich wie eine unbesetzte Gruppe.
+//
+// Das ist aus zwei Gruenden schlimm: Es ist falsch, und es ist genau die Art
+// von Meldung, nach der eine Leitung aufhoert, die Liste zu lesen.
+
+describe('§181 Stundenabweichung bei Abwesenheit', () => {
+  const DAYS = ['2024-01-08', '2024-01-09', '2024-01-10', '2024-01-11', '2024-01-12']
+  const SHIFTS = [sch('t8', '07:00', '15:30')]
+
+  // Ein Kollege mit einem echten Dienst muss dabei sein: Ein voellig leerer
+  // Plan bricht die Bewertung schon vorher mit „hr-leerplan" ab, und dann
+  // wuerde diese Pruefung etwas ganz anderes messen.
+  function mitBilanz(
+    mitarbeiter: PlanungsMitarbeiter[],
+    bilanz: GenerierterPlan['stundenbilanz'],
+  ) {
+    const m = model([...mitarbeiter, emp('e2')], SHIFTS, DAYS)
+    const p: GenerierterPlan = {
+      ...plan([entry('e2', DAYS[0], 't8')]),
+      stundenbilanz: bilanz,
+    }
+    return verifyPlan(p, m).verletzungen.filter(v => v.regelId === 'st-abweichung')
+  }
+
+  const BILANZ = [{
+    mitarbeiterId: 'e1', woche: '2024-01-08',
+    sollStunden: 35, istStunden: 0, abweichungStunden: -35,
+  }]
+
+  it('meldet nichts, wenn die Person die ganze Woche krank war', () => {
+    const krank = emp('e1', { nichtVerfuegbarAn: DAYS })
+    expect(mitBilanz([krank], BILANZ)).toEqual([])
+  })
+
+  it('meldet auch bei Urlaub ueber die ganze Woche nichts', () => {
+    const urlaub = emp('e1', { urlaubAn: DAYS })
+    expect(mitBilanz([urlaub], BILANZ)).toEqual([])
+  })
+
+  // Die Gegenprobe: Ohne Abwesenheit ist dieselbe Luecke sehr wohl eine
+  // Meldung — sonst waere aus der Verbesserung ein blinder Fleck geworden.
+  it('meldet dieselbe Luecke ohne Abwesenheit weiterhin, und zwar schwer', () => {
+    const treffer = mitBilanz([emp('e1')], BILANZ)
+    expect(treffer).toHaveLength(1)
+    expect(treffer[0].schwere).toBe('hoch')
+  })
+
+  it('meldet bei teilweiser Abwesenheit weiter — aber nicht mehr als schwer', () => {
+    const teils = emp('e1', { nichtVerfuegbarAn: [DAYS[0], DAYS[1]] })
+    const treffer = mitBilanz([teils], BILANZ)
+    expect(treffer).toHaveLength(1)
+    expect(treffer[0].schwere).toBe('niedrig')
+    expect(treffer[0].beschreibung).toContain('an 2 von 5 Tagen abwesend')
+  })
+
+  it('schweigt weiterhin bei einer halben Stunde Abweichung', () => {
+    const klein = [{
+      mitarbeiterId: 'e1', woche: '2024-01-08',
+      sollStunden: 35, istStunden: 34.6, abweichungStunden: -0.4,
+    }]
+    expect(mitBilanz([emp('e1')], klein)).toEqual([])
+  })
+})

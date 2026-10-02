@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { getLocationModel } from '@/lib/company-model-service'
 import { compileRuleSet } from '@/lib/rule-compiler'
+import { pruefeTagesmuster } from '@/lib/tagesmuster'
 import type { CanonicalRule, CanonicalRuleSet } from '@/lib/rule-dsl'
 import type {
   PlanningRuleModel,
@@ -525,6 +526,19 @@ export async function buildRuleModel(
       ? unitLookup.get(emp.gruppe) ?? unitLookup.get(emp.gruppe.toLowerCase())
       : undefined
 
+    /*
+     * §181 Das Tagesmuster aus den Stammdaten.
+     *
+     * Beim Speichern wird es gegen die Stundenzahl geprüft, es kann hier also
+     * nicht mehr danebenliegen. Trotzdem wird noch einmal gelesen statt
+     * durchgereicht, und Ungültiges wird WEGGELASSEN statt mitgeschickt: In
+     * der Datenbank kann aus einem Import oder einer alten Zeile etwas stehen,
+     * das die Prüfung nie gesehen hat. Ein kaputtes Muster darf dann die
+     * betroffene Person ungenauer planen — aber nicht den ganzen Standort
+     * ohne Dienstplan dastehen lassen.
+     */
+    const tagesmuster = pruefeTagesmuster(empProfile?.tagesmuster).muster
+
     return {
       id: emp.id,
       name: emp.name,
@@ -539,6 +553,12 @@ export async function buildRuleModel(
       verfuegbareSchichtTypen: (emp.workDays?.length ? ['frueh', 'spaet', 'mittel'] : ['frueh', 'spaet', 'nacht', 'mittel']) as SchichtTyp[],
       wochenstundenSoll,
       arbeitstageProWoche: emp.workDaysPerWeek ?? 5,
+      ...(tagesmuster ? { tagesmuster } : {}),
+      // §181 Die dauerhafte Schichtvorliebe. Sie wird oben schon in weiche
+      // Wünsche je Tag übersetzt — die wiegen aber zu leicht, um eine Zusage
+      // zu sein. Ein Regelpaket, das sie ernst nehmen soll, braucht sie als
+      // Angabe, nicht als Wunschliste.
+      ...(persistentPref !== 'keine' ? { vorliebe: persistentPref } : {}),
       qualifikationen: emp.qualifications,
       nichtVerfuegbarAn: nichtVerfuegbar,
       urlaubAn,

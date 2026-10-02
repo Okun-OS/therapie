@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/session'
 import { assertEmployeeAccess } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
+import { pruefeTagesmuster, moeglicheArbeitstage } from '@/lib/tagesmuster'
 
 /**
  * §171 Diese Route prüfte die Rolle, aber nicht den Standort.
@@ -58,6 +60,30 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     planungsStundenSoll = zahl
   }
 
+  /*
+   * §181 Das Tagesmuster — und die Prüfung, die den Betrieb davor bewahrt,
+   * ohne Dienstplan dazustehen.
+   *
+   * Muster und Stundenzahl müssen zusammenpassen. Tun sie es nicht, findet
+   * der Rechendienst keinen zulässigen Plan — nicht für diese Person, sondern
+   * für den ganzen Standort — und meldet dabei Ursachen, die nicht zutreffen
+   * (Urlaube, Ruhezeiten, Stundenlimit). Deshalb wird hier abgelehnt, mit
+   * den beiden Zahlen im Satz, und nicht später im Rechendienst.
+   */
+  const mitarbeiter = await prisma.employee.findUnique({
+    where: { id: params.id },
+    select: { weeklyHours: true, workDaysPerWeek: true, fixedOffDays: true },
+  })
+  const sollStunden = planungsStundenSoll ?? mitarbeiter?.weeklyHours ?? null
+  const geprueft = pruefeTagesmuster(
+    body.tagesmuster,
+    sollStunden,
+    moeglicheArbeitstage(mitarbeiter?.workDaysPerWeek, mitarbeiter?.fixedOffDays),
+  )
+  if (geprueft.fehler) {
+    return NextResponse.json({ error: geprueft.fehler }, { status: 400 })
+  }
+
   const werte = {
     shiftPreference: shiftPreference ?? 'keine',
     childPickupTimes: childPickupTimes ?? [],
@@ -65,6 +91,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     weekendRule: weekendRule ?? null,
     planningNote: planningNote ?? null,
     planungsStundenSoll,
+    // Prisma kennt für ein JSON-Feld nur sein eigenes Eingabeformat; eine
+    // Liste von Objekten passt erst nach dieser Umdeutung hinein. Geprüft ist
+    // sie an dieser Stelle längst.
+    tagesmuster: geprueft.muster
+      ? (geprueft.muster as unknown as Prisma.InputJsonValue)
+      : Prisma.DbNull,
     surchargeMode: surchargeMode ?? 'unternehmensregel',
     surchargeOverrides: surchargeOverrides ?? null,
   }

@@ -4,6 +4,7 @@ import { requireRole, resolveCustomerId } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
 import { restlosEntfernen } from '@/lib/dsgvo-loeschung'
+import { pruefeTagesmuster, musterText } from '@/lib/tagesmuster'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +30,53 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const body = await req.json()
+
+  /*
+   * §181 Stunden und Tagesmuster dürfen nicht auseinanderlaufen.
+   *
+   * WAS PASSIERT, WENN SIE ES DOCH TUN
+   * Das Tagesmuster sagt „fünfmal sieben Stunden", die Maske sagt „28 Stunden
+   * in der Woche". Für den Rechendienst sind das zwei harte Bedingungen, die
+   * einander ausschließen — und er findet dann nicht etwa für diese Person
+   * keinen Dienst, sondern FÜR DEN GANZEN STANDORT keinen Plan. Gemeldet hat
+   * er dabei Urlaube, Ruhezeiten und das Stundenlimit: drei Ursachen, von
+   * denen keine zutraf.
+   *
+   * Nachgemessen am 02.10.2026 im Demo-Betrieb, einmal in jede Richtung:
+   * 35 → Plan, 28 → kein Plan, 40 → kein Plan, 35 → Plan.
+   *
+   * WARUM DIE PRÜFUNG HIER STEHT UND NICHT NUR BEIM MUSTER
+   * Es gibt zwei Türen in denselben Widerspruch. Die eine ist das Muster
+   * (dort wird seit §181 geprüft), die andere ist diese: die Stundenzahl.
+   * Eine Leitung, die nur die Stunden ändert, hätte den Betrieb sonst
+   * genauso lahmgelegt — und hätte nicht einmal gewusst, dass es ein Muster
+   * gibt.
+   *
+   * Abgelehnt wird mit beiden Zahlen im Satz und dem Hinweis, was zu tun ist.
+   */
+  if (body.weeklyHours !== undefined && body.weeklyHours !== null) {
+    const neueStunden = Number(body.weeklyHours)
+    if (Number.isFinite(neueStunden)) {
+      const profil = await prisma.employeePlanningProfile.findUnique({
+        where: { employeeId: params.id },
+        select: { tagesmuster: true, planungsStundenSoll: true },
+      })
+      const gelesen = pruefeTagesmuster(profil?.tagesmuster)
+      // Gibt es Planstunden, hängt das Muster an ihnen und nicht an den
+      // Vertragsstunden — dann ändert diese Zahl am Dienstplan nichts.
+      const massgeblich = profil?.planungsStundenSoll ?? neueStunden
+      if (gelesen.muster && Math.abs(gelesen.wochenstunden - massgeblich) > 0.001) {
+        return NextResponse.json({
+          error: `Für diese Person ist ein Tagesmuster hinterlegt `
+            + `(${musterText(gelesen.muster)} = ${gelesen.wochenstunden} Std. je Woche). `
+            + `${massgeblich} Wochenstunden passen nicht dazu. Bitte das Muster im `
+            + `Planungsprofil mit ändern — sonst lässt sich für diesen Standort `
+            + `kein Dienstplan mehr rechnen.`,
+          code: 'TAGESMUSTER_PASST_NICHT',
+        }, { status: 400 })
+      }
+    }
+  }
 
   // Build a clean fields object, explicitly allowing avatarUrl
   const fields: Record<string, unknown> = { ...body }

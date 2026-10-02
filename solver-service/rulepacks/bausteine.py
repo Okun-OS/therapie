@@ -465,11 +465,108 @@ def tagesmuster(ctx: PlanKontext, name: str,
     In Wochen mit Abwesenheit gilt das Muster NICHT: Wer drei Tage Urlaub hat,
     kann keine vier Tage arbeiten. Dann greifen die ueblichen weichen Regeln.
     """
-    ei = ctx.person(name)
-    person = ctx.employees[ei].get("name", name)
+    _tagesmuster_anwenden(ctx, ctx.person(name), muster)
+
+
+def namen_mit_rolle(ctx: PlanKontext, *rollen: str) -> list[str]:
+    """
+    §181 Die Namen aller Personen mit dieser Funktion — fuer Regeln, die eine
+    ROLLE meinen und keinen Menschen.
+
+    „Die Leitung springt nur im Notfall ein" ist eine Aussage ueber eine
+    Funktion. Steht stattdessen ein Vorname im Paket, laeuft die Regel ins
+    Leere, sobald jemand anderes die Leitung uebernimmt — und zwar lautlos:
+    Der Plan entsteht weiter, nur ohne diese Regel.
+
+    Die Rolle kommt aus den Stammdaten (`position` / `funktion`) und wird dort
+    gepflegt. Findet sich niemand, ist das kein Fehler: Nicht jeder Betrieb hat
+    eine Springerin. Es steht im Protokoll, damit es jemand sieht.
+    """
+    treffer = ctx.mit_rolle(*rollen)
+    if not treffer:
+        ctx.notiere(f"Niemand mit der Funktion {list(rollen)} — Regel entfaellt.")
+        return []
+    return [ctx.employees[ei].get("name", "") for ei in treffer if ctx.employees[ei].get("name")]
+
+
+def tagesmuster_aus_stammdaten(ctx: PlanKontext) -> None:
+    """
+    §181 Jede Person arbeitet nach dem Muster, das in IHREN Stammdaten steht.
+
+    WAS VORHER HIER WAR
+    Eine Tabelle mit sechzehn Vornamen im Regelpaket des Kunden:
+
+        TAGESMUSTER = {"Marin": {8: 5}, "Heike": {8: 3, 6: 1}, ...}
+
+    Das hat zwei Dinge falsch gemacht. Es war erstens keine Betriebsregel,
+    sondern eine Angabe aus sechzehn Arbeitsvertraegen — ein Regelpaket soll
+    das Haus beschreiben, nicht die Belegschaft. Und es stand zweitens an
+    einem anderen Ort als die Wochenstundenzahl, mit der es uebereinstimmen
+    muss. Trug jemand in der Maske andere Stunden ein, widersprachen sich
+    beide, und `exakte_wochenstunden` machte daraus einen Widerspruch im
+    Modell: Dann kam nicht ein schlechterer Plan heraus, sondern GAR KEINER —
+    fuer den ganzen Standort, mit einer Fehlermeldung, die drei Ursachen nannte,
+    von denen keine zutraf.
+
+    Jetzt kommt beides aus derselben Quelle und wird beim Speichern zusammen
+    geprueft (`src/lib/tagesmuster.ts`). Ein Personalwechsel geht das Paket
+    nichts mehr an: Wer neu kommt, bekommt Stunden und Muster in der Maske,
+    und diese Regel greift von selbst.
+
+    WER KEIN MUSTER HAT, BEHAELT DIE ALTE FREIHEIT
+    Dann verteilt der Rechendienst die Wochenstunden wie bisher. Das ist
+    Absicht — nicht jeder Betrieb arbeitet in festen Tagesportionen, und ein
+    Muster zu erzwingen, das es nicht gibt, waere derselbe Fehler noch einmal.
+    """
+    mit_muster = 0
+    for ei, e in enumerate(ctx.employees):
+        muster = _muster_lesen(e.get("tagesmuster"))
+        if not muster:
+            continue
+        _tagesmuster_anwenden(ctx, ei, muster)
+        mit_muster += 1
+
+    if mit_muster == 0:
+        ctx.notiere(
+            "Kein Tagesmuster in den Stammdaten — die Wochenstunden werden "
+            "frei auf die Tage verteilt."
+        )
+    else:
+        ctx.notiere(f"{mit_muster} Personen arbeiten nach ihrem festen Tagesmuster.")
+
+
+def _muster_lesen(roh) -> dict[float, int]:
+    """
+    `[{"stunden": 8, "tage": 3}, ...]` → `{8: 3, ...}`.
+
+    Was nicht passt, wird uebergangen statt zu werfen. Ein einzelner krummer
+    Eintrag in den Stammdaten darf diese Person ungenauer planen — aber nicht
+    den Dienstplan des ganzen Hauses verhindern. Geprueft wird beim Speichern,
+    hier wird nur gelesen.
+    """
+    if not isinstance(roh, list):
+        return {}
+    muster: dict[float, int] = {}
+    for teil in roh:
+        if not isinstance(teil, dict):
+            continue
+        try:
+            stunden = float(teil["stunden"])
+            tage = int(teil["tage"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if stunden <= 0 or tage <= 0:
+            continue
+        muster[stunden] = muster.get(stunden, 0) + tage
+    return muster
+
+
+def _tagesmuster_anwenden(ctx: PlanKontext, ei: int, muster: dict[float, int]) -> None:
+    """Der gemeinsame Kern von `tagesmuster` und `tagesmuster_aus_stammdaten`."""
+    person = ctx.employees[ei].get("name", "?")
 
     gruppen_si = {}
-    for stunden, anzahl in muster.items():
+    for stunden in muster:
         gruppen_si[stunden] = ctx.dienste_mit_stunden(stunden)
 
     alle_erlaubt = set()
@@ -492,7 +589,7 @@ def tagesmuster(ctx: PlanKontext, name: str,
                 == anzahl
             )
 
-    teile = ", ".join(f"{a}× {st} Std." for st, a in sorted(muster.items(), reverse=True))
+    teile = ", ".join(f"{a}× {st:g} Std." for st, a in sorted(muster.items(), reverse=True))
     ctx.notiere(f"{person} arbeitet je volle Woche genau: {teile}.")
 
 
@@ -725,6 +822,48 @@ def moeglichst_nicht(ctx: PlanKontext, name: str, dienst_typ: str,
         f"{ctx.employees[ei].get('name', name)} bekommt „{dienst_typ}“ "
         "möglichst nicht (Vorliebe, kein Verbot)."
     )
+
+
+def vorlieben_aus_stammdaten(ctx: PlanKontext, gewicht: int = 2_000) -> None:
+    """
+    §181 Schichtvorlieben aus dem Planungsprofil — statt Namen im Regelpaket.
+
+    WAS HIER VORHER IM PAKET STAND
+    Zwei Zeilen mit zwei Vornamen: die eine moeglichst nicht in den
+    Spaetdienst, der andere moeglichst nicht in den Fruehdienst. Auch das ist
+    keine Betriebsregel, sondern eine Angabe ueber zwei Menschen — und beim
+    naechsten Personalwechsel stand sie fuer die Falschen da.
+
+    DIE LESART, UND WARUM SIE AUSGESCHRIEBEN GEHOERT
+    In den Stammdaten steht, welche Schichtart jemand BEVORZUGT. Diese Regel
+    liest daraus die Abneigung gegen die gegenueberliegende: Wer frueh
+    bevorzugt, bekommt moeglichst keinen Spaetdienst, und umgekehrt. Der
+    Mitteldienst bleibt davon unberuehrt — er ist fuer niemanden die
+    unangenehme Schicht, und wer ihn ausschloesse, haette aus einer Vorliebe
+    eine Dienstplansperre gemacht.
+
+    Ausdruecklich eine Vorliebe, kein Verbot. Das Gewicht liegt unter dem einer
+    unbesetzten Stelle (10 000) und unter der Fairness ueber die Wochen — sonst
+    truege die Vorliebe des einen dauerhaft jemand anderes.
+    """
+    GEGENTEIL = {"frueh": "spaet", "spaet": "frueh"}
+    beachtet = 0
+    for ei, e in enumerate(ctx.employees):
+        vorliebe = str(e.get("vorliebe") or "").strip().lower()
+        unerwuenscht = GEGENTEIL.get(vorliebe)
+        if not unerwuenscht:
+            continue
+        si_liste = ctx.dienste_vom_typ(unerwuenscht)
+        if not si_liste:
+            continue
+        treffer = sum(ctx.X[ei, di, si] for di in range(ctx.n_days) for si in si_liste)
+        ctx.strafe(gewicht, treffer)
+        beachtet += 1
+        ctx.notiere(
+            f'{e.get("name", "?")} bevorzugt {vorliebe} — moeglichst kein {unerwuenscht}.'
+        )
+    if beachtet == 0:
+        ctx.notiere("Keine Schichtvorlieben in den Stammdaten hinterlegt.")
 
 
 def nur_im_notfall(ctx: PlanKontext, name: str, gewicht: int = 9_000) -> None:

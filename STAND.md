@@ -17,9 +17,9 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §180 Überall dieselbe Wortmarke, und die Schrift des Logos auf der Website |
-| **Nachweisstand** | 1496/1496 in 40 Prüfungen, 44 im Browser, 17 am Programmfenster, 128 im Rechendienst, 976 Modultests |
-| **Als Nächstes** | Echte Bildschirmfotos aus der App auf die Website |
+| **Zuletzt fertig** | §181 Der Durchstich: vom Regelpaket bis in die App der Kraft — und das Tagesmuster raus aus dem Paket |
+| **Nachweisstand** | 1531/1531 in 41 Prüfungen, 44 im Browser, 17 am Programmfenster, 130 im Rechendienst, 1005 Modultests |
+| **Als Nächstes** | Beim Einrichten die Belegschaft gleich mit anlegen; „Gruppe ist unterwegs" vor der Planung |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
 > **Der Lohn-Block ist vollständig** (§155–§162). Pfändung, betriebliche
@@ -159,6 +159,33 @@ Nach Dringlichkeit, nicht nach Bereich.
       Abnahme, als eine Paketzuordnung mitten in einem laufenden Plan scheiterte
 
 ### Sonst offen
+- [x] ~~**Der Durchstich bis ins Konto der Beschäftigten**~~ ✅ §181 — bis dahin
+      hatte im Demo-Betrieb mit Regelpaket nur die Leitung einen Zugang. Der
+      Plan war auf ihrem Bildschirm geprüft, nie im Konto der Kraft, für die er
+      gerechnet wurde. Jetzt hat jede Kraft ein eigenes Konto, und
+      `pruefungen/f7-durchstich.mjs` geht die ganze Kette: planen,
+      veröffentlichen, als Beschäftigte ansehen — mit den Gegenproben, dass
+      eine Kollegin den Plan nicht sieht und ohne Anmeldung niemand.
+      **Der Durchstich hat drei echte Fehler gefunden:**
+      (1) Tagesmuster im Regelpaket und Stundenzahl in den Stammdaten konnten
+      einander widersprechen — dann kam nicht ein schlechterer Plan heraus,
+      sondern gar keiner, für den ganzen Standort, mit einer Meldung die drei
+      falsche Ursachen nannte;
+      (2) `/api/employee-planning-profile` hatte gar keine Zugriffsprüfung —
+      jede angemeldete Person konnte jedes Planungsprofil lesen und
+      überschreiben;
+      (3) wer acht Wochen krankgeschrieben war, wurde als schwere
+      Regelverletzung gemeldet („0 statt 35 Std."), obwohl der Plan stimmte
+- [x] ~~**Das Regelpaket kennt keine Namen mehr**~~ ✅ §181 — Tagesmuster,
+      feste freie Tage, Rollen und Schichtvorlieben standen als Tabellen mit
+      sechzehn Vornamen im Kita-Paket. Das sind Angaben aus Arbeitsverträgen,
+      keine Betriebsregeln. Sie stehen jetzt in den Personalakten; das Paket
+      beschreibt nur noch das Haus (Etagen öffnen und schließen, Gruppe 1 nie
+      unter zwei, wer abgibt lässt jemanden zurück) und überlebt damit jeden
+      Personalwechsel. Eine Gegenprobe im Rechendienst schlägt an, sobald
+      wieder ein Vorname in den Code wandert. Muster und Stundenzahl werden
+      beim Speichern gemeinsam geprüft — in beide Richtungen, denn es gibt
+      zwei Türen in denselben Widerspruch
 - [x] ~~**Die echte Wortmarke, überall**~~ ✅ §180 — auf dunklem Grund stand
       bisher kein Logo, sondern nachgebauter HTML-Text in Inter: andere
       Schrift, andere Sperrung, andere Strichstärke als im echten Logo. Der

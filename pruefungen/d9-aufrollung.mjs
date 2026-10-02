@@ -143,6 +143,26 @@ const ohneAuswahl = await sende(gf, '/api/payroll/aufrollen?uebernehmen=1', 'POS
   { jahr: vorJahr, fuer: [] })
 check('Ohne Auswahl wird nichts angelegt', ohneAuswahl.status === 400, ohneAuswahl.body.error)
 
+/*
+ * §181 Welche Korrekturen schon dalagen, bevor diese Prüfung eine anlegt.
+ *
+ * Die Prüfung suchte danach „die Korrektur für Anna im Ausgleichsmonat" — und
+ * nahm die erste, die sie fand. Im Oktober fand sie eine aus einem Lauf vom
+ * September, die inzwischen ausgezahlt war: Der Ausgangszustand räumt nur
+ * OFFENE Korrekturen weg, und eine ausgezahlte gehört zu Recht stehen
+ * gelassen. Der Nachweis prüfte damit eine fremde Zeile und meldete „Ursprung
+ * 8.2026" statt 9.2026.
+ *
+ * Aufgefallen beim ersten Gesamtlauf nach einem Monatswechsel — also genau
+ * dann, wenn niemand hinsieht. Regel 1 der README: Die Prüfung stellt ihren
+ * Ausgangszustand selbst her; wo das nicht geht, muss sie wenigstens wissen,
+ * was ihr gehört.
+ */
+const schonDa = new Set(
+  ((await hole(gf, `/api/payroll/aufrollen?jahr=${jahr}&monat=${monat}`)).body.korrekturen ?? [])
+    .map(x => x.id),
+)
+
 const uebernahme = await sende(gf, '/api/payroll/aufrollen?uebernehmen=1', 'POST', {
   jahr: vorJahr, grund: 'Heirat rückwirkend gemeldet',
   fuer: [`${annaId}|${vorMonat}`],
@@ -155,7 +175,8 @@ const wieder = (nochmal.body.abweichungen ?? []).find(a => a.employeeId === anna
 check('Ein zweiter Lauf legt sie NICHT doppelt an', wieder?.bereitsOffen === true)
 
 const offene = await hole(gf, `/api/payroll/aufrollen?jahr=${jahr}&monat=${monat}`)
-const k = (offene.body.korrekturen ?? []).find(x => x.employeeId === annaId)
+const k = (offene.body.korrekturen ?? [])
+  .find(x => x.employeeId === annaId && !schonDa.has(x.id))
 check('Die Korrektur steht im Ausgleichsmonat bereit', !!k, k?.text)
 check('Der Ursprungsmonat bleibt festgehalten — die Beiträge gehören dorthin',
   k?.jahr === vorJahr && k?.monat === vorMonat,

@@ -97,27 +97,35 @@ ETAGE_VON_GRUPPE = {g["id"]: g["etageId"] for g in GRUPPEN}
 
 # Vorname, Wochenstunden, Stammgruppe, Rolle.
 # Zwei heißen Katrin — genau wie im Regelwerk des Kunden.
+# §181 Tagesmuster und feste freie Tage stehen jetzt bei der PERSON, nicht
+# mehr im Regelpaket. Diese Tabelle ist damit genau das, was die App aus den
+# Stammdaten schickt — und die Prüfungen darunter sind unverändert geblieben:
+# Wenn dieselben Pläne herauskommen wie vorher, war die Verschiebung sauber.
+#
+# Name, Stunden, Gruppe, Rolle, Tagesmuster, feste freie Wochentage (0 = Mo),
+# Schichtvorliebe
 BELEGSCHAFT = [
-    ("Marin Berg",      40, "g1", "erzieher"),
-    ("Shelley Frei",    40, "g1", "erzieher"),
-    ("Stephanie Lang",  35, "g2", "erzieher"),
-    ("Christina Weiß",  35, "g2", "erzieher"),
-    ("Juliane Roth",    35, "g3", "erzieher"),
-    ("Kristine Mai",    40, "g3", "erzieher"),
-    ("Tim Sommer",      40, "g4", "erzieher"),
-    ("Sophia Klein",    35, "g4", "erzieher"),
-    ("Heike Stein",     30, "g5", "erzieher"),
-    ("Corinna Vogel",   40, "g5", "erzieher"),
-    ("Susan Hart",      40, "g6", "erzieher"),
-    ("Katrin K Nolte",  32, "g7", "erzieher"),
-    ("Daniel Fuchs",    35, "g7", "erzieher"),
-    ("Annika Peters",   24, "g7", "erzieher"),
-    ("Felix Arndt",     40, "g8", "erzieher"),
-    ("Katrin Ulrich",   32, "g8", "erzieher"),
-    ("Nicole Sprung",   25, None, "springer"),
+    ("Marin Berg",      40, "g1", "erzieher", [(8, 5)], (), None),
+    ("Shelley Frei",    40, "g1", "erzieher", [(8, 5)], (), None),
+    ("Stephanie Lang",  35, "g2", "erzieher", [(7, 5)], (), None),
+    ("Christina Weiß",  35, "g2", "erzieher", [(7, 5)], (), None),
+    ("Juliane Roth",    35, "g3", "erzieher", [(7, 5)], (), "frueh"),
+    ("Kristine Mai",    40, "g3", "erzieher", [(8, 5)], (), None),
+    ("Tim Sommer",      40, "g4", "erzieher", [(8, 5)], (), None),
+    ("Sophia Klein",    35, "g4", "erzieher", [(7, 5)], (), None),
+    ("Heike Stein",     30, "g5", "erzieher", [(8, 3), (6, 1)], (4,), None),
+    ("Corinna Vogel",   40, "g5", "erzieher", [(8, 5)], (), None),
+    ("Susan Hart",      40, "g6", "erzieher", [(8, 5)], (), None),
+    ("Katrin K Nolte",  32, "g7", "erzieher", [(8, 4)], (1,), None),
+    ("Daniel Fuchs",    35, "g7", "erzieher", [(7, 5)], (), None),
+    ("Annika Peters",   24, "g7", "erzieher", [(8, 3)], (3, 4), None),
+    ("Felix Arndt",     40, "g8", "erzieher", [(8, 5)], (), "spaet"),
+    ("Katrin Ulrich",   32, "g8", "erzieher", [(8, 4)], (2,), None),
+    ("Nicole Sprung",   25, None, "springer", [(5, 5)], (), None),
     # Leitungszeit steht nicht im Dienstplan — deshalb 0 Sollstunden für
-    # die Planung. Ihre 40 Vertragsstunden stehen im Lohnprofil.
-    ("Franke Leitner",   0, None, "leitung"),
+    # die Planung. Ihre 40 Vertragsstunden stehen im Lohnprofil. Kein Muster:
+    # Wer nicht verplant wird, braucht keines.
+    ("Franke Leitner",   0, None, "leitung", [], (), None),
 ]
 
 ID_VON = {name: name.split()[0].lower() + "-" + name.split()[-1].lower()
@@ -149,19 +157,32 @@ def regelmodell(abwesend: dict[str, list[str]] | None = None,
     historie = historie or {}
 
     mitarbeiter = []
-    for name, stunden, gruppe, rolle in BELEGSCHAFT:
+    for name, stunden, gruppe, rolle, muster, freieTage, vorliebe in BELEGSCHAFT:
         vorname = name.split()[0]
         mitarbeiter.append({
             "id": ID_VON[name],
             "name": name,
             "rolle": rolle,
+            # §181 Die App schickt beides mit: Die Rolle, damit das Paket
+            # Leitung und Springerin über die Funktion findet statt über einen
+            # Namen; und das Tagesmuster, weil es eine Angabe über diesen
+            # Menschen ist und nicht über diesen Betrieb.
+            "position": rolle,
+            "funktion": rolle,
             "einheiten": [gruppe] if gruppe else [g["id"] for g in GRUPPEN],
             "stammEinheitId": gruppe,
             "wochenstundenSoll": stunden,
             "arbeitstageProWoche": 5,
+            "tagesmuster": [{"stunden": st, "tage": n} for st, n in muster],
+            **({"vorliebe": vorliebe} if vorliebe else {}),
             "qualifikationen": [],
             "verfuegbareSchichtTypen": ["frueh", "spaet", "mittel"],
-            "nichtVerfuegbarAn": [],
+            # §181 Feste freie Wochentage kommen als Datumsliste an — genau so
+            # baut `rule-model-service.ts` sie aus `fixedOffDays` zusammen.
+            "nichtVerfuegbarAn": [
+                tag for tag in TAGE
+                if date.fromisoformat(tag).weekday() in freieTage
+            ],
             "urlaubAn": abwesend.get(vorname, []),
             "wuensche": wuensche.get(vorname, []),
             "letzteSchichten": [],
@@ -461,13 +482,23 @@ def test_leer_hoechstens_ein_frueh_und_ein_spaet_je_woche(leer):
 
 
 def test_leer_vorlieben_werden_beachtet(leer):
-    # Bei voller Besetzung gibt es genug andere — die Vorliebe muss greifen.
+    """
+    §181 Die Vorliebe kommt nicht mehr aus dem Regelpaket.
+
+    Dort standen zwei Namen mit ihren Abneigungen. Welche Schicht jemand
+    lieber mag, ist aber eine Angabe ueber diesen Menschen — sie steht im
+    Planungsprofil und erreicht den Rechendienst als weicher Wunsch, so wie
+    hier nachgebaut. Die Zusage, die geprueft wird, ist dieselbe geblieben:
+    Bei voller Besetzung gibt es genug andere, also muss die Vorliebe greifen.
+    """
+    # Die Vorlieben stehen in BELEGSCHAFT und reisen als `vorliebe` mit —
+    # genau so, wie die App sie aus dem Planungsprofil schickt.
     assert "spaet" not in leer.typen("Juliane Roth"), "Juliane hat Spätdienst"
     assert "frueh" not in leer.typen("Felix Arndt"), "Felix hat Frühdienst"
 
 
 def test_leer_alle_bleiben_in_ihrer_stammgruppe(leer):
-    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    stamm = {name: g for name, _, g, *_ in BELEGSCHAFT if g}
     fremd = [
         (name, t, leer.gruppe(name, t))
         for name, g in stamm.items()
@@ -540,7 +571,7 @@ def test_schwer_volle_wochen_treffen_die_sollzeit_trotzdem(schwer):
     abwesend = {"Kristine Mai", "Corinna Vogel", "Tim Sommer", "Susan Hart",
                 "Stephanie Lang", "Christina Weiß",
                 "Franke Leitner", "Daniel Fuchs"}
-    soll = {name: stunden * 60 for name, stunden, _, _ in BELEGSCHAFT}
+    soll = {name: stunden * 60 for name, stunden, *_ in BELEGSCHAFT}
     for name, *_ in BELEGSCHAFT:
         if name in abwesend:
             continue
@@ -720,7 +751,7 @@ def test_notlage_feste_freie_tage_gelten_auch_in_der_not(notlage):
 
 def test_notlage_niemand_bekommt_eine_fremde_dienstlaenge(notlage):
     """Auch in der Not wird keine Arbeitszeit erfunden."""
-    for name, stunden, _, rolle in BELEGSCHAFT:
+    for name, stunden, _, rolle, *_ in BELEGSCHAFT:
         if rolle == "leitung":
             continue
         for t in notlage.tage(name):
@@ -834,7 +865,7 @@ def test_g8_die_vertretung_kommt_von_der_eigenen_etage(gruppe8):
     300). Das reicht, solange nur eine Lücke zu füllen ist — bei zweien wird
     die Rechnung knapp. Deshalb legt das Paket noch etwas drauf.
     """
-    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    stamm = {name: g for name, _, g, *_ in BELEGSCHAFT if g}
     for t in (MITTWOCH1, MITTWOCH2):
         vertreter = [
             name for name, *_ in BELEGSCHAFT
@@ -849,7 +880,7 @@ def test_g8_die_vertretung_kommt_von_der_eigenen_etage(gruppe8):
 
 def test_g8_niemand_wechselt_ohne_not_die_etage(gruppe8):
     """Im ganzen Plan gibt es keinen einzigen Etagenwechsel."""
-    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    stamm = {name: g for name, _, g, *_ in BELEGSCHAFT if g}
     wechsel = [
         (name, t, gruppe8.gruppe(name, t))
         for name, g in stamm.items()
@@ -863,7 +894,7 @@ def test_g8_niemand_wechselt_ohne_not_die_etage(gruppe8):
 def test_g8_der_ausfall_kostet_nur_den_betroffenen_seine_stunden(gruppe8):
     """Alle anderen arbeiten ihre Sollzeit weiter — die Lücke wird nicht
     auf die Kollegen umgelegt."""
-    for name, stunden, _, rolle in BELEGSCHAFT:
+    for name, stunden, _, rolle, *_ in BELEGSCHAFT:
         if rolle == "leitung" or name.startswith("Felix"):
             continue
         for woche in (WOCHE1, WOCHE2):
@@ -921,7 +952,7 @@ def obere_etage_bricht_weg() -> Plan:
 
 def test_sperre_niemand_verlaesst_eine_gesperrte_gruppe(obere_etage_bricht_weg):
     """Aus der Eingewöhnung wird niemand abgezogen — egal wie eng es wird."""
-    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    stamm = {name: g for name, _, g, *_ in BELEGSCHAFT if g}
     for name, g in stamm.items():
         if g not in ("g1", "g3", "g4"):
             continue
@@ -948,7 +979,7 @@ def test_hoechstens_eine_fremde_kraft_je_gruppe(obere_etage_bricht_weg):
     Mehrere dürfen die Etage wechseln — aber nie zwei in dieselbe Gruppe.
     Eine Gruppe, die nur aus Vertretungen besteht, ist keine Gruppe mehr.
     """
-    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    stamm = {name: g for name, _, g, *_ in BELEGSCHAFT if g}
     for t in TAGE:
         for gid in ("g1", "g2", "g3", "g4", "g5", "g6", "g7", "g8"):
             fremde = [
@@ -1039,7 +1070,7 @@ def test_niemand_verlaesst_die_gruppe_als_letzte_eigene_kraft(obere_etage_bricht
     Christina darf donnerstags hoch, weil Stephanie in Gruppe 2 bleibt.
     Freitags ist Stephanie krank — dann bleibt Christina.
     """
-    stamm = {name: g for name, _, g, _ in BELEGSCHAFT if g}
+    stamm = {name: g for name, _, g, *_ in BELEGSCHAFT if g}
     p = obere_etage_bricht_weg
     for name, eigene in stamm.items():
         for t in p.tage(name):
@@ -1291,3 +1322,60 @@ def test_eine_sperre_bleibt_in_ihrem_eigenen_lauf():
     )
     # Und die Vorlage selbst ist auch unberührt.
     assert all("abgabeGesperrtBis" not in g for g in GRUPPEN), GRUPPEN
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §181 Die Gegenprobe zur Aufräumaktion
+#
+# Das Paket beschreibt das HAUS, nicht die Belegschaft. Diese beiden Prüfungen
+# halten das fest — ohne sie wandert beim nächsten Kundenwunsch wieder ein
+# Vorname hinein, und niemand merkt es, bis die Person das Haus verlässt.
+# ════════════════════════════════════════════════════════════════════════════
+
+def test_das_paket_kennt_keinen_einzigen_vornamen():
+    """
+    Im ausführbaren Teil des Pakets steht kein Name aus der Belegschaft.
+
+    Kommentare und Erklärtexte dürfen Namen nennen — sie erzählen, was einmal
+    passiert ist. Code darf es nicht: Ein Vorname im Code ist eine Regel, die
+    beim nächsten Personalwechsel lautlos ins Leere läuft.
+    """
+    import re
+    from pathlib import Path
+
+    quelle = (Path(__file__).parent / "rulepacks" / "kunden"
+              / "kita_zwei_etagen.py").read_text(encoding="utf-8")
+
+    # Docstrings und Kommentare entfernen — übrig bleibt, was ausgeführt wird.
+    ohne_docstrings = re.sub(r'"""(?:.|\n)*?"""', "", quelle)
+    code = "\n".join(zeile.split("#")[0] for zeile in ohne_docstrings.splitlines())
+
+    gefunden = [
+        name.split()[0] for name, *_ in BELEGSCHAFT
+        if re.search(r"\b" + re.escape(name.split()[0]) + r"\b", code)
+    ]
+    assert gefunden == [], (
+        f"Diese Namen stehen im ausführbaren Teil des Regelpakets: {gefunden}. "
+        "Angaben über einzelne Menschen gehören in die Personalakte."
+    )
+
+
+def test_ohne_tagesmuster_in_den_stammdaten_bleibt_der_plan_moeglich():
+    """
+    Wer kein Muster hinterlegt hat, wird verplant wie eh und je.
+
+    Das ist die wichtigere Hälfte der Verschiebung: Nicht jeder Betrieb
+    arbeitet in festen Tagesportionen. Ein Paket, das ohne Muster keinen Plan
+    mehr zustande brächte, wäre für jeden zweiten Kunden unbrauchbar — und der
+    Fehler fiele erst bei der Inbetriebnahme auf.
+    """
+    modell = regelmodell()
+    for m in modell["mitarbeiter"]:
+        m.pop("tagesmuster", None)
+    plan = Plan(rechne(modell))
+    assert plan.roh.get("eintraege"), "Ohne Tagesmuster kam gar kein Plan heraus"
+    paket = plan.roh.get("regelpaket") or {}
+    assert paket.get("angewendet"), f"Das Regelpaket lief nicht: {paket.get('fehler')}"
+    # Und der Hinweis steht im Protokoll, statt still zu verschwinden.
+    protokoll = " ".join(paket.get("regeln") or [])
+    assert "Tagesmuster" in protokoll, protokoll

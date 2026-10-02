@@ -193,6 +193,26 @@ export interface PlanungsMitarbeiter {
   verfuegbareSchichtTypen: SchichtTyp[]
   wochenstundenSoll: number
   arbeitstageProWoche: number
+  /**
+   * §181 Wie sich die Wochenstunden auf die Tage verteilen — `[{stunden, tage}]`.
+   *
+   * Stand bis zum 02.10.2026 als Namenstabelle im Regelpaket der Kita. Das war
+   * eine Angabe aus dem Arbeitsvertrag am falschen Ort: Sie konnte der
+   * Stundenzahl in den Stammdaten widersprechen, und dann kam kein schlechterer
+   * Plan heraus, sondern gar keiner. Jetzt stehen beide nebeneinander und
+   * werden zusammen geprüft, bevor gespeichert wird.
+   *
+   * Leer heißt: kein festes Muster, der Rechendienst verteilt wie bisher.
+   */
+  tagesmuster?: Array<{ stunden: number; tage: number }>
+  /**
+   * §181 Welche Schichtart dieser Mensch bevorzugt — „frueh", „spaet", „nacht".
+   *
+   * Steht im Planungsprofil. Ein Regelpaket liest daraus die Abneigung gegen
+   * die gegenüberliegende Schicht; vorher standen dafür zwei Vornamen im
+   * Paket der Kita.
+   */
+  vorliebe?: string
   qualifikationen: string[]
   nichtVerfuegbarAn: string[]
   urlaubAn: string[]

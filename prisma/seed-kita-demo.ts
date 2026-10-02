@@ -71,35 +71,94 @@ const DIENSTE = [
 
 /**
  * Die Belegschaft. Zwei heißen Katrin — genau wie im Regelwerk des Kunden.
- * Wer heiratet, heißt anders; deshalb unterscheidet das Regelpaket sie über
- * die Gruppe und nicht über den Nachnamen.
+ *
+ * §181 WAS HIER NEU IST: TAGESMUSTER UND FESTE FREIE TAGE
+ * Beides stand bis zum 02.10.2026 als Namenstabelle im Regelpaket. Es gehört
+ * aber nicht dorthin, sondern in die Personalakte — und zwar neben die
+ * Stundenzahl, mit der es übereinstimmen muss. Standen beide getrennt,
+ * konnten sie einander widersprechen, und dann fand der Rechendienst für den
+ * GANZEN Standort keinen Plan mehr.
+ *
+ * Die Summe aus Muster und Stundenzahl wird beim Speichern geprüft
+ * (`src/lib/tagesmuster.ts`). Dieser Seed schreibt direkt in die Datenbank und
+ * geht an der Prüfung vorbei — deshalb rechnet er sie unten selbst nach und
+ * bricht ab, wenn etwas nicht aufgeht. Ein Demo-Mandant, der sich nicht
+ * planen lässt, wäre schlimmer als keiner.
  *
  * Die Leitung steht mit 0 Planstunden im Dienstplan: Leitungszeit ist keine
  * Gruppenzeit. Ihre 40 Vertragsstunden gehören ins Lohnprofil.
  */
-const BELEGSCHAFT: [string, number, string | null, string][] = [
-  ['Marin Berg',      40, 'demo-g1', 'Erzieher'],
-  ['Shelley Frei',    40, 'demo-g1', 'Erzieher'],
-  ['Stephanie Lang',  35, 'demo-g2', 'Erzieher'],
-  ['Christina Weiß',  35, 'demo-g2', 'Erzieher'],
-  ['Juliane Roth',    35, 'demo-g3', 'Erzieher'],
-  ['Kristine Mai',    40, 'demo-g3', 'Erzieher'],
-  ['Tim Sommer',      40, 'demo-g4', 'Erzieher'],
-  ['Sophia Klein',    35, 'demo-g4', 'Erzieher'],
-  ['Heike Stein',     30, 'demo-g5', 'Erzieher'],
-  ['Corinna Vogel',   40, 'demo-g5', 'Erzieher'],
-  ['Susan Hart',      40, 'demo-g6', 'Erzieher'],
+interface Kraft {
+  name: string
+  stunden: number
+  gruppe: string | null
+  funktion: string
+  /** Wie sich die Wochenstunden auf die Tage verteilen. */
+  muster?: { stunden: number; tage: number }[]
+  /** Feste freie Wochentage. */
+  frei?: string[]
+  /** Dauerhafte Schichtvorliebe — früher zwei `moeglichst_nicht` im Regelpaket. */
+  mag?: 'frueh' | 'spaet' | 'nacht'
+}
+
+const BELEGSCHAFT: Kraft[] = [
+  // Untere Etage
+  { name: 'Marin Berg',     stunden: 40, gruppe: 'demo-g1', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }] },
+  { name: 'Shelley Frei',   stunden: 40, gruppe: 'demo-g1', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }] },
+  { name: 'Stephanie Lang', stunden: 35, gruppe: 'demo-g2', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }] },
+  { name: 'Christina Weiß', stunden: 35, gruppe: 'demo-g2', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }] },
+  { name: 'Juliane Roth',   stunden: 35, gruppe: 'demo-g3', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }], mag: 'frueh' },
+  { name: 'Kristine Mai',   stunden: 40, gruppe: 'demo-g3', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }] },
+  { name: 'Tim Sommer',     stunden: 40, gruppe: 'demo-g4', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }] },
+  { name: 'Sophia Klein',   stunden: 35, gruppe: 'demo-g4', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }] },
+  // Obere Etage
+  { name: 'Heike Stein',    stunden: 30, gruppe: 'demo-g5', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 3 }, { stunden: 6, tage: 1 }], frei: ['Fr'] },
+  { name: 'Corinna Vogel',  stunden: 40, gruppe: 'demo-g5', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }] },
+  { name: 'Susan Hart',     stunden: 40, gruppe: 'demo-g6', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }] },
   // Das Regelwerk des Kunden nennt sie „Katrin K" — so steht sie auch hier.
   // Die zweite Katrin (Gruppe 8) wird über ihre Stammgruppe unterschieden,
-  // nicht über den Nachnamen: Wer heiratet, heißt anders.
-  ['Katrin K Nolte',  32, 'demo-g7', 'Erzieher'],
-  ['Daniel Fuchs',    35, 'demo-g7', 'Erzieher'],
-  ['Annika Peters',   24, 'demo-g7', 'Erzieher'],
-  ['Felix Arndt',     40, 'demo-g8', 'Erzieher'],
-  ['Katrin Ulrich',   32, 'demo-g8', 'Erzieher'],
-  ['Nicole Sprung',   25, null,      'Springer'],
-  ['Franke Leitner',   0, null,      'Leitung'],
+  // nicht über den Nachnamen: Wer heiratet, heißt anders. Seit §181 braucht
+  // das Regelpaket diese Unterscheidung gar nicht mehr — beide stehen mit
+  // ihrem eigenen Muster in ihrer eigenen Akte.
+  { name: 'Katrin K Nolte', stunden: 32, gruppe: 'demo-g7', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 4 }], frei: ['Di'] },
+  { name: 'Daniel Fuchs',   stunden: 35, gruppe: 'demo-g7', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }] },
+  { name: 'Annika Peters',  stunden: 24, gruppe: 'demo-g7', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 3 }], frei: ['Do', 'Fr'] },
+  { name: 'Felix Arndt',    stunden: 40, gruppe: 'demo-g8', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }], mag: 'spaet' },
+  { name: 'Katrin Ulrich',  stunden: 32, gruppe: 'demo-g8', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 4 }], frei: ['Mi'] },
+  // Springerin und Leitung werden über ihre FUNKTION gefunden, nicht über
+  // ihren Namen — deshalb steht sie hier und nicht mehr im Regelpaket.
+  { name: 'Nicole Sprung',  stunden: 25, gruppe: null, funktion: 'Springer', muster: [{ stunden: 5, tage: 5 }] },
+  { name: 'Franke Leitner', stunden: 0,  gruppe: null, funktion: 'Leitung' },
 ]
+
+/**
+ * §181 Die Gegenrechnung, die der Seed sich selbst stellt.
+ *
+ * Die Maske lässt ein Muster, dessen Summe nicht zur Stundenzahl passt, gar
+ * nicht erst durch. Der Seed schreibt direkt in die Datenbank und käme damit
+ * durch — und hinterließe einen Demo-Mandanten, für den sich kein Dienstplan
+ * rechnen lässt. Lieber hier abbrechen.
+ */
+function musterPruefen(): void {
+  for (const k of BELEGSCHAFT) {
+    if (!k.muster) continue
+    const summe = k.muster.reduce((s, m) => s + m.stunden * m.tage, 0)
+    if (Math.abs(summe - k.stunden) > 0.001) {
+      throw new Error(
+        `${k.name}: Das Tagesmuster ergibt ${summe} Stunden, im Vertrag stehen `
+        + `${k.stunden}. Beides muss übereinstimmen.`,
+      )
+    }
+    const tage = k.muster.reduce((s, m) => s + m.tage, 0)
+    const moeglich = 5 - (k.frei?.length ?? 0)
+    if (tage > moeglich) {
+      throw new Error(
+        `${k.name}: Das Muster belegt ${tage} Arbeitstage, zur Verfügung stehen `
+        + `${moeglich} (Montag bis Freitag, abzüglich fester freier Tage).`,
+      )
+    }
+  }
+}
 
 function mail(name: string): string {
   return name.toLowerCase().replace(/ /g, '.')
@@ -108,6 +167,7 @@ function mail(name: string): string {
 }
 
 async function main() {
+  musterPruefen()
   const hash = await bcrypt.hash(PASSWORT, 10)
 
   const kunde = await prisma.customer.upsert({
@@ -184,26 +244,45 @@ async function main() {
   }
 
   const gruppenName = new Map(GRUPPEN.map(g => [g.id, g.name]))
-  for (const [name, stunden, gruppenId, funktion] of BELEGSCHAFT) {
-    const email = mail(name)
-    const istLeitung = funktion === 'Leitung'
+  for (const kraft of BELEGSCHAFT) {
+    const email = mail(kraft.name)
+    const istLeitung = kraft.funktion === 'Leitung'
     const gemeinsam = {
-      customerId: kunde.id, locationId: standort.id, name, email,
+      customerId: kunde.id, locationId: standort.id, name: kraft.name, email,
       role: istLeitung ? 'admin' : 'employee',
-      position: funktion, roleType: funktion,
-      weeklyHours: istLeitung ? 40 : stunden,
+      position: kraft.funktion, roleType: kraft.funktion,
+      weeklyHours: istLeitung ? 40 : kraft.stunden,
       workDaysPerWeek: 5,
+      // §181 Die festen freien Wochentage. Sie standen als Tabelle im
+      // Regelpaket; hier gehören sie hin, und von hier erreichen sie den
+      // Rechendienst längst als „an diesem Tag nicht verfügbar".
+      fixedOffDays: kraft.frei ?? [],
       // Die Springerin und die Leitung gehören keiner Gruppe an. Die
       // Springerin darf überall helfen — deshalb multiGroupCapable.
-      gruppe: gruppenId ? gruppenName.get(gruppenId) : null,
-      multiGroupCapable: !gruppenId,
+      gruppe: kraft.gruppe ? gruppenName.get(kraft.gruppe) : null,
+      multiGroupCapable: !kraft.gruppe,
       active: true,
     }
-    await prisma.employee.upsert({
+    const person = await prisma.employee.upsert({
       where: { email },
       create: { ...gemeinsam, joinedAt: '2025-01-01', vacationDaysTotal: 30 },
       update: gemeinsam,
     })
+
+    // §181 Das Tagesmuster und die Schichtvorliebe ins Planungsprofil. Beides
+    // stand vorher im Regelpaket — beides ist eine Angabe über diesen
+    // Menschen, nicht über diesen Betrieb.
+    if (kraft.muster || kraft.mag) {
+      const werte = {
+        ...(kraft.muster ? { tagesmuster: kraft.muster } : {}),
+        ...(kraft.mag ? { shiftPreference: kraft.mag } : {}),
+      }
+      await prisma.employeePlanningProfile.upsert({
+        where: { employeeId: person.id },
+        create: { employeeId: person.id, ...werte },
+        update: werte,
+      })
+    }
   }
 
   // §171 Die Leitung hat 40 Vertragsstunden und 0 Planstunden: Leitungszeit
@@ -228,6 +307,43 @@ async function main() {
     })
   }
 
+  /*
+   * §181 Jede Kraft bekommt einen eigenen Zugang.
+   *
+   * WARUM DAS VORHER GEFEHLT HAT — UND WARUM ES EIN FEHLER WAR
+   * Bis hierher hatte in dieser Kita nur die Leitung ein Konto. Die sechzehn
+   * Namen aus dem Regelpaket standen zwar als echte Mitarbeiterdatensätze in
+   * der Datenbank, mit Stunden, Gruppe und Stammdaten — aber niemand von
+   * ihnen konnte sich anmelden. Damit war die eine Frage, auf die es am Ende
+   * ankommt, nie geprüft: Kommt der Plan, den das Regelpaket rechnet, auch
+   * wirklich bei der Person an, für die er gerechnet wurde?
+   *
+   * Ein Regelpaket, das auf dem Bildschirm der Leitung einen schönen Plan
+   * erzeugt, ist nichts wert, wenn Stephanie ihn nicht sieht. Genau diese
+   * Kette prüft `pruefungen/f7-durchstich.mjs` — und dafür braucht jede Kraft
+   * ein Konto, so wie im echten Betrieb.
+   */
+  const alleKraefte = await prisma.employee.findMany({
+    where: { locationId: standort.id },
+    select: { id: true, name: true, email: true },
+  })
+  for (const kraft of alleKraefte) {
+    // Die Leitung hat ihren Zugang schon — ein zweiter auf denselben
+    // Mitarbeiterdatensatz wäre eine Person mit zwei Konten.
+    if (leitung && kraft.id === leitung.id) continue
+    await prisma.user.upsert({
+      where: { email: kraft.email },
+      create: {
+        email: kraft.email, name: kraft.name, role: 'employee', passwordHash: hash,
+        customerId: kunde.id, locationId: standort.id, employeeId: kraft.id,
+      },
+      update: {
+        role: 'employee', employeeId: kraft.id,
+        locationId: standort.id, passwordHash: hash,
+      },
+    })
+  }
+
   await prisma.locationPlanningRules.upsert({
     where: { locationId: standort.id },
     create: {
@@ -242,6 +358,7 @@ async function main() {
   console.log(`  Struktur  2 Etagen, ${GRUPPEN.length} Gruppen, ${DIENSTE.length} Dienstzeiten`)
   console.log(`  Personal  ${BELEGSCHAFT.length} Kräfte, davon 1 Leitung und 1 Springerin`)
   console.log(`  Zugang    leitung@kita-regenbogen.de / ${PASSWORT}`)
+  console.log(`  §181 Jede Kraft hat ein eigenes Konto, z. B. ${mail('Stephanie Lang')} / ${PASSWORT}`)
 }
 
 main()

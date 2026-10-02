@@ -85,6 +85,18 @@ model EmployeePlanningProfile {
   /// Vertragsstunden unterbringen und stellt die Leitung jeden Tag in eine
   /// Gruppe — der Plan sieht besetzt aus und ist es nicht.
   planungsStundenSoll Float?
+  /// §181 Wie sich die Wochenstunden auf die Tage verteilen:
+  /// `[{"stunden":8,"tage":3},{"stunden":6,"tage":1}]` heisst dreimal acht
+  /// und einmal sechs — jede Woche, nicht im Durchschnitt.
+  ///
+  /// Stand bis zum 02.10.2026 als Namenstabelle im Regelpaket der Kita. Das
+  /// war falsch: Es ist keine Betriebsregel, sondern eine Angabe aus dem
+  /// Arbeitsvertrag — und solange es getrennt von der Stundenzahl gepflegt
+  /// wurde, konnten beide einander widersprechen. Dann kam kein schlechterer
+  /// Plan heraus, sondern gar keiner (CP-SAT INFEASIBLE).
+  ///
+  /// Geprueft wird es in `src/lib/tagesmuster.ts`, bevor es gespeichert wird.
+  tagesmuster        Json?
   // Zuschlagsregelung
   surchargeMode      String   @default("unternehmensregel") // unternehmensregel | abweichungen | individuell
   surchargeOverrides Json? // nur abweichende Felder vom Unternehmensstandard

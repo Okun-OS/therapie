@@ -34,23 +34,27 @@ Die Dienstzeiten. Sie stehen in den Schichten des Standorts, nicht im Paket —
 Paket spricht über ARBEITSSTUNDEN und findet die passenden Dienste selbst.
 Legt der Betrieb eine weitere Achtstundenschicht an, gilt die Regel weiter.
 
-Ebenfalls nicht hier: welcher der vier Arbeitstage bei Heike der
-Sechsstundentag ist. Das Regelwerk lässt es offen und sagt, es solle
-konfigurierbar sein — also entscheidet es der Plan, und wer einen festen Tag
-will, trägt ihn als Wunsch ein. Eine erfundene Festlegung wäre schlimmer als
-keine (§27 des Regelwerks).
+Ebenfalls nicht hier: bei einer Vier-Tage-Kraft, welcher der Tage der kürzere
+ist. Das Regelwerk lässt es offen und sagt, es solle konfigurierbar sein — also
+entscheidet es der Plan, und wer einen festen Tag will, trägt ihn als Wunsch
+ein. Eine erfundene Festlegung wäre schlimmer als keine (§27 des Regelwerks).
+
+Und seit §181 nicht mehr hier: die Belegschaft. Tagesmuster, feste freie Tage,
+Rollen und Vorlieben stehen in den Personalakten, wo sie hingehören. In dieser
+Datei steht kein einziger Vorname mehr — sie beschreibt das Haus, nicht die
+Menschen darin, und überlebt deshalb jeden Personalwechsel.
 """
 
 from __future__ import annotations
 
 from .. import bausteine as b
-from ..context import RegelFehler
 
 META = {
     "kunde": "Kita – zwei Etagen, acht Gruppen",
-    "version": 5,
+    "version": 6,
     "beschreibung":
-        "16 Kräfte auf zwei Etagen. Feste Tagesmuster statt frei verteilter "
+        "Zwei Etagen, acht Gruppen. Feste Tagesmuster aus den Personalakten "
+        "statt frei verteilter "
         "Wochenstunden, genau ein Früh- und Spätdienst je Etage, bis 15:30 "
         "genug Leute für den Nachmittag, Gruppe 1 nie unter zwei Personen, "
         "Springerin nur zur Kernzeit, Leitung nur im Notfall, Vertretung "
@@ -59,74 +63,33 @@ META = {
     "aufgenommen": "2026-09-26",
 }
 
-# ── Die Belegschaft, wie sie im Regelwerk steht ─────────────────────────────
+# ── Was dieses Paket NICHT mehr enthaelt ────────────────────────────────────
 #
-# Gesucht wird über einen Namensteil. Er muss im Betrieb eindeutig sein — ist
-# er es nicht, meldet sich der Sucher laut, statt die falsche Person zu
-# treffen. Genau dafür gibt es ihn.
-
-# Name → Tagesmuster in Arbeitsstunden (nicht Anwesenheit!)
-TAGESMUSTER: dict[str, dict[float, int]] = {
-    # Untere Etage
-    "Marin":     {8: 5},
-    "Shelley":   {8: 5},
-    "Stephanie": {7: 5},
-    "Christina": {7: 5},
-    "Juliane":   {7: 5},
-    "Kristine":  {8: 5},
-    "Tim":       {8: 5},
-    "Sophia":    {7: 5},
-    # Obere Etage
-    "Heike":     {8: 3, 6: 1},   # Freitag frei
-    "Corinna":   {8: 5},
-    "Susan":     {8: 5},
-    "Katrin K":  {8: 4},         # Dienstag frei
-    "Daniel":    {7: 5},
-    "Annika":    {8: 3},         # Donnerstag und Freitag frei
-    "Felix":     {8: 5},
-    # Springerin
-    "Nicole":    {5: 5},
-}
-
-# Name → feste freie Wochentage (0 = Montag)
-FREIE_TAGE: dict[str, tuple[int, ...]] = {
-    "Heike":    (4,),            # Freitag
-    "Katrin K": (1,),            # Dienstag
-    "Annika":   (3, 4),          # Donnerstag und Freitag
-}
-
-# ZWEI KOLLEGINNEN HEISSEN KATRIN
+# §181 Bis zum 02.10.2026 standen hier drei Tabellen: die Tagesmuster von
+# sechzehn Personen, ihre festen freien Tage und zwei Namen fuer Leitung und
+# Springerin. Alle drei sind weg, und das ist der wichtigste Unterschied
+# zwischen dieser und der vorigen Fassung.
 #
-# Das Regelwerk nennt sie „Katrin K" (Gruppe 7, dienstags frei) und „Katrin"
-# (Gruppe 8, mittwochs frei). Nach dem zweiten allein zu suchen trifft beide —
-# und ein Sucher, der bei Mehrdeutigkeit rät, ist genau der Fehler, den dieses
-# Programm nicht macht. Die Stammgruppe entscheidet.
+# WARUM SIE HIER FALSCH WAREN
+# „Stephanie arbeitet fuenfmal sieben Stunden" ist keine Aussage ueber diesen
+# Betrieb, sondern ueber einen Arbeitsvertrag. Sie gehoert in die Personalakte,
+# genau wie die Stundenzahl daneben. Hier gehoert hin, was gilt, wenn die halbe
+# Belegschaft wechselt: dass jede Etage oeffnet und schliesst, dass Gruppe 1 nie
+# unter zwei Personen faellt, dass wer abgibt jemanden zuruecklaesst.
 #
-# Absichtlich nicht der Nachname: Wer heiratet, heißt anders, und dann liefe
-# die Regel ins Leere. Die Stammgruppe steht in den Stammdaten und wird dort
-# gepflegt.
-KATRIN_GRUPPE_8 = ("Katrin", "Gruppe 8")
+# WAS DER AUSSCHLAG GAB
+# Nicht die Ordnung, sondern ein Fehler. Standen Muster und Stundenzahl an zwei
+# Orten, konnten sie einander widersprechen — und `exakte_wochenstunden` machte
+# daraus einen Widerspruch im Modell. Nachgemessen im Demo-Betrieb: Stunden in
+# der Maske von 35 auf 28 geaendert, und der Rechendienst fand fuer den GANZEN
+# Standort keinen Plan mehr. Die Meldung nannte Urlaube, Ruhezeiten und das
+# Stundenlimit — drei Ursachen, von denen keine zutraf.
+#
+# Jetzt kommt beides aus derselben Quelle und wird beim Speichern zusammen
+# geprueft. Ein Personalwechsel geht dieses Paket nichts mehr an.
 
-# Wer regulär nicht in die Gruppenbesetzung gehört
-LEITUNG = "Franke"
-SPRINGERIN = "Nicole"
-
-
-def _eindeutig(ctx, name: str) -> int | None:
-    """
-    Eine Person suchen, ohne den ganzen Plan zu kippen, wenn sie fehlt.
-
-    Ein Kundenpaket soll laut scheitern, wenn eine Regel ins Leere läuft — das
-    gilt für REGELN. Bei der Belegschaft ist es anders: Wer das Haus verlässt,
-    wird im Programm inaktiv, und dann darf nicht der ganze Dienstplan
-    ausfallen. Der Ausfall wird protokolliert; wer ihn liest, sieht sofort,
-    dass das Paket nachgeführt gehört.
-    """
-    try:
-        return ctx.person(name)
-    except RegelFehler as fehler:
-        ctx.notiere(f"Nicht im Plan: {name} — {fehler}")
-        return None
+LEITUNG_ROLLE = "Leitung"
+SPRINGER_ROLLE = "Springer"
 
 
 def apply(ctx) -> None:
@@ -135,30 +98,25 @@ def apply(ctx) -> None:
     # Zuerst die Tagesmuster, denn sie sperren alles, was nicht passt. Alle
     # weiteren Regeln arbeiten auf einem Modell, in dem niemand mehr eine
     # Dienstlänge bekommen kann, die sein Vertrag nicht kennt.
-    for name, muster in TAGESMUSTER.items():
-        if _eindeutig(ctx, name) is None:
-            continue
-        b.versuche(ctx, b.tagesmuster, name, muster)
-
-    b.versuche(ctx, b.tagesmuster_in_gruppe, *KATRIN_GRUPPE_8, {8: 4})
-
-    # Feste freie Tage. Sie stehen NACH den Mustern, weil ein Muster von vier
-    # Arbeitstagen und ein freier Dienstag zusammengehören: erst beides
-    # ergibt „Montag, Mittwoch, Donnerstag, Freitag".
-    for name, tage in FREIE_TAGE.items():
-        if _eindeutig(ctx, name) is None:
-            continue
-        b.versuche(ctx, b.person_frei_an, name, *tage)
-
-    b.versuche(ctx, b.person_in_gruppe_frei_an, *KATRIN_GRUPPE_8, 2)
+    #
+    # §181 Die Muster kommen aus den Stammdaten, nicht von hier. Wer keines
+    # hinterlegt hat, wird wie bisher frei verplant.
+    #
+    # Die festen freien Tage brauchen gar keine Regel mehr: Sie stehen als
+    # `fixedOffDays` in der Personalakte und erreichen den Rechendienst schon
+    # als „an diesem Tag nicht verfügbar".
+    b.versuche(ctx, b.tagesmuster_aus_stammdaten)
 
     # Die Sollzeit exakt treffen, nicht ungefähr. Der Rechendienst bestraft
     # Abweichungen sonst nur und nimmt sie in Kauf, wenn es anderswo mehr
     # spart — hier soll die Planung weder Über- noch Minusstunden erzeugen.
-    # Franke bleibt ausgenommen: Ihre vierzig Stunden sind Leitungszeit und
-    # stehen nicht im Dienstplan. Ohne die Ausnahme zwänge die Regel sie
+    #
+    # Die Leitung bleibt ausgenommen: Ihre vierzig Stunden sind Leitungszeit
+    # und stehen nicht im Dienstplan. Ohne die Ausnahme zwänge die Regel sie
     # genau in die Gruppenbesetzung, aus der sie herausgehalten werden soll.
-    b.versuche(ctx, b.exakte_wochenstunden, 0, (LEITUNG,))
+    # Ausgenommen wird über die FUNKTION, nicht über einen Namen — sonst gilt
+    # die Ausnahme beim nächsten Leitungswechsel für die falsche Person.
+    b.versuche(ctx, b.exakte_wochenstunden, 0, tuple(b.namen_mit_rolle(ctx, LEITUNG_ROLLE)))
 
     # ── 2. Öffnen und Schließen ─────────────────────────────────────────────
     #
@@ -241,14 +199,16 @@ def apply(ctx) -> None:
     # unbesetzte Gruppe, aber in dieser Reihenfolge.
     b.versuche(ctx, b.vertretung_zuerst_auf_der_etage)
 
-    # Dazu die beiden Ausnahmen von der Stammgruppen-Ordnung:
-    if _eindeutig(ctx, SPRINGERIN) is not None:
-        b.versuche(ctx, b.springer, SPRINGERIN, "untere", "Gruppe 1")
+    # Dazu die beiden Ausnahmen von der Stammgruppen-Ordnung. §181 Über die
+    # FUNKTION, nicht über einen Namen: Wer die Springerin ist, steht in den
+    # Stammdaten und ändert sich dort.
+    for springerin in b.namen_mit_rolle(ctx, SPRINGER_ROLLE):
+        b.versuche(ctx, b.springer, springerin, "untere", "Gruppe 1")
         # Sie kommt zur Kernzeit — nicht zum Aufschließen und nicht zum
         # Abschließen. Wer sie in den Frühdienst steckt, hat eine Kraft
         # weniger, wenn alle Kinder da sind; und das Aufschließen soll
         # jemand machen, der die Gruppe kennt.
-        b.versuche(ctx, b.nur_dienstarten, SPRINGERIN, "mittel")
+        b.versuche(ctx, b.nur_dienstarten, springerin, "mittel")
 
     # Die Leitung: NUR über das Gewicht, nicht über ein Verbot.
     #
@@ -263,8 +223,8 @@ def apply(ctx) -> None:
     # kann — und die Leitung blieb im Büro. Jetzt regelt es allein das Gewicht:
     # teuer genug, dass sie im Normalbetrieb außen vor bleibt, günstiger als
     # eine Etage, die nicht aufmacht.
-    if _eindeutig(ctx, LEITUNG) is not None:
-        b.versuche(ctx, b.nur_im_notfall, LEITUNG)
+    for leitung in b.namen_mit_rolle(ctx, LEITUNG_ROLLE):
+        b.versuche(ctx, b.nur_im_notfall, leitung)
 
     # ── 5. Verteilung der Früh- und Spätdienste ─────────────────────────────
     #
@@ -287,10 +247,12 @@ def apply(ctx) -> None:
 
     # ── 7. Persönliche Vorlieben ────────────────────────────────────────────
     #
-    # Ausdrücklich Vorlieben, keine Verbote. Sie wiegen weniger als eine
-    # unbesetzte Stelle und weniger als die Fairness über die Wochen — sonst
-    # trüge die Vorliebe des einen dauerhaft jemand anderes.
-    for name, typ in (("Juliane", "spaet"), ("Felix", "frueh")):
-        if _eindeutig(ctx, name) is None:
-            continue
-        b.versuche(ctx, b.moeglichst_nicht, name, typ)
+    # §181 Hier standen zwei Namen mit ihren Abneigungen. Auch das ist keine
+    # Betriebsregel: Welche Schicht jemand lieber mag, gehört in sein
+    # Planungsprofil. Von dort kommt es jetzt — und zwar mit demselben
+    # Gewicht wie vorher.
+    #
+    # Der generische Wunschmechanismus allein hat dafür nicht gereicht: Er
+    # wiegt zu leicht, und in der Abnahme bekam die Kollegin ihren Spätdienst
+    # trotzdem. Eine Vorliebe, die nur manchmal gilt, ist keine.
+    b.versuche(ctx, b.vorlieben_aus_stammdaten)

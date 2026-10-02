@@ -357,19 +357,52 @@ export function verifyPlan(plan: GenerierterPlan, ruleModel: PlanningRuleModel):
     }
   }
 
-  // §96: Abweichungen zwischen Vertrags- und Planstunden benennen. Sie sind
-  // nicht automatisch ein Fehler (feste Dienstzeiten gehen selten exakt auf),
-  // aber sie gehören in die Bewertung statt unter den Tisch.
+  /*
+   * §96/§181: Abweichungen zwischen Vertrags- und Planstunden benennen. Sie
+   * sind nicht automatisch ein Fehler (feste Dienstzeiten gehen selten exakt
+   * auf), aber sie gehören in die Bewertung statt unter den Tisch.
+   *
+   * §181 WER ABWESEND IST, VERFEHLT SEIN SOLL NICHT — ER IST NICHT DA
+   * Beim Durchstich wurde eine Kraft für acht Wochen krankgeschrieben. Der
+   * Plan war danach richtig: Sie kam in keinem Dienst mehr vor. Der Bericht
+   * meldete trotzdem „Stephanie Lang: 0 statt 35 Std. in der Woche ab …" —
+   * mit der Schwere „hoch", also so dringlich wie eine unbesetzte Gruppe.
+   *
+   * Das ist aus zwei Gründen schlimm. Es ist erstens falsch: Niemand hat eine
+   * Regel gerissen. Und es ist zweitens genau die Art von Meldung, nach der
+   * eine Leitung aufhört, die Liste zu lesen — und dann übersieht sie die
+   * Meldung daneben, die etwas bedeutet.
+   *
+   * Deshalb: War jemand in dieser Woche an ALLEN Plantagen abwesend, gibt es
+   * nichts zu melden. War er es an EINIGEN, bleibt die Meldung — sie könnte
+   * eine echte Lücke verdecken —, aber mit der Abwesenheit im Satz und ohne
+   * die hohe Schwere, die hier nie angebracht war.
+   */
+  const plantageJeWoche = new Map<string, string[]>()
+  for (const tag of zeitraum.arbeitstage) {
+    const w = weekKey(tag)
+    plantageJeWoche.set(w, [...(plantageJeWoche.get(w) ?? []), tag])
+  }
+
   for (const b of plan.stundenbilanz ?? []) {
     const abw = Math.abs(b.abweichungStunden)
     if (abw <= 0.5) continue
     const emp = mitarbeiter.find(m => m.id === b.mitarbeiterId)
+
+    const abwesend = new Set([...(emp?.urlaubAn ?? []), ...(emp?.nichtVerfuegbarAn ?? [])])
+    const tageDerWoche = plantageJeWoche.get(b.woche) ?? []
+    const fehltAn = tageDerWoche.filter(t => abwesend.has(t)).length
+
+    // Ganze Woche abwesend: Es gibt nichts zu berichten.
+    if (tageDerWoche.length > 0 && fehltAn === tageDerWoche.length) continue
+
     verletzungen.push({
-      schwere: abw >= 5 ? 'hoch' : 'niedrig',
+      schwere: fehltAn > 0 ? 'niedrig' : (abw >= 5 ? 'hoch' : 'niedrig'),
       regelId: 'st-abweichung',
       beschreibung:
         `${emp?.name ?? b.mitarbeiterId}: ${b.istStunden} statt ${b.sollStunden} Std. ` +
-        `in der Woche ab ${b.woche} (${b.abweichungStunden > 0 ? '+' : ''}${b.abweichungStunden} Std.).`,
+        `in der Woche ab ${b.woche} (${b.abweichungStunden > 0 ? '+' : ''}${b.abweichungStunden} Std.` +
+        `${fehltAn > 0 ? `, an ${fehltAn} von ${tageDerWoche.length} Tagen abwesend` : ''}).`,
       betrifft: [b.mitarbeiterId],
     })
   }
