@@ -103,6 +103,23 @@ export interface PlanningUnit {
   parentId?: string | null
   // §71 minimum staff per shift for this unit
   minStaff?: number
+  /**
+   * §166 Bis zu diesem Tag gibt diese Gruppe niemanden an andere ab.
+   *
+   * §182 Diese beiden Felder standen in der Datenbank und im Rechendienst,
+   * aber nicht hier — und damit fielen sie auf dem ganzen Weg zwischen
+   * Oberfläche und Datenbank heraus. Die Maske schickte sie, die Schnittstelle
+   * reichte sie weiter, und `updatePlanningUnitById` schrieb sie nicht; beim
+   * Lesen kamen sie ebenfalls nicht zurück. Die Sperre ließ sich im Programm
+   * also setzen, ohne dass irgendetwas geschah. Aufgefallen ist es erst, als
+   * daneben die Zeiträume für „Gruppe unterwegs" gebaut wurden.
+   */
+  abgabeGesperrtBis?: string | null
+  abgabeGrund?: string | null
+  /** §182 Zeitraum, in dem diese Gruppe unterwegs ist (Fahrt, Projektwoche). */
+  unterwegsVon?: string | null
+  unterwegsBis?: string | null
+  unterwegsGrund?: string | null
 }
 
 export interface LocationPlanningRules {

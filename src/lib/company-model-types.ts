@@ -54,6 +54,15 @@ export interface PlanungsEinheit {
    * Jahren noch dasteht.
    */
   abgabeGesperrtBis?: string
+  /**
+   * §182 Zeitraum, in dem diese Gruppe unterwegs ist — Fahrt, Projektwoche,
+   * Schließzeit. Sie braucht dann keine Mindestbesetzung, und es wird ihr
+   * niemand von außen zugeteilt; ihre eigenen Kräfte sind mit unterwegs und
+   * arbeiten ganz normal.
+   */
+  unterwegsVon?: string
+  unterwegsBis?: string
+  unterwegsGrund?: string
   abgabeGrund?: string
 }
 

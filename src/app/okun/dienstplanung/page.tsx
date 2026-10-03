@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Lock, Unlock, Package, AlertTriangle, Check } from 'lucide-react'
 import { paketName, musterHinweis } from '@/lib/regelpakete'
+import { BelegschaftEinspielen } from '@/components/okun/BelegschaftEinspielen'
 
 /**
  * §126/§127 Dienstplanung je Standort einrichten und freischalten.
@@ -61,6 +62,32 @@ export default function DienstplanungVerwalten() {
   }, [])
 
   useEffect(() => { laden() }, [laden])
+
+  /*
+   * §183 Die Gruppennamen je Standort — für die Belegschaftsliste.
+   *
+   * Sie werden gebraucht, um beim Einspielen eine erfundene Gruppe sofort zu
+   * melden statt sie als Text zu schlucken. Eine Stammgruppe, die es nicht
+   * gibt, bleibt sonst bis zum ersten Plan unentdeckt und macht dann aus
+   * einer Kraft eine, die nirgends hingehört.
+   */
+  const [gruppenJeStandort, setGruppenJeStandort] = useState<Record<string, string[]>>({})
+  useEffect(() => {
+    let abgebrochen = false
+    ;(async () => {
+      const gesammelt: Record<string, string[]> = {}
+      for (const s of standorte) {
+        try {
+          const r = await fetch(`/api/okun/belegschaft?locationId=${encodeURIComponent(s.id)}`)
+          if (!r.ok) continue
+          const d = await r.json().catch(() => ({}))
+          gesammelt[s.id] = d.gruppen ?? []
+        } catch { /* ohne Gruppenliste wird nur weniger geprüft, nicht falsch */ }
+      }
+      if (!abgebrochen) setGruppenJeStandort(gesammelt)
+    })()
+    return () => { abgebrochen = true }
+  }, [standorte])
 
   async function aendern(locationId: string, daten: Record<string, unknown>) {
     setArbeitet(locationId); setFehler('')
@@ -201,6 +228,18 @@ export default function DienstplanungVerwalten() {
                     className="w-full text-sm border border-gray-200 rounded-lg px-2.5 py-1.5" />
                 </div>
               </div>
+
+              {/*
+                §183 Die Belegschaft gehört zum Einrichten dazu. Wer das
+                Regelpaket baut, hat die Liste ohnehin vor sich — und ohne
+                Mitarbeiter mit Stunden und Tagesmustern läuft kein erster
+                Plan, egal wie gut das Paket ist.
+              */}
+              <BelegschaftEinspielen
+                locationId={s.id}
+                standortName={s.kunde ?? s.name}
+                gruppen={gruppenJeStandort[s.id] ?? []}
+              />
 
               {s.dienstplanungFrei && s.dienstplanungFreiSeit && (
                 <p className="text-[11px] text-gray-400 flex items-center gap-1.5">

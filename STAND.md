@@ -17,9 +17,9 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §181 Der Durchstich: vom Regelpaket bis in die App der Kraft — und das Tagesmuster raus aus dem Paket |
-| **Nachweisstand** | 1531/1531 in 41 Prüfungen, 44 im Browser, 17 am Programmfenster, 130 im Rechendienst, 1005 Modultests |
-| **Als Nächstes** | Beim Einrichten die Belegschaft gleich mit anlegen; „Gruppe ist unterwegs" vor der Planung |
+| **Zuletzt fertig** | §182/§183 „Diese Gruppe ist unterwegs" vor der Planung — und die Belegschaft beim Einrichten einspielen |
+| **Nachweisstand** | 1588/1588 in 43 Prüfungen, 44 im Browser, 17 am Programmfenster, 136 im Rechendienst, 1034 Modultests |
+| **Als Nächstes** | Echte Bildschirmfotos aus der App auf die Website |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
 > **Der Lohn-Block ist vollständig** (§155–§162). Pfändung, betriebliche
@@ -159,6 +159,29 @@ Nach Dringlichkeit, nicht nach Bereich.
       Abnahme, als eine Paketzuordnung mitten in einem laufenden Plan scheiterte
 
 ### Sonst offen
+- [x] ~~**„Diese Gruppe ist unterwegs" — vor der Planung sagbar**~~ ✅ §182 —
+      bisher gab es dafür nur die Maßnahme „aufteilen", und die entsteht erst,
+      NACHDEM der Rechendienst gemeldet hat, dass er die Gruppe nicht besetzen
+      kann. Eine Leitung, die die Gruppenfahrt seit sechs Wochen im Kalender
+      stehen hat, musste erst einen Fehlschlag abwarten, um ihn zu bestätigen.
+      Jetzt steht der Zeitraum an der Gruppe, mit Anfang, Ende und Grund: Sie
+      braucht keine Besetzung, es kommt niemand von außen dazu, und ihre
+      eigenen Kräfte bleiben bei ihr — eine Fahrt ist Arbeitszeit, keine
+      Abwesenheit. **Dabei gefunden:** Die Abgabesperre aus §166 ließ sich
+      über die Schnittstelle gar nicht setzen. Die Maske schickte sie, die
+      Route reichte sie weiter, und der Schreibhelfer ignorierte sie; beim
+      Lesen kam sie ebenfalls nicht zurück. Die Regel war im Rechendienst
+      gebaut, geprüft — und unerreichbar
+- [x] ~~**Die Belegschaft beim Einrichten anlegen**~~ ✅ §183 — wer ein
+      Regelpaket baut, hat die Belegschaft ohnehin vor sich. Sie wird jetzt
+      unter dem Regelpaket eingespielt: Name, Stunden, Tage, Gruppe, Funktion,
+      Tagesmuster, feste freie Tage, Schichtvorliebe — mehr nicht. Erst
+      prüfen, dann anlegen; stimmt eine Zeile nicht, wird keine einzige
+      angelegt. Die E-Mail-Adresse trägt der Betrieb selbst nach; bis dahin
+      steht eine auf `.invalid`, an die nichts zugestellt werden kann, und die
+      Einladung wird mit einem Satz abgelehnt, der sagt was zu tun ist. Ein
+      zweiter Durchlauf ändert, statt zu verdoppeln — und lässt eine schon
+      eingetragene echte Adresse unangetastet
 - [x] ~~**Der Durchstich bis ins Konto der Beschäftigten**~~ ✅ §181 — bis dahin
       hatte im Demo-Betrieb mit Regelpaket nur die Leitung einen Zugang. Der
       Plan war auf ihrem Bildschirm geprüft, nie im Konto der Kraft, für die er

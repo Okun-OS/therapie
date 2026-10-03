@@ -48,13 +48,55 @@ export async function PUT(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
-  let body: { id?: string; name?: string; parentId?: string | null; minStaff?: number; abgabeGesperrtBis?: string | null; abgabeGrund?: string | null }
+  let body: {
+    id?: string; name?: string; parentId?: string | null; minStaff?: number
+    abgabeGesperrtBis?: string | null; abgabeGrund?: string | null
+    unterwegsVon?: string | null; unterwegsBis?: string | null; unterwegsGrund?: string | null
+  }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
   if (!body.id) return NextResponse.json({ error: 'id erforderlich' }, { status: 400 })
+
+  // §112 Eine fremde Leitung konnte bisher jede Einheit über ihre Kennung
+  // ändern — geprüft wurde nur die Rolle.
+  const bestand = await prisma.planningUnit.findUnique({
+    where: { id: body.id }, select: { locationId: true },
+  })
+  if (!bestand) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
+  const erlaubtPut = await locationFilter(session, bestand.locationId)
+  if (erlaubtPut instanceof NextResponse) return erlaubtPut
+
+  /*
+   * §182 „Diese Gruppe ist unterwegs" — und warum beide Daten zusammengehören.
+   *
+   * Ein Zeitraum mit Anfang und ohne Ende ist keine Fahrt, sondern eine
+   * Schließung auf unbestimmte Zeit. Die Gruppe fiele aus jeder künftigen
+   * Planung heraus, und in sechs Monaten fragt sich jemand, warum Gruppe 3
+   * nie besetzt wird. Deshalb: entweder beides oder nichts.
+   */
+  const tagForm = /^\d{4}-\d{2}-\d{2}$/
+  const von = body.unterwegsVon?.trim() || null
+  const bis = body.unterwegsBis?.trim() || null
+  if ((von === null) !== (bis === null)) {
+    return NextResponse.json({
+      error: 'Für „unterwegs" braucht es beide Daten — von und bis. '
+        + 'Ein Zeitraum ohne Ende würde diese Gruppe dauerhaft aus der Planung nehmen.',
+    }, { status: 400 })
+  }
+  if (von && bis) {
+    if (!tagForm.test(von) || !tagForm.test(bis)) {
+      return NextResponse.json({ error: 'Die Daten müssen im Format JJJJ-MM-TT stehen.' }, { status: 400 })
+    }
+    if (bis < von) {
+      return NextResponse.json({ error: 'Das Ende liegt vor dem Anfang.' }, { status: 400 })
+    }
+  }
+  if (body.abgabeGesperrtBis && !tagForm.test(body.abgabeGesperrtBis.trim())) {
+    return NextResponse.json({ error: 'Die Abgabesperre braucht ein Datum im Format JJJJ-MM-TT.' }, { status: 400 })
+  }
 
   const unit = await updatePlanningUnitById(body.id, {
     name: body.name,
@@ -63,10 +105,15 @@ export async function PUT(req: NextRequest) {
     // §166 Die Abgabesperre. Ein leerer Wert hebt sie auf — eine Sperre ohne
     // Ablaufdatum staende in zwei Jahren noch da.
     ...(body.abgabeGesperrtBis !== undefined
-      ? { abgabeGesperrtBis: body.abgabeGesperrtBis || null }
+      ? { abgabeGesperrtBis: body.abgabeGesperrtBis?.trim() || null }
       : {}),
     ...(body.abgabeGrund !== undefined
-      ? { abgabeGrund: body.abgabeGrund || null }
+      ? { abgabeGrund: body.abgabeGrund?.trim() || null }
+      : {}),
+    ...(body.unterwegsVon !== undefined ? { unterwegsVon: von } : {}),
+    ...(body.unterwegsBis !== undefined ? { unterwegsBis: bis } : {}),
+    ...(body.unterwegsGrund !== undefined
+      ? { unterwegsGrund: body.unterwegsGrund?.trim() || null }
       : {}),
   })
   if (!unit) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })

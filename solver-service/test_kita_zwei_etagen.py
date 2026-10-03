@@ -314,6 +314,11 @@ class Plan:
         return sum(1 for (mid, t), e in self.eintrag.items()
                    if t == tag and e.get("einheitId") == gruppe)
 
+    def ids_in_gruppe(self, tag: str, gruppe: str) -> list[str]:
+        """§182 Wer genau an diesem Tag in dieser Gruppe steht."""
+        return [mid for (mid, t), e in self.eintrag.items()
+                if t == tag and e.get("einheitId") == gruppe]
+
     def ende(self, name: str, tag: str) -> str:
         return SCHICHTEN_NACH_ID[self.dienst(name, tag)]["bis"]
 
@@ -1379,3 +1384,93 @@ def test_ohne_tagesmuster_in_den_stammdaten_bleibt_der_plan_moeglich():
     # Und der Hinweis steht im Protokoll, statt still zu verschwinden.
     protokoll = " ".join(paket.get("regeln") or [])
     assert "Tagesmuster" in protokoll, protokoll
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §182 Eine Gruppe ist unterwegs
+#
+# Gruppenfahrt, Projektwoche, Schliesszeit: Die Leitung weiss es vorher. Bis
+# §182 konnte sie es dem Rechendienst nicht sagen — es gab nur die Massnahme
+# „aufteilen", und die entsteht erst, NACHDEM er gemeldet hat, dass er die
+# Gruppe nicht besetzen kann.
+# ════════════════════════════════════════════════════════════════════════════
+
+FAHRT = TAGE[:3]          # Montag bis Mittwoch der ersten Woche
+NACH_DER_FAHRT = TAGE[3:5]
+
+
+def modell_mit_fahrt(gruppe: str = "g3") -> dict:
+    m = regelmodell()
+    for e in m["einheiten"]:
+        if e.get("id") == gruppe:
+            e["unterwegsVon"] = FAHRT[0]
+            e["unterwegsBis"] = FAHRT[-1]
+            e["unterwegsGrund"] = "Gruppenfahrt"
+    return m
+
+
+@pytest.fixture(scope="module")
+def auf_fahrt() -> Plan:
+    p = Plan(rechne(modell_mit_fahrt()))
+    abnehmen(p, "Gruppe 3 ist auf Fahrt")
+    return p
+
+
+def test_fahrt_es_kommt_niemand_von_aussen_dazu(auf_fahrt):
+    """
+    Eine fremde Kraft in eine Gruppe zu schicken, die auf dem Bus sitzt, hilft
+    niemandem — sie fehlt dann anderswo, und zwar echt.
+    """
+    eigene = {name for name, _, g, *_ in BELEGSCHAFT if g == "g3"}
+    for t in FAHRT:
+        drin = {NAME_VON[eid] for eid in auf_fahrt.ids_in_gruppe(t, "g3")}
+        fremde = drin - eigene
+        assert fremde == set(), f"{t}: {fremde} wurde in die Gruppe auf Fahrt geschickt"
+
+
+def test_fahrt_es_geht_niemand_weg(auf_fahrt):
+    """
+    Die gefaehrlichere Richtung: Der Plan sagt, jemand sei im Haus, und er
+    sitzt im Bus. Dabei sieht der Plan vollstaendig aus.
+    """
+    for name, _, g, *_ in BELEGSCHAFT:
+        if g != "g3":
+            continue
+        for t in FAHRT:
+            wo = auf_fahrt.gruppe(name, t)
+            assert wo in (None, "g3"), f"{name} steht am {t} in {wo} statt auf Fahrt"
+
+
+def test_fahrt_die_leere_gruppe_ist_keine_verletzung(auf_fahrt):
+    """Eine Gruppenfahrt ist keine Unterbesetzung."""
+    harte = [v for v in auf_fahrt.verletzungen("hart") if "Gruppe 3" in str(v)]
+    assert harte == [], harte
+
+
+def test_fahrt_danach_ist_die_gruppe_wieder_besetzt(auf_fahrt):
+    """
+    Die Gegenprobe. Ohne sie waere die Pruefung auch dann gruen, wenn der
+    Zeitraum einfach alles verschluckte.
+    """
+    for t in NACH_DER_FAHRT:
+        assert auf_fahrt.in_gruppe(t, "g3") >= 1, \
+            f"{t}: Gruppe 3 ist nach der Fahrt unbesetzt"
+
+
+def test_fahrt_die_anderen_gruppen_bleiben_besetzt(auf_fahrt):
+    """Eine Fahrt darf den Rest des Hauses nicht leerraeumen."""
+    for t in TAGE:
+        for gid in ("g1", "g2", "g4", "g5", "g6", "g7", "g8"):
+            mindest = 2 if gid == "g1" else 1
+            assert auf_fahrt.in_gruppe(t, gid) >= mindest, \
+                f"{t}: {gid} nur mit {auf_fahrt.in_gruppe(t, gid)} besetzt"
+
+
+def test_fahrt_ohne_zeitraum_ist_die_gruppe_an_allen_tagen_besetzt():
+    """
+    Die zweite Gegenprobe: Ohne den Zeitraum ist dieselbe Gruppe an jedem Tag
+    besetzt. Sonst koennte der Grund fuer die Leere auch ganz woanders liegen.
+    """
+    plan = Plan(rechne(regelmodell()))
+    for t in FAHRT:
+        assert plan.in_gruppe(t, "g3") >= 1, f"{t}: Gruppe 3 unbesetzt ohne jede Fahrt"

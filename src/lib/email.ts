@@ -75,6 +75,22 @@ function renderEmailHtml(text: string, options: SendEmailOptions): string {
 }
 
 export async function sendEmail(to: string, subject: string, text: string, options: SendEmailOptions = {}): Promise<void> {
+  /*
+   * §183 An eine Platzhalteradresse wird nichts geschickt.
+   *
+   * Beim Einrichten legt OKUN die Belegschaft an, bevor es die Adressen gibt.
+   * Bis der Betrieb die echte Adresse einträgt, steht dort eine auf `.invalid`
+   * — eine Endung, die es im Internet nicht gibt. Jeder Zustellversuch wäre
+   * ein harter Fehlschlag beim Versanddienst, und davon braucht niemand
+   * achtzehn pro Dienstplanveröffentlichung.
+   *
+   * Hier und nicht nur beim Einladen, weil auch Benachrichtigungen,
+   * Lohnabrechnungen und Erinnerungen diesen Weg nehmen.
+   */
+  if (to.endsWith('.noch-ohne-adresse.invalid')) {
+    console.log(`[email] übersprungen: ${to} hat noch keine echte Adresse – "${subject}"`)
+    return
+  }
   if (!resend) {
     console.log(`[email:dev] an ${to} – "${subject}"\n${text}${options.ctaUrl ? `\n${options.ctaUrl}` : ''}`)
     return

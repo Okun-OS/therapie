@@ -4,6 +4,7 @@ import { createAndSendInvitation } from '@/lib/invitations'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { allowedLocationScope } from '@/lib/scope'
 import { getAppOrigin } from '@/lib/app-url'
+import { istPlatzhalter } from '@/lib/belegschaft-import'
 import type { Role } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -63,6 +64,25 @@ export async function POST(req: NextRequest) {
 
   if (!email || typeof email !== 'string' || !email.trim()) {
     return NextResponse.json({ error: 'E-Mail ist erforderlich' }, { status: 400 })
+  }
+
+  /*
+   * §183 An eine Platzhalteradresse wird nicht eingeladen.
+   *
+   * Beim Einrichten legt OKUN die Belegschaft an, bevor es die Adressen gibt —
+   * mit einer Adresse auf `.invalid`, an die nichts zugestellt werden kann.
+   * Wer sie in der Mitarbeiterliste anklickt und auf „Einladen" drückt, würde
+   * sonst eine Einladung ins Nichts erzeugen: Der Eintrag stünde als
+   * „versendet" da, bei niemandem käme etwas an, und in zwei Wochen fragt sich
+   * die Leitung, warum die Kollegin sich nicht anmeldet.
+   */
+  if (istPlatzhalter(email.trim())) {
+    return NextResponse.json({
+      error: 'Für diese Person ist noch keine E-Mail-Adresse hinterlegt. '
+        + 'Tragen Sie zuerst die richtige Adresse in der Personalakte ein — '
+        + 'danach kann die Einladung raus.',
+      code: 'KEINE_ADRESSE',
+    }, { status: 400 })
   }
   if (!VALID_ROLES.includes(role)) {
     return NextResponse.json({ error: 'Ungültige Rolle' }, { status: 400 })

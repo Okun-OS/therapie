@@ -944,6 +944,25 @@ model PlanningUnit {
   // Mit Ablaufdatum, weil eine Sperre ohne eines in zwei Jahren noch dasteht.
   abgabeGesperrtBis String?
   abgabeGrund       String?
+  // §182 Diese Gruppe ist in diesem Zeitraum unterwegs — Gruppenfahrt,
+  // Projektwoche, Schliesszeit.
+  //
+  // WAS DAS HEISST UND WAS NICHT
+  // Die Gruppe braucht in dieser Zeit keine Mindestbesetzung, und es wird ihr
+  // niemand von aussen zugeteilt. Ihre eigenen Kraefte bleiben planbar: Bei
+  // einer Gruppenfahrt sind sie mit unterwegs und arbeiten ganz normal. Wer
+  // nicht mitfaehrt, wird wie immer ueber eine Abwesenheit erfasst.
+  //
+  // WARUM NICHT UEBER DIE MITARBEITER
+  // Weil eine Gruppenfahrt keine Abwesenheit ist. Wer alle Kraefte der Gruppe
+  // abwesend meldete, haette richtige Dienstplaene und falsche Stundenkonten:
+  // Die Fahrt ist Arbeitszeit.
+  //
+  // Mit Von und Bis, nie ohne: Eine Sperre ohne Ende steht in zwei Jahren
+  // noch da. Genau das war die Lehre aus der Abgabesperre darueber.
+  unterwegsVon      String?
+  unterwegsBis      String?
+  unterwegsGrund    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

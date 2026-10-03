@@ -381,6 +381,14 @@ function toPlanningUnit(row: any): PlanningUnit {
     sortOrder: row.sortOrder,
     parentId: row.parentId ?? null,
     minStaff: row.minStaff ?? 1,
+    // §182 Beide Zeiträume kamen bisher nicht zurück. Eine Maske, die einen
+    // gesetzten Wert nie zu sehen bekommt, zeigt ihn als leer — und wer ihn
+    // dann speichert, loescht ihn.
+    abgabeGesperrtBis: row.abgabeGesperrtBis ?? null,
+    abgabeGrund: row.abgabeGrund ?? null,
+    unterwegsVon: row.unterwegsVon ?? null,
+    unterwegsBis: row.unterwegsBis ?? null,
+    unterwegsGrund: row.unterwegsGrund ?? null,
   }
 }
 
@@ -432,6 +440,24 @@ export async function updatePlanningUnitById(id: string, patch: {
   name?: string
   parentId?: string | null
   minStaff?: number
+  /**
+   * §182 Die vier Zeitfelder fehlten hier.
+   *
+   * Die Oberfläche schickte `abgabeGesperrtBis`, die Schnittstelle reichte es
+   * weiter, und diese Funktion nahm es nicht entgegen — `data` kannte nur
+   * Name, Elternteil und Mindestbesetzung. Eine Leitung konnte die Sperre für
+   * eine Gruppe in Eingewöhnung also eintragen, speichern, und es passierte
+   * nichts. Dass die Regel im Rechendienst seit §166 steht, machte es
+   * schlimmer: Sie war gebaut, geprüft und unerreichbar.
+   *
+   * Gefunden beim Bau der Zeiträume für „Gruppe unterwegs", nicht durch eine
+   * Meldung — weil nichts kaputtging, sondern nur nichts geschah.
+   */
+  abgabeGesperrtBis?: string | null
+  abgabeGrund?: string | null
+  unterwegsVon?: string | null
+  unterwegsBis?: string | null
+  unterwegsGrund?: string | null
 }): Promise<PlanningUnit | null> {
   const row = await prisma.planningUnit.update({
     where: { id },
@@ -439,6 +465,11 @@ export async function updatePlanningUnitById(id: string, patch: {
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.parentId !== undefined ? { parentId: patch.parentId } : {}),
       ...(patch.minStaff !== undefined ? { minStaff: Math.max(0, Math.min(50, patch.minStaff)) } : {}),
+      ...(patch.abgabeGesperrtBis !== undefined ? { abgabeGesperrtBis: patch.abgabeGesperrtBis } : {}),
+      ...(patch.abgabeGrund !== undefined ? { abgabeGrund: patch.abgabeGrund } : {}),
+      ...(patch.unterwegsVon !== undefined ? { unterwegsVon: patch.unterwegsVon } : {}),
+      ...(patch.unterwegsBis !== undefined ? { unterwegsBis: patch.unterwegsBis } : {}),
+      ...(patch.unterwegsGrund !== undefined ? { unterwegsGrund: patch.unterwegsGrund } : {}),
     },
   }).catch(() => null)
   return row ? toPlanningUnit(row) : null

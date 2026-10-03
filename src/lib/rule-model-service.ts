@@ -20,7 +20,14 @@ const DAY_NAME_TO_DOW: Record<string, number> = {
   Mo: 1, Di: 2, Mi: 3, Do: 4, Fr: 5, Sa: 6, So: 0,
 }
 
-const BETRIEBSTYP_ARBEITSTAGE: Record<string, string[]> = {
+/**
+ * §183 Welche Wochentage ein Betriebstyp überhaupt geöffnet hat.
+ *
+ * Exportiert, weil das Einlesen der Belegschaft dieselbe Antwort braucht:
+ * „fünf Arbeitstage, freitags frei" ist in einem Montag-bis-Freitag-Betrieb
+ * unmöglich, und das soll beim Eintragen auffallen, nicht beim ersten Plan.
+ */
+export const BETRIEBSTYP_ARBEITSTAGE: Record<string, string[]> = {
   mon_fri:      ['Mo', 'Di', 'Mi', 'Do', 'Fr'],
   mon_sat:      ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
   '7_tage':     ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
@@ -201,6 +208,11 @@ export async function buildRuleModel(
     // eine Gruppe in der Eingewoehnung in Ruhe zu lassen.
     abgabeGesperrtBis: u.abgabeGesperrtBis ?? undefined,
     abgabeGrund: u.abgabeGrund ?? undefined,
+    // §182 Ist diese Gruppe in diesem Zeitraum unterwegs? Dann braucht sie
+    // keine Mindestbesetzung — und es wird ihr niemand von außen zugeteilt.
+    unterwegsVon: u.unterwegsVon ?? undefined,
+    unterwegsBis: u.unterwegsBis ?? undefined,
+    unterwegsGrund: u.unterwegsGrund ?? undefined,
   }))
 
   // §169 Genehmigte Maßnahmen für diesen Zeitraum. Sie stehen nicht am

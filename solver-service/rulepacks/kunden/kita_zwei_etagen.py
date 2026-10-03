@@ -185,6 +185,14 @@ def apply(ctx) -> None:
     # Ablaufdatum — eine ohne wäre in zwei Jahren noch da.
     b.versuche(ctx, b.abgabesperre_beachten)
 
+    # §182 Und eine Gruppe, die unterwegs ist, bleibt unter sich: Sie braucht
+    # keine Besetzung, es kommt niemand dazu, und es geht niemand weg. Bis
+    # hierher gab es dafür nur die Maßnahme „aufteilen" — und die entsteht
+    # erst, nachdem der Rechendienst gemeldet hat, dass er die Gruppe nicht
+    # besetzen kann. Eine Leitung, die die Fahrt seit sechs Wochen im Kalender
+    # stehen hat, konnte sie ihm nicht ansagen.
+    b.versuche(ctx, b.unterwegs_beachten)
+
     # ── 4. Wer wo steht ─────────────────────────────────────────────────────
     #
     # Die Stammgruppen kommen aus den Stammdaten, nicht aus dem Paket: Der

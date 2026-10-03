@@ -363,6 +363,29 @@ class PlanKontext:
         return [ei for ei, e in enumerate(self.employees)
                 if e.get("stammEinheitId") == gid]
 
+    def ist_unterwegs(self, gi: int, tag: str) -> bool:
+        """
+        §182 Ist diese Gruppe an diesem Tag unterwegs?
+
+        Gruppenfahrt, Projektwoche, Schliesszeit. Dann braucht sie keine
+        Mindestbesetzung, und es wird ihr niemand von aussen zugeteilt — ihre
+        eigenen Kraefte sind mit unterwegs und arbeiten ganz normal.
+
+        Bis hierher gab es dafuer nur die Massnahme „aufteilen", und die
+        entsteht erst, NACHDEM der Rechendienst gemeldet hat, dass er die
+        Gruppe nicht besetzen kann. Eine Leitung, die schon weiss, dass Gruppe
+        3 naechste Woche auf Fahrt ist, konnte es ihm nicht sagen.
+
+        Immer mit Anfang UND Ende. Ein Zeitraum ohne Ende waere eine
+        Schliessung auf unbestimmte Zeit, und in sechs Monaten fragt sich
+        jemand, warum diese Gruppe nie besetzt wird.
+        """
+        von = self.gruppen[gi].get("unterwegsVon")
+        bis = self.gruppen[gi].get("unterwegsBis")
+        if not von or not bis:
+            return False
+        return str(von) <= tag <= str(bis)
+
     def gibt_niemanden_ab(self, gi: int, tag: str) -> bool:
         """
         §166 Ist diese Gruppe an diesem Tag fuer Abgaben gesperrt?

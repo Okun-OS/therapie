@@ -752,6 +752,11 @@ def mindestens_in_gruppe(ctx: PlanKontext, gruppe_teil: str, anzahl: int,
     gi = ctx.gruppe(gruppe_teil)
     name = ctx.gruppen[gi].get("name", gruppe_teil)
     for di in range(ctx.n_days):
+        # §182 Ist die Gruppe an diesem Tag unterwegs, braucht sie niemanden.
+        # Ohne das waere eine Gruppenfahrt eine gemeldete Unterbesetzung — und
+        # zwar die am schwersten wiegende, die dieses Paket kennt.
+        if ctx.ist_unterwegs(gi, ctx.days[di]):
+            continue
         fehlt = ctx.model.new_int_var(0, anzahl, f"g1fehlt_{di}_{gi}")
         ctx.model.add(
             sum(ctx.G[ei, di, gi] for ei in range(ctx.n_emp)) + fehlt >= anzahl
@@ -1309,6 +1314,11 @@ def jede_gruppe_besetzt(ctx: PlanKontext, anzahl: int = 1,
                 ctx.notiere(f"„{name}“ ist am {tag} aufgeteilt — keine Besetzung nötig.")
                 continue
 
+            # §182 Dasselbe, nur vorher statt hinterher: Die Leitung wusste
+            # schon, dass diese Gruppe unterwegs ist, und hat es eingetragen.
+            if ctx.ist_unterwegs(gi, tag):
+                continue
+
             fehlt = ctx.model.new_int_var(0, anzahl, f"grp_fehlt_{di}_{gi}")
             ctx.model.add(
                 sum(ctx.G[ei, di, gi] for ei in range(ctx.n_emp)) + fehlt >= anzahl
@@ -1339,6 +1349,62 @@ def jede_gruppe_besetzt(ctx: PlanKontext, anzahl: int = 1,
         f"{anzahl} Person besetzt — und eine Lücke wird mit der Rechnung dazu "
         "gemeldet."
     )
+
+
+def unterwegs_beachten(ctx: PlanKontext) -> None:
+    """
+    §182 Eine Gruppe, die unterwegs ist, bleibt unter sich.
+
+    Gruppenfahrt, Projektwoche, Schliesszeit: Die Leitung weiss es vorher und
+    traegt es an der Gruppe ein, mit Anfang und Ende. Zwei Dinge folgen daraus,
+    und beide gehen in dieselbe Richtung — niemand soll im Plan an einem Ort
+    stehen, an dem er in Wirklichkeit nicht ist.
+
+      1. ES KOMMT NIEMAND VON AUSSEN DAZU. Eine fremde Kraft in eine Gruppe zu
+         schicken, die auf dem Bus sitzt, hilft niemandem — sie fehlt dann
+         anderswo, und zwar echt.
+
+      2. ES GEHT NIEMAND WEG. Wer zu dieser Gruppe gehoert, ist mit unterwegs.
+         Ihn in eine andere Gruppe zu planen hiesse: Der Dienstplan sagt, er
+         sei im Haus, und er sitzt im Bus. Das ist die gefaehrlichere der
+         beiden Richtungen, denn der Plan sieht dabei vollstaendig aus.
+
+    Was NICHT folgt: Die Kraefte sind nicht abwesend. Eine Fahrt ist
+    Arbeitszeit — sie behalten ihre Dienste und ihre Stunden. Wer nicht
+    mitfaehrt, wird wie immer ueber eine Abwesenheit erfasst.
+
+    Die Mindestbesetzung der Gruppe entfaellt an diesen Tagen; das steht in
+    `jede_gruppe_besetzt` und `mindestens_in_gruppe`, weil es dort hingehoert.
+    """
+    if not ctx.gruppen_aktiv:
+        ctx.notiere("Gruppen unterwegs: keine Gruppenplanung aktiv — nichts zu tun.")
+        return
+
+    unterwegs = 0
+    for gi, g in enumerate(ctx.gruppen):
+        tage = [di for di in range(ctx.n_days) if ctx.ist_unterwegs(gi, ctx.days[di])]
+        if not tage:
+            continue
+        unterwegs += 1
+        eigene = set(ctx.stammkraefte(gi))
+        for di in tage:
+            for ei in range(ctx.n_emp):
+                if ei in eigene:
+                    # Die eigenen Kraefte bleiben bei ihrer Gruppe.
+                    for gj in range(ctx.n_groups):
+                        if gj != gi:
+                            ctx.model.add(ctx.G[ei, di, gj] == 0)
+                else:
+                    ctx.model.add(ctx.G[ei, di, gi] == 0)
+        ctx.notiere(
+            f"„{g.get('name', gi)}“ ist vom {g.get('unterwegsVon')} bis "
+            f"{g.get('unterwegsBis')} unterwegs "
+            f"({g.get('unterwegsGrund') or 'ohne Angabe'}) — keine Besetzung "
+            f"noetig, und niemand kommt oder geht."
+        )
+
+    if unterwegs == 0:
+        ctx.notiere("Keine Gruppe ist in diesem Zeitraum unterwegs.")
 
 
 def abgabesperre_beachten(ctx: PlanKontext) -> None:

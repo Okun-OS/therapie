@@ -8,7 +8,7 @@ import { useToast } from '@/lib/toast-context'
 import {
   ShieldAlert, Plus, Trash2, Loader2, Clock, Users, MessageCircle,
   Save, Brain, CalendarDays, Pencil, Check, X, Send, Bot, ChevronDown, ChevronUp,
-  Code2, Zap, XCircle, AlertTriangle, RotateCcw, Layers, Lock,
+  Code2, Zap, XCircle, AlertTriangle, RotateCcw, Layers, Lock, Plane,
 } from 'lucide-react'
 import type { LocationModel, HarteRegel, WochentagKuerzel } from '@/lib/company-model-types'
 import Link from 'next/link'
@@ -67,6 +67,10 @@ interface PlanningUnitRow {
   sortOrder: number
   // §166 Diese Gruppe gibt bis zu diesem Tag niemanden ab
   abgabeGesperrtBis?: string | null
+  // §182 Zeitraum, in dem diese Gruppe unterwegs ist.
+  unterwegsVon?: string | null
+  unterwegsBis?: string | null
+  unterwegsGrund?: string | null
   abgabeGrund?: string | null
 }
 
@@ -473,6 +477,50 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, abgabeGesperrtBis: bis || null }),
       })
+    } catch {
+      showToast('Speichern fehlgeschlagen', 'error')
+    }
+  }
+
+  /**
+   * §182 „Diese Gruppe ist unterwegs" — vor der Planung, nicht danach.
+   *
+   * Bis hierher konnte eine Leitung dem Rechendienst nicht sagen, dass Gruppe
+   * 3 nächste Woche auf Fahrt ist. Sie musste rechnen lassen, warten bis er
+   * meldet, dass er die Gruppe nicht besetzen kann, und dann den Vorschlag
+   * „aufteilen" genehmigen. Dabei stand die Fahrt seit sechs Wochen im
+   * Kalender.
+   *
+   * Beide Daten gehören zusammen: Ein Zeitraum ohne Ende nähme die Gruppe
+   * dauerhaft aus der Planung. Solange nur eins von beiden gesetzt ist, wird
+   * noch nichts gespeichert — sonst stünde die halbe Angabe in der Datenbank.
+   */
+  const handleUnterwegs = async (
+    id: string, feld: 'unterwegsVon' | 'unterwegsBis' | 'unterwegsGrund', wert: string,
+  ) => {
+    const naechste = units.map(u => u.id === id ? { ...u, [feld]: wert || null } : u)
+    setUnits(naechste)
+    const u = naechste.find(x => x.id === id)
+    if (!u) return
+    const halb = Boolean(u.unterwegsVon) !== Boolean(u.unterwegsBis)
+    if (halb) return
+    try {
+      const res = await fetch('/api/planning-units', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          unterwegsVon: u.unterwegsVon ?? null,
+          unterwegsBis: u.unterwegsBis ?? null,
+          unterwegsGrund: u.unterwegsGrund ?? null,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        showToast(d.error ?? 'Speichern fehlgeschlagen', 'error')
+        return
+      }
+      showToast(u.unterwegsVon ? 'Zeitraum gespeichert' : 'Zeitraum entfernt', 'success')
     } catch {
       showToast('Speichern fehlgeschlagen', 'error')
     }
@@ -928,6 +976,39 @@ Wenn der Nutzer eine Schicht anlegen, ändern oder löschen möchte, erkläre, w
                             value={u.abgabeGesperrtBis ?? ''}
                             onChange={e => handleUnitSperre(u.id, e.target.value)}
                             className="text-[11px] border border-gray-200 rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          />
+                        </div>
+                      )}
+                      {/* §182 Ist diese Gruppe unterwegs? Dann braucht sie
+                          keine Besetzung — und niemand kommt oder geht. */}
+                      {u.type !== 'etage' && (
+                        <div
+                          className="flex items-center gap-1"
+                          title="Zeitraum, in dem diese Gruppe unterwegs ist (Fahrt, Projektwoche, Schließzeit). Sie braucht dann keine Besetzung, es kommt niemand von außen dazu, und ihre eigenen Kräfte bleiben bei ihr. Beide Daten setzen."
+                        >
+                          <Plane
+                            size={11}
+                            className={u.unterwegsVon && u.unterwegsBis ? 'text-brand' : 'text-gray-300'}
+                          />
+                          <input
+                            type="date"
+                            value={u.unterwegsVon ?? ''}
+                            onChange={e => handleUnterwegs(u.id, 'unterwegsVon', e.target.value)}
+                            className="text-[11px] border border-gray-200 rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          />
+                          <span className="text-[10px] text-gray-400">bis</span>
+                          <input
+                            type="date"
+                            value={u.unterwegsBis ?? ''}
+                            onChange={e => handleUnterwegs(u.id, 'unterwegsBis', e.target.value)}
+                            className="text-[11px] border border-gray-200 rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          />
+                          <input
+                            type="text"
+                            value={u.unterwegsGrund ?? ''}
+                            onChange={e => handleUnterwegs(u.id, 'unterwegsGrund', e.target.value)}
+                            placeholder="Grund"
+                            className="w-24 text-[11px] border border-gray-200 rounded-lg px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
                           />
                         </div>
                       )}
