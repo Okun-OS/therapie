@@ -18,7 +18,7 @@ Zuletzt aktualisiert: **27.09.2026**
 |---|---|
 | **Baustelle** | Keine |
 | **Zuletzt fertig** | §185 Zweites Regelpaket: Wohngruppe mit fünf Bewohnern — gedacht über die Zeitachse statt über Gruppen |
-| **Nachweisstand** | 1601/1601 in 43 Prüfungen, 61 im Browser, 17 am Programmfenster, 152 im Rechendienst, 1034 Modultests |
+| **Nachweisstand** | 1601/1601 in 43 Prüfungen, 61 im Browser, 17 am Programmfenster, 154 im Rechendienst, 1034 Modultests |
 | **Als Nächstes** | Die Website gemeinsam fertig machen (steht in `DEINE-LISTE.md`) |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 

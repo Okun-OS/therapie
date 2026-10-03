@@ -133,8 +133,11 @@ def apply(ctx) -> None:
     # Kraft allein für alle fünf zuständig sein — das sagt das Regelwerk
     # ausdrücklich, und es ist der Grund, warum dieses Fenster später anfängt
     # und früher aufhört als der Betrieb.
+    # Und eine Obergrenze: Vier Menschen bei fünf Bewohnern sind kein besserer
+    # Plan, sondern verschenkte Stunden — sie fehlen am Wochenende und am
+    # Monatsende. Weich, denn ein Übergabefenster darf kurz darüber liegen.
     b.versuche(ctx, b.besetzung_im_fenster, "07:45", "18:00", 2, 3, WERKTAGE,
-               KEINE_BETREUUNG)
+               KEINE_BETREUUNG, 4)
 
     # ── 4. Das Wochenende ist ein anderer Betrieb ───────────────────────────
     #
@@ -146,8 +149,8 @@ def apply(ctx) -> None:
     # Hier bleibt deshalb nur die Untergrenze von einer Person, und die ist
     # auch gleich der Wunsch: Wer am Wochenende drei Leute einplant, verplant
     # Menschen, die niemand braucht — und sie fehlen am Montag.
-    b.versuche(ctx, b.besetzung_im_fenster, "07:45", "18:00", 1, 1, WOCHENENDE,
-               KEINE_BETREUUNG)
+    b.versuche(ctx, b.besetzung_im_fenster, "07:45", "18:00", 1, 2, WOCHENENDE,
+               KEINE_BETREUUNG, 2)
 
     # ── 5. Die gewünschte Montagsbesetzung ──────────────────────────────────
     #

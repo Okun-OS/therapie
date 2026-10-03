@@ -566,3 +566,49 @@ def test_kundenpaket_scheitert_weiterhin_laut():
     bericht = apply_pack("kita_sonnenschein", ctx)
     assert bericht["angewendet"] is False
     assert bericht["fehler"]
+
+
+def test_freies_wochenende_raeumt_die_gruppe_nicht_leer():
+    """
+    §185 Eine Fairnessregel darf die Betreuung nicht aushebeln.
+
+    „Mindestens ein freies Wochenende" ist über einen Monat gedacht. In einem
+    Plan über EINE Woche gibt es genau ein Wochenende — die Regel verlangte
+    damit, dass es JEDER frei hat, und der Rechendienst lieferte einen Plan, in
+    dem samstags und sonntags niemand da war. Gemeldet hat er es sauber;
+    gerechnet hat er trotzdem Unsinn, weil die Regel Unsinn verlangte.
+
+    Gefunden beim ersten echten Wochenplan eines Kunden, nicht durch eine
+    Prüfung.
+    """
+    ctx = pflege_kontext(tage=7)
+    b.freies_wochenende(ctx, 1)
+
+    # Verlangt wird jetzt ausdrücklich, dass am Samstag jemand arbeitet — so
+    # wie es jede Wohngruppe verlangt. Hat die Regel das Wochenende gesperrt,
+    # ist die Aufgabe damit unlösbar, und `loese` bricht ab.
+    wochenende = [di for di, wt in enumerate(ctx.weekdays) if wt >= 5]
+    assert wochenende, "Der Prüfzeitraum enthält gar kein Wochenende"
+    ctx.model.add(
+        sum(ctx.X[ei, di, si]
+            for ei in range(ctx.n_emp)
+            for di in wochenende
+            for si in range(len(ctx.shifts))) >= 1
+    )
+    solver = loese(ctx)
+
+    gearbeitet = sum(
+        solver.value(ctx.X[ei, di, si])
+        for ei in range(ctx.n_emp)
+        for di in wochenende
+        for si in range(len(ctx.shifts))
+    )
+    assert gearbeitet > 0, "Niemand darf am Wochenende arbeiten — die Gruppe wäre leer"
+    assert any("greift hier gar nicht" in z for z in ctx.protokoll), ctx.protokoll
+
+
+def test_freies_wochenende_gilt_weiter_wenn_der_zeitraum_lang_genug_ist():
+    """Die Gegenprobe: Über vier Wochen bekommt der Betrieb, was er bestellt hat."""
+    ctx = pflege_kontext(tage=28)
+    b.freies_wochenende(ctx, 2)
+    assert any("Mindestens 2 ganze" in z for z in ctx.protokoll), ctx.protokoll

@@ -339,11 +339,50 @@ def freies_wochenende(ctx: PlanKontext, mindestens: int = 1) -> None:
             "nichts zu tun."
         )
         return
+
     if len(paare) < mindestens:
         raise RegelFehler(
             f"{mindestens} freie Wochenenden verlangt, der Plan enthält aber "
             f"nur {len(paare)} vollständige. Die Regel wäre nicht erfüllbar."
         )
+
+    '''
+    §185 Diese Regel darf den Betrieb nicht zusperren.
+
+    Sie verlangt freie Wochenenden — und wenn sie so viele verlangt, wie der
+    Zeitraum überhaupt hat, verlangt sie, dass NIEMAND am Wochenende arbeitet.
+    In einer Wohngruppe heißt das: Die Bewohner sind samstags und sonntags
+    allein.
+
+    Genau das ist passiert, zweimal. Beim ersten Entwurf stand hier eine Zwei
+    bei einem Zweiwochenplan; beim ersten echten Wochenplan eine Eins bei einem
+    einzigen Wochenende. Der Rechendienst hat beide Male sauber gemeldet, dass
+    die Gruppe am Wochenende unbesetzt ist — gerechnet hat er trotzdem Unsinn,
+    weil die Regel Unsinn verlangte.
+
+    Die Regel nimmt sich deshalb selbst zurück: Mindestens ein Wochenende muss
+    zum Arbeiten übrig bleiben. Wer über vier Wochen plant, bekommt weiterhin,
+    was er bestellt hat; wer eine Woche plant, bekommt diese Regel gar nicht.
+    Eine Fairnessregel, die die Betreuung aushebelt, ist keine Fairnessregel.
+
+    UNTERSCHIEDEN WIRD DABEI ZWISCHEN ZWEI FEHLERN
+    Wer MEHR freie Wochenenden verlangt, als es im Zeitraum überhaupt gibt, hat
+    sich im Paket vertan — das wirft nach wie vor einen Fehler, und der steht
+    dann im Plan. Wer GENAU SO VIELE verlangt, wie es gibt, hat sich nicht
+    vertan: Er plant nur gerade einen kurzen Zeitraum. Dann greift die Regel
+    eben weniger weit, statt die Gruppe leerzuräumen.
+    '''
+    moeglich = max(0, len(paare) - 1)
+    if mindestens > moeglich:
+        ctx.notiere(
+            f"Freies Wochenende: {mindestens} verlangt, der Zeitraum hat aber nur "
+            f"{len(paare)} vollständige(s) — davon muss mindestens eines zum "
+            f"Arbeiten übrig bleiben. Die Regel greift hier "
+            + ("gar nicht." if moeglich == 0 else f"nur mit {moeglich}.")
+        )
+        mindestens = moeglich
+    if mindestens <= 0:
+        return
 
     for ei in range(ctx.n_emp):
         frei_vars = []
@@ -1702,8 +1741,10 @@ def besetzung_im_fenster(ctx: PlanKontext, von: str, bis: str,
                          mindestens: int, am_besten: int,
                          nur_wochentage: tuple[int, ...] | None = None,
                          ausser_dienste: tuple[str, ...] = (),
+                         hoechstens: int | None = None,
                          gewicht_mindest: int = 20_000,
-                         gewicht_wunsch: int = 3_000) -> None:
+                         gewicht_wunsch: int = 3_000,
+                         gewicht_zuviel: int = 2_000) -> None:
     """
     §185 Der Betreuungsschlüssel tagsüber — als Untergrenze und als Wunsch.
 
@@ -1749,10 +1790,30 @@ def besetzung_im_fenster(ctx: PlanKontext, von: str, bis: str,
                 ctx.model.add(da + fehlt >= am_besten)
                 ctx.strafe(gewicht_wunsch, fehlt)
 
+            # §185 Und eine Obergrenze, denn „drei Bewohner je Kraft ist auch
+            # möglich" heißt nicht „sieben Kräfte sind besser".
+            #
+            # Ohne sie stopft der Rechendienst alle Sollstunden in die
+            # Werktage: Er muss die Stunden irgendwo unterbringen, und nach
+            # oben kostete ihn nichts. Im ersten echten Wochenplan standen
+            # mittags sieben Menschen bei fünf Bewohnern — und am Wochenende
+            # keiner.
+            if hoechstens is not None:
+                zuviel = ctx.model.new_int_var(0, ctx.n_emp, f"zuviel_{di}_{punkt}")
+                ctx.model.add(da - zuviel <= hoechstens)
+                ctx.strafe(gewicht_zuviel, zuviel)
+                ctx.melde_wenn(
+                    zuviel, "weich",
+                    f"Am {ctx.days[di]} um {uhr} sind mehr als {hoechstens} "
+                    "Personen da — mehr, als die Betreuung braucht.",
+                )
+
     zusatz = '' if nur_wochentage is None else f" (nur {sorted(nur_wochentage)})"
     ctx.notiere(
         f"Zwischen {von} und {bis}{zusatz}: mindestens {mindestens}, "
-        f"am besten {am_besten} Personen."
+        f"am besten {am_besten}"
+        + (f", höchstens {hoechstens}" if hoechstens is not None else "")
+        + " Personen."
     )
 
 
