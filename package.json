@@ -19,6 +19,8 @@
     "postinstall": "prisma generate",
     "seed": "npx tsx --env-file-if-exists=.env prisma/seed.ts",
     "seed:kita": "npx tsx --env-file-if-exists=.env prisma/seed-kita-demo.ts",
+    "seed:schaufenster": "npx tsx --env-file-if-exists=.env prisma/seed-schaufenster.ts",
+    "schaufenster": "node scripts/schaufenster.mjs",
     "umlagen:import": "npx tsx --env-file-if-exists=.env prisma/import-umlagekatalog.ts",
     "logo:negativ": "node scripts/logo-negativ.mjs",
     "desktop": "electron desktop/haupt.js",

@@ -248,4 +248,42 @@ for (const [pfad, name] of [['/', 'Startseite'], ['/funktionen', 'Funktionen'],
     'Sonst trägt die Marke oben links eine andere Schrift als die Seite darunter')
 }
 
+// ── K5 Die Bildschirmfotos ─────────────────────────────────────────────────
+console.log('\n=== K5 Was die Startseite zeigt ===')
+
+// §184 Drei Bildschirmfotos aus dem laufenden Programm — Dienstplan,
+// Stempeluhr, Lohnabrechnung. Sie belegen den einen Satz, der dieses Produkt
+// von anderen unterscheidet: Was geplant und gestempelt wird, steht am
+// Monatsende in der Abrechnung, ohne dass jemand eine Stunde überträgt.
+const start2 = await ohne('/')
+for (const [datei, was] of [
+  ['dienstplan', 'der Dienstplan'],
+  ['stempeluhr', 'die Stempeluhr'],
+  ['lohnabrechnung', 'die Lohnabrechnung'],
+]) {
+  check(`Die Startseite zeigt ${was}`,
+    new RegExp(`schaufenster(%2F|/)${datei}\\.png`).test(start2.text),
+    'Das Bild wird nicht eingebunden')
+
+  const bild = await fetch(`${BASIS}/schaufenster/${datei}.png`)
+  check(`Und ${was} ist auch wirklich da`,
+    bild.status === 200 && (bild.headers.get('content-type') ?? '').includes('image'),
+    `HTTP ${bild.status}, ${bild.headers.get('content-type')}`)
+  const groesse = Number(bild.headers.get('content-length') ?? 0)
+  check(`${was} ist kein leeres Bild`, groesse > 20_000, `${groesse} Bytes`)
+}
+
+// §184 Die Gegenproben. Bildschirmfotos sind der bequemste Weg, genau das auf
+// die Website zu bringen, was dort nie stehen darf: echte Menschen und eine
+// Branche, die alle anderen ausschließt. Prüfen lässt sich das Bild selbst
+// nicht — wohl aber, dass der Betrieb darauf ein erfundener ist.
+const schaufensterText = start2.text.replace(/<[^>]*>/g, ' ')
+check('Die Bilder zeigen einen Beispielbetrieb, und das steht auch da',
+  /Beispielbetrieb/i.test(schaufensterText),
+  'Wer ein Bildschirmfoto zeigt, muss sagen, wessen Daten darauf stehen')
+for (const branche of ['Kita', 'Pflegeheim', 'Reha']) {
+  check(`Der Abschnitt engt nicht auf „${branche}" ein`,
+    !new RegExp(branche, 'i').test(schaufensterText))
+}
+
 process.exit(bilanz() ? 1 : 0)

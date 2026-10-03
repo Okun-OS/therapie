@@ -117,6 +117,59 @@ export const KERN = {
   ],
 }
 
+/**
+ * §184 Die drei Bildschirmfotos — und was sie zusammen sagen.
+ *
+ * WARUM AUSGERECHNET DIESE DREI
+ * Weil sie zusammen den einen Satz belegen, den der Eigentümer selbst als das
+ * Besondere benannt hat: Wer Zeiterfassung und Lohnabrechnung im selben
+ * Programm hat, muss die Stunden nicht übertragen — sie sind schon da. Drei
+ * einzelne Bilder zeigten drei Programme. Diese drei zeigen einen Vorgang:
+ * derselbe Mensch, derselbe Monat, von der Planung bis aufs Konto.
+ *
+ * Die Bilder entstehen mit `npm run schaufenster` aus dem laufenden Programm
+ * und zeigen einen erfundenen Beispielbetrieb. Kein echter Kunde, kein echter
+ * Mensch — und keine Branche, die andere ausschließt.
+ */
+export const SCHAUFENSTER = {
+  vorspann: 'So sieht das aus',
+  zeilen: ['Ein Mensch, ein Monat,', 'drei Bildschirme.'],
+  text:
+    'Keine nachgebauten Bilder: Das sind Bildschirmfotos aus dem Programm, '
+    + 'aufgenommen in einem Beispielbetrieb. Was hier als Dienst geplant ist, '
+    + 'wird morgens gestempelt — und steht am Monatsende in der Abrechnung, '
+    + 'ohne dass jemand eine Stunde überträgt.',
+  schritte: [
+    {
+      bild: '/schaufenster/dienstplan.png',
+      breite: 2880,
+      hoehe: 1800,
+      titel: 'Der Dienstplan',
+      text:
+        'Wechselschicht über zwei Bereiche. Das System rechnet den Plan nach '
+        + 'den Regeln Ihres Betriebs — und sagt daneben, wo die Verteilung kippt.',
+    },
+    {
+      bild: '/schaufenster/stempeluhr.png',
+      breite: 1290,
+      hoehe: 2640,
+      titel: 'Die Stempeluhr',
+      text:
+        'Auf dem Telefon der Mitarbeiterin: Was heute ansteht, ein Knopf zum '
+        + 'Einstempeln, Krankmeldung und Urlaub daneben. Mehr braucht es morgens nicht.',
+    },
+    {
+      bild: '/schaufenster/lohnabrechnung.png',
+      breite: 2880,
+      hoehe: 1800,
+      titel: 'Die Lohnabrechnung',
+      text:
+        'Brutto, Abzüge, Netto und Arbeitgeberkosten — gerechnet aus genau den '
+        + 'Zeiten, die gestempelt wurden. Daneben SEPA-Datei und DATEV-Export.',
+    },
+  ],
+}
+
 /** Die Liste neben dem Abschnitt „Der Unterschied". */
 export const KERN_PUNKTE: string[] = [
   'Ein System vom Recruiting bis zur Abrechnung',

@@ -17,9 +17,9 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §182/§183 „Diese Gruppe ist unterwegs" vor der Planung — und die Belegschaft beim Einrichten einspielen |
-| **Nachweisstand** | 1588/1588 in 43 Prüfungen, 44 im Browser, 17 am Programmfenster, 136 im Rechendienst, 1034 Modultests |
-| **Als Nächstes** | Echte Bildschirmfotos aus der App auf die Website |
+| **Zuletzt fertig** | §184 Drei echte Bildschirmfotos auf der Startseite — Dienstplan, Stempeluhr, Lohnabrechnung |
+| **Nachweisstand** | 1601/1601 in 43 Prüfungen, 61 im Browser, 17 am Programmfenster, 136 im Rechendienst, 1034 Modultests |
+| **Als Nächstes** | Nichts Festes — die offenen Punkte stehen in `DEINE-LISTE.md` |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
 > **Der Lohn-Block ist vollständig** (§155–§162). Pfändung, betriebliche
@@ -159,6 +159,20 @@ Nach Dringlichkeit, nicht nach Bereich.
       Abnahme, als eine Paketzuordnung mitten in einem laufenden Plan scheiterte
 
 ### Sonst offen
+- [x] ~~**Echte Bildschirmfotos auf der Website**~~ ✅ §184 — Dienstplan,
+      Stempeluhr und Lohnabrechnung, und zwar für denselben Menschen im selben
+      Monat: Was geplant ist, wird gestempelt, und daraus entsteht die
+      Abrechnung — ohne dass jemand eine Stunde überträgt. `npm run
+      schaufenster` nimmt sie aus dem laufenden Programm auf, der Lohnlauf
+      läuft dabei über dieselben Schnittstellen wie beim Kunden. Dafür gibt es
+      einen eigenen Beispielbetrieb (`npm run seed:schaufenster`): Die Vornamen
+      im Kita-Demo-Mandanten stammen aus dem Regelwerk eines echten Kunden, und
+      „Reha-Zentrum" engt auf eine Branche ein — beides gehört nicht auf eine
+      öffentliche Seite. **Dabei gefunden:** Die Fairness-Bewertung rechnete mit
+      festen Zielanteilen (40 % Früh, 40 % Spät, 20 % Mitte). In jedem Betrieb
+      mit Nachtdienst stand damit neben JEDEM Namen dauerhaft „zu wenige
+      Frühschichten" — bei einem Plan, der vollkommen gleichmäßig rotierte.
+      Der Zielanteil kommt jetzt aus dem Plan des Standorts
 - [x] ~~**„Diese Gruppe ist unterwegs" — vor der Planung sagbar**~~ ✅ §182 —
       bisher gab es dafür nur die Maßnahme „aufteilen", und die entsteht erst,
       NACHDEM der Rechendienst gemeldet hat, dass er die Gruppe nicht besetzen

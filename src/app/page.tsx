@@ -4,8 +4,9 @@ import { ArrowRight, Check } from 'lucide-react'
 import { anbieter } from '@/lib/dsgvo-verzeichnis'
 import { WebsiteKopf, WebsiteFuss } from '@/components/website/Rahmen'
 import { AngemeldeteWeiterleiten } from '@/components/website/AngemeldeteWeiterleiten'
+import Image from 'next/image'
 import {
-  KOPF, STAERKEN, KERN, KERN_PUNKTE, ABLAUF, SCHLUSS, BESCHREIBUNG,
+  KOPF, STAERKEN, KERN, KERN_PUNKTE, ABLAUF, SCHLUSS, BESCHREIBUNG, SCHAUFENSTER,
 } from '@/lib/website-inhalt'
 
 /**
@@ -100,6 +101,69 @@ export default function Startseite() {
               <p className="mt-2.5 text-sm leading-relaxed text-navy-400">{s.text}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── Drei Bildschirme, ein Vorgang ──────────────────────────── */}
+      {/*
+        §184 Bildschirmfotos aus dem laufenden Programm, nicht nachgebaut.
+        Sie stehen VOR dem Abschnitt „Der Unterschied", weil sie ihn belegen:
+        Wer gerade gelesen hat, dass alles zusammenhängt, soll es sehen, bevor
+        er es noch einmal erklärt bekommt.
+      */}
+      <section className="mx-auto max-w-6xl px-5 pb-16 sm:pb-24">
+        <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-gold">
+          {SCHAUFENSTER.vorspann}
+        </p>
+        <h2 className="mt-4 font-display text-3xl font-bold leading-tight text-white text-balance sm:text-4xl">
+          {SCHAUFENSTER.zeilen[0]}
+          <br />
+          <span className="text-brand">{SCHAUFENSTER.zeilen[1]}</span>
+        </h2>
+        <p className="mt-5 max-w-2xl leading-relaxed text-navy-300">
+          {SCHAUFENSTER.text}
+        </p>
+
+        <div className="mt-10 space-y-5">
+          {SCHAUFENSTER.schritte.map((s, i) => {
+            // Das Telefonbild ist hochkant — es bekommt eine eigene, schmale
+            // Spalte neben seinem Text, statt über die ganze Breite gezogen zu
+            // werden.
+            const hochkant = s.hoehe > s.breite
+            return (
+              <div
+                key={s.bild}
+                data-test={`schaufenster-${i + 1}`}
+                className={`overflow-hidden rounded-3xl border border-white/8 bg-navy-800/40 ${
+                  hochkant ? 'grid gap-6 p-6 sm:grid-cols-[1fr_minmax(0,16rem)] sm:p-8' : 'p-6 sm:p-8'
+                }`}
+              >
+                <div className={hochkant ? 'order-2 sm:order-1 sm:self-center' : ''}>
+                  <p className="font-display text-sm font-bold text-gold">
+                    {String(i + 1).padStart(2, '0')}
+                  </p>
+                  <p className="mt-2 font-display text-xl font-bold text-white text-balance">
+                    {s.titel}
+                  </p>
+                  <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-navy-300">
+                    {s.text}
+                  </p>
+                </div>
+                <div
+                  className={`${hochkant ? 'order-1 sm:order-2' : 'mt-6'} overflow-hidden rounded-2xl border border-white/10 bg-navy-900`}
+                >
+                  <Image
+                    src={s.bild}
+                    alt={`${s.titel} in OKUN Workforce`}
+                    width={s.breite}
+                    height={s.hoehe}
+                    sizes={hochkant ? '(max-width: 640px) 100vw, 16rem' : '(max-width: 1024px) 100vw, 64rem'}
+                    className="h-auto w-full"
+                  />
+                </div>
+              </div>
+            )
+          })}
         </div>
       </section>
 

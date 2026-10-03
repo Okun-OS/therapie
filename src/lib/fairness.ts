@@ -19,6 +19,49 @@ export function calculateFairnessData(
   shifts: Shift[],
   ruleLimits?: PlanningRuleLimits,
 ): ShiftFairnessData[] {
+  /*
+   * §184 Woran sich „fair verteilt" misst — am Betrieb, nicht an einer Zahl.
+   *
+   * WAS HIER VORHER STAND
+   * Feste Zielanteile: 40 % Früh, 40 % Spät, 20 % Mitte. Das ist eine saubere
+   * Annahme für einen Betrieb mit genau diesen drei Diensten — und falsch für
+   * jeden anderen. Wer Nachtdienste fährt, hat gar keine 40 % Frühdienste zu
+   * vergeben: Ein Viertel der Dienste sind Nachtdienste, und die kommen in der
+   * Rechnung nicht vor. Die Folge war, dass in einem Betrieb mit
+   * Wechselschicht NEBEN JEDEM NAMEN dauerhaft „zu wenige Frühschichten"
+   * stand — bei einem Plan, der vollkommen gleichmäßig rotierte.
+   *
+   * Aufgefallen beim Bau der Bildschirmfotos: Im Beispielbetrieb mit vier
+   * Dienstarten trug jeder Mensch ein rotes Dreieck, obwohl jeder genau
+   * dieselbe Rotation hatte. Das ist dieselbe Art Fehler wie die
+   * Stundenmeldung für eine Krankgeschriebene (§181) — eine Warnung, die
+   * immer leuchtet, nimmt den Warnungen daneben die Wirkung.
+   *
+   * WIE ES JETZT GERECHNET WIRD
+   * Der Zielanteil einer Dienstart ist ihr Anteil am GESAMTEN Plan. Werden an
+   * diesem Standort 30 % Frühdienste gebraucht, ist das auch der Maßstab für
+   * den Einzelnen. Das ist dieselbe Aussage wie vorher — „jeder trägt
+   * denselben Anteil an jeder Last" —, nur ohne die Annahme, jeder Betrieb
+   * sähe aus wie eine Kita.
+   *
+   * Liegt kein Plan vor, bleibt es bei 40/40/20: ohne Daten ist die alte
+   * Annahme so gut wie jede andere.
+   */
+  const anteile = (() => {
+    let frueh = 0, spaet = 0, mitte = 0, sonst = 0
+    for (const e of entries) {
+      const s = shifts.find(x => x.id === e.shiftId)
+      if (!s) continue
+      if (s.type === 'early') frueh++
+      else if (s.type === 'late') spaet++
+      else if (s.type === 'mid') mitte++
+      else sonst++
+    }
+    const gesamt = frueh + spaet + mitte + sonst
+    if (gesamt === 0) return { frueh: 0.4, spaet: 0.4, mitte: 0.2 }
+    return { frueh: frueh / gesamt, spaet: spaet / gesamt, mitte: mitte / gesamt }
+  })()
+
   return employees.map(emp => {
     const empEntries = entries.filter(e => e.employeeId === emp.id)
 
@@ -67,10 +110,11 @@ export function calculateFairnessData(
     const shiftsPerWeek = emp.weeklyHours / 8
     const expectedPerWeek = shiftsPerWeek * weeks
 
-    // Fair split across shift types (roughly 40% early, 40% late, 20% mid)
-    const earlyTarget = expectedPerWeek * 0.4
-    const lateTarget = expectedPerWeek * 0.4
-    const midTarget = expectedPerWeek * 0.2
+    // §184 Der Zielanteil kommt aus dem Plan dieses Standorts, nicht aus einer
+    // Annahme über Betriebe im Allgemeinen.
+    const earlyTarget = expectedPerWeek * anteile.frueh
+    const lateTarget = expectedPerWeek * anteile.spaet
+    const midTarget = expectedPerWeek * anteile.mitte
 
     const earlyDebt = earlyTarget - earlyCnt  // positive = should get more early
     const lateDebt = lateTarget - lateCnt
