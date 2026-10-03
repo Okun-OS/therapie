@@ -1,0 +1,317 @@
+import { prisma } from './prisma'
+import { sendEmail } from './email'
+import { generateSecureToken } from './secure-token'
+import { invitationExpiry, INVITATION_VALID_DAYS } from './invitation-expiry'
+import { toEmployee, toCustomer } from './entities'
+import { applyExistingClosuresToNewEmployee } from './vacation-entities'
+import type { Role, Employee, Customer } from './types'
+
+export { invitationExpiry }
+
+const ROLE_LABEL: Record<Role, string> = {
+  employee: 'Mitarbeiter',
+  admin: 'Standortleitung',
+  company: 'Geschäftsführung',
+  okun: 'OKUN Administrator',
+}
+
+export async function sendInvitationEmail(
+  origin: string,
+  invitation: { token: string; email: string; role: string; name?: string | null; customerName?: string | null },
+) {
+  const link = `${origin}/register/${invitation.token}`
+  const greeting = invitation.name ? `Hallo ${invitation.name},` : 'Hallo,'
+  const orgLine = invitation.customerName ? `\nOrganisation: ${invitation.customerName}` : ''
+  const roleLabel = ROLE_LABEL[invitation.role as Role] ?? invitation.role
+
+  await sendEmail(
+    invitation.email,
+    'Ihre Einladung zu OKUN Workforce',
+    `${greeting}\n\nSie wurden zu OKUN Workforce eingeladen (Rolle: ${roleLabel}).${orgLine}\n\nRichten Sie Ihr Konto über den folgenden Button ein. Der Link ist ${INVITATION_VALID_DAYS} Tage gültig.\n\nTipp: Öffnen Sie den Link auf Ihrem Smartphone und wählen Sie "Zum Home-Bildschirm hinzufügen" (iPhone) bzw. "App installieren" (Android) – so nutzen Sie OKUN Workforce wie eine native App, inklusive Push-Benachrichtigungen.\n\nIhr OKUN Workforce Team`,
+    { ctaUrl: link, ctaLabel: 'Konto einrichten' },
+  )
+}
+
+export async function createAndSendInvitation(
+  origin: string,
+  input: { email: string; role: Role; name?: string; customerName?: string; customerId?: string; employeeId?: string; locationId?: string },
+) {
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!EMAIL_RE.test(input.email?.trim() ?? '')) throw new Error('Ungültige E-Mail-Adresse')
+
+  const invitation = await prisma.invitationToken.create({
+    data: {
+      token: generateSecureToken(),
+      email: input.email.trim().toLowerCase(),
+      role: input.role,
+      name: input.name,
+      customerName: input.customerName,
+      customerId: input.customerId,
+      employeeId: input.employeeId,
+      locationId: input.locationId,
+      expiresAt: invitationExpiry(),
+    },
+  })
+
+  await sendInvitationEmail(origin, invitation)
+  return invitation
+}
+
+export class LocationCustomerMismatchError extends Error {
+  constructor() {
+    super('Dieser Standort gehört nicht zu deinem Unternehmen.')
+  }
+}
+
+/** Legt Mitarbeiter und Einladung atomar in einer Transaktion an, damit nie ein
+ * Mitarbeiter ohne zugehörige Einladung entsteht (oder umgekehrt). Lebt bewusst in
+ * invitations.ts statt entities.ts: entities.ts wird auch von 'use client'-Seiten aus
+ * über fairness.ts für reine Lesefunktionen importiert, und der E-Mail-/Krypto-Code
+ * hier (Resend, crypto.randomBytes) darf nicht ins Client-Bundle gelangen.
+ *
+ * expectedCustomerId verhindert, dass ein Mitarbeiter mit fehlendem/falschem
+ * customerId entsteht (und dadurch nach dem nächsten mandantenscoped Fetch
+ * "verschwindet"): bei Standorten ohne customerId (Altlasten vor #121-126) wird
+ * er einmalig auf expectedCustomerId nachgezogen; bei abweichendem customerId
+ * wird die Anfrage abgelehnt statt den Standort eines anderen Unternehmens zu
+ * verwenden. */
+export async function addEmployeeWithInvitation(
+  input: {
+    name: string
+    email: string
+    position: string
+    weeklyHours: number
+    workDaysPerWeek?: number
+    workDays?: string[]
+    dailyTargetHours?: number
+    fixedOffDays?: string[]
+    locationId: string
+    expectedCustomerId?: string
+    phone?: string
+    birthDate?: string
+    roleType?: string
+    employmentType?: string
+    gruppe?: string
+    bereich?: string
+    multiGroupCapable?: boolean
+    fixedLocations?: string
+    qualifications?: string[]
+    allowedTasks?: string[]
+    contractVacationDays?: number
+    hoursBalanceOffset?: number
+    preApprovedVacations?: Array<{ from: string; to: string; note?: string }>
+  },
+  origin: string,
+  options: { sendInvitation?: boolean } = {},
+): Promise<{ employee: Employee; emailSent: boolean }> {
+  const sendInvitation = options.sendInvitation ?? true
+
+  const { employeeRow, invitation, locationState } = await prisma.$transaction(async tx => {
+    const location = await tx.location.findUnique({ where: { id: input.locationId } })
+    if (!location) throw new Error('Standort nicht gefunden')
+    if (input.expectedCustomerId && location.customerId && location.customerId !== input.expectedCustomerId) {
+      throw new LocationCustomerMismatchError()
+    }
+    const customerId = input.expectedCustomerId ?? location.customerId ?? undefined
+    if (input.expectedCustomerId && !location.customerId) {
+      await tx.location.update({ where: { id: location.id }, data: { customerId: input.expectedCustomerId } })
+    }
+    const employeeRow = await tx.employee.create({
+      data: {
+        customerId,
+        name: input.name,
+        email: input.email,
+        role: 'employee',
+        locationId: input.locationId,
+        weeklyHours: input.weeklyHours,
+        workDaysPerWeek: input.workDaysPerWeek,
+        workDays: input.workDays ?? [],
+        dailyTargetHours: input.dailyTargetHours,
+        fixedOffDays: input.fixedOffDays ?? [],
+        position: input.position,
+        hoursBalance: input.hoursBalanceOffset ?? 0,
+        vacationDaysTotal: input.contractVacationDays ?? 30,
+        vacationDaysUsed: 0,
+        active: true,
+        joinedAt: new Date().toISOString().split('T')[0],
+        phone: input.phone,
+        birthDate: input.birthDate,
+        roleType: input.roleType,
+        employmentType: input.employmentType,
+        gruppe: input.gruppe,
+        bereich: input.bereich,
+        multiGroupCapable: input.multiGroupCapable,
+        fixedLocations: input.fixedLocations,
+        qualifications: input.qualifications ?? [],
+        allowedTasks: input.allowedTasks ?? [],
+      },
+    })
+    // Create pre-approved vacation requests
+    if (input.preApprovedVacations?.length) {
+      const today = new Date().toISOString().split('T')[0]
+      for (const v of input.preApprovedVacations) {
+        if (!v.from || !v.to) continue
+        const fromDate = new Date(v.from)
+        const toDate = new Date(v.to)
+        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) continue
+        const days = Math.max(1, Math.round((toDate.getTime() - fromDate.getTime()) / 86400000) + 1)
+        await tx.vacationRequest.create({
+          data: {
+            employeeId: employeeRow.id,
+            employeeName: input.name,
+            locationId: input.locationId,
+            locationName: location.name,
+            startDate: v.from,
+            endDate: v.to,
+            days,
+            reason: v.note ?? 'Bereits genehmigt (bei Eintritt erfasst)',
+            status: 'approved',
+            submittedAt: today,
+            respondedAt: today,
+            respondedBy: 'system',
+          },
+        })
+      }
+    }
+    if (!sendInvitation) return { employeeRow, invitation: null, locationState: location.state }
+    const invitation = await tx.invitationToken.create({
+      data: {
+        token: generateSecureToken(),
+        email: input.email.trim().toLowerCase(),
+        role: 'employee',
+        name: input.name,
+        customerId,
+        employeeId: employeeRow.id,
+        locationId: input.locationId,
+        expiresAt: invitationExpiry(),
+      },
+    })
+    return { employeeRow, invitation, locationState: location.state }
+  })
+
+  const employee = toEmployee(employeeRow)
+  await applyExistingClosuresToNewEmployee(employee, locationState).catch(() => null)
+
+  if (!invitation) {
+    return { employee, emailSent: false }
+  }
+
+  let emailSent = true
+  try {
+    await sendInvitationEmail(origin, invitation)
+  } catch {
+    emailSent = false
+  }
+
+  return { employee, emailSent }
+}
+
+/** Versendet die Einladung für einen Mitarbeiter, der zuvor ohne Einladung
+ * angelegt wurde (inkrementelles Anlegen während des KI-Chats, siehe
+ * addEmployeeWithInvitation sendInvitation:false). Getrennt von der initialen
+ * Anlage, damit die Einladung erst nach der ausdrücklichen Bestätigung der
+ * Leitung an die – ggf. noch im Gespräch korrigierte – E-Mail-Adresse geht. */
+export async function sendPendingEmployeeInvitation(employeeId: string, origin: string): Promise<{ emailSent: boolean }> {
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId } })
+  if (!employee) throw new Error('Mitarbeiter nicht gefunden')
+
+  const invitation = await prisma.invitationToken.create({
+    data: {
+      token: generateSecureToken(),
+      email: employee.email.trim().toLowerCase(),
+      role: 'employee',
+      name: employee.name,
+      customerId: employee.customerId ?? undefined,
+      employeeId: employee.id,
+      locationId: employee.locationId ?? undefined,
+      expiresAt: invitationExpiry(),
+    },
+  })
+
+  let emailSent = true
+  try {
+    await sendInvitationEmail(origin, invitation)
+  } catch {
+    emailSent = false
+  }
+
+  return { emailSent }
+}
+
+/** Erlaubt der Leitung, eine ausstehende oder abgelaufene Einladung erneut zu
+ * versenden: erzeugt einen frischen Token (alter Link wird damit ungültig)
+ * und eine neue Gültigkeitsfrist auf derselben Einladung, statt eine weitere
+ * Zeile anzulegen. */
+export async function resendInvitation(invitationId: string, origin: string): Promise<{ emailSent: boolean }> {
+  const invitation = await prisma.invitationToken.findUnique({ where: { id: invitationId } })
+  if (!invitation) throw new Error('Einladung nicht gefunden')
+  if (invitation.usedAt) throw new Error('Einladung wurde bereits angenommen')
+
+  const updated = await prisma.invitationToken.update({
+    where: { id: invitationId },
+    data: { token: generateSecureToken(), expiresAt: invitationExpiry() },
+  })
+
+  let emailSent = true
+  try {
+    await sendInvitationEmail(origin, updated)
+  } catch {
+    emailSent = false
+  }
+  return { emailSent }
+}
+
+/** Zieht eine noch nicht angenommene Einladung zurück, indem ihre Gültigkeit
+ * sofort abläuft – der bereits verschickte Link funktioniert danach nicht mehr. */
+export async function revokeInvitation(invitationId: string): Promise<void> {
+  const invitation = await prisma.invitationToken.findUnique({ where: { id: invitationId } })
+  if (!invitation) throw new Error('Einladung nicht gefunden')
+  if (invitation.usedAt) throw new Error('Einladung wurde bereits angenommen')
+
+  await prisma.invitationToken.update({ where: { id: invitationId }, data: { expiresAt: new Date(0) } })
+}
+
+/** Legt Kunde und Einladung atomar in einer Transaktion an, damit nie ein Kunde
+ * ohne zugehörige Einladung entsteht (oder umgekehrt). Siehe Kommentar bei
+ * addEmployeeWithInvitation zur Begründung, warum dies in invitations.ts liegt. */
+export async function addCustomerWithInvitation(
+  input: { name: string; contactName: string; contactEmail: string; plan: string; seatsLicensed: number },
+  origin: string,
+): Promise<{ customer: Customer; emailSent: boolean }> {
+  const { customerRow, invitation } = await prisma.$transaction(async tx => {
+    const customerRow = await tx.customer.create({
+      data: {
+        name: input.name,
+        contactName: input.contactName,
+        contactEmail: input.contactEmail,
+        status: 'trial',
+        plan: input.plan,
+        seatsLicensed: input.seatsLicensed,
+        seatsUsed: 0,
+        locationsCount: 0,
+        createdAt: new Date().toISOString().split('T')[0],
+      },
+    })
+    const invitation = await tx.invitationToken.create({
+      data: {
+        token: generateSecureToken(),
+        email: input.contactEmail.trim().toLowerCase(),
+        role: 'company',
+        name: input.contactName,
+        customerName: input.name,
+        customerId: customerRow.id,
+        expiresAt: invitationExpiry(),
+      },
+    })
+    return { customerRow, invitation }
+  })
+
+  let emailSent = true
+  try {
+    await sendInvitationEmail(origin, invitation)
+  } catch {
+    emailSent = false
+  }
+
+  return { customer: toCustomer(customerRow), emailSent }
+}
