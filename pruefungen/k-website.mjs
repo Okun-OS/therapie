@@ -221,15 +221,40 @@ check('Das Impressum lädt keine Negativfassung',
   'Weiße Schrift auf weißem Papier wäre unsichtbar')
 
 // Die Schrift des Logos — nicht nur angefordert, sondern auch definiert.
-const startSeite = await ohne('/')
-const stilblatt = [...startSeite.text.matchAll(/href="([^"]*\.css[^"]*)"/g)].map(m => m[1])
-check('Die Seite bindet ein Stilblatt ein', stilblatt.length > 0)
-
-let stil = ''
-for (const pfad of stilblatt) {
-  const r = await fetch(pfad.startsWith('http') ? pfad : `${BASIS}${pfad}`)
-  if (r.ok) stil += await r.text()
+/*
+ * §185 Das Stilblatt holen — und warum das zwei Anläufe braucht.
+ *
+ * Der Entwicklungsserver hängt an die Adresse des Stilblatts einen
+ * Zeitstempel (`?v=…`) und erneuert ihn laufend. Zwischen dem Abruf der Seite
+ * und dem Abruf des Stilblatts ist er mitunter schon veraltet; dann kommt
+ * nicht die CSS-Datei zurück, sondern die Fehlerseite — und die enthält
+ * natürlich kein „Gantari". Die Prüfung meldete damit einen Schriftfehler, wo
+ * keiner war.
+ *
+ * Deshalb: Seite und Stilblatt im selben Atemzug holen, und wenn trotzdem
+ * etwas anderes als CSS zurückkommt, einmal von vorn. Was dann immer noch
+ * keine CSS-Datei ist, ist ein echter Befund.
+ */
+async function stilblattHolen() {
+  for (let versuch = 0; versuch < 3; versuch++) {
+    const seite = await ohne('/')
+    const adressen = [...seite.text.matchAll(/href="([^"]*\.css[^"]*)"/g)].map(m => m[1])
+    if (adressen.length === 0) continue
+    let inhalt = ''
+    let allesCss = true
+    for (const pfad of adressen) {
+      const r = await fetch(pfad.startsWith('http') ? pfad : `${BASIS}${pfad}`)
+      const typ = r.headers.get('content-type') ?? ''
+      if (!r.ok || !typ.includes('css')) { allesCss = false; break }
+      inhalt += await r.text()
+    }
+    if (allesCss && inhalt) return { adressen, inhalt }
+  }
+  return { adressen: [], inhalt: '' }
 }
+
+const { adressen: stilblatt, inhalt: stil } = await stilblattHolen()
+check('Die Seite bindet ein Stilblatt ein', stilblatt.length > 0)
 check('Das Stilblatt lädt Gantari — die Schrift des Logos',
   /Gantari/.test(stil),
   'Ohne sie fällt die Website auf Inter zurück und spricht wieder zwei Sprachen')

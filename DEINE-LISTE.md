@@ -195,6 +195,14 @@ Seite, Kontakt über Formular und E-Mail. Was noch offen ist:
       jetzt über den Überschriften der Website. Wenn der Gestalter eine andere
       genannt bekommt, ist das eine Zeile Änderung.
 
+### 🟡 Die Website gemeinsam fertig machen
+- [ ] **Einmal zusammen durchgehen, bis sie endgültig gut ist.** Sie steht und
+      sie stimmt — aber „steht" ist nicht dasselbe wie „gut". Was ich dafür von
+      dir brauche, ist kein Auftrag, sondern eine Stunde gemeinsames Draufsehen:
+      Reihenfolge der Abschnitte, Schärfe der Überschriften, was zuerst ins Auge
+      springt, was fehlt. Das ist nichts, was ich allein entscheiden sollte —
+      es ist die Seite, mit der dein Haus sich vorstellt.
+
 ### 🟡 Referenz und Bildschirmfotos
 - [ ] **Darf ein Kunde namentlich genannt werden?** Eine Referenz wirkt mehr
       als jeder Satz über uns. Nur mit seiner Zustimmung.

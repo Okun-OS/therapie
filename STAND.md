@@ -17,9 +17,9 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §184 Drei echte Bildschirmfotos auf der Startseite — Dienstplan, Stempeluhr, Lohnabrechnung |
-| **Nachweisstand** | 1601/1601 in 43 Prüfungen, 61 im Browser, 17 am Programmfenster, 136 im Rechendienst, 1034 Modultests |
-| **Als Nächstes** | Nichts Festes — die offenen Punkte stehen in `DEINE-LISTE.md` |
+| **Zuletzt fertig** | §185 Zweites Regelpaket: Wohngruppe mit fünf Bewohnern — gedacht über die Zeitachse statt über Gruppen |
+| **Nachweisstand** | 1601/1601 in 43 Prüfungen, 61 im Browser, 17 am Programmfenster, 152 im Rechendienst, 1034 Modultests |
+| **Als Nächstes** | Die Website gemeinsam fertig machen (steht in `DEINE-LISTE.md`) |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
 > **Der Lohn-Block ist vollständig** (§155–§162). Pfändung, betriebliche
@@ -159,6 +159,19 @@ Nach Dringlichkeit, nicht nach Bereich.
       Abnahme, als eine Paketzuordnung mitten in einem laufenden Plan scheiterte
 
 ### Sonst offen
+- [x] ~~**Zweites Regelpaket: Wohngruppe mit fünf Bewohnern**~~ ✅ §185 — der
+      erste Kunde nach der Kita, und er tickt vollkommen anders. Eine
+      Wohngruppe hat keine Gruppen und keine Etagen; es gibt einen Ort, und die
+      Frage ist nicht „wer steht wo", sondern „wann sind wie viele da". Dafür
+      sechs neue Bausteine, die über die ZEITACHSE rechnen statt über Gruppen:
+      durchgehende Besetzung ohne Lücke, Betreuungsschlüssel in einem
+      Zeitfenster, Wunschbesetzung an einem Wochentag, ein Stundenband statt
+      exakter Wochenstunden. Alle kommen HINZU — kein vorhandener Baustein
+      wurde geändert, und die 136 Abnahmen des Kita-Pakets sind unverändert
+      grün. Das Paket enthält keinen einzigen Namen; die zehn
+      Mitarbeiterprofile entstehen über die Belegschaftsmaske aus §183
+      (`npm run kunde:wohngruppe`). Erster gerechneter Plan über zwei Wochen:
+      Score 99, Freigabe erteilt, jede Sollzeit auf 0,1 Stunden genau
 - [x] ~~**Echte Bildschirmfotos auf der Website**~~ ✅ §184 — Dienstplan,
       Stempeluhr und Lohnabrechnung, und zwar für denselben Menschen im selben
       Monat: Was geplant ist, wird gestempelt, und daraus entsteht die

@@ -1488,3 +1488,401 @@ def nur_abgeben_wenn_jemand_bleibt(ctx: PlanKontext) -> None:
         f"eigene Kraft bleibt ({betroffen} Personenbindungen). Ist niemand "
         "von der Gruppe da, darf eine Fremde übernehmen."
     )
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §185 Bausteine für Betriebe, die über ZEITFENSTER denken statt über Gruppen
+#
+# Das Kita-Paket (§163 ff.) denkt in Gruppen und Etagen: Wer steht wo, wer gibt
+# wen ab. Eine Wohngruppe mit fünf Bewohnern denkt anders — dort gibt es nur
+# einen Ort, und die Frage ist, WANN wie viele Menschen da sind. „Ab 06:30 muss
+# jemand da sein", „zwischen 07:45 und 18:00 sollen es zwei bis drei sein",
+# „bis 21:45 bleibt jemand".
+#
+# Diese Bausteine kommen neu HINZU. Kein vorhandener wird geändert: Das
+# Kita-Paket und seine Abnahmeprüfungen müssen unverändert grün bleiben, und
+# genau das ist die Gegenprobe zu diesem Block.
+#
+# WARUM NUR AN DEN WECHSELPUNKTEN GERECHNET WIRD
+# Eine Besetzung über ein Zeitfenster ließe sich minutenweise prüfen — das
+# wären bei zehn Stunden sechshundert Bedingungen je Tag und Person. Die
+# Besetzung ändert sich aber nur dort, wo ein Dienst anfängt oder aufhört.
+# Geprüft wird deshalb an diesen Punkten; dazwischen kann sich nichts tun.
+# ════════════════════════════════════════════════════════════════════════════
+
+def _uhrzeit(zeit: str) -> int:
+    """„06:30" → 390 Minuten seit Mitternacht."""
+    stunde, minute = zeit.split(":")
+    return int(stunde) * 60 + int(minute)
+
+
+def _wechselpunkte(ctx: PlanKontext, von: int, bis: int) -> list[int]:
+    """
+    Die Zeitpunkte, an denen sich die Besetzung ändern KANN.
+
+    Das sind die Anfänge aller Dienste innerhalb des Fensters, dazu sein
+    eigener Anfang. Enden brauchen wir nicht: Geht jemand, sinkt die Besetzung
+    — gemessen wird sie aber ab dem nächsten Anfang ohnehin neu, und der
+    Fensteranfang deckt den Rest.
+    """
+    punkte = {von}
+    for si in range(ctx.n_shifts):
+        beginn = ctx.dienstbeginn(si)
+        if von < beginn < bis:
+            punkte.add(beginn)
+        ende = ctx.dienstende(si)
+        if von < ende < bis:
+            # Nach dem Ende eines Dienstes ist eine Kraft weniger da. Der
+            # Zeitpunkt selbst zählt noch zur Anwesenheit, deshalb eine Minute
+            # später nachsehen.
+            punkte.add(ende)
+    return sorted(punkte)
+
+
+def _betreuend(ctx: PlanKontext, ausser: tuple[str, ...]) -> list[int]:
+    """
+    Welche Dienste als BETREUUNG zählen — und welche nicht.
+
+    §185 Bürozeit ist Arbeitszeit, aber keine Betreuung. Wer von acht bis vier
+    im Büro sitzt, steht im Dienstplan und ist trotzdem nicht bei den
+    Bewohnern. Zählte er mit, rechnete sich die Gruppe reich: Auf dem Papier
+    wären zwei Leute da, in Wirklichkeit einer.
+
+    Dasselbe gilt für Sitzungen. Beides wird über einen Namensteil
+    ausgeschlossen, nicht über die Dienstart — „Büro" und „Tagdienst" sind
+    beide vom Typ „mittel", und das ist auch richtig so.
+    """
+    if not ausser:
+        return list(range(ctx.n_shifts))
+    teile = [a.strip().lower() for a in ausser if a.strip()]
+    return [
+        si for si in range(ctx.n_shifts)
+        if not any(teil in str(ctx.shifts[si].get("name", "")).lower() for teil in teile)
+    ]
+
+
+def _anwesend(ctx: PlanKontext, di: int, zeitpunkt: int,
+              ausser: tuple[str, ...] = ()):
+    """Die Summe aller BETREUENDEN Dienste, die zu diesem Zeitpunkt laufen."""
+    laufende = [
+        si for si in _betreuend(ctx, ausser)
+        if ctx.dienstbeginn(si) <= zeitpunkt < ctx.dienstende(si)
+    ]
+    if not laufende:
+        return None
+    return sum(ctx.X[ei, di, si] for ei in range(ctx.n_emp) for si in laufende)
+
+
+def mindestens_einer_ab_uhrzeit(ctx: PlanKontext, uhrzeit: str, anzahl: int = 1,
+                                ausser_dienste: tuple[str, ...] = (),
+                                gewicht: int = 30_000) -> None:
+    """
+    §185 Jeden Tag beginnt jemand spätestens zu dieser Uhrzeit.
+
+    In einer Wohngruppe heißt das: Um halb sieben steht jemand auf der Gruppe,
+    weil die Bewohner dann aufstehen. Reißt das, ist niemand da, wenn der erste
+    Bewohner aus dem Zimmer kommt — das ist keine Unterbesetzung, das ist eine
+    unbetreute Gruppe.
+
+    Weich, aber teuer. Ein Verbot machte den Plan unlösbar, sobald drei Leute
+    krank sind; dann steht der Betrieb ganz ohne Plan da. So kostet es, und es
+    steht hinterher im Bericht, an welchem Tag.
+    """
+    grenze = _uhrzeit(uhrzeit)
+    passende = [si for si in _betreuend(ctx, ausser_dienste)
+                if ctx.dienstbeginn(si) <= grenze]
+    if not passende:
+        raise RegelFehler(
+            f"Kein Dienst beginnt um {uhrzeit} oder früher. "
+            f"Vorhanden: {sorted({ctx.shifts[si].get('von') for si in range(ctx.n_shifts)})}"
+        )
+
+    for di in range(ctx.n_days):
+        fehlt = ctx.model.new_int_var(0, anzahl, f"frueh_fehlt_{di}")
+        ctx.model.add(
+            sum(ctx.X[ei, di, si] for ei in range(ctx.n_emp) for si in passende)
+            + fehlt >= anzahl
+        )
+        ctx.strafe(gewicht, fehlt)
+        ctx.melde_wenn(
+            fehlt, "hart",
+            f"Am {ctx.days[di]} fängt niemand um {uhrzeit} an — die Gruppe wäre "
+            "morgens unbetreut.",
+        )
+    ctx.notiere(f"Täglich mindestens {anzahl} Dienst(e) ab spätestens {uhrzeit}.")
+
+
+def mindestens_einer_bis_uhrzeit(ctx: PlanKontext, uhrzeit: str, anzahl: int = 1,
+                                 ausser_dienste: tuple[str, ...] = (),
+                                 gewicht: int = 30_000) -> None:
+    """
+    §185 Jeden Tag bleibt jemand mindestens bis zu dieser Uhrzeit.
+
+    Das Gegenstück zu `mindestens_einer_ab_uhrzeit`. In einer Wohngruppe heißt
+    es: Bis Viertel vor zehn ist jemand da, weil die Bewohner bis dahin
+    wachsind.
+
+    Es gibt dafür schon `genug_bis_uhrzeit` — der zählt aber JE ETAGE und
+    gehört damit zu einem Betrieb mit Etagen und Gruppen. Eine Wohngruppe hat
+    einen Ort. Ein Baustein, der ohne Etagen stillschweigend nichts tut, wäre
+    hier die gefährlichste Variante: Die Regel stünde im Paket und wirkte nicht.
+    """
+    grenze = _uhrzeit(uhrzeit)
+    passende = [si for si in _betreuend(ctx, ausser_dienste)
+                if ctx.dienstende(si) >= grenze]
+    if not passende:
+        raise RegelFehler(
+            f"Kein Dienst reicht bis {uhrzeit}. "
+            f"Vorhanden: {sorted({ctx.shifts[si].get('bis') for si in range(ctx.n_shifts)})}"
+        )
+
+    for di in range(ctx.n_days):
+        fehlt = ctx.model.new_int_var(0, anzahl, f"spaet_fehlt_{di}")
+        ctx.model.add(
+            sum(ctx.X[ei, di, si] for ei in range(ctx.n_emp) for si in passende)
+            + fehlt >= anzahl
+        )
+        ctx.strafe(gewicht, fehlt)
+        ctx.melde_wenn(
+            fehlt, "hart",
+            f"Am {ctx.days[di]} bleibt niemand bis {uhrzeit} — die Gruppe wäre "
+            "abends unbetreut.",
+        )
+    ctx.notiere(f"Täglich mindestens {anzahl} Dienst(e) bis mindestens {uhrzeit}.")
+
+
+def durchgehend_besetzt(ctx: PlanKontext, von: str, bis: str, mindestens: int = 1,
+                        ausser_dienste: tuple[str, ...] = (),
+                        gewicht: int = 30_000) -> None:
+    """
+    §185 Zwischen diesen Uhrzeiten ist immer jemand da — ohne Lücke.
+
+    „Jeden Tag ein Frühdienst und ein Spätdienst" genügt dafür nicht: Endet der
+    Frühdienst um 14:00 und beginnt der Spätdienst um 16:30, steht die Gruppe
+    zweieinhalb Stunden leer, und auf dem Plan sieht beides besetzt aus.
+
+    Geprüft wird an den Wechselpunkten (siehe oben). Die Meldung nennt die
+    Uhrzeit, nicht nur den Tag — eine Leitung, die „am 14.10. unterbesetzt"
+    liest, sucht sonst den ganzen Tag ab.
+    """
+    a, b = _uhrzeit(von), _uhrzeit(bis)
+    if b <= a:
+        raise RegelFehler(f"Das Fenster {von}–{bis} endet vor seinem Anfang.")
+
+    luecken = 0
+    for di in range(ctx.n_days):
+        for punkt in _wechselpunkte(ctx, a, b):
+            da = _anwesend(ctx, di, punkt, ausser_dienste)
+            if da is None:
+                # Zu dieser Zeit gibt es gar keinen Dienst — das ist eine Lücke
+                # im Dienstkatalog, nicht im Plan. Sie gehört gemeldet, lässt
+                # sich aber nicht wegplanen.
+                ctx.notiere(
+                    f"Kein Dienst deckt {punkt // 60:02d}:{punkt % 60:02d} ab — "
+                    f"das Fenster {von}–{bis} ist mit den vorhandenen "
+                    "Dienstzeiten nicht lückenlos zu besetzen."
+                )
+                continue
+            fehlt = ctx.model.new_int_var(0, mindestens, f"luecke_{di}_{punkt}")
+            ctx.model.add(da + fehlt >= mindestens)
+            ctx.strafe(gewicht, fehlt)
+            ctx.melde_wenn(
+                fehlt, "hart",
+                f"Am {ctx.days[di]} um {punkt // 60:02d}:{punkt % 60:02d} ist "
+                f"niemand auf der Gruppe.",
+            )
+            luecken += 1
+    ctx.notiere(
+        f"Zwischen {von} und {bis} ist immer mindestens {mindestens} Person da "
+        f"({luecken} geprüfte Zeitpunkte)."
+    )
+
+
+def besetzung_im_fenster(ctx: PlanKontext, von: str, bis: str,
+                         mindestens: int, am_besten: int,
+                         nur_wochentage: tuple[int, ...] | None = None,
+                         ausser_dienste: tuple[str, ...] = (),
+                         gewicht_mindest: int = 20_000,
+                         gewicht_wunsch: int = 3_000) -> None:
+    """
+    §185 Der Betreuungsschlüssel tagsüber — als Untergrenze und als Wunsch.
+
+    Eine Wohngruppe mit fünf Bewohnern strebt tagsüber zwei Bewohner je Kraft
+    an und kommt notfalls mit dreien aus. Beides gehört in den Plan, und zwar
+    unterschiedlich schwer: Die Untergrenze ist fast ein Muss, der Wunsch ist
+    einer. Wer nur das Muss einträgt, bekommt dauerhaft die schlechtere
+    Besetzung, weil der Rechendienst keinen Grund hat, mehr zu tun.
+
+    `nur_wochentage` grenzt das Fenster ein (0 = Montag). Am Wochenende sind in
+    dieser Gruppe oft nur zwei bis drei Bewohner da — dann gilt ein anderer
+    Schlüssel, und derselbe Baustein wird ein zweites Mal mit anderen Zahlen
+    aufgerufen.
+    """
+    a, b = _uhrzeit(von), _uhrzeit(bis)
+    tage = [
+        di for di in range(ctx.n_days)
+        if nur_wochentage is None or ctx.weekdays[di] in nur_wochentage
+    ]
+    if not tage:
+        ctx.notiere(f"Besetzung {von}–{bis}: kein passender Wochentag im Zeitraum.")
+        return
+
+    for di in tage:
+        for punkt in _wechselpunkte(ctx, a, b):
+            da = _anwesend(ctx, di, punkt, ausser_dienste)
+            if da is None:
+                continue
+            uhr = f"{punkt // 60:02d}:{punkt % 60:02d}"
+
+            unter = ctx.model.new_int_var(0, mindestens, f"unter_{di}_{punkt}")
+            ctx.model.add(da + unter >= mindestens)
+            ctx.strafe(gewicht_mindest, unter)
+            ctx.melde_wenn(
+                unter, "hart",
+                f"Am {ctx.days[di]} um {uhr} sind weniger als {mindestens} "
+                "Personen da.",
+            )
+
+            if am_besten > mindestens:
+                fehlt = ctx.model.new_int_var(0, am_besten - mindestens,
+                                              f"wunsch_{di}_{punkt}")
+                ctx.model.add(da + fehlt >= am_besten)
+                ctx.strafe(gewicht_wunsch, fehlt)
+
+    zusatz = '' if nur_wochentage is None else f" (nur {sorted(nur_wochentage)})"
+    ctx.notiere(
+        f"Zwischen {von} und {bis}{zusatz}: mindestens {mindestens}, "
+        f"am besten {am_besten} Personen."
+    )
+
+
+def wunschbesetzung_am_wochentag(ctx: PlanKontext, wochentag: int,
+                                 dienst_teile: tuple[str, ...],
+                                 gewicht: int = 4_000) -> None:
+    """
+    §185 An diesem Wochentag ist diese Dienstkombination erwünscht.
+
+    Der Betrieb hat sich eine Montagsbesetzung überlegt, die morgens gut
+    ineinandergreift. Das ist kein Muss — an einem Montag mit zwei
+    Krankmeldungen ist sie nicht zu halten, und dann soll der Plan trotzdem
+    entstehen. Es ist aber auch nicht nichts: Ohne Gewicht landet die
+    Kombination nie im Plan, weil der Rechendienst sie nicht kennt.
+    """
+    tage = ctx.tage_am_wochentag(wochentag)
+    if not tage:
+        ctx.notiere(f"Wunschbesetzung: kein {wochentag} im Zeitraum.")
+        return
+
+    gefunden = []
+    for teil in dienst_teile:
+        si_liste = ctx.dienste(teil)
+        gefunden.append((teil, si_liste))
+
+    for di in tage:
+        for teil, si_liste in gefunden:
+            fehlt = ctx.model.new_bool_var(f"wunschdienst_{di}_{teil}")
+            ctx.model.add(
+                sum(ctx.X[ei, di, si] for ei in range(ctx.n_emp) for si in si_liste)
+                + fehlt >= 1
+            )
+            ctx.strafe(gewicht, fehlt)
+
+    namen = ", ".join(t for t, _ in gefunden)
+    tagName = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag',
+               'Samstag', 'Sonntag'][wochentag]
+    ctx.notiere(f"{tagName}s erwünscht: {namen} ({len(tage)} Tage im Zeitraum).")
+
+
+def stundenband(ctx: PlanKontext, minus_max: float, plus_max: float,
+                gewicht: int = 40) -> None:
+    """
+    §185 Das Pensum muss nicht auf null aufgehen — aber es darf nicht weglaufen.
+
+    Das Gegenteil von `exakte_wochenstunden`, und mit Absicht: Dieser Betrieb
+    sagt ausdrücklich, dass Plus- und Minusstunden erwünscht sind und später
+    gezielt abgebaut werden. Wer ihn zwingt, jeden Monat auf null zu landen,
+    nimmt ihm genau die Beweglichkeit, mit der er arbeitet.
+
+    Innerhalb des Bandes kostet die Abweichung nichts. Außerhalb kostet sie je
+    Minute — dann steht sie auch im Bericht.
+
+    WAS DIESER BAUSTEIN NOCH NICHT KANN
+    Er sieht nur den geplanten Zeitraum. Der mitgebrachte Stundenstand aus den
+    Vormonaten steht in der Personalakte (`hoursBalance`), erreicht den
+    Rechendienst aber bisher nicht. Wer bei +40 Stunden in den Monat geht, darf
+    nach dieser Regel trotzdem noch einmal +45 aufbauen. Das gehört
+    nachgezogen, und bis dahin steht es hier, damit niemand mehr annimmt, als
+    da ist.
+    """
+    minus_minuten = int(round(minus_max * 60))
+    plus_minuten = int(round(plus_max * 60))
+
+    betroffen = 0
+    for ei, emp in enumerate(ctx.employees):
+        wochensoll = float(emp.get("wochenstundenSoll", 0) or 0)
+        if wochensoll <= 0:
+            continue
+
+        volle = [w for w in ctx.weeks if ctx.volle_woche(ei, w)]
+        if not volle:
+            continue
+
+        soll = int(round(wochensoll * 60)) * len(volle)
+        ist = sum(
+            ctx.X[ei, di, si] * ctx.netto(si)
+            for w in volle for di in w for si in range(ctx.n_shifts)
+        )
+
+        ueber = ctx.model.new_int_var(0, 100_000, f"band_ueber_{ei}")
+        unter = ctx.model.new_int_var(0, 100_000, f"band_unter_{ei}")
+        ctx.model.add(ist - soll <= plus_minuten + ueber)
+        ctx.model.add(soll - ist <= minus_minuten + unter)
+        ctx.strafe(gewicht, ueber)
+        ctx.strafe(gewicht, unter)
+
+        name = emp.get("name", ei)
+        ctx.melde_wenn(
+            ueber, "weich",
+            f"{name} baut mehr als {plus_max:g} Plusstunden auf.",
+        )
+        ctx.melde_wenn(
+            unter, "weich",
+            f"{name} rutscht weiter als {minus_max:g} Stunden ins Minus.",
+        )
+        betroffen += 1
+
+    ctx.notiere(
+        f"Stundenband −{minus_max:g} bis +{plus_max:g} Stunden über den "
+        f"Zeitraum ({betroffen} Personen). Innerhalb des Bandes kostet die "
+        "Abweichung nichts."
+    )
+
+
+def hoechstens_gleichzeitig_abwesend(ctx: PlanKontext, anzahl: int) -> None:
+    """
+    §185 Eine Meldung, kein Verbot: An diesem Tag sind zu viele gleichzeitig weg.
+
+    Urlaube sind schon genehmigt, wenn geplant wird — der Rechendienst kann
+    daran nichts ändern. Er kann aber sagen, dass die Regel des Betriebs an
+    diesem Tag gerissen ist, und zwar BEVOR jemand sich wundert, warum der Plan
+    nicht aufgeht.
+
+    Deshalb steht hier keine Bedingung. Eine Bedingung über etwas, das
+    feststeht, macht den Plan unlösbar und erklärt nichts.
+    """
+    gemeldet = 0
+    for di in range(ctx.n_days):
+        tag = ctx.days[di]
+        weg = [
+            ctx.employees[ei].get("name", ei)
+            for ei in range(ctx.n_emp)
+            if tag in ctx.abwesend_an(ei)
+        ]
+        if len(weg) > anzahl:
+            gemeldet += 1
+            ctx.notiere(
+                f"Am {tag} sind {len(weg)} Personen gleichzeitig abwesend "
+                f"(erlaubt: {anzahl}) — {', '.join(weg)}."
+            )
+    if gemeldet == 0:
+        ctx.notiere(f"An keinem Tag sind mehr als {anzahl} Personen gleichzeitig abwesend.")
