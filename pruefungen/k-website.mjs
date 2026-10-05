@@ -274,6 +274,48 @@ for (const [pfad, name] of [['/', 'Startseite'], ['/funktionen', 'Funktionen'],
     'Sonst trägt die Marke oben links eine andere Schrift als die Seite darunter')
 }
 
+// ── §189 Die Hintergrundbilder ─────────────────────────────────────────────
+//
+// WAS DIESE PRÜFUNG KANN UND WAS NICHT
+// Sie sieht, DASS das Bild angefordert wird und dass die Datei wirklich
+// ausgeliefert wird. Ob der Text darauf noch lesbar ist, sieht sie nicht —
+// das misst die Browserprüfung in `browser/marke.mjs`, indem sie den Text
+// ausblendet und die Helligkeit darunter nachrechnet.
+//
+// Beides zusammen, weil keines allein reicht: Eine fehlende Datei bestünde
+// die Helligkeitsmessung glänzend (schwarz ist dunkel), und ein zu helles
+// Bild bestünde diese hier.
+console.log('\n=== §189 Die Hintergrundbilder ===')
+
+for (const [pfad, name, datei] of [
+  ['/', 'Startseite', 'start-aufmacher'],
+  ['/funktionen', 'Funktionen', 'funktionen-aufmacher'],
+]) {
+  const seite = await ohne(pfad)
+  check(`${name}: der Aufmacher fordert sein Hintergrundbild an`,
+    seite.text.includes(`${datei}.webp`),
+    'Ohne Bild bleibt oben eine schwarze Fläche — die Seite sieht dann aus wie ein Fehler')
+  check(`${name}: und auch den Kasten ganz unten`,
+    seite.text.includes('band-verbunden.webp'),
+    'Der Kasten „Wie viele Programme…" steht auf beiden Seiten und trägt dasselbe Bild')
+}
+
+for (const datei of ['start-aufmacher', 'funktionen-aufmacher', 'band-verbunden']) {
+  const r = await fetch(`${BASIS}/hintergrund/${datei}.webp`)
+  const roh = Buffer.from(await r.arrayBuffer())
+  check(`Die Datei ${datei}.webp wird ausgeliefert`, r.status === 200, `HTTP ${r.status}`)
+  // Die Kennung im Dateikopf, nicht die Endung: Eine umbenannte PNG-Datei
+  // hieße auch .webp und wäre zwanzigmal so groß.
+  check(`Und ist wirklich WebP, nicht nur so benannt`,
+    roh.toString('ascii', 0, 4) === 'RIFF' && roh.toString('ascii', 8, 12) === 'WEBP',
+    `Dateikopf: ${JSON.stringify(roh.toString('ascii', 0, 12))}`)
+  // §189 Die Vorlagen wiegen 1,4 bis 2 MB. Käme eine davon versehentlich in
+  // den Ordner, merkte das niemand außer am Ladebalken.
+  check(`Und klein genug für ein Telefon im Zug (${(roh.length / 1024).toFixed(0)} kB)`,
+    roh.length < 300 * 1024,
+    'Über 300 kB ist für ein Bild, das nur Stimmung macht, zu viel')
+}
+
 // ── K5 Die Bildschirmfotos ─────────────────────────────────────────────────
 console.log('\n=== K5 Was die Startseite zeigt ===')
 

@@ -26,6 +26,7 @@
     "logo:aufbauen": "node scripts/logo-aufbauen.mjs",
     "logo:negativ": "node scripts/logo-negativ.mjs",
     "schrift:messen": "node scripts/schrift-messen.mjs",
+    "hintergrund:aufbereiten": "node scripts/hintergrund-aufbereiten.mjs",
     "desktop": "electron desktop/haupt.js",
     "desktop:bauen": "electron-builder --project desktop --linux --win",
     "desktop:linux": "electron-builder --project desktop --linux",

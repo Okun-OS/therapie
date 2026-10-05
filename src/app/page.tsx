@@ -4,9 +4,11 @@ import { ArrowRight, Check } from 'lucide-react'
 import { anbieter } from '@/lib/dsgvo-verzeichnis'
 import { WebsiteKopf, WebsiteFuss } from '@/components/website/Rahmen'
 import { AngemeldeteWeiterleiten } from '@/components/website/AngemeldeteWeiterleiten'
+import { Hintergrundbild } from '@/components/website/Hintergrundbild'
+import { Schlussaufruf } from '@/components/website/Schlussaufruf'
 import Image from 'next/image'
 import {
-  KOPF, STAERKEN, KERN, KERN_PUNKTE, ABLAUF, SCHLUSS, BESCHREIBUNG, SCHAUFENSTER,
+  KOPF, STAERKEN, KERN, KERN_PUNKTE, ABLAUF, BESCHREIBUNG, SCHAUFENSTER,
 } from '@/lib/website-inhalt'
 
 /**
@@ -42,17 +44,13 @@ export default function Startseite() {
       <WebsiteKopf />
 
       {/* ── Aufmacher ──────────────────────────────────────────────── */}
+      {/*
+        §189 Das Bild ersetzt die beiden farbigen Lichtflecke, die hier lagen
+        — nicht aus Geschmack, sondern weil beides übereinander milchig wird:
+        Das Bild bringt seinen eigenen Schein in denselben zwei Farben mit.
+      */}
       <section className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-40 -top-60 h-[38rem] w-[38rem] rounded-full opacity-50 blur-3xl"
-          style={{ background: 'radial-gradient(circle, #26C6C633, transparent 60%)' }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-40 top-40 h-[30rem] w-[30rem] rounded-full opacity-40 blur-3xl"
-          style={{ background: 'radial-gradient(circle, #C89C5B33, transparent 60%)' }}
-        />
+        <Hintergrundbild bild="/hintergrund/start-aufmacher.webp" vorrang />
 
         <div className="relative mx-auto max-w-6xl px-5 pb-16 pt-16 sm:pb-24 sm:pt-24">
           {/*
@@ -224,32 +222,7 @@ export default function Startseite() {
       </section>
 
       {/* ── Schlussaufruf ──────────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-5 pb-16 sm:pb-24">
-        <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-navy-800 to-navy-900 p-8 sm:p-14">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full opacity-40 blur-3xl"
-            style={{ background: 'radial-gradient(circle, #C89C5B55, transparent 65%)' }}
-          />
-          <div className="relative flex flex-col gap-7 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl">
-              <h2 className="font-display text-2xl font-bold leading-tight text-white text-balance sm:text-3xl">
-                {SCHLUSS.titel}
-              </h2>
-              <p className="mt-4 text-lg font-semibold text-brand">{SCHLUSS.betont}</p>
-              <p className="mt-2 leading-relaxed text-navy-300">{SCHLUSS.text}</p>
-            </div>
-            <Link
-              href="/kontakt"
-              data-test="schluss-knopf"
-              className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-gold px-6 py-3.5 text-sm font-bold text-navy-900 transition-transform hover:scale-[1.02] md:self-auto"
-            >
-              {SCHLUSS.knopf}
-              <ArrowRight size={16} />
-            </Link>
-          </div>
-        </div>
-      </section>
+      <Schlussaufruf />
 
       <WebsiteFuss kontakt={a.kontakt} />
     </div>

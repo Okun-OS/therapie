@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import { Check } from 'lucide-react'
 import { anbieter } from '@/lib/dsgvo-verzeichnis'
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
 import { WebsiteKopf, WebsiteFuss } from '@/components/website/Rahmen'
+import { Hintergrundbild } from '@/components/website/Hintergrundbild'
+import { Schlussaufruf } from '@/components/website/Schlussaufruf'
 import {
-  FUNKTIONEN_KOPF, BEREICHE, FUNKTIONEN_SCHLUSS, SCHLUSS,
+  FUNKTIONEN_KOPF, BEREICHE, FUNKTIONEN_SCHLUSS,
 } from '@/lib/website-inhalt'
 
 /**
@@ -41,12 +41,11 @@ export default function Funktionen() {
     <div className="min-h-screen bg-navy-900">
       <WebsiteKopf />
 
+      {/* §189 Wie auf der Startseite: Das Bild tritt an die Stelle des
+          türkisen Lichtflecks, der hier lag. */}
       <section className="relative overflow-hidden border-b border-white/5">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-40 -top-40 h-[32rem] w-[32rem] rounded-full opacity-40 blur-3xl"
-          style={{ background: 'radial-gradient(circle, #26C6C633, transparent 60%)' }}
-        />
+        <Hintergrundbild bild="/hintergrund/funktionen-aufmacher.webp" vorrang />
+
         <div className="relative mx-auto max-w-6xl px-5 py-16 sm:py-20">
           <p className="max-w-2xl font-display text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold">
             {FUNKTIONEN_KOPF.vorspann}
@@ -66,7 +65,13 @@ export default function Funktionen() {
               <a
                 key={b.titel}
                 href={`#${kuerzel(b.titel)}`}
-                className="rounded-full border border-white/10 px-3.5 py-1.5 text-xs font-medium text-navy-300 transition-colors hover:border-brand/40 hover:text-white"
+                /*
+                  §189 Eigener Grund unter den Marken, seit das Bild dahinter
+                  liegt: Die Reihe ist breit genug, dass die letzten beiden auf
+                  dem hellen Teil des Bildes landen. Durchsichtig waren sie
+                  dort kaum noch zu lesen.
+                */
+                className="rounded-full border border-white/10 bg-navy-900/70 px-3.5 py-1.5 text-xs font-medium text-navy-300 backdrop-blur-sm transition-colors hover:border-brand/40 hover:text-white"
               >
                 {b.titel}
               </a>
@@ -122,33 +127,9 @@ export default function Funktionen() {
         </section>
       </div>
 
-      {/* Schlussaufruf — derselbe Text wie auf der Startseite. */}
-      <section className="mx-auto max-w-6xl px-5 pb-16 sm:pb-24">
-        <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-navy-800 to-navy-900 p-8 sm:p-14">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full opacity-40 blur-3xl"
-            style={{ background: 'radial-gradient(circle, #C89C5B55, transparent 65%)' }}
-          />
-          <div className="relative flex flex-col gap-7 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl">
-              <h2 className="font-display text-2xl font-bold leading-tight text-white text-balance sm:text-3xl">
-                {SCHLUSS.titel}
-              </h2>
-              <p className="mt-4 text-lg font-semibold text-brand">{SCHLUSS.betont}</p>
-              <p className="mt-2 leading-relaxed text-navy-300">{SCHLUSS.text}</p>
-            </div>
-            <Link
-              href="/kontakt"
-              data-test="schluss-knopf"
-              className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-gold px-6 py-3.5 text-sm font-bold text-navy-900 transition-transform hover:scale-[1.02] md:self-auto"
-            >
-              {SCHLUSS.knopf}
-              <ArrowRight size={16} />
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* Derselbe Kasten wie auf der Startseite — jetzt auch wirklich
+          derselbe und nicht nur gleich abgeschrieben. */}
+      <Schlussaufruf />
 
       <WebsiteFuss kontakt={a.kontakt} />
     </div>
