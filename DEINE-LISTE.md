@@ -4,7 +4,7 @@ Alles, was **nicht programmiert werden kann** — weil es ein Konto, eine
 Unterschrift, einen Kauf oder eine Zahl aus einer Satzung braucht. Nach
 Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 
-> Stand: 29.09.2026 · Was fertig ist, steht in `STAND.md`.
+> Stand: 05.10.2026 · Was fertig ist, steht in `STAND.md`.
 > Zum Abhaken: `- [ ]` zu `- [x]` machen.
 
 ---
@@ -16,7 +16,7 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
                                              └─►  .dmg beglaubigen
 2. Domain verbinden ────────►  ┐
 3. Firmenangaben   ─────────►  ┴─► Impressum/Datenschutz öffentlich ─► Stores
-4. Website steht ──────────►  Bildschirmfotos ─► Download-Seite
+4. Website steht ──────────►  gemeinsam schärfen ─► Download-Seite
 5. Firebase        ─────────►  Push auf Android (und mit Apple auch iOS)
 6. Steuerberater   ─────────►  erster echter Kunde
 7. Code-Signing    ─────────►  Windows-Programm ohne Warnung
@@ -28,8 +28,16 @@ unter *Wenn ein Kunde kommt*). Deine Recherche ist eingelesen, 24 Kassen
 stehen im System.
 
 **Erledigt am 29.09.:** Die Website steht, und die Wortmarke ist überall die
-echte — auch auf dunklem Grund und im Kopf jeder E-Mail. Aus Punkt 4 sind
-dadurch nur noch zwei Fragen übrig.
+echte — auch auf dunklem Grund und im Kopf jeder E-Mail.
+
+**Erledigt am 03.10.:** Die drei Bildschirmfotos stehen auf der Startseite —
+Dienstplan, Stempeluhr, Lohnabrechnung, derselbe Mensch im selben Monat. Und
+das Regelpaket für den neuen Kunden (Wohngruppe) ist gebaut, der Kunde
+angelegt, die zehn Mitarbeiterprofile erstellt.
+
+**Erledigt am 05.10.:** Der echte Schriftzug ist überall drin. In den
+Markendateien lag vorher ein anderer — mein Fehler, zweimal gegen die falsche
+Vorlage gemessen.
 
 Punkt 1 und 2 dauern Wochen und hängen an Dritten. **Damit anfangen**, alles
 andere läuft daneben.
@@ -181,19 +189,20 @@ will, ändert diese eine Datei, keinen Code.
 Entschieden ist damit auch: keine Selbstregistrierung, keine Preise auf der
 Seite, Kontakt über Formular und E-Mail. Was noch offen ist:
 
-### 🟡 Das Logo als SVG besorgen
-- [ ] **Beim Gestalter nachfragen: gibt es das Logo als SVG?** Es geht auch
-      ohne — die PNG-Dateien sind freigestellt und mit 900 Pixeln Breite groß
-      genug für jede Stelle, an der sie heute stehen. Gebraucht wird eine
-      SVG-Fassung erst, wenn das Logo groß gedruckt werden soll (Messewand,
-      Briefbogen, Fahrzeug) oder wenn eine neue Farbfassung entstehen muss.
-      Dann gerne gleich alle vier: Zeichen allein, Zeichen mit Schriftzug,
-      mit und ohne den goldenen Zusatz.
-- [ ] **Und dabei fragen, welche Schrift der Schriftzug ist.** Nachgemessen
-      ist es Gantari im Schnitt 600 — die Buchstaben decken sich zu 94,5 %,
-      der nächstbeste Kandidat liegt bei 91,9 %. Genau diese Schrift steht
-      jetzt über den Überschriften der Website. Wenn der Gestalter eine andere
-      genannt bekommt, ist das eine Zeile Änderung.
+### 🟡 Das Logo als SVG — ist unterwegs
+- [ ] **Die freigestellte SVG schicken, wenn sie da ist.** Der fertige Prompt
+      für den Gestalter (oder ChatGPT) steht im Verlauf. Die jetzige Fassung
+      ist aus deinem Bild gerechnet und funktioniert — sie ist nur gerechnet
+      statt gezeichnet. Mit Vektoren wird die Fassung für dunklen Grund exakt
+      statt berechnet, und das Logo lässt sich groß drucken.
+- [ ] **Dabei fragen: Wie heißt die Schrift?** Der Schriftzug ist
+      höchstwahrscheinlich gezeichnet, nicht gesetzt: Unter rund sechzig freien
+      Schriften ist der beste Treffer Montserrat Bold mit 84,8 % — ein echter
+      Treffer liegt bei 94 bis 98 %. Die Überschriften der Website stehen
+      deshalb in Montserrat, und im Code steht ausdrücklich, dass das die
+      nächstgelegene freie Schrift ist und nicht die des Logos. Falls es doch
+      eine gekaufte Schrift ist: **Ist eine Weblizenz dabei?** Ohne die darf
+      sie nicht auf die Website.
 
 ### 🟡 Die Website gemeinsam fertig machen
 - [ ] **Einmal zusammen durchgehen, bis sie endgültig gut ist.** Sie steht und
@@ -203,16 +212,38 @@ Seite, Kontakt über Formular und E-Mail. Was noch offen ist:
       springt, was fehlt. Das ist nichts, was ich allein entscheiden sollte —
       es ist die Seite, mit der dein Haus sich vorstellt.
 
-### 🟡 Referenz und Bildschirmfotos
+### 🟡 Noch offen auf der Website
 - [ ] **Darf ein Kunde namentlich genannt werden?** Eine Referenz wirkt mehr
       als jeder Satz über uns. Nur mit seiner Zustimmung.
-- [ ] **Echte Bildschirmfotos aus der App** gehören auf die Startseite. Dafür
-      muss der Demo-Mandant erst einen veröffentlichten Plan und gestempelte
-      Zeiten haben — das mache ich, sobald du sagst, welcher Ausschnitt
-      gezeigt werden soll (Dienstplan? Stempeluhr? Lohnabrechnung?).
 - [ ] **Die Download-Seite für das Windows-Programm** fehlt noch. Sie kommt,
       sobald die .exe signiert ist (Punkt 1) — eine unsignierte Datei zum
       Herunterladen anzubieten, schreckt mehr Leute ab, als sie überzeugt.
+
+---
+
+## 4b · Der neue Kunde: Wohngruppe
+
+Das Regelpaket ist gebaut und gerechnet (Score 98, Freigabe erteilt). Kunde,
+Standort, die 18 Dienstzeiten und die zehn Mitarbeiterprofile sind angelegt.
+Drei Dinge kann nur der Betrieb selbst:
+
+### 🔴 E-Mail-Adressen der zehn Beschäftigten eintragen
+Beim Einrichten gibt es sie noch nicht; bis dahin steht eine Platzhalter-
+adresse da, an die nichts zugestellt werden kann. **Solange sie fehlt, kann
+niemand eingeladen werden** — das Programm lehnt die Einladung mit einem Satz
+ab, der sagt, was zu tun ist.
+
+### 🟡 Zwei Angaben bestätigen, die ich geschätzt habe
+- **Tage pro Woche** je Person: aus dem Pensum geschätzt (Pensum ÷ 8 Stunden).
+  Das ist die einzige Zahl in den Stammdaten, die nicht im Regelwerk steht.
+- **Die festen Einsätze der 25-%-Kraft** (Mo 07:45–19:15, Do 07:15–08:30). Ich
+  habe nur ihre Verfügbarkeit hinterlegt — „nur Mo und Do" —, nicht die festen
+  Zeiten. Der Plan gibt ihr derzeit andere Dienste an diesen Tagen.
+
+### 🟡 Die Fixtermine der Leitung eintragen
+Teamsitzung, WWS-Sitzung, Gesamtsitzung. Das Regelwerk nennt sie selbst als
+ERSTEN Schritt der Planung, noch vor dem Rechnen — sie gehören als Termin in
+den Plan, nicht als Regel ins Paket, und sie ändern sich monatlich.
 
 ---
 
@@ -306,14 +337,13 @@ manche Kassen ändern sie mitten im Jahr (2026 gleich drei).
 
 Damit du weißt, was du **nicht** übernehmen musst:
 
-1. **Die Startseite bauen** — sobald du die fünf Fragen aus Punkt 4
-   entschieden hast. Ohne sie könnte ich bauen, müsste aber Preise und
-   Tonfall erfinden, und beides stünde dann falsch im Netz.
-2. Domain eintragen, sobald sie steht
+1. **Die SVG einbauen**, sobald sie da ist — der Weg steht
+   (`logo:aufbauen` → `logo:negativ`), das ist eine Sache von Minuten
+2. **Die Website mit dir durchgehen** und umsetzen, was dabei herauskommt
 3. Die Firmenangaben eintragen, sobald du `impressum-angaben.md` ausgefüllt
    hast — falls du sie nicht selbst bei Railway setzen willst
 4. `google-services.json` einbauen, sobald Firebase da ist
-5. Die Seite zum Herunterladen bauen, zusammen mit der Startseite
+5. Die Seite zum Herunterladen bauen, sobald die .exe signiert ist
 
 ---
 
