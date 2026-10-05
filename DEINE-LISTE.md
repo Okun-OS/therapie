@@ -12,14 +12,14 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 ## Reihenfolge auf einen Blick
 
 ```
-1. D-U-N-S-Nummer  ─────────►  Apple-Konto  ─►  APNs-Schlüssel  ─►  App Store
-                                             └─►  .dmg beglaubigen
-2. Domain verbinden ────────►  ┐
-3. Firmenangaben   ─────────►  ┴─► Impressum/Datenschutz öffentlich ─► Stores
-4. Website steht ──────────►  gemeinsam schärfen ─► Download-Seite
-5. Firebase        ─────────►  Push auf Android (und mit Apple auch iOS)
-6. Steuerberater   ─────────►  erster echter Kunde
-7. Code-Signing    ─────────►  Windows-Programm ohne Warnung
+1. D-U-N-S-Nummer  ──beantragt──►  Apple-Konto ─► APNs-Schlüssel ─► App Store
+                                               └─►  .dmg beglaubigen
+2. Domain verbinden ───erledigt───►  ┐
+3. Firmenangaben   ───erledigt───►  ┴─► Impressum/Datenschutz steht
+4. Website steht ──────────────────►  gemeinsam schärfen ─► Download-Seite
+5. Firebase        ────────────────►  Push auf Android (mit Apple auch iOS)
+6. Steuerberater   ────────────────►  erster echter Kunde
+7. Code-Signing    ────────────────►  Windows-Programm ohne Warnung
 ```
 
 **Erledigt am 27.09.:** Die Umlagesätze U1/U2 standen hier als deine Aufgabe.
@@ -39,55 +39,70 @@ angelegt, die zehn Mitarbeiterprofile erstellt.
 Markendateien lag vorher ein anderer — mein Fehler, zweimal gegen die falsche
 Vorlage gemessen.
 
-Punkt 1 und 2 dauern Wochen und hängen an Dritten. **Damit anfangen**, alles
-andere läuft daneben.
+**Drei Punkte von dieser Liste gestrichen, 05.10. (von dir berichtigt):** Die
+D-U-N-S-Nummer ist beantragt. Die Domain war längst verbunden — ich hatte sie
+noch als offen geführt, obwohl die Anlage seit Tagen unter
+`okun-workforce.com` läuft. Und die Firmenangaben stehen bei Railway; das
+Impressum ist vollständig, mit HRB 292175 B. Nachgemessen am 05.10.:
+`okun-workforce.com` und `/impressum` antworten mit 200, und die Seite meldet
+keine fehlende Pflichtangabe mehr.
+
+Punkt 1 hängt an Dritten und läuft. **Jetzt oben: das Zertifikat für Windows**
+— die Identitätsprüfung dauert bis zu 20 Werktage, alles andere läuft daneben.
 
 ---
 
-## 1 · Was Wochen dauert — heute anstoßen
+## 1 · Was Wochen dauert — jetzt anstoßen
 
-### 🔴 D-U-N-S-Nummer beantragen
-Kostenlos, dauert 1–2 Wochen. Ohne sie gibt es kein Apple Developer Program
-als Organisation.
-
-**Blockiert:** Apple-Konto → APNs-Schlüssel → Push auf dem iPhone → App Store
-→ auch das beglaubigte `.dmg` für macOS.
-
-→ https://developer.apple.com/support/D-U-N-S/
-
-### 🔴 Domain verbinden — `okun-workforce.com`
-Gekauft bei Squarespace (28.09.). **Im Code ist sie schon überall
-eingetragen**, sie muss nur noch mit Railway verbunden werden.
-
-**Schritt für Schritt: `DOMAIN.md`.** Kurzfassung:
-
-1. Bei **Railway** die Domain anmelden (Service der App → Settings →
-   Networking → Custom Domain), für `okun-workforce.com` **und**
-   `www.okun-workforce.com`. Railway nennt dir dann die Werte.
-2. Bei **Squarespace** die alten A-Einträge auf `@` löschen — sie zeigen noch
-   auf Squarespace-Hosting und blockieren den neuen Eintrag.
-3. Neu setzen: **ALIAS** auf `@`, **CNAME** auf `www`, dazu den TXT von
-   Railway. Ohne den TXT gibt es einen 404.
-4. `APP_URL=https://okun-workforce.com` bei Railway als Variable — sonst
-   zeigen alle Links in verschickten E-Mails weiter auf die alte Adresse.
-
-> **Die nackte Domain geht**, ohne `app.` davor. Squarespace kann ALIAS auf
-> `@`, Railway akzeptiert ALIAS. Ich hatte zuerst das Gegenteil behauptet —
-> falsch, und auf Nachfrage korrigiert.
-
-**Blockiert:** Impressum und Datenschutzerklärung öffentlich, beide Stores,
-die Seite zum Herunterladen des Windows-Programms.
-
-### 🔴 Code-Signing-Zertifikat für Windows kaufen
+### 🔴 Code-Signing-Zertifikat für Windows — jetzt der oberste Punkt
 Ohne Signatur zeigt Windows beim ersten Start „Unbekannter Herausgeber". Bei
 einem Programm, das Gehälter anzeigt, installiert das niemand.
 
-Ein OV-Zertifikat kostet ~200–400 €/Jahr; ein EV-Zertifikat (~400–700 €/Jahr)
-umgeht zusätzlich die SmartScreen-Aufwärmphase. Anbieter: DigiCert, Sectigo,
-GlobalSign.
+**Im Bau ist die Stelle fertig vorbereitet** (§187): Sobald das Zertifikat da
+ist, wird ein Befehl in eine Umgebungsvariable gesetzt, und jede ausgelieferte
+Datei wird signiert. Ohne Zertifikat baut es weiter, warnt aber bei jeder
+Datei. Nachgemessen, auch der Fall, dass das Signieren scheitert: dann bricht
+der Bau ab und hinterlässt keine `.exe`.
 
-**Blockiert:** die Auslieferung des Windows-Programms an Kunden. Details:
-`DESKTOP.md`.
+**Die eine Sache, die die Entscheidung bestimmt:** Seit Juni 2023 gibt es kein
+Zertifikat mehr als Datei mit Kennwort. Der private Schlüssel muss auf
+zertifizierter Hardware liegen — **USB-Stick oder Cloud-Tresor**. Mit Stick
+kann nur der Rechner signieren, in dem er steckt; jede Auslieferung wäre
+Handarbeit. Mit Cloud-Tresor signiert der Bau selbst.
+
+**Empfehlung: Azure Artifact Signing** (früher „Trusted Signing"). Der einzige
+Weg, bei dem niemand Hardware verwaltet. Deutschland ist zugelassen. Gebraucht
+werden ein Azure-Konto und eine **Identitätsprüfung der OKUN Systems UG — die
+dauert 1 bis 20 Werktage.** Deshalb steht dieser Punkt jetzt oben.
+
+Bereitlegen: der Firmenname genau wie im Register, die Registeranschrift, der
+Handelsregisterauszug (falls nachgefragt: nicht älter als zwölf Monate) und
+**zwei E-Mail-Adressen auf einer eigenen Domain**, die gelesen werden —
+Bestätigungslinks verfallen nach sieben Tagen.
+
+Alternative, falls Azure nicht geht: ein OV-Zertifikat im Cloud-Tresor bei
+Sectigo, DigiCert oder SSL.com, rund 220–450 €/Jahr. EV (~300–650 €/Jahr)
+lohnt nur, wenn in den ersten Wochen viele Erstinstallationen anstehen: Ein
+frisches OV-Zertifikat muss sich bei SmartScreen erst einlaufen, EV
+überspringt das.
+
+**Blockiert:** die Auslieferung des Windows-Programms an Kunden. Die
+Abwägung im Detail: `DESKTOP.md`, Abschnitt §187.
+
+### 🟡 D-U-N-S-Nummer — beantragt, läuft
+Dauert 1–2 Wochen. Ohne sie gibt es kein Apple Developer Program als
+Organisation.
+
+**Blockiert noch:** Apple-Konto → APNs-Schlüssel → Push auf dem iPhone → App
+Store → auch das beglaubigte `.dmg` für macOS.
+
+### ✅ Domain verbunden — `okun-workforce.com`
+Steht. Die Anlage läuft darunter, `APP_URL` ist gesetzt. Wie es gemacht wurde,
+bleibt in `DOMAIN.md` stehen — falls die Einträge einmal nachzusehen sind.
+
+> Zwei Dinge hatte ich hier falsch behauptet und auf Nachfrage berichtigt:
+> dass die nackte Domain ohne `app.` nicht gehe (sie geht), und dass dieser
+> Punkt noch offen sei (war er nicht).
 
 ---
 
@@ -103,7 +118,7 @@ einzige Benachrichtigung** — es schreibt nur ins Protokoll, dass es wollte.
    `FCM_SERVICE_ACCOUNT` hinterlegen
 4. Für Android: `google-services.json` herunterladen (ich baue sie ein)
 5. Für iOS: den APNs-Schlüssel (.p8) aus dem Apple-Konto in Firebase
-   hochladen — **wartet auf Punkt 1**
+   hochladen — **wartet auf die D-U-N-S-Nummer**
 
 Schritt für Schritt: `APP-STORES.md`, Teil B.
 
@@ -111,40 +126,29 @@ Schritt für Schritt: `APP-STORES.md`, Teil B.
 Wartet auf die D-U-N-S-Nummer.
 
 ### 🟡 Google-Play-Entwicklerkonto — 25 $ einmalig
-Geht sofort, unabhängig von allem anderen.
+Geht sofort, unabhängig von allem anderen. Danach brauche ich von dir nur das
+`google-services.json` aus dem Firebase-Projekt; den Rest baue ich ein.
 
-### 🔴 Firmenangaben für Impressum und Datenschutzerklärung
-**Es gibt eine Vorlage zum Ausfüllen: `impressum-angaben.md`.** Ausfüllen und
-mir schicken, oder direkt bei Railway unter *Variables* eintragen.
+### ✅ Firmenangaben für Impressum und Datenschutzerklärung
+Stehen bei Railway. Das Impressum ist vollständig: OKUN Systems UG
+(haftungsbeschränkt), Potsdamer Platz 1, 10785 Berlin, vertreten durch Felix
+Okun, kontakt@okun-systems.com, Amtsgericht Charlottenburg HRB 292175 B.
 
-Vier davon sind Pflicht nach §5 DDG und ohne sie ist das Impressum
-unvollständig:
+Offen ist nur noch `OKUN_USTID` — die Seite schreibt dort „Wird
+nachgereicht". Sobald die USt-IdNr. vom Bundeszentralamt da ist, bei Railway
+eintragen, dann verschwindet der Satz von selbst. (Die USt-IdNr., nicht die
+Steuernummer vom Finanzamt — das sind zwei verschiedene Nummern.)
 
-| | |
-|---|---|
-| `OKUN_FIRMA` | vollständiger Firmenname **mit Rechtsform**, wie im Register |
-| `OKUN_ANSCHRIFT` | ladungsfähige Anschrift — **kein Postfach** |
-| `OKUN_VERTRETEN` | vertretungsberechtigte Person, Vor- und Nachname |
-| `OKUN_KONTAKT` | E-Mail, die wirklich gelesen wird |
+Freiwillig, falls einmal nötig: `OKUN_DSB` (ein Datenschutzbeauftragter ist
+erst ab 20 Personen Pflicht, §38 BDSG).
 
-Dazu, sobald vorhanden: `OKUN_REGISTER` (Gericht **und** Nummer), `OKUN_USTID`
-(die USt-IdNr., nicht die Steuernummer vom Finanzamt). Und für den
-Datenschutz: `OKUN_DSB` (nur ab 20 Personen Pflicht, §38 BDSG),
-`OKUN_SUPPORT_EMAIL`.
-
-**Acht Variablen, nicht elf.** In der ersten Fassung dieser Liste standen
-`OKUN_ABSENDER`, `OKUN_NAME` und `OKUN_ART` mit dabei — das war mein Fehler:
-Die sind Konstanten im Code, sie zu setzen hätte nichts bewirkt.
-
-`OKUN_FIRMA` und `OKUN_KONTAKT` braucht außerdem das `.deb`-Paket des
-Desktop-Programms — Debian verlangt einen Verantwortlichen mit E-Mail.
-
-**Solange sie fehlen, steht im Impressum, dass sie fehlen** — mit Paragraph.
-Das ist Absicht: Ein Impressum, das eine Pflichtangabe stillschweigend
-auslässt, ist abmahnbar.
-
-**Blockiert:** beide App Stores (die verlangen eine erreichbare URL),
-und rechtlich jeden echten Kunden.
+> **Der Firmenname steht jetzt an zwei Stellen** — bei Railway für das
+> Impressum und in `desktop/package.json` für die Pakete des
+> Desktop-Programms. Das ist kein Versehen: Der Bau läuft ohne die
+> Railway-Umgebung, und bis zum 05.10. stand deshalb in jedem gebauten `.deb`
+> ein erfundener Absender auf `okun.de`. Beide Stellen müssen **wortgleich**
+> sein, weil derselbe Name ins Signaturzertifikat kommt — sonst zeigt Windows
+> zwei verschiedene Herausgeber. `npm run desktop:pruefen` prüft das.
 
 ---
 
@@ -168,13 +172,43 @@ ungeprüft. Steuerberater **oder** Datenschutzbeauftragter.
 ### 🟡 Vermögensschadenhaftpflicht klären
 Wer Gehälter rechnet, haftet. Vor dem ersten echten Kunden klären.
 
-### 🟡 AVVs mit den Dienstleistern
-Auftragsverarbeitungsverträge mit Anthropic (Claude), Railway (Hosting) und
-Google (Push/FCM). Ohne sie kein DSGVO-konformer Betrieb beim Kunden.
+### 🔴 AVVs mit den Dienstleistern
+Auftragsverarbeitungsverträge. Ohne sie kein DSGVO-konformer Betrieb beim
+Kunden — und sobald ein Kunde selbst einen AVV mit dir schließt, musst du ihm
+diese Kette nachweisen (Art. 28 Abs. 4 DSGVO: du haftest ihm gegenüber für
+deine Unterauftragnehmer).
 
-### 🟡 Datenschutzerklärung und Impressum öffentlich erreichbar
-Beide Stores verlangen eine URL. Die Texte sind gebaut — sie brauchen die
-Domain aus Punkt 1 und die `OKUN_*`-Angaben.
+**Es sind fünf, nicht drei.** Hier standen bis zum 05.10. nur Anthropic,
+Railway und Google — der E-Mail-Versand und die SMS fehlten, und das sind
+gerade die beiden mit US-Übermittlung. Maßgeblich ist das Verzeichnis im Code
+(`src/lib/dsgvo-verzeichnis.ts`), nicht diese Liste; es erscheint im Programm
+unter *Datenschutz → Verzeichnis*, und dort stehen **alle fünf als „Vertrag
+offen"**.
+
+Verhandeln muss man nichts, alle fünf haben ein Standarddokument zum Annehmen:
+
+| | Wer | Wofür | Wo liegen die Daten |
+|---|---|---|---|
+| 1 | **Railway** | Hosting und Datenbank — hier liegt **alles** | EU |
+| 2 | **Resend** | E-Mails: Einladungen, Benachrichtigungen, Lohnbelege | **USA** |
+| 3 | **Twilio** | SMS für den zweiten Anmeldefaktor | **USA** |
+| 4 | **Anthropic** | der Hilfe-Assistent (sieht keine Betriebsdaten) | **USA** |
+| 5 | **Google** | Push an die App aus dem Store | EU, für iPhones weiter an Apple |
+
+**Reihenfolge: 1, dann 2.** Bei Railway liegt jede Zeile, die ein Kunde
+eingibt. Bei Resend gehen Lohnbelege per E-Mail hinaus — das ist die zweite
+Stelle, an der es wirklich um Personaldaten geht.
+
+Bei den drei US-Diensten gehört jeweils dazu: entweder der Anbieter ist nach
+dem **EU-US Data Privacy Framework** zertifiziert (dann prüfen und den Eintrag
+aufbewahren), oder es braucht **Standardvertragsklauseln** samt
+Folgenabschätzung. Bei Anthropic zusätzlich: **die Nutzung der Inhalte zum
+Training vertraglich ausschließen.**
+
+> Solange ein Vertrag auf „offen" steht, sagt das Verzeichnis das dem Kunden —
+> genauso wie das Impressum sagt, wenn eine Pflichtangabe fehlt. Nach jedem
+> abgeschlossenen AVV den Stand in `dsgvo-verzeichnis.ts` umstellen; schick mir
+> einfach, welcher durch ist.
 
 ---
 
@@ -213,11 +247,27 @@ Seite, Kontakt über Formular und E-Mail. Was noch offen ist:
       es ist die Seite, mit der dein Haus sich vorstellt.
 
 ### 🟡 Noch offen auf der Website
-- [ ] **Darf ein Kunde namentlich genannt werden?** Eine Referenz wirkt mehr
-      als jeder Satz über uns. Nur mit seiner Zustimmung.
+- [ ] **Darf ein Kunde namentlich genannt werden?** — Gemeint ist: Auf der
+      Website steht nirgends, wer das Programm benutzt. Ein echter Name
+      („Kita Sonnenschein, Potsdam, seit Januar 2026") überzeugt mehr als
+      jeder Satz, den wir über uns selbst schreiben. Nur kann ich das nicht
+      entscheiden und auch nicht ohne Erlaubnis hinschreiben: Der Name eines
+      Betriebs mitsamt der Aussage „führt hier seine Personaldaten" ist eine
+      Veröffentlichung über ihn, nicht über uns.
+
+      **Was ich von dir bräuchte:** eine kurze schriftliche Zustimmung des
+      Kunden — eine E-Mail genügt, in der steht, dass er mit Namen, Ort und
+      Art der Einrichtung genannt werden darf, und was genau dort stehen
+      soll. Am besten gleich mit einem Satz von ihm, den wir zitieren können.
+
+      **Falls er nicht will** (völlig normal, gerade bei Trägern): Dann geht
+      es auch ohne Namen — „eine Kita mit acht Gruppen in Brandenburg", „eine
+      Wohngruppe mit fünf Bewohnern". Das trägt den Nachweis, dass es im Echten
+      läuft, und nennt niemanden. Auf der Seite steht derzeit keine Variante
+      von beidem; sag mir, welche es sein soll.
 - [ ] **Die Download-Seite für das Windows-Programm** fehlt noch. Sie kommt,
-      sobald die .exe signiert ist (Punkt 1) — eine unsignierte Datei zum
-      Herunterladen anzubieten, schreckt mehr Leute ab, als sie überzeugt.
+      sobald die .exe signiert ist — eine unsignierte Datei zum Herunterladen
+      anzubieten, schreckt mehr Leute ab, als sie überzeugt.
 
 ---
 

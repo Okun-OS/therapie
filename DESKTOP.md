@@ -168,9 +168,112 @@ nach zwei Wochen ignoriert.
 
 | | Was | Warum es noch nicht geht |
 |---|---|---|
-| 🔴 | **Die .exe signieren** | Ohne Signatur zeigt Windows SmartScreen beim ersten Start „Unbekannter Herausgeber". Braucht ein Code-Signing-Zertifikat auf OKUN — ein Kauf, keine Programmierarbeit. |
+| 🔴 | **Die .exe signieren** | Der Bau ist vorbereitet (§187, siehe unten) — es fehlt das Zertifikat. Ein Kauf, keine Programmierarbeit. |
 | 🔴 | **.dmg bauen und beglaubigen** | Braucht einen Mac und das Apple-Developer-Konto. Ohne Beglaubigung („notarization") warnt macOS beim ersten Start. Hängt an derselben D-U-N-S-Nummer wie der App Store — siehe `APP-STORES.md`. |
 | 🟡 | **Eine Seite zum Herunterladen** | Die Dateien müssen irgendwo liegen. Gehört zur eigenen Domain und zur überarbeiteten Startseite. |
 | 🟢 | Fassungsnummer gemeinsam führen | `desktop/package.json` hat eine eigene Version. Solange die Hülle sich kaum ändert, ist das in Ordnung; sobald sie öfter ausgeliefert wird, sollte ein Befehl beide setzen. |
 
 🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt
+
+---
+
+## §187 Die Signatur für Windows — was zu kaufen ist und warum
+
+Ohne Signatur zeigt Windows beim ersten Start „Unbekannter Herausgeber". Bei
+einem Programm, das Gehälter anzeigt, installiert das niemand.
+
+### Die eine Sache, die man vorher wissen muss
+
+**Seit dem 1. Juni 2023 gibt es kein Zertifikat mehr als Datei mit Kennwort.**
+Die Zertifizierungsstellen müssen den privaten Schlüssel auf zertifizierter
+Hardware halten — entweder auf einem USB-Stick, den sie per Post schicken, oder
+in einem Cloud-Tresor.
+
+Das klingt nach einer Fußnote und entscheidet alles:
+
+* **Mit USB-Stick** kann nur die Person signieren, die den Stick eingesteckt
+  hat. Der Bau läuft hier auf einem Server — er könnte dann nicht signieren.
+  Jede Auslieferung ginge über einen Windows-Rechner von Hand.
+* **Mit Cloud-Tresor** signiert der Bau selbst. Das Zertifikat liegt beim
+  Anbieter, der Bau ruft ihn über einen Befehl.
+
+Wer den Stick nimmt, kauft sich eine Handarbeit bei jeder Auslieferung ein.
+
+### Die drei Wege
+
+| | Was | Kosten | Signiert der Bau selbst? |
+|---|---|---|---|
+| **A** | **Azure Artifact Signing** (früher Trusted Signing) | Basis-Stufe, 5.000 Signaturen/Monat — der Preis steht beim Anlegen im Portal | ja |
+| **B** | **OV-Zertifikat im Cloud-Tresor** (Sectigo, DigiCert, SSL.com) | rund 220–450 €/Jahr, Tresor teils extra | ja |
+| **C** | **OV- oder EV-Zertifikat auf USB-Stick** | dasselbe, EV eher 300–650 €/Jahr | nein |
+
+**Empfehlung: A.** Es ist der einzige Weg, bei dem der Bau hier signieren kann,
+ohne dass jemand Hardware verwaltet. Deutschland ist unter den zugelassenen
+Ländern. Gebraucht werden ein Azure-Konto, ein Entra-Verzeichnis und eine
+Identitätsprüfung der OKUN Systems UG — **die dauert 1 bis 20 Werktage**, also
+früh anfangen.
+
+**EV statt OV** lohnt nur aus einem Grund: Ein frisches OV-Zertifikat muss sich
+bei Microsofts SmartScreen erst „einlaufen" — die ersten Wochen warnt Windows
+weiter, bis genug Installationen gezählt sind. EV überspringt das. Wer in den
+ersten Wochen viele Erstinstallationen erwartet, zahlt dafür gern; wer mit
+wenigen Kunden anfängt, kann es aussitzen.
+
+### Was für die Prüfung bereitliegen muss
+
+Die Angaben müssen zum Handelsregister passen — und zum Impressum:
+
+* **OKUN Systems UG (haftungsbeschränkt)**, genau so geschrieben
+* Die Anschrift aus dem Handelsregister
+* Eine **E-Mail auf einer Domain des Unternehmens**, die wirklich gelesen wird
+  (Bestätigungslinks laufen nach sieben Tagen ab)
+* Der Handelsregisterauszug; falls nachgefragt wird, darf er **nicht älter als
+  zwölf Monate** sein
+* Eine zweite E-Mail auf derselben Domain
+
+Der Name im Zertifikat ist später der, den Windows im Installationsprogramm
+anzeigt. Deshalb steht er seit §187 wortgleich in `desktop/package.json`.
+
+### Wie signiert wird, wenn es da ist
+
+Im Bau ist die Stelle vorbereitet. Der Befehl des Anbieters kommt über eine
+Umgebungsvariable; `{datei}` wird durch den Pfad der zu signierenden Datei
+ersetzt:
+
+```bash
+OKUN_SIGN_BEFEHL='azuresigntool sign -kvu … -fd sha256 -tr http://timestamp.acs.microsoft.com "{datei}"' \
+  npm run desktop:win
+```
+
+**Ohne diese Variable wird unsigniert gebaut — und der Bau sagt es.** Für jede
+unsignierte Datei erscheint eine Warnung mit ihrem Pfad. Zum Ausprobieren ist
+das in Ordnung; still unsigniert auszuliefern wäre es nicht. Nachgemessen am
+Bau vom 05.10.2026: vier Dateien, vier Warnungen — das Programm selbst,
+`elevate.exe`, das Deinstallationsprogramm und das Installationsprogramm.
+
+**Scheitert der Befehl, scheitert der Bau.** Auch das ist nachgewiesen: Mit
+einem Befehl, der Fehlercode 7 zurückgibt, bricht `npm run desktop:win` ab und
+hinterlässt keine `.exe`. Eine Signatur, die klemmt, darf nicht in einem
+scheinbar erfolgreichen Bau untergehen.
+
+Zeitstempel nicht vergessen (`-tr`): Ohne ihn werden alle ausgelieferten
+Dateien ungültig, sobald das Zertifikat abläuft. Mit ihm bleiben sie gültig.
+
+### Zwei Dinge, die beim Einhängen hochkamen
+
+**Der Haken ist umgezogen.** Bis electron-builder 24 lag er unter `win.sign`,
+seit 25 unter `win.signtoolOptions.sign`. Der alte Platz wird nicht ignoriert,
+sondern bricht den Bau mit `configuration.win should be one of these: null`
+ab — eine Meldung, die nichts verrät. `npm run desktop:pruefen` prüft die
+Bauanleitung jetzt gegen das Schema des **installierten** Paketbauers; zieht
+die nächste Fassung wieder einen Schlüssel um, wird das in zwei Sekunden rot
+statt nach einem vollständigen Bau.
+
+**Der Verantwortliche im `.deb` war erfunden.** In der Bauanleitung stand
+`OKUN_FIRMA || 'OKUN'` und `OKUN_KONTAKT || 'kontakt@okun.de'`. Diese Variablen
+stehen nur in der Umgebung des Servers, nicht in der eines Baus — also griff
+praktisch immer der Rückfallwert, und jedes gebaute `.deb` trug einen Absender
+auf einer Domain, die es nicht gibt. Jetzt ist `desktop/package.json` die eine
+Quelle für beides; fehlt die Angabe dort, bricht der Bau ab, statt etwas
+einzusetzen. Die Umgebungsvariablen überschreiben weiterhin — für einen Bau im
+Auftrag eines anderen Hauses.

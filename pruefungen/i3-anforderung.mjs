@@ -117,20 +117,38 @@ check('Ein fremder Mitarbeiter auch nicht',
   fremdePersonDetail.status === 404 || fremdePersonDetail.status === 403,
   `HTTP ${fremdePersonDetail.status}`)
 
-// Ein Kollege desselben Standorts darf hier gar nichts sehen.
-const kollegen = (await hole(leitung, '/api/employees')).body.employees ?? []
-const kollege = kollegen.find(e => e.id !== mAnna.employeeId && e.active !== false)
-if (kollege?.email) {
-  const alsKollege = await login(kollege.email).catch(() => null)
-  if (alsKollege) {
-    const sicht = await hole(alsKollege, '/api/anforderungen')
-    check('Ein Kollege sieht die Anforderung eines anderen nicht',
-      !(sicht.body.anforderungen ?? []).some(a => a.id === id))
-    const versuch = await hole(alsKollege, `/api/anforderungen/${id}`)
-    check('Auch nicht über die Kennung', versuch.status === 404,
-      `HTTP ${versuch.status}`)
-  }
-}
+/*
+ * Ein Kollege desselben Standorts darf hier gar nichts sehen.
+ *
+ * §187 WARUM HIER EIN FESTER NAME STEHT UND KEIN GESUCHTER
+ * Vorher wurde der Kollege aus `/api/employees` gefischt — der erste, der
+ * nicht Anna ist — und die beiden Prüfungen liefen nur, WENN der eine
+ * E-Mail-Adresse hatte und sich anmelden konnte. Nach einem frischen
+ * `npm run seed` traf das nicht zu: Die Gesamtzahl fiel von 1601 auf 1599,
+ * und zwei davon waren genau diese zwei. Übersprungen, nicht rot.
+ *
+ * Das ist die schlimmere Sorte Lücke. Es sind Zugriffsprüfungen: Sie
+ * beweisen, dass ein Kollege nicht liest, was ein anderer einzureichen hat.
+ * Eine Prüfung, die sich bei fehlenden Daten still überspringt, meldet
+ * „alles grün" für etwas, das sie nicht angesehen hat.
+ *
+ * Jetzt steht hier ein Konto aus den Testdaten, genau wie oben bei Anna und
+ * der Leitung. Fehlt es, bricht `login` ab — und das ist richtig: Dann
+ * stimmen die Testdaten nicht, und das soll man sehen. (Regel 1 der
+ * Nachweis-README: Jede Prüfung stellt ihren Ausgangszustand selbst her.)
+ */
+const alsKollege = await login('thomas.weber@rheinblick-reha.de')
+const mKollege = (await hole(alsKollege, '/api/auth/me')).body.user
+check('Der Kollege für die Gegenprobe ist ein anderer Mensch',
+  mKollege?.employeeId && mKollege.employeeId !== mAnna.employeeId,
+  `Kollege: ${mKollege?.employeeId} · Anna: ${mAnna.employeeId}`)
+
+const sicht = await hole(alsKollege, '/api/anforderungen')
+check('Ein Kollege sieht die Anforderung eines anderen nicht',
+  !(sicht.body.anforderungen ?? []).some(a => a.id === id))
+const versuch = await hole(alsKollege, `/api/anforderungen/${id}`)
+check('Auch nicht über die Kennung', versuch.status === 404,
+  `HTTP ${versuch.status}`)
 
 // ── I3.3 Wer was tun darf ──────────────────────────────────────────────────
 console.log('\n=== I3.3 Wer was tun darf ===')
