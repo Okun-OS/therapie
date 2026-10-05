@@ -25,7 +25,11 @@ export function Schlussaufruf() {
         data-test="schlussaufruf"
         className="relative overflow-hidden rounded-3xl border border-white/8 bg-navy-900"
       >
-        <Hintergrundbild bild="/hintergrund/band-verbunden.webp" ausschnitt="object-[68%_center]" />
+        <Hintergrundbild
+          bild="/hintergrund/band-verbunden.webp"
+          art="kasten"
+          ausschnitt="object-[68%_center]"
+        />
 
         {/*
           §189 Der Knopf steht jetzt UNTER dem Text, nicht rechts daneben.

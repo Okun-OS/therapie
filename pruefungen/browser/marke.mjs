@@ -171,7 +171,31 @@ for (const [breite, geraet] of [[1280, 'Bildschirm'], [390, 'Telefon']]) {
     check(`${name} (${geraet}): der Aufmacher trägt ein Hintergrundbild`, Boolean(bild),
       bild ?? 'kein Bild aus /hintergrund/ auf der Seite')
 
-    const kasten = await seite.locator('h1').boundingBox()
+    /*
+     * §190 Gemessen wird, wo BUCHSTABEN stehen — nicht der Kasten um sie
+     * herum. Eine Überschrift mit `max-w-4xl` ist so breit wie erlaubt, der
+     * Text darin oft deutlich kürzer. Wer den Kasten misst, verlangt
+     * Abdunklung an Stellen, an denen gar nichts steht, und dunkelt dafür
+     * das halbe Bild ab.
+     *
+     * `Range.getClientRects()` liefert je Textzeile ein Rechteck. Ihre
+     * Vereinigung ist die Fläche, auf die es ankommt.
+     */
+    const kasten = await seite.evaluate(() => {
+      const h = document.querySelector('h1')
+      const bereich = document.createRange()
+      bereich.selectNodeContents(h)
+      const teile = [...bereich.getClientRects()].filter(r => r.width > 1 && r.height > 1)
+      if (!teile.length) return h.getBoundingClientRect().toJSON()
+      const x = Math.min(...teile.map(r => r.left))
+      const y = Math.min(...teile.map(r => r.top))
+      return {
+        x,
+        y,
+        width: Math.max(...teile.map(r => r.right)) - x,
+        height: Math.max(...teile.map(r => r.bottom)) - y,
+      }
+    })
     await seite.addStyleTag({ content: 'h1, h1 * { color: transparent !important }' })
     await seite.waitForTimeout(150)
     const roh = await seite.screenshot({ clip: kasten })

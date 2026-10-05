@@ -50,7 +50,15 @@ export default function Funktionen() {
           <p className="max-w-2xl font-display text-xs font-bold uppercase leading-relaxed tracking-[0.12em] text-gold">
             {FUNKTIONEN_KOPF.vorspann}
           </p>
-          <h1 className="mt-5 font-display text-4xl font-bold leading-tight text-white text-balance sm:text-5xl">
+          {/*
+            §190 `max-w-4xl` — vorher hatte diese Überschrift als einzige gar
+            keine Begrenzung und lief über 93 % der Fensterbreite: zum Lesen
+            zu lang, und für das Hintergrundbild tödlich, weil sie bis ins
+            hellste Viertel reichte (gemessen 0,480 bei einer Grenze von
+            0,33). Mit `max-w-3xl` wie auf der Startseite brach sie in drei
+            Zeilen um; `max-w-4xl` lässt beide Sätze je eine Zeile.
+          */}
+          <h1 className="mt-5 max-w-4xl font-display text-4xl font-bold leading-tight text-white text-balance sm:text-5xl">
             {FUNKTIONEN_KOPF.zeilen[0]}
             <br />
             <span className="text-brand">{FUNKTIONEN_KOPF.zeilen[1]}</span>
