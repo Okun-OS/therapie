@@ -11,7 +11,8 @@
 //
 // WAS SIE PRÜFT, WAS EINE HTTP-PRÜFUNG NICHT KANN
 // Die HTTP-Prüfung (K4 in `k-website.mjs`) sieht den Quelltext: dass die
-// Negativfassung angefordert und Gantari geladen wird. Sie sieht nicht, ob das
+// Negativfassung angefordert und die Überschriftenschrift geladen wird. Sie
+// sieht nicht, ob das
 // Bild wirklich ankommt und ob die Schrift am Ende tatsächlich auf der
 // Überschrift liegt. Ein falscher Dateiname, eine geblockte Schriftquelle, ein
 // Tippfehler in der Tailwind-Familie — alles das bestünde die HTTP-Prüfung und
@@ -68,18 +69,18 @@ await seite.goto(`${BASIS}/`, { waitUntil: 'networkidle' })
 await seite.evaluate(() => document.fonts.ready)
 
 const geladen = await seite.evaluate(() => ({
-  gantari600: document.fonts.check('600 16px Gantari'),
+  ueberschrift: document.fonts.check('700 16px Montserrat'),
   inter: document.fonts.check('400 16px Inter'),
   h1: getComputedStyle(document.querySelector('h1')).fontFamily,
   fliess: getComputedStyle(document.querySelector('h1 ~ p') ?? document.body).fontFamily,
 }))
 
-check('Gantari ist im Browser angekommen', geladen.gantari600,
+check('Die Überschriftenschrift ist im Browser angekommen', geladen.ueberschrift,
   'document.fonts.check sagt nein — dann zeichnet die Seite mit Inter und niemand merkt es')
 check('Inter ist weiterhin da', geladen.inter)
-check('Die Überschrift steht in Gantari', /^Gantari/.test(geladen.h1),
+check('Die Überschrift steht in der Überschriftenschrift', /^Montserrat/.test(geladen.h1),
   `aufgelöst als: ${geladen.h1}`)
-check('Der Fließtext steht nicht in Gantari', !/^Gantari/.test(geladen.fliess),
+check('Der Fließtext steht nicht darin', !/^Montserrat/.test(geladen.fliess),
   `aufgelöst als: ${geladen.fliess}`)
 
 // ── Gegenprobe: der Nachbau ist weg ────────────────────────────────────────

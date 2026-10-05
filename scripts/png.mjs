@@ -38,24 +38,36 @@ export function lesen(pfad) {
     p += 12 + laenge
   }
   if (!kopf) throw new Error(`${pfad}: kein IHDR`)
-  if (kopf.tiefe !== 8 || kopf.farbe !== 6 || kopf.interlace) {
-    throw new Error(`${pfad}: erwartet wird RGBA, 8 bit, ohne Interlacing`)
+  /*
+   * §186 Auch RGB und Graustufen lesen, nicht nur RGBA.
+   *
+   * Die Logovorlagen kommen so, wie der Gestalter sie exportiert: mal mit
+   * Transparenz, mal ohne. Ein Leser, der nur RGBA kann, bricht dann mit einer
+   * Meldung ab, die nach einem kaputten Bild klingt — dabei ist es ein völlig
+   * normales PNG.
+   */
+  const kanaele = { 0: 1, 2: 3, 4: 2, 6: 4 }[kopf.farbe]
+  if (kopf.tiefe !== 8 || !kanaele || kopf.interlace) {
+    throw new Error(
+      `${pfad}: erwartet werden 8 bit ohne Interlacing (Graustufen, RGB oder RGBA) — `
+      + `vorgefunden: Tiefe ${kopf.tiefe}, Farbtyp ${kopf.farbe}`,
+    )
   }
 
   const { breite: w, hoehe: h } = kopf
-  const zeilenlaenge = w * 4
+  const zeilenlaenge = w * kanaele
   const roh = inflateSync(Buffer.concat(teile))
-  const rgba = Buffer.alloc(w * h * 4)
+  const roheBilddaten = Buffer.alloc(w * h * kanaele)
   let q = 0
   for (let y = 0; y < h; y++) {
     const filter = roh[q++]
     const ein = roh.subarray(q, q + zeilenlaenge); q += zeilenlaenge
-    const ziel = rgba.subarray(y * zeilenlaenge, (y + 1) * zeilenlaenge)
-    const oben = y ? rgba.subarray((y - 1) * zeilenlaenge, y * zeilenlaenge) : null
+    const ziel = roheBilddaten.subarray(y * zeilenlaenge, (y + 1) * zeilenlaenge)
+    const oben = y ? roheBilddaten.subarray((y - 1) * zeilenlaenge, y * zeilenlaenge) : null
     for (let i = 0; i < zeilenlaenge; i++) {
-      const links = i >= 4 ? ziel[i - 4] : 0
+      const links = i >= kanaele ? ziel[i - kanaele] : 0
       const drueber = oben ? oben[i] : 0
-      const schraeg = (oben && i >= 4) ? oben[i - 4] : 0
+      const schraeg = (oben && i >= kanaele) ? oben[i - kanaele] : 0
       let v = ein[i]
       if (filter === 1) v += links
       else if (filter === 2) v += drueber
@@ -68,7 +80,86 @@ export function lesen(pfad) {
       ziel[i] = v & 255
     }
   }
+
+  // Alles auf RGBA bringen — der Rest des Programms kennt nur das.
+  const rgba = Buffer.alloc(w * h * 4)
+  for (let i = 0; i < w * h; i++) {
+    let r, g, b, a = 255
+    if (kanaele === 4) { [r, g, b, a] = roheBilddaten.subarray(i * 4, i * 4 + 4) }
+    else if (kanaele === 3) { [r, g, b] = roheBilddaten.subarray(i * 3, i * 3 + 3) }
+    else if (kanaele === 2) { r = g = b = roheBilddaten[i * 2]; a = roheBilddaten[i * 2 + 1] }
+    else { r = g = b = roheBilddaten[i] }
+    rgba[i * 4] = r; rgba[i * 4 + 1] = g; rgba[i * 4 + 2] = b; rgba[i * 4 + 3] = a
+  }
   return { w, h, rgba }
+}
+
+/** Einen rechteckigen Ausschnitt herauslösen. */
+export function schneiden(bild, x0, y0, w, h) {
+  const aus = Buffer.alloc(w * h * 4)
+  for (let y = 0; y < h; y++) {
+    bild.rgba.copy(aus, y * w * 4,
+      ((y0 + y) * bild.w + x0) * 4, ((y0 + y) * bild.w + x0 + w) * 4)
+  }
+  return { w, h, rgba: aus }
+}
+
+/**
+ * Ein Bild auf eine neue Größe bringen — mit Flächenmittelung.
+ *
+ * Beim Verkleinern wird über alle Quellpunkte gemittelt, die auf einen
+ * Zielpunkt fallen. Wer stattdessen den nächstgelegenen Punkt nimmt, bekommt
+ * ausgefranste Buchstabenkanten, und genau daran erkennt man ein Logo, das
+ * durch die falsche Maschine gelaufen ist.
+ */
+export function skalieren(bild, zw, zh) {
+  const aus = Buffer.alloc(zw * zh * 4)
+  for (let y = 0; y < zh; y++) {
+    const sy0 = Math.floor(y * bild.h / zh)
+    const sy1 = Math.max(sy0 + 1, Math.ceil((y + 1) * bild.h / zh))
+    for (let x = 0; x < zw; x++) {
+      const sx0 = Math.floor(x * bild.w / zw)
+      const sx1 = Math.max(sx0 + 1, Math.ceil((x + 1) * bild.w / zw))
+      let r = 0, g = 0, b = 0, a = 0, n = 0
+      for (let sy = sy0; sy < Math.min(sy1, bild.h); sy++) {
+        for (let sx = sx0; sx < Math.min(sx1, bild.w); sx++) {
+          const i = (sy * bild.w + sx) * 4
+          const al = bild.rgba[i + 3] / 255
+          // Mit der Deckung gewichtet, sonst zieht ein durchsichtiger
+          // Bildpunkt die Farbe seines Nachbarn zu sich.
+          r += bild.rgba[i] * al; g += bild.rgba[i + 1] * al; b += bild.rgba[i + 2] * al
+          a += bild.rgba[i + 3]
+          n++
+        }
+      }
+      if (!n) continue
+      const deckung = a / n
+      const gewicht = deckung / 255 * n
+      const j = (y * zw + x) * 4
+      aus[j] = gewicht > 0 ? Math.round(r / gewicht) : 0
+      aus[j + 1] = gewicht > 0 ? Math.round(g / gewicht) : 0
+      aus[j + 2] = gewicht > 0 ? Math.round(b / gewicht) : 0
+      aus[j + 3] = Math.round(deckung)
+    }
+  }
+  return { w: zw, h: zh, rgba: aus }
+}
+
+/** Die Grenzen dessen, was im Bild überhaupt sichtbar ist. */
+export function tintenkasten(bild, schwelle = 40) {
+  let x0 = Infinity, x1 = -1, y0 = Infinity, y1 = -1
+  for (let y = 0; y < bild.h; y++) {
+    for (let x = 0; x < bild.w; x++) {
+      if (bild.rgba[(y * bild.w + x) * 4 + 3] > schwelle) {
+        if (x < x0) x0 = x
+        if (x > x1) x1 = x
+        if (y < y0) y0 = y
+        if (y > y1) y1 = y
+      }
+    }
+  }
+  if (x1 < 0) return null
+  return { x0, y0, x1, y1, w: x1 - x0 + 1, h: y1 - y0 + 1 }
 }
 
 let CRC_TABELLE = null

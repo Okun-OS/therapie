@@ -23,6 +23,7 @@
     "kunde:wohngruppe": "node scripts/kunde-wohngruppe.mjs",
     "schaufenster": "node scripts/schaufenster.mjs",
     "umlagen:import": "npx tsx --env-file-if-exists=.env prisma/import-umlagekatalog.ts",
+    "logo:aufbauen": "node scripts/logo-aufbauen.mjs",
     "logo:negativ": "node scripts/logo-negativ.mjs",
     "desktop": "electron desktop/haupt.js",
     "desktop:bauen": "electron-builder --project desktop --linux --win",

@@ -17,7 +17,7 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §185 Zweites Regelpaket: Wohngruppe mit fünf Bewohnern — gedacht über die Zeitachse statt über Gruppen |
+| **Zuletzt fertig** | §186 Der richtige Schriftzug — in den Markendateien lag ein anderer als der des Hauses |
 | **Nachweisstand** | 1601/1601 in 43 Prüfungen, 61 im Browser, 17 am Programmfenster, 154 im Rechendienst, 1034 Modultests |
 | **Als Nächstes** | Die Website gemeinsam fertig machen (steht in `DEINE-LISTE.md`) |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
@@ -159,6 +159,20 @@ Nach Dringlichkeit, nicht nach Bereich.
       Abnahme, als eine Paketzuordnung mitten in einem laufenden Plan scheiterte
 
 ### Sonst offen
+- [x] ~~**Der echte Schriftzug im Logo**~~ ✅ §186 — in `public/brand/` lag ein
+      ANDERER Schriftzug als der, den das Haus benutzt: dünnere, schmalere
+      Buchstaben, rundes O, kein Punkt. Der echte ist deutlich schwerer und
+      breiter, das O hat eine abgeschnittene Ecke, darüber sitzt ein türkiser
+      Punkt. Zweimal hatte ich gegen die Datei im Programm gemessen statt gegen
+      die, die mir geschickt wurde — die Messung war jedes Mal richtig
+      gerechnet und auf die falsche Vorlage angewandt. Die Vorlage liegt jetzt
+      mit im Haus (`public/brand/quelle/`), und `npm run logo:aufbauen` baut
+      die Dateien daraus: freistellen, entrauschen, mit dem sauberen Zeichen
+      zusammensetzen. **Folge für die Website:** Der echte Schriftzug ist
+      GEZEICHNET, keine Schrift von der Stange — bester Treffer unter sechzig
+      Familien ist Montserrat 700 mit 84,8 % (ein echter Treffer liegt bei 94
+      bis 98). Die Überschriften stehen jetzt in Montserrat, und im Code steht,
+      dass das die nächstgelegene freie Schrift ist und nicht die des Logos
 - [x] ~~**Zweites Regelpaket: Wohngruppe mit fünf Bewohnern**~~ ✅ §185 — der
       erste Kunde nach der Kita, und er tickt vollkommen anders. Eine
       Wohngruppe hat keine Gruppen und keine Etagen; es gibt einen Ort, und die

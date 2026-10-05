@@ -3,25 +3,36 @@
 @tailwind utilities;
 
 /*
-  §180 Zwei Schriften, ein Aufruf.
+  §186 Zwei Schriften, ein Aufruf — und eine Korrektur.
 
-  Inter setzt den Fließtext — sie ist auf Bildschirmgrößen gezeichnet und
-  bleibt in einer Tabelle mit Beträgen lesbar. Gantari steht über den
-  Überschriften der Website, weil das die Schrift des Logos ist: die
-  Buchstaben aus `logo-full-tagline.png` wurden gemessen und gegen siebzig
-  Familien gehalten — Breite zu Versalhöhe, Strichstärke, und am Ende die
-  Deckungsfläche Buchstabe für Buchstabe. Gantari im Schnitt 600 deckt das
-  „OKUN" zu 94,5 Prozent; der nächste Kandidat liegt bei 91,9. Wer es genau
-  wissen will, fragt den Gestalter — aber die Seite spricht damit dieselbe
-  Schrift wie die Marke oben links und nicht bloß eine ähnliche.
+  Inter setzt den Fließtext; sie ist auf Bildschirmgrößen gezeichnet und bleibt
+  in einer Tabelle mit Beträgen lesbar.
 
-  Nachgeprüft wird das Ergebnis in `pruefungen/browser/marke.mjs`: dort wird
-  gefragt, was der Browser wirklich auf die Überschrift legt.
+  WAS HIER VORHER STAND — UND WARUM ES FALSCH WAR
+  „Gantari ist die Schrift des Logos, nachgemessen zu 94,5 %." Das stimmte für
+  den Schriftzug, der damals in `public/brand/` lag. Nur war das nicht der
+  Schriftzug des Hauses: In den Markendateien steckte ein anderer als der, den
+  der Betrieb benutzt. Ich habe zweimal gegen die Datei gemessen statt gegen
+  das, was mir geschickt wurde — und die Zahl war richtig gerechnet und auf
+  die falsche Vorlage angewandt.
+
+  WAS JETZT GILT
+  Der echte Schriftzug ist GEZEICHNET, keine Schrift von der Stange. Das O hat
+  eine abgeschnittene Ecke, über ihm sitzt ein türkiser Punkt, die Buchstaben
+  sind deutlich schwerer und breiter. Derselbe Formvergleich über rund sechzig
+  Familien liefert als besten Treffer Montserrat im Schnitt 700 — mit 84,8 %.
+  Zum Vergleich: Ein echter Treffer liegt bei 94 bis 98 %.
+
+  Montserrat steht deshalb hier als das, was es ist: die nächstgelegene freie
+  Schrift, nicht die Schrift des Logos. Sie ist breit und schwer genug, dass
+  Überschrift und Wortmarke zusammenpassen. Nennt der Gestalter die echte
+  Schrift und gibt es eine Weblizenz dafür, ist das ein Austausch von zwei
+  Zeilen.
 
   Beide Familien in einem `@import`: zwei Aufrufe blockierten das Zeichnen
   nacheinander statt gleichzeitig.
 */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Gantari:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap');
 
 @layer base {
   html {

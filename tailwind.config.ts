@@ -39,9 +39,12 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        // §180 Die Schrift des Logos. Überschriften und Marken-Zeilen der
-        // Website stehen darin; Fließtext und Anwendung bleiben bei Inter.
-        display: ['Gantari', 'Inter', 'system-ui', 'sans-serif'],
+        // §186 Die Schrift der Überschriften. NICHT die Schrift des Logos —
+        // die ist gezeichnet und gibt es nicht zu kaufen. Montserrat ist die
+        // nächstgelegene freie Familie (nachgemessen: 84,8 % Deckung gegen
+        // „WORKFORCE"); sie ist breit und schwer genug, dass Überschrift und
+        // Wortmarke zusammenpassen. Fließtext und Anwendung bleiben bei Inter.
+        display: ['Montserrat', 'Inter', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         card: '0 1px 2px 0 rgb(26 29 31 / 0.04), 0 1px 3px 0 rgb(26 29 31 / 0.06)',

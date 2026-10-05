@@ -228,7 +228,8 @@ check('Das Impressum lädt keine Negativfassung',
  * Zeitstempel (`?v=…`) und erneuert ihn laufend. Zwischen dem Abruf der Seite
  * und dem Abruf des Stilblatts ist er mitunter schon veraltet; dann kommt
  * nicht die CSS-Datei zurück, sondern die Fehlerseite — und die enthält
- * natürlich kein „Gantari". Die Prüfung meldete damit einen Schriftfehler, wo
+ * natürlich nicht die Überschriftenschrift. Die Prüfung meldete damit einen
+ * Schriftfehler, wo
  * keiner war.
  *
  * Deshalb: Seite und Stilblatt im selben Atemzug holen, und wenn trotzdem
@@ -255,15 +256,15 @@ async function stilblattHolen() {
 
 const { adressen: stilblatt, inhalt: stil } = await stilblattHolen()
 check('Die Seite bindet ein Stilblatt ein', stilblatt.length > 0)
-check('Das Stilblatt lädt Gantari — die Schrift des Logos',
-  /Gantari/.test(stil),
+check('Das Stilblatt lädt die Überschriftenschrift',
+  /Montserrat/.test(stil),
   'Ohne sie fällt die Website auf Inter zurück und spricht wieder zwei Sprachen')
 check('Und definiert dafür eine eigene Familie',
-  /\.font-display\s*\{[^}]*Gantari/.test(stil),
+  /\.font-display\s*\{[^}]*Montserrat/.test(stil),
   'Die Klasse `font-display` muss es wirklich geben, nicht nur im Quelltext stehen')
 check('Inter bleibt für den Fließtext',
   /Inter/.test(stil),
-  'Gantari ist die Überschriftenschrift, nicht die Textschrift')
+  'Montserrat ist die Überschriftenschrift, nicht die Textschrift')
 
 for (const [pfad, name] of [['/', 'Startseite'], ['/funktionen', 'Funktionen'],
   ['/kontakt', 'Kontakt']]) {
