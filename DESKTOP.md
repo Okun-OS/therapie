@@ -211,7 +211,13 @@ Wer den Stick nimmt, kauft sich eine Handarbeit bei jeder Auslieferung ein.
 **Empfehlung: A.** Am billigsten, kein Zertifikatskauf, keine Hardware, und der
 Bau signiert selbst. Deutschland ist als EU-Land zugelassen (Organisationen in
 EU, UK, USA, Kanada, Australien, Neuseeland, Japan, Südkorea, Singapur,
-Schweiz, Norwegen, Israel). Als Region West Europe oder North Europe wählen.
+Schweiz, Norwegen, Israel).
+
+**Region: North Europe** (Irland). West Europe wäre naheliegender, nimmt aber
+keine neuen Kunden mehr auf — der Versuch endet mit
+`RequestDisallowedByAzure: The selected region is currently not accepting new
+customers`. North Europe liegt weiterhin in der EU. Weitere Ausweichregionen,
+falls auch die einmal dichtmacht: Poland Central (EU), Switzerland North.
 
 > **Die 3-Jahres-Hürde gilt nicht mehr.** In der Vorschauphase 2025 verlangte
 > Azure drei Jahre nachweisbare Firmengeschichte — für eine junge UG ein
@@ -269,15 +275,15 @@ selbst mit Azure Artifact Signing. Drei Angaben aus dem Portal, dazu die
 Anmeldedaten, die Azure selbst liest:
 
 ```bash
-OKUN_AZURE_ENDPUNKT=https://weu.codesigning.azure.net \
+OKUN_AZURE_ENDPUNKT=https://neu.codesigning.azure.net \
 OKUN_AZURE_KONTO=<Name des Artifact-Signing-Kontos> \
 OKUN_AZURE_PROFIL=<Name des Zertifikatsprofils> \
 AZURE_TENANT_ID=… AZURE_CLIENT_ID=… AZURE_CLIENT_SECRET=… \
   npm run desktop:win
 ```
 
-Der Endpunkt muss zur Region des Kontos passen — `weu` für West Europe, `neu`
-für North Europe. Der **Herausgebername kommt nicht aus der Umgebung**, sondern
+Der Endpunkt muss zur Region des Kontos passen: `neu` für North Europe, `weu`
+für West Europe, `plc` für Poland Central, `swn` für Switzerland North. Der **Herausgebername kommt nicht aus der Umgebung**, sondern
 aus `desktop/package.json`: Es gibt ihn an einer Stelle, damit er nicht an
 zweien auseinanderlaufen kann.
 

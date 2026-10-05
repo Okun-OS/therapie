@@ -61,7 +61,7 @@ if (!firma || !kontakt) {
  * Anmeldedaten, die Azure selbst liest (`AZURE_TENANT_ID`,
  * `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`):
  *
- *     OKUN_AZURE_ENDPUNKT=https://weu.codesigning.azure.net
+ *     OKUN_AZURE_ENDPUNKT=https://neu.codesigning.azure.net
  *     OKUN_AZURE_KONTO=<Name des Artifact-Signing-Kontos>
  *     OKUN_AZURE_PROFIL=<Name des Zertifikatsprofils>
  *

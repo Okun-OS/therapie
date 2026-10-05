@@ -75,7 +75,7 @@ Handarbeit. Mit Cloud-Tresor signiert der Bau selbst.
 **Empfehlung: Azure Artifact Signing** (früher „Trusted Signing"), **9,99 $ im
 Monat** für 5.000 Signaturen. Kein Zertifikatskauf, keine Hardware, und der Bau
 signiert selbst. Du gehst ins Azure-Portal, suchst „Artifact Signing Accounts",
-legst ein Konto in der Region **West Europe** an, dann eine Identitätsprüfung
+legst ein Konto in der Region **North Europe** an, dann eine Identitätsprüfung
 (**Organization → Public**) und zuletzt ein Zertifikatsprofil. Nachgesehen am
 05.10.2026.
 
