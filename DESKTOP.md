@@ -201,23 +201,37 @@ Wer den Stick nimmt, kauft sich eine Handarbeit bei jeder Auslieferung ein.
 
 ### Die drei Wege
 
-| | Was | Kosten | Signiert der Bau selbst? |
+| | Was | Kosten (nachgesehen 05.10.2026) | Signiert der Bau selbst? |
 |---|---|---|---|
-| **A** | **Azure Artifact Signing** (früher Trusted Signing) | Basis-Stufe, 5.000 Signaturen/Monat — der Preis steht beim Anlegen im Portal | ja |
-| **B** | **OV-Zertifikat im Cloud-Tresor** (Sectigo, DigiCert, SSL.com) | rund 220–450 €/Jahr, Tresor teils extra | ja |
-| **C** | **OV- oder EV-Zertifikat auf USB-Stick** | dasselbe, EV eher 300–650 €/Jahr | nein |
+| **A** | **Azure Artifact Signing** (früher Trusted Signing) | **9,99 $/Monat**, 5.000 Signaturen, 1 Zertifikatsprofil. Kein Zertifikatskauf. | ja |
+| **B** | **Standard Code Signing in der Cloud, Certum** (EU, Polen) | **ab 209 €** für die Laufzeit, Cloud-Signatur „SimplySign" kostenlos dabei | ja |
+| **C** | **OV + eSigner, SSL.com** | 129 $/Jahr Zertifikat **plus** 180 $/Jahr Cloud-Signatur = 309 $ | ja |
+| **D** | **Zertifikat auf USB-Stick**, beliebige Stelle | wie B/C, aber per Post | **nein** |
 
-**Empfehlung: A.** Es ist der einzige Weg, bei dem der Bau hier signieren kann,
-ohne dass jemand Hardware verwaltet. Deutschland ist unter den zugelassenen
-Ländern. Gebraucht werden ein Azure-Konto, ein Entra-Verzeichnis und eine
-Identitätsprüfung der OKUN Systems UG — **die dauert 1 bis 20 Werktage**, also
-früh anfangen.
+**Empfehlung: A.** Am billigsten, kein Zertifikatskauf, keine Hardware, und der
+Bau signiert selbst. Deutschland ist als EU-Land zugelassen (Organisationen in
+EU, UK, USA, Kanada, Australien, Neuseeland, Japan, Südkorea, Singapur,
+Schweiz, Norwegen, Israel). Als Region West Europe oder North Europe wählen.
 
-**EV statt OV** lohnt nur aus einem Grund: Ein frisches OV-Zertifikat muss sich
-bei Microsofts SmartScreen erst „einlaufen" — die ersten Wochen warnt Windows
-weiter, bis genug Installationen gezählt sind. EV überspringt das. Wer in den
-ersten Wochen viele Erstinstallationen erwartet, zahlt dafür gern; wer mit
-wenigen Kunden anfängt, kann es aussitzen.
+> **Die 3-Jahres-Hürde gilt nicht mehr.** In der Vorschauphase 2025 verlangte
+> Azure drei Jahre nachweisbare Firmengeschichte — für eine junge UG ein
+> Ausschluss. Das steht noch in vielen Texten und auch in automatisch
+> erzeugten Antworten im Microsoft-Forum. Ein Microsoft-Moderator hat am
+> 17.08.2026 ausdrücklich klargestellt: „country/region onboarding pre-reqs,
+> **no minimum org age restrictions**". Die offizielle Voraussetzungsliste
+> nennt nur Land und Region.
+
+**EV statt OV lohnt für SmartScreen nicht mehr.** Hier stand vorher, EV
+überspringe die Aufwärmphase. Das war bis 2024 richtig und ist es nicht mehr:
+Microsoft hat den Sofort-Vertrauensvorschuss für EV abgeschafft. Seitdem
+sammeln EV und OV ihren Ruf gleich — über Installationszahlen, nicht über die
+Zertifikatsklasse. Auch EV-signierte Programme zeigen am Anfang die Warnung.
+**Das heißt für uns: Es gibt keinen Grund, für EV das Dreifache zu zahlen.**
+
+Was wirklich hilft, ist Stetigkeit: **immer mit derselben Signaturidentität
+signieren.** Jeder Wechsel des Zertifikats oder des Herausgebernamens setzt den
+gesammelten Ruf zurück. Deshalb steht der Name an einer Stelle
+(`desktop/package.json`) und nicht an vier.
 
 ### Was für die Prüfung bereitliegen muss
 
@@ -225,23 +239,58 @@ Die Angaben müssen zum Handelsregister passen — und zum Impressum:
 
 * **OKUN Systems UG (haftungsbeschränkt)**, genau so geschrieben
 * Die Anschrift aus dem Handelsregister
-* Eine **E-Mail auf einer Domain des Unternehmens**, die wirklich gelesen wird
-  (Bestätigungslinks laufen nach sieben Tagen ab)
-* Der Handelsregisterauszug; falls nachgefragt wird, darf er **nicht älter als
-  zwölf Monate** sein
-* Eine zweite E-Mail auf derselben Domain
+* Die Registernummer als „Business Identifier": **HRB 292175 B**
+* Die Website des Unternehmens: `https://okun-workforce.com`
+* **Zwei E-Mail-Adressen auf einer Domain des Unternehmens**, verschieden,
+  beide gelesen, beide für Nachrichten von außen mit Links erreichbar
+  (Bestätigungslinks laufen nach sieben Tagen ab). Die zweite darf eine
+  Verteilerliste sein, muss aber auf derselben Domain liegen.
+* Der Handelsregisterauszug; falls nachgefragt wird, muss er **in den letzten
+  zwölf Monaten ausgestellt** worden sein und noch mindestens zwei Monate
+  gelten. Für Nachreichungen gibt es **drei Versuche**.
+
+**Und eine Person weist sich persönlich aus.** Das überrascht die meisten: Zur
+Organisationsprüfung gehört eine Identitätsprüfung des Vertreters — Vor- und
+Nachname genau wie im Ausweis, dann ein Lichtbildausweis (Pass,
+Personalausweis oder Führerschein) über ein Mobiltelefon, per
+Microsoft-Authenticator-App. Also: **Felix Okun braucht seinen Ausweis und ein
+Handy**, und der Name muss im Antrag genau so stehen wie im Ausweis.
 
 Der Name im Zertifikat ist später der, den Windows im Installationsprogramm
-anzeigt. Deshalb steht er seit §187 wortgleich in `desktop/package.json`.
+anzeigt. Deshalb steht er seit §187 wortgleich in `desktop/package.json`. Und
+weil jede Änderung eine **neue** Identitätsprüfung erfordert — nachträglich
+korrigieren geht nicht —, lohnt es sich, die Felder vor dem Absenden mit der
+Vorschau („Certificate subject preview") zu vergleichen.
 
 ### Wie signiert wird, wenn es da ist
 
-Im Bau ist die Stelle vorbereitet. Der Befehl des Anbieters kommt über eine
+**Bei Azure (Weg A) braucht es keinen Befehl.** electron-builder 26 redet
+selbst mit Azure Artifact Signing. Drei Angaben aus dem Portal, dazu die
+Anmeldedaten, die Azure selbst liest:
+
+```bash
+OKUN_AZURE_ENDPUNKT=https://weu.codesigning.azure.net \
+OKUN_AZURE_KONTO=<Name des Artifact-Signing-Kontos> \
+OKUN_AZURE_PROFIL=<Name des Zertifikatsprofils> \
+AZURE_TENANT_ID=… AZURE_CLIENT_ID=… AZURE_CLIENT_SECRET=… \
+  npm run desktop:win
+```
+
+Der Endpunkt muss zur Region des Kontos passen — `weu` für West Europe, `neu`
+für North Europe. Der **Herausgebername kommt nicht aus der Umgebung**, sondern
+aus `desktop/package.json`: Es gibt ihn an einer Stelle, damit er nicht an
+zweien auseinanderlaufen kann.
+
+Stehen nur zwei der drei Variablen, **bricht der Bau ab**. Sonst liefe er still
+über den anderen Weg oder unsigniert weiter, und niemand sähe, dass Azure
+gemeint war.
+
+**Bei jedem anderen Weg (B, C, D)** kommt der Befehl des Anbieters über eine
 Umgebungsvariable; `{datei}` wird durch den Pfad der zu signierenden Datei
 ersetzt:
 
 ```bash
-OKUN_SIGN_BEFEHL='azuresigntool sign -kvu … -fd sha256 -tr http://timestamp.acs.microsoft.com "{datei}"' \
+OKUN_SIGN_BEFEHL='signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 "{datei}"' \
   npm run desktop:win
 ```
 

@@ -111,6 +111,96 @@ check('Ohne Zertifikat warnt der Bau, statt still unsigniert zu bauen',
   warnungen.join(' | ').slice(0, 200) || 'keine Warnung')
 
 /*
+ * §187 Der Azure-Zweig — geprüft, bevor er gekauft ist.
+ *
+ * electron-builder 26 kann mit Azure Artifact Signing selbst reden
+ * (`win.azureSignOptions`); das ist der gerade Weg, ohne fremdes Programm
+ * und ohne Shell. Welcher der beiden Abschnitte in der Bauanleitung landet,
+ * entscheidet die Umgebung.
+ *
+ * WARUM DAS HIER STEHT, OBWOHL ES NOCH NIEMAND BENUTZT
+ * Weil es sich sonst erst dann als falsch erweist, wenn die Signatur
+ * eilig ist. Die Bauanleitung wird mit gesetzten Variablen neu geladen und
+ * das Ergebnis gegen dasselbe Schema geprüft wie der andere Zweig — samt
+ * der vier Angaben, die Azure zwingend braucht.
+ *
+ * Und die halb eingerichtete Lage eigens: Stünden nur zwei der drei
+ * Variablen, liefe der Bau sonst über den anderen Weg oder unsigniert
+ * weiter, und niemand sähe, dass Azure gemeint war.
+ */
+const bauplanDatei = join(process.cwd(), 'desktop/electron-builder.js')
+
+/** Die Bauanleitung mit gesetzter Umgebung frisch laden. */
+function mitUmgebung(werte) {
+  const sichern = {}
+  for (const [k, v] of Object.entries(werte)) {
+    sichern[k] = process.env[k]
+    if (v === undefined) delete process.env[k]
+    else process.env[k] = v
+  }
+  try {
+    delete holeHuelle.cache[bauplanDatei]
+    return { plan: holeHuelle('./electron-builder.js'), fehler: null }
+  } catch (e) {
+    return { plan: null, fehler: e.message }
+  } finally {
+    for (const [k, v] of Object.entries(sichern)) {
+      if (v === undefined) delete process.env[k]
+      else process.env[k] = v
+    }
+    delete holeHuelle.cache[bauplanDatei]
+  }
+}
+
+const AZURE_VOLL = {
+  OKUN_AZURE_ENDPUNKT: 'https://weu.codesigning.azure.net',
+  OKUN_AZURE_KONTO: 'pruefkonto',
+  OKUN_AZURE_PROFIL: 'pruefprofil',
+}
+
+const mitAzure = mitUmgebung(AZURE_VOLL)
+check('Mit den Azure-Angaben lädt die Bauanleitung', !!mitAzure.plan,
+  mitAzure.fehler ?? '')
+
+if (mitAzure.plan) {
+  const az = mitAzure.plan.win?.azureSignOptions
+  check('Dann steht dort der Azure-Abschnitt', !!az, Object.keys(mitAzure.plan.win ?? {}).join(', '))
+  check('Und NICHT zusätzlich der andere Weg',
+    az && !mitAzure.plan.win.signtoolOptions,
+    'beide gesetzt heißt: der Paketbauer warnt und wählt selbst')
+
+  // Die vier Angaben, die das Schema als zwingend führt — nicht aus dem
+  // Gedächtnis, sondern aus `required` im Schema des Paketbauers.
+  const pflicht = schema.definitions.WindowsAzureSigningConfiguration?.required ?? []
+  check('Alle zwingenden Azure-Angaben sind gesetzt',
+    pflicht.length > 0 && pflicht.every(k => az?.[k]),
+    `verlangt: ${pflicht.join(', ')} · vorhanden: ${Object.keys(az ?? {}).join(', ')}`)
+
+  const fremd = Object.keys(az ?? {})
+    .filter(k => !erlaubt('WindowsAzureSigningConfiguration').includes(k))
+  check('win.azureSignOptions: jeder Schlüssel steht im Schema', fremd.length === 0,
+    fremd.join(', ') || `${Object.keys(az ?? {}).length} geprüft`)
+
+  // Der Name im Zertifikat ist derselbe wie im .deb — eine Quelle, nicht zwei.
+  check('Der Herausgebername kommt aus dem Paket, nicht aus der Umgebung',
+    az?.publisherName && huellenPaket.author.startsWith(az.publisherName),
+    `Azure: ${az?.publisherName}\n           package.json: ${huellenPaket.author}`)
+}
+
+const halb = mitUmgebung({ ...AZURE_VOLL, OKUN_AZURE_PROFIL: undefined })
+check('Halb eingerichtetes Azure bricht ab, statt still anders zu signieren',
+  halb.plan === null && /OKUN_AZURE_PROFIL/.test(halb.fehler ?? ''),
+  halb.fehler ?? 'kein Abbruch — die Bauanleitung lud trotzdem')
+
+// Und die Lage ohne alles ist wieder die, die oben geprüft wurde.
+const wiederOhne = mitUmgebung({
+  OKUN_AZURE_ENDPUNKT: undefined, OKUN_AZURE_KONTO: undefined, OKUN_AZURE_PROFIL: undefined,
+})
+check('Ohne Azure-Angaben bleibt es beim allgemeinen Weg',
+  !!wiederOhne.plan?.win?.signtoolOptions && !wiederOhne.plan.win.azureSignOptions,
+  Object.keys(wiederOhne.plan?.win ?? {}).join(', '))
+
+/*
  * §187 Und die Angaben, die der Kunde im Installationsprogramm liest.
  *
  * WAS HIER VORHER FALSCH WAR

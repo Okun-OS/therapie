@@ -42,6 +42,133 @@ if (!firma || !kontakt) {
   )
 }
 
+/**
+ * §187 Der Weg über Azure — wenn er eingerichtet ist.
+ *
+ * WARUM ES ZWEI WEGE GIBT UND NICHT EINEN
+ * electron-builder 26 kann mit Azure Artifact Signing (früher „Trusted
+ * Signing") selbst reden; dafür ist `win.azureSignOptions` da. Das ist der
+ * gerade Weg: kein fremdes Programm, kein Shell-Befehl, keine
+ * Anführungszeichen, die auf dem einen Rechner anders gemeint sind als auf
+ * dem anderen.
+ *
+ * Nur ist Azure eine Entscheidung, die noch nicht gefallen ist. Fällt sie
+ * anders aus — Zertifikat im Cloud-Tresor der Zertifizierungsstelle, oder ein
+ * USB-Stick am eigenen Rechner — dann bleibt der allgemeine Weg über
+ * `OKUN_SIGN_BEFEHL`. Hier steht deshalb beides, und die Umgebung entscheidet.
+ *
+ * Gesetzt werden müssen drei Angaben aus dem Azure-Portal plus die
+ * Anmeldedaten, die Azure selbst liest (`AZURE_TENANT_ID`,
+ * `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`):
+ *
+ *     OKUN_AZURE_ENDPUNKT=https://weu.codesigning.azure.net
+ *     OKUN_AZURE_KONTO=<Name des Artifact-Signing-Kontos>
+ *     OKUN_AZURE_PROFIL=<Name des Zertifikatsprofils>
+ *
+ * Der Herausgebername kommt NICHT aus der Umgebung, sondern aus
+ * `package.json` — er muss wortgleich dem Namen im Zertifikat entsprechen,
+ * und das ist derselbe, der ins .deb geht. Eine vierte Variable wäre eine
+ * vierte Stelle, an der er abweichen kann.
+ */
+const azureTeile = {
+  endpoint: process.env.OKUN_AZURE_ENDPUNKT,
+  codeSigningAccountName: process.env.OKUN_AZURE_KONTO,
+  certificateProfileName: process.env.OKUN_AZURE_PROFIL,
+}
+const azureGesetzt = Object.entries(azureTeile).filter(([, v]) => v)
+
+if (azureGesetzt.length && azureGesetzt.length < 3) {
+  // Halb eingerichtet ist schlimmer als gar nicht: Der Bau liefe sonst über
+  // den anderen Weg oder unsigniert weiter, und niemand sähe, dass Azure
+  // gemeint war.
+  const fehlen = Object.entries(azureTeile).filter(([, v]) => !v).map(([k]) => k)
+  throw new Error(
+    'Azure-Signatur nur halb eingerichtet. Es fehlen: '
+    + fehlen.map(k => ({
+      endpoint: 'OKUN_AZURE_ENDPUNKT',
+      codeSigningAccountName: 'OKUN_AZURE_KONTO',
+      certificateProfileName: 'OKUN_AZURE_PROFIL',
+    })[k]).join(', ')
+    + ' — siehe DESKTOP.md, Abschnitt §187.',
+  )
+}
+
+const azure = azureGesetzt.length === 3
+  ? { ...azureTeile, publisherName: firma }
+  : null
+
+/**
+ * §187 Der allgemeine Weg: ein Befehl aus der Umgebung.
+ *
+ * Fällt die Entscheidung nicht auf Azure, sondern auf einen Cloud-Tresor der
+ * Zertifizierungsstelle oder einen USB-Stick am eigenen Rechner, dann weiß
+ * nur der Anbieter, wie signiert wird. Hier steht deshalb kein Anbieter,
+ * sondern eine Stelle, an der einer eingehängt wird:
+ *
+ *     OKUN_SIGN_BEFEHL='signtool sign /fd sha256 … "{datei}"' npm run desktop:win
+ *
+ * `{datei}` wird durch den Pfad der zu signierenden Datei ersetzt.
+ *
+ * OHNE DIESE VARIABLE WIRD UNSIGNIERT GEBAUT — und zwar laut. Ein
+ * unsigniertes Installationsprogramm ist kein Fehler, solange jemand es
+ * weiß: Zum Ausprobieren reicht es. Es still zu bauen und erst beim Kunden
+ * zu merken, dass Windows „Unbekannter Herausgeber" sagt, ist der Fehler.
+ */
+async function signierenPerBefehl(konfiguration) {
+  const befehl = process.env.OKUN_SIGN_BEFEHL
+  if (!befehl) {
+    console.warn(
+      '\n  ⚠ UNSIGNIERT: ' + konfiguration.path + '\n'
+      + '    Windows zeigt beim ersten Start „Unbekannter Herausgeber".\n'
+      + '    Zum Signieren OKUN_SIGN_BEFEHL setzen — siehe DESKTOP.md.\n',
+    )
+    return
+  }
+  const { execFileSync } = require('node:child_process')
+  const fertig = befehl.replaceAll('{datei}', konfiguration.path)
+  console.log('  Signiere: ' + konfiguration.path)
+  // Über die Shell, weil der Befehl des Anbieters eigene Anführungszeichen
+  // und Umgebungsvariablen mitbringt. Er kommt aus der Umgebung dieses Baus,
+  // nicht von außen — hier wird nichts Fremdes ausgeführt.
+  execFileSync(process.env.SHELL || '/bin/sh', ['-c', fertig], { stdio: 'inherit' })
+}
+
+/*
+ * §187 Genau EIN Signaturabschnitt, von der Umgebung bestimmt.
+ *
+ * Beides gleichzeitig zu setzen wäre mehrdeutig: Der Paketbauer gäbe eine
+ * Warnung aus und nähme Azure. Deshalb wird hier einer der beiden Abschnitte
+ * eingesetzt und nicht beide.
+ *
+ * WARUM `signtoolOptions` UND NICHT `win.sign`
+ * Bis electron-builder 24 lag der Haken direkt unter `win.sign`. Seit 25 ist
+ * er nach `win.signtoolOptions.sign` umgezogen, weil daneben
+ * `win.azureSignOptions` getreten ist. Der alte Platz wird nicht
+ * stillschweigend ignoriert, sondern bricht den Bau ab:
+ * „configuration.win should be one of these: null". Steht hier eines Tages
+ * wieder die alte Form, ist das die Meldung dazu.
+ */
+const signatur = azure
+  ? { azureSignOptions: azure }
+  : {
+    signtoolOptions: {
+      /*
+       * Nur SHA-256 — und das hat zwei Gründe.
+       *
+       * Voreingestellt signiert der Paketbauer jede Datei zweimal, mit SHA-1
+       * und mit SHA-256. Das SHA-1-Blatt ist für Windows 7 vor dem ersten
+       * Service Pack; dort läuft diese Hülle nicht, und keine heute
+       * ausgestellte Zertifizierung unterschreibt noch SHA-1.
+       *
+       * Nebeneffekt, der hier willkommen ist: Der Haken wird damit einmal pro
+       * Datei aufgerufen und nicht zweimal — die Warnung steht also einmal da
+       * und nicht doppelt.
+       */
+      signingHashAlgorithms: ['sha256'],
+      sign: signierenPerBefehl,
+    },
+  }
+
 module.exports = {
   appId: 'de.okun.workforce',
   productName: 'OKUN Workforce',
@@ -115,77 +242,9 @@ module.exports = {
   win: {
     icon: 'symbole/icon.png',
     target: ['nsis'],
-    /*
-     * §187 Die Signatur — eingehängt, sobald sie da ist.
-     *
-     * WARUM HIER EIN BEFEHL STEHT UND KEIN ZERTIFIKAT
-     * Seit Juni 2023 verlangen die Zertifizierungsstellen, dass der private
-     * Schlüssel eines Code-Signing-Zertifikats auf zertifizierter Hardware
-     * liegt — auf einem USB-Stick, der per Post kommt, oder in einem
-     * Cloud-Tresor. Eine Datei mit Kennwort, wie es sie bis dahin gab, wird
-     * nicht mehr ausgestellt.
-     *
-     * Für diesen Bau heißt das: Der Paketbauer kann nicht selbst signieren.
-     * Er kann nur einen Befehl aufrufen, der es tut — und welcher das ist,
-     * hängt davon ab, wofür sich das Haus entscheidet (Azure, ein
-     * Cloud-Tresor der Zertifizierungsstelle, ein Stick am eigenen Rechner).
-     * Deshalb steht hier kein Anbieter, sondern eine Stelle, an der einer
-     * eingehängt wird:
-     *
-     *     OKUN_SIGN_BEFEHL='azuresigntool sign … "{datei}"' npm run desktop:win
-     *
-     * `{datei}` wird durch den Pfad der zu signierenden Datei ersetzt.
-     *
-     * WARUM `signtoolOptions` UND NICHT `win.sign`
-     * Bis electron-builder 24 lag der Haken direkt unter `win.sign`. Seit 25
-     * ist er nach `win.signtoolOptions.sign` umgezogen, weil daneben
-     * `win.azureSignOptions` getreten ist. Der alte Platz wird nicht
-     * stillschweigend ignoriert, sondern bricht den Bau ab:
-     * „configuration.win should be one of these: null". Steht hier eines
-     * Tages wieder die alte Form, ist das die Meldung dazu.
-     */
-    signtoolOptions: {
-      /*
-       * Nur SHA-256 — und das hat zwei Gründe.
-       *
-       * Voreingestellt signiert der Paketbauer jede Datei zweimal, mit SHA-1
-       * und mit SHA-256. Das SHA-1-Blatt ist für Windows 7 vor dem ersten
-       * Service Pack; dort läuft diese Hülle nicht, und keine heute
-       * ausgestellte Zertifizierung unterschreibt noch SHA-1.
-       *
-       * Nebeneffekt, der hier willkommen ist: Der Haken unten wird damit
-       * einmal pro Datei aufgerufen und nicht zweimal — die Warnung steht
-       * also einmal da und nicht doppelt.
-       */
-      signingHashAlgorithms: ['sha256'],
-
-      /*
-       * OHNE `OKUN_SIGN_BEFEHL` WIRD UNSIGNIERT GEBAUT — und zwar laut.
-       * Ein unsigniertes Installationsprogramm ist kein Fehler, solange
-       * jemand es weiß: Zum Ausprobieren reicht es. Es still zu bauen und
-       * erst beim Kunden zu merken, dass Windows „Unbekannter Herausgeber"
-       * sagt, ist der Fehler.
-       */
-      sign: async (konfiguration) => {
-        const befehl = process.env.OKUN_SIGN_BEFEHL
-        if (!befehl) {
-          console.warn(
-            '\n  ⚠ UNSIGNIERT: ' + konfiguration.path + '\n'
-            + '    Windows zeigt beim ersten Start „Unbekannter Herausgeber".\n'
-            + '    Zum Signieren OKUN_SIGN_BEFEHL setzen — siehe DESKTOP.md.\n',
-          )
-          return
-        }
-        const { execFileSync } = require('node:child_process')
-        const fertig = befehl.replaceAll('{datei}', konfiguration.path)
-        console.log('  Signiere: ' + konfiguration.path)
-        // Über die Shell, weil der Befehl des Anbieters eigene
-        // Anführungszeichen und Umgebungsvariablen mitbringt. Er kommt aus der
-        // Umgebung dieses Baus, nicht von außen — hier wird nichts Fremdes
-        // ausgeführt.
-        execFileSync(process.env.SHELL || '/bin/sh', ['-c', fertig], { stdio: 'inherit' })
-      },
-    },
+    // §187 Die Signatur. Welcher der beiden Abschnitte hier steht, entscheidet
+    // die Umgebung — nachzulesen bei `signatur` weiter oben.
+    ...signatur,
   },
 
   nsis: {

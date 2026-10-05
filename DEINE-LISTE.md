@@ -70,21 +70,56 @@ zertifizierter Hardware liegen — **USB-Stick oder Cloud-Tresor**. Mit Stick
 kann nur der Rechner signieren, in dem er steckt; jede Auslieferung wäre
 Handarbeit. Mit Cloud-Tresor signiert der Bau selbst.
 
-**Empfehlung: Azure Artifact Signing** (früher „Trusted Signing"). Der einzige
-Weg, bei dem niemand Hardware verwaltet. Deutschland ist zugelassen. Gebraucht
-werden ein Azure-Konto und eine **Identitätsprüfung der OKUN Systems UG — die
-dauert 1 bis 20 Werktage.** Deshalb steht dieser Punkt jetzt oben.
+### Wo du es kaufst
 
-Bereitlegen: der Firmenname genau wie im Register, die Registeranschrift, der
-Handelsregisterauszug (falls nachgefragt: nicht älter als zwölf Monate) und
-**zwei E-Mail-Adressen auf einer eigenen Domain**, die gelesen werden —
-Bestätigungslinks verfallen nach sieben Tagen.
+**Empfehlung: Azure Artifact Signing** (früher „Trusted Signing"), **9,99 $ im
+Monat** für 5.000 Signaturen. Kein Zertifikatskauf, keine Hardware, und der Bau
+signiert selbst. Du gehst ins Azure-Portal, suchst „Artifact Signing Accounts",
+legst ein Konto in der Region **West Europe** an, dann eine Identitätsprüfung
+(**Organization → Public**) und zuletzt ein Zertifikatsprofil. Nachgesehen am
+05.10.2026.
 
-Alternative, falls Azure nicht geht: ein OV-Zertifikat im Cloud-Tresor bei
-Sectigo, DigiCert oder SSL.com, rund 220–450 €/Jahr. EV (~300–650 €/Jahr)
-lohnt nur, wenn in den ersten Wochen viele Erstinstallationen anstehen: Ein
-frisches OV-Zertifikat muss sich bei SmartScreen erst einlaufen, EV
-überspringt das.
+Zwei Dinge, die man vorher wissen muss:
+
+1. **Die 3-Jahres-Hürde gilt nicht mehr.** In der Vorschauphase verlangte Azure
+   drei Jahre Firmengeschichte — für die UG ein Ausschluss. Ein
+   Microsoft-Moderator hat am 17.08.2026 klargestellt: nur Land und Region,
+   **kein Mindestalter**. Die alte Regel steht noch in vielen Texten.
+2. **Du musst dich persönlich ausweisen.** Zur Firmenprüfung gehört eine
+   Identitätsprüfung von dir: Ausweis oder Pass per Handy, über die
+   Microsoft-Authenticator-App. Dein Name muss im Antrag **genau so** stehen
+   wie im Ausweis.
+
+Die **Identitätsprüfung dauert 1 bis 20 Werktage** — deshalb steht dieser
+Punkt oben. Bereitlegen: Firmenname genau wie im Register, Registeranschrift,
+**HRB 292175 B**, die Website, **zwei verschiedene E-Mail-Adressen auf
+okun-systems.com** (beide gelesen, Links von außen müssen ankommen,
+Bestätigungen verfallen nach sieben Tagen), Handelsregisterauszug aus den
+letzten zwölf Monaten, Ausweis, Handy.
+
+> Nachträglich korrigieren geht nicht: Jede Änderung braucht eine **neue**
+> Prüfung. Vor dem Absenden die Vorschau („Certificate subject preview")
+> gegenlesen.
+
+**Falls Azure nicht klappt:** Certum (EU, Polen), „Standard Code Signing in the
+Cloud", **ab 209 €** — Cloud-Signatur ist kostenlos dabei, der Bau kann also
+auch damit selbst signieren. Teurer und umständlicher: SSL.com mit 129 $/Jahr
+plus 180 $/Jahr für die Cloud-Signatur.
+
+**Nicht nehmen: einen USB-Stick.** Dann kann nur der Rechner signieren, in dem
+er steckt — jede Auslieferung wäre Handarbeit an einem Windows-Rechner.
+
+### Und eine Korrektur: EV lohnt nicht mehr
+
+Hier stand, ein EV-Zertifikat überspringe die SmartScreen-Aufwärmphase. **Das
+war bis 2024 richtig und ist es nicht mehr** — Microsoft hat den
+Sofort-Vertrauensvorschuss für EV abgeschafft. EV und OV sammeln ihren Ruf
+seitdem gleich, über Installationszahlen. Auch EV-signierte Programme zeigen am
+Anfang die Warnung.
+
+**Also: kein Grund, für EV das Dreifache zu zahlen.** Was wirklich hilft, ist
+immer mit derselben Identität zu signieren — jeder Wechsel setzt den
+gesammelten Ruf zurück.
 
 **Blockiert:** die Auslieferung des Windows-Programms an Kunden. Die
 Abwägung im Detail: `DESKTOP.md`, Abschnitt §187.
