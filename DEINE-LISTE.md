@@ -265,13 +265,17 @@ Seite, Kontakt über Formular und E-Mail. Was noch offen ist:
       statt gezeichnet. Mit Vektoren wird die Fassung für dunklen Grund exakt
       statt berechnet, und das Logo lässt sich groß drucken.
 - [ ] **Dabei fragen: Wie heißt die Schrift?** Der Schriftzug ist
-      höchstwahrscheinlich gezeichnet, nicht gesetzt: Unter rund sechzig freien
-      Schriften ist der beste Treffer Montserrat Bold mit 84,8 % — ein echter
-      Treffer liegt bei 94 bis 98 %. Die Überschriften der Website stehen
-      deshalb in Montserrat, und im Code steht ausdrücklich, dass das die
-      nächstgelegene freie Schrift ist und nicht die des Logos. Falls es doch
-      eine gekaufte Schrift ist: **Ist eine Weblizenz dabei?** Ohne die darf
-      sie nicht auf die Website.
+      gezeichnet, nicht gesetzt — quadratische Rundungen, sehr breit, sehr
+      schwer. Die Überschriften der Website stehen seit dem 05.10. in
+      **Manrope**: unter rund fünfzig frei lizenzierbaren Schriften der beste
+      Treffer, der auch als Textschrift taugt (87,9 % Formähnlichkeit, gemessen
+      an K, U und N). Nachrechnen: `npm run schrift:messen`.
+
+      Höher lagen nur Orbitron und Syne — Schauschriften für Spielegrafik. Die
+      treffen die Form und verfehlen den Zweck.
+
+      Falls es doch eine gekaufte Schrift ist: **Ist eine Weblizenz dabei?**
+      Ohne die darf sie nicht auf die Website. Dann sind es zwei Zeilen Code.
 
 ### 🟡 Die Website gemeinsam fertig machen
 - [ ] **Einmal zusammen durchgehen, bis sie endgültig gut ist.** Sie steht und

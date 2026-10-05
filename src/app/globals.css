@@ -3,36 +3,53 @@
 @tailwind utilities;
 
 /*
-  §186 Zwei Schriften, ein Aufruf — und eine Korrektur.
+  §188 Zwei Schriften, ein Aufruf — und die zweite Korrektur an derselben
+  Stelle.
 
   Inter setzt den Fließtext; sie ist auf Bildschirmgrößen gezeichnet und bleibt
   in einer Tabelle mit Beträgen lesbar.
 
-  WAS HIER VORHER STAND — UND WARUM ES FALSCH WAR
-  „Gantari ist die Schrift des Logos, nachgemessen zu 94,5 %." Das stimmte für
-  den Schriftzug, der damals in `public/brand/` lag. Nur war das nicht der
-  Schriftzug des Hauses: In den Markendateien steckte ein anderer als der, den
-  der Betrieb benutzt. Ich habe zweimal gegen die Datei gemessen statt gegen
-  das, was mir geschickt wurde — und die Zahl war richtig gerechnet und auf
-  die falsche Vorlage angewandt.
+  WAS HIER ZWEIMAL FALSCH STAND
+  Erst: „Gantari ist die Schrift des Logos, 94,5 %." Gemessen gegen die Datei
+  in `public/brand/` — nur lag dort ein anderer Schriftzug als der, den das
+  Haus benutzt. Dann: „Montserrat, 84,8 %." Diesmal war die Vorlage richtig,
+  aber die Messung hat NICHTS GEMESSEN: Der Browser im Prüfbehälter kommt
+  nicht an fonts.googleapis.com heran, also zeichnete er jeden Kandidaten mit
+  derselben Ersatzschrift. Alle Familien kamen auf denselben Wert, und das
+  ist mir nicht aufgefallen. Eine Zahl, die für sechzig verschiedene Schriften
+  identisch ist, ist keine Messung.
+
+  WIE ES JETZT GEMESSEN WURDE
+  Die Schriftdateien werden heruntergeladen und als Datei eingebettet, nicht
+  im Browser nachgeladen. Dazu eine Gegenprobe: Zeichnet der Browser die
+  Breite der Ersatzschrift, zählt der Kandidat nicht. Verglichen wird dann je
+  Buchstabe die Flächenüberdeckung, nachdem jeder Buchstabe auf dasselbe
+  Raster gebracht wurde — so entscheidet die Form, nicht die Laufweite.
+
+  Das O bleibt dabei außen vor: Im echten Schriftzug hat es oben links eine
+  Kerbe für den türkisen Punkt. Die hat keine Schrift, also bestraft sie alle
+  Kandidaten gleich und sagt nichts aus.
 
   WAS JETZT GILT
-  Der echte Schriftzug ist GEZEICHNET, keine Schrift von der Stange. Das O hat
-  eine abgeschnittene Ecke, über ihm sitzt ein türkiser Punkt, die Buchstaben
-  sind deutlich schwerer und breiter. Derselbe Formvergleich über rund sechzig
-  Familien liefert als besten Treffer Montserrat im Schnitt 700 — mit 84,8 %.
-  Zum Vergleich: Ein echter Treffer liegt bei 94 bis 98 %.
+  Der echte Schriftzug ist GEZEICHNET, keine Schrift von der Stange — breit,
+  schwer, mit quadratischen Rundungen. Über K, U und N gemessen liegt Manrope
+  vorn (87,9 %), vor Bai Jamjuree (87,4 %) und Wix Madefor Display (87,1 %).
+  Montserrat kommt auf 82,1 %.
 
-  Montserrat steht deshalb hier als das, was es ist: die nächstgelegene freie
-  Schrift, nicht die Schrift des Logos. Sie ist breit und schwer genug, dass
-  Überschrift und Wortmarke zusammenpassen. Nennt der Gestalter die echte
-  Schrift und gibt es eine Weblizenz dafür, ist das ein Austausch von zwei
-  Zeilen.
+  Höher lagen nur Orbitron (86,6) und Syne (86,2) — beides Schauschriften für
+  Spielegrafik und Plakate. Sie treffen die Form und verfehlen den Zweck: Auf
+  einer Seite, die Gehälter verwaltet, liest sich das wie ein Rennspiel.
+  Manrope trifft die Form fast genauso gut UND ist eine Textschrift, die auch
+  in 14 Pixeln funktioniert.
+
+  Manrope steht deshalb hier als das, was es ist: die nächstgelegene freie
+  Schrift, nicht die Schrift des Logos. Nennt der Gestalter die echte Schrift
+  und gibt es eine Weblizenz dafür, ist das ein Austausch von zwei Zeilen.
 
   Beide Familien in einem `@import`: zwei Aufrufe blockierten das Zeichnen
   nacheinander statt gleichzeitig.
 */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap');
 
 @layer base {
   html {

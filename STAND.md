@@ -169,10 +169,10 @@ Nach Dringlichkeit, nicht nach Bereich.
       mit im Haus (`public/brand/quelle/`), und `npm run logo:aufbauen` baut
       die Dateien daraus: freistellen, entrauschen, mit dem sauberen Zeichen
       zusammensetzen. **Folge für die Website:** Der echte Schriftzug ist
-      GEZEICHNET, keine Schrift von der Stange — bester Treffer unter sechzig
-      Familien ist Montserrat 700 mit 84,8 % (ein echter Treffer liegt bei 94
-      bis 98). Die Überschriften stehen jetzt in Montserrat, und im Code steht,
-      dass das die nächstgelegene freie Schrift ist und nicht die des Logos
+      GEZEICHNET, keine Schrift von der Stange. Die Überschriften stehen in
+      der nächstgelegenen freien Schrift, und im Code steht ausdrücklich, dass
+      sie das ist und nicht die Schrift des Logos. **Welche, hat sich in §188
+      geändert** — die Messung dahinter war kaputt, siehe dort
 - [x] ~~**Zweites Regelpaket: Wohngruppe mit fünf Bewohnern**~~ ✅ §185 — der
       erste Kunde nach der Kita, und er tickt vollkommen anders. Eine
       Wohngruppe hat keine Gruppen und keine Etagen; es gibt einen Ort, und die

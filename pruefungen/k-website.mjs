@@ -257,14 +257,14 @@ async function stilblattHolen() {
 const { adressen: stilblatt, inhalt: stil } = await stilblattHolen()
 check('Die Seite bindet ein Stilblatt ein', stilblatt.length > 0)
 check('Das Stilblatt lädt die Überschriftenschrift',
-  /Montserrat/.test(stil),
+  /Manrope/.test(stil),
   'Ohne sie fällt die Website auf Inter zurück und spricht wieder zwei Sprachen')
 check('Und definiert dafür eine eigene Familie',
-  /\.font-display\s*\{[^}]*Montserrat/.test(stil),
+  /\.font-display\s*\{[^}]*Manrope/.test(stil),
   'Die Klasse `font-display` muss es wirklich geben, nicht nur im Quelltext stehen')
 check('Inter bleibt für den Fließtext',
   /Inter/.test(stil),
-  'Montserrat ist die Überschriftenschrift, nicht die Textschrift')
+  'Manrope ist die Überschriftenschrift, nicht die Textschrift')
 
 for (const [pfad, name] of [['/', 'Startseite'], ['/funktionen', 'Funktionen'],
   ['/kontakt', 'Kontakt']]) {

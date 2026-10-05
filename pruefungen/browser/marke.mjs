@@ -69,7 +69,7 @@ await seite.goto(`${BASIS}/`, { waitUntil: 'networkidle' })
 await seite.evaluate(() => document.fonts.ready)
 
 const geladen = await seite.evaluate(() => ({
-  ueberschrift: document.fonts.check('700 16px Montserrat'),
+  ueberschrift: document.fonts.check('700 16px Manrope'),
   inter: document.fonts.check('400 16px Inter'),
   h1: getComputedStyle(document.querySelector('h1')).fontFamily,
   fliess: getComputedStyle(document.querySelector('h1 ~ p') ?? document.body).fontFamily,
@@ -78,9 +78,9 @@ const geladen = await seite.evaluate(() => ({
 check('Die Überschriftenschrift ist im Browser angekommen', geladen.ueberschrift,
   'document.fonts.check sagt nein — dann zeichnet die Seite mit Inter und niemand merkt es')
 check('Inter ist weiterhin da', geladen.inter)
-check('Die Überschrift steht in der Überschriftenschrift', /^Montserrat/.test(geladen.h1),
+check('Die Überschrift steht in der Überschriftenschrift', /^Manrope/.test(geladen.h1),
   `aufgelöst als: ${geladen.h1}`)
-check('Der Fließtext steht nicht darin', !/^Montserrat/.test(geladen.fliess),
+check('Der Fließtext steht nicht darin', !/^Manrope/.test(geladen.fliess),
   `aufgelöst als: ${geladen.fliess}`)
 
 // ── Gegenprobe: der Nachbau ist weg ────────────────────────────────────────
