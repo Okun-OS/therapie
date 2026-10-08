@@ -4,7 +4,7 @@ Alles, was **nicht programmiert werden kann** — weil es ein Konto, eine
 Unterschrift, einen Kauf oder eine Zahl aus einer Satzung braucht. Nach
 Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 
-> Stand: 05.10.2026 · Was fertig ist, steht in `STAND.md`.
+> Stand: 08.10.2026 · Was fertig ist, steht in `STAND.md`.
 > Zum Abhaken: `- [ ]` zu `- [x]` machen.
 
 ---
@@ -12,14 +12,23 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 ## Reihenfolge auf einen Blick
 
 ```
-1. D-U-N-S-Nummer  ──beantragt──►  Apple-Konto ─► APNs-Schlüssel ─► App Store
-                                               └─►  .dmg beglaubigen
-2. Domain verbinden ───erledigt───►  ┐
-3. Firmenangaben   ───erledigt───►  ┴─► Impressum/Datenschutz steht
-4. Website steht ──────────────────►  gemeinsam schärfen ─► Download-Seite
-5. Firebase        ────────────────►  Push auf Android (mit Apple auch iOS)
-6. Steuerberater   ────────────────►  erster echter Kunde
-7. Code-Signing    ────────────────►  Windows-Programm ohne Warnung
+HEUTE MÖGLICH
+  Code-Signing  ──Identitätsprüfung 1–20 Werktage──►  Windows ohne Warnung
+                                                   └─►  Download-Seite
+  VAPID-Schlüssel ──5 Minuten──►  Push im Browser
+  Firebase        ──20 Minuten──►  Push in der App (Android)
+  Google-Play-Konto ──25 $──►  App im Play Store
+
+LÄUFT SCHON
+  D-U-N-S-Nummer ──beantragt──►  Apple-Konto ─► APNs ─► App Store
+                                             └─►  .dmg beglaubigen
+
+ERLEDIGT
+  Domain · Firmenangaben · Impressum · Website
+
+BRAUCHT EINEN TERMIN
+  Steuerberater ──►  erster echter Kunde
+  AVVs (5 Stück) ──►  DSGVO-konformer Betrieb
 ```
 
 **Erledigt am 27.09.:** Die Umlagesätze U1/U2 standen hier als deine Aufgabe.
@@ -46,6 +55,14 @@ noch als offen geführt, obwohl die Anlage seit Tagen unter
 Impressum ist vollständig, mit HRB 292175 B. Nachgemessen am 05.10.:
 `okun-workforce.com` und `/impressum` antworten mit 200, und die Seite meldet
 keine fehlende Pflichtangabe mehr.
+
+**Erledigt am 08.10.:** Die Website ist fertig — Schrift, Hintergrundbilder,
+alles. Sie steht nicht mehr auf dieser Liste.
+
+**Berichtigt am 08.10.:** Hier stand, ohne Firebase verschicke das System
+„keine einzige Benachrichtigung". Falsch. Der Weg über den Browser braucht
+Google überhaupt nicht und lässt sich in fünf Minuten einschalten — du hast
+darauf gewartet, ohne dass du musstest. Anleitung: `FIREBASE.md`.
 
 Punkt 1 hängt an Dritten und läuft. **Jetzt oben: das Zertifikat für Windows**
 — die Identitätsprüfung dauert bis zu 20 Werktage, alles andere läuft daneben.
@@ -143,19 +160,37 @@ bleibt in `DOMAIN.md` stehen — falls die Einträge einmal nachzusehen sind.
 
 ## 2 · Konten, Schlüssel und Firmenangaben
 
-### 🔴 Firebase-Projekt anlegen und `FCM_SERVICE_ACCOUNT` setzen
-Kostenlos, ~20 Minuten. **Ohne diesen Schlüssel verschickt das System keine
-einzige Benachrichtigung** — es schreibt nur ins Protokoll, dass es wollte.
+### 🔴 Benachrichtigungen einschalten — **Anleitung: `FIREBASE.md`**
 
-1. https://console.firebase.google.com → Projekt „OKUN Workforce"
-2. Projekteinstellungen → Dienstkonten → **Neuen privaten Schlüssel erzeugen**
-3. Die heruntergeladene JSON-Datei **als eine Zeile** bei Railway als
-   `FCM_SERVICE_ACCOUNT` hinterlegen
-4. Für Android: `google-services.json` herunterladen (ich baue sie ein)
-5. Für iOS: den APNs-Schlüssel (.p8) aus dem Apple-Konto in Firebase
-   hochladen — **wartet auf die D-U-N-S-Nummer**
+**Hier stand, ohne den Firebase-Schlüssel verschicke das System „keine
+einzige Benachrichtigung". Das war falsch**, und es hat dich Wochen gekostet,
+in denen du auf ein Google-Konto gewartet hast, das du dafür gar nicht
+brauchst.
 
-Schritt für Schritt: `APP-STORES.md`, Teil B.
+Es sind zwei getrennte Wege, und nur einer braucht Firebase:
+
+| | Weg | Erreicht | Braucht |
+|---|---|---|---|
+| **1** | **Web-Push** | jeden im Browser, und das iPhone mit der Seite auf dem Startbildschirm | **nichts.** Kein Google-Konto, kein Store |
+| **2** | **Nativ (Firebase)** | die App aus den Stores, auch wenn sie zu ist | Firebase, für iOS zusätzlich das Apple-Konto |
+
+**🟢 Weg 1 geht heute, in fünf Minuten:**
+
+```bash
+npm run push:schluessel
+```
+
+Die zwei Schlüssel bei Railway eintragen — `VAPID_PUBLIC_KEY`,
+`VAPID_PRIVATE_KEY` und denselben öffentlichen noch einmal als
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Fertig. Danach klingelt es im Browser.
+
+**🟡 Weg 2 für Android:** Firebase-Projekt anlegen, Dienstkonto-Schlüssel nach
+Railway, `google-services.json` an mich. Zwanzig Minuten, kostenlos.
+
+**🔴 Weg 2 für iPhone:** wartet weiter auf die D-U-N-S-Nummer.
+
+**Jeder Schritt einzeln, mit den genauen Feldern und was ein Geheimnis ist:
+`FIREBASE.md`.**
 
 ### 🟡 Apple Developer Program — 99 $/Jahr
 Wartet auf die D-U-N-S-Nummer.
@@ -247,45 +282,36 @@ Training vertraglich ausschließen.**
 
 ---
 
-## 4 · Die Website
+## 4 · Die Website — ✅ fertig
 
-**Sie steht.** `okun-workforce.com` zeigt jetzt Startseite, „Alles, was
-Personal ausmacht" mit allen 95 Funktionen, Kontakt mit Formular, Impressum
-und Datenschutz — und oben rechts auf jeder Seite den Knopf „Anmelden". Die
-Texte sind deine und liegen in `src/lib/website-inhalt.ts`; wer sie ändern
-will, ändert diese eine Datei, keinen Code.
+**Abgeschlossen am 08.10.2026.** `okun-workforce.com` steht: Startseite mit
+Hintergrundbild, „Alles, was Personal ausmacht" mit allen 95 Funktionen,
+Kontakt mit Formular, Impressum und Datenschutz. Die Texte sind deine und
+liegen in `src/lib/website-inhalt.ts` — wer sie ändern will, ändert diese eine
+Datei, keinen Code.
 
 Entschieden ist damit auch: keine Selbstregistrierung, keine Preise auf der
-Seite, Kontakt über Formular und E-Mail. Was noch offen ist:
+Seite, Kontakt über Formular und E-Mail.
 
-### 🟡 Das Logo als SVG — ist unterwegs
-- [ ] **Die freigestellte SVG schicken, wenn sie da ist.** Der fertige Prompt
-      für den Gestalter (oder ChatGPT) steht im Verlauf. Die jetzige Fassung
-      ist aus deinem Bild gerechnet und funktioniert — sie ist nur gerechnet
-      statt gezeichnet. Mit Vektoren wird die Fassung für dunklen Grund exakt
-      statt berechnet, und das Logo lässt sich groß drucken.
-- [ ] **Dabei fragen: Wie heißt die Schrift?** Der Schriftzug ist
-      gezeichnet, nicht gesetzt — quadratische Rundungen, sehr breit, sehr
-      schwer. Die Überschriften der Website stehen seit dem 05.10. in
-      **Manrope**: unter rund fünfzig frei lizenzierbaren Schriften der beste
-      Treffer, der auch als Textschrift taugt (87,9 % Formähnlichkeit, gemessen
-      an K, U und N). Nachrechnen: `npm run schrift:messen`.
+Gemacht wurde zuletzt: die Überschriftenschrift auf **Manrope** (die
+nächstgelegene frei lizenzierbare Schrift zum Schriftzug, nachgemessen —
+`npm run schrift:messen`), die drei Hintergrundbilder in den beiden Aufmachern
+und im Schlusskasten, und eine Prüfung, die nachrechnet, ob der Text darauf
+lesbar bleibt — bei Bildschirm- und bei Telefonbreite.
 
-      Höher lagen nur Orbitron und Syne — Schauschriften für Spielegrafik. Die
-      treffen die Form und verfehlen den Zweck.
+### Zwei Kleinigkeiten, falls sie dir mal über den Weg laufen
 
-      Falls es doch eine gekaufte Schrift ist: **Ist eine Weblizenz dabei?**
-      Ohne die darf sie nicht auf die Website. Dann sind es zwei Zeilen Code.
+Nichts davon hält etwas auf. Beides sind Verbesserungen, keine Lücken.
 
-### 🟡 Die Website gemeinsam fertig machen
-- [ ] **Einmal zusammen durchgehen, bis sie endgültig gut ist.** Sie steht und
-      sie stimmt — aber „steht" ist nicht dasselbe wie „gut". Was ich dafür von
-      dir brauche, ist kein Auftrag, sondern eine Stunde gemeinsames Draufsehen:
-      Reihenfolge der Abschnitte, Schärfe der Überschriften, was zuerst ins Auge
-      springt, was fehlt. Das ist nichts, was ich allein entscheiden sollte —
-      es ist die Seite, mit der dein Haus sich vorstellt.
+- [ ] **Das Logo als freigestellte SVG.** Die jetzige Fassung ist aus deinem
+      Bild gerechnet und funktioniert überall. Mit Vektoren würde die Fassung
+      für dunklen Grund exakt statt berechnet, und das Logo ließe sich groß
+      drucken — für Messestand, Briefbogen, Fahrzeugbeschriftung.
+- [ ] **Beim Gestalter fragen, wie die Schrift heißt** — und ob eine
+      **Weblizenz** dabei ist. Ohne die darf sie nicht auf die Website. Wenn
+      ja, ist der Austausch zwei Zeilen Code.
 
-### 🟡 Noch offen auf der Website
+### Was dabei offen geblieben ist — aber nicht an der Website hängt
 - [ ] **Darf ein Kunde namentlich genannt werden?** — Gemeint ist: Auf der
       Website steht nirgends, wer das Programm benutzt. Ein echter Name
       („Kita Sonnenschein, Potsdam, seit Januar 2026") überzeugt mehr als
@@ -304,9 +330,10 @@ Seite, Kontakt über Formular und E-Mail. Was noch offen ist:
       Wohngruppe mit fünf Bewohnern". Das trägt den Nachweis, dass es im Echten
       läuft, und nennt niemanden. Auf der Seite steht derzeit keine Variante
       von beidem; sag mir, welche es sein soll.
-- [ ] **Die Download-Seite für das Windows-Programm** fehlt noch. Sie kommt,
-      sobald die .exe signiert ist — eine unsignierte Datei zum Herunterladen
-      anzubieten, schreckt mehr Leute ab, als sie überzeugt.
+- [ ] **Die Download-Seite für das Windows-Programm.** Die baue ich, sobald
+      das Zertifikat da ist — eine unsignierte Datei zum Herunterladen
+      anzubieten, schreckt mehr Leute ab, als sie überzeugt. Hängt also am
+      Zertifikat, nicht an der Website.
 
 ---
 

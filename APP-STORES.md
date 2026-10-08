@@ -57,34 +57,16 @@ Ohne diese Dinge geht es nicht weiter. Alles andere ist gebaut.
 
 ---
 
-## Teil B — Firebase einrichten (einmalig, ~20 Minuten)
+## Teil B — Firebase einrichten
 
-Firebase ist der Weg zu beiden Push-Diensten. Für Android ist es FCM direkt,
-für iOS leitet Firebase an Apples APNs weiter.
+**Steht jetzt vollständig in `FIREBASE.md`** — mit allem, was dazugehört:
+welche Variablen wohin, was ein Geheimnis ist und was nicht, und woran man im
+Protokoll erkennt, dass etwas fehlt.
 
-1. `console.firebase.google.com` → **Projekt hinzufügen**, Name „OKUN
-   Workforce". Google Analytics kann aus bleiben.
-2. **Android-App hinzufügen**, Paketname exakt `de.okun.workforce`.
-   `google-services.json` herunterladen und nach `android/app/` legen.
-   *(Fehlt die Datei, baut Android trotzdem — nur ohne Push. Das ist Absicht:
-   die Entwicklungsumgebung soll ohne Google-Konto laufen.)*
-3. **iOS-App hinzufügen**, Bundle-ID exakt `de.okun.workforce`.
-   `GoogleService-Info.plist` herunterladen und in Xcode ins Ziel **App**
-   ziehen (Haken bei „Copy items if needed").
-4. Im Apple-Entwicklerkonto unter **Keys** einen **APNs-Auth-Key** erzeugen
-   (.p8, lädt sich nur EINMAL herunter — sicher ablegen). In Firebase unter
-   *Projekteinstellungen → Cloud Messaging → Apple-App-Konfiguration*
-   hochladen, zusammen mit Key-ID und Team-ID.
-5. In Firebase: *Projekteinstellungen → Dienstkonten → **Neuen privaten
-   Schlüssel erzeugen***. Die heruntergeladene JSON-Datei **als eine Zeile** in
-   die Railway-Umgebung eintragen:
-
-   ```
-   FCM_SERVICE_ACCOUNT={"type":"service_account","project_id":"…", …}
-   ```
-
-   Ohne diese Variable verschickt das System nichts und schreibt stattdessen
-   eine Zeile ins Protokoll (`[push:nativ:entwicklung]`). Nichts geht kaputt.
+Das Wichtigste daraus, weil es hier falsch dargestellt war: Firebase bringt
+den **nativen** Weg (App aus dem Store). Der Weg über den Browser braucht es
+nicht — der läuft über VAPID-Schlüssel, ohne Google-Konto, und lässt sich in
+fünf Minuten einschalten.
 
 ---
 
@@ -99,7 +81,7 @@ npm install
 
 # Die Adresse der laufenden Anlage — ohne sie zeigt die App auf die
 # Vorgabe aus capacitor.config.ts.
-export OKUN_APP_URL=https://app.okun-systems.de
+export OKUN_APP_URL=https://okun-workforce.com
 
 npm run app:ios        # baut, synchronisiert und öffnet Xcode
 npm run app:android    # dasselbe für Android Studio
