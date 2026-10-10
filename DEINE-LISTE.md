@@ -487,13 +487,16 @@ manche Kassen ändern sie mitten im Jahr (2026 gleich drei).
 
 Damit du weißt, was du **nicht** übernehmen musst:
 
-1. **Die SVG einbauen**, sobald sie da ist — der Weg steht
-   (`logo:aufbauen` → `logo:negativ`), das ist eine Sache von Minuten
-2. **Die Website mit dir durchgehen** und umsetzen, was dabei herauskommt
-3. Die Firmenangaben eintragen, sobald du `impressum-angaben.md` ausgefüllt
-   hast — falls du sie nicht selbst bei Railway setzen willst
-4. `google-services.json` einbauen, sobald Firebase da ist
-5. Die Seite zum Herunterladen bauen, sobald die .exe signiert ist
+1. `google-services.json` einbauen und dir **die fertige `.apk` schicken**,
+   sobald du das Firebase-Projekt angelegt hast. Dann klingelt dein Telefon —
+   ohne Play Store, ohne Konto.
+2. **Den macOS-Läufer bei GitHub Actions einrichten**, sobald das
+   Apple-Konto steht. Damit braucht niemand einen Mac zu kaufen.
+3. Die **Seite zum Herunterladen** bauen, sobald die .exe signiert ist.
+4. **Die SVG einbauen**, falls sie noch kommt — der Weg steht
+   (`logo:aufbauen` → `logo:negativ`), eine Sache von Minuten.
+5. Die **AVV-Stände** in `dsgvo-verzeichnis.ts` umstellen, sobald du mir
+   sagst, welcher Vertrag durch ist.
 
 ---
 
