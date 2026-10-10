@@ -456,7 +456,23 @@ export const FUSS = {
   text:
     'Recruiting, Mitarbeiterverwaltung, Personalplanung, Arbeitszeit, '
     + 'Abwesenheiten und Lohnabrechnung – miteinander verbunden.',
-  rechte: 'OKUN Systems. Alle Rechte vorbehalten.',
+  /*
+   * §193 Der Rechteinhaber — „OKUN Systems UG", nicht „OKUN Workforce".
+   *
+   * Ein Urheberrechtsvermerk nennt den RECHTEINHABER. „OKUN Workforce" ist
+   * der Produktname und keine Rechtsperson — ein Produkt kann keine Rechte
+   * halten. Auf der Anmeldeseite stand genau das fest eingetippt, und es ist
+   * dem Eigentümer selbst aufgefallen.
+   *
+   * Die Rechtsform gehört dazu, sonst steht da ein Handelsname ohne Träger.
+   * Das „(haftungsbeschränkt)" bleibt weg: Im Impressum ist es Pflicht, in
+   * einer Fußzeile nur lang.
+   *
+   * Zwei Felder, weil die beiden Fußzeilen verschieden viel Platz haben: Die
+   * Website trägt den ganzen Satz, die Anmeldeseite nur den Namen.
+   */
+  inhaber: 'OKUN Systems UG',
+  rechte: 'OKUN Systems UG. Alle Rechte vorbehalten.',
 }
 
 /** Der Text, den Google unter dem Link anzeigt. */

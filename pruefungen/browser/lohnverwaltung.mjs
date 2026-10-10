@@ -162,7 +162,27 @@ check('Die Monatsfelder erscheinen erst mit einer Anzeige',
 console.log('\n=== Abschottung ===')
 const { ctx: c2, seite: leitung } = await anmelden('leitung@rheinblick-reha.de')
 await leitung.goto(`${BASIS}/company/lohnverwaltung`)
-await leitung.waitForTimeout(3000)
+
+/*
+ * §193 Auf die Umleitung WARTEN, nicht drei Sekunden hoffen.
+ *
+ * Hier stand `waitForTimeout(3000)`. Die Sicherung greift — die Leitung wird
+ * nach `/admin` geschickt —, aber sie greift in einem `useEffect`, also erst
+ * nachdem die Seite einmal gezeichnet ist. Auf einem frisch gestarteten
+ * Entwicklungsserver muss diese Route beim ersten Aufruf erst übersetzt
+ * werden, und das dauert länger als drei Sekunden. Dann stand die Prüfung auf
+ * Rot und sah aus wie ein Loch im Zugriffsschutz.
+ *
+ * Nachgemessen: mit sechs Sekunden grün, die Umleitung landet auf `/admin`,
+ * der Pfändungsbereich ist nicht da. Eine Prüfung, die aus Zeitgründen rot
+ * wird, wird nach zwei Wochen ignoriert — und dann übersieht man das echte
+ * Loch daneben.
+ */
+await leitung.waitForURL(u => !u.pathname.startsWith('/company'), { timeout: 20_000 })
+  .catch(() => {})
+check('Die Standortleitung wird von der Seite weggeschickt',
+  !new URL(leitung.url()).pathname.startsWith('/company'),
+  leitung.url())
 check('Die Standortleitung bekommt die Seite nicht zu sehen',
   await leitung.locator('[data-test="pfaendung"]').count() === 0,
   leitung.url())

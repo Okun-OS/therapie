@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Logo } from '@/components/ui/Logo'
 import Link from 'next/link'
 import { Mail, Lock, ShieldCheck, ArrowLeft, MessageSquare, Check } from 'lucide-react'
-import { KOPF, STAERKEN } from '@/lib/website-inhalt'
+import { KOPF, STAERKEN, FUSS } from '@/lib/website-inhalt'
 
 type LoginStep = 'credentials' | 'totp' | 'sms'
 
@@ -295,7 +295,10 @@ export default function LoginPage() {
               keiner: Er sieht nach Erfüllung aus. §5 DDG verlangt „leicht
               erkennbar, unmittelbar erreichbar und ständig verfügbar". */}
           <p className="text-center text-navy-100 text-xs mt-6">
-            © {new Date().getFullYear()} OKUN Workforce{' · '}
+            {/* §193 Der Rechteinhaber aus derselben Quelle wie der Fuß der
+                Website. Hier stand fest eingetippt „OKUN Workforce" — der
+                Produktname, keine Rechtsperson. */}
+            © {new Date().getFullYear()} {FUSS.inhaber}{' · '}
             <Link href="/datenschutz" className="hover:underline">Datenschutz</Link>
             {' · '}
             <Link href="/impressum" className="hover:underline">Impressum</Link>

@@ -90,8 +90,60 @@ function adressePruefen(roh) {
   return u.origin
 }
 
-function adresse() {
+/**
+ * Die Anlage — nur der Ursprung, ohne Pfad.
+ *
+ * Das ist die SICHERHEITSGRENZE: Alles mit diesem Ursprung darf im Fenster
+ * aufgehen, alles andere geht in den Systembrowser.
+ */
+function anlage() {
   return adressePruefen(einstellungenLesen().adresse) || adressePruefen(EINGEBAUT) || EINGEBAUT
+}
+
+/**
+ * §193 Womit das Fenster startet — und warum das NICHT dasselbe ist.
+ *
+ * Hier lag ein Fehler, der ein Jahr lang im Kommentar widerlegt stand. Zwei
+ * Zeilen über der alten Fassung steht seit §177: „`/login`, nicht `/`: Unter
+ * `/` steht die Verkaufsseite." Genau so war `EINGEBAUT` auch gesetzt. Nur
+ * gab `adressePruefen` `u.origin` zurück — und `origin` ist der Ursprung OHNE
+ * Pfad. Aus `https://okun-workforce.com/login` wurde `https://okun-workforce.com`,
+ * und das Programm öffnete die Verkaufsseite.
+ *
+ * Der Eigentümer hat es gemeldet: „wenn ich die heruntergeladene Fassung
+ * öffne, öffnet sich auch die Homepage — es müsste nur der Anmeldeschirm
+ * aufgehen."
+ *
+ * Warum `adressePruefen` den Pfad trotzdem wegschneidet: Es prüft eine
+ * Adresse, die ein KUNDE einträgt, der selbst betreibt. Dort ist nur der
+ * Ursprung erwünscht; ein mitgegebener Pfad wäre eine zweite, stille
+ * Einstellung. Der Fehler war nicht das Abschneiden, sondern dass derselbe
+ * Wert danach als Startadresse benutzt wurde. Deshalb jetzt zwei Funktionen
+ * mit zwei Aufgaben.
+ */
+function startAdresse() {
+  return anlage() + '/login'
+}
+
+/**
+ * §193 Die Verkaufsseiten haben in der Hülle nichts zu suchen.
+ *
+ * Wer das Programm installiert hat, ist Kunde — dem muss man nicht mehr
+ * erklären, was das Programm kann. Landet er doch dort (über das Logo, über
+ * einen Link), geht es zurück zur Anmeldung.
+ *
+ * `/impressum` und `/datenschutz` bleiben absichtlich erreichbar: Sie stehen
+ * im Fuß der Anmeldeseite, und §5 DDG verlangt „ständig verfügbar".
+ */
+const VERKAUFSSEITEN = new Set(['/', '/funktionen', '/kontakt'])
+
+function istVerkaufsseite(ziel) {
+  try {
+    const u = new URL(ziel)
+    return u.origin === anlage() && VERKAUFSSEITEN.has(u.pathname.replace(/\/+$/, '') || '/')
+  } catch {
+    return false
+  }
 }
 
 // ── Das Fenster ────────────────────────────────────────────────────────────
@@ -153,7 +205,7 @@ function fensterBauen() {
   // Fenster sieht für den Benutzer aus wie ein Teil des Programms.
   const gehoertDazu = (ziel) => {
     try {
-      return new URL(ziel).origin === adresse()
+      return new URL(ziel).origin === anlage()
     } catch {
       return false
     }
@@ -166,6 +218,12 @@ function fensterBauen() {
   })
 
   fenster.webContents.on('will-navigate', (ereignis, ziel) => {
+    // §193 Verkaufsseite im Programm: zurück zur Anmeldung.
+    if (istVerkaufsseite(ziel)) {
+      ereignis.preventDefault()
+      fenster.loadURL(startAdresse())
+      return
+    }
     if (gehoertDazu(ziel)) return
     ereignis.preventDefault()
     try {
@@ -181,11 +239,11 @@ function fensterBauen() {
     // Fehler, den jemand sehen muss.
     if (code === -3) return
     fenster.loadFile(path.join(__dirname, 'nicht-erreichbar.html'), {
-      query: { adresse: adresse(), grund: beschreibung || String(code) },
+      query: { adresse: anlage(), grund: beschreibung || String(code) },
     })
   })
 
-  fenster.loadURL(adresse())
+  fenster.loadURL(startAdresse())
   return fenster
 }
 
@@ -194,7 +252,7 @@ function fensterBauen() {
 // Eine kurze Liste, absichtlich. Jeder Punkt hier ist eine Tür in den
 // Rechner, und jede Tür muss sich begründen lassen.
 
-ipcMain.handle('okun:adresse', () => adresse())
+ipcMain.handle('okun:adresse', () => anlage())
 
 ipcMain.handle('okun:adresse-setzen', (_e, roh) => {
   const geprueft = adressePruefen(roh)
@@ -205,7 +263,7 @@ ipcMain.handle('okun:adresse-setzen', (_e, roh) => {
   if (!einstellungenSchreiben(werte)) {
     return { ok: false, fehler: 'Die Einstellung konnte nicht gespeichert werden.' }
   }
-  if (fenster && !fenster.isDestroyed()) fenster.loadURL(geprueft)
+  if (fenster && !fenster.isDestroyed()) fenster.loadURL(geprueft + '/login')
   return { ok: true, adresse: geprueft }
 })
 
@@ -232,7 +290,7 @@ ipcMain.handle('okun:version', () => ({
 function adresseFragen() {
   if (!fenster || fenster.isDestroyed()) return
   fenster.loadFile(path.join(__dirname, 'adresse.html'), {
-    query: { adresse: adresse() },
+    query: { adresse: anlage() },
   })
 }
 
@@ -260,7 +318,7 @@ function menuBauen() {
     {
       label: 'Ansicht',
       submenu: [
-        { label: 'Neu laden', accelerator: 'CmdOrCtrl+R', click: () => fenster?.loadURL(adresse()) },
+        { label: 'Neu laden', accelerator: 'CmdOrCtrl+R', click: () => fenster?.loadURL(startAdresse()) },
         { role: 'resetZoom', label: 'Normale Größe' },
         { role: 'zoomIn', label: 'Größer' },
         { role: 'zoomOut', label: 'Kleiner' },
@@ -277,7 +335,7 @@ function menuBauen() {
             type: 'info',
             title: 'OKUN Workforce',
             message: `OKUN Workforce ${app.getVersion()}`,
-            detail: `Anlage: ${adresse()}\n\nDas Programm zeigt Ihre Anlage. Lohn, Zeiten und `
+            detail: `Anlage: ${anlage()}\n\nDas Programm zeigt Ihre Anlage. Lohn, Zeiten und `
               + 'Dienstpläne liegen dort und nicht auf diesem Rechner.',
             buttons: ['Schließen'],
           }),

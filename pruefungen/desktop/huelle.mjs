@@ -265,12 +265,25 @@ console.log('')
 // Eine winzige Anlage, die genau das tut, was die Hülle von ihr erwartet.
 // Gegen die echte zu prüfen hieße, eine Datenbank und einen Rechendienst
 // vorauszusetzen — geprüft wird hier die Hülle, nicht die Anwendung.
+//
+// §193 Sie antwortet je nach Pfad VERSCHIEDEN — vorher gab sie auf jede
+// Adresse dieselbe Seite zurück. Damit konnte die Prüfung nicht sehen, ob die
+// Hülle `/login` oder `/` öffnet, und genau dort steckte der Fehler: Die
+// Hülle öffnete die Verkaufsseite, ein Jahr lang, und keine Prüfung hat
+// gemuckst. Eine Attrappe, die alles gleich beantwortet, prüft nichts.
 let angefragt = []
 const anlage = createServer((req, res) => {
   angefragt.push(req.url)
+  const pfad = req.url.split('?')[0].replace(/\/+$/, '') || '/'
+  const seiten = {
+    '/login': '<h1 data-test="anlage">Anmelden bei OKUN Workforce</h1>',
+    '/': '<h1 data-test="verkaufsseite">Vom Bewerber bis zum Lohn</h1>',
+    '/funktionen': '<h1 data-test="verkaufsseite">Alles, was Personal ausmacht</h1>',
+    '/impressum': '<h1 data-test="impressum">Angaben gemäß §5 DDG</h1>',
+  }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
   res.end(`<!doctype html><html><body>
-    <h1 data-test="anlage">Angemeldet bei OKUN Workforce</h1>
+    ${seiten[pfad] ?? '<h1 data-test="anlage">Angemeldet bei OKUN Workforce</h1>'}
     <a id="nachaussen" href="https://beispiel.invalid/fremd">Ein Link nach außen</a>
   </body></html>`)
 })
@@ -310,6 +323,46 @@ check('Der Fenstertitel nennt das Programm',
   /OKUN/i.test(await programm.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].getTitle())),
   await programm.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getTitle()))
+
+// ── §193 Die Hülle startet auf der Anmeldung, nicht auf der Verkaufsseite ──
+//
+// WARUM DAS EINE EIGENE PRÜFUNG IST
+// Seit §177 stand im Quelltext der Kommentar „`/login`, nicht `/`: Unter `/`
+// steht die Verkaufsseite", und `OKUN_APP_URL` war auch so gesetzt. Trotzdem
+// öffnete das Programm die Verkaufsseite: `adressePruefen` gab `u.origin`
+// zurück, und `origin` ist der Ursprung OHNE Pfad. Der Kommentar war richtig,
+// der Code tat das Gegenteil, und niemand hat es gemerkt — bis es der
+// Eigentümer auf seinem eigenen Rechner sah.
+//
+// Ein Kommentar ist keine Prüfung.
+console.log('\n=== Womit die Hülle startet ===')
+
+check('Der erste Aufruf geht auf die Anmeldung', angefragt[0] === '/login',
+  `angefordert wurde: ${angefragt.join(', ')}`)
+check('Zu sehen ist die Anmeldung',
+  await fenster.locator('[data-test="anlage"]').count() === 1)
+check('Und NICHT die Verkaufsseite',
+  await fenster.locator('[data-test="verkaufsseite"]').count() === 0,
+  'Wer das Programm installiert hat, ist Kunde — dem muss man es nicht mehr verkaufen')
+
+// Gegenprobe: Landet jemand doch auf der Verkaufsseite, kommt er zurück.
+await fenster.evaluate(() => { window.location.href = '/' })
+await fenster.waitForTimeout(1200)
+check('Die Verkaufsseite leitet zurück zur Anmeldung',
+  await fenster.locator('[data-test="anlage"]').count() === 1,
+  fenster.url())
+check('Das Fenster steht danach auf /login', fenster.url().endsWith('/login'), fenster.url())
+
+// Aber das Impressum bleibt erreichbar — §5 DDG verlangt „ständig verfügbar",
+// und es steht im Fuß der Anmeldeseite.
+await fenster.evaluate(() => { window.location.href = '/impressum' })
+await fenster.waitForTimeout(1200)
+check('Das Impressum bleibt im Programm erreichbar',
+  await fenster.locator('[data-test="impressum"]').count() === 1,
+  fenster.url())
+
+await fenster.goto(`${ADRESSE}/login`).catch(() => {})
+await fenster.waitForLoadState('domcontentloaded').catch(() => {})
 
 console.log('\n=== Was die Seite auf diesem Rechner darf ===')
 const bruecke = await fenster.evaluate(() => ({
