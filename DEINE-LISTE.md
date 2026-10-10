@@ -17,11 +17,13 @@ HEUTE MÖGLICH
                                                    └─►  Download-Seite
   VAPID-Schlüssel ──5 Minuten──►  Push im Browser
   Firebase        ──20 Minuten──►  Push in der App (Android)
-  Google-Play-Konto ──25 $──►  App im Play Store
+  (Google-Play-Konto braucht AUCH die D-U-N-S — siehe unten)
 
 LÄUFT SCHON
   D-U-N-S-Nummer ──beantragt──►  Apple-Konto ─► APNs ─► App Store
-                                             └─►  .dmg beglaubigen
+                 (bis 30 Tage)             └─►  .dmg beglaubigen
+                              └─►  Play-Konto ─► Play Store
+                                   Beide Stores, eine Nummer.
 
 ERLEDIGT
   Domain · Firmenangaben · Impressum · Website
@@ -142,11 +144,20 @@ gesammelten Ruf zurück.
 Abwägung im Detail: `DESKTOP.md`, Abschnitt §187.
 
 ### 🟡 D-U-N-S-Nummer — beantragt, läuft
-Dauert 1–2 Wochen. Ohne sie gibt es kein Apple Developer Program als
-Organisation.
 
-**Blockiert noch:** Apple-Konto → APNs-Schlüssel → Push auf dem iPhone → App
-Store → auch das beglaubigte `.dmg` für macOS.
+**Berichtigt am 10.10.: Sie blockiert BEIDE Stores, nicht nur Apple.** Hier
+stand „ohne sie gibt es kein Apple Developer Program als Organisation" — das
+stimmt, ist aber nur die Hälfte. Google schreibt auf seiner eigenen Hilfeseite:
+*„Ohne eine solche Nummer können Sie kein Entwicklerkonto für eine
+Organisation erstellen."*
+
+Die gute Nachricht: **Es ist dieselbe Nummer.** Eine beantragen, beide Stores
+aufschließen. Google nennt als Dauer bis zu 30 Tage.
+
+**Blockiert:**
+* Apple Developer Program → APNs-Schlüssel → Push auf dem iPhone → App Store
+* das beglaubigte `.dmg` für macOS
+* **das Google-Play-Entwicklerkonto als Organisation** → Push auf Android
 
 ### ✅ Domain verbunden — `okun-workforce.com`
 Steht. Die Anlage läuft darunter, `APP_URL` ist gesetzt. Wie es gemacht wurde,
@@ -185,9 +196,12 @@ Die zwei Schlüssel bei Railway eintragen — `VAPID_PUBLIC_KEY`,
 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Fertig. Danach klingelt es im Browser.
 
 **🟡 Weg 2 für Android:** Firebase-Projekt anlegen, Dienstkonto-Schlüssel nach
-Railway, `google-services.json` an mich. Zwanzig Minuten, kostenlos.
+Railway, `google-services.json` an mich. Zwanzig Minuten, kostenlos. Die App
+selbst in den Play Store zu bringen braucht aber das Entwicklerkonto — und das
+wartet auf die D-U-N-S-Nummer.
 
-**🔴 Weg 2 für iPhone:** wartet weiter auf die D-U-N-S-Nummer.
+**🔴 Weg 2 für iPhone:** wartet auf die D-U-N-S-Nummer — und auf einen Mac,
+siehe `APP-STORES.md`.
 
 **Jeder Schritt einzeln, mit den genauen Feldern und was ein Geheimnis ist:
 `FIREBASE.md`.**
@@ -195,9 +209,29 @@ Railway, `google-services.json` an mich. Zwanzig Minuten, kostenlos.
 ### 🟡 Apple Developer Program — 99 $/Jahr
 Wartet auf die D-U-N-S-Nummer.
 
-### 🟡 Google-Play-Entwicklerkonto — 25 $ einmalig
-Geht sofort, unabhängig von allem anderen. Danach brauche ich von dir nur das
-`google-services.json` aus dem Firebase-Projekt; den Rest baue ich ein.
+### 🔴 Google-Play-Entwicklerkonto — 25 $ einmalig, **als Organisation**
+
+**Berichtigt am 10.10.:** Hier stand „geht sofort, unabhängig von allem
+anderen". Das war falsch und in zwei Richtungen teuer.
+
+**Es braucht die D-U-N-S-Nummer** — als Organisationskonto geht es ohne sie
+gar nicht (Googles eigene Hilfeseite). Wartet also auf denselben Punkt wie
+Apple.
+
+**Und nimm trotzdem kein privates Konto, um schneller zu sein.** Private
+Konten, die nach dem 13.11.2023 erstellt wurden, müssen vor der
+Veröffentlichung einen **geschlossenen Test mit mindestens 12 Testern über 14
+zusammenhängende Tage** fahren. Zwölf Leute, die zwei Wochen lang eine
+Dienstplan-App auf dem Telefon lassen — das wäre die eigentliche Hürde, nicht
+die 25 $. Für Organisationskonten gilt die Regel nicht; Googles Seite nennt
+ausdrücklich nur private Konten.
+
+> Der Umweg über ein privates Konto wäre also kein Umweg, sondern zwei
+> Wochen Mehrarbeit plus zwölf Freiwillige.
+
+Danach brauche ich von dir das `google-services.json` aus dem
+Firebase-Projekt; den Rest baue ich ein. **Der ganze Weg in die Stores steht
+in `APP-STORES.md`.**
 
 ### ✅ Firmenangaben für Impressum und Datenschutzerklärung
 Stehen bei Railway. Das Impressum ist vollständig: OKUN Systems UG

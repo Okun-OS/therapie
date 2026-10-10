@@ -4,7 +4,58 @@ Diese Datei ist der Ablaufplan von hier bis zur veröffentlichten App. Sie sagt,
 was fertig ist, was OKUN besorgen muss und was am Mac zu tun ist. Wer sie von
 oben nach unten abarbeitet, kommt durch.
 
-Stand: **12.09.2026** — Etappe 3 (native Hülle) ist gebaut.
+Stand: **10.10.2026** — die Hülle ist gebaut, Push ist auf beiden Seiten
+verdrahtet. Was fehlt, sind Konten und zwei gebaute Apps.
+
+---
+
+## Die Reihenfolge — was heute geht und was wartet
+
+Push in den Store-Apps ist keine Firebase-Aufgabe, sondern eine
+Veröffentlichungs-Aufgabe: Es klingelt erst, wenn die App installiert ist.
+Firebase ist nur ein Schritt davon.
+
+**Heute, ohne auf irgendetwas zu warten:**
+
+1. **Firebase-Projekt anlegen** und `FCM_SERVICE_ACCOUNT` bei Railway setzen
+   (20 Minuten, kostenlos → `FIREBASE.md`, Teil 2). Danach ist die
+   Server-Seite für beide Stores fertig — ein Schlüssel für Android und iOS.
+2. **Android-App in Firebase hinzufügen**, `google-services.json` an mich.
+3. Dann baue ich die **Android-App** und du bekommst eine `.apk` zum
+   Aufspielen. **Damit klingelt es auf deinem eigenen Android-Telefon — ohne
+   Play Store, ohne Konto, ohne Wartezeit.** Das ist der schnellste Weg, Push
+   überhaupt einmal in echt zu sehen, und er hängt an keinem einzigen Konto.
+
+> **Nachgewiesen am 10.10.2026**, damit Schritt 3 keine Zusage auf Verdacht
+> ist: Die App lässt sich auf diesem Server bauen. Dafür fehlte das
+> Android-SDK; es ist jetzt eingerichtet, und `./gradlew assembleDebug` liefert
+> eine `app-debug.apk` von 9,9 MB. Nachgesehen im fertigen Paket: Paketname
+> `de.okun.workforce` (genau der, der in Firebase einzutragen ist), das Recht
+> `POST_NOTIFICATIONS`, und die Firebase-Bestandteile sind enthalten.
+>
+> **Die Einschränkung:** Ohne `google-services.json` weiß die App nicht, mit
+> welchem Firebase-Projekt sie reden soll. `android/app/build.gradle` sagt das
+> beim Bauen selbst: *„google-services.json not found, google-services plugin
+> not applied. Push Notifications won't work."* Die App läuft dann ganz normal
+> — nur klingelt sie nicht. Deshalb ist Schritt 1 und 2 vorher nötig, und
+> deshalb baue ich die `.apk` neu, sobald du mir die Datei schickst.
+>
+> Der Bau scheitert übrigens zwei-, dreimal an einer Drosselung von Maven
+> Central (HTTP 429) und kommt bei jedem Versuch weiter. Das ist eine Grenze
+> dieser Maschine, kein Projektfehler.
+
+**Sobald die D-U-N-S-Nummer da ist (beide Stores, dieselbe Nummer):**
+
+4. **Google-Play-Konto als Organisation** (25 $) → ich baue das `.aab`, du
+   lädst hoch. Store-Eintrag siehe Teil D.
+5. **Apple Developer Program** (99 $/Jahr) → **APNs-Schlüssel** erzeugen und
+   in Firebase hochladen → iOS-App in Firebase hinzufügen.
+6. **iOS bauen und einreichen** — dafür braucht es einen Mac oder einen
+   macOS-Läufer, siehe Teil A.
+
+**Was dabei nicht auf dem Weg liegt:** Der Browser-Push (VAPID) hat mit alldem
+nichts zu tun und ist in fünf Minuten eingeschaltet. Er erreicht keine
+Store-App, aber jeden, der im Browser arbeitet. Siehe `FIREBASE.md`, Teil 1.
 
 ---
 
@@ -38,22 +89,59 @@ nicht findet, lehnt ab, obwohl sie da sind.
 
 Ohne diese Dinge geht es nicht weiter. Alles andere ist gebaut.
 
-| | Wofür | Stand |
+| | Wofür | Stand (10.10.2026) |
 |---|---|---|
-| **D-U-N-S-Nummer** | Apple Developer Program als Organisation | in Arbeit |
+| **D-U-N-S-Nummer** | **beide** Entwicklerkonten als Organisation | beantragt, läuft |
 | **Apple Developer Program**, 99 $/Jahr | App Store | wartet auf D-U-N-S |
-| **Google Play Developer**, 25 $ einmalig | Play Store | offen |
-| **Firebase-Projekt** (kostenlos) | Push für iOS **und** Android | offen |
+| **Google Play Developer**, 25 $ einmalig | Play Store | wartet auf D-U-N-S |
+| **Firebase-Projekt** (kostenlos) | Push für iOS **und** Android | offen, geht sofort |
 | **APNs-Schlüssel** (.p8) aus dem Apple-Konto | Push auf dem iPhone | wartet auf Apple |
-| **Datenschutzerklärung**, öffentlich erreichbar | beide Stores verlangen eine URL | offen |
-| **Impressum**, öffentlich erreichbar | Pflicht in Deutschland | offen |
-| **Eigene Domain** statt `…up.railway.app` | Vertrauen, und nötig für App-Links | offen |
-| **Prüfer-Zugang** mit gefüllten Testdaten | Apple prüft sonst gar nicht erst | anzulegen |
+| **Ein Mac** oder ein Mac in der Cloud | iOS überhaupt bauen | **ungeklärt — siehe unten** |
+| **Prüfer-Zugang** mit gefüllten Testdaten | Apple prüft sonst gar nicht erst | lege ich an |
+| ~~Datenschutzerklärung und Impressum~~ | beide Stores verlangen eine URL | ✅ erledigt |
+| ~~Eigene Domain~~ | Vertrauen, App-Links | ✅ `okun-workforce.com` |
 
 > **Zur Domain:** Sie steht an drei Stellen und muss überall dieselbe sein —
 > `capacitor.config.ts` (bzw. `OKUN_APP_URL`), `ios/App/App/Info.plist` unter
 > `WKAppBoundDomains`, und `APP_URL` in der Umgebung von Railway. Weicht eine
 > ab, lädt die App nichts oder der Offline-Zwischenspeicher bleibt tot.
+
+### Die D-U-N-S-Nummer schließt BEIDE Stores auf
+
+Das stand hier bis zum 10.10. falsch — als wäre sie nur für Apple nötig.
+Google schreibt auf seiner eigenen Hilfeseite zum Entwicklerkonto:
+
+> „Ohne eine solche Nummer können Sie kein Entwicklerkonto für eine
+> Organisation erstellen."
+
+Es ist dieselbe Nummer für beide. Google nennt als Dauer **bis zu 30 Tage**.
+
+**Und kein privates Play-Konto nehmen, um schneller zu sein.** Private Konten,
+die nach dem 13.11.2023 erstellt wurden, müssen vor der ersten
+Veröffentlichung einen geschlossenen Test mit **mindestens 12 Testern über 14
+zusammenhängende Tage** bestehen. Zwölf Menschen, die zwei Wochen lang eine
+Dienstplan-App auf dem Telefon behalten — das wäre die eigentliche Hürde.
+Googles Seite nennt die Regel ausdrücklich nur für private Konten.
+
+### Der Punkt, der noch ungeklärt ist: **iOS braucht einen Mac**
+
+Eine iOS-App lässt sich nur auf macOS bauen und einreichen. Das ist Apples
+Regel und lässt sich nicht umgehen — auch nicht bei einer Hülle, die nur eine
+Webseite lädt. Auf einem Windows-Rechner geht es nicht, und auf diesem Server
+hier auch nicht.
+
+Drei Wege, vom günstigsten zum bequemsten:
+
+| | Was | Kosten | Wofür geeignet |
+|---|---|---|---|
+| **A** | **macOS-Läufer bei GitHub Actions** | im kostenlosen Kontingent, danach nach Minuten | Baut und reicht ein, ohne dass jemand einen Mac besitzt. Einmal einzurichten — **das kann ich machen**, sobald das Apple-Konto steht. |
+| **B** | **Mac in der Cloud mieten** (MacStadium, MacInCloud) | ab ~25 €/Monat | Wenn du zwischendurch selbst in Xcode schauen willst |
+| **C** | **Einen Mac kaufen** (Mac mini) | ab ~700 € | Lohnt erst, wenn regelmäßig an der Hülle gearbeitet wird |
+
+**Mein Rat: A.** Die Hülle ändert sich fast nie — sie lädt ja nur die Anlage.
+Ein Gerät anzuschaffen, das zweimal im Jahr fünf Minuten läuft, wäre teuer
+geschlafene Hardware. Für Android brauchst du gar nichts: Das baut sich auf
+deinem Windows-Rechner mit Android Studio, oder ebenfalls hier.
 
 ---
 
