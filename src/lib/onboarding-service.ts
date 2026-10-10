@@ -1,0 +1,92 @@
+import { prisma } from './prisma'
+
+export interface OrganizationOnboardingUpdate {
+  traegerName?: string
+  rollenmodell?: string
+  unternehmensweiteRegeln?: string
+  completed?: boolean
+}
+
+export async function upsertOrganizationOnboarding(customerId: string, update: OrganizationOnboardingUpdate) {
+  return prisma.organizationOnboarding.upsert({
+    where: { customerId },
+    update: {
+      ...(update.traegerName !== undefined && { traegerName: update.traegerName }),
+      ...(update.rollenmodell !== undefined && { rollenmodell: update.rollenmodell }),
+      ...(update.unternehmensweiteRegeln !== undefined && { unternehmensweiteRegeln: update.unternehmensweiteRegeln }),
+      ...(update.completed !== undefined && { completed: update.completed }),
+    },
+    create: {
+      customerId,
+      traegerName: update.traegerName,
+      rollenmodell: update.rollenmodell,
+      unternehmensweiteRegeln: update.unternehmensweiteRegeln,
+      completed: update.completed ?? false,
+    },
+  })
+}
+
+export interface LocationOnboardingUpdate {
+  einrichtungsart?: string
+  organisationsstruktur?: string
+  personalstruktur?: string
+  arbeitszeiten?: string
+  dienstplanlogik?: string
+  pausenlogik?: string
+  wiederkehrendeAufgaben?: string
+  individuelleRegeln?: string[]
+  vertretungsregeln?: string
+  urlaubslogik?: string
+  zeiterfassung?: string
+  besonderheiten?: string
+  tagesablauf?: string
+  completedPhases?: string[]
+  completed?: boolean
+}
+
+const LOCATION_FIELDS: (keyof LocationOnboardingUpdate)[] = [
+  'einrichtungsart', 'organisationsstruktur', 'personalstruktur', 'arbeitszeiten',
+  'dienstplanlogik', 'pausenlogik', 'wiederkehrendeAufgaben', 'individuelleRegeln',
+  'vertretungsregeln', 'urlaubslogik', 'zeiterfassung', 'besonderheiten',
+  'tagesablauf', 'completedPhases', 'completed',
+]
+
+export async function upsertLocationOnboarding(locationId: string, update: LocationOnboardingUpdate) {
+  const data: Record<string, unknown> = {}
+  for (const field of LOCATION_FIELDS) {
+    if (update[field] !== undefined) data[field] = update[field]
+  }
+  return prisma.locationOnboarding.upsert({
+    where: { locationId },
+    update: data,
+    create: { locationId, ...data },
+  })
+}
+
+/** Ergänzt die dauerhafte Regelwissensbasis eines Standorts um neue Einträge,
+ * z.B. aus dem Dienstplan-Planungschat ("Frühdienst für 35h-Mitarbeiter ist
+ * immer 06:00–13:30"). Im Unterschied zu upsertLocationOnboarding (volles
+ * Überschreiben durch den Onboarding-Wizard) hängt diese Funktion nur an und
+ * verwirft dabei doppelte Regeln. */
+export async function appendLocationIndividuelleRegeln(locationId: string, newRules: string[]): Promise<void> {
+  const existing = await prisma.locationOnboarding.findUnique({ where: { locationId }, select: { individuelleRegeln: true } })
+  const current = existing?.individuelleRegeln ?? []
+  const merged = [...current, ...newRules.filter(r => !current.includes(r))]
+  await upsertLocationOnboarding(locationId, { individuelleRegeln: merged })
+}
+
+export const ONBOARDING_PHASES = [
+  { key: 'phase1', label: 'Standort verstehen' },
+  { key: 'phase2', label: 'Organisationsstruktur' },
+  { key: 'phase3', label: 'Mitarbeiterstruktur' },
+  { key: 'phase4', label: 'Arbeitszeiten' },
+  { key: 'phase5', label: 'Dienstplanlogik' },
+  { key: 'phase6', label: 'Pausenlogik' },
+  { key: 'phase7', label: 'Wiederkehrende Aufgaben' },
+  { key: 'phase8', label: 'Individuelle Regeln' },
+  { key: 'phase9', label: 'Vertretungsregeln' },
+  { key: 'phase10', label: 'Urlaubslogik' },
+  { key: 'phase11', label: 'Zeiterfassung' },
+  { key: 'phase12', label: 'Abschluss & offene Fragen' },
+  { key: 'phase13', label: 'Tagesablauf & Einsatzplanung' },
+] as const

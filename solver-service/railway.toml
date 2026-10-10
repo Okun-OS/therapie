@@ -1,0 +1,17 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+# Beide Schreibweisen: greift sowohl bei Service-Root "/" als auch "/solver-service"
+watchPatterns = ["solver-service/**", "**/*.py", "requirements.txt", "Dockerfile"]
+
+[deploy]
+# §93: Im Railway-Dashboard war ein Custom Start Command hinterlegt
+# ("uvicorn ... --port $PORT"), der ohne Shell ausgefuehrt wurde — $PORT kam
+# woertlich an, uvicorn brach ab ("'$PORT' is not a valid integer") und der
+# Dienst lief in einer Absturzschleife. Der Startbefehl wird deshalb hier
+# festgelegt; Konfiguration im Code hat Vorrang vor der Dashboard-Einstellung.
+# main.py liest PORT selbst aus der Umgebung und bindet den Socket robust.
+startCommand = "python main.py"
+
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
