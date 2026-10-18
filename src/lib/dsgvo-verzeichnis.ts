@@ -117,7 +117,8 @@ export const UNTERAUFTRAEGE: Unterauftrag[] = [
     daten:
       'Alle im Programm gespeicherten Daten — Stammdaten, Arbeitszeiten, '
       + 'Abwesenheiten, Lohndaten, Personalunterlagen.',
-    vertrag: 'offen',
+    // §194 Unterzeichnet am 18.10.2026 vom Eigentümer.
+    vertrag: 'geschlossen',
     quelle: 'https://railway.com/legal/dpa',
   },
   {
@@ -149,10 +150,31 @@ export const UNTERAUFTRAEGE: Unterauftrag[] = [
     daten:
       'Der Text der jeweiligen Frage. Der Assistent hat KEINEN Zugriff auf '
       + 'Betriebsdaten — er erklärt das Programm und liest keine Datenbank.',
-    vertrag: 'offen',
+    /*
+     * §194 Hier stand „offen" und daneben die Aufgabe, eine Nutzung zum
+     * Training vertraglich auszuschließen. Beides war falsch, und beides
+     * hätte Arbeit erzeugt, die es nicht gibt.
+     *
+     * Nachgesehen am 18.10.2026 bei Anthropic selbst: Der
+     * Auftragsverarbeitungsvertrag ist in die Commercial Terms
+     * EINGEBUNDEN — „When you accept Anthropic's Commercial Terms of
+     * Service, you also accept our DPA." Es gibt nichts zu unterschreiben;
+     * die Standardvertragsklauseln gelten als geschlossen („deemed to have
+     * been executed by the parties"). Mit dem Anlegen des Zugangs ist er in
+     * Kraft.
+     *
+     * Und das Training ist bereits ausgeschlossen: Die Commercial Terms
+     * sagen, Anthropic „may not train models on Customer Content from
+     * Services" — Customer Content umfasst Ein- und Ausgaben.
+     */
+    vertrag: 'geschlossen',
+    quelle: 'https://www.anthropic.com/legal/data-processing-addendum',
     drittland:
-      'Übermittlung in die USA, zu stützen wie oben. Eine Nutzung der Inhalte '
-      + 'zum Training ist vertraglich auszuschließen.',
+      'Übermittlung in die USA auf Grundlage der Standardvertragsklauseln, '
+      + 'Modul 2 (Verantwortlicher an Auftragsverarbeiter). Anthropic stützt '
+      + 'sich ausdrücklich NICHT auf das EU-US Data Privacy Framework — eine '
+      + 'Folgenabschätzung für die Übermittlung bleibt deshalb nötig. Eine '
+      + 'Nutzung der Inhalte zum Training ist vertraglich ausgeschlossen.',
   },
   {
     name: 'Google Ireland Ltd. (Firebase Cloud Messaging)',

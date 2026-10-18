@@ -4,7 +4,7 @@ Alles, was **nicht programmiert werden kann** — weil es ein Konto, eine
 Unterschrift, einen Kauf oder eine Zahl aus einer Satzung braucht. Nach
 Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 
-> Stand: 08.10.2026 · Was fertig ist, steht in `STAND.md`.
+> Stand: 18.10.2026 · Was fertig ist, steht in `STAND.md`.
 > Zum Abhaken: `- [ ]` zu `- [x]` machen.
 
 ---
@@ -263,11 +263,21 @@ Eine echte Abrechnung eines echten Monats, Zeile für Zeile. Solange das nicht
 jemand mit Berufshaftpflicht bestätigt hat, ist jede Zahl hier nur *von uns*
 gerechnet.
 
+**Der Brief steht fertig in `ANFRAGEN.md`** — kopieren, abschicken. Das ist
+kein ungewöhnliches Anliegen, sondern eine *prüferische Durchsicht*: ein
+normales Mandat, nach Zeit abgerechnet. Entscheidend ist, dass die Bestätigung
+**schriftlich** kommt.
+
 **Blockiert:** den ersten echten Kunden. Details: `ABLAUFPLAN.md`, Punkt 1.
 
 ### 🔴 Eine echte ELStAM-Änderungsliste besorgen
 Der Import ist gebaut, aber nur an nachgebauten Dateien geprüft. Eine echte
 Liste zeigt, ob das Format stimmt.
+
+**Sie entsteht nur in einem laufenden Arbeitgeberverhältnis** — also entweder
+beim ersten Kunden, oder, schneller, beim Steuerberater, der solche Listen
+täglich sieht. **Anonymisiert reicht**; gebraucht wird nur das Format. Die
+Frage steht fertig formuliert in `ANFRAGEN.md`, gleich im selben Brief.
 
 ### 🟡 Aufbewahrungsfristen gegenzeichnen lassen
 Vier Fristen stehen mit Vorschrift in `src/lib/dsgvo-katalog.ts`, sind aber
@@ -291,23 +301,47 @@ offen"**.
 
 Verhandeln muss man nichts, alle fünf haben ein Standarddokument zum Annehmen:
 
-| | Wer | Wofür | Wo liegen die Daten |
-|---|---|---|---|
-| 1 | **Railway** | Hosting und Datenbank — hier liegt **alles** | EU |
-| 2 | **Resend** | E-Mails: Einladungen, Benachrichtigungen, Lohnbelege | **USA** |
-| 3 | **Twilio** | SMS für den zweiten Anmeldefaktor | **USA** |
-| 4 | **Anthropic** | der Hilfe-Assistent (sieht keine Betriebsdaten) | **USA** |
-| 5 | **Google** | Push an die App aus dem Store | EU, für iPhones weiter an Apple |
+| | Wer | Wofür | Daten | Stand |
+|---|---|---|---|---|
+| 1 | **Railway** | Hosting und Datenbank — hier liegt **alles** | EU | ✅ **unterschrieben 18.10.** |
+| 2 | **Anthropic** | der Hilfe-Assistent (sieht keine Betriebsdaten) | **USA** | ✅ **gilt automatisch** |
+| 3 | **Resend** | E-Mails: Einladungen, Benachrichtigungen, Lohnbelege | **USA** | 🔴 offen |
+| 4 | **Twilio** | SMS für den zweiten Anmeldefaktor | **USA** | 🔴 offen |
+| 5 | **Google** | Push an die App aus dem Store | EU, für iPhones weiter an Apple | 🔴 offen |
 
-**Reihenfolge: 1, dann 2.** Bei Railway liegt jede Zeile, die ein Kunde
-eingibt. Bei Resend gehen Lohnbelege per E-Mail hinaus — das ist die zweite
-Stelle, an der es wirklich um Personaldaten geht.
+### Anthropic: Da gibt es nichts zu unterschreiben
 
-Bei den drei US-Diensten gehört jeweils dazu: entweder der Anbieter ist nach
-dem **EU-US Data Privacy Framework** zertifiziert (dann prüfen und den Eintrag
+**Berichtigt am 18.10.** Hier stand „offen" und daneben die Aufgabe, eine
+Nutzung zum Training vertraglich auszuschließen. Beides war falsch.
+
+Nachgesehen bei Anthropic selbst: Der Vertrag ist in die Commercial Terms
+**eingebunden** — *„When you accept Anthropic's Commercial Terms of Service,
+you also accept our DPA."* Die Standardvertragsklauseln gelten als
+geschlossen. Mit dem Anlegen des Zugangs ist er in Kraft.
+
+Und das Training ist bereits ausgeschlossen: Die Commercial Terms sagen,
+Anthropic *„may not train models on Customer Content from Services"* — das
+umfasst Ein- und Ausgaben.
+
+**Was trotzdem zu tun ist, und zwar für alle fertigen Verträge:** den Vertrag
+als PDF mit Datum ablegen. Ein Vertrag, der nur als Webseite existiert, ist in
+zwei Jahren ein toter Link. Bei Anthropic zusätzlich die
+**Unterauftragnehmerliste** (anthropic.com/subprocessors) — es gibt 15 Tage
+Widerspruchsfrist bei neuen Einträgen.
+
+### Die drei offenen
+
+**Reihenfolge: Resend zuerst.** Dort gehen Lohnbelege per E-Mail hinaus — das
+ist nach Railway die zweite Stelle, an der es wirklich um Personaldaten geht.
+
+Bei Resend und Twilio gehört jeweils dazu: entweder der Anbieter ist nach dem
+**EU-US Data Privacy Framework** zertifiziert (dann prüfen und den Eintrag
 aufbewahren), oder es braucht **Standardvertragsklauseln** samt
-Folgenabschätzung. Bei Anthropic zusätzlich: **die Nutzung der Inhalte zum
-Training vertraglich ausschließen.**
+Folgenabschätzung.
+
+> Anthropic stützt sich ausdrücklich **nicht** auf das Framework, sondern auf
+> die Standardvertragsklauseln (Modul 2). Eine Folgenabschätzung für die
+> Übermittlung bleibt dort also nötig — das ist eine Seite, kein Projekt.
 
 > Solange ein Vertrag auf „offen" steht, sagt das Verzeichnis das dem Kunden —
 > genauso wie das Impressum sagt, wenn eine Pflichtangabe fehlt. Nach jedem
@@ -459,9 +493,12 @@ Wer die ELStAM holt, wer meldet, wer haftet. `ABLAUFPLAN.md`, Punkt 5.
 
 ## 7 · Später, bewusst nach hinten
 
-### 🟢 Die drei Anfragen verschicken (ITSG, ELSTER, Steuerberater)
-Für die Entscheidung, ob wir das Meldewesen selbst machen.
-`LOHN-ZERTIFIZIERUNG.md`.
+### 🟢 Die zwei Anfragen verschicken (ITSG, ELSTER)
+Für die Entscheidung, ob wir das Meldewesen selbst machen. **Beide Briefe
+stehen fertig in `ANFRAGEN.md`.** Die dritte Anfrage — der Steuerberater —
+ist inzwischen nach oben gewandert, weil sie den ersten Kunden blockiert.
+
+Hintergrund und die Entscheidung dahinter: `LOHN-ZERTIFIZIERUNG.md`.
 
 ### 🟢 Lizenzierung für Steuer und Lohn anschreiben
 Erst wenn alles Übrige steht.
