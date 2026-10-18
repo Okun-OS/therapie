@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/session'
-import { sendSms, generateOtp, EXPIRY_MINUTES, RATE_LIMIT_MINUTES } from '@/lib/sms'
+import { sendSms, smsEingerichtet, generateOtp, EXPIRY_MINUTES, RATE_LIMIT_MINUTES } from '@/lib/sms'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +10,20 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest) {
   const session = requireRole(req)
   if (session instanceof NextResponse) return session
+
+  /*
+   * §195 Erst fragen, ob ein Versand überhaupt möglich ist.
+   *
+   * Vorher wurde ein Code erzeugt, in der Datenbank abgelegt und erst danach
+   * gemerkt, dass niemand ihn zustellen kann. Übrig blieb ein gültiger
+   * Anmeldecode ohne Empfänger — und eine Oberfläche, die „gesendet" sagte.
+   */
+  if (!smsEingerichtet()) {
+    return NextResponse.json(
+      { error: 'Der SMS-Versand ist nicht eingerichtet. Bitte eine andere Methode für den zweiten Faktor wählen.' },
+      { status: 503 },
+    )
+  }
 
   const { phone } = await req.json()
   if (!phone || typeof phone !== 'string') {

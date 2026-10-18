@@ -28,16 +28,54 @@ const RATE_LIMIT_MINUTES = 1   // minimum gap between sends per user
 
 export { MAX_ATTEMPTS, EXPIRY_MINUTES, RATE_LIMIT_MINUTES }
 
-export async function sendSms(to: string, body: string): Promise<{ success: boolean; error?: string }> {
-  const sid = process.env.TWILIO_ACCOUNT_SID
-  const token = process.env.TWILIO_AUTH_TOKEN
-  const from = process.env.SMS_FROM
+/**
+ * §195 Ist ein SMS-Versand überhaupt eingerichtet?
+ *
+ * Gebraucht, bevor irgendwo ein Code erzeugt wird. Vorher hat niemand
+ * gefragt — und das war der Fehler, siehe unten.
+ */
+export function smsEingerichtet(): boolean {
+  return Boolean(
+    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.SMS_FROM,
+  )
+}
 
-  if (!sid || !token || !from) {
-    // Dev / staging fallback: print to server console only
+export async function sendSms(to: string, body: string): Promise<{ success: boolean; error?: string }> {
+  /*
+   * §195 Die Notlösung für die Entwicklung gilt NUR in der Entwicklung.
+   *
+   * WAS HIER VORHER STAND
+   * Fehlten die drei Twilio-Angaben, schrieb diese Funktion den Text ins
+   * Serverprotokoll und meldete `success: true`. In der Entwicklung ist das
+   * bequem: Man sieht den Code auf der Konsole und braucht kein Telefon.
+   *
+   * IM BETRIEB WAREN DAS ZWEI FEHLER AUF EINMAL
+   * Erstens stand damit ein ANMELDECODE IM KLARTEXT im Protokoll. Bei Railway
+   * liest das jeder mit Projektzugang — ein zweiter Faktor, den man im
+   * Protokoll nachschlagen kann, ist keiner.
+   *
+   * Zweitens log die Antwort: Der Benutzer bekam „Code gesendet" zu sehen,
+   * obwohl nichts verschickt wurde. Er wartet dann auf eine SMS, die nie
+   * kommt, und sucht den Fehler bei seinem Telefon.
+   *
+   * Jetzt: In der Entwicklung bleibt die Konsole. Im Betrieb ohne Einrichtung
+   * wird NICHTS verschickt, NICHTS protokolliert und ehrlich `false`
+   * zurückgegeben.
+   */
+  if (!smsEingerichtet()) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[SMS] Nicht eingerichtet — TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN und SMS_FROM fehlen.')
+      return { success: false, error: 'Der SMS-Versand ist nicht eingerichtet.' }
+    }
     console.log(`[SMS-DEV] To: ${to} | Message: ${body}`)
     return { success: true }
   }
+
+  // `smsEingerichtet()` oben hat die drei schon geprüft; das Ausrufezeichen
+  // sagt dem Übersetzer, was er daraus nicht selbst folgern kann.
+  const sid = process.env.TWILIO_ACCOUNT_SID!
+  const token = process.env.TWILIO_AUTH_TOKEN!
+  const from = process.env.SMS_FROM!
 
   try {
     const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`

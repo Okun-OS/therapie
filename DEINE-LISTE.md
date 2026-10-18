@@ -306,8 +306,26 @@ Verhandeln muss man nichts, alle fünf haben ein Standarddokument zum Annehmen:
 | 1 | **Railway** | Hosting und Datenbank — hier liegt **alles** | EU | ✅ **unterschrieben 18.10.** |
 | 2 | **Anthropic** | der Hilfe-Assistent (sieht keine Betriebsdaten) | **USA** | ✅ **gilt automatisch** |
 | 3 | **Resend** | E-Mails: Einladungen, Benachrichtigungen, Lohnbelege | **USA** | 🔴 offen |
-| 4 | **Twilio** | SMS für den zweiten Anmeldefaktor | **USA** | 🔴 offen |
+| 4 | **Twilio** | SMS für den zweiten Anmeldefaktor | **USA** | ⚪ **nicht nötig — noch nicht in Benutzung** |
 | 5 | **Google** | Push an die App aus dem Store | EU, für iPhones weiter an Apple | 🔴 offen |
+
+### Was ich nebenbei behoben habe (§195)
+
+Beim Nachsehen, was wir bei Twilio haben, stand im Code eine Notlösung aus der
+Entwicklung: Fehlten die Twilio-Angaben, schrieb das Programm den
+**Anmeldecode im Klartext ins Serverprotokoll** und meldete dem Benutzer
+trotzdem „Code gesendet".
+
+Zwei Fehler auf einmal. Ein zweiter Faktor, den man im Protokoll nachschlagen
+kann, ist keiner — und bei Railway liest das jeder mit Projektzugang. Und wer
+auf die SMS wartete, suchte den Fehler bei seinem Telefon.
+
+Ist behoben: In der Entwicklung bleibt die Konsole, im Betrieb wird nichts
+verschickt, **nichts protokolliert** und ehrlich ein Fehler gemeldet. Acht
+Tests halten das fest.
+
+**Für dich heißt das nichts** — es konnte niemanden treffen, weil der Faktor
+nie eingeschaltet war. Aber es hätte, sobald du ihn einschaltest.
 
 ### Anthropic: Da gibt es nichts zu unterschreiben
 
@@ -329,15 +347,31 @@ zwei Jahren ein toter Link. Bei Anthropic zusätzlich die
 **Unterauftragnehmerliste** (anthropic.com/subprocessors) — es gibt 15 Tage
 Widerspruchsfrist bei neuen Einträgen.
 
-### Die drei offenen
+### Twilio: Da haben wir gar nichts — und das ist die Antwort
 
-**Reihenfolge: Resend zuerst.** Dort gehen Lohnbelege per E-Mail hinaus — das
-ist nach Railway die zweite Stelle, an der es wirklich um Personaldaten geht.
+**Nachgesehen am 18.10.** Der SMS-Zweitfaktor ist gebaut, aber **nicht
+eingeschaltet**: Es gibt kein Twilio-Konto, keine Zugangsdaten, und die drei
+nötigen Variablen stehen nirgends. Es fließt heute keine einzige
+Telefonnummer dorthin. **Ohne Verarbeitung gibt es nichts zu vereinbaren** —
+du musst dort also nichts abschließen.
 
-Bei Resend und Twilio gehört jeweils dazu: entweder der Anbieter ist nach dem
-**EU-US Data Privacy Framework** zertifiziert (dann prüfen und den Eintrag
-aufbewahren), oder es braucht **Standardvertragsklauseln** samt
-Folgenabschätzung.
+Der Eintrag bleibt trotzdem im Verzeichnis stehen, mit genau diesem Vermerk.
+Wer die Variablen eines Tages setzt, schaltet damit eine Übermittlung in die
+USA ein, und der Vertrag gehört **vorher** geschlossen.
+
+> **Dabei ist mir ein echter Fehler aufgefallen** — siehe unten unter
+> „Was ich nebenbei behoben habe".
+
+### Die zwei offenen
+
+**Es sind nur noch zwei: Resend und Google.** Resend zuerst — dort gehen
+Lohnbelege per E-Mail hinaus, das ist nach Railway die zweite Stelle, an der
+es wirklich um Personaldaten geht. Google hat bis zum Firebase-Projekt ohnehin
+Zeit.
+
+Bei Resend gehört dazu: entweder der Anbieter ist nach dem **EU-US Data
+Privacy Framework** zertifiziert (dann prüfen und den Eintrag aufbewahren),
+oder es braucht **Standardvertragsklauseln** samt Folgenabschätzung.
 
 > Anthropic stützt sich ausdrücklich **nicht** auf das Framework, sondern auf
 > die Standardvertragsklauseln (Modul 2). Eine Folgenabschätzung für die

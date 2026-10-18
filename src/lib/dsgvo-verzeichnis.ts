@@ -137,9 +137,28 @@ export const UNTERAUFTRAEGE: Unterauftrag[] = [
     zweck: 'SMS für den zweiten Anmeldefaktor',
     ort: 'USA',
     daten: 'Mobilfunknummer und der einmalige Zahlencode.',
-    vertrag: 'offen',
+    /*
+     * §195 „nicht nötig" — aber nur, solange der Versand aus ist.
+     *
+     * Nachgesehen am 18.10.2026: Es ist kein Twilio-Paket installiert, der
+     * Aufruf geht unmittelbar an deren Schnittstelle, und er läuft NUR, wenn
+     * TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN und SMS_FROM gesetzt sind. Sie
+     * stehen nirgends — nicht einmal in `.env.example`. Es fließt also heute
+     * keine einzige Telefonnummer dorthin, und ohne Verarbeitung gibt es
+     * nichts zu vereinbaren.
+     *
+     * Der Eintrag bleibt trotzdem stehen, und das ist der Punkt: Wer die drei
+     * Variablen setzt, schaltet eine Übermittlung in die USA ein. Der Vertrag
+     * gehört VORHER geschlossen, nicht hinterher. Ein Verzeichnis, das den
+     * Dienst erst nennt, wenn er läuft, kommt immer einen Tag zu spät.
+     */
+    vertrag: 'nicht_noetig',
     quelle: 'https://www.twilio.com/legal/data-protection-addendum',
-    drittland: 'Wie bei Resend. Wird nur genutzt, wenn der SMS-Faktor eingeschaltet ist.',
+    drittland:
+      'Zurzeit keine Übermittlung — der SMS-Versand ist nicht eingerichtet. '
+      + 'Wird er eingeschaltet (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, '
+      + 'SMS_FROM), ist vorher ein Auftragsverarbeitungsvertrag zu schließen '
+      + 'und die Übermittlung in die USA zu begründen — wie bei Resend.',
   },
   {
     name: 'Anthropic PBC',

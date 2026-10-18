@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
-import { sendSms, generateOtp, EXPIRY_MINUTES, RATE_LIMIT_MINUTES } from '@/lib/sms'
+import { sendSms, smsEingerichtet, generateOtp, EXPIRY_MINUTES, RATE_LIMIT_MINUTES } from '@/lib/sms'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +9,27 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest) {
   const { userId } = await req.json().catch(() => ({ userId: '' }))
   if (!userId) return NextResponse.json({ error: 'userId fehlt' }, { status: 400 })
+
+  /*
+   * §195 Kein Code ohne Zustellweg — und eine Meldung, die weiterhilft.
+   *
+   * Hier steht jemand VOR der Anmeldung und wartet auf eine SMS. Ist der
+   * Versand nicht eingerichtet, kommt keine, und ohne diesen Zweig bekäme er
+   * „SMS fehlgeschlagen" zu lesen und suchte den Fehler bei seinem Telefon.
+   *
+   * Es gibt bewusst keine Selbsthilfe: Einen zweiten Faktor, den der
+   * Ausgesperrte selbst abschalten kann, ist keiner. Deshalb der Verweis auf
+   * die Verwaltung.
+   */
+  if (!smsEingerichtet()) {
+    return NextResponse.json(
+      {
+        error: 'Der SMS-Versand ist derzeit nicht eingerichtet. Es kann kein Code '
+          + 'zugestellt werden — bitte wenden Sie sich an Ihre Verwaltung.',
+      },
+      { status: 503 },
+    )
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
