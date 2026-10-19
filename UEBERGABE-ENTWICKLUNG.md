@@ -131,11 +131,108 @@ Der E-Mail-Faktor läuft unabhängig davon.
    die einzige Methode ohne fremden Dienstleister ist. Wenn er sie ganz
    entfernt haben will, ist das sein Recht — dann wirklich entfernen.
 
-## Alle Unterlagen — nichts davon ist in diese Übergabe kopiert
+---
 
-**Absichtlich nicht kopiert.** Zwei Fassungen derselben Liste laufen immer
-auseinander, und dann weiß niemand mehr, welche gilt. Die Dateien liegen im
-Verzeichnis; dieser Abschnitt sagt nur, welche es gibt und wozu.
+# Momentaufnahme: die Listen im Text
+
+**Stand 19.10.2026.** Dieser Abschnitt ist eine **Momentaufnahme**, damit ein
+frisches Gespräch sofort Bescheid weiß, ohne erst Dateien zu öffnen.
+
+> **Maßgeblich sind die Dateien, nicht dieser Abschnitt.** Sobald sich etwas
+> ändert, wird `DEINE-LISTE.md` nachgeführt — nicht dieser Text. Weicht etwas
+> ab, gilt die Datei. Wer hier etwas ändert, ohne die Datei nachzuführen,
+> erzeugt genau den Fehler, der in diesem Projekt schon mehrfach zu
+> berichtigen war.
+
+## Was der Eigentümer tun muss (aus `DEINE-LISTE.md`)
+
+### 🔴 Dringend — blockiert anderes
+
+| | Was | Blockiert | Stand |
+|---|---|---|---|
+| **Code-Signing-Zertifikat** | Azure Artifact Signing, Region **North Europe**, Stufe Basic (9,99 $/Monat) | Auslieferung des Windows-Programms, Download-Seite | Identitätsprüfung läuft, **1–20 Werktage** |
+| **Steuerberater gegenzeichnen** | Prüferische Durchsicht einer echten Abrechnung, **schriftlich** | **Den ersten echten Kunden** | Brief liegt fertig in `ANFRAGEN.md` |
+| **AVVs** | 5 Dienstleister | DSGVO-konformen Betrieb beim Kunden | Railway ✓, Anthropic ✓ (gilt automatisch), Twilio ⚪ nicht nötig solange aus, **offen: Resend, Google** |
+| **ELStAM-Änderungsliste** | Echte oder anonymisierte Beispieldatei | Nachweis, dass der Import das Format trifft | Entsteht nur im laufenden Arbeitgeberverhältnis — beim Steuerberater mitfragen |
+| **Google-Play-Konto** | 25 $, **als Organisation** | Play Store | Wartet auf D-U-N-S. **Kein privates Konto** — die müssten 12 Tester über 14 Tage stellen |
+| **Benachrichtigungen** | VAPID-Schlüssel für Browser-Push | nichts — geht sofort, 5 Minuten | `npm run push:schluessel`, drei Variablen bei Railway |
+| **Wohngruppe: 10 E-Mail-Adressen** | der Beschäftigten | Einladungen an die Belegschaft | — |
+
+### 🟡 Bald
+
+* **D-U-N-S-Nummer** — beantragt, bis 30 Tage. Schließt **beide** Stores auf, nicht nur Apple.
+* **Apple Developer Program** (99 $/Jahr) — wartet auf D-U-N-S.
+* **Vermögensschadenhaftpflicht** — wer Gehälter rechnet, haftet.
+* **Aufbewahrungsfristen gegenzeichnen** — vier Stück, eine Seite. Steuerberater oder Datenschutzbeauftragter.
+* **USt-IdNr. nachtragen** — im Impressum steht „wird nachgereicht".
+* **Wohngruppe:** zwei geschätzte Angaben bestätigen (Tage/Woche je Person; die festen Zeiten der 25-%-Kraft), Fixtermine der Leitung eintragen.
+* **Das `.dmg` beglaubigen**, Prüfer-Zugang anlegen, in die Stores einreichen, Download-Seite bauen.
+
+### 🟢 Später, bewusst nach hinten
+
+ITSG- und ELSTER-Anfrage (Briefe liegen fertig), Lizenzierung anschreiben,
+Umlagekatalog jährlich im Dezember nachführen
+(`recherche-auftrag-umlagen.md` → `npm run umlagen:import`).
+
+### ✅ Erledigt
+
+Domain, Firmenangaben und Impressum (HRB 292175 B), Website, Railway-AVV,
+Anthropic-AVV.
+
+### Offene Entscheidungen, die nur er treffen kann
+
+* **Darf ein Kunde namentlich auf die Website?** Braucht seine schriftliche
+  Zustimmung. Alternative ohne Namen: „eine Kita mit acht Gruppen in
+  Brandenburg".
+* **Logo als freigestellte SVG** und wie die Schrift heißt (mit Weblizenz?).
+* **Soll die Authenticator-App ganz verschwinden?** Sie ist seit §196
+  eingeklappt, nicht gelöscht.
+
+## Die Briefe (aus `ANFRAGEN.md`)
+
+Drei fertige Texte zum Kopieren und Abschicken. Nicht umformulieren —
+sie sind auf die Sache zugeschnitten.
+
+1. **Steuerberater** — der wichtigste. Bittet um eine *prüferische Durchsicht*
+   eines echten Abrechnungsmonats mit **schriftlicher** Bestätigung. Das ist
+   ein normales Mandat nach Zeit, nichts Ungewöhnliches. Zwei Fragen sind
+   gleich mit drin, die sonst je einen eigenen Brief gekostet hätten: die
+   anonymisierte ELStAM-Beispieldatei und die Aufbewahrungsfristen.
+2. **ITSG** — Kosten, Dauer und Auflagen der Systemuntersuchung für
+   Entgeltabrechnungsprogramme.
+3. **ELSTER-Entwicklerbetreuung** — ERiC für ELStAM, Lohnsteueranmeldung und
+   Lohnsteuerbescheinigung.
+
+Kommen Antworten, gehören die Zahlen in `LOHN-ZERTIFIZIERUNG.md`.
+
+## Die Lizenzierungsfrage (aus `LOHN-ZERTIFIZIERUNG.md`)
+
+**Die Frage:** Macht OKUN das Meldewesen selbst (ITSG-Systemuntersuchung für
+die Sozialversicherung, ERiC für die Steuer) — oder läuft es weiter über den
+Steuerberater des Kunden?
+
+**Sie hängt nicht an der Gebühr**, sondern an zwei Dingen:
+
+1. **Wie viele Kunden?** Der Monatsschritt bei ELStAM kostet je Kunde ein paar
+   Minuten. Bei drei Kunden ist das nichts, bei dreißig ist es eine Stelle.
+2. **Ist Lohnabrechnung ein Produkt oder Beiwerk?** Beiwerk zur Dienstplanung
+   verträgt keine jährliche Systemprüfung. Ein eigenes Produkt schon.
+
+**Solange die Antwort auf 2 „Beiwerk" lautet, ist der heutige Weg über den
+Steuerberater der richtige** — und die Anfragen an ITSG und ELSTER sind reine
+Vorbereitung. Der lange Weg zur Eigenlösung steht in
+`FAHRPLAN-KOMPLETTLOESUNG.md`, die Schritte bis zum ersten Kunden in
+`ABLAUFPLAN.md`.
+
+## Alle Unterlagen
+
+Der Abschnitt oben fasst das Wichtigste aus `DEINE-LISTE.md`, `ANFRAGEN.md`
+und `LOHN-ZERTIFIZIERUNG.md` zusammen — als **Momentaufnahme mit Datum**,
+damit ein frisches Gespräch sofort arbeiten kann.
+
+Alles andere steht **nur** in den Dateien, und zwar mit Absicht: Zwei
+Fassungen derselben Liste laufen auseinander, und dann weiß niemand mehr,
+welche gilt. Nachgeführt wird immer die Datei.
 
 ### Was der Eigentümer tun muss
 | Datei | Was drinsteht |
