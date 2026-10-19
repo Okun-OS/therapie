@@ -612,3 +612,57 @@ def test_freies_wochenende_gilt_weiter_wenn_der_zeitraum_lang_genug_ist():
     ctx = pflege_kontext(tage=28)
     b.freies_wochenende(ctx, 2)
     assert any("Mindestens 2 ganze" in z for z in ctx.protokoll), ctx.protokoll
+
+
+# ── §201 Die Einrichtung im Paket ───────────────────────────────────────────
+
+def test_kundenpakete_bringen_eine_gueltige_einrichtung_mit():
+    """Wer ein Kundenpaket zuweist, soll danach planen können — dafür braucht
+    der Standort Dienstzeiten. Ein Paket ohne sie wäre wieder die Lücke, die
+    §201 schließt."""
+    pakete = {p["id"]: p for p in verfuegbare_pakete()}
+    for pid in ("kita_zwei_etagen", "kita_sonnenschein", "wohngruppe_fuenf"):
+        p = pakete[pid]
+        assert not p.get("einrichtungFehler"), (pid, p.get("einrichtungFehler"))
+        e = p["einrichtung"]
+        assert e["dienstzeiten"], pid
+        assert e["arbeitstage"], pid
+
+
+def test_wohngruppe_plant_sieben_tage_und_die_kita_fuenf():
+    pakete = {p["id"]: p for p in verfuegbare_pakete()}
+    assert len(pakete["wohngruppe_fuenf"]["einrichtung"]["arbeitstage"]) == 7
+    assert pakete["kita_zwei_etagen"]["einrichtung"]["arbeitstage"] == ["Mo", "Di", "Mi", "Do", "Fr"]
+
+
+def test_vorlage_bringt_keine_einrichtung_mit():
+    """Eine Vorlage ist für niemanden gemacht — erfundene Dienstzeiten wären
+    schlimmer als keine."""
+    muster = [p for p in verfuegbare_pakete() if p["id"] == "muster_pflege"][0]
+    assert "einrichtung" not in muster
+
+
+def test_fehlerhafte_einrichtung_wird_ganz_abgelehnt():
+    """Die Gegenprobe zur Prüfung: Ohne sie wäre „keine Fehler" bei den echten
+    Paketen auch dann grün, wenn gar nicht geprüft würde."""
+    from types import ModuleType
+    from rulepacks import einrichtung_von
+
+    kaputt = ModuleType("kaputt")
+    kaputt.EINRICHTUNG = {
+        "arbeitstage": ["Mo", "Montag"],
+        "dienstzeiten": [{"name": "Früh", "art": "frueh", "von": "25:00", "bis": "14:00"},
+                         {"name": "Früh", "art": "irgendwas", "von": "06:00", "bis": "14:00"}],
+        "struktur": [{"name": "Gruppe 1", "typ": "gruppe", "etage": "gibt es nicht"}],
+    }
+    einrichtung, fehler = einrichtung_von(kaputt)
+    assert einrichtung is None
+    text = " ".join(fehler)
+    for erwartet in ("arbeitstage", "HH:MM", "doppelt", "art muss", "gibt es in der Struktur nicht"):
+        assert erwartet in text, (erwartet, fehler)
+
+    heil = ModuleType("heil")
+    heil.EINRICHTUNG = {"arbeitstage": ["Mo"], "dienstzeiten": [
+        {"name": "Früh", "art": "frueh", "von": "06:00", "bis": "14:00"}]}
+    einrichtung, fehler = einrichtung_von(heil)
+    assert fehler == [] and einrichtung["dienstzeiten"][0]["name"] == "Früh"

@@ -37,7 +37,11 @@ interface FormBody {
 }
 
 export async function POST(req: NextRequest) {
-  const session = requireRole(req, ['admin'])
+  // §201 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
+  // Regelpaket. Vorher konnte hier die Leitung (bzw. das Unternehmen) selbst
+  // Dienste, Struktur, Regeln oder das alte Standortmodell anlegen und damit am
+  // Paket vorbeiplanen. Lesen bleibt, wie es war.
+  const session = requireRole(req, ['okun'])
   if (session instanceof NextResponse) return session
 
   const locationId = await resolveLocationId(session)

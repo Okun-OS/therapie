@@ -34,6 +34,17 @@ if (!kunde || !standortA) {
   console.log('  ✗ FAIL  Testdaten fehlen (Reha-Zentrum Köln) — erst `npm run seed`')
   process.exit(1)
 }
+// §201 Seit die Zuweisung die Einrichtung des Pakets anlegt (was am Standort
+// fehlt), hinterließe diese Prüfung am Reha-Standort Kita-Gruppen und
+// Arbeitstage. Was es vorher gab, wird festgehalten; der Rest geht wieder weg.
+const einheitenVorher = new Set((await prisma.planningUnit.findMany({
+  where: { locationId: standortA.id }, select: { id: true },
+})).map(u => u.id))
+const diensteVorher = new Set((await prisma.shift.findMany({
+  where: { locationId: standortA.id }, select: { id: true },
+})).map(d => d.id))
+const modellVorher = await prisma.locationRuleModelRecord.findUnique({ where: { locationId: standortA.id } })
+const regelnVorher = await prisma.locationPlanningRules.findUnique({ where: { locationId: standortA.id } })
 const vorher = {
   rulePackId: standortA.rulePackId, dienstplanungFrei: standortA.dienstplanungFrei,
   dienstplanungFreiSeit: standortA.dienstplanungFreiSeit, dienstplanungFreiVon: standortA.dienstplanungFreiVon,
@@ -84,6 +95,20 @@ async function anmelden(email) {
 async function aufraeumen() {
   await prisma.location.delete({ where: { id: standortB.id } }).catch(() => {})
   await prisma.location.update({ where: { id: standortA.id }, data: vorher })
+  await prisma.planningUnit.deleteMany({ where: { locationId: standortA.id, id: { notIn: [...einheitenVorher] } } })
+  await prisma.shift.deleteMany({ where: { locationId: standortA.id, id: { notIn: [...diensteVorher] } } })
+  if (modellVorher) {
+    await prisma.locationRuleModelRecord.update({ where: { locationId: standortA.id }, data: { ruleModel: modellVorher.ruleModel } })
+  } else {
+    await prisma.locationRuleModelRecord.deleteMany({ where: { locationId: standortA.id } })
+  }
+  if (!regelnVorher) await prisma.locationPlanningRules.deleteMany({ where: { locationId: standortA.id } })
+  for (const id of [standortB.id]) {
+    await prisma.planningUnit.deleteMany({ where: { locationId: id } })
+    await prisma.shift.deleteMany({ where: { locationId: id } })
+    await prisma.locationRuleModelRecord.deleteMany({ where: { locationId: id } })
+    await prisma.locationPlanningRules.deleteMany({ where: { locationId: id } })
+  }
 }
 
 // Auf die Antwort des Servers warten, nicht auf eine feste Zeit — und sie
@@ -198,6 +223,11 @@ try {
   check('Aufgeräumt: Standort A wie vorher, Prüfstandort entfernt',
     zurueck.rulePackId === vorher.rulePackId && zurueck.dienstplanungFrei === vorher.dienstplanungFrei
       && !(await prisma.location.findUnique({ where: { id: standortB.id } })))
+  const einheitenDanach = await prisma.planningUnit.count({ where: { locationId: standortA.id } })
+  const modellDanach = await prisma.locationRuleModelRecord.count({ where: { locationId: standortA.id } })
+  check('Aufgeräumt: keine Gruppen und kein Standortmodell aus dem Paket zurückgelassen (§201)',
+    einheitenDanach === einheitenVorher.size && modellDanach === (modellVorher ? 1 : 0),
+    `${einheitenDanach} Einheiten, ${modellDanach} Modell`)
   await prisma.$disconnect()
 }
 

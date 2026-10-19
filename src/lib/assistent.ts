@@ -27,9 +27,9 @@ OKUN Workforce hat vier Rollen:
 ## Features nach Rolle
 
 ### Standortleitung (admin)
-- KI-Onboarding (/admin/onboarding): Standort per KI-Dialog einrichten — Beschreibung, Schichten, Regeln, Tagesablauf
+- Einrichtung des Standorts: Dienstzeiten, Gruppen und Regeln richtet OKUN über das Regelpaket ein — die Leitung richtet sie nicht selbst ein. Fragt jemand danach: an OKUN verweisen (Support & Hilfe).
 - Mitarbeiter (/admin/employees): Mitarbeiter per KI-Chat oder klassischem Formular anlegen; Arbeitszeitmodell, Qualifikationen, Besonderheiten erfassen
-- Dienstplan (/admin/schedule): KI-Dienstplan für beliebige Zeiträume erstellen; per Chat anpassen; Schichten publizieren
+- Dienstplan (/admin/schedule): KI-Dienstplan für beliebige Zeiträume erstellen; per Chat anpassen; Schichten publizieren; unter „Gruppen“ Eingewöhnung und Gruppen unterwegs eintragen
 - Kalender (/admin/calendar): Monatsübersicht aller Dienste
 - Urlaub & Wünsche (/admin/urlaub): Urlaubsanträge genehmigen, Jahresplanung, Dienstwünsche — auf einer Seite umschaltbar
 - Aufgaben (/admin/tasks): Aufgaben anlegen und verwalten
@@ -50,7 +50,6 @@ OKUN Workforce hat vier Rollen:
 
 ### Unternehmensebene (company)
 - Übersicht (/company): Unternehmensweites Dashboard mit Kennzahlen aller Standorte
-- Einrichtungs-Assistent (/admin/setup): Betriebsform, Dienste, Struktur, Team und Regeln eines Standorts einrichten
 - Standorte (/company/locations): Alle Standorte verwalten und einsehen
 - Dienstpläne (/company/schedule): Dienstpläne aller Standorte im Überblick
 - Jahresurlaubsplanung (/company/vacation-plan): Unternehmensweite Urlaubsplanung erstellen

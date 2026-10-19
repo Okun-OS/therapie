@@ -3392,6 +3392,56 @@ Schritt.
   einer frisch befüllten Datenbank ist er es nicht. Die Prüfung stellt das
   jetzt selbst her und hinterher zurück.
 
+## Block §201 (19.10.) — Das Regelpaket bringt seine Einrichtung mit
+
+Der Eigentümer weist einem Standort ein Regelpaket zu — und danach muss
+geplant werden können. Das ging nicht: Das Paket brachte Regeln, aber keine
+Dienstzeiten, und die sollte der Kunde in einer Einrichtung anlegen, die er
+nicht mehr selbst machen soll. Die Kita „Krümelkiste" stand so da: Paket
+zugewiesen, „Noch keine Dienstzeiten … Zu den Dienstzeiten", kein Plan.
+
+### Das Paket bringt mit, was ein Standort braucht
+- [x] `EINRICHTUNG` im Paket: Arbeitstage, Dienstzeiten, Etagen und Gruppen,
+      Basiswerte — Kita zwei Etagen (12 Dienstzeiten), Kita Sonnenschein (2),
+      Wohngruppe (18, sieben Tage). Übernommen aus Testdaten bzw.
+      `scripts/kunde-wohngruppe.mjs`, nicht neu erfunden. Die Vorlage
+      `muster_pflege` bringt bewusst keine mit.
+- [x] Der Rechendienst prüft sie: Uhrzeiten, Dienstarten, Etagen der Gruppen.
+      Eine fehlerhafte Einrichtung wird ganz abgelehnt, nicht halb angelegt.
+- [x] **Zuweisen legt an, was am Standort fehlt** — und überschreibt nie
+      etwas, das schon da ist. Arbeitstage nur, wenn sie etwas ändern (Mo–Fr
+      gilt ohnehin; die Wohngruppe braucht ihre sieben Tage ausdrücklich).
+- [x] Für Standorte, deren Paket schon vorher zugewiesen war: Der Dienstplan
+      holt es beim Öffnen nach, spätestens der Planungslauf. OKUN sieht am
+      Standort, wie viele Dienstzeiten und Gruppen da sind.
+
+### Was der Standort nicht mehr selbst einrichtet
+- [x] „Einrichtung" (Betriebsform, Struktur, Dienste, Team & Regeln),
+      „Regeln & Wartung" und das KI-Onboarding sind weg; die Adressen leiten in
+      den Dienstplan. Mit ihnen: der „Regeln"-Knopf im Dienstplan, das Fenster
+      „Standortmodell erzeugen", die Vorstellung „Dein Standort – dein Modell",
+      die Tour-Station dazu.
+- [x] Dienste, Etagen/Gruppen, Basiswerte, eigene Regeln, Standortmodell
+      schreibt nur noch OKUN — auch nicht mehr über den Assistenten.
+- [x] **Geblieben**, weil es Tagesgeschäft ist und keine Einrichtung:
+      „Eingewöhnung" (§166) und „Gruppe unterwegs" (§182) — jetzt unter
+      „Gruppen" im Dienstplan.
+- [x] Dauerhafte Regeln aus den Dienstplan-Chats gingen ins alte
+      Standortmodell, dessen Regeltexte der Rechendienst nicht liest. Jetzt
+      gehen sie als Wunsch an OKUN (Funde), fürs Regelpaket.
+
+### Fund dabei: Der Dienstplan-Knopf umging zwei Sperren
+`/api/ai/solve-schedule` — der Weg, den die Oberfläche nimmt — prüfte weder
+die Standortgrenze (§112) noch die Freischaltung (§127). Beides stand nur in
+`/api/planning/runs`, den die Oberfläche nicht benutzt. Eine fremde Leitung
+konnte also rechnen lassen, und ein gesperrter Standort auch. Jetzt prüfen
+beide Wege dasselbe, an einer Stelle (`src/lib/planungsstart.ts`). Die
+Gegenprobe gegen den alten Stand ist rot geworden.
+
+Nachweis: `pruefungen/f10-paket-einrichtung.mjs` (30, gegen den alten Stand
+16 rot), `pruefungen/browser/einrichtung-kommt-mit-dem-paket.mjs` (17),
+5 neue Tests im Rechendienst.
+
 ## Zur Zertifizierung — Stand der Überlegung
 
 Zwei getrennte Dinge, die oft verwechselt werden:

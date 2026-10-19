@@ -64,15 +64,20 @@ Nach einem `npm run build` ist `.next` für den Entwicklungsserver unbrauchbar:
 
 ## Der Weg: einen Kunden betriebsbereit machen
 
-**Die Vorlage ist `scripts/kunde-wohngruppe.mjs`** (§185). Sie zeigt die
-Reihenfolge, und die ist nicht beliebig — jeder Schritt baut auf dem vorigen:
+**Seit §201 bringt das Regelpaket die Einrichtung mit.** Der Kunde richtet
+nichts mehr selbst ein — keine Dienste, keine Gruppen, keine Regeln. Die
+Reihenfolge:
 
 1. **Kunde und Standort**
-2. **Dienstzeiten** — aus dem Regelwerk des Kunden. Ohne sie kann kein Plan
-   entstehen; ein Regelpaket ersetzt sie **nicht**. Es sagt, *wie* Dienste
-   besetzt werden, nicht *welche* es gibt.
-3. **Bereiche** — bei einer Wohngruppe einer, bei einer Kita je Gruppe.
-4. **Regelpaket zuordnen und Dienstplanung freischalten**
+2. **Das Paket bauen — mit `EINRICHTUNG`**: Arbeitstage, Dienstzeiten (aus dem
+   Regelwerk des Kunden), Etagen und Gruppen, Basiswerte. Ohne Dienstzeiten
+   kein Plan; ein Paket ohne `EINRICHTUNG` (wie die Vorlage) legt nichts an.
+   Vorlage für das Format: `solver-service/rulepacks/__init__.py`, Beispiele
+   in `kita_zwei_etagen.py` und `wohngruppe_fuenf.py`.
+3. **Regelpaket zuordnen und Dienstplanung freischalten** — unter Kunden →
+   Kunde → Standort. Das legt an, was am Standort fehlt; Bestehendes bleibt.
+   Am Standort steht danach, wie viele Dienstzeiten und Gruppen da sind.
+4. *(technisch: `PATCH /api/okun/dienstplanung`)*
    (`PATCH /api/okun/dienstplanung` mit `locationId`, `rulePackId`,
    `dienstplanungFrei`). Ein Paket, das der Rechendienst nicht kennt, wird
    abgelehnt — absichtlich.
@@ -111,8 +116,8 @@ auf die Website. Dafür gibt es den Beispielbetrieb (§184,
 ```bash
 npx tsc --noEmit
 npm run test                 # 1055 Modultests
-npm run pruefen              # 1690 Checks in 46 Prüfungen
-cd solver-service && /usr/bin/python3 -m pytest -q   # 154
+npm run pruefen              # 1709 Checks in 46 Prüfungen
+cd solver-service && /usr/bin/python3 -m pytest -q   # 158
 npm run build
 ```
 
@@ -131,6 +136,10 @@ Seite `/okun/dienstplanung` leitet dorthin um; die Schnittstelle
 `/api/okun/dienstplanung` ist unverändert.
 
 Nachweis: `node --env-file=.env pruefungen/browser/dienstplanung-am-standort.mjs`.
+
+**§201:** Seit das Paket die Einrichtung mitbringt, zeigt der Standort hier
+auch, wie viele Dienstzeiten und Gruppen er hat — und bietet „Einrichtung aus
+dem Paket anlegen" an, wo das Paket schon vorher zugewiesen war.
 
 **Neu für den Kunden:** Die E-Mail-Adressen der Belegschaft (beim Einspielen
 Platzhalter, §183) trägt der Betrieb jetzt selbst ein — Mitarbeiter öffnen →

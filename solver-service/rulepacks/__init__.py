@@ -40,6 +40,29 @@ Diensten, Gruppen und Wochen — plus Helfern, die die üblichen Fehler vermeide
 (Person nicht gefunden, Dienst nicht gefunden, Gruppe leer).
 
 Gebunden wird ein Paket über `Location.rulePackId` in der App.
+
+Die Einrichtung im Paket (§201)
+-------------------------------
+Ein Paket kann zusätzlich `EINRICHTUNG` mitbringen: Arbeitstage, Dienstzeiten,
+Etagen und Gruppen, Basiswerte. Weist OKUN das Paket einem Standort zu, legt
+die App davon an, was dort noch FEHLT — Bestehendes überschreibt sie nie.
+
+Vorher stand das in Skripten (`scripts/kunde-wohngruppe.mjs`) und Testdaten,
+die jemand von Hand gegen die Datenbank laufen lassen musste. Wer nur das Paket
+zuwies, hatte einen Standort mit Regeln, aber ohne Dienste — und keinen Plan.
+Der Kunde richtet seit §201 nichts mehr selbst ein; also muss es hier stehen.
+
+    EINRICHTUNG = {
+        "arbeitstage": ["Mo", "Di", "Mi", "Do", "Fr"],
+        "dienstzeiten": [
+            {"name": "Frühdienst", "art": "frueh", "von": "06:00", "bis": "14:30"},
+        ],
+        "struktur": [
+            {"name": "Erdgeschoss", "typ": "etage"},
+            {"name": "Bärenbande", "typ": "gruppe", "etage": "Erdgeschoss", "mindestbesetzung": 2},
+        ],
+        "basiswerte": {"maxWochenstunden": 40, "ruhezeitStunden": 11, "maxFolgetage": 5},
+    }
 """
 
 from __future__ import annotations
@@ -71,8 +94,86 @@ def verfuegbare_pakete() -> list[dict]:
             continue
         meta = dict(getattr(mod, "META", {}))
         meta["id"] = info.name
+        einrichtung, fehler = einrichtung_von(mod)
+        if einrichtung is not None:
+            meta["einrichtung"] = einrichtung
+        if fehler:
+            meta["einrichtungFehler"] = fehler
         gefunden.append(meta)
     return sorted(gefunden, key=lambda m: m["id"])
+
+
+WOCHENTAGE = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
+DIENSTARTEN = ("frueh", "spaet", "mittel", "nacht")
+
+
+def _uhrzeit(wert) -> bool:
+    if not isinstance(wert, str) or len(wert) != 5 or wert[2] != ":":
+        return False
+    stunde, minute = wert[:2], wert[3:]
+    return stunde.isdigit() and minute.isdigit() and int(stunde) < 24 and int(minute) < 60
+
+
+def einrichtung_von(mod: ModuleType) -> tuple[dict | None, list[str]]:
+    """
+    §201 Die Einrichtung eines Pakets, geprüft.
+
+    Geprüft wird HIER und nicht erst in der App: Eine Dienstzeit „25:00" oder
+    eine Gruppe auf einer Etage, die es nicht gibt, soll beim Bauen des Pakets
+    auffallen (test_rulepacks.py) und nicht beim ersten Kunden. Ist etwas
+    falsch, wird die ganze Einrichtung NICHT gemeldet — eine halbe Einrichtung
+    anzulegen wäre schlimmer als keine, denn danach überschreibt sie niemand.
+    """
+    roh = getattr(mod, "EINRICHTUNG", None)
+    if roh is None:
+        return None, []
+    fehler: list[str] = []
+    if not isinstance(roh, dict):
+        return None, ["EINRICHTUNG ist kein dict."]
+
+    tage = roh.get("arbeitstage", [])
+    if not isinstance(tage, list) or any(t not in WOCHENTAGE for t in tage):
+        fehler.append(f"arbeitstage unzulässig: {tage!r}")
+
+    dienste = roh.get("dienstzeiten", [])
+    namen: set[str] = set()
+    for d in dienste if isinstance(dienste, list) else []:
+        name = d.get("name") if isinstance(d, dict) else None
+        if not name:
+            fehler.append(f"Dienstzeit ohne Namen: {d!r}")
+            continue
+        if name in namen:
+            fehler.append(f"Dienstzeit doppelt: {name}")
+        namen.add(name)
+        if d.get("art") not in DIENSTARTEN:
+            fehler.append(f"{name}: art muss eine von {DIENSTARTEN} sein")
+        if not (_uhrzeit(d.get("von")) and _uhrzeit(d.get("bis"))):
+            fehler.append(f"{name}: von/bis müssen HH:MM sein")
+
+    struktur = roh.get("struktur", [])
+    etagen = {e.get("name") for e in struktur if isinstance(e, dict) and e.get("typ") == "etage"}
+    for e in struktur if isinstance(struktur, list) else []:
+        if not isinstance(e, dict) or not e.get("name") or e.get("typ") not in ("etage", "gruppe"):
+            fehler.append(f"Struktur-Eintrag unzulässig: {e!r}")
+        elif e.get("etage") and e["etage"] not in etagen:
+            fehler.append(f'{e["name"]}: Etage „{e["etage"]}" gibt es in der Struktur nicht')
+
+    basis = roh.get("basiswerte", {})
+    if not isinstance(basis, dict) or any(
+        not isinstance(basis.get(k), (int, float))
+        for k in ("maxWochenstunden", "ruhezeitStunden", "maxFolgetage") if k in basis
+    ):
+        fehler.append(f"basiswerte unzulässig: {basis!r}")
+
+    if fehler:
+        log.error("[rulepacks] Einrichtung von %s fehlerhaft: %s", mod.__name__, fehler)
+        return None, fehler
+    return {
+        "arbeitstage": list(tage),
+        "dienstzeiten": [dict(d) for d in dienste],
+        "struktur": [dict(e) for e in struktur],
+        "basiswerte": dict(basis),
+    }, []
 
 
 def _lade_modul(pack_id: str) -> ModuleType | None:

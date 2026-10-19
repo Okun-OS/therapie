@@ -28,6 +28,9 @@ export interface DienstplanungStandort {
   dienstplanungFreiVon: string | null
   dienstplanungHinweis: string | null
   paketFehlt: boolean
+  /** §201 Was am Standort eingerichtet ist. */
+  dienstzeiten: number
+  einheiten: number
 }
 
 /**
@@ -37,6 +40,9 @@ export interface DienstplanungStandort {
 export function dienstplanungProblem(s: DienstplanungStandort): string | null {
   if (s.paketFehlt) return 'Regelpaket fehlt im Rechendienst'
   if (s.dienstplanungFrei && !s.rulePackId) return 'Freigeschaltet ohne Regelpaket'
+  // §201 Ohne Dienstzeiten entsteht kein Plan — das soll schon die
+  // zugeklappte Zeile sagen, nicht erst der Kunde, der „Plan erstellen" drückt.
+  if (s.rulePackId && s.dienstzeiten === 0) return 'Noch keine Dienstzeiten'
   return null
 }
 
@@ -147,6 +153,38 @@ export function StandortDienstplanung({
           {s.dienstplanungFreiVon ? ` von ${s.dienstplanungFreiVon}` : ''}
         </p>
       )}
+      {/*
+        §201 Die Einrichtung, die mit dem Paket kommt. Angelegt wird sie beim
+        Zuweisen — und für Standorte, deren Paket schon vorher zugewiesen war,
+        hier per Knopf oder spätestens beim ersten Planungslauf.
+      */}
+      {s.rulePackId && !s.paketFehlt && (
+        <div data-test="einrichtung" className="rounded-xl bg-white border border-gray-100 p-2.5 space-y-1.5">
+          <p className="text-xs text-gray-600">
+            <span className="font-semibold text-navy">Am Standort:</span>{' '}
+            {s.dienstzeiten} Dienstzeiten · {s.einheiten} Etagen/Gruppen
+          </p>
+          {s.dienstzeiten === 0 && (paket?.einrichtung ? (
+            <button
+              onClick={() => aendern(s.id, { einrichtungAnwenden: true })}
+              disabled={arbeitet}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white bg-brand disabled:opacity-40">
+              Einrichtung aus dem Paket anlegen ({paket.einrichtung.dienstzeiten.length} Dienstzeiten)
+            </button>
+          ) : (
+            <p className="text-xs text-amber-800">
+              Dieses Paket bringt keine Dienstzeiten mit. Ohne sie entsteht kein Plan — sie
+              gehören ins Paket ({s.rulePackId}).
+            </p>
+          ))}
+          {paket?.einrichtungFehler && (
+            <p className="text-xs text-amber-800">
+              Die Einrichtung im Paket ist fehlerhaft: {paket.einrichtungFehler.join('; ')}
+            </p>
+          )}
+        </div>
+      )}
+
       {s.rulePackId && !s.paketFehlt && (
         <p className="text-[11px] text-gray-400 flex items-center gap-1.5">
           <Package size={12} />

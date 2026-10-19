@@ -27,6 +27,33 @@ export interface Regelpaket {
    * Gespräch aussteht.
    */
   muster?: boolean
+  /**
+   * §201 Was das Paket an einem Standort einrichtet: Arbeitstage,
+   * Dienstzeiten, Etagen und Gruppen, Basiswerte. Angelegt wird davon nur,
+   * was am Standort fehlt (`src/lib/paket-einrichtung.ts`). Geprüft hat es
+   * der Rechendienst schon — eine fehlerhafte Einrichtung meldet er gar nicht,
+   * sondern `einrichtungFehler`.
+   */
+  einrichtung?: PaketEinrichtung
+  einrichtungFehler?: string[]
+}
+
+export interface PaketEinrichtung {
+  arbeitstage: string[]
+  dienstzeiten: Array<{
+    name: string
+    art: 'frueh' | 'spaet' | 'mittel' | 'nacht'
+    von: string
+    bis: string
+    mindestbesetzung?: number
+  }>
+  struktur: Array<{
+    name: string
+    typ: 'etage' | 'gruppe'
+    etage?: string
+    mindestbesetzung?: number
+  }>
+  basiswerte: { maxWochenstunden?: number; ruhezeitStunden?: number; maxFolgetage?: number }
 }
 
 /**

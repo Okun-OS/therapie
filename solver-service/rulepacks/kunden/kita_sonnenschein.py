@@ -19,6 +19,31 @@ META = {
     "aufgenommen": "2026-09-11",
 }
 
+# §201 Die Einrichtung, die mit diesem Paket an einen Standort geht —
+# übernommen aus den Testdaten (`prisma/seed.ts`), mit denen dieses Paket seit
+# September geplant wird.
+#
+# OFFEN, UND DESHALB HIER AUSGESCHRIEBEN: Unten im Paket steht, der
+# Spätdienst gehe bis 17:30. Die Testdaten sagen 17:00. Welche Zeit stimmt,
+# weiß nur der Betrieb. Bis das geklärt ist, steht hier, womit geplant wurde —
+# nicht, was eine Erinnerung an das Gespräch sagt.
+EINRICHTUNG = {
+    "arbeitstage": ["Mo", "Di", "Mi", "Do", "Fr"],
+    "dienstzeiten": [
+        {"name": "Frühdienst", "art": "frueh", "von": "07:00", "bis": "15:30", "mindestbesetzung": 1},
+        {"name": "Spätdienst", "art": "spaet", "von": "08:30", "bis": "17:00", "mindestbesetzung": 1},
+    ],
+    "struktur": [
+        {"name": "Obergeschoss", "typ": "etage", "mindestbesetzung": 1},
+        {"name": "Erdgeschoss", "typ": "etage", "mindestbesetzung": 1},
+        {"name": "Bärenbande", "typ": "gruppe", "etage": "Obergeschoss", "mindestbesetzung": 2},
+        {"name": "Igelgruppe", "typ": "gruppe", "etage": "Obergeschoss", "mindestbesetzung": 2},
+        {"name": "Sonnenblumen", "typ": "gruppe", "etage": "Erdgeschoss", "mindestbesetzung": 2},
+        {"name": "Krümelzwerge", "typ": "gruppe", "etage": "Erdgeschoss", "mindestbesetzung": 2},
+    ],
+    "basiswerte": {"maxWochenstunden": 40, "ruhezeitStunden": 11, "maxFolgetage": 5},
+}
+
 
 def apply(ctx) -> None:
     # Die Leitung steht im Plan, arbeitet aber nicht in einer Gruppe: sie ist

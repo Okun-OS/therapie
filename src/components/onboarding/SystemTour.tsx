@@ -172,18 +172,8 @@ const ADMIN_STEPS: TourStep[] = [
     emoji: '🏠',
     title: 'Dein Dashboard',
     body: 'Dein täglicher Überblick.\n\nAktive Mitarbeitende, Anwesenheit heute, offene Urlaubsanträge, Wochenstunden – alles auf einen Blick, immer aktuell.',
-    tip: 'Kritischer Schritt: Ohne Standort-Beschreibung kennt die KI deinen Standort nicht.',
     path: '/admin',
     spotlightSelector: '[data-tour="kpi-tiles"]',
-  },
-  {
-    emoji: '⚙️',
-    title: 'Standort der KI erklären',
-    body: 'Das ist der wichtigste Schritt.\n\nBeschreibe deinen Standort: Wie viele Gruppen, welche Schichten, welche Regeln? Die KI liest das und plant automatisch danach.',
-    path: '/admin/onboarding',
-    spotlightSelector: '[data-tour="onboarding-main"]',
-    tryCta: 'Beschreibung eingeben',
-    tryPath: '/admin/onboarding',
   },
   {
     emoji: '👥',
@@ -197,7 +187,7 @@ const ADMIN_STEPS: TourStep[] = [
   {
     emoji: '🤖',
     title: 'Ersten KI-Dienstplan erstellen',
-    body: 'Jetzt das Herzstück von OKUN.\n\nDie KI liest deine Standortbeschreibung + alle Mitarbeitenden und erstellt sofort einen vollständigen, fairen Wochenplan. Du kannst danach jeden Eintrag manuell anpassen.',
+    body: 'Jetzt das Herzstück von OKUN.\n\nDer Rechendienst plant mit dem Regelpaket, das OKUN für euch gebaut hat — mit euren Diensten, Gruppen und Regeln — und allen Mitarbeitenden, und erstellt einen vollständigen, fairen Wochenplan. Du kannst danach jeden Eintrag manuell anpassen.',
     path: '/admin/schedule',
     spotlightSelector: '[data-tour="create-plan"]',
     tryCta: 'Plan jetzt erstellen',

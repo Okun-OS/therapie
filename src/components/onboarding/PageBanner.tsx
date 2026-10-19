@@ -41,7 +41,7 @@ const ADMIN_BANNERS: Record<string, BannerConfig> = {
   },
   '/admin/schedule': {
     title: 'KI plant für dich',
-    text: 'Die KI erstellt automatisch faire Dienstpläne basierend auf deinem Standort-Onboarding. Nutze „Plan erstellen" für einen neuen Plan oder „Dienstplan bearbeiten" für manuelle Änderungen.',
+    text: 'Der Rechendienst erstellt faire Dienstpläne nach dem Regelpaket, das OKUN für euren Standort gebaut hat. Nutze „Plan erstellen" für einen neuen Plan oder „Dienstplan bearbeiten" für manuelle Änderungen.',
     cta: 'Plan erstellen',
   },
   '/admin/time-tracking': {
@@ -63,11 +63,6 @@ const ADMIN_BANNERS: Record<string, BannerConfig> = {
     title: 'Dein KI-Kollege mit Vollzugriff',
     text: 'Stelle direkte Fragen oder gib Befehle in natürlicher Sprache. Der Assistent hat Zugriff auf alle Daten und kann direkt handeln: Pläne ändern, Mitarbeiter bearbeiten, Berichte erstellen.',
     cta: 'Demo-Frage stellen',
-  },
-  '/admin/onboarding': {
-    title: 'Das Gehirn der KI',
-    text: 'Alles was du hier eingibst, liest die KI bei jeder Dienstplan-Erstellung automatisch. Schichten, Regeln, Sonderzeiten, Personalstruktur – je genauer, desto besser der Plan.',
-    cta: 'Beschreibung prüfen',
   },
   '/admin/substitutions': {
     title: 'Vertretungen koordinieren',

@@ -82,6 +82,42 @@ META = {
     "aufgenommen": "2026-10-03",
 }
 
+# §201 Die Einrichtung, die mit diesem Paket an einen Standort geht —
+# unverändert aus `scripts/kunde-wohngruppe.mjs`, wo sie nach Abschnitt 3, 9
+# und 13 des Regelwerks aufgenommen wurde. Die Nummern des Kunden stehen im
+# Namen, damit die Leitung ihren eigenen Plan wiedererkennt.
+#
+# Sieben Tage: Eine Wohngruppe hat am Wochenende nicht zu, sie ist das Zuhause
+# der Bewohner. Die Bürodienste beginnen mit „Büro" — daran erkennt dieses
+# Paket, dass sie Arbeitszeit sind, aber keine Betreuung.
+EINRICHTUNG = {
+    "arbeitstage": ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+    "dienstzeiten": [
+        {"name": "1 Früh", "art": "frueh", "von": "06:30", "bis": "14:00", "mindestbesetzung": 0},
+        {"name": "2 Früh lang", "art": "frueh", "von": "06:30", "bis": "16:30", "mindestbesetzung": 0},
+        {"name": "3 Tag", "art": "mittel", "von": "07:45", "bis": "19:15", "mindestbesetzung": 0},
+        {"name": "3f Tag früh", "art": "mittel", "von": "07:15", "bis": "18:45", "mindestbesetzung": 0},
+        {"name": "4A Tag kurz", "art": "mittel", "von": "07:45", "bis": "14:30", "mindestbesetzung": 0},
+        {"name": "4Af Tag kurz früh", "art": "mittel", "von": "07:15", "bis": "13:45", "mindestbesetzung": 0},
+        {"name": "4B Tag kurz", "art": "mittel", "von": "07:45", "bis": "16:30", "mindestbesetzung": 0},
+        {"name": "4Bf Tag kurz früh", "art": "mittel", "von": "07:15", "bis": "16:30", "mindestbesetzung": 0},
+        {"name": "5 Tag ab Mittag", "art": "mittel", "von": "11:30", "bis": "19:15", "mindestbesetzung": 0},
+        {"name": "6 Mitteldienst", "art": "mittel", "von": "09:00", "bis": "18:15", "mindestbesetzung": 0},
+        {"name": "7 Spät", "art": "spaet", "von": "13:45", "bis": "21:45", "mindestbesetzung": 0},
+        {"name": "7b Spät kurz", "art": "spaet", "von": "16:30", "bis": "21:45", "mindestbesetzung": 0},
+        {"name": "8 Spät lang", "art": "spaet", "von": "11:30", "bis": "21:45", "mindestbesetzung": 0},
+        {"name": "10 TS + Nachtessen", "art": "mittel", "von": "13:45", "bis": "19:15", "mindestbesetzung": 0},
+        {"name": "11 Kurz-Dienst", "art": "mittel", "von": "07:45", "bis": "08:45", "mindestbesetzung": 0},
+        {"name": "Büro ganzer Tag", "art": "mittel", "von": "08:00", "bis": "16:00", "mindestbesetzung": 0},
+        {"name": "Büro halber Tag", "art": "mittel", "von": "13:45", "bis": "16:30", "mindestbesetzung": 0},
+        {"name": "Büro Leitungsdienst", "art": "mittel", "von": "08:00", "bis": "18:00", "mindestbesetzung": 0},
+    ],
+    "struktur": [
+        {"name": "Wohngruppe", "typ": "gruppe", "mindestbesetzung": 1},
+    ],
+    "basiswerte": {"maxWochenstunden": 42, "ruhezeitStunden": 11, "maxFolgetage": 6},
+}
+
 # ── Was in diesem Betrieb keine Betreuung ist ───────────────────────────────
 #
 # Über den Namensteil, nicht über die Dienstart: „Büro" und „Tagdienst" sind

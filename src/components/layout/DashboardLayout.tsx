@@ -6,8 +6,6 @@ import { useAuth } from '@/lib/auth-context'
 import { FloatingDock } from '@/components/nav/FloatingDock'
 import { CommandRail } from '@/components/nav/CommandRail'
 import { SystemTour } from '@/components/onboarding/SystemTour'
-import { WhatsNewModal } from '@/components/onboarding/WhatsNewModal'
-import { LocationModelMigrationModal } from '@/components/onboarding/LocationModelMigrationModal'
 import { PageBanner } from '@/components/onboarding/PageBanner'
 import { Hilfeknopf } from '@/components/ui/Hilfeknopf'
 import { Warteschlange } from '@/components/offline/Warteschlange'
@@ -115,8 +113,9 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
 
       <FloatingDock />
       <SystemTour role={user.role} />
-      <WhatsNewModal role={user.role} />
-      <LocationModelMigrationModal role={user.role} />
+      {/* §201 Hier stand das Fenster, das Leitungen aufforderte, ihr
+          „Standortmodell" zu erzeugen — das alte Planungsmodell, das der Kunde
+          selbst einrichtete. Die Einrichtung kommt jetzt mit dem Regelpaket. */}
       {/* §140 Ein Knopf für Hilfe UND Melden — vorher zwei, in zwei Ecken,
           in zwei Größen, auf zwei Höhen. */}
       <Hilfeknopf />

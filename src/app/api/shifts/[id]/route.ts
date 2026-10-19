@@ -17,7 +17,11 @@ async function guardShift(session: Parameters<typeof allowedLocationScope>[0], i
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = requireRole(req, ['admin', 'company', 'okun'])
+  // §201 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
+  // Regelpaket. Vorher konnte hier die Leitung (bzw. das Unternehmen) selbst
+  // Dienste, Struktur, Regeln oder das alte Standortmodell anlegen und damit am
+  // Paket vorbeiplanen. Lesen bleibt, wie es war.
+  const session = requireRole(req, ['okun'])
   if (session instanceof NextResponse) return session
 
   const guard = await guardShift(session, params.id)
@@ -49,7 +53,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = requireRole(req, ['admin', 'company', 'okun'])
+  // §201 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
+  // Regelpaket. Vorher konnte hier die Leitung (bzw. das Unternehmen) selbst
+  // Dienste, Struktur, Regeln oder das alte Standortmodell anlegen und damit am
+  // Paket vorbeiplanen. Lesen bleibt, wie es war.
+  const session = requireRole(req, ['okun'])
   if (session instanceof NextResponse) return session
 
   const guard = await guardShift(session, params.id)

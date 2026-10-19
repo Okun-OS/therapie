@@ -110,10 +110,8 @@ const adminDock: DockItem[] = [
       title: 'Einstellungen',
       sections: [
         { items: [
-          { href: '/admin/setup',     label: 'Einrichtung',      description: 'Betriebsform, Struktur, Dienste, Team & Regeln', badge: 'START', icon: '🚀' },
           { href: '/admin/nachweise', label: 'Nachweise & Fristen', description: 'Schulungen, Belehrungen, was wann abläuft',   icon: '🛡' },
           { href: '/admin/recruiting', label: 'Recruiting',     description: 'Stellen ausschreiben, Bewerber begleiten, Karriereseite', icon: '📣' },
-          { href: '/admin/model',     label: 'Regeln & Wartung', description: 'Regeln prüfen, Standort zurücksetzen',           icon: '📋' },
           { href: '/admin/tasks',     label: 'Aufgabenkatalog',  description: 'To-dos und Checklisten für Dienste',             icon: '✅' },
           { href: '/company/support', label: 'Support & Hilfe',  description: 'Hilfe & Kontakt',                                icon: '💬' },
           { href: '/funde',           label: 'Funde melden',     description: 'Fehler und Verbesserungsvorschläge',             icon: '🔍' },

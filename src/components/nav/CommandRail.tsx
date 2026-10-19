@@ -20,8 +20,6 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/time-tracking':      'Zeiterfassung',
   '/admin/workforce-score':    'Workforce Score',
   '/admin/reports':            'Berichte',
-  '/admin/onboarding':                  'Standort-Onboarding',
-  '/admin/setup':                       'Standort einrichten',
   '/admin/settings/planning-policy':    'Planungsrichtlinien',
   '/admin/assistant':                   'OKUN Assistent',
   '/admin/payroll':            'Lohnabrechnung',

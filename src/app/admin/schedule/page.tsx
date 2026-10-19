@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { GruppenImAlltag } from '@/components/schedule/GruppenImAlltag'
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -152,7 +153,8 @@ export default function AdminSchedule() {
   const [customTimeShiftId, setCustomTimeShiftId] = useState('')
   const [customStartTime, setCustomStartTime] = useState('')
   const [customEndTime, setCustomEndTime] = useState('')
-  const [rulesOpen, setRulesOpen] = useState(false)
+  const [gruppenOpen, setGruppenOpen] = useState(false)
+  const [diensteGeladen, setDiensteGeladen] = useState(false)
   const [saved, setSaved] = useState(false)
   const [isDraft, setIsDraft] = useState(false)
   const [facilityDescription, setFacilityDescription] = useState('')
@@ -165,8 +167,6 @@ export default function AdminSchedule() {
   const [lastUsedKontext, setLastUsedKontext] = useState('')
   const [lastOvertimeDecisions, setLastOvertimeDecisions] = useState<Record<string, 'reduce' | 'normal' | 'compensate'> | null>(null)
   const [planningRules, setPlanningRules] = useState<PlanningRules>(DEFAULT_RULES)
-  const [rulesDraft, setRulesDraft] = useState<PlanningRules>(DEFAULT_RULES)
-  const [minStaffDraft, setMinStaffDraft] = useState<Record<string, number>>({})
   const [periodMode, setPeriodMode] = useState<PeriodMode>('week')
   const [customRange, setCustomRange] = useState<{ start: string; end: string }>({ start: '', end: '' })
   const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
@@ -195,6 +195,7 @@ export default function AdminSchedule() {
     if (!locationId) return
     loadScheduleEntries()
     fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
+      .finally(() => setDiensteGeladen(true))
     fetch(`/api/vacation-requests?locationId=${locationId}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests ?? []))
     fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => setABSENCES(d.absences ?? []))
     fetch(`/api/wish-submissions?locationId=${locationId}`).then(r => r.json()).then(d => setWishSubmissions(d.submissions ?? []))
@@ -222,7 +223,6 @@ export default function AdminSchedule() {
       if (!d.rules) return
       const parsed = { ...DEFAULT_RULES, ...d.rules }
       setPlanningRules(parsed)
-      setRulesDraft(parsed)
     })
   }, [locationId])
 
@@ -316,6 +316,30 @@ export default function AdminSchedule() {
     ).then(results => setPeriodNotes(results.flat()))
   }, [locationId, periodWeeks])
 
+  /*
+   * §201 Dauerhafte Regeln aus den Chats gehen als Wunsch an OKUN.
+   *
+   * Vorher wurden sie ins alte Standortmodell geschrieben
+   * (`location-model/add-rule`) — dessen Regeltexte liest der Rechendienst
+   * aber nicht (§75: nur zur Anzeige). Die Leitung bekam „dauerhaft
+   * gespeichert" zu lesen, und am nächsten Plan änderte sich nichts. Was
+   * dauerhaft gilt, steht im Regelpaket, und das baut OKUN; also muss der
+   * Wunsch dort ankommen — als Fund mit Art „Wunsch", den OKUN freigibt.
+   */
+  async function regelwunschAnOkun(permanentRules: string[]) {
+    await fetch('/api/bug-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        art: 'wunsch',
+        bereich: 'dienstplan',
+        title: `Dauerhafte Regel für ${location?.name ?? 'den Standort'}`,
+        description: 'Aus dem Dienstplan-Chat, für das Regelpaket:\n\n'
+          + permanentRules.map(r => `• ${r}`).join('\n'),
+      }),
+    }).catch(() => {})
+  }
+
   async function savePlanningChatNotes(notes: string[], permanentRules: string[]) {
     for (const note of notes) {
       const res = await fetch('/api/scheduling-period-notes', {
@@ -326,24 +350,10 @@ export default function AdminSchedule() {
       const json = await res.json()
       if (json.note) setPeriodNotes(prev => [...prev, json.note])
     }
-    if (permanentRules.length > 0) {
-      await fetch('/api/location-onboarding/individuelle-regeln', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locationId, rules: permanentRules }),
-      })
-      // Also write into the LocationModel so the solver actually picks them up
-      await Promise.allSettled(
-        permanentRules.map(text =>
-          fetch('/api/location-model/add-rule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text }),
-          })
-        )
-      )
-    }
-    showToast(notes.length > 0 || permanentRules.length > 0 ? 'Besonderheiten übernommen' : 'Danke, notiert')
+    if (permanentRules.length > 0) await regelwunschAnOkun(permanentRules)
+    showToast(permanentRules.length > 0
+      ? 'Übernommen · die dauerhafte Regel ging als Wunsch an OKUN, fürs Regelpaket'
+      : notes.length > 0 ? 'Besonderheiten übernommen' : 'Danke, notiert')
   }
 
   async function handleApplyScheduleEdits(changes: ScheduleEditChange[], permanentRules: string[]) {
@@ -362,45 +372,15 @@ export default function AdminSchedule() {
       setSCHEDULE_ENTRIES(refreshed.entries ?? [])
       setGeneratedSchedule(null)
     }
-    if (permanentRules.length > 0) {
-      // Save to onboarding context (chat sees these on next turn)
-      await fetch('/api/location-onboarding/individuelle-regeln', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locationId, rules: permanentRules }),
-      })
-      // Also add to LocationModel so the solver actually uses them next run
-      await Promise.allSettled(
-        permanentRules.map(text =>
-          fetch('/api/location-model/add-rule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text }),
-          })
-        )
-      )
-    }
-    showToast(changes.length > 0 || permanentRules.length > 0 ? 'Dienstplan-Änderungen übernommen' : 'Danke, notiert')
+    if (permanentRules.length > 0) await regelwunschAnOkun(permanentRules)
+    showToast(permanentRules.length > 0
+      ? 'Übernommen · die dauerhafte Regel ging als Wunsch an OKUN, fürs Regelpaket'
+      : changes.length > 0 ? 'Dienstplan-Änderungen übernommen' : 'Danke, notiert')
   }
 
   async function handleReplanAfterChat(permanentRules: string[]) {
-    // 1. Save permanent rules if any
-    if (permanentRules.length > 0) {
-      await fetch('/api/location-onboarding/individuelle-regeln', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locationId, rules: permanentRules }),
-      })
-      await Promise.allSettled(
-        permanentRules.map(text =>
-          fetch('/api/location-model/add-rule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text }),
-          })
-        )
-      )
-    }
+    // 1. Dauerhafte Regeln gehen als Wunsch an OKUN (§201)
+    if (permanentRules.length > 0) await regelwunschAnOkun(permanentRules)
     // 2. Close the chat modal and trigger a full AI replan for the current period
     setEditChatOpen(false)
     await runAI()
@@ -433,6 +413,31 @@ export default function AdminSchedule() {
 
   const employees = EMPLOYEES.filter(e => e.locationId === locationId && e.role === 'employee')
   const locationShifts = SHIFTS.filter(s => s.locationId === locationId)
+
+  /*
+   * §201 Hat der Standort ein Regelpaket, aber noch keine Dienstzeiten, holt
+   * die Seite die Einrichtung des Pakets nach — einmal, beim Öffnen. Vorher
+   * stand hier „Noch keine Dienstzeiten … Zu den Dienstzeiten" und schickte
+   * die Leitung in eine Einrichtung, die sie nicht mehr selbst macht.
+   */
+  const einrichtungVersucht = useRef(false)
+  useEffect(() => {
+    if (!locationId || !location?.rulePackId || !diensteGeladen) return
+    if (locationShifts.length > 0 || einrichtungVersucht.current) return
+    einrichtungVersucht.current = true
+    fetch('/api/planning/einrichtung', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locationId }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (!d.dienstzeiten) return
+        fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(x => setSHIFTS(x.shifts ?? []))
+        fetch(`/api/planning-units?locationId=${locationId}`).then(r => r.json()).then(x => setPlanningUnits(x.units ?? []))
+      })
+      .catch(() => {})
+  }, [locationId, location?.rulePackId, diensteGeladen, locationShifts.length])
 
   const fairnessData = useMemo(
     () => calculateFairnessData(employees, allHistoricalEntries, locationShifts, {
@@ -781,34 +786,6 @@ export default function AdminSchedule() {
   const unfairCount = fairnessData.filter(d => d.fairnessScore < 60).length
   const pendingWishes = wishSubmissions.filter(w => w.status === 'pending').length
 
-  const openRules = () => {
-    setRulesDraft(planningRules)
-    const staffByShift: Record<string, number> = {}
-    locationShifts.forEach(s => { staffByShift[s.id] = s.minStaff })
-    setMinStaffDraft(staffByShift)
-    setRulesOpen(true)
-  }
-
-  const handleSaveRules = async () => {
-    setPlanningRules(rulesDraft)
-    await Promise.all([
-      fetch('/api/planning-rules', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locationId, ...rulesDraft }),
-      }),
-      ...Object.entries(minStaffDraft).map(([shiftId, minStaff]) =>
-        fetch(`/api/shifts/${shiftId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ minStaff }),
-        })
-      ),
-    ])
-    fetch(`/api/shifts?locationId=${locationId}`).then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
-    setRulesOpen(false)
-    showToast('Planungsregeln gespeichert')
-  }
 
   const buildWeekDates = () => {
     const dates: string[] = []
@@ -1181,7 +1158,7 @@ export default function AdminSchedule() {
                     </button>
                   </div>
                 )}
-                <Button variant="ghost" size="sm" onClick={openRules} className="border border-gray-200">Regeln</Button>
+                <Button variant="ghost" size="sm" onClick={() => setGruppenOpen(true)} className="border border-gray-200">Gruppen</Button>
                 <Button variant="ghost" size="sm" onClick={handlePrint} className="gap-1 border border-gray-200"><Download size={14} /> PDF Export</Button>
                 {(existingEntries.length > 0 || !!generatedSchedule) && (
                   <Button variant="ghost" size="sm" onClick={() => setEditChatOpen(true)} className="gap-1 border border-gray-200">
@@ -1208,48 +1185,30 @@ export default function AdminSchedule() {
             <div className={`rounded-2xl p-5 border-2 transition-all ${aiDone ? 'bg-green-50 border-green-200' : 'bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-100'}`}>
               {locationShifts.length === 0 ? (
                 /*
-                  §198 Dieselbe Lücke, zwei verschiedene Wege — je nachdem,
-                  ob OKUN für diesen Standort ein Regelpaket gebaut hat.
+                  §201 Ohne Dienstzeiten kein Plan — aber der Weg dorthin führt
+                  nicht mehr über die Leitung.
 
                   WAS HIER VORHER STAND
-                  Immer derselbe Satz: „Schließe das Standort-Onboarding ab."
-                  Der Eigentümer hat zu Recht gestutzt — bei einem Standort
-                  mit Regelpaket gibt es dieses Onboarding gar nicht als Weg.
-                  Der Kunde klickt dort einen Fragebogen durch, der ihm
-                  Dienstzeiten vorschlägt; wer ein Regelpaket hat, bekommt sie
-                  von OKUN eingerichtet.
-
-                  WAS TROTZDEM STIMMT
-                  Dienstzeiten werden wirklich gebraucht. Ein Regelpaket
-                  ersetzt sie nicht: Es sagt, WIE Dienste besetzt werden
-                  („kein Dienstende zwischen 15:30 und 17:00"), nicht WELCHE
-                  es gibt. Ohne Dienste hat der Rechendienst nichts zu
-                  verteilen.
-
-                  Der Hinweis nennt deshalb jetzt die richtige Stelle, nicht
-                  irgendeine.
+                  „Zu den Dienstzeiten" bzw. „Zum Standort-Onboarding": ein
+                  Knopf in eine Einrichtung, die der Kunde seit §201 nicht mehr
+                  selbst macht. Die Dienstzeiten kommen mit dem Regelpaket, und
+                  die Seite holt sie beim Öffnen nach (oben). Steht dieser
+                  Hinweis trotzdem da, hat das Paket keine mitgebracht — oder
+                  es gibt noch keins. Beides kann nur OKUN ändern.
                 */
-                <div className="flex items-center gap-3">
+                <div data-test="keine-dienstzeiten" className="flex items-center gap-3">
                   <AlertTriangle size={24} className="text-amber-500 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="font-bold text-navy">Noch keine Dienstzeiten für diesen Standort angelegt</p>
-                    {location?.rulePackId ? (
-                      <p className="text-sm text-gray-600">
-                        Für diesen Standort ist ein Regelpaket hinterlegt — die Dienstzeiten
-                        legt OKUN gemeinsam mit euch an. Sie fehlen noch. Das Regelpaket
-                        bestimmt, <em>wie</em> Dienste besetzt werden, nicht <em>welche</em> es
-                        gibt; ohne Dienstzeiten kann nichts verteilt werden.
-                      </p>
-                    ) : (
-                      <p className="text-sm text-gray-600">
-                        Schließe das Standort-Onboarding ab, um Dienstzeiten und Schichten
-                        automatisch anzulegen – erst danach kann ein Dienstplan erstellt werden.
-                      </p>
-                    )}
+                    <p className="font-bold text-navy">Für diesen Standort gibt es noch keine Dienstzeiten</p>
+                    <p className="text-sm text-gray-600">
+                      {location?.rulePackId
+                        ? 'Die Dienstzeiten kommen mit dem Regelpaket, das OKUN für euch gebaut hat — in diesem fehlen sie noch. OKUN ergänzt sie; bitte kurz bei uns melden.'
+                        : 'Die Dienstplanung für diesen Standort richtet OKUN für euch ein — mit euren Diensten, Gruppen und Regeln. Bitte kurz bei uns melden.'}
+                    </p>
                   </div>
-                  <Link href={location?.rulePackId ? '/admin/model' : '/admin/onboarding'}>
+                  <Link href="/company/support">
                     <Button size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
-                      {location?.rulePackId ? 'Zu den Dienstzeiten' : 'Zum Standort-Onboarding'}
+                      Bei OKUN melden
                     </Button>
                   </Link>
                 </div>
@@ -1267,9 +1226,9 @@ export default function AdminSchedule() {
                         setFacilityDescription(e.target.value)
                         localStorage.setItem('facilityDescription', e.target.value)
                       }}
-                      placeholder="Nur für diese Planung – die dauerhafte Standortbeschreibung aus dem Standort-Onboarding wird bereits automatisch berücksichtigt."
+                      placeholder="Nur für diese Planung – Dienstzeiten und Regeln deines Standorts stehen im Regelpaket und gelten ohnehin."
                       rows={3}
-                      hint="Die Angaben aus dem Standort-Onboarding (Dienstzeiten, Schichten, Regeln, Besonderheiten) fließen automatisch und dauerhaft in jede Planung ein. Hier kannst du zusätzlich etwas ergänzen, das nur für diesen einen Plan gilt."
+                      hint="Dienstzeiten, Gruppen und Regeln deines Standorts stehen im Regelpaket, das OKUN für euch gebaut hat — sie gelten in jeder Planung. Hier kannst du ergänzen, was nur für diesen einen Plan gilt."
                     />
                   </div>
                   <div>
@@ -1344,22 +1303,6 @@ export default function AdminSchedule() {
                   </div>
                 </div>
               ) : aiError ? (
-                aiErrorCode === 'NO_COMPANY_MODEL' ? (
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle size={24} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-bold text-amber-800">Standort noch nicht eingerichtet</p>
-                      <p className="text-sm text-amber-700 mt-0.5">
-                        Für die Dienstplanung fehlen noch Grundlagen dieses Standorts: Betriebsform, Dienste, Struktur und Basisregeln. Der Einrichtungs-Assistent führt dich hindurch.
-                      </p>
-                    </div>
-                    <Link href="/admin/setup">
-                      <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white whitespace-nowrap flex-shrink-0 focus:ring-amber-500">
-                        Zur Einrichtung
-                      </Button>
-                    </Link>
-                  </div>
-                ) : (
                   <div className="flex items-center gap-3">
                     <AlertTriangle size={24} className="text-red-500 flex-shrink-0" />
                     <div className="flex-1">
@@ -1398,7 +1341,6 @@ export default function AdminSchedule() {
                       </Button>
                     </div>
                   </div>
-                )
               ) : (
                 <div className="space-y-3">
                   {/* Header row */}
@@ -2117,113 +2059,13 @@ export default function AdminSchedule() {
         entries={editChatEntries}
       />
 
-      {/* Rules Modal */}
-      <Modal open={rulesOpen} onClose={() => setRulesOpen(false)} title="Planungsregeln" size="md">
-        <div className="space-y-4">
-          <p className="text-xs text-gray-500">
-            Diese Regeln steuern die Mindestbesetzung sowie die KI-Dienstplanung für {location?.name}. Änderungen wirken sich auf den nächsten erstellten Plan aus.
-          </p>
-
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Mindestbesetzung pro Dienst</p>
-            <div className="space-y-2">
-              {locationShifts.map(shift => (
-                <div key={shift.id} className="flex items-center justify-between py-1.5">
-                  <span className="text-sm text-gray-700">{shift.name}</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={minStaffDraft[shift.id] ?? shift.minStaff}
-                    onChange={e => setMinStaffDraft(d => ({ ...d, [shift.id]: Math.max(0, Number(e.target.value)) }))}
-                    containerClassName="w-20"
-                    className="text-center"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Arbeitszeit & Ruhezeit</p>
-            <div className="space-y-2">
-              {([
-                ['maxWeeklyHours', 'Max. Wochenstunden'],
-                ['restHours', 'Ruhezeit zwischen Diensten (h)'],
-                ['maxConsecutiveDays', 'Max. aufeinanderfolgende Tage'],
-              ] as const).map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between py-1.5">
-                  <span className="text-sm text-gray-700">{label}</span>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={rulesDraft[key]}
-                    onChange={e => setRulesDraft(d => ({ ...d, [key]: Math.max(1, Number(e.target.value)) }))}
-                    containerClassName="w-20"
-                    className="text-center"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Sondertage</p>
-            <div className="space-y-2">
-              {([
-                ['fridayLateMax', 'Freitag-Spätdienst je MA (×/Monat)'],
-                ['mondayEarlyMax', 'Montag-Frühdienst je MA (×/Monat)'],
-                ['fridayEarlyMax', 'Freitag-Frühdienst je MA (×/Monat)'],
-                ['weekendMax', 'Wochenenddienste je MA (×/Monat)'],
-              ] as const).map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between py-1.5">
-                  <span className="text-sm text-gray-700">{label}</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={rulesDraft[key]}
-                    onChange={e => setRulesDraft(d => ({ ...d, [key]: Math.max(0, Number(e.target.value)) }))}
-                    containerClassName="w-20"
-                    className="text-center"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">KI-Verhalten</p>
-            <div className="space-y-1">
-              {([
-                ['considerWishes', 'Mitarbeiterwünsche berücksichtigen'],
-                ['balanceHoursAccount', 'Stundenkonten ausgleichen'],
-              ] as const).map(([key, label]) => (
-                <label key={key} className="flex items-center justify-between py-1.5 cursor-pointer">
-                  <span className="text-sm text-gray-700">{label}</span>
-                  <div
-                    onClick={() => setRulesDraft(d => ({ ...d, [key]: !d[key] }))}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${rulesDraft[key] ? 'bg-brand' : 'bg-gray-300'}`}
-                  >
-                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${rulesDraft[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                  </div>
-                </label>
-              ))}
-              <label className="flex items-center justify-between py-1.5 cursor-pointer">
-                <span className="text-sm text-gray-700">Fairness-Engine</span>
-                <div
-                  onClick={() => setUseFairnessAI(v => !v)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${useFairnessOpt ? 'bg-brand' : 'bg-gray-300'}`}
-                >
-                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${useFairnessOpt ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setRulesOpen(false)}>Abbrechen</Button>
-            <Button className="flex-1" onClick={handleSaveRules}>Speichern</Button>
-          </div>
-        </div>
+      {/*
+        §201 Statt „Planungsregeln": Was die Leitung an ihren Gruppen im
+        Alltag einstellt. Basiswerte und Mindestbesetzung je Dienst bringt das
+        Regelpaket mit; sie hier zu ändern hieße, am Paket vorbeizuplanen.
+      */}
+      <Modal open={gruppenOpen} onClose={() => setGruppenOpen(false)} title="Gruppen im Alltag" size="md">
+        {locationId && <GruppenImAlltag locationId={locationId} />}
       </Modal>
 
       {/* Explain Assignment Modal */}

@@ -17,8 +17,8 @@ Zuletzt aktualisiert: **19.10.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §200 Regelpakete je Standort unter Kunden; E-Mail-Adresse tauschen und neu einladen; Planungsprofil ohne die Felder, die nie in einen Plan flossen |
-| **Nachweisstand** | 1690/1690 in 46 Prüfungen, 154 im Rechendienst, 1055 Modultests; neu im Browser: 20 (Dienstplanung am Standort) und 17 (Zugang, Planungsprofil) |
+| **Zuletzt fertig** | §201 Das Regelpaket bringt seine Einrichtung mit; der Standort richtet nichts mehr selbst ein. Davor §200: Regelpakete je Standort, E-Mail tauschen, Planungsprofil gekürzt |
+| **Nachweisstand** | 1709/1709 in 46 Prüfungen, 158 im Rechendienst, 1055 Modultests, Bauen sauber; Browser 31+25+17+22+21+17+17, Desktop 46/46 |
 | **Als Nächstes** | Die Website gemeinsam fertig machen (steht in `DEINE-LISTE.md`) |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 

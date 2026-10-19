@@ -29,7 +29,7 @@ Zweig löst eine Auslieferung samt `prisma migrate deploy` aus).
 ## Wie hier gearbeitet wird — das ist der Kern
 
 * **Kommentare auf Deutsch, und sie erklären das Warum.** Durchnummeriert mit
-  `§`; Stand **§200**, nächste Nummer §201. Wo ein Fehler behoben wird, steht
+  `§`; Stand **§201**, nächste Nummer §202. Wo ein Fehler behoben wird, steht
   dabei, was vorher dastand und warum es falsch war — damit niemand es
   zurückbaut.
 * **Nichts behaupten, was nicht gemessen ist.** Zahlen, Preise, Fristen,
@@ -79,13 +79,14 @@ cd .. && npm run dev
 ```bash
 npx tsc --noEmit
 npm run test                                        # 1055 Modultests
-npm run pruefen                                     # 1690 Checks, 46 Prüfungen
-cd solver-service && /usr/bin/python3 -m pytest -q  # 154
+npm run pruefen                                     # 1709 Checks, 46 Prüfungen
+cd solver-service && /usr/bin/python3 -m pytest -q  # 158
 npm run build
 node pruefungen/browser/marke.mjs                   # dazu lohnverwaltung,
 node --env-file=.env pruefungen/browser/massnahmen.mjs   # massnahmen, schaufenster,
 node --env-file=.env pruefungen/browser/dienstplanung-am-standort.mjs   # §200
 node pruefungen/browser/zugang-und-planungsprofil.mjs    # §200
+node --env-file=.env pruefungen/browser/einrichtung-kommt-mit-dem-paket.mjs   # §201
 npm run desktop:pruefen                             # 46, braucht Electron
 ```
 
@@ -105,6 +106,13 @@ Kunde → Standort (die alte Seite leitet um). E-Mail-Adresse tauschen und
 neu einladen auf Standort- und Unternehmensebene. Das Planungsprofil ohne
 Abholzeiten, Wochenend-Vereinbarung, Folgetage und Planungsnotiz — die
 flossen nie in einen Plan. Einzelheiten in `FEATURES.md`, Block §200.
+
+**§201 fertig:** Das Regelpaket bringt seine Einrichtung mit (Dienstzeiten,
+Etagen/Gruppen, Arbeitstage, Basiswerte) — Zuweisen legt an, was fehlt, der
+Dienstplan holt es für ältere Zuweisungen nach. Beim Kunden gibt es keine
+Einrichtung, kein „Regeln & Wartung", kein Onboarding mehr; die Schreibwege
+dafür hat nur noch OKUN. „Eingewöhnung" und „unterwegs" stehen unter
+„Gruppen" im Dienstplan. Einzelheiten in `FEATURES.md`, Block §201.
 
 **Beim Eigentümer offen** (steht in `DEINE-LISTE.md`, dort nachführen):
 Code-Signing-Zertifikat (Azure Artifact Signing, North Europe, Identitäts­
@@ -128,9 +136,11 @@ Der E-Mail-Faktor läuft unabhängig davon.
    braucht einen Rücksetzweg und landet auf einem Zettel), sondern erneute
    Eingabe des eigenen Passworts oder des 2FA-Codes, danach 15 Minuten Ruhe.
    Schützt den Fall, der wirklich vorkommt: ein offen stehender Rechner.
-3. **Dienstzeiten der Kita „Krümelkiste" anlegen.** Dort ist ein Regelpaket
-   zugeordnet, aber es gibt keine Dienstzeiten — deshalb kein Plan. Die legt
-   OKUN an, nicht der Kunde.
+3. ~~Dienstzeiten der Kita „Krümelkiste" anlegen~~ — seit §201 holt der
+   Dienstplan sie beim Öffnen aus dem Paket. **Nicht prüfbar war**, welches
+   Paket dort hängt (kein Zugang zur Produktion). Ist es die Vorlage
+   `muster_pflege`, bringt sie keine Dienstzeiten mit — dann steht dort
+   „bitte bei OKUN melden", und die Dienstzeiten müssen ins Paket.
 4. **Keine Ersatzcodes für den zweiten Faktor.** Wer SMS oder E-Mail aktiv hat
    und den Zugang verliert, kommt ohne fremde Hilfe nicht mehr hinein. Bekannt,
    bewusst offen, noch nicht entschieden.
@@ -156,6 +166,20 @@ Der E-Mail-Faktor läuft unabhängig davon.
    fremden Mandanten, Antwort 200. Gefunden in §200, nicht behoben: Es
    braucht eine Liste der erlaubten Felder, und die berührt jede Maske, die
    diese Route benutzt. Vor dem ersten echten Kunden schließen.
+
+9. **Kita Sonnenschein: Spätdienst bis 17:00 oder 17:30?** Das Paket sagt
+   im Text 17:30, die Testdaten (und damit seine Einrichtung) 17:00. Nur der
+   Betrieb weiß es.
+10. **Der Einrichtungsweg per Skript** (`scripts/kunde-wohngruppe.mjs`) legt
+    Dienste und Bereich noch selbst an. Das ist jetzt doppelt — beim nächsten
+    neuen Kunden gehört die Einrichtung ins Paket, und das Skript macht nur
+    noch Kunde, Standort, Zuweisung und Belegschaft.
+11. **Die Schnittstellen des alten Modells** (`location-model/*`,
+    `company-model/*`, `onboarding-chat`, `location-onboarding/*`,
+    `admin/setup-extract`, `admin/custom-constraints`) sind seit §201 nur
+    noch für OKUN beschreibbar, aber nicht gelöscht. Sie zu löschen ist ein
+    eigener Schritt: Daran hängen Datenbanktabellen und der Hintergrundlauf
+    `getOrGenerateLocationModel`.
 
 ---
 

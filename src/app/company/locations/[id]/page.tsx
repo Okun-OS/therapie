@@ -141,8 +141,6 @@ export default function StandortDetail({ params }: { params: { id: string } }) {
           <Bereich href={`/company/substitutions?locationId=${standortId}`} icon={RefreshCw}
             titel={`Vertretungen${offeneVertretungen.length > 0 ? ` (${offeneVertretungen.length} offen)` : ''}`}
             text="Ausfälle und Einspringen" />
-          <Bereich href={`/admin/model?locationId=${standortId}`} icon={ShieldAlert}
-            titel="Regeln des Standorts" text="Arbeitszeit, Ruhezeiten, eigene Regeln" />
           <Bereich href={`/admin/workforce-score?locationId=${standortId}`} icon={TrendingUp}
             titel="Auswertungen" text="Score, Fairness, Personalrisiko" />
         </div>

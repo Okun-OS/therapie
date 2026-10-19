@@ -492,7 +492,7 @@ export function ScheduleEditChat({
 
           {hasPermanentRules ? (
             <div className="space-y-2">
-              <p className="text-xs text-gray-500">Sollen diese Regeln dauerhaft im Planungsmodell gespeichert werden?</p>
+              <p className="text-xs text-gray-500">Dauerhafte Regeln stehen im Regelpaket eures Standorts, das OKUN pflegt. Sollen sie als Wunsch an OKUN gehen?</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleApply(true)}
@@ -500,7 +500,7 @@ export function ScheduleEditChat({
                   className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold py-2.5 transition-colors disabled:opacity-50"
                 >
                   <ShieldCheck size={14} />
-                  Dauerhaft speichern
+                  An OKUN schicken
                 </button>
                 <button
                   onClick={() => handleApply(false)}
@@ -517,7 +517,7 @@ export function ScheduleEditChat({
                 className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2.5 transition-colors disabled:opacity-50"
               >
                 <Sparkles size={14} />
-                Regeln speichern &amp; Dienstplan neu erstellen
+                An OKUN schicken &amp; Dienstplan neu erstellen
               </button>
             </div>
           ) : (

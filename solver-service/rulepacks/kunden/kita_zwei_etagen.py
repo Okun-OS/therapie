@@ -63,6 +63,43 @@ META = {
     "aufgenommen": "2026-09-26",
 }
 
+# §201 Die Einrichtung, die mit diesem Paket an einen Standort geht.
+#
+# Oben steht „Die Dienstzeiten stehen in den Schichten des Standorts, nicht im
+# Paket". Das bleibt für die REGELN richtig: Sie sprechen über Arbeitsstunden
+# und finden die passenden Dienste selbst. Aber irgendwer muss die Dienste
+# anlegen, und seit §201 ist das nicht mehr der Kunde. Deshalb stehen sie hier
+# — unverändert aus `prisma/seed-kita-demo.ts`, wo sie nach dem Regelwerk des
+# Kunden aufgenommen wurden. Angelegt wird nur, was am Standort noch fehlt.
+#
+# `mindestbesetzung: 0` an Diensten und Etagen ist Absicht (§163): Wie viele
+# wo stehen, regeln die Gruppen- und Etagenregeln dieses Pakets. Eine 1 hat den
+# Plan schon einmal um 400.000 Strafpunkte verteuert.
+EINRICHTUNG = {
+    "arbeitstage": ["Mo", "Di", "Mi", "Do", "Fr"],
+    "dienstzeiten": [
+        {"name": "Frühdienst 8", "art": "frueh", "von": "06:00", "bis": "14:30", "mindestbesetzung": 0},
+        {"name": "Frühdienst 7", "art": "frueh", "von": "06:00", "bis": "13:30", "mindestbesetzung": 0},
+        {"name": "Frühdienst 6", "art": "frueh", "von": "06:00", "bis": "12:30", "mindestbesetzung": 0},
+        {"name": "Spätdienst 8", "art": "spaet", "von": "08:30", "bis": "17:00", "mindestbesetzung": 0},
+        {"name": "Spätdienst 7", "art": "spaet", "von": "09:30", "bis": "17:00", "mindestbesetzung": 0},
+        {"name": "Spätdienst 6", "art": "spaet", "von": "10:30", "bis": "17:00", "mindestbesetzung": 0},
+        {"name": "Tagdienst 8", "art": "mittel", "von": "07:00", "bis": "15:30", "mindestbesetzung": 0},
+        {"name": "Nachmittag 7", "art": "mittel", "von": "08:00", "bis": "15:30", "mindestbesetzung": 0},
+        {"name": "Tagdienst 7", "art": "mittel", "von": "07:30", "bis": "15:00", "mindestbesetzung": 0},
+        {"name": "Tagdienst 6", "art": "mittel", "von": "08:00", "bis": "14:30", "mindestbesetzung": 0},
+        {"name": "Kernzeit 5 (9 Uhr)", "art": "mittel", "von": "09:00", "bis": "14:00", "mindestbesetzung": 0},
+        {"name": "Kernzeit 5 (8 Uhr)", "art": "mittel", "von": "08:00", "bis": "13:00", "mindestbesetzung": 0},
+    ],
+    "struktur": [
+        {"name": "untere Etage", "typ": "etage", "mindestbesetzung": 0},
+        {"name": "obere Etage", "typ": "etage", "mindestbesetzung": 0},
+        *[{"name": f"Gruppe {n}", "typ": "gruppe", "etage": "untere Etage", "mindestbesetzung": 1} for n in (1, 2, 3, 4)],
+        *[{"name": f"Gruppe {n}", "typ": "gruppe", "etage": "obere Etage", "mindestbesetzung": 1} for n in (5, 6, 7, 8)],
+    ],
+    "basiswerte": {"maxWochenstunden": 40, "ruhezeitStunden": 11, "maxFolgetage": 5},
+}
+
 # ── Was dieses Paket NICHT mehr enthaelt ────────────────────────────────────
 #
 # §181 Bis zum 02.10.2026 standen hier drei Tabellen: die Tagesmuster von

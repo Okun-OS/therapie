@@ -13,7 +13,6 @@ interface HelpMessage {
 
 const PAGE_LABELS: Record<string, string> = {
   '/admin': 'Dashboard (Standortleitung)',
-  '/admin/onboarding': 'KI-Onboarding',
   '/admin/employees': 'Mitarbeiter',
   '/admin/schedule': 'Dienstplan',
   '/admin/calendar': 'Kalender',

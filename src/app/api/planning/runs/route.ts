@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { locationFilter } from '@/lib/scope'
+import { pruefePlanungsstart } from '@/lib/planungsstart'
 import { prisma } from '@/lib/prisma'
 import { runPlanningBackground } from '@/lib/planning-orchestrator'
 
@@ -61,32 +62,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'locationId, von und bis sind erforderlich' }, { status: 400 })
   }
 
-  // §112: Der Lauf wurde bisher fuer JEDEN angegebenen Standort gestartet — eine
-  // fremde Leitung konnte damit beim Wettbewerber einen Dienstplan rechnen
-  // lassen und ueber die Sitzungs-ID an dessen Personaldaten kommen.
-  const standortErlaubt = await locationFilter(session, locationId)
-  if (standortErlaubt instanceof NextResponse) return standortErlaubt
-
-  // §127 Die Dienstplanung wird je Kunde von Hand gebaut. Bis das Regelpaket
-  // steht, bleibt sie gesperrt — ein Kunde, der ungebaute Dienstplanung
-  // ausprobiert, bekommt einen schlechten Plan und ein falsches Bild vom
-  // Produkt. Genau das ist im August passiert.
-  const standort = await prisma.location.findUnique({
-    where: { id: locationId },
-    select: { name: true, dienstplanungFrei: true, dienstplanungHinweis: true },
-  })
-  if (!standort) {
-    return NextResponse.json({ error: 'Standort nicht gefunden' }, { status: 404 })
-  }
-  if (!standort.dienstplanungFrei && session.role !== 'okun') {
-    return NextResponse.json({
-      error: standort.dienstplanungHinweis
-        || `Die Dienstplanung für „${standort.name}" ist noch nicht freigeschaltet. `
-          + 'Sie wird von OKUN für Ihren Betrieb eingerichtet — melden Sie sich bei uns, '
-          + 'sobald Sie loslegen möchten.',
-      gesperrt: true,
-    }, { status: 423 })
-  }
+  // §112 Standortgrenze, §127 Freischaltung, §201 Dienstzeiten aus dem
+  // Regelpaket — gemeinsam mit /api/ai/solve-schedule in einer Prüfung.
+  const verwehrt = await pruefePlanungsstart(session, locationId)
+  if (verwehrt) return verwehrt
 
   const planSession = await prisma.planningSession.create({
     data: {

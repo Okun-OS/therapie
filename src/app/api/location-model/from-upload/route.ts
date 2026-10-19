@@ -55,7 +55,11 @@ const VALID_WOCHENTAGE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 const VALID_BETRIEBSTYPEN = ['mon_fri', 'mon_sat', '7_tage', '24_7', 'schichtbetrieb', 'bedarfsgesteuert', 'bereitschaft']
 
 export async function POST(req: NextRequest) {
-  const session = requireRole(req, ['admin'])
+  // §201 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
+  // Regelpaket. Vorher konnte hier die Leitung (bzw. das Unternehmen) selbst
+  // Dienste, Struktur, Regeln oder das alte Standortmodell anlegen und damit am
+  // Paket vorbeiplanen. Lesen bleibt, wie es war.
+  const session = requireRole(req, ['okun'])
   if (session instanceof NextResponse) return session
 
   const locationId = await resolveLocationId(session)

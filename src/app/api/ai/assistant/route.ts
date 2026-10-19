@@ -7,9 +7,7 @@ import {
   listShiftsByLocation,
   applyScheduleEdits,
   getPlanningRules,
-  upsertPlanningRules,
   listPlanningUnitsByLocation,
-  upsertPlanningUnit,
 } from '@/lib/schedule-entities'
 import { getVacationRequestsByLocation, setVacationRequestStatus } from '@/lib/vacation-entities'
 import { getAbsencesByLocation } from '@/lib/time-tracking-entities'
@@ -162,36 +160,6 @@ const TOOLS: Anthropic.Messages.Tool[] = [
     },
   },
   {
-    name: 'update_planning_rule',
-    description: 'Ändert einen oder mehrere Planungsregel-Werte des Standorts dauerhaft.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        maxWeeklyHours: { type: 'number', description: 'Maximale Wochenstunden' },
-        restHours: { type: 'number', description: 'Mindestruhezeit in Stunden' },
-        maxConsecutiveDays: { type: 'number', description: 'Max. aufeinanderfolgende Arbeitstage' },
-        fridayLateMax: { type: 'number', description: 'Max. Freitag-Spätdienste pro Monat' },
-        mondayEarlyMax: { type: 'number', description: 'Max. Montag-Frühdienste pro Monat' },
-        fridayEarlyMax: { type: 'number', description: 'Max. Freitag-Frühdienste pro Monat' },
-        weekendMax: { type: 'number', description: 'Max. Wochenenddienste pro Monat' },
-      },
-    },
-  },
-  {
-    name: 'upsert_planning_unit',
-    description: 'Legt eine Planungseinheit (Gruppe, Bereich, Objekt, Tour, Station usw.) an oder aktualisiert sie.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        name: { type: 'string', description: 'Name der Einheit' },
-        type: { type: 'string', enum: ['gruppe', 'bereich', 'objekt', 'tour', 'fahrzeug', 'maschine', 'raum', 'station', 'aufgabenblock', 'sonstiges'] },
-        description: { type: 'string', description: 'Optionale Beschreibung' },
-        capacity: { type: 'number', description: 'Optionale Kapazität/Mindestbesetzung' },
-      },
-      required: ['name', 'type'],
-    },
-  },
-  {
     name: 'approve_vacation_request',
     description: 'Genehmigt einen Urlaubsantrag und aktualisiert das Urlaubskonto des Mitarbeiters.',
     input_schema: {
@@ -228,17 +196,6 @@ const TOOLS: Anthropic.Messages.Tool[] = [
         notes: { type: 'string', description: 'Interne Notizen / Persönliche Besonderheiten' },
       },
       required: ['employeeId'],
-    },
-  },
-  {
-    name: 'save_location_rule',
-    description: 'Speichert eine individuelle Standortregel dauerhaft im Onboarding (wird in Dienstplanung berücksichtigt).',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        regel: { type: 'string', description: 'Die Regel als Text, z.B. "Vollzeitmitarbeiter beginnen immer um 06:00 Uhr"' },
-      },
-      required: ['regel'],
     },
   },
 ]
@@ -492,20 +449,19 @@ async function executeToolCall(name: string, input: Record<string, any>, ctx: To
     }
 
     case 'update_planning_rule': {
-      const allowed = ['maxWeeklyHours', 'restHours', 'maxConsecutiveDays', 'fridayLateMax', 'mondayEarlyMax', 'fridayEarlyMax', 'weekendMax']
-      const updates: Record<string, any> = {}
-      for (const key of allowed) {
-        if (input[key] !== undefined) updates[key] = input[key]
-      }
-      if (Object.keys(updates).length === 0) return { error: 'Keine Regeländerung angegeben' }
-      const result = await upsertPlanningRules(ctx.locationId, updates)
-      return { success: true, message: 'Planungsregel gespeichert', rules: result }
+      // §201 Nicht mehr verfügbar: Regeln, Gruppen und Basiswerte eines
+      // Standorts kommen mit dem Regelpaket, das OKUN pflegt. Das Werkzeug
+      // steht nicht mehr in der Liste; diese Antwort fängt nur ab, falls ein
+      // altes Gespräch es noch aufruft.
+      return { error: 'Regeln, Gruppen und Basiswerte des Standorts stehen im Regelpaket — das ändert OKUN. Bitte als Wunsch an OKUN geben (Funde melden).' }
     }
 
     case 'upsert_planning_unit': {
-      const { name, type, description, capacity } = input as { name: string; type: string; description?: string; capacity?: number }
-      const unit = await upsertPlanningUnit(ctx.locationId, { name, type, description, capacity })
-      return { success: true, message: `Planungseinheit "${name}" gespeichert`, unit }
+      // §201 Nicht mehr verfügbar: Regeln, Gruppen und Basiswerte eines
+      // Standorts kommen mit dem Regelpaket, das OKUN pflegt. Das Werkzeug
+      // steht nicht mehr in der Liste; diese Antwort fängt nur ab, falls ein
+      // altes Gespräch es noch aufruft.
+      return { error: 'Regeln, Gruppen und Basiswerte des Standorts stehen im Regelpaket — das ändert OKUN. Bitte als Wunsch an OKUN geben (Funde melden).' }
     }
 
     case 'approve_vacation_request': {
@@ -536,17 +492,11 @@ async function executeToolCall(name: string, input: Record<string, any>, ctx: To
     }
 
     case 'save_location_rule': {
-      const { regel } = input as { regel: string }
-      const existing = await prisma.locationOnboarding.findUnique({ where: { locationId: ctx.locationId } })
-      const currentRules: string[] = (existing?.individuelleRegeln as string[] | null) ?? []
-      if (!currentRules.includes(regel)) {
-        await prisma.locationOnboarding.upsert({
-          where: { locationId: ctx.locationId },
-          create: { locationId: ctx.locationId, individuelleRegeln: [...currentRules, regel] },
-          update: { individuelleRegeln: [...currentRules, regel] },
-        })
-      }
-      return { success: true, message: `Regel dauerhaft gespeichert: "${regel}"` }
+      // §201 Nicht mehr verfügbar: Regeln, Gruppen und Basiswerte eines
+      // Standorts kommen mit dem Regelpaket, das OKUN pflegt. Das Werkzeug
+      // steht nicht mehr in der Liste; diese Antwort fängt nur ab, falls ein
+      // altes Gespräch es noch aufruft.
+      return { error: 'Regeln, Gruppen und Basiswerte des Standorts stehen im Regelpaket — das ändert OKUN. Bitte als Wunsch an OKUN geben (Funde melden).' }
     }
 
     case 'find_substitutes': {
@@ -840,7 +790,7 @@ Nutzer: „Tausche Anna und Tom am Freitag"
 → list_employees (IDs finden) → swap_employees ausführen → bestätigen
 
 Nutzer: „Speichere: Vollzeitmitarbeiter beginnen immer um 06:00 Uhr"
-→ save_location_rule aufrufen → bestätigen
+→ erklären: Dauerhafte Regeln, Dienstzeiten und Gruppen stehen im Regelpaket, das OKUN pflegt — bitte als Wunsch über „Funde melden" an OKUN geben. Nichts speichern.
 
 Nutzer: „Wer hat diese Woche Urlaub?"
 → list_vacation_requests (status=approved, dateFrom/dateTo diese Woche) → auflisten

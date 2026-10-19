@@ -3,6 +3,7 @@ import { requireRole, resolveCustomerId } from '@/lib/session'
 import { getOrGenerateLocationModel } from '@/lib/company-model-service'
 import { runPlanningSession, runPlanningBackground } from '@/lib/planning-orchestrator'
 import { prisma } from '@/lib/prisma'
+import { pruefePlanungsstart } from '@/lib/planungsstart'
 
 export async function POST(req: NextRequest) {
   const session = requireRole(req, ['admin', 'company'])
@@ -21,33 +22,14 @@ export async function POST(req: NextRequest) {
   }
 
   /*
-   * §198 Ohne Dienstzeiten gibt es nichts zu verteilen — aber die Auskunft,
-   * was zu tun ist, hängt davon ab, wer sie anlegt.
-   *
-   * Ein Regelpaket ersetzt sie NICHT: Es sagt, wie Dienste besetzt werden,
-   * nicht welche es gibt. Die Sperre bleibt also. Der Satz „Schließe das
-   * Standort-Onboarding ab" schickt einen Kunden mit Regelpaket aber auf
-   * einen Weg, den es für ihn nicht gibt — bei ihm richtet OKUN die
-   * Dienstzeiten ein.
+   * §201 Standortgrenze, Freischaltung und Dienstzeiten — dieselbe Prüfung
+   * wie in /api/planning/runs. Vorher stand hier nur die Dienstzeiten-Sperre
+   * (§198); die beiden anderen fehlten an genau dem Weg, den der
+   * Dienstplan-Knopf nimmt. Und fehlen die Dienstzeiten, kommen sie jetzt
+   * aus dem Regelpaket, statt dass der Kunde zum Onboarding geschickt wird.
    */
-  const shiftCount = await prisma.shift.count({ where: { locationId } })
-  if (shiftCount === 0) {
-    const standort = await prisma.location.findUnique({
-      where: { id: locationId },
-      select: { rulePackId: true },
-    })
-    return NextResponse.json(
-      {
-        error: standort?.rulePackId
-          ? 'Dieser Standort hat noch keine Dienstzeiten. Für ihn ist ein Regelpaket '
-            + 'hinterlegt — die Dienstzeiten legt OKUN an. Bitte bei OKUN melden.'
-          : 'Dieser Standort hat noch keine Dienstzeiten konfiguriert. Bitte schließe '
-            + 'zuerst das Standort-Onboarding ab.',
-        code: 'NO_SHIFTS',
-      },
-      { status: 422 },
-    )
-  }
+  const verwehrt = await pruefePlanungsstart(session, locationId)
+  if (verwehrt) return verwehrt
 
   // Generate/refresh the per-location model in the background
   getOrGenerateLocationModel(locationId, customerId).catch(err =>

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/session'
-import { verfuegbareRegelpakete } from '@/lib/regelpakete'
+import { verfuegbareRegelpakete, type Regelpaket } from '@/lib/regelpakete'
+import { einrichtungAnwenden, berichtText } from '@/lib/paket-einrichtung'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,12 +45,24 @@ export async function GET(req: NextRequest) {
   const kunden = await prisma.customer.findMany({ select: { id: true, name: true } })
   const kundeVon = new Map(kunden.map(k => [k.id, k.name]))
 
+  // §201 Was am Standort eingerichtet ist — damit OKUN sieht, ob nach der
+  // Zuweisung wirklich geplant werden kann, ohne die Seite des Kunden zu öffnen.
+  const ids = standorte.map(s => s.id)
+  const [dienste, einheiten] = await Promise.all([
+    prisma.shift.groupBy({ by: ['locationId'], where: { locationId: { in: ids } }, _count: true }),
+    prisma.planningUnit.groupBy({ by: ['locationId'], where: { locationId: { in: ids } }, _count: true }),
+  ])
+  const dienstzeitenVon = new Map(dienste.map(d => [d.locationId, d._count]))
+  const einheitenVon = new Map(einheiten.map(e => [e.locationId, e._count]))
+
   const bekannteIds = new Set(pakete.pakete.map(p => p.id))
 
   return NextResponse.json({
     standorte: standorte.map(s => ({
       ...s,
       kunde: s.customerId ? kundeVon.get(s.customerId) ?? null : null,
+      dienstzeiten: dienstzeitenVon.get(s.id) ?? 0,
+      einheiten: einheitenVon.get(s.id) ?? 0,
       // Ein zugeordnetes Paket kann nach einem Deploy verschwunden sein.
       // Das muss auffallen, bevor der Kunde einen Plan ohne seine Regeln bekommt.
       paketFehlt: !!s.rulePackId && pakete.erreichbar && !bekannteIds.has(s.rulePackId),
@@ -71,6 +84,8 @@ export async function PATCH(req: NextRequest) {
     rulePackId?: string | null
     dienstplanungFrei?: boolean
     hinweis?: string | null
+    /** §201 Die Einrichtung des zugeordneten Pakets anlegen, soweit sie fehlt. */
+    einrichtungAnwenden?: boolean
   }
   if (!body.locationId) {
     return NextResponse.json({ error: 'locationId fehlt' }, { status: 400 })
@@ -86,8 +101,10 @@ export async function PATCH(req: NextRequest) {
 
   // Ein Paket, das es nicht gibt, wird nicht zugeordnet. Sonst merkt es
   // niemand, bis der erste Plan ohne die Regeln des Kunden herauskommt.
+  let paket: Regelpaket | undefined
   if (body.rulePackId) {
     const { pakete, erreichbar } = await verfuegbareRegelpakete()
+    paket = pakete.find(p => p.id === body.rulePackId)
     if (erreichbar && !pakete.some(p => p.id === body.rulePackId)) {
       return NextResponse.json({
         error: `Das Regelpaket „${body.rulePackId}" gibt es im Rechendienst nicht. `
@@ -125,17 +142,37 @@ export async function PATCH(req: NextRequest) {
     },
   })
 
+  /*
+   * §201 Mit dem Paket kommt seine Einrichtung: Dienstzeiten, Etagen und
+   * Gruppen, Arbeitstage, Basiswerte — soweit sie am Standort fehlen. Erst
+   * damit „greift" die Zuweisung: Vorher hatte ein Standort Regeln für Dienste,
+   * die es nicht gab, und keinen Plan.
+   *
+   * `einrichtungAnwenden` ohne neues Paket ist für Standorte, denen ihr Paket
+   * schon vor §201 zugeordnet wurde.
+   */
+  if (!paket && body.einrichtungAnwenden && aktualisiert.rulePackId) {
+    paket = (await verfuegbareRegelpakete()).pakete.find(p => p.id === aktualisiert.rulePackId)
+  }
+  const einrichtung = paket ? await einrichtungAnwenden(aktualisiert.id, paket.einrichtung) : null
+
   const teile: string[] = []
   if (body.rulePackId !== undefined) {
     teile.push(body.rulePackId
       ? `Regelpaket „${body.rulePackId}" zugeordnet`
       : 'Regelpaket entfernt')
   }
+  const eingerichtet = berichtText(einrichtung)
+  if (eingerichtet) teile.push(eingerichtet)
+  if (paket && !paket.einrichtung) {
+    teile.push('Dieses Paket bringt keine Dienstzeiten mit — sie müssen ins Paket, bevor geplant werden kann')
+  }
   if (freischalten) teile.push('Dienstplanung freigeschaltet')
   if (sperren) teile.push('Dienstplanung gesperrt')
 
   return NextResponse.json({
     standort: aktualisiert,
+    einrichtung,
     hinweis: teile.length > 0
       ? `${aktualisiert.name}: ${teile.join(', ')}.`
       : 'Nichts geändert.',

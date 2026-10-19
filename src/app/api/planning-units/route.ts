@@ -22,7 +22,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = requireRole(req, ['admin', 'company', 'okun'])
+  // §201 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
+  // Regelpaket. Vorher konnte hier die Leitung (bzw. das Unternehmen) selbst
+  // Dienste, Struktur, Regeln oder das alte Standortmodell anlegen und damit am
+  // Paket vorbeiplanen. Lesen bleibt, wie es war.
+  const session = requireRole(req, ['okun'])
   if (session instanceof NextResponse) return session
 
   let body: { locationId?: string; name?: string; type?: string; description?: string; capacity?: number; address?: string; notes?: string; sortOrder?: number; parentId?: string | null; minStaff?: number }
@@ -68,6 +72,18 @@ export async function PUT(req: NextRequest) {
   if (!bestand) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
   const erlaubtPut = await locationFilter(session, bestand.locationId)
   if (erlaubtPut instanceof NextResponse) return erlaubtPut
+
+  // §201 Name, Etage und Mindestbesetzung einer Gruppe gehören zur
+  // Einrichtung, und die kommt mit dem Regelpaket — die ändert nur OKUN.
+  // Was die Leitung im Alltag einträgt, bleibt ihr: Eingewöhnung (§166) und
+  // „unterwegs" (§182).
+  if (session.role !== 'okun'
+    && (body.name !== undefined || body.parentId !== undefined || body.minStaff !== undefined)) {
+    return NextResponse.json({
+      error: 'Etagen, Gruppen und ihre Mindestbesetzung richtet OKUN über das Regelpaket ein. '
+        + 'Eingewöhnung und „unterwegs" kannst du weiter selbst eintragen.',
+    }, { status: 403 })
+  }
 
   /*
    * §182 „Diese Gruppe ist unterwegs" — und warum beide Daten zusammengehören.
@@ -121,7 +137,11 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = requireRole(req, ['admin', 'company', 'okun'])
+  // §201 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
+  // Regelpaket. Vorher konnte hier die Leitung (bzw. das Unternehmen) selbst
+  // Dienste, Struktur, Regeln oder das alte Standortmodell anlegen und damit am
+  // Paket vorbeiplanen. Lesen bleibt, wie es war.
+  const session = requireRole(req, ['okun'])
   if (session instanceof NextResponse) return session
 
   const id = req.nextUrl.searchParams.get('id')
