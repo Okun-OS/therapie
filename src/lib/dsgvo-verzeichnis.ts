@@ -157,8 +157,12 @@ export const UNTERAUFTRAEGE: Unterauftrag[] = [
     drittland:
       'Zurzeit keine Übermittlung — der SMS-Versand ist nicht eingerichtet. '
       + 'Wird er eingeschaltet (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, '
-      + 'SMS_FROM), ist vorher ein Auftragsverarbeitungsvertrag zu schließen '
-      + 'und die Übermittlung in die USA zu begründen — wie bei Resend.',
+      + 'SMS_FROM), gehen Telefonnummern in die USA. Grundlage ist dann das '
+      + 'EU-US Data Privacy Framework: Twilio Inc. ist dafür selbstzertifiziert '
+      + '(nachgesehen am 19.10.2026), und der Vertrag gilt mit dem Anlegen des '
+      + 'Kontos — zu unterschreiben ist nichts. Vor dem Einschalten ist die '
+      + 'Zertifizierung auf dataprivacyframework.gov nachzusehen und dieser '
+      + 'Eintrag umzustellen.',
   },
   {
     name: 'Anthropic PBC',
