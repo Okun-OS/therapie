@@ -1207,15 +1207,49 @@ export default function AdminSchedule() {
             {/* AI Panel */}
             <div className={`rounded-2xl p-5 border-2 transition-all ${aiDone ? 'bg-green-50 border-green-200' : 'bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-100'}`}>
               {locationShifts.length === 0 ? (
+                /*
+                  §198 Dieselbe Lücke, zwei verschiedene Wege — je nachdem,
+                  ob OKUN für diesen Standort ein Regelpaket gebaut hat.
+
+                  WAS HIER VORHER STAND
+                  Immer derselbe Satz: „Schließe das Standort-Onboarding ab."
+                  Der Eigentümer hat zu Recht gestutzt — bei einem Standort
+                  mit Regelpaket gibt es dieses Onboarding gar nicht als Weg.
+                  Der Kunde klickt dort einen Fragebogen durch, der ihm
+                  Dienstzeiten vorschlägt; wer ein Regelpaket hat, bekommt sie
+                  von OKUN eingerichtet.
+
+                  WAS TROTZDEM STIMMT
+                  Dienstzeiten werden wirklich gebraucht. Ein Regelpaket
+                  ersetzt sie nicht: Es sagt, WIE Dienste besetzt werden
+                  („kein Dienstende zwischen 15:30 und 17:00"), nicht WELCHE
+                  es gibt. Ohne Dienste hat der Rechendienst nichts zu
+                  verteilen.
+
+                  Der Hinweis nennt deshalb jetzt die richtige Stelle, nicht
+                  irgendeine.
+                */
                 <div className="flex items-center gap-3">
                   <AlertTriangle size={24} className="text-amber-500 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="font-bold text-navy">Noch keine Schichten für diesen Standort angelegt</p>
-                    <p className="text-sm text-gray-600">Schließe das Standort-Onboarding ab, um Dienstzeiten und Schichten automatisch anzulegen – erst danach kann ein Dienstplan erstellt werden.</p>
+                    <p className="font-bold text-navy">Noch keine Dienstzeiten für diesen Standort angelegt</p>
+                    {location?.rulePackId ? (
+                      <p className="text-sm text-gray-600">
+                        Für diesen Standort ist ein Regelpaket hinterlegt — die Dienstzeiten
+                        legt OKUN gemeinsam mit euch an. Sie fehlen noch. Das Regelpaket
+                        bestimmt, <em>wie</em> Dienste besetzt werden, nicht <em>welche</em> es
+                        gibt; ohne Dienstzeiten kann nichts verteilt werden.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-600">
+                        Schließe das Standort-Onboarding ab, um Dienstzeiten und Schichten
+                        automatisch anzulegen – erst danach kann ein Dienstplan erstellt werden.
+                      </p>
+                    )}
                   </div>
-                  <Link href="/admin/onboarding">
+                  <Link href={location?.rulePackId ? '/admin/model' : '/admin/onboarding'}>
                     <Button size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
-                      Zum Standort-Onboarding
+                      {location?.rulePackId ? 'Zu den Dienstzeiten' : 'Zum Standort-Onboarding'}
                     </Button>
                   </Link>
                 </div>

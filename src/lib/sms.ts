@@ -80,8 +80,55 @@ const ERKLAERUNGEN: Record<number, string> = {
     'Für dieses Zielland ist der Versand im Konto nicht freigeschaltet. In '
     + 'Twilio unter Messaging → Settings → Geo permissions das Land erlauben.',
   20003:
-    'Twilio verweigert den Zugang. Stimmen TWILIO_ACCOUNT_SID und '
-    + 'TWILIO_AUTH_TOKEN, und ist das Konto bezahlt?',
+    'Twilio verweigert den Zugang. Entweder stimmen TWILIO_ACCOUNT_SID und '
+    + 'TWILIO_AUTH_TOKEN nicht — oder das Konto ist noch nicht freigegeben. '
+    + 'Die genaue Ursache steht in Twilios eigener Meldung daneben.',
+}
+
+/**
+ * §197 Wenn Twilio selbst deutlicher ist als unsere Nummerntabelle.
+ *
+ * WARUM ES DAS GIBT
+ * Beim ersten echten Versuch kam Fehler 20003 — und unsere Erklärung dazu
+ * lautete „Stimmen SID und Token, ist das Konto bezahlt?". Beides war falsch.
+ * Twilios eigene Meldung sagte es genau: „Primary compliance profile is not
+ * approved. Complete the KYC process in Trust Hub."
+ *
+ * 20003 ist bei Twilio ein Sammelbecken für „Zugang verweigert", und die
+ * Nummer allein sagt zu wenig. Eine Erklärung, die an der Nummer hängt und
+ * den Text daneben ignoriert, schickt den Betreiber in die falsche Richtung —
+ * er sucht dann im Zugangsschlüssel, während die Firmenprüfung hängt.
+ *
+ * Deshalb: Erst im Text nachsehen, dann in der Nummerntabelle.
+ */
+const AM_TEXT: Array<[RegExp, string]> = [
+  [
+    /compliance profile|trust hub|kyc/i,
+    'Die Firmenprüfung bei Twilio (Trust Hub) ist noch nicht freigegeben. '
+    + 'Solange sie läuft, verschickt das Konto gar nichts — unabhängig von '
+    + 'Absender und Zugangsdaten. In der Twilio-Konsole unter Trust Hub den '
+    + 'Stand ansehen: „Pending Review" heißt warten (in der Regel ein bis '
+    + 'zwei Werktage), „Rejected" nennt dort den Grund zum Nachbessern.',
+  ],
+  [
+    /trial account/i,
+    'Das Konto läuft noch im Testbetrieb. Testkonten dürfen nur an vorher '
+    + 'freigeschaltete Nummern senden und keine Absendernamen benutzen.',
+  ],
+  [
+    /not a valid phone number|is not a valid/i,
+    'Twilio erkennt den Absender nicht an. Bei einem Absendernamen wie '
+    + '„OKUN" ist die häufigste Ursache ein Konto, das noch nicht vollständig '
+    + 'freigegeben ist.',
+  ],
+]
+
+/** Die Erklärung zu einer Ablehnung — Text schlägt Nummer. */
+function erklaerung(code: number | undefined, meldung: string | undefined): string | undefined {
+  if (meldung) {
+    for (const [muster, text] of AM_TEXT) if (muster.test(meldung)) return text
+  }
+  return code ? ERKLAERUNGEN[code] : undefined
 }
 
 export async function sendSms(
@@ -159,7 +206,7 @@ export async function sendSms(
         fehler: {
           code,
           twilio: twilio ?? text.slice(0, 300),
-          hinweis: code ? ERKLAERUNGEN[code] : undefined,
+          hinweis: erklaerung(code, twilio ?? text),
         },
       }
     }

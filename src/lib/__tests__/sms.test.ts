@@ -147,6 +147,36 @@ describe('§197 Wenn Twilio ablehnt', () => {
     expect(r.error).not.toContain('21606')
   })
 
+  it('nimmt Twilios eigenen Text ernster als die Nummerntabelle', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    /*
+     * §197 Genau dieser Fall ist beim ersten echten Versuch aufgetreten.
+     * 20003 ist bei Twilio ein Sammelbecken für „Zugang verweigert", und
+     * unsere Erklärung dazu sprach von Zugangsdaten und Bezahlung. Der Text
+     * daneben sagte etwas ganz anderes — und der hat recht.
+     */
+    twilioAntwortet(403, {
+      code: 20003,
+      message: 'Primary compliance profile is not approved. Please refer to '
+        + 'documentation and complete the KYC process in Trust Hub to gain access.',
+    })
+
+    const r = await sendSms('+4915900000000', 'Code: 123456')
+
+    expect(r.fehler?.hinweis).toMatch(/Firmenprüfung|Trust Hub/i)
+    // Und NICHT die Erklärung, die an der Nummer hängt.
+    expect(r.fehler?.hinweis).not.toMatch(/TWILIO_ACCOUNT_SID/)
+  })
+
+  it('fällt auf die Nummerntabelle zurück, wenn der Text nichts hergibt', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    twilioAntwortet(400, { code: 21614, message: 'something generic' })
+
+    const r = await sendSms('+4915900000000', 'Code: 123456')
+
+    expect(r.fehler?.hinweis).toMatch(/Festnetz/i)
+  })
+
   it('kommt auch mit einer Antwort zurecht, die kein JSON ist', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     twilioAntwortet(502, '<html>Bad Gateway</html>')

@@ -59,6 +59,7 @@ function toLocation(row: any): Location {
     active: row.active,
     dienstplanungFrei: row.dienstplanungFrei ?? false,
     dienstplanungHinweis: row.dienstplanungHinweis ?? null,
+    rulePackId: row.rulePackId ?? null,
   }
 }
 
@@ -106,8 +107,29 @@ export async function listEmployees(customerId?: string, locationId?: string): P
 /** customerId scopt auf den Mandanten des anfragenden Nutzers; undefined liefert
  * plattformweit ALLE Standorte und darf daher nur von der 'okun'-Rolle verwendet
  * werden (siehe requireRole-Aufrufer). */
+/**
+ * §198 Standorte — nach Namen sortiert.
+ *
+ * WARUM DAS EINE ZEILE WERT IST
+ * Vorher stand hier kein `orderBy`. Postgres darf die Zeilen dann in
+ * beliebiger Reihenfolge liefern, und diese Reihenfolge ändert sich, sobald
+ * jemand einen Standort anlegt oder löscht — sie hängt daran, wo die
+ * Datenbank die Zeile physisch hingelegt hat.
+ *
+ * Für den Benutzer heißt das: Die Standortliste steht beim nächsten Aufruf
+ * anders da, ohne dass sich etwas geändert hat. Wer gewohnheitsmäßig den
+ * ersten Eintrag anklickt, landet irgendwann beim falschen Standort.
+ *
+ * Aufgefallen ist es an einer Prüfung, die den ersten Standort nahm und
+ * plötzlich einen anderen bekam, weil eine andere Prüfung daneben zwei
+ * Standorte angelegt und wieder gelöscht hatte. Das war kein Zufall, sondern
+ * die Datenbank, die tut, was sie darf.
+ */
 export async function listLocations(customerId?: string): Promise<Location[]> {
-  const rows = await prisma.location.findMany({ where: customerId ? { customerId } : {} })
+  const rows = await prisma.location.findMany({
+    where: customerId ? { customerId } : {},
+    orderBy: [{ name: 'asc' }, { id: 'asc' }],
+  })
   return rows.map(toLocation)
 }
 

@@ -20,11 +20,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Kein Mandant zugeordnet' }, { status: 403 })
   }
 
-  // Gate: location must have shifts configured
+  /*
+   * §198 Ohne Dienstzeiten gibt es nichts zu verteilen — aber die Auskunft,
+   * was zu tun ist, hängt davon ab, wer sie anlegt.
+   *
+   * Ein Regelpaket ersetzt sie NICHT: Es sagt, wie Dienste besetzt werden,
+   * nicht welche es gibt. Die Sperre bleibt also. Der Satz „Schließe das
+   * Standort-Onboarding ab" schickt einen Kunden mit Regelpaket aber auf
+   * einen Weg, den es für ihn nicht gibt — bei ihm richtet OKUN die
+   * Dienstzeiten ein.
+   */
   const shiftCount = await prisma.shift.count({ where: { locationId } })
   if (shiftCount === 0) {
+    const standort = await prisma.location.findUnique({
+      where: { id: locationId },
+      select: { rulePackId: true },
+    })
     return NextResponse.json(
-      { error: 'Dieser Standort hat noch keine Dienstzeiten konfiguriert. Bitte schließe zuerst das Standort-Onboarding ab.', code: 'NO_SHIFTS' },
+      {
+        error: standort?.rulePackId
+          ? 'Dieser Standort hat noch keine Dienstzeiten. Für ihn ist ein Regelpaket '
+            + 'hinterlegt — die Dienstzeiten legt OKUN an. Bitte bei OKUN melden.'
+          : 'Dieser Standort hat noch keine Dienstzeiten konfiguriert. Bitte schließe '
+            + 'zuerst das Standort-Onboarding ab.',
+        code: 'NO_SHIFTS',
+      },
       { status: 422 },
     )
   }

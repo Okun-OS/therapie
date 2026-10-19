@@ -32,7 +32,25 @@ const EIGEN = `J-Recruiting ${Date.now().toString(36)}`
 const SLUG = `j-pruefung-${Date.now().toString(36)}`
 
 const standorte = (await hole(gf, '/api/locations')).body.locations ?? []
-const meinStandort = (await hole(leitung, '/api/locations')).body.locations?.[0]?.id
+
+/*
+ * §198 Der Standort, für den die Leitung WIRKLICH zuständig ist.
+ *
+ * Hier stand `locations?.[0]?.id` — der erste Standort, den die Leitung zu
+ * sehen bekommt. Eine Standortleitung sieht aber alle Standorte ihres
+ * Mandanten, nicht nur den eigenen; der erste war also irgendeiner.
+ *
+ * Das ging gut, solange die Datenbank zufällig den richtigen zuerst lieferte.
+ * Seit `listLocations` nach Namen sortiert (ebenfalls §198, und das war
+ * überfällig), kommt ein anderer zuerst — und die Prüfung „die zuständige
+ * Standortleitung sieht die Bewerbung" wurde rot, obwohl am Programm nichts
+ * falsch war. Sie hatte die Bewerbung an einen fremden Standort gehängt.
+ *
+ * Jetzt kommt die Zuständigkeit aus der Sitzung selbst.
+ */
+const meineSitzung = (await hole(leitung, '/api/auth/me')).body.user
+const meinStandort = meineSitzung?.locationId
+  ?? (await hole(leitung, '/api/locations')).body.locations?.[0]?.id
 const andererStandort = standorte.find(s => s.id !== meinStandort)?.id ?? null
 
 /** Ohne Anmeldung — so, wie ein Fremder das System sieht. */

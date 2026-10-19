@@ -26,6 +26,12 @@ export interface Location {
   // statt einen schlechten Plan zu bekommen.
   dienstplanungFrei?: boolean
   dienstplanungHinweis?: string | null
+  /**
+   * §198 Das von OKUN für diesen Standort gebaute Regelpaket, falls es eines
+   * gibt. Die Oberfläche braucht es, um zu wissen, WER die Dienstzeiten
+   * anlegt — bei einem Regelpaket ist das OKUN, nicht der Kunde.
+   */
+  rulePackId?: string | null
 }
 
 export interface Bereich {
