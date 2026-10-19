@@ -3477,3 +3477,87 @@ ohne Bestätigung an die Daten kamen (`d-lohn`, `d22-bescheinigungen`,
 
 Gesamtlauf **1685/1685 in 46 Prüfungen**, 1069 Modultests, tsc und Bauen
 sauber.
+
+## §201 Die Fensterleiste — und das Aufblitzen der Verkaufsseite
+
+**Wie der Eigentümer es gemeldet hat.** Zum Desktop-Programm: „Das will ich
+auf jeden Fall geändert haben, weil ich finde, es sieht hässlich aus." Und
+dazu: „dass jedes Mal kurz die Website aufpoppt". Zwei Dinge, eine Ursache —
+das Programm sah aus wie eine Webseite in einem Kasten.
+
+### Das Aufblitzen
+
+Es stand so im Code, und zwar ehrlich (§177, `AngemeldeteWeiterleiten`):
+
+> „Die Verkaufsseite ist dabei kurz sichtbar. Das ist gewollt."
+
+Für eine Website war das eine vertretbare Abwägung: Die Weiterleitung lief im
+Browser, damit die Startseite statisch ausgeliefert werden konnte — wichtig
+für Google und für das erste Laden auf einem alten Telefon. Im Programm war es
+keine Abwägung mehr, sondern ein Fehler.
+
+Entschieden wird jetzt in `src/middleware.ts`, also VOR der Seite. Das
+Gegenargument von §177 trifft dort nicht: Wer kein Sitzungs-Cookie mitbringt —
+jeder Interessent, jede Suchmaschine — fällt sofort durch und bekommt
+dieselbe statisch erzeugte Seite wie bisher. Der Bau bestätigt das: `○ /`,
+weiterhin vorgerendert.
+
+Die Unterschrift wird trotzdem geprüft, obwohl ein erfundenes Cookie nur auf
+eine Seite führte, die den Betreffenden ohnehin abweist. Sonst wäre das eine
+Weiche, die sich von außen stellen lässt — und solche Weichen werden später
+als Berechtigung missverstanden.
+
+### Die Fensterleiste
+
+Oben saß die helle Fensterleiste des Betriebssystems über einer App, die ihre
+eigene Kopfleiste mitbringt: zwei Kanten, zwei Farben. Der Rahmen ist jetzt
+ausgeblendet (`titleBarStyle: 'hidden'`); das System zeichnet nur noch die drei
+Knöpfe, und zwar über unsere Leiste. Eine zweite Leiste zu bauen wäre falsch
+gewesen — die 70 Pixel hohe `CommandRail` mit dem Logo gab es schon.
+
+**Was dabei still kaputtgehen kann.** Ein rahmenloses Fenster lässt sich nur
+dort anfassen, wo eine Fläche ausdrücklich zum Ziehen erklärt ist. Fehlt sie,
+ist das Fenster festgenagelt; ist zu viel erklärt, verschiebt ein Klick auf
+einen Knopf das Fenster, statt ihn zu drücken. Die Anmeldung hat keine
+Kopfleiste und bekam deshalb einen eigenen, unsichtbaren Streifen.
+
+**Die Farbe sagt die Seite, nicht die Hülle.** Die Anmeldung ist dunkel, die
+App dahinter hell. Eine Liste der dunklen Seiten in der Hülle wäre beim
+nächsten neuen Bildschirm veraltet — und niemand merkte es, weil nur die
+Knöpfe schlecht zu sehen wären. Also meldet sich jeder Bildschirm selbst
+(`fensterleiste()` in `src/lib/drucken.ts`).
+
+Dass die Brücke dadurch um einen Eintrag wächst, hat `pruefungen/desktop/
+huelle.mjs` sofort rot gemeldet — die Prüfung zählt die erlaubte Liste
+namentlich auf. Genau dafür ist sie da: In `bruecke.js` steht „Wer diese Liste
+erweitert, öffnet eine Tür und muss sie begründen."
+
+### Nachweise
+
+`pruefungen/browser/fensterleiste.mjs` (12 Checks) gegen die **echte** App mit
+dem echten Stylesheet: Streifen vorhanden, wirklich zum Ziehen erklärt, 70 px
+hoch, über die volle Breite — und die Gegenproben: im Browser ist nichts davon
+sichtbar und nichts zieht; das Anmeldefeld bleibt anklickbar; von fünf
+Bedienelementen in der Leiste zieht keines; der Platz für die Fensterknöpfe
+ist im Browser nicht reserviert, sonst klaffte dort eine Lücke.
+
+Im Hüllen-Test steht bewusst nur, was die **Hülle** tut (Fenster bleibt
+verschiebbar, Klasse wird vor dem ersten Bild gesetzt, Farbe lässt sich
+stellen). Die Attrappe dort hat kein Stylesheet; die CSS-Regel dort zu prüfen
+hieße, eine Abschrift zu prüfen.
+
+In `k-website.mjs` neun Checks zur Weiche, davon fünf Gegenproben — eine
+Weiche, die auch Unangemeldete umleitet, hätte die Website über Nacht aus
+Google genommen.
+
+### Nebenbefund
+
+Auf dem Bildschirmfoto der Unternehmensübersicht standen vier fremde Standorte
+(„F10 mvf7fum5 ohne Paket") zwischen den echten, als aktiv mitgezählt. Reste
+aus abgebrochenen Läufen von `f10-dienstzeiten-fehlen`: Das Aufräumen stand
+nur am Ende. Eine Prüfung, die bei Erfolg aufräumt und bei Misserfolg nicht,
+räumt genau dann nicht auf, wenn etwas schiefgegangen ist. Sie räumt jetzt
+auch bei Abbruch weg — nachgewiesen mit einem absichtlich eingebauten Abbruch.
+
+**Stand:** 1732/1732 in 47 Prüfungen, 1069 Modultests, 154 im Rechendienst,
+Desktop 49/49, Browser 12+20+17+31+25+22+17, tsc und Bauen sauber.

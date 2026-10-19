@@ -192,3 +192,44 @@
 .animate-gold-glitch { animation: gold-glitch 2.4s ease-in-out infinite; }
 .animate-dock-glow      { animation: dock-glow      0.5s ease-out forwards; }
 .animate-dock-glow-gold { animation: dock-glow-gold 0.5s ease-out forwards; }
+
+/* ── §201 Die Fensterleiste des Desktop-Programms ───────────────
+ *
+ * Oben sitzt im Programm die normale Fensterleiste des Betriebssystems über
+ * der App — eine zweite Kante, eine zweite Farbe, und der Eindruck „Webseite
+ * in einem Kasten". Der Rahmen ist jetzt ausgeblendet; stattdessen zeichnet
+ * das Betriebssystem nur noch die drei Fensterknöpfe über unsere eigene
+ * Kopfleiste. Die gab es ohnehin schon (`CommandRail`, 70 px, Logo links).
+ *
+ * Damit das Fenster weiter verschiebbar bleibt, muss eine Fläche als
+ * Ziehfläche erklärt sein — sonst packt man ins Leere. Alles Anklickbare
+ * darin muss ausdrücklich wieder freigegeben werden, sonst zieht ein Klick
+ * auf einen Knopf das Fenster, statt den Knopf zu drücken.
+ *
+ * Im Browser greift nichts davon: Die Klasse `im-programm` setzt die Hülle
+ * (`desktop/bruecke.js`), und die gibt es dort nicht.
+ */
+
+.nur-im-programm { display: none; }
+html.im-programm .nur-im-programm { display: block; }
+
+html.im-programm .zieh-flaeche {
+  -webkit-app-region: drag;
+  /* Platz für die Fensterknöpfe. Unter Windows und Linux rechts, unter
+     macOS links — die Hülle sagt, welcher Fall gilt. */
+  padding-right: 150px;
+}
+
+html.im-programm.huelle-mac .zieh-flaeche {
+  padding-right: 1rem;
+  padding-left: 88px;
+}
+
+html.im-programm .zieh-flaeche button,
+html.im-programm .zieh-flaeche a,
+html.im-programm .zieh-flaeche input,
+html.im-programm .zieh-flaeche select,
+html.im-programm .zieh-flaeche textarea,
+html.im-programm .zieh-flaeche [role='button'] {
+  -webkit-app-region: no-drag;
+}

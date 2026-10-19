@@ -12,6 +12,7 @@ import { PageBanner } from '@/components/onboarding/PageBanner'
 import { Hilfeknopf } from '@/components/ui/Hilfeknopf'
 import { Warteschlange } from '@/components/offline/Warteschlange'
 import { AppRahmen } from '@/components/app/AppRahmen'
+import { fensterleiste } from '@/lib/drucken'
 import type { Role } from '@/lib/types'
 
 interface DashboardLayoutProps {
@@ -36,6 +37,11 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
       }
     }
   }, [user, isLoading, router, requiredRole])
+
+  // §201 Hier ist die App hell. Im Browser tut der Aufruf nichts; im
+  // Desktop-Programm setzt er die Fensterknöpfe auf dunkle Symbole, damit sie
+  // auf unserer hellen Kopfleiste überhaupt zu sehen sind.
+  useEffect(() => { fensterleiste('hell') }, [])
 
   // Page-in animation on every navigation
   useEffect(() => {

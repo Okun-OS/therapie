@@ -128,27 +128,33 @@ Der E-Mail-Faktor läuft unabhängig davon.
    Bescheinigung, Entgeltumwandlung); alle vier hängen jetzt an einer
    Entscheidung in `src/lib/lohnsiegel.ts`. Einzelheiten in `FEATURES.md`,
    Block §201.
-3. **Dienstzeiten der Kita „Krümelkiste" anlegen.** Dort ist ein Regelpaket
+3. ~~Desktop-Hülle: Fensterleiste und das Aufblitzen der Verkaufsseite~~ —
+   erledigt in §201. Das Fenster hat keinen eigenen Rahmen mehr, die
+   Kopfleiste der App ist die Fensterleiste; die Weiterleitung Angemeldeter
+   von `/` entscheidet jetzt `src/middleware.ts` statt des Browsers. Wer die
+   Kopfleiste in der Höhe ändert, muss `LEISTE.hoehe` in
+   `desktop/haupt.js` mitziehen — siehe `DESKTOP.md`.
+4. **Dienstzeiten der Kita „Krümelkiste" anlegen.** Dort ist ein Regelpaket
    zugeordnet, aber es gibt keine Dienstzeiten — deshalb kein Plan. Die legt
    OKUN an, nicht der Kunde.
-4. **Keine Ersatzcodes für den zweiten Faktor.** Wer SMS oder E-Mail aktiv hat
+5. **Keine Ersatzcodes für den zweiten Faktor.** Wer SMS oder E-Mail aktiv hat
    und den Zugang verliert, kommt ohne fremde Hilfe nicht mehr hinein. Bekannt,
    bewusst offen, noch nicht entschieden.
-5. **Authenticator-App ist eingeklappt, nicht gelöscht** (§196). Der Eigentümer
+6. **Authenticator-App ist eingeklappt, nicht gelöscht** (§196). Der Eigentümer
    wollte sie heraus; sie steht jetzt hinter „für Fortgeschrittene", weil sie
    die einzige Methode ohne fremden Dienstleister ist. Wenn er sie ganz
    entfernt haben will, ist das sein Recht — dann wirklich entfernen.
-6. **Die alten Planungsprofil-Spalten** (`childPickupTimes`, `weekendRule`,
+7. **Die alten Planungsprofil-Spalten** (`childPickupTimes`, `weekendRule`,
    `maxConsecutiveDays` im Profil, `planningNote`) stehen noch in der
    Datenbank. Löschen nur auf ausdrückliches Ja des Eigentümers — es
    berührt Produktionsdaten (steht in `DEINE-LISTE.md`).
-7. **Resend-Ablehnungen bei allen anderen Mails.** Resend 6 wirft nicht,
+8. **Resend-Ablehnungen bei allen anderen Mails.** Resend 6 wirft nicht,
    sondern gibt `{ error }` zurück. Seit §200 wird das bei Einladungen
    ausgewertet (`ablehnungMelden`). Bei den übrigen elf Aufrufern von
    `sendEmail` (2FA-Code, Passwort zurücksetzen, Tausch, Benachrichtigungen …)
    wird eine Ablehnung nur protokolliert. Einige stehen mitten in einem
    Ablauf ohne Auffangnetz — darum nicht nebenbei umgestellt.
-8. 🔴 **`PATCH /api/employees/[id]` übernimmt den Rest des Bodys ungefiltert**
+9. 🔴 **`PATCH /api/employees/[id]` übernimmt den Rest des Bodys ungefiltert**
    in die Datenbank (`updateEmployee`). Geprüft wird nur, dass der
    Mitarbeiter zum eigenen Unternehmen gehört — nicht, WAS geändert wird.
    **Nachgemessen am 19.10.2026:** Die Leitung der Reha setzt mit

@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Logo } from '@/components/ui/Logo'
 import { Menu, X } from 'lucide-react'
 import { FUSS } from '@/lib/website-inhalt'
+import { fensterleiste } from '@/lib/drucken'
 
 /**
  * §177 Kopf und Fuß der öffentlichen Website.
@@ -28,9 +29,17 @@ export function WebsiteKopf() {
   const [offen, setOffen] = useState(false)
   const pfad = usePathname()
 
+  /*
+    §201 Diese Seiten sind dunkel. Im Desktop-Programm sind nur `/impressum`
+    und `/datenschutz` erreichbar (die Verkaufsseiten leiten dort zurück zur
+    Anmeldung) — aber wer von der hellen App dorthin wechselt, hätte sonst
+    dunkle Fensterknöpfe auf dunklem Grund.
+  */
+  useEffect(() => { fensterleiste('dunkel') }, [])
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/5 bg-navy-900/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-3.5 sm:gap-6">
+      <div className="zieh-flaeche mx-auto flex max-w-6xl items-center gap-3 px-5 py-3.5 sm:gap-6">
         {/*
           §179 Auf dem Telefon nur das Zeichen, sonst die Wortmarke.
           Bei 390 Pixeln passten Wortmarke, Anmelde-Knopf und Menü-Symbol

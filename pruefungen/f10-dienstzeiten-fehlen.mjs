@@ -66,6 +66,41 @@ const mit = await standortAnlegen(`${MARKE} mit Paket`)
 check('Zwei frische Standorte ohne Dienstzeiten angelegt',
   Boolean(ohne?.id && mit?.id), `${ohne?.id} · ${mit?.id}`)
 
+/*
+ * §201 Weggeräumt wird auch dann, wenn die Prüfung vorher abbricht.
+ *
+ * Das Aufräumen stand nur am Ende. Bricht irgendetwas dazwischen ab — beim
+ * ersten Mal, weil der Rechendienst nicht lief —, blieben die beiden
+ * Standorte stehen. Gefunden wurden sie Wochen später auf einem
+ * Bildschirmfoto der Unternehmensübersicht: vier Balken mit Namen wie
+ * „F10 mvf7fum5 ohne Paket" zwischen den echten Standorten, und die Kachel
+ * daneben zählte sie als aktiv mit.
+ *
+ * Eine Prüfung, die bei Erfolg aufräumt und bei Misserfolg nicht, räumt
+ * genau dann nicht auf, wenn etwas schiefgegangen ist.
+ */
+let aufgeraeumt = false
+async function wegraeumen() {
+  if (aufgeraeumt) return
+  aufgeraeumt = true
+  for (const s of [mit, ohne]) {
+    // Löschen darf nur OKUN — deshalb hier der andere Zugang.
+    if (s?.id) {
+      await fetch(`${BASIS}/api/locations/${s.id}`, {
+        method: 'DELETE', headers: { cookie: okun },
+      }).catch(() => undefined)
+    }
+  }
+}
+for (const grund of ['uncaughtException', 'unhandledRejection']) {
+  process.once(grund, async (fehler) => {
+    console.error(`\n  ⚠ Abbruch (${grund}) — räume die eigenen Standorte weg.`)
+    await wegraeumen()
+    console.error(fehler)
+    process.exit(1)
+  })
+}
+
 // Das Paket zuordnen — welches, verrät der Rechendienst selbst.
 const pakete = await hole(okun, '/api/okun/dienstplanung')
 const paketId = (pakete.body?.pakete ?? [])[0]?.id
@@ -124,10 +159,7 @@ for (const [name, antwort] of [['mit Paket', mitPaketAntwort], ['ohne Paket', oh
 }
 
 // ── Aufräumen ──────────────────────────────────────────────────────────────
-for (const s of [mit, ohne]) {
-  // Löschen darf nur OKUN — deshalb hier der andere Zugang.
-  if (s?.id) await fetch(`${BASIS}/api/locations/${s.id}`, { method: 'DELETE', headers: { cookie: okun } })
-}
+await wegraeumen()
 const danach = await standorte()
 check('Die Prüfung lässt keine Standorte zurück',
   !danach.some(l => l.name?.includes(MARKE)),

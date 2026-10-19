@@ -291,6 +291,30 @@ Stehen nur zwei der drei Variablen, **bricht der Bau ab**. Sonst liefe er still
 über den anderen Weg oder unsigniert weiter, und niemand sähe, dass Azure
 gemeint war.
 
+### §201 Das Fenster hat keinen eigenen Rahmen mehr
+
+Oben saß die helle Fensterleiste des Betriebssystems über einer App, die ihre
+eigene Kopfleiste mitbringt — zwei Kanten, zwei Farben, und genau deshalb der
+Eindruck „Webseite in einem Kasten". Der Rahmen ist jetzt ausgeblendet
+(`titleBarStyle: 'hidden'`, unter macOS `hiddenInset`); das System zeichnet
+nur noch die drei Knöpfe, und zwar über die `CommandRail` der App.
+
+Drei Dinge hängen daran und müssen zusammenpassen:
+
+| Wo | Was |
+|---|---|
+| `desktop/haupt.js` → `LEISTE.hoehe` | 70 — dieselbe Höhe wie die `CommandRail` |
+| `src/app/globals.css` → `.zieh-flaeche` | macht die Leiste anfassbar und hält rechts 150 px für die Knöpfe frei |
+| `desktop/bruecke.js` | setzt `im-programm` auf dem Wurzelelement, **bevor** gezeichnet wird |
+
+Wird die Kopfleiste der App einmal höher oder niedriger, muss `LEISTE.hoehe`
+mit — sonst sitzen die Knöpfe neben der Leiste. Das fällt keinem Test auf,
+weil beides für sich genommen richtig bleibt; deshalb steht es hier.
+
+Die Farbe der Knöpfe meldet jede Seite selbst (`fensterleiste()` in
+`src/lib/drucken.ts`): die Anmeldung dunkel, die App dahinter hell. Die Hülle
+führt bewusst keine Liste der dunklen Seiten.
+
 ### Eingerichtet am 19.10.2026 — die echten Werte
 
 | Variable | Wert |

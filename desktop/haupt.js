@@ -158,6 +158,23 @@ function fensterLageLesen() {
   return { width: 1400, height: 900 }
 }
 
+/**
+ * §201 Die Fensterleiste.
+ *
+ * `hoehe` ist die Höhe der Kopfleiste der App (`CommandRail`). Die beiden
+ * Farbpaare sind die beiden Gesichter der Anwendung: die Anmeldung ist dunkel
+ * (`bg-navy`, #1A1D1F), alles dahinter hell (#F9FAFB). Welches gerade gilt,
+ * sagt die Seite selbst über `window.okun.leiste('hell' | 'dunkel')` — die
+ * Hülle führt keine Liste der dunklen Seiten, die beim nächsten neuen
+ * Bildschirm veraltet wäre.
+ */
+const LEISTE = {
+  mac: process.platform === 'darwin',
+  hoehe: 70,
+  dunkel: { color: '#1A1D1F', symbolColor: '#E8E8E8' },
+  hell: { color: '#F9FAFB', symbolColor: '#1A1D1F' },
+}
+
 let fenster = null
 
 function fensterBauen() {
@@ -172,6 +189,29 @@ function fensterBauen() {
     icon: path.join(__dirname, 'symbole', 'icon.png'),
     show: false,
     autoHideMenuBar: process.platform !== 'darwin',
+    /*
+     * §201 Kein eigener Fensterrahmen — die App hat schon einen.
+     *
+     * Oben saß bisher die helle Fensterleiste des Betriebssystems über einer
+     * App, die ihre eigene Kopfleiste mitbringt: zwei Kanten, zwei Farben,
+     * und genau der Eindruck „Webseite in einem Kasten", über den sich der
+     * Eigentümer beschwert hat.
+     *
+     * Jetzt zeichnet das Betriebssystem nur noch die drei Fensterknöpfe, und
+     * zwar ÜBER unsere Kopfleiste (`CommandRail`, 70 px hoch). Deshalb hier
+     * dieselbe Höhe — stünde sie woanders, verrutschten die Knöpfe beim
+     * nächsten Umbau der Leiste, ohne dass es jemand merkt.
+     *
+     * Unter macOS wird das anders gemacht: `hiddenInset` lässt die drei
+     * Punkte links stehen, wo sie dort hingehören, und sie werden nur tiefer
+     * gesetzt.
+     */
+    ...(LEISTE.mac
+      ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 26 } }
+      : {
+        titleBarStyle: 'hidden',
+        titleBarOverlay: { ...LEISTE.dunkel, height: LEISTE.hoehe },
+      }),
     webPreferences: {
       // §173 Die drei Zeilen, auf die es sicherheitshalber ankommt: Die
       // geladene Seite bekommt kein Node, keinen Zugriff auf das Dateisystem
@@ -251,6 +291,25 @@ function fensterBauen() {
 //
 // Eine kurze Liste, absichtlich. Jeder Punkt hier ist eine Tür in den
 // Rechner, und jede Tür muss sich begründen lassen.
+
+/**
+ * §201 Die Farbe der Fensterknöpfe umstellen.
+ *
+ * Unter macOS gibt es nichts zu tun: Die drei Punkte passen sich dort selbst
+ * an, und `setTitleBarOverlay` wirft sogar, wenn es kein Overlay gibt.
+ */
+ipcMain.handle('okun:leiste', (_e, art) => {
+  if (LEISTE.mac || !fenster || fenster.isDestroyed()) return false
+  const farben = art === 'hell' ? LEISTE.hell : LEISTE.dunkel
+  try {
+    fenster.setTitleBarOverlay({ ...farben, height: LEISTE.hoehe })
+    return true
+  } catch {
+    // Ältere Fassungen mancher Fenstersysteme können das nicht. Dann bleibt
+    // die Startfarbe stehen — unschön, aber nichts, wofür man abstürzen muss.
+    return false
+  }
+})
 
 ipcMain.handle('okun:adresse', () => anlage())
 

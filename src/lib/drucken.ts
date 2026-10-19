@@ -20,6 +20,8 @@ interface OkunBruecke {
   adresseSetzen(wert: string): Promise<{ ok: boolean; adresse?: string; fehler?: string }>
   drucken(): Promise<{ ok: boolean; fehler?: string }>
   version(): Promise<{ programm: string; plattform: string; electron: string }>
+  /** §201 Welches Gesicht die Seite oben hat — siehe `fensterleiste`. */
+  leiste?(art: 'hell' | 'dunkel'): Promise<boolean>
 }
 
 declare global {
@@ -29,6 +31,23 @@ declare global {
 /** Läuft diese Seite im Programm für den Rechner? */
 export function imProgramm(): boolean {
   return typeof window !== 'undefined' && window.okun?.imProgramm === true
+}
+
+/**
+ * §201 Der Hülle sagen, welche Farbe die Fensterknöpfe haben sollen.
+ *
+ * Das Betriebssystem zeichnet sie über unsere eigene Kopfleiste, kennt deren
+ * Farbe aber nicht. Die Anmeldung und die Verkaufsseiten sind dunkel, die App
+ * dahinter ist hell — also meldet sich jeder Bildschirm selbst. Die Hülle
+ * führt bewusst keine Liste der dunklen Seiten: Die wäre beim nächsten neuen
+ * Bildschirm veraltet, und niemand würde es merken, weil nur die Knöpfe
+ * schlecht zu sehen wären.
+ *
+ * Im Browser tut der Aufruf nichts.
+ */
+export function fensterleiste(art: 'hell' | 'dunkel'): void {
+  if (typeof window === 'undefined') return
+  window.okun?.leiste?.(art).catch(() => undefined)
 }
 
 /**
