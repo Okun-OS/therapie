@@ -29,7 +29,7 @@ Zweig löst eine Auslieferung samt `prisma migrate deploy` aus).
 ## Wie hier gearbeitet wird — das ist der Kern
 
 * **Kommentare auf Deutsch, und sie erklären das Warum.** Durchnummeriert mit
-  `§`; Stand **§200**, nächste Nummer §201. Wo ein Fehler behoben wird, steht
+  `§`; Stand **§201**, nächste Nummer §202. Wo ein Fehler behoben wird, steht
   dabei, was vorher dastand und warum es falsch war — damit niemand es
   zurückbaut.
 * **Nichts behaupten, was nicht gemessen ist.** Zahlen, Preise, Fristen,
@@ -122,12 +122,12 @@ Der E-Mail-Faktor läuft unabhängig davon.
 ## Offene Aufgaben
 
 1. ~~Regelpaket-Zuweisung umziehen~~ — erledigt in §200.
-2. **Lohnabrechnung besser schützen.** Der Eigentümer möchte eine zusätzliche
-   Stufe, bevor jemand seine Lohnabrechnung öffnet. Vorschlag, dem er noch
-   nicht zugestimmt hat: **kein zweites Passwort** (das vergisst man, es
-   braucht einen Rücksetzweg und landet auf einem Zettel), sondern erneute
-   Eingabe des eigenen Passworts oder des 2FA-Codes, danach 15 Minuten Ruhe.
-   Schützt den Fall, der wirklich vorkommt: ein offen stehender Rechner.
+2. ~~Lohnabrechnung besser schützen~~ — erledigt in §201. Eigenes
+   Anmeldepasswort, danach 15 Minuten frei. Dabei fiel auf, dass dieselben
+   Zahlen noch auf drei weiteren Wegen offenstanden (Auskunft nach Art.15,
+   Bescheinigung, Entgeltumwandlung); alle vier hängen jetzt an einer
+   Entscheidung in `src/lib/lohnsiegel.ts`. Einzelheiten in `FEATURES.md`,
+   Block §201.
 3. **Dienstzeiten der Kita „Krümelkiste" anlegen.** Dort ist ein Regelpaket
    zugeordnet, aber es gibt keine Dienstzeiten — deshalb kein Plan. Die legt
    OKUN an, nicht der Kunde.

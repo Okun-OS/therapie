@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { useAuth } from '@/lib/auth-context'
 import { HumanContextChat } from '@/components/profile/HumanContextChat'
 import { Personalakte } from '@/components/employees/Personalakte'
+import { useLohnsiegel, Siegelkarte, Freigabeleiste } from '@/components/employee/Lohnfreigabe'
 import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks, FileText, History, Calendar, Copy, Check } from 'lucide-react'
 import { formatDate, toDateString } from '@/lib/utils'
 import type { Employee, Location, ScheduleEntry, Shift, OvertimeRequest, Absence, MonthlyClosing } from '@/lib/types'
@@ -72,6 +73,9 @@ function TagInputSection({
 
 export default function EmployeeProfile() {
   const { user } = useAuth()
+  // §201 Für „Meine Daten" am Ende der Seite — die Auskunft enthält die
+  // Lohndaten und liegt deshalb hinter derselben Bestätigung.
+  const siegel = useLohnsiegel()
   const [allEmployees, setAllEmployees] = useState<Employee[]>([])
   const [allLocations, setAllLocations] = useState<Location[]>([])
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([])
@@ -801,20 +805,44 @@ export default function EmployeeProfile() {
             wofür wir sie nutzen und wie lange wir sie aufbewahren. Die Auskunft bekommst
             du sofort — du musst dafür niemanden fragen.
           </p>
-          <div className="flex flex-wrap gap-2">
-            <a
-              href="/api/dsgvo/auskunft?format=pdf"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-gray-600 border border-gray-200 hover:bg-gray-50"
-            >
-              <FileText size={14} /> Auskunft als PDF
-            </a>
-            <a
-              href="/api/dsgvo/auskunft"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-gray-600 border border-gray-200 hover:bg-gray-50"
-            >
-              <FileText size={14} /> Alle Daten als Datei
-            </a>
-          </div>
+
+          {/*
+            §201 Die Auskunft versammelt alles an einer Stelle — auch jede
+            Abrechnungszeile. Sie ist damit die zweite Tür zu denselben Zahlen,
+            die bei den Lohnabrechnungen verriegelt ist, und braucht dieselbe
+            Bestätigung.
+
+            Das steht Art.15 nicht im Weg: Verlangt wird keine neue Hürde,
+            sondern eine Identitätsprüfung — ausdrücklich vorgesehen in
+            Art.12 Abs.6 DSGVO. Gefragt wird nach dem Passwort, das die Person
+            ohnehin hat, und die Auskunft kommt danach sofort.
+          */}
+          {siegel.frei === null ? (
+            <p className="text-xs text-gray-400">Einen Moment…</p>
+          ) : !siegel.frei ? (
+            <Siegelkarte
+              stand={siegel}
+              text="Deine Auskunft enthält auch deine Lohndaten."
+            />
+          ) : (
+            <>
+              <Freigabeleiste stand={siegel} />
+              <div className="flex flex-wrap gap-2 mt-3">
+                <a
+                  href="/api/dsgvo/auskunft?format=pdf"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-gray-600 border border-gray-200 hover:bg-gray-50"
+                >
+                  <FileText size={14} /> Auskunft als PDF
+                </a>
+                <a
+                  href="/api/dsgvo/auskunft"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-gray-600 border border-gray-200 hover:bg-gray-50"
+                >
+                  <FileText size={14} /> Alle Daten als Datei
+                </a>
+              </div>
+            </>
+          )}
         </Card>
       </div>
     </>

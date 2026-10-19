@@ -10,7 +10,7 @@
 // Kategorien — löschen, anonymisieren, sperren — und sieht anschließend nach,
 // was tatsächlich passiert ist.
 
-import { BASIS, pruefer, login, hole, sende, testMail } from './helfer.mjs'
+import { BASIS, pruefer, login, hole, sende, testMail, mitSiegel } from './helfer.mjs'
 
 const { check, bilanz } = pruefer()
 
@@ -123,8 +123,26 @@ const alsText = JSON.stringify(auskunft.body)
 check('Keine Passwörter oder Schlüssel in der Auskunft',
   !alsText.includes('passwordHash') && !alsText.includes('p256dh'))
 
-const eigene = await hole(kollege, '/api/dsgvo/auskunft')
-check('Jeder bekommt seine eigene Auskunft ohne Umweg',
+/*
+ * §201 Die eigene Auskunft liegt seit dem Lohnsiegel hinter einer
+ * Passwortbestätigung. Das ist kein Widerspruch zu Art.15: Verlangt wird
+ * keine neue Hürde, sondern eine Identitätsprüfung (Art.12 Abs.6), und die
+ * Auskunft kommt danach sofort und ohne Umweg über die Verwaltung.
+ *
+ * Erst die Gegenprobe, dann der Weg — in dieser Reihenfolge, weil sonst der
+ * Keks schon läge und die Sperre nie zu sehen wäre.
+ */
+const ohneSiegel = await hole(kollege, '/api/dsgvo/auskunft')
+check('Ohne Passwortbestätigung gibt es die eigene Auskunft NICHT',
+  ohneSiegel.status === 403 && ohneSiegel.body.code === 'SIEGEL_NOETIG',
+  `HTTP ${ohneSiegel.status} ${JSON.stringify(ohneSiegel.body).slice(0, 120)}`)
+check('Und es kommen auch keine Daten mit',
+  !ohneSiegel.body.person && !ohneSiegel.body.bloecke,
+  JSON.stringify(ohneSiegel.body).slice(0, 120))
+
+const kollegeFrei = await mitSiegel(kollege)
+const eigene = await hole(kollegeFrei, '/api/dsgvo/auskunft')
+check('Nach der Bestätigung bekommt jeder seine eigene Auskunft ohne Umweg',
   eigene.status === 200 && !!eigene.body.person, eigene.body.error ?? eigene.body.person?.name)
 
 const fremde = await hole(kollege, `/api/dsgvo/auskunft?employeeId=${personId}`)

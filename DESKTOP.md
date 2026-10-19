@@ -291,6 +291,38 @@ Stehen nur zwei der drei Variablen, **bricht der Bau ab**. Sonst liefe er still
 über den anderen Weg oder unsigniert weiter, und niemand sähe, dass Azure
 gemeint war.
 
+### Eingerichtet am 19.10.2026 — die echten Werte
+
+| Variable | Wert |
+|---|---|
+| `OKUN_AZURE_ENDPUNKT` | `https://neu.codesigning.azure.net` (North Europe) |
+| `OKUN_AZURE_KONTO` | `okunsignatur` — **ohne Bindestrich**, anders als die Ressourcengruppe `okun-signatur` |
+| `OKUN_AZURE_PROFIL` | `okun-public` |
+| `AZURE_TENANT_ID` | Verzeichnis-ID des Standardverzeichnisses |
+| `AZURE_CLIENT_ID` | App-Registrierung `okun-signatur-bau` |
+| `AZURE_CLIENT_SECRET` | steht **nur** bei Railway |
+
+Dazu gehört die Rollenzuweisung **Artifact Signing Certificate Profile Signer**
+für `okun-signatur-bau` auf dem Konto `okunsignatur`. Ohne sie darf die App
+sich anmelden, aber nicht signieren — der Bau läuft dann bis zur Signatur und
+bricht mit „Forbidden" ab.
+
+> **Zwei Termine zum Vormerken**
+>
+> * **18.10.2028** — der geheime Clientschlüssel läuft ab. Danach bricht jeder
+>   Bau ab. Ersatz: Entra ID → App-Registrierungen → `okun-signatur-bau` →
+>   Zertifikate & Geheimnisse → neuer Schlüssel, Wert bei Railway ersetzen.
+>   Zertifikat und Profil bleiben davon unberührt.
+> * **7.1.2029** — die Identitätsüberprüfung
+>   `e339bb25-b6de-4e49-9e8e-ebdc493b4283` läuft ab und muss erneuert werden.
+>
+> Das **Zertifikat selbst gilt nur drei Tage** und erneuert sich von allein.
+> Das ist kein Fehler, sondern der Sinn des Dienstes: Ein Schlüssel mit drei
+> Tagen Laufzeit ist für einen Dieb fast wertlos. Dass eine einmal signierte
+> Datei trotzdem jahrelang gültig bleibt, macht der Zeitstempel — Windows
+> prüft nicht, ob das Zertifikat heute gilt, sondern ob es galt, als signiert
+> wurde.
+
 **Bei jedem anderen Weg (B, C, D)** kommt der Befehl des Anbieters über eine
 Umgebungsvariable; `{datei}` wird durch den Pfad der zu signierenden Datei
 ersetzt:

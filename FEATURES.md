@@ -3417,3 +3417,63 @@ meldet.** Kein einziger externer Zugang nötig.
 
 ## Noch offen aus der Nachweis-Phase
 - [x] **Krankenschein mit Fehlzeit verknüpfen** — fertig. Siehe Block C6 oben.
+
+## §201 Die zweite Tür vor den eigenen Lohndaten
+
+**Der Anlass.** Eine Sitzung hält dreißig Tage. In einer Wohngruppe steht ein
+Tablet im Dienstzimmer, und wer es in die Hand nimmt, ist angemeldet als der,
+der es zuletzt benutzt hat. Zwischen „Dienstplan ansehen" und „sehen, was die
+Kollegin verdient" lag ein Fingertipp. Das Gehalt ist die Angabe, die
+Mitarbeiter am wenigsten voneinander wissen wollen.
+
+**Kein zweites Passwort.** Vorgeschlagen war „wie ein extra Passwort". Ein
+zweites Passwort wird einmal vergeben, selten gebraucht, prompt vergessen —
+und dann braucht es einen Weg, es zurückzusetzen, und dieser Weg ist am Ende
+die eigentliche Tür. Abgefragt wird deshalb das **eigene Anmeldepasswort**.
+Dasselbe Geheimnis, aber eine andere Aussage: nicht „dieses Gerät gehört
+jemandem, der sich einmal angemeldet hat", sondern „die Person, die hier gerade
+steht, kennt das Passwort". Danach ist eine **Viertelstunde** frei, sichtbar
+ablaufend, mit „Wieder sperren" daneben.
+
+**Was beim Prüfen auffiel — und größer war als die Sperre selbst.** Die
+Lohnabrechnung liegt als PDF in der Personalakte. Dieselben Zahlen kommen aber
+noch auf drei anderen Wegen heraus, die jedem Angemeldeten offenstanden:
+
+| Weg | Was herauskam |
+|---|---|
+| `/api/dsgvo/auskunft` | **alle** Abrechnungszeilen auf einmal, als JSON |
+| `/api/payroll/bescheinigung` | Personalnummer, SV-Nummer, Krankenkasse, Monate |
+| `/api/payroll/bav` | die Entgeltumwandlung mit Monatsbetrag |
+
+Die Auskunft ist dabei die schlimmere Tür als die Abrechnung: Sie gibt nicht
+einen Monat heraus, sondern alles. Eine Sperre nur am PDF hätte wie Schutz
+ausgesehen und keiner gewesen. Alle vier Wege hängen jetzt an **einer**
+Entscheidung (`siegelSperre` in `src/lib/lohnsiegel.ts`).
+
+**Zu Art.15 DSGVO.** Die Auskunft ist ein Recht der Person und darf nicht
+erschwert werden. Eine Identitätsprüfung ist aber ausdrücklich vorgesehen
+(Art.12 Abs.6); verlangt wird nichts Neues, sondern das Passwort, das die
+Person ohnehin hat, und die Auskunft kommt danach sofort.
+
+**Warum nur für Mitarbeiter.** Für die Leitung wäre dieselbe Sperre
+Schaufenster-Sicherheit: Sie hat die Lohnliste aller Beschäftigten ohnehin
+offen. Ein PDF zu verriegeln, während die Tabelle mit denselben Zahlen daneben
+steht, schützt nichts und kostet jeden Abrechnungslauf Zeit.
+
+**Die Bremse ist dieselbe wie bei der Anmeldung** (§152). Hätte diese Stelle
+eine eigene, großzügigere Zählung, wäre sie der bequemere Weg, Passwörter
+durchzuprobieren — eine Tür zusätzlich einzubauen und sie schlechter zu
+sichern als die erste macht das Haus unsicherer.
+
+**Nachweis.** `pruefungen/m-lohnsiegel.mjs` (28 Checks) gegen das laufende
+System: ohne Bestätigung kommen keine Bytes; der eigene Arbeitsvertrag bleibt
+offen (Gegenprobe gegen eine zu weit geratene Sperre); die Leitung wird nicht
+gefragt; falsches Passwort stellt kein Siegel aus; **das Siegel des Kollegen am
+selben Gerät gilt nicht** — genau der Fall, gegen den gebaut wurde. Dazu 14
+Modultests für das Ablaufen nach der Viertelstunde, das in einer Prüfung
+fünfzehn Minuten Wartezeit hieße. Die vier bestehenden Prüfungen, die vorher
+ohne Bestätigung an die Daten kamen (`d-lohn`, `d22-bescheinigungen`,
+`g1-dsgvo`, `b4-app`), haben den neuen Weg **und je eine Gegenprobe** bekommen.
+
+Gesamtlauf **1685/1685 in 46 Prüfungen**, 1069 Modultests, tsc und Bauen
+sauber.

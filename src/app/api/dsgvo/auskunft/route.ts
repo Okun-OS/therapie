@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
 import { auskunftErstellen } from '@/lib/dsgvo-auskunft'
 import { erzeugeAuskunftsbeleg } from '@/lib/dsgvo-beleg'
+import { SIEGEL_KEKS, siegelSperre } from '@/lib/lohnsiegel'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +39,19 @@ export async function GET(req: NextRequest) {
 
   const verweigert = await assertEmployeeAccess(session, employeeId)
   if (verweigert) return verweigert
+
+  // §201 Die Auskunft versammelt alles an einer Stelle — auch jede
+  // Abrechnungszeile. Für den Beschäftigten selbst ist das deshalb die
+  // weitere Tür zu denselben Zahlen, die an der Lohnabrechnung verriegelt
+  // ist. Warum eine Identitätsprüfung Art. 15 nicht im Weg steht, steht in
+  // `src/lib/lohnsiegel.ts`.
+  const sperre = siegelSperre({
+    rolle: session.role,
+    marke: req.cookies.get(SIEGEL_KEKS)?.value,
+    userId: session.userId,
+    was: 'deine Auskunft zu erhalten',
+  })
+  if (sperre) return NextResponse.json(sperre, { status: sperre.status })
 
   const auskunft = await auskunftErstellen(employeeId)
   if (!auskunft) return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
