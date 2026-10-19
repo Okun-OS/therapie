@@ -159,7 +159,21 @@ export default function SecurityPage() {
         body: JSON.stringify({ phone }),
       })
       const data = await res.json()
-      if (!res.ok) { setSmsError(data.error ?? 'Fehler'); return }
+      if (!res.ok) {
+        /*
+         * §197 Den echten Grund anzeigen, nicht nur „Fehler".
+         *
+         * Twilio sagt in `hinweis` auf Deutsch, was zu tun ist, und in
+         * `twilioCode` die Nummer aus seinem Fehlerverzeichnis. Beides
+         * gehört vor die Augen dessen, der das gerade einrichtet — sonst
+         * sucht er im Serverprotokoll oder gar nicht.
+         */
+        const teile = [data.error ?? 'Fehler']
+        if (data.hinweis) teile.push(data.hinweis)
+        if (data.twilioCode) teile.push(`(Twilio-Fehler ${data.twilioCode}: ${data.twilioMeldung ?? ''})`)
+        setSmsError(teile.join(' '))
+        return
+      }
       setSmsStep('code')
     } catch {
       setSmsError('Netzwerkfehler')

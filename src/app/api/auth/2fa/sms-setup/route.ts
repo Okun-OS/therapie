@@ -61,7 +61,27 @@ export async function POST(req: NextRequest) {
 
   const result = await sendSms(normalized, `Dein OKUN Verifizierungscode: ${otp}. Gültig ${EXPIRY_MINUTES} Minuten.`)
   if (!result.success) {
-    return NextResponse.json({ error: result.error ?? 'SMS-Versand fehlgeschlagen' }, { status: 502 })
+    /*
+     * §197 Hier DARF der echte Grund mit.
+     *
+     * Wer diese Route aufruft, ist angemeldet und richtet den Versand für
+     * sein eigenes Konto ein. Ihm „SMS konnte nicht gesendet werden" zu
+     * sagen und den Grund ins Serverprotokoll zu schreiben, heißt: Er sucht
+     * eine halbe Stunde, obwohl Twilio längst gesagt hat, woran es liegt.
+     *
+     * Vor der Anmeldung (`sms-send`) bleibt es bewusst beim allgemeinen
+     * Satz — dort steht ein Unbekannter, und wie unsere Einrichtung
+     * aussieht, geht ihn nichts an.
+     */
+    return NextResponse.json(
+      {
+        error: result.error ?? 'SMS-Versand fehlgeschlagen',
+        twilioCode: result.fehler?.code,
+        twilioMeldung: result.fehler?.twilio,
+        hinweis: result.fehler?.hinweis,
+      },
+      { status: 502 },
+    )
   }
 
   return NextResponse.json({ sent: true })

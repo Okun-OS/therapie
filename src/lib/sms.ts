@@ -40,7 +40,54 @@ export function smsEingerichtet(): boolean {
   )
 }
 
-export async function sendSms(to: string, body: string): Promise<{ success: boolean; error?: string }> {
+/**
+ * §197 Was Twilio zu einer abgelehnten Nachricht sagt.
+ *
+ * `code` ist die Nummer aus Twilios Fehlerverzeichnis (21212, 21606, …) und
+ * sagt genau, woran es lag. Sie gehört NICHT zu dem, was ein Benutzer vor der
+ * Anmeldung zu sehen bekommt — aber unbedingt zu dem, was derjenige sieht,
+ * der den Versand gerade einrichtet.
+ */
+export interface SmsFehler {
+  code?: number
+  twilio?: string
+  hinweis?: string
+}
+
+/**
+ * §197 Die paar Fehler, die beim Einrichten wirklich vorkommen — übersetzt.
+ *
+ * Twilios eigene Meldungen sind englisch und beschreiben das Symptom, nicht
+ * die Abhilfe. „The From phone number OKUN is not a valid phone number" sagt
+ * einem Betreiber nicht, dass sein Konto noch im Testbetrieb ist.
+ */
+const ERKLAERUNGEN: Record<number, string> = {
+  21212:
+    'Twilio erkennt den Absender nicht an. Bei einem Absendernamen wie „OKUN" '
+    + 'ist die häufigste Ursache ein Konto, das noch im Testbetrieb läuft — '
+    + 'Testkonten dürfen keine Absendernamen benutzen. Prüfen, ob das Konto '
+    + 'wirklich auf „Full access" steht.',
+  21606:
+    'Der Absender gehört nicht zu diesem Konto oder kann keine SMS. Bei einer '
+    + 'gekauften Nummer: Ist sie SMS-fähig und in genau diesem Konto? Bei '
+    + 'einem Absendernamen: Erlaubt das Zielland ihn ohne Voranmeldung? '
+    + '(Deutschland: ja.)',
+  21612:
+    'Diese Kombination aus Absender und Empfänger ist nicht zustellbar — '
+    + 'meist ein Absender, der im Land des Empfängers nicht zugelassen ist.',
+  21614: 'Die Zielnummer ist eine Festnetznummer. Dorthin geht keine SMS.',
+  21408:
+    'Für dieses Zielland ist der Versand im Konto nicht freigeschaltet. In '
+    + 'Twilio unter Messaging → Settings → Geo permissions das Land erlauben.',
+  20003:
+    'Twilio verweigert den Zugang. Stimmen TWILIO_ACCOUNT_SID und '
+    + 'TWILIO_AUTH_TOKEN, und ist das Konto bezahlt?',
+}
+
+export async function sendSms(
+  to: string,
+  body: string,
+): Promise<{ success: boolean; error?: string; fehler?: SmsFehler }> {
   /*
    * §195 Die Notlösung für die Entwicklung gilt NUR in der Entwicklung.
    *
@@ -91,7 +138,30 @@ export async function sendSms(to: string, body: string): Promise<{ success: bool
     if (!res.ok) {
       const text = await res.text()
       console.error('[SMS] Twilio error:', text)
-      return { success: false, error: 'SMS konnte nicht gesendet werden.' }
+      /*
+       * §197 Den Grund mitgeben — aber nur als zweites Feld.
+       *
+       * `error` bleibt der Satz, den ein Benutzer sehen darf. `fehler` ist
+       * für den Betreiber: Nummer, Originaltext und eine Erklärung auf
+       * Deutsch. Wer es weitergibt, entscheidet die Route — vor der
+       * Anmeldung darf niemand erfahren, wie unsere Einrichtung aussieht.
+       */
+      let code: number | undefined
+      let twilio: string | undefined
+      try {
+        const d = JSON.parse(text)
+        code = typeof d?.code === 'number' ? d.code : undefined
+        twilio = typeof d?.message === 'string' ? d.message : undefined
+      } catch { /* kein JSON — dann eben nur der Rohtext */ }
+      return {
+        success: false,
+        error: 'SMS konnte nicht gesendet werden.',
+        fehler: {
+          code,
+          twilio: twilio ?? text.slice(0, 300),
+          hinweis: code ? ERKLAERUNGEN[code] : undefined,
+        },
+      }
     }
     return { success: true }
   } catch (err) {
