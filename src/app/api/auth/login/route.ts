@@ -123,6 +123,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ requiresSMS: true, userId: user.id })
   }
 
+  // §196 Der E-Mail-Code. Steht NACH den anderen beiden: Wer eine
+  // Authenticator-App oder eine bestätigte Nummer hat, soll die behalten —
+  // beides ist stärker als eine E-Mail, die im selben Postfach landet, über
+  // das auch das Passwort zurückgesetzt wird.
+  if (user.emailOtpEnabled) {
+    return NextResponse.json({ requiresEmail: true, userId: user.id })
+  }
+
   const res = NextResponse.json({
     user: {
       id: user.id,

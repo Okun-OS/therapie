@@ -10,10 +10,10 @@ import Link from 'next/link'
 import { Mail, Lock, ShieldCheck, ArrowLeft, MessageSquare, Check } from 'lucide-react'
 import { KOPF, STAERKEN, FUSS } from '@/lib/website-inhalt'
 
-type LoginStep = 'credentials' | 'totp' | 'sms'
+type LoginStep = 'credentials' | 'totp' | 'sms' | 'email'
 
 export default function LoginPage() {
-  const { login, loginWithTotp, loginWithSms } = useAuth()
+  const { login, loginWithTotp, loginWithSms, loginWithEmailCode } = useAuth()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -29,6 +29,13 @@ export default function LoginPage() {
   const [smsUserId, setSmsUserId] = useState<string | null>(null)
   const [smsCode, setSmsCode] = useState('')
   const [smsSent, setSmsSent] = useState(false)
+
+  // §196 E-Mail-Code
+  const [mailUserId, setMailUserId] = useState<string | null>(null)
+  const [mailCode, setMailCode] = useState('')
+  // Die verkürzte Adresse („f…x@firma.de"), damit auf dem Schirm steht,
+  // WOHIN der Code ging — ohne die ganze Adresse preiszugeben.
+  const [mailHinweis, setMailHinweis] = useState<string | null>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,6 +58,17 @@ export default function LoginPage() {
         body: JSON.stringify({ userId: result.userId }),
       })
       setSmsSent(true)
+    } else if (result.requiresEmail && result.userId) {
+      setMailUserId(result.userId)
+      setStep('email')
+      const r = await fetch('/api/auth/2fa/email-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: result.userId }),
+      })
+      const d = await r.json().catch(() => ({}))
+      setMailHinweis(r.ok ? (d.hinweis ?? null) : null)
+      if (!r.ok) setError(d.error ?? 'Der Code konnte nicht verschickt werden.')
     } else {
       setError('E-Mail oder Passwort ungültig. Nutze den Einladungslink aus deiner E-Mail oder setze dein Passwort zurück.')
     }
@@ -87,12 +105,30 @@ export default function LoginPage() {
     setLoading(false)
   }
 
+  const handleMailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!mailUserId) return
+    setError('')
+    setLoading(true)
+    const result = await loginWithEmailCode(mailUserId, mailCode)
+    if (result.ok) {
+      const user = JSON.parse(sessionStorage.getItem('dienstplan_user') || '{}')
+      router.push(`/${user.role}`)
+    } else {
+      setError(result.error ?? 'Ungültiger Code. Bitte erneut versuchen.')
+    }
+    setLoading(false)
+  }
+
   const goBack = () => {
     setStep('credentials')
     setPendingToken(null)
     setSmsUserId(null)
+    setMailUserId(null)
     setTotpCode('')
     setSmsCode('')
+    setMailCode('')
+    setMailHinweis(null)
     setError('')
     setSmsSent(false)
   }
@@ -234,6 +270,56 @@ export default function LoginPage() {
                   )}
 
                   <Button type="submit" className="w-full" size="lg" loading={loading}>
+                    Bestätigen
+                  </Button>
+
+                  <button type="button" onClick={goBack} className="w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-navy transition-colors">
+                    <ArrowLeft size={14} />
+                    Zurück zur Anmeldung
+                  </button>
+                </form>
+              )}
+
+              {step === 'email' && (
+                <form onSubmit={handleMailSubmit} className="space-y-4">
+                  <div className="flex items-center gap-3 bg-teal-50 border border-teal-100 rounded-xl px-4 py-3">
+                    <Mail size={20} className="text-teal-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-teal-800">Code per E-Mail</p>
+                      <p className="text-xs text-teal-600">
+                        {mailHinweis
+                          ? `Wir haben dir einen Code an ${mailHinweis} geschickt.`
+                          : 'Code wird verschickt…'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-navy mb-1.5">Code aus der E-Mail</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      value={mailCode}
+                      onChange={e => setMailCode(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="000000"
+                      autoFocus
+                      autoComplete="one-time-code"
+                      className="w-full px-4 py-3 text-center text-2xl font-mono tracking-[0.4em] border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                    />
+                    <p className="text-xs text-gray-500 mt-1.5">
+                      Der Code gilt 10 Minuten. Schau auch im Spam-Ordner nach.
+                    </p>
+                  </div>
+
+                  {error && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+
+                  <Button type="submit" className="w-full" size="lg" loading={loading} disabled={mailCode.length < 6}>
                     Bestätigen
                   </Button>
 

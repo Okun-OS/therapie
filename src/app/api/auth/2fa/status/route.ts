@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { totpEnabled: true, smsOtpEnabled: true, phoneVerified: true, phone: true },
+    select: { totpEnabled: true, smsOtpEnabled: true, phoneVerified: true, phone: true, emailOtpEnabled: true, email: true },
   })
 
   return NextResponse.json({
@@ -18,5 +18,9 @@ export async function GET(req: NextRequest) {
     smsOtpEnabled: user?.smsOtpEnabled ?? false,
     phoneVerified: user?.phoneVerified ?? false,
     phone: user?.phone ? user.phone.replace(/(\+\d{1,3})\d+(\d{2})$/, '$1***$2') : null,
+    // §196 Für die E-Mail genügt der Schalter und die Adresse selbst — sie
+    // ist dem Angemeldeten ohnehin bekannt, es ist seine eigene.
+    emailOtpEnabled: user?.emailOtpEnabled ?? false,
+    email: user?.email ?? null,
   })
 }

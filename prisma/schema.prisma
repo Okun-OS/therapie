@@ -346,6 +346,10 @@ model User {
   phone         String?
   phoneVerified Boolean  @default(false)
   smsOtpEnabled Boolean  @default(false)
+  // §196 Zweiter Faktor per E-Mail. Braucht keine Einrichtung: Die Adresse
+  // ist bereits belegt, denn über sie kam die Einladung, mit der das Konto
+  // überhaupt entstanden ist.
+  emailOtpEnabled Boolean @default(false)
   bereichIds    String[] @default([])
   avatarUrl     String?
   createdAt     DateTime @default(now())
@@ -1568,6 +1572,10 @@ model PayrollEntry {
 model SmsTotpCode {
   id        String    @id @default(cuid())
   userId    String
+  // §196 Über welchen Weg der Code hinausging: "sms" oder "email". Beide
+  // benutzen dieselbe Tabelle, weil beim Anmelden immer nur einer läuft —
+  // aber im Nachhinein muss man sehen können, welcher es war.
+  kanal     String    @default("sms")
   codeHash  String
   expiresAt DateTime
   usedAt    DateTime?

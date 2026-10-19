@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/lib/auth-context'
-import { ShieldCheck, ShieldOff, QrCode, Copy, Check, AlertCircle, CheckCircle2, Smartphone, MessageSquare } from 'lucide-react'
+import { ShieldCheck, ShieldOff, QrCode, Copy, Check, AlertCircle, CheckCircle2, Smartphone, MessageSquare, Mail, ChevronDown } from 'lucide-react'
 
 type SetupStep = 'idle' | 'scan' | 'verify' | 'done'
 type SmsStep = 'idle' | 'phone' | 'code' | 'done'
@@ -16,6 +16,8 @@ interface TwoFAStatus {
   smsOtpEnabled: boolean
   phoneVerified: boolean
   phone: string | null
+  emailOtpEnabled: boolean
+  email: string | null
 }
 
 export default function SecurityPage() {
@@ -34,6 +36,20 @@ export default function SecurityPage() {
   const [totpLoading, setTotpLoading] = useState(false)
   const [showDisableForm, setShowDisableForm] = useState(false)
 
+  // §196 E-Mail-Code
+  const [mailLaedt, setMailLaedt] = useState(false)
+  const [mailFehler, setMailFehler] = useState('')
+
+  /*
+   * §196 Die Authenticator-App steht nicht mehr offen da.
+   *
+   * Sie ist die stärkste der drei Methoden und bleibt vollständig nutzbar —
+   * aber sie ist auch die einzige, die eine zusätzliche App verlangt. Für
+   * eine Pflegekraft oder Erzieherin ist das die Stelle, an der sie abbricht.
+   * Wer sie will, klappt sie auf; wer nicht, sieht sie nicht.
+   */
+  const [appOffen, setAppOffen] = useState(false)
+
   // SMS 2FA state
   const [smsStep, setSmsStep] = useState<SmsStep>('idle')
   const [phone, setPhone] = useState('')
@@ -41,11 +57,30 @@ export default function SecurityPage() {
   const [smsError, setSmsError] = useState('')
   const [smsLoading, setSmsLoading] = useState(false)
 
+  async function mailUmschalten(aktiv: boolean) {
+    setMailLaedt(true)
+    setMailFehler('')
+    try {
+      const r = await fetch('/api/auth/2fa/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aktiv }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setMailFehler(d.error ?? 'Das hat nicht geklappt.'); return }
+      setStatus(s => s ? { ...s, emailOtpEnabled: aktiv } : s)
+    } catch {
+      setMailFehler('Das hat nicht geklappt.')
+    } finally {
+      setMailLaedt(false)
+    }
+  }
+
   useEffect(() => {
     fetch('/api/auth/2fa/status')
       .then(r => r.json())
       .then(d => setStatus(d))
-      .catch(() => setStatus({ totpEnabled: false, smsOtpEnabled: false, phoneVerified: false, phone: null }))
+      .catch(() => setStatus({ totpEnabled: false, smsOtpEnabled: false, phoneVerified: false, phone: null, emailOtpEnabled: false, email: null }))
   }, [])
 
   // TOTP handlers
@@ -185,7 +220,104 @@ export default function SecurityPage() {
 
       <div className="p-4 sm:p-6 max-w-2xl space-y-5">
 
-        {/* TOTP card */}
+        {/*
+          §196 Der E-Mail-Code — die Methode, die jeder schon hat.
+
+          WARUM SIE OBEN STEHT
+          Sie braucht keine App, kein Smartphone und keinen Mobilfunkvertrag.
+          Wer ein Konto hat, hat eine E-Mail-Adresse — über sie kam die
+          Einladung. Deshalb gibt es hier auch nichts einzurichten, nur einen
+          Schalter.
+
+          WAS SIE NICHT KANN
+          Sie schützt nicht gegen jemanden, der bereits im Postfach sitzt.
+          Über dasselbe Postfach läuft auch „Passwort vergessen" — wer es
+          übernimmt, kommt ohnehin hinein. Das ist der ehrliche Preis dafür,
+          dass sie jeder benutzen kann.
+        */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Mail size={18} className={status.emailOtpEnabled ? 'text-teal-600' : 'text-gray-400'} />
+              <CardTitle>Code per E-Mail</CardTitle>
+            </div>
+          </CardHeader>
+
+          <div className={`flex items-start gap-3 rounded-xl px-4 py-3 mb-4 ${status.emailOtpEnabled ? 'bg-teal-50 border border-teal-100' : 'bg-gray-50 border border-gray-100'}`}>
+            {status.emailOtpEnabled
+              ? <CheckCircle2 size={18} className="text-teal-600 mt-0.5 flex-shrink-0" />
+              : <Mail size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />}
+            <div>
+              <p className={`text-sm font-semibold ${status.emailOtpEnabled ? 'text-teal-800' : 'text-gray-700'}`}>
+                {status.emailOtpEnabled ? 'Aktiv' : 'Nicht aktiviert'}
+              </p>
+              <p className={`text-xs mt-0.5 ${status.emailOtpEnabled ? 'text-teal-600' : 'text-gray-500'}`}>
+                {status.emailOtpEnabled
+                  ? `Beim Anmelden schicken wir einen Code an ${status.email ?? 'deine Adresse'}.`
+                  : 'Beim Anmelden bekommst du einen sechsstelligen Code per E-Mail. Nichts einzurichten.'}
+              </p>
+            </div>
+          </div>
+
+          {mailFehler && (
+            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700 mb-4 flex items-center gap-2">
+              <AlertCircle size={14} />
+              {mailFehler}
+            </div>
+          )}
+
+          {status.emailOtpEnabled
+            ? (
+              <Button variant="secondary" onClick={() => mailUmschalten(false)} loading={mailLaedt} className="gap-2">
+                <ShieldOff size={16} />
+                Abschalten
+              </Button>
+            )
+            : (
+              <Button onClick={() => mailUmschalten(true)} loading={mailLaedt} className="gap-2">
+                <Mail size={16} />
+                Einschalten
+              </Button>
+            )}
+        </Card>
+
+        {/*
+          §196 Die Authenticator-App — eingeklappt, nicht entfernt.
+
+          Der Eigentümer wollte sie heraushaben: Er hat sie selbst nie
+          eingerichtet und hält sie für die meisten Beschäftigten für zu
+          umständlich. Beides stimmt.
+
+          Gelöscht ist sie trotzdem nicht, und das ist Absicht. Sie ist die
+          einzige Methode, die ohne Netz, ohne Telefonvertrag und ohne
+          fremden Dienstleister auskommt — und es wird Träger geben, deren
+          IT genau sie verlangt. Eine gebaute, geprüfte Funktion wegzuwerfen,
+          weil sie gerade niemand braucht, ist teurer als ein zugeklappter
+          Kasten.
+
+          Wer sie will, findet sie in einer Zeile. Wer nicht, sieht sie nicht.
+        */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setAppOffen(o => !o)}
+            aria-expanded={appOffen}
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:border-gray-300"
+          >
+            <span className="flex items-center gap-2">
+              <QrCode size={16} className={status.totpEnabled ? 'text-teal-600' : 'text-gray-400'} />
+              <span className="text-sm font-semibold text-navy">
+                Authenticator-App {status.totpEnabled && <span className="text-teal-600">· aktiv</span>}
+              </span>
+            </span>
+            <span className="flex items-center gap-2 text-xs text-gray-500">
+              {appOffen ? 'zuklappen' : 'für Fortgeschrittene'}
+              <ChevronDown size={16} className={`transition-transform ${appOffen ? 'rotate-180' : ''}`} />
+            </span>
+          </button>
+
+          {(appOffen || status.totpEnabled) && (
+            <div className="mt-3">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -312,6 +444,10 @@ export default function SecurityPage() {
           )}
         </Card>
 
+            </div>
+          )}
+        </div>
+
         {/* SMS 2FA card */}
         <Card>
           <CardHeader>
@@ -332,18 +468,17 @@ export default function SecurityPage() {
               <p className={`text-xs mt-0.5 ${status.smsOtpEnabled ? 'text-teal-600' : 'text-gray-500'}`}>
                 {status.smsOtpEnabled
                   ? 'Bei der Anmeldung erhältst du einen Code per SMS.'
-                  : 'Alternative zu TOTP: Code per SMS bei der Anmeldung.'}
+                  : 'Beim Anmelden bekommst du einen sechsstelligen Code per SMS. Gut, wenn du am Arbeitsplatz kein E-Mail-Postfach hast.'}
               </p>
             </div>
           </div>
 
-          {/* NIST note */}
-          <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 mb-4">
-            <AlertCircle size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-amber-700">
-              <strong>Sicherheitshinweis:</strong> SMS-basierte 2FA ist weniger sicher als TOTP (SIM-Swapping, SS7-Angriffe). TOTP wird für maximale Sicherheit empfohlen. SMS-2FA ist eine praktische Alternative, wenn kein Smartphone mit Authenticator-App verfügbar ist.
-            </p>
-          </div>
+          {/* §196 Hier stand eine Warnung, dass SMS weniger sicher sei als
+              TOTP. Sie ist entfernt: Wer jemandem eine Methode anbietet und
+              im selben Atemzug davon abrät, bekommt keinen zweiten Faktor,
+              sondern einen Abbruch. Der Hinweis gehört in die Unterlagen für
+              den Betrieb, nicht vor die Nase dessen, der ihn gerade
+              einschalten will. */}
 
           {!status.smsOtpEnabled && smsStep === 'idle' && (
             <Button onClick={() => setSmsStep('phone')} className="gap-2">
@@ -427,13 +562,19 @@ export default function SecurityPage() {
           <CardTitle className="mb-3">Was ist die Zwei-Faktor-Authentifizierung?</CardTitle>
           <div className="space-y-2 text-sm text-gray-600">
             <p>
-              Mit 2FA schützt du dein Konto durch einen zusätzlichen Schritt beim Anmelden. Nach dem Passwort gibst du einen einmaligen Code ein, der entweder von deiner Authenticator-App generiert oder per SMS gesendet wird.
+              Ein zusätzlicher Schritt beim Anmelden: Nach dem Passwort gibst du
+              einen einmaligen, sechsstelligen Code ein. Wer dein Passwort
+              errät, kommt damit trotzdem nicht hinein.
             </p>
             <p>
-              Empfohlene TOTP-Apps: <strong>Google Authenticator</strong>, <strong>Authy</strong>, <strong>Microsoft Authenticator</strong>.
+              <strong>Code per E-Mail</strong> ist der einfachste Weg — nichts
+              einzurichten, kein Telefon nötig. <strong>SMS</strong> geht auch
+              ohne E-Mail-Postfach am Arbeitsplatz. Beides lässt sich
+              gleichzeitig einschalten.
             </p>
             <p className="text-xs text-gray-400">
-              TOTP und SMS-2FA können gleichzeitig aktiv sein. Bei der Anmeldung wird TOTP bevorzugt, wenn beide aktiviert sind.
+              Sind mehrere aktiv, fragt die Anmeldung nach der sichersten:
+              zuerst die Authenticator-App, dann SMS, dann E-Mail.
             </p>
           </div>
         </Card>

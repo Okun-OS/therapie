@@ -9,6 +9,8 @@ export interface LoginResult {
   requiresTOTP?: boolean
   pendingToken?: string
   requiresSMS?: boolean
+  /** §196 Der Code kommt per E-Mail. */
+  requiresEmail?: boolean
   userId?: string
   error?: string
 }
@@ -19,6 +21,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<LoginResult>
   loginWithTotp: (pendingToken: string, totpCode: string) => Promise<LoginResult>
   loginWithSms: (userId: string, code: string) => Promise<LoginResult>
+  loginWithEmailCode: (userId: string, code: string) => Promise<LoginResult>
   logout: () => void
 }
 
@@ -69,6 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (data.requiresSMS) {
         return { ok: false, requiresSMS: true, userId: data.userId }
+      }
+      if (data.requiresEmail) {
+        return { ok: false, requiresEmail: true, userId: data.userId }
       }
       const { user: loggedInUser } = data
       setUser(loggedInUser)
@@ -123,6 +129,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: false }
     }
   }
+  /**
+   * §196 Dasselbe wie oben, nur über die E-Mail-Route.
+   *
+   * Beide holen nach dem Prüfen `/api/auth/me`, weil die Sitzung als Keks
+   * gesetzt wird und die Antwort den Benutzer nicht mitschickt.
+   */
+  const loginWithEmailCode = async (userId: string, code: string): Promise<LoginResult> => {
+    try {
+      const res = await fetch('/api/auth/2fa/email-validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, code }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        return { ok: false, error: data.error }
+      }
+      const meRes = await fetch('/api/auth/me')
+      if (meRes.ok) {
+        const { user: loggedInUser } = await meRes.json()
+        if (loggedInUser) {
+          setUser(loggedInUser)
+          sessionStorage.setItem('dienstplan_user', JSON.stringify(loggedInUser))
+        }
+      }
+      return { ok: true }
+    } catch {
+      return { ok: false }
+    }
+  }
+
 
   const logout = () => {
     // §139 Zuerst das Gerät austragen, dann abmelden — danach fehlt die
@@ -136,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginWithTotp, loginWithSms, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginWithTotp, loginWithSms, loginWithEmailCode, logout }}>
       {children}
     </AuthContext.Provider>
   )

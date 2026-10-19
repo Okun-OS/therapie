@@ -1,51 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import { prisma } from '@/lib/prisma'
-import { setSessionCookie } from '@/lib/session'
+import { codePruefen, sitzungSetzen } from '@/lib/zweiter-faktor'
 
 export const dynamic = 'force-dynamic'
 
-const MAX_ATTEMPTS = 5
-
-// Called during login: user types the 6-digit SMS code, we issue the session cookie
+/**
+ * §196 Den SMS-Code prüfen und die Sitzung ausstellen.
+ *
+ * WAS SICH HIER GEÄNDERT HAT
+ * Die Prüfung stand ausgeschrieben in dieser Datei. Mit dem E-Mail-Weg wäre
+ * sie zweimal dagewesen, und dann läuft sie auseinander. Jetzt steht sie in
+ * `zweiter-faktor.ts`, und beide Wege benutzen dieselbe.
+ *
+ * Dabei kam ein Fehler heraus, der vorher niemandem auffiel: Diese Route
+ * setzte `bereichIds` NICHT in die Sitzung, die normale Anmeldung schon. Wer
+ * auf bestimmte Bereiche eingeschränkt ist, bekam über den zweiten Faktor
+ * eine Sitzung ohne diese Einschränkung — der sicherere Anmeldeweg führte zu
+ * mehr Rechten.
+ */
 export async function POST(req: NextRequest) {
   const { userId, code } = await req.json().catch(() => ({ userId: '', code: '' }))
-  if (!userId || !code) return NextResponse.json({ error: 'userId und code erforderlich' }, { status: 400 })
-
-  const record = await prisma.smsTotpCode.findFirst({
-    where: { userId, usedAt: null, expiresAt: { gt: new Date() } },
-    orderBy: { createdAt: 'desc' },
-  })
-  if (!record) {
-    return NextResponse.json({ error: 'Code abgelaufen. Bitte neu anfordern.' }, { status: 400 })
+  if (!userId || !code) {
+    return NextResponse.json({ error: 'userId und code erforderlich' }, { status: 400 })
   }
 
-  if (record.attempts >= MAX_ATTEMPTS) {
-    await prisma.smsTotpCode.delete({ where: { id: record.id } })
-    return NextResponse.json({ error: 'Konto vorübergehend gesperrt. Bitte neuen Code anfordern.' }, { status: 429 })
+  const ergebnis = await codePruefen(userId, code)
+  if (!ergebnis.ok) {
+    return NextResponse.json({ error: ergebnis.fehler }, { status: ergebnis.status })
   }
-
-  const valid = await bcrypt.compare(code.trim(), record.codeHash)
-  if (!valid) {
-    await prisma.smsTotpCode.update({ where: { id: record.id }, data: { attempts: { increment: 1 } } })
-    return NextResponse.json({ error: 'Falscher Code.' }, { status: 400 })
-  }
-
-  await prisma.smsTotpCode.update({ where: { id: record.id }, data: { usedAt: new Date() } })
-
-  const user = await prisma.user.findUnique({ where: { id: userId } })
-  if (!user) return NextResponse.json({ error: 'Nutzer nicht gefunden' }, { status: 404 })
 
   const res = NextResponse.json({ ok: true })
-  setSessionCookie(res, {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role as 'admin' | 'employee' | 'company' | 'okun',
-    employeeId: user.employeeId ?? undefined,
-    locationId: user.locationId ?? undefined,
-    customerId: user.customerId ?? undefined,
-    customerName: user.customerName ?? undefined,
-  })
+  if (!await sitzungSetzen(res, userId)) {
+    return NextResponse.json({ error: 'Nutzer nicht gefunden' }, { status: 404 })
+  }
   return res
 }
