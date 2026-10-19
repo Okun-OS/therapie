@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'locationId, von und bis sind erforderlich' }, { status: 400 })
   }
 
-  // §112 Standortgrenze, §127 Freischaltung, §201 Dienstzeiten aus dem
+  // §112 Standortgrenze, §127 Freischaltung, §202 Dienstzeiten aus dem
   // Regelpaket — gemeinsam mit /api/ai/solve-schedule in einer Prüfung.
   const verwehrt = await pruefePlanungsstart(session, locationId)
   if (verwehrt) return verwehrt

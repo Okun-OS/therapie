@@ -82,7 +82,7 @@ META = {
     "aufgenommen": "2026-10-03",
 }
 
-# §201 Die Einrichtung, die mit diesem Paket an einen Standort geht —
+# §202 Die Einrichtung, die mit diesem Paket an einen Standort geht —
 # unverändert aus `scripts/kunde-wohngruppe.mjs`, wo sie nach Abschnitt 3, 9
 # und 13 des Regelwerks aufgenommen wurde. Die Nummern des Kunden stehen im
 # Namen, damit die Leitung ihren eigenen Plan wiedererkennt.

@@ -5,9 +5,9 @@ import { Lock, Plane } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 
 /**
- * §201 Was die Leitung an ihren Gruppen im Alltag einstellt — und nur das.
+ * §202 Was die Leitung an ihren Gruppen im Alltag einstellt — und nur das.
  *
- * Bis §201 stand das in „Regeln & Wartung", mitten zwischen Dingen, die ein
+ * Bis §202 stand das in „Regeln & Wartung", mitten zwischen Dingen, die ein
  * Standort nicht mehr selbst einrichtet (Dienste, Etagen, Mindestbesetzung,
  * eigene Regeln). Die sind mit der Seite gegangen; diese beiden nicht, denn
  * sie sind keine Einrichtung, sondern Tagesgeschäft: Eine Gruppe fährt weg,

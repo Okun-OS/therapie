@@ -19,7 +19,7 @@ META = {
     "aufgenommen": "2026-09-11",
 }
 
-# §201 Die Einrichtung, die mit diesem Paket an einen Standort geht —
+# §202 Die Einrichtung, die mit diesem Paket an einen Standort geht —
 # übernommen aus den Testdaten (`prisma/seed.ts`), mit denen dieses Paket seit
 # September geplant wird.
 #

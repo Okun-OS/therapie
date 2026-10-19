@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   }
 
   /*
-   * §201 Standortgrenze, Freischaltung und Dienstzeiten — dieselbe Prüfung
+   * §202 Standortgrenze, Freischaltung und Dienstzeiten — dieselbe Prüfung
    * wie in /api/planning/runs. Vorher stand hier nur die Dienstzeiten-Sperre
    * (§198); die beiden anderen fehlten an genau dem Weg, den der
    * Dienstplan-Knopf nimmt. Und fehlen die Dienstzeiten, kommen sie jetzt

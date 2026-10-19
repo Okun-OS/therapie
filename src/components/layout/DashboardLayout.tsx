@@ -113,7 +113,7 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
 
       <FloatingDock />
       <SystemTour role={user.role} />
-      {/* §201 Hier stand das Fenster, das Leitungen aufforderte, ihr
+      {/* §202 Hier stand das Fenster, das Leitungen aufforderte, ihr
           „Standortmodell" zu erzeugen — das alte Planungsmodell, das der Kunde
           selbst einrichtete. Die Einrichtung kommt jetzt mit dem Regelpaket. */}
       {/* §140 Ein Knopf für Hilfe UND Melden — vorher zwei, in zwei Ecken,

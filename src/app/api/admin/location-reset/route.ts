@@ -7,7 +7,7 @@ import { logAudit } from '@/lib/audit'
 // Scope is opt-in per area so admins can keep e.g. shifts while resetting rules.
 // Operational data (schedule entries, time logs, vacations, employees) is never touched.
 export async function POST(req: NextRequest) {
-  // §201 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
+  // §202 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
   // Regelpaket. Vorher konnte hier die Leitung (bzw. das Unternehmen) selbst
   // Dienste, Struktur, Regeln oder das alte Standortmodell anlegen und damit am
   // Paket vorbeiplanen. Lesen bleibt, wie es war.

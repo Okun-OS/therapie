@@ -41,7 +41,7 @@ Diensten, Gruppen und Wochen — plus Helfern, die die üblichen Fehler vermeide
 
 Gebunden wird ein Paket über `Location.rulePackId` in der App.
 
-Die Einrichtung im Paket (§201)
+Die Einrichtung im Paket (§202)
 -------------------------------
 Ein Paket kann zusätzlich `EINRICHTUNG` mitbringen: Arbeitstage, Dienstzeiten,
 Etagen und Gruppen, Basiswerte. Weist OKUN das Paket einem Standort zu, legt
@@ -50,7 +50,7 @@ die App davon an, was dort noch FEHLT — Bestehendes überschreibt sie nie.
 Vorher stand das in Skripten (`scripts/kunde-wohngruppe.mjs`) und Testdaten,
 die jemand von Hand gegen die Datenbank laufen lassen musste. Wer nur das Paket
 zuwies, hatte einen Standort mit Regeln, aber ohne Dienste — und keinen Plan.
-Der Kunde richtet seit §201 nichts mehr selbst ein; also muss es hier stehen.
+Der Kunde richtet seit §202 nichts mehr selbst ein; also muss es hier stehen.
 
     EINRICHTUNG = {
         "arbeitstage": ["Mo", "Di", "Mi", "Do", "Fr"],
@@ -116,7 +116,7 @@ def _uhrzeit(wert) -> bool:
 
 def einrichtung_von(mod: ModuleType) -> tuple[dict | None, list[str]]:
     """
-    §201 Die Einrichtung eines Pakets, geprüft.
+    §202 Die Einrichtung eines Pakets, geprüft.
 
     Geprüft wird HIER und nicht erst in der App: Eine Dienstzeit „25:00" oder
     eine Gruppe auf einer Etage, die es nicht gibt, soll beim Bauen des Pakets

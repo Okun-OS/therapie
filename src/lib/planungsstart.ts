@@ -5,7 +5,7 @@ import { einrichtungNachholen } from '@/lib/paket-einrichtung'
 import type { SessionPayload } from '@/lib/session'
 
 /**
- * §201 Was vor jedem Planungslauf gilt — an EINER Stelle.
+ * §202 Was vor jedem Planungslauf gilt — an EINER Stelle.
  *
  * Es gibt zwei Wege, einen Lauf zu starten: `/api/planning/runs` und
  * `/api/ai/solve-schedule`. Die Prüfungen standen nur im ersten. Der
@@ -40,7 +40,7 @@ export async function pruefePlanungsstart(session: SessionPayload, locationId: s
     }, { status: 423 })
   }
 
-  // §201 Die Dienstzeiten kommen mit dem Regelpaket. Fehlen sie, werden sie
+  // §202 Die Dienstzeiten kommen mit dem Regelpaket. Fehlen sie, werden sie
   // jetzt aus dem Paket angelegt; erst wenn es keine mitbringt, wird gesperrt.
   // Der Kunde legt sie nicht selbst an — die Einrichtung dafür gibt es nicht mehr.
   const dienste = await einrichtungNachholen(locationId)

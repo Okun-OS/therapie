@@ -614,12 +614,12 @@ def test_freies_wochenende_gilt_weiter_wenn_der_zeitraum_lang_genug_ist():
     assert any("Mindestens 2 ganze" in z for z in ctx.protokoll), ctx.protokoll
 
 
-# ── §201 Die Einrichtung im Paket ───────────────────────────────────────────
+# ── §202 Die Einrichtung im Paket ───────────────────────────────────────────
 
 def test_kundenpakete_bringen_eine_gueltige_einrichtung_mit():
     """Wer ein Kundenpaket zuweist, soll danach planen können — dafür braucht
     der Standort Dienstzeiten. Ein Paket ohne sie wäre wieder die Lücke, die
-    §201 schließt."""
+    §202 schließt."""
     pakete = {p["id"]: p for p in verfuegbare_pakete()}
     for pid in ("kita_zwei_etagen", "kita_sonnenschein", "wohngruppe_fuenf"):
         p = pakete[pid]

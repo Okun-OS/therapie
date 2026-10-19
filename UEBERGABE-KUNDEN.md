@@ -64,7 +64,7 @@ Nach einem `npm run build` ist `.next` für den Entwicklungsserver unbrauchbar:
 
 ## Der Weg: einen Kunden betriebsbereit machen
 
-**Seit §201 bringt das Regelpaket die Einrichtung mit.** Der Kunde richtet
+**Seit §202 bringt das Regelpaket die Einrichtung mit.** Der Kunde richtet
 nichts mehr selbst ein — keine Dienste, keine Gruppen, keine Regeln. Die
 Reihenfolge:
 
@@ -137,7 +137,7 @@ Seite `/okun/dienstplanung` leitet dorthin um; die Schnittstelle
 
 Nachweis: `node --env-file=.env pruefungen/browser/dienstplanung-am-standort.mjs`.
 
-**§201:** Seit das Paket die Einrichtung mitbringt, zeigt der Standort hier
+**§202:** Seit das Paket die Einrichtung mitbringt, zeigt der Standort hier
 auch, wie viele Dienstzeiten und Gruppen er hat — und bietet „Einrichtung aus
 dem Paket anlegen" an, wo das Paket schon vorher zugewiesen war.
 

@@ -202,7 +202,7 @@ const SHIFT_TYPE_DEFAULTS: Record<ShiftType, { color: string; bgColor: string }>
 }
 
 export async function POST(req: NextRequest) {
-  // §201 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
+  // §202 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
   // Regelpaket. Vorher konnte hier die Leitung (bzw. das Unternehmen) selbst
   // Dienste, Struktur, Regeln oder das alte Standortmodell anlegen und damit am
   // Paket vorbeiplanen. Lesen bleibt, wie es war.

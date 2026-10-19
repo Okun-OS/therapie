@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 
 /**
- * §201 Diese Seite gibt es nicht mehr.
+ * §202 Diese Seite gibt es nicht mehr.
  *
  * Hier richtete der Kunde früher selbst ein, was ein Dienstplan braucht:
  * Betriebsform, Struktur, Dienste, Regeln — per Fragebogen, Formular oder

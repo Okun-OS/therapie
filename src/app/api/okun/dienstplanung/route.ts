@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   const kunden = await prisma.customer.findMany({ select: { id: true, name: true } })
   const kundeVon = new Map(kunden.map(k => [k.id, k.name]))
 
-  // §201 Was am Standort eingerichtet ist — damit OKUN sieht, ob nach der
+  // §202 Was am Standort eingerichtet ist — damit OKUN sieht, ob nach der
   // Zuweisung wirklich geplant werden kann, ohne die Seite des Kunden zu öffnen.
   const ids = standorte.map(s => s.id)
   const [dienste, einheiten] = await Promise.all([
@@ -84,7 +84,7 @@ export async function PATCH(req: NextRequest) {
     rulePackId?: string | null
     dienstplanungFrei?: boolean
     hinweis?: string | null
-    /** §201 Die Einrichtung des zugeordneten Pakets anlegen, soweit sie fehlt. */
+    /** §202 Die Einrichtung des zugeordneten Pakets anlegen, soweit sie fehlt. */
     einrichtungAnwenden?: boolean
   }
   if (!body.locationId) {
@@ -143,13 +143,13 @@ export async function PATCH(req: NextRequest) {
   })
 
   /*
-   * §201 Mit dem Paket kommt seine Einrichtung: Dienstzeiten, Etagen und
+   * §202 Mit dem Paket kommt seine Einrichtung: Dienstzeiten, Etagen und
    * Gruppen, Arbeitstage, Basiswerte — soweit sie am Standort fehlen. Erst
    * damit „greift" die Zuweisung: Vorher hatte ein Standort Regeln für Dienste,
    * die es nicht gab, und keinen Plan.
    *
    * `einrichtungAnwenden` ohne neues Paket ist für Standorte, denen ihr Paket
-   * schon vor §201 zugeordnet wurde.
+   * schon vor §202 zugeordnet wurde.
    */
   if (!paket && body.einrichtungAnwenden && aktualisiert.rulePackId) {
     paket = (await verfuegbareRegelpakete()).pakete.find(p => p.id === aktualisiert.rulePackId)

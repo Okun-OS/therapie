@@ -28,7 +28,7 @@ export interface DienstplanungStandort {
   dienstplanungFreiVon: string | null
   dienstplanungHinweis: string | null
   paketFehlt: boolean
-  /** §201 Was am Standort eingerichtet ist. */
+  /** §202 Was am Standort eingerichtet ist. */
   dienstzeiten: number
   einheiten: number
 }
@@ -40,7 +40,7 @@ export interface DienstplanungStandort {
 export function dienstplanungProblem(s: DienstplanungStandort): string | null {
   if (s.paketFehlt) return 'Regelpaket fehlt im Rechendienst'
   if (s.dienstplanungFrei && !s.rulePackId) return 'Freigeschaltet ohne Regelpaket'
-  // §201 Ohne Dienstzeiten entsteht kein Plan — das soll schon die
+  // §202 Ohne Dienstzeiten entsteht kein Plan — das soll schon die
   // zugeklappte Zeile sagen, nicht erst der Kunde, der „Plan erstellen" drückt.
   if (s.rulePackId && s.dienstzeiten === 0) return 'Noch keine Dienstzeiten'
   return null
@@ -154,7 +154,7 @@ export function StandortDienstplanung({
         </p>
       )}
       {/*
-        §201 Die Einrichtung, die mit dem Paket kommt. Angelegt wird sie beim
+        §202 Die Einrichtung, die mit dem Paket kommt. Angelegt wird sie beim
         Zuweisen — und für Standorte, deren Paket schon vorher zugewiesen war,
         hier per Knopf oder spätestens beim ersten Planungslauf.
       */}

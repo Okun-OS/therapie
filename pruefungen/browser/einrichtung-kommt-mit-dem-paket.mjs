@@ -1,4 +1,4 @@
-// Nachweis (Browser) §201: Der Standort richtet nichts mehr selbst ein —
+// Nachweis (Browser) §202: Der Standort richtet nichts mehr selbst ein —
 // die Einrichtung kommt mit dem Regelpaket.
 //
 //     node --env-file=.env pruefungen/browser/einrichtung-kommt-mit-dem-paket.mjs
@@ -42,7 +42,7 @@ async function standortMitLeitung(name, rulePackId) {
   })
   const standort = await prisma.location.create({
     data: {
-      customerId: KUNDE, name: `§201 ${name} ${MARKE}`, address: 'Prüfweg 1', city: 'Köln', state: 'NW',
+      customerId: KUNDE, name: `§202 ${name} ${MARKE}`, address: 'Prüfweg 1', city: 'Köln', state: 'NW',
       adminId: konto.id, rulePackId, dienstplanungFrei: true,
     },
   })
@@ -68,7 +68,7 @@ async function anmelden(email) {
 }
 
 try {
-  console.log('=== Paket vor §201 zugewiesen, keine Dienstzeiten ===')
+  console.log('=== Paket vor §202 zugewiesen, keine Dienstzeiten ===')
   const kita = await standortMitLeitung('Kita', 'kita_zwei_etagen')
   check('Ausgangslage: keine Dienstzeiten', await prisma.shift.count({ where: { locationId: kita.standort.id } }) === 0)
   const { ctx, seite } = await anmelden(kita.mail)

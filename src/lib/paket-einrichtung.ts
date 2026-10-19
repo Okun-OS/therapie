@@ -3,13 +3,13 @@ import { verfuegbareRegelpakete, type PaketEinrichtung } from '@/lib/regelpakete
 import { BETRIEBSTYP_ARBEITSTAGE } from '@/lib/rule-model-service'
 
 /**
- * §201 Was ein Regelpaket mitbringt, am Standort anlegen.
+ * §202 Was ein Regelpaket mitbringt, am Standort anlegen.
  *
  * WARUM ES DAS GIBT
  * Ein Standort mit Regelpaket, aber ohne Dienstzeiten, hat Regeln für Dienste,
  * die es nicht gibt — und keinen Plan. So stand die Kita „Krümelkiste" da. Die
  * Dienstzeiten sollte bisher der Kunde in der Einrichtung anlegen; die gibt es
- * seit §201 nicht mehr, und das zu Recht: Was ein Betrieb für Dienste hat,
+ * seit §202 nicht mehr, und das zu Recht: Was ein Betrieb für Dienste hat,
  * steht in seinem Regelwerk, und daraus baut OKUN sein Paket. Also kommt es
  * mit dem Paket.
  *
@@ -153,7 +153,7 @@ export async function einrichtungAnwenden(
   })
 }
 
-/** §201 Ein Satz für OKUN: was angelegt wurde und was schon da war. */
+/** §202 Ein Satz für OKUN: was angelegt wurde und was schon da war. */
 export function berichtText(b: EinrichtungsBericht | null): string | null {
   if (!b) return null
   const teile: string[] = []
@@ -165,10 +165,10 @@ export function berichtText(b: EinrichtungsBericht | null): string | null {
 }
 
 /**
- * §201 Vor dem Planen: Hat der Standort ein Paket, aber noch keine
+ * §202 Vor dem Planen: Hat der Standort ein Paket, aber noch keine
  * Dienstzeiten, wird die Einrichtung des Pakets jetzt angelegt.
  *
- * Für Standorte, denen ihr Paket vor §201 zugeordnet wurde — ohne diesen
+ * Für Standorte, denen ihr Paket vor §202 zugeordnet wurde — ohne diesen
  * Schritt bliebe dort alles beim Alten, bis jemand bei OKUN das Paket noch
  * einmal auswählt. Gibt die Zahl der Dienstzeiten danach zurück.
  */

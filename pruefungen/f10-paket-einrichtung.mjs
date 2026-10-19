@@ -1,8 +1,8 @@
-// Nachweis F10: Das Regelpaket bringt seine Einrichtung mit (§201).
+// Nachweis F10: Das Regelpaket bringt seine Einrichtung mit (§202).
 //
 // WORUM ES GEHT
 // Der Eigentümer weist einem Standort ein Regelpaket zu — und danach muss
-// geplant werden können. Bis §201 ging das nicht: Das Paket brachte Regeln,
+// geplant werden können. Bis §202 ging das nicht: Das Paket brachte Regeln,
 // aber keine Dienstzeiten, und die sollte der Kunde selbst in einer
 // Einrichtung anlegen, die es für ihn gar nicht mehr geben soll. So stand die
 // Kita „Krümelkiste" da: Paket zugewiesen, „Noch keine Dienstzeiten", kein Plan.
@@ -122,7 +122,7 @@ try {
   check('Ohne Paket: 422, OKUN richtet ein — kein Onboarding',
     lO.status === 422 && /OKUN/.test(lO.body?.error) && !/Onboarding/i.test(lO.body?.error ?? ''), lO.body?.error)
 
-  console.log('\n=== Paket vor §201 zugewiesen: wird nachgeholt ===')
+  console.log('\n=== Paket vor §202 zugewiesen: wird nachgeholt ===')
   const n = await standortAnlegen('nachholen')
   await zuweisen(n.id, 'kita_zwei_etagen')
   for (const x of await dienste(n.id)) await sende(okun, `/api/shifts/${x.id}`, 'DELETE')

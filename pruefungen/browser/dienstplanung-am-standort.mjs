@@ -34,7 +34,7 @@ if (!kunde || !standortA) {
   console.log('  ✗ FAIL  Testdaten fehlen (Reha-Zentrum Köln) — erst `npm run seed`')
   process.exit(1)
 }
-// §201 Seit die Zuweisung die Einrichtung des Pakets anlegt (was am Standort
+// §202 Seit die Zuweisung die Einrichtung des Pakets anlegt (was am Standort
 // fehlt), hinterließe diese Prüfung am Reha-Standort Kita-Gruppen und
 // Arbeitstage. Was es vorher gab, wird festgehalten; der Rest geht wieder weg.
 const einheitenVorher = new Set((await prisma.planningUnit.findMany({
@@ -225,7 +225,7 @@ try {
       && !(await prisma.location.findUnique({ where: { id: standortB.id } })))
   const einheitenDanach = await prisma.planningUnit.count({ where: { locationId: standortA.id } })
   const modellDanach = await prisma.locationRuleModelRecord.count({ where: { locationId: standortA.id } })
-  check('Aufgeräumt: keine Gruppen und kein Standortmodell aus dem Paket zurückgelassen (§201)',
+  check('Aufgeräumt: keine Gruppen und kein Standortmodell aus dem Paket zurückgelassen (§202)',
     einheitenDanach === einheitenVorher.size && modellDanach === (modellVorher ? 1 : 0),
     `${einheitenDanach} Einheiten, ${modellDanach} Modell`)
   await prisma.$disconnect()

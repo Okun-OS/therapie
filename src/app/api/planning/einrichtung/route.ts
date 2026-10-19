@@ -6,12 +6,12 @@ import { einrichtungNachholen } from '@/lib/paket-einrichtung'
 export const dynamic = 'force-dynamic'
 
 /**
- * §201 Die Einrichtung des Regelpakets nachholen, wenn ein Standort sein
+ * §202 Die Einrichtung des Regelpakets nachholen, wenn ein Standort sein
  * Paket hat, aber noch keine Dienstzeiten.
  *
  * Der Dienstplan ruft das beim Öffnen auf. Der Kunde stellt dabei nichts ein:
  * Angelegt wird nur, was OKUN ins Paket geschrieben hat, und nur, was fehlt.
- * Ohne diesen Schritt sähe eine Leitung, deren Paket vor §201 zugewiesen
+ * Ohne diesen Schritt sähe eine Leitung, deren Paket vor §202 zugewiesen
  * wurde, weiter „Noch keine Dienstzeiten" — bis zum ersten Planungslauf.
  */
 export async function POST(req: NextRequest) {

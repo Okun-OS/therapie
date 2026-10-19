@@ -28,7 +28,7 @@ export interface Regelpaket {
    */
   muster?: boolean
   /**
-   * §201 Was das Paket an einem Standort einrichtet: Arbeitstage,
+   * §202 Was das Paket an einem Standort einrichtet: Arbeitstage,
    * Dienstzeiten, Etagen und Gruppen, Basiswerte. Angelegt wird davon nur,
    * was am Standort fehlt (`src/lib/paket-einrichtung.ts`). Geprüft hat es
    * der Rechendienst schon — eine fehlerhafte Einrichtung meldet er gar nicht,

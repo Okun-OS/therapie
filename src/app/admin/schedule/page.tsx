@@ -317,7 +317,7 @@ export default function AdminSchedule() {
   }, [locationId, periodWeeks])
 
   /*
-   * §201 Dauerhafte Regeln aus den Chats gehen als Wunsch an OKUN.
+   * §202 Dauerhafte Regeln aus den Chats gehen als Wunsch an OKUN.
    *
    * Vorher wurden sie ins alte Standortmodell geschrieben
    * (`location-model/add-rule`) — dessen Regeltexte liest der Rechendienst
@@ -379,7 +379,7 @@ export default function AdminSchedule() {
   }
 
   async function handleReplanAfterChat(permanentRules: string[]) {
-    // 1. Dauerhafte Regeln gehen als Wunsch an OKUN (§201)
+    // 1. Dauerhafte Regeln gehen als Wunsch an OKUN (§202)
     if (permanentRules.length > 0) await regelwunschAnOkun(permanentRules)
     // 2. Close the chat modal and trigger a full AI replan for the current period
     setEditChatOpen(false)
@@ -415,7 +415,7 @@ export default function AdminSchedule() {
   const locationShifts = SHIFTS.filter(s => s.locationId === locationId)
 
   /*
-   * §201 Hat der Standort ein Regelpaket, aber noch keine Dienstzeiten, holt
+   * §202 Hat der Standort ein Regelpaket, aber noch keine Dienstzeiten, holt
    * die Seite die Einrichtung des Pakets nach — einmal, beim Öffnen. Vorher
    * stand hier „Noch keine Dienstzeiten … Zu den Dienstzeiten" und schickte
    * die Leitung in eine Einrichtung, die sie nicht mehr selbst macht.
@@ -1185,12 +1185,12 @@ export default function AdminSchedule() {
             <div className={`rounded-2xl p-5 border-2 transition-all ${aiDone ? 'bg-green-50 border-green-200' : 'bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-100'}`}>
               {locationShifts.length === 0 ? (
                 /*
-                  §201 Ohne Dienstzeiten kein Plan — aber der Weg dorthin führt
+                  §202 Ohne Dienstzeiten kein Plan — aber der Weg dorthin führt
                   nicht mehr über die Leitung.
 
                   WAS HIER VORHER STAND
                   „Zu den Dienstzeiten" bzw. „Zum Standort-Onboarding": ein
-                  Knopf in eine Einrichtung, die der Kunde seit §201 nicht mehr
+                  Knopf in eine Einrichtung, die der Kunde seit §202 nicht mehr
                   selbst macht. Die Dienstzeiten kommen mit dem Regelpaket, und
                   die Seite holt sie beim Öffnen nach (oben). Steht dieser
                   Hinweis trotzdem da, hat das Paket keine mitgebracht — oder
@@ -2060,7 +2060,7 @@ export default function AdminSchedule() {
       />
 
       {/*
-        §201 Statt „Planungsregeln": Was die Leitung an ihren Gruppen im
+        §202 Statt „Planungsregeln": Was die Leitung an ihren Gruppen im
         Alltag einstellt. Basiswerte und Mindestbesetzung je Dienst bringt das
         Regelpaket mit; sie hier zu ändern hieße, am Paket vorbeizuplanen.
       */}

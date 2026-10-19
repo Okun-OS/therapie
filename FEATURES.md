@@ -3392,7 +3392,7 @@ Schritt.
   einer frisch befüllten Datenbank ist er es nicht. Die Prüfung stellt das
   jetzt selbst her und hinterher zurück.
 
-## Block §201 (19.10.) — Das Regelpaket bringt seine Einrichtung mit
+## Block §202 (19.10.) — Das Regelpaket bringt seine Einrichtung mit
 
 Der Eigentümer weist einem Standort ein Regelpaket zu — und danach muss
 geplant werden können. Das ging nicht: Das Paket brachte Regeln, aber keine

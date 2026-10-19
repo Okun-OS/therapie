@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // §201 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
+  // §202 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
   // Regelpaket. Vorher konnte hier die Leitung (bzw. das Unternehmen) selbst
   // Dienste, Struktur, Regeln oder das alte Standortmodell anlegen und damit am
   // Paket vorbeiplanen. Lesen bleibt, wie es war.
@@ -73,7 +73,7 @@ export async function PUT(req: NextRequest) {
   const erlaubtPut = await locationFilter(session, bestand.locationId)
   if (erlaubtPut instanceof NextResponse) return erlaubtPut
 
-  // §201 Name, Etage und Mindestbesetzung einer Gruppe gehören zur
+  // §202 Name, Etage und Mindestbesetzung einer Gruppe gehören zur
   // Einrichtung, und die kommt mit dem Regelpaket — die ändert nur OKUN.
   // Was die Leitung im Alltag einträgt, bleibt ihr: Eingewöhnung (§166) und
   // „unterwegs" (§182).
@@ -137,7 +137,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  // §201 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
+  // §202 Einrichtung des Standorts schreibt nur noch OKUN — sie kommt mit dem
   // Regelpaket. Vorher konnte hier die Leitung (bzw. das Unternehmen) selbst
   // Dienste, Struktur, Regeln oder das alte Standortmodell anlegen und damit am
   // Paket vorbeiplanen. Lesen bleibt, wie es war.

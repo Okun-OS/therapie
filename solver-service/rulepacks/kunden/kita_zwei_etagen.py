@@ -63,12 +63,12 @@ META = {
     "aufgenommen": "2026-09-26",
 }
 
-# §201 Die Einrichtung, die mit diesem Paket an einen Standort geht.
+# §202 Die Einrichtung, die mit diesem Paket an einen Standort geht.
 #
 # Oben steht „Die Dienstzeiten stehen in den Schichten des Standorts, nicht im
 # Paket". Das bleibt für die REGELN richtig: Sie sprechen über Arbeitsstunden
 # und finden die passenden Dienste selbst. Aber irgendwer muss die Dienste
-# anlegen, und seit §201 ist das nicht mehr der Kunde. Deshalb stehen sie hier
+# anlegen, und seit §202 ist das nicht mehr der Kunde. Deshalb stehen sie hier
 # — unverändert aus `prisma/seed-kita-demo.ts`, wo sie nach dem Regelwerk des
 # Kunden aufgenommen wurden. Angelegt wird nur, was am Standort noch fehlt.
 #

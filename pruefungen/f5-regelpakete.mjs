@@ -29,7 +29,7 @@ console.log(`Standort ${locationId}\n`)
 const paketVorher = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
   ?.find(s => s.id === locationId)?.rulePackId ?? null
 
-// §201 Seit die Zuweisung die Einrichtung des Pakets anlegt, legt das
+// §202 Seit die Zuweisung die Einrichtung des Pakets anlegt, legt das
 // Kita-Paket an diesem Reha-Standort Gruppen an, wo keine sind. Was es vorher
 // gab, wird festgehalten; was dazukam, nimmt OKUN beim Aufräumen wieder weg.
 const einheitenVorher = new Set(((await hole(okun, `/api/planning-units?locationId=${locationId}`))
@@ -199,7 +199,7 @@ await zustandWiederherstellen()
 const danach = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
   ?.find(s => s.id === locationId)
 const einheitenDanach = (await hole(okun, `/api/planning-units?locationId=${locationId}`)).body.units ?? []
-check('Keine Gruppen aus dem Paket zurückgelassen (§201)', einheitenDanach.length === einheitenVorher.size,
+check('Keine Gruppen aus dem Paket zurückgelassen (§202)', einheitenDanach.length === einheitenVorher.size,
   `${einheitenDanach.length} jetzt, ${einheitenVorher.size} vorher`)
 check('Das Regelpaket ist wieder wie vorher',
   (danach?.rulePackId ?? null) === paketVorher,

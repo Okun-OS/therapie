@@ -449,7 +449,7 @@ async function executeToolCall(name: string, input: Record<string, any>, ctx: To
     }
 
     case 'update_planning_rule': {
-      // §201 Nicht mehr verfügbar: Regeln, Gruppen und Basiswerte eines
+      // §202 Nicht mehr verfügbar: Regeln, Gruppen und Basiswerte eines
       // Standorts kommen mit dem Regelpaket, das OKUN pflegt. Das Werkzeug
       // steht nicht mehr in der Liste; diese Antwort fängt nur ab, falls ein
       // altes Gespräch es noch aufruft.
@@ -457,7 +457,7 @@ async function executeToolCall(name: string, input: Record<string, any>, ctx: To
     }
 
     case 'upsert_planning_unit': {
-      // §201 Nicht mehr verfügbar: Regeln, Gruppen und Basiswerte eines
+      // §202 Nicht mehr verfügbar: Regeln, Gruppen und Basiswerte eines
       // Standorts kommen mit dem Regelpaket, das OKUN pflegt. Das Werkzeug
       // steht nicht mehr in der Liste; diese Antwort fängt nur ab, falls ein
       // altes Gespräch es noch aufruft.
@@ -492,7 +492,7 @@ async function executeToolCall(name: string, input: Record<string, any>, ctx: To
     }
 
     case 'save_location_rule': {
-      // §201 Nicht mehr verfügbar: Regeln, Gruppen und Basiswerte eines
+      // §202 Nicht mehr verfügbar: Regeln, Gruppen und Basiswerte eines
       // Standorts kommen mit dem Regelpaket, das OKUN pflegt. Das Werkzeug
       // steht nicht mehr in der Liste; diese Antwort fängt nur ab, falls ein
       // altes Gespräch es noch aufruft.
