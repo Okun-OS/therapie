@@ -324,6 +324,43 @@ check('Der Fenstertitel nennt das Programm',
     BrowserWindow.getAllWindows()[0].getTitle())),
   await programm.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getTitle()))
 
+// ── §201 Die Fensterleiste ─────────────────────────────────────────────────
+//
+// Der Eigentümer hat es so beschrieben: Es sieht hässlich aus. Oben saß die
+// helle Fensterleiste des Betriebssystems über einer App, die ihre eigene
+// Kopfleiste mitbringt — zwei Kanten, zwei Farben, und genau deshalb der
+// Eindruck „Webseite in einem Kasten".
+//
+// Jetzt zeichnet das System nur noch die drei Knöpfe über unsere Leiste. Was
+// dabei kaputtgehen KANN, ist das Verschieben: Ohne ausgewiesene Ziehfläche
+// lässt sich ein rahmenloses Fenster nicht mehr bewegen, und das merkt man
+// erst am fertigen Programm.
+console.log('\n=== §201 Die Fensterleiste ===')
+
+const rahmenlos = await programm.evaluate(({ BrowserWindow }) => {
+  const f = BrowserWindow.getAllWindows()[0]
+  return { rahmen: f.isMovable(), gebaut: typeof f.setTitleBarOverlay === 'function' }
+})
+check('Das Fenster bleibt verschiebbar', rahmenlos.rahmen === true)
+
+// Die Hülle hat genau eine Aufgabe an dieser Stelle: der Seite sagen, dass
+// sie im Programm läuft, BEVOR sie gezeichnet wird. Was die Seite daraus
+// macht — welche Fläche zum Ziehen erklärt wird und wo Platz für die Knöpfe
+// bleibt — steht in `src/app/globals.css` und wird gegen die ECHTE App
+// geprüft (`pruefungen/browser/fensterleiste.mjs`). Hier wäre nur eine
+// Abschrift der Regel zu prüfen, und das prüft nichts.
+const klasse = await fenster.evaluate(() => document.documentElement.className)
+check('Die Seite weiß, dass sie im Programm läuft',
+  /\bim-programm\b/.test(klasse), klasse || '(keine Klasse)')
+
+// Die Farbe der Knöpfe kommt von der Seite, nicht aus einer Liste in der
+// Hülle. Dass der Weg überhaupt geht, wird hier geprüft — wie es aussieht,
+// kann keine Prüfung beurteilen.
+const umgestellt = await fenster.evaluate(() => window.okun.leiste('hell'))
+check('Die Seite kann die Farbe der Fensterknöpfe setzen',
+  umgestellt === true || !rahmenlos.gebaut,
+  `Antwort ${umgestellt}, Fenstersystem kann es: ${rahmenlos.gebaut}`)
+
 // ── §193 Die Hülle startet auf der Anmeldung, nicht auf der Verkaufsseite ──
 //
 // WARUM DAS EINE EIGENE PRÜFUNG IST
@@ -372,8 +409,21 @@ const bruecke = await fenster.evaluate(() => ({
   prozess: typeof window.process,
 }))
 check('Die Seite erkennt, dass sie im Programm läuft', bruecke.da)
+/*
+ * §201 `leiste` ist dazugekommen — die Seite darf der Hülle sagen, ob sie
+ * oben hell oder dunkel ist, damit die Fensterknöpfe darauf zu sehen sind.
+ *
+ * Dass diese Prüfung dabei rot wurde, ist ihr Zweck: In `bruecke.js` steht
+ * „Wer diese Liste erweitert, öffnet eine Tür und muss sie begründen." Eine
+ * Prüfung, die eine Aufzählung nachträgt statt sie zu erzwingen, hätte das
+ * nicht erzwungen.
+ *
+ * Die Tür ist schmal: Der Aufruf nimmt ein Wort entgegen und färbt drei
+ * Knöpfe. Er liest nichts, schreibt nichts und kann das Fenster nicht
+ * bewegen. Eine fremde Seite käme ohnehin nicht hierher (siehe unten).
+ */
 check('Sie bekommt genau die vorgesehene Liste',
-  bruecke.schluessel.join(',') === 'adresse,adresseSetzen,drucken,imProgramm,version',
+  bruecke.schluessel.join(',') === 'adresse,adresseSetzen,drucken,imProgramm,leiste,version',
   bruecke.schluessel.join(','))
 check('Sie bekommt KEIN Node', bruecke.node === 'undefined', bruecke.node)
 check('Und keinen Prozess', bruecke.prozess === 'undefined', bruecke.prozess)

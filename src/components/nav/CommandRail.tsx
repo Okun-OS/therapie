@@ -179,8 +179,15 @@ export function CommandRail() {
 
   return (
     <>
+      {/*
+        §201 `zieh-flaeche`: Im Desktop-Programm IST diese Leiste die
+        Fensterleiste — der eigene Rahmen ist dort ausgeblendet. Also muss man
+        das Fenster hier anfassen können, und rechts muss Platz für die drei
+        Fensterknöpfe bleiben. Beides macht die Klasse; im Browser tut sie
+        nichts.
+      */}
       <div
-        className="fixed top-0 left-0 right-0 z-30 h-[70px] flex items-center px-4 gap-2 select-none"
+        className="fixed top-0 left-0 right-0 z-30 h-[70px] flex items-center px-4 gap-2 select-none zieh-flaeche"
         style={{
           background: 'rgba(249,250,251,0.92)',
           backdropFilter: 'blur(20px)',

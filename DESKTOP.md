@@ -291,6 +291,62 @@ Stehen nur zwei der drei Variablen, **bricht der Bau ab**. Sonst liefe er still
 über den anderen Weg oder unsigniert weiter, und niemand sähe, dass Azure
 gemeint war.
 
+### §201 Das Fenster hat keinen eigenen Rahmen mehr
+
+Oben saß die helle Fensterleiste des Betriebssystems über einer App, die ihre
+eigene Kopfleiste mitbringt — zwei Kanten, zwei Farben, und genau deshalb der
+Eindruck „Webseite in einem Kasten". Der Rahmen ist jetzt ausgeblendet
+(`titleBarStyle: 'hidden'`, unter macOS `hiddenInset`); das System zeichnet
+nur noch die drei Knöpfe, und zwar über die `CommandRail` der App.
+
+Drei Dinge hängen daran und müssen zusammenpassen:
+
+| Wo | Was |
+|---|---|
+| `desktop/haupt.js` → `LEISTE.hoehe` | 70 — dieselbe Höhe wie die `CommandRail` |
+| `src/app/globals.css` → `.zieh-flaeche` | macht die Leiste anfassbar und hält rechts 150 px für die Knöpfe frei |
+| `desktop/bruecke.js` | setzt `im-programm` auf dem Wurzelelement, **bevor** gezeichnet wird |
+
+Wird die Kopfleiste der App einmal höher oder niedriger, muss `LEISTE.hoehe`
+mit — sonst sitzen die Knöpfe neben der Leiste. Das fällt keinem Test auf,
+weil beides für sich genommen richtig bleibt; deshalb steht es hier.
+
+Die Farbe der Knöpfe meldet jede Seite selbst (`fensterleiste()` in
+`src/lib/drucken.ts`): die Anmeldung dunkel, die App dahinter hell. Die Hülle
+führt bewusst keine Liste der dunklen Seiten.
+
+### Eingerichtet am 19.10.2026 — die echten Werte
+
+| Variable | Wert |
+|---|---|
+| `OKUN_AZURE_ENDPUNKT` | `https://neu.codesigning.azure.net` (North Europe) |
+| `OKUN_AZURE_KONTO` | `okunsignatur` — **ohne Bindestrich**, anders als die Ressourcengruppe `okun-signatur` |
+| `OKUN_AZURE_PROFIL` | `okun-public` |
+| `AZURE_TENANT_ID` | Verzeichnis-ID des Standardverzeichnisses |
+| `AZURE_CLIENT_ID` | App-Registrierung `okun-signatur-bau` |
+| `AZURE_CLIENT_SECRET` | steht **nur** bei Railway |
+
+Dazu gehört die Rollenzuweisung **Artifact Signing Certificate Profile Signer**
+für `okun-signatur-bau` auf dem Konto `okunsignatur`. Ohne sie darf die App
+sich anmelden, aber nicht signieren — der Bau läuft dann bis zur Signatur und
+bricht mit „Forbidden" ab.
+
+> **Zwei Termine zum Vormerken**
+>
+> * **18.10.2028** — der geheime Clientschlüssel läuft ab. Danach bricht jeder
+>   Bau ab. Ersatz: Entra ID → App-Registrierungen → `okun-signatur-bau` →
+>   Zertifikate & Geheimnisse → neuer Schlüssel, Wert bei Railway ersetzen.
+>   Zertifikat und Profil bleiben davon unberührt.
+> * **7.1.2029** — die Identitätsüberprüfung
+>   `e339bb25-b6de-4e49-9e8e-ebdc493b4283` läuft ab und muss erneuert werden.
+>
+> Das **Zertifikat selbst gilt nur drei Tage** und erneuert sich von allein.
+> Das ist kein Fehler, sondern der Sinn des Dienstes: Ein Schlüssel mit drei
+> Tagen Laufzeit ist für einen Dieb fast wertlos. Dass eine einmal signierte
+> Datei trotzdem jahrelang gültig bleibt, macht der Zeitstempel — Windows
+> prüft nicht, ob das Zertifikat heute gilt, sondern ob es galt, als signiert
+> wurde.
+
 **Bei jedem anderen Weg (B, C, D)** kommt der Befehl des Anbieters über eine
 Umgebungsvariable; `{datei}` wird durch den Pfad der zu signierenden Datei
 ersetzt:

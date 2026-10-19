@@ -3467,3 +3467,147 @@ meldet.** Kein einziger externer Zugang nötig.
 
 ## Noch offen aus der Nachweis-Phase
 - [x] **Krankenschein mit Fehlzeit verknüpfen** — fertig. Siehe Block C6 oben.
+
+## §201 Die zweite Tür vor den eigenen Lohndaten
+
+**Der Anlass.** Eine Sitzung hält dreißig Tage. In einer Wohngruppe steht ein
+Tablet im Dienstzimmer, und wer es in die Hand nimmt, ist angemeldet als der,
+der es zuletzt benutzt hat. Zwischen „Dienstplan ansehen" und „sehen, was die
+Kollegin verdient" lag ein Fingertipp. Das Gehalt ist die Angabe, die
+Mitarbeiter am wenigsten voneinander wissen wollen.
+
+**Kein zweites Passwort.** Vorgeschlagen war „wie ein extra Passwort". Ein
+zweites Passwort wird einmal vergeben, selten gebraucht, prompt vergessen —
+und dann braucht es einen Weg, es zurückzusetzen, und dieser Weg ist am Ende
+die eigentliche Tür. Abgefragt wird deshalb das **eigene Anmeldepasswort**.
+Dasselbe Geheimnis, aber eine andere Aussage: nicht „dieses Gerät gehört
+jemandem, der sich einmal angemeldet hat", sondern „die Person, die hier gerade
+steht, kennt das Passwort". Danach ist eine **Viertelstunde** frei, sichtbar
+ablaufend, mit „Wieder sperren" daneben.
+
+**Was beim Prüfen auffiel — und größer war als die Sperre selbst.** Die
+Lohnabrechnung liegt als PDF in der Personalakte. Dieselben Zahlen kommen aber
+noch auf drei anderen Wegen heraus, die jedem Angemeldeten offenstanden:
+
+| Weg | Was herauskam |
+|---|---|
+| `/api/dsgvo/auskunft` | **alle** Abrechnungszeilen auf einmal, als JSON |
+| `/api/payroll/bescheinigung` | Personalnummer, SV-Nummer, Krankenkasse, Monate |
+| `/api/payroll/bav` | die Entgeltumwandlung mit Monatsbetrag |
+
+Die Auskunft ist dabei die schlimmere Tür als die Abrechnung: Sie gibt nicht
+einen Monat heraus, sondern alles. Eine Sperre nur am PDF hätte wie Schutz
+ausgesehen und keiner gewesen. Alle vier Wege hängen jetzt an **einer**
+Entscheidung (`siegelSperre` in `src/lib/lohnsiegel.ts`).
+
+**Zu Art.15 DSGVO.** Die Auskunft ist ein Recht der Person und darf nicht
+erschwert werden. Eine Identitätsprüfung ist aber ausdrücklich vorgesehen
+(Art.12 Abs.6); verlangt wird nichts Neues, sondern das Passwort, das die
+Person ohnehin hat, und die Auskunft kommt danach sofort.
+
+**Warum nur für Mitarbeiter.** Für die Leitung wäre dieselbe Sperre
+Schaufenster-Sicherheit: Sie hat die Lohnliste aller Beschäftigten ohnehin
+offen. Ein PDF zu verriegeln, während die Tabelle mit denselben Zahlen daneben
+steht, schützt nichts und kostet jeden Abrechnungslauf Zeit.
+
+**Die Bremse ist dieselbe wie bei der Anmeldung** (§152). Hätte diese Stelle
+eine eigene, großzügigere Zählung, wäre sie der bequemere Weg, Passwörter
+durchzuprobieren — eine Tür zusätzlich einzubauen und sie schlechter zu
+sichern als die erste macht das Haus unsicherer.
+
+**Nachweis.** `pruefungen/m-lohnsiegel.mjs` (28 Checks) gegen das laufende
+System: ohne Bestätigung kommen keine Bytes; der eigene Arbeitsvertrag bleibt
+offen (Gegenprobe gegen eine zu weit geratene Sperre); die Leitung wird nicht
+gefragt; falsches Passwort stellt kein Siegel aus; **das Siegel des Kollegen am
+selben Gerät gilt nicht** — genau der Fall, gegen den gebaut wurde. Dazu 14
+Modultests für das Ablaufen nach der Viertelstunde, das in einer Prüfung
+fünfzehn Minuten Wartezeit hieße. Die vier bestehenden Prüfungen, die vorher
+ohne Bestätigung an die Daten kamen (`d-lohn`, `d22-bescheinigungen`,
+`g1-dsgvo`, `b4-app`), haben den neuen Weg **und je eine Gegenprobe** bekommen.
+
+Gesamtlauf **1685/1685 in 46 Prüfungen**, 1069 Modultests, tsc und Bauen
+sauber.
+
+## §201 Die Fensterleiste — und das Aufblitzen der Verkaufsseite
+
+**Wie der Eigentümer es gemeldet hat.** Zum Desktop-Programm: „Das will ich
+auf jeden Fall geändert haben, weil ich finde, es sieht hässlich aus." Und
+dazu: „dass jedes Mal kurz die Website aufpoppt". Zwei Dinge, eine Ursache —
+das Programm sah aus wie eine Webseite in einem Kasten.
+
+### Das Aufblitzen
+
+Es stand so im Code, und zwar ehrlich (§177, `AngemeldeteWeiterleiten`):
+
+> „Die Verkaufsseite ist dabei kurz sichtbar. Das ist gewollt."
+
+Für eine Website war das eine vertretbare Abwägung: Die Weiterleitung lief im
+Browser, damit die Startseite statisch ausgeliefert werden konnte — wichtig
+für Google und für das erste Laden auf einem alten Telefon. Im Programm war es
+keine Abwägung mehr, sondern ein Fehler.
+
+Entschieden wird jetzt in `src/middleware.ts`, also VOR der Seite. Das
+Gegenargument von §177 trifft dort nicht: Wer kein Sitzungs-Cookie mitbringt —
+jeder Interessent, jede Suchmaschine — fällt sofort durch und bekommt
+dieselbe statisch erzeugte Seite wie bisher. Der Bau bestätigt das: `○ /`,
+weiterhin vorgerendert.
+
+Die Unterschrift wird trotzdem geprüft, obwohl ein erfundenes Cookie nur auf
+eine Seite führte, die den Betreffenden ohnehin abweist. Sonst wäre das eine
+Weiche, die sich von außen stellen lässt — und solche Weichen werden später
+als Berechtigung missverstanden.
+
+### Die Fensterleiste
+
+Oben saß die helle Fensterleiste des Betriebssystems über einer App, die ihre
+eigene Kopfleiste mitbringt: zwei Kanten, zwei Farben. Der Rahmen ist jetzt
+ausgeblendet (`titleBarStyle: 'hidden'`); das System zeichnet nur noch die drei
+Knöpfe, und zwar über unsere Leiste. Eine zweite Leiste zu bauen wäre falsch
+gewesen — die 70 Pixel hohe `CommandRail` mit dem Logo gab es schon.
+
+**Was dabei still kaputtgehen kann.** Ein rahmenloses Fenster lässt sich nur
+dort anfassen, wo eine Fläche ausdrücklich zum Ziehen erklärt ist. Fehlt sie,
+ist das Fenster festgenagelt; ist zu viel erklärt, verschiebt ein Klick auf
+einen Knopf das Fenster, statt ihn zu drücken. Die Anmeldung hat keine
+Kopfleiste und bekam deshalb einen eigenen, unsichtbaren Streifen.
+
+**Die Farbe sagt die Seite, nicht die Hülle.** Die Anmeldung ist dunkel, die
+App dahinter hell. Eine Liste der dunklen Seiten in der Hülle wäre beim
+nächsten neuen Bildschirm veraltet — und niemand merkte es, weil nur die
+Knöpfe schlecht zu sehen wären. Also meldet sich jeder Bildschirm selbst
+(`fensterleiste()` in `src/lib/drucken.ts`).
+
+Dass die Brücke dadurch um einen Eintrag wächst, hat `pruefungen/desktop/
+huelle.mjs` sofort rot gemeldet — die Prüfung zählt die erlaubte Liste
+namentlich auf. Genau dafür ist sie da: In `bruecke.js` steht „Wer diese Liste
+erweitert, öffnet eine Tür und muss sie begründen."
+
+### Nachweise
+
+`pruefungen/browser/fensterleiste.mjs` (12 Checks) gegen die **echte** App mit
+dem echten Stylesheet: Streifen vorhanden, wirklich zum Ziehen erklärt, 70 px
+hoch, über die volle Breite — und die Gegenproben: im Browser ist nichts davon
+sichtbar und nichts zieht; das Anmeldefeld bleibt anklickbar; von fünf
+Bedienelementen in der Leiste zieht keines; der Platz für die Fensterknöpfe
+ist im Browser nicht reserviert, sonst klaffte dort eine Lücke.
+
+Im Hüllen-Test steht bewusst nur, was die **Hülle** tut (Fenster bleibt
+verschiebbar, Klasse wird vor dem ersten Bild gesetzt, Farbe lässt sich
+stellen). Die Attrappe dort hat kein Stylesheet; die CSS-Regel dort zu prüfen
+hieße, eine Abschrift zu prüfen.
+
+In `k-website.mjs` neun Checks zur Weiche, davon fünf Gegenproben — eine
+Weiche, die auch Unangemeldete umleitet, hätte die Website über Nacht aus
+Google genommen.
+
+### Nebenbefund
+
+Auf dem Bildschirmfoto der Unternehmensübersicht standen vier fremde Standorte
+(„F10 mvf7fum5 ohne Paket") zwischen den echten, als aktiv mitgezählt. Reste
+aus abgebrochenen Läufen von `f10-dienstzeiten-fehlen`: Das Aufräumen stand
+nur am Ende. Eine Prüfung, die bei Erfolg aufräumt und bei Misserfolg nicht,
+räumt genau dann nicht auf, wenn etwas schiefgegangen ist. Sie räumt jetzt
+auch bei Abbruch weg — nachgewiesen mit einem absichtlich eingebauten Abbruch.
+
+**Stand:** 1732/1732 in 47 Prüfungen, 1069 Modultests, 154 im Rechendienst,
+Desktop 49/49, Browser 12+20+17+31+25+22+17, tsc und Bauen sauber.

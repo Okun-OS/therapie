@@ -4,6 +4,7 @@ import { assertEmployeeAccess, allowedLocationScope } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 import { dateiInhalt, dateiLoeschen, mitarbeiterDarfSehen, DATEI_FELDER } from '@/lib/file-storage'
 import { verknuepfen, nachweisKennzeichenAktualisieren } from '@/lib/krankmeldung'
+import { SIEGEL_KEKS, siegelSperre } from '@/lib/lohnsiegel'
 import type { SessionPayload } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
@@ -47,8 +48,29 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const session = requireRole(req, ['employee', 'admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
-  const { fehler } = await pruefeZugriff(session, params.id)
+  const { fehler, datei } = await pruefeZugriff(session, params.id)
   if (fehler) return fehler
+
+  /*
+   * §201 Die zweite Tür vor der Lohnabrechnung.
+   *
+   * Sie steht AM INHALT, nicht an der Seite. Eine Sperre, die nur die
+   * Oberfläche zumacht, ist keine: Die Datei hat eine Adresse, und die steht
+   * im Verlauf des Browsers. Wer `/api/files/<id>` aufruft, muss abgewiesen
+   * werden — auch wenn er nie eine Seite von uns gesehen hat.
+   *
+   * Die Kopfdaten (Monat, Dateiname, Größe) bleiben sichtbar. Dass es eine
+   * Abrechnung für September gibt, ist keine Auskunft, die geschützt werden
+   * müsste; was darin steht, schon.
+   */
+  const sperre = siegelSperre({
+    rolle: session.role,
+    marke: req.cookies.get(SIEGEL_KEKS)?.value,
+    userId: session.userId,
+    kategorie: datei!.kategorie,
+    was: 'deine Lohnabrechnung zu öffnen',
+  })
+  if (sperre) return NextResponse.json(sperre, { status: sperre.status })
 
   const inhalt = await dateiInhalt(params.id)
   if (!inhalt) return NextResponse.json({ error: 'Inhalt nicht verfügbar' }, { status: 404 })

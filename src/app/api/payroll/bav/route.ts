@@ -7,6 +7,7 @@ import {
   WEGE, grenzen, anspruchJahr, PFLICHTZUSCHUSS, type Durchfuehrungsweg,
 } from '@/lib/bav'
 import { lohnjahr } from '@/lib/lohnjahre'
+import { SIEGEL_KEKS, siegelSperre } from '@/lib/lohnsiegel'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,6 +49,15 @@ export async function GET(req: NextRequest) {
   let wo: Record<string, unknown>
   if (session.role === 'employee') {
     if (!session.employeeId) return NextResponse.json({ vertraege: [] })
+    // §201 Die Entgeltumwandlung sagt den Monatsbetrag und damit ein Stück
+    // des Gehalts. Gehört hinter dieselbe Tür wie die Abrechnung.
+    const sperre = siegelSperre({
+      rolle: session.role,
+      marke: req.cookies.get(SIEGEL_KEKS)?.value,
+      userId: session.userId,
+      was: 'deine Altersvorsorge zu sehen',
+    })
+    if (sperre) return NextResponse.json(sperre, { status: sperre.status })
     wo = { customerId, employeeId: session.employeeId }
   } else if (gefragt) {
     const verweigert = await assertEmployeeAccess(session, gefragt)

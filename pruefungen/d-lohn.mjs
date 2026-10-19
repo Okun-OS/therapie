@@ -1,5 +1,5 @@
 // Nachweis D3–D6: Lohnbeleg, Zustellung, DATEV-Export, SEPA-Datei.
-import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate } from './helfer.mjs'
+import { BASIS, pruefer, login, hole, sende, zuruecksetzen, pruefMonate, mitSiegel } from './helfer.mjs'
 import zlib from 'node:zlib'
 
 // Der sichtbare Text einer PDF-Datei: Inhaltsströme sind komprimiert und die
@@ -104,9 +104,21 @@ check('Er ist für den Mitarbeiter freigegeben',
 
 const dateiId = neueBelege[0]?.id
 if (dateiId) {
-  const r = await fetch(`${BASIS}/api/files/${dateiId}`, { headers: { cookie: anna } })
+  /*
+   * §201 Der Beleg liegt hinter einer Passwortbestätigung: Eine Sitzung hält
+   * dreißig Tage, das Tablet im Dienstzimmer wechselt öfter die Hand. Erst
+   * die Gegenprobe, dann der Weg — andersherum läge der Keks schon und die
+   * Sperre wäre nie zu sehen.
+   */
+  const zu = await fetch(`${BASIS}/api/files/${dateiId}`, { headers: { cookie: anna } })
+  check('Ohne Bestätigung bleibt der Beleg verschlossen', zu.status === 403,
+    `HTTP ${zu.status}`)
+
+  const annaFrei = await mitSiegel(anna)
+  const r = await fetch(`${BASIS}/api/files/${dateiId}`, { headers: { cookie: annaFrei } })
   const buf = Buffer.from(await r.arrayBuffer())
-  check('Der Mitarbeiter kann den Beleg öffnen', r.status === 200, `HTTP ${r.status}`)
+  check('Nach der Bestätigung kann der Mitarbeiter den Beleg öffnen',
+    r.status === 200, `HTTP ${r.status}`)
   check('Es ist eine gültige PDF-Datei',
     buf.subarray(0, 5).toString() === '%PDF-' && buf.length > 1000,
     `${buf.subarray(0, 5).toString()} · ${(buf.length / 1024).toFixed(1)} KB`)

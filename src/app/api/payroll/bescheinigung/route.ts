@@ -8,6 +8,7 @@ import {
   MUTTERSCHAFTSGELD_KASSE, type Abrechnungsmonat,
 } from '@/lib/bescheinigungen'
 import { lohnjahr } from '@/lib/lohnjahre'
+import { SIEGEL_KEKS, siegelSperre } from '@/lib/lohnsiegel'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +58,17 @@ export async function GET(req: NextRequest) {
     const verweigert = await assertEmployeeAccess(session, employeeId)
     if (verweigert) return verweigert
   }
+
+  // §201 Dieselben Zahlen wie auf der Lohnabrechnung, dazu Personalnummer,
+  // SV-Nummer und Krankenkasse. Für den Beschäftigten gilt deshalb dieselbe
+  // zweite Tür — sonst wäre die an der Abrechnung nur Zierde.
+  const sperre = siegelSperre({
+    rolle: session.role,
+    marke: req.cookies.get(SIEGEL_KEKS)?.value,
+    userId: session.userId,
+    was: 'deine Bescheinigung zu sehen',
+  })
+  if (sperre) return NextResponse.json(sperre, { status: sperre.status })
 
   const person = await prisma.employee.findFirst({
     where: { id: employeeId, customerId },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/Button'
@@ -9,12 +9,17 @@ import { Logo } from '@/components/ui/Logo'
 import Link from 'next/link'
 import { Mail, Lock, ShieldCheck, ArrowLeft, MessageSquare, Check } from 'lucide-react'
 import { KOPF, STAERKEN, FUSS } from '@/lib/website-inhalt'
+import { fensterleiste } from '@/lib/drucken'
 
 type LoginStep = 'credentials' | 'totp' | 'sms' | 'email'
 
 export default function LoginPage() {
   const { login, loginWithTotp, loginWithSms, loginWithEmailCode } = useAuth()
   const router = useRouter()
+
+  // §201 Die Anmeldung ist dunkel — die Fensterknöpfe brauchen helle Symbole.
+  useEffect(() => { fensterleiste('dunkel') }, [])
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -135,6 +140,18 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-navy flex flex-col lg:flex-row">
+      {/*
+        §201 Im Desktop-Programm hat das Fenster keinen eigenen Rahmen mehr.
+        Auf den Seiten mit Kopfleiste ist die Leiste selbst die Ziehfläche —
+        hier gibt es keine, also braucht die Anmeldung einen eigenen Streifen,
+        sonst lässt sich das Fenster vor der Anmeldung nicht verschieben.
+        Unsichtbar, aber vorhanden; im Browser gibt es ihn nicht.
+      */}
+      <div
+        aria-hidden
+        className="nur-im-programm zieh-flaeche fixed top-0 left-0 right-0 h-[70px] z-50"
+      />
+
       {/* Left Panel */}
       <div className="hidden lg:flex flex-col justify-between w-[45%] bg-navy p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(circle at 20% 50%, #26C6C6 0%, transparent 50%), radial-gradient(circle at 80% 20%, #C89C5B 0%, transparent 40%)' }} />

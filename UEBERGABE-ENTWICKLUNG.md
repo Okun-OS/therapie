@@ -130,35 +130,41 @@ Der E-Mail-Faktor läuft unabhängig davon.
 ## Offene Aufgaben
 
 1. ~~Regelpaket-Zuweisung umziehen~~ — erledigt in §200.
-2. **Lohnabrechnung besser schützen.** Der Eigentümer möchte eine zusätzliche
-   Stufe, bevor jemand seine Lohnabrechnung öffnet. Vorschlag, dem er noch
-   nicht zugestimmt hat: **kein zweites Passwort** (das vergisst man, es
-   braucht einen Rücksetzweg und landet auf einem Zettel), sondern erneute
-   Eingabe des eigenen Passworts oder des 2FA-Codes, danach 15 Minuten Ruhe.
-   Schützt den Fall, der wirklich vorkommt: ein offen stehender Rechner.
-3. ~~Dienstzeiten der Kita „Krümelkiste" anlegen~~ — seit §202 holt der
+2. ~~Lohnabrechnung besser schützen~~ — erledigt in §201. Eigenes
+   Anmeldepasswort, danach 15 Minuten frei. Dabei fiel auf, dass dieselben
+   Zahlen noch auf drei weiteren Wegen offenstanden (Auskunft nach Art.15,
+   Bescheinigung, Entgeltumwandlung); alle vier hängen jetzt an einer
+   Entscheidung in `src/lib/lohnsiegel.ts`. Einzelheiten in `FEATURES.md`,
+   Block §201.
+3. ~~Desktop-Hülle: Fensterleiste und das Aufblitzen der Verkaufsseite~~ —
+   erledigt in §201. Das Fenster hat keinen eigenen Rahmen mehr, die
+   Kopfleiste der App ist die Fensterleiste; die Weiterleitung Angemeldeter
+   von `/` entscheidet jetzt `src/middleware.ts` statt des Browsers. Wer die
+   Kopfleiste in der Höhe ändert, muss `LEISTE.hoehe` in
+   `desktop/haupt.js` mitziehen — siehe `DESKTOP.md`.
+4. ~~Dienstzeiten der Kita „Krümelkiste" anlegen~~ — seit §202 holt der
    Dienstplan sie beim Öffnen aus dem Paket. **Nicht prüfbar war**, welches
    Paket dort hängt (kein Zugang zur Produktion). Ist es die Vorlage
    `muster_pflege`, bringt sie keine Dienstzeiten mit — dann steht dort
    „bitte bei OKUN melden", und die Dienstzeiten müssen ins Paket.
-4. **Keine Ersatzcodes für den zweiten Faktor.** Wer SMS oder E-Mail aktiv hat
+5. **Keine Ersatzcodes für den zweiten Faktor.** Wer SMS oder E-Mail aktiv hat
    und den Zugang verliert, kommt ohne fremde Hilfe nicht mehr hinein. Bekannt,
    bewusst offen, noch nicht entschieden.
-5. **Authenticator-App ist eingeklappt, nicht gelöscht** (§196). Der Eigentümer
+6. **Authenticator-App ist eingeklappt, nicht gelöscht** (§196). Der Eigentümer
    wollte sie heraus; sie steht jetzt hinter „für Fortgeschrittene", weil sie
    die einzige Methode ohne fremden Dienstleister ist. Wenn er sie ganz
    entfernt haben will, ist das sein Recht — dann wirklich entfernen.
-6. **Die alten Planungsprofil-Spalten** (`childPickupTimes`, `weekendRule`,
+7. **Die alten Planungsprofil-Spalten** (`childPickupTimes`, `weekendRule`,
    `maxConsecutiveDays` im Profil, `planningNote`) stehen noch in der
    Datenbank. Löschen nur auf ausdrückliches Ja des Eigentümers — es
    berührt Produktionsdaten (steht in `DEINE-LISTE.md`).
-7. **Resend-Ablehnungen bei allen anderen Mails.** Resend 6 wirft nicht,
+8. **Resend-Ablehnungen bei allen anderen Mails.** Resend 6 wirft nicht,
    sondern gibt `{ error }` zurück. Seit §200 wird das bei Einladungen
    ausgewertet (`ablehnungMelden`). Bei den übrigen elf Aufrufern von
    `sendEmail` (2FA-Code, Passwort zurücksetzen, Tausch, Benachrichtigungen …)
    wird eine Ablehnung nur protokolliert. Einige stehen mitten in einem
    Ablauf ohne Auffangnetz — darum nicht nebenbei umgestellt.
-8. 🔴 **`PATCH /api/employees/[id]` übernimmt den Rest des Bodys ungefiltert**
+9. 🔴 **`PATCH /api/employees/[id]` übernimmt den Rest des Bodys ungefiltert**
    in die Datenbank (`updateEmployee`). Geprüft wird nur, dass der
    Mitarbeiter zum eigenen Unternehmen gehört — nicht, WAS geändert wird.
    **Nachgemessen am 19.10.2026:** Die Leitung der Reha setzt mit
@@ -166,15 +172,14 @@ Der E-Mail-Faktor läuft unabhängig davon.
    fremden Mandanten, Antwort 200. Gefunden in §200, nicht behoben: Es
    braucht eine Liste der erlaubten Felder, und die berührt jede Maske, die
    diese Route benutzt. Vor dem ersten echten Kunden schließen.
-
-9. **Kita Sonnenschein: Spätdienst bis 17:00 oder 17:30?** Das Paket sagt
+10. **Kita Sonnenschein: Spätdienst bis 17:00 oder 17:30?** Das Paket sagt
    im Text 17:30, die Testdaten (und damit seine Einrichtung) 17:00. Nur der
    Betrieb weiß es.
-10. **Der Einrichtungsweg per Skript** (`scripts/kunde-wohngruppe.mjs`) legt
+11. **Der Einrichtungsweg per Skript** (`scripts/kunde-wohngruppe.mjs`) legt
     Dienste und Bereich noch selbst an. Das ist jetzt doppelt — beim nächsten
     neuen Kunden gehört die Einrichtung ins Paket, und das Skript macht nur
     noch Kunde, Standort, Zuweisung und Belegschaft.
-11. **Die Schnittstellen des alten Modells** (`location-model/*`,
+12. **Die Schnittstellen des alten Modells** (`location-model/*`,
     `company-model/*`, `onboarding-chat`, `location-onboarding/*`,
     `admin/setup-extract`, `admin/custom-constraints`) sind seit §202 nur
     noch für OKUN beschreibbar, aber nicht gelöscht. Sie zu löschen ist ein

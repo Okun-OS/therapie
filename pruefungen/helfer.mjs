@@ -31,6 +31,28 @@ export async function login(email, passwort = 'Test1234!') {
   return r.headers.getSetCookie().map(c => c.split(';')[0]).join('; ')
 }
 
+/**
+ * §201 Die Lohndaten freischalten und den Keks an die Sitzung hängen.
+ *
+ * Ein Beschäftigter kommt an seine Lohnabrechnung, seine Bescheinigung und
+ * seine Auskunft nach Art.15 erst, nachdem er sein Passwort noch einmal
+ * bestätigt hat — eine Sitzung hält dreißig Tage, ein Tablet im Dienstzimmer
+ * wechselt öfter die Hand. Prüfungen, die diese Daten holen, brauchen den Keks
+ * also auch; und wo eine Prüfung ihn NICHT nimmt, prüft sie damit die Sperre.
+ */
+export async function mitSiegel(cookie, passwort = 'Test1234!') {
+  const r = await fetch(`${BASIS}/api/auth/lohnsiegel`, {
+    method: 'POST',
+    headers: { cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passwort }),
+  })
+  if (!r.ok) throw new Error(`Lohnsiegel fehlgeschlagen: HTTP ${r.status}`)
+  const keks = r.headers.getSetCookie()
+    .map(c => c.split(';')[0])
+    .find(c => c.startsWith('okun_lohnsiegel='))
+  return keks ? `${cookie}; ${keks}` : cookie
+}
+
 export const hole = async (cookie, pfad) => {
   const r = await fetch(`${BASIS}${pfad}`, { headers: { cookie } })
   return { status: r.status, body: await r.json().catch(() => ({})) }

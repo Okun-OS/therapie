@@ -354,4 +354,52 @@ for (const branche of ['Kita', 'Pflegeheim', 'Reha']) {
     !new RegExp(branche, 'i').test(schaufensterText))
 }
 
+// ── §201 Die Verkaufsseite blitzt Angemeldeten nicht mehr auf ──────────────
+console.log('\n=== §201 Wer angemeldet ist, sieht die Verkaufsseite nicht ===')
+
+/*
+ * Die Weiterleitung lief bisher im Browser, und im Kommentar dazu stand
+ * ehrlich: „Die Verkaufsseite ist dabei kurz sichtbar. Das ist gewollt." Im
+ * Desktop-Programm blitzte damit bei jedem Öffnen die Werbeseite auf, bevor
+ * die Anmeldung kam. Jetzt entscheidet die Schicht davor.
+ *
+ * Die Gegenprobe ist hier die wichtigere Hälfte: Eine Weiche, die auch
+ * Unangemeldete umleitet, hätte die Website von einem Tag auf den anderen
+ * aus Google genommen.
+ */
+const nurFolgen = async (cookie) => {
+  const r = await fetch(`${BASIS}/`, {
+    redirect: 'manual', headers: cookie ? { cookie } : {},
+  })
+  return { status: r.status, ziel: r.headers.get('location') ?? '' }
+}
+
+const anonym = await nurFolgen(null)
+check('Ohne Anmeldung kommt die Verkaufsseite — unverändert',
+  anonym.status === 200, `HTTP ${anonym.status} → ${anonym.ziel}`)
+
+for (const [wer, pfad] of [
+  ['gf@rheinblick-reha.de', '/company'],
+  ['anna.fischer@rheinblick-reha.de', '/employee'],
+  ['okun@okun.de', '/okun'],
+]) {
+  const angemeldet = await nurFolgen(await login(wer))
+  check(`Angemeldet wird sofort nach ${pfad} geschickt`,
+    angemeldet.status === 307 && angemeldet.ziel.endsWith(pfad),
+    `HTTP ${angemeldet.status} → ${angemeldet.ziel}`)
+}
+
+const erfunden = await nurFolgen('okun_session=ausgedacht.unterschrift')
+check('Ein selbst geschriebener Keks stellt die Weiche nicht',
+  erfunden.status === 200, `HTTP ${erfunden.status} → ${erfunden.ziel}`)
+
+const angemeldeterKeks = await login('gf@rheinblick-reha.de')
+for (const seite of ['/funktionen', '/kontakt', '/impressum', '/datenschutz']) {
+  const r = await fetch(`${BASIS}${seite}`, {
+    redirect: 'manual', headers: { cookie: angemeldeterKeks },
+  })
+  check(`${seite} bleibt auch für Angemeldete erreichbar`, r.status === 200,
+    `HTTP ${r.status}`)
+}
+
 process.exit(bilanz() ? 1 : 0)

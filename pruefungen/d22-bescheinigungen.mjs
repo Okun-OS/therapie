@@ -15,7 +15,7 @@
 // nachgerechnet.
 
 import {
-  pruefer, login, hole, sende, BASIS, lohnPerson, monatFreigeben,
+  pruefer, login, hole, sende, BASIS, lohnPerson, monatFreigeben, mitSiegel,
 } from './helfer.mjs'
 
 const { check, bilanz } = pruefer()
@@ -169,8 +169,17 @@ check('Und darauf, dass er dem Progressionsvorbehalt unterliegt',
 // ── D22.5 Der Mensch sieht seine eigene ────────────────────────────────────
 console.log('\n=== D22.5 Die eigene Bescheinigung ===')
 
-const eigene = await hole(anna, '/api/payroll/bescheinigung?art=krankengeld')
-check('Ein Mitarbeiter bekommt seine eigenen Zahlen',
+// §201 Die Bescheinigung nennt dieselben Zahlen wie die Lohnabrechnung, dazu
+// Personalnummer, SV-Nummer und Krankenkasse. Für den Beschäftigten liegt sie
+// deshalb hinter derselben Passwortbestätigung — erst die Gegenprobe:
+const ohneSiegel = await hole(anna, '/api/payroll/bescheinigung?art=krankengeld')
+check('Ohne Bestätigung bekommt der Mitarbeiter seine Bescheinigung NICHT',
+  ohneSiegel.status === 403 && ohneSiegel.body.code === 'SIEGEL_NOETIG',
+  `HTTP ${ohneSiegel.status} ${JSON.stringify(ohneSiegel.body).slice(0, 120)}`)
+
+const annaFrei = await mitSiegel(anna)
+const eigene = await hole(annaFrei, '/api/payroll/bescheinigung?art=krankengeld')
+check('Nach der Bestätigung bekommt ein Mitarbeiter seine eigenen Zahlen',
   eigene.status === 200, `HTTP ${eigene.status}`)
 check('Und zwar die zu seiner Person',
   eigene.body.person?.id !== personId,

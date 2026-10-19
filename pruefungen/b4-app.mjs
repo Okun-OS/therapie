@@ -14,7 +14,7 @@
 // nur die Leitung bescheidet — und dass eine Ablehnung ohne Begründung nicht
 // durchgeht (Art. 12 Abs. 4 DSGVO).
 
-import { BASIS, pruefer, login, hole, sende } from './helfer.mjs'
+import { BASIS, pruefer, login, hole, sende, mitSiegel } from './helfer.mjs'
 
 const { check, bilanz } = pruefer()
 
@@ -30,8 +30,10 @@ const mKollege = (await hole(kollege, '/api/auth/me')).body.user
 // Durchläufe gegenseitig ins Handwerk.
 const KENNUNG = `pruefung-b9-${Date.now()}-${'x'.repeat(20)}`
 
+// §201 Die Auskunft liegt hinter der Passwortbestätigung — sie enthält auch
+// die Lohndaten. Hier geht es um die Geräteliste darin, also wird bestätigt.
 const geraeteBlock = async cookie => {
-  const a = await hole(cookie, '/api/dsgvo/auskunft')
+  const a = await hole(await mitSiegel(cookie), '/api/dsgvo/auskunft')
   const block = (a.body.bloecke ?? []).find(b => b.id === 'nachrichten')
   return (block?.daten ?? []).filter(d => 'plattform' in d)
 }
@@ -216,7 +218,7 @@ check('Der alte, unvollständige Export ist abgeschafft',
 // ── B9 Der Antrag steht in der eigenen Auskunft ────────────────────────────
 console.log('\n=== B9 In der Auskunft ===')
 
-const auskunft = await hole(person, '/api/dsgvo/auskunft')
+const auskunft = await hole(await mitSiegel(person), '/api/dsgvo/auskunft')
 const protokolle = (auskunft.body.bloecke ?? []).find(b => b.id === 'protokolle')
 check('Der eigene Löschantrag steht in der Auskunft',
   (protokolle?.daten ?? []).some(d => d.status === 'abgelehnt'),

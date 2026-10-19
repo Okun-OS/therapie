@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { Receipt, Download, FileText, Loader2 } from 'lucide-react'
+import { useLohnsiegel, Siegelkarte, Freigabeleiste } from '@/components/employee/Lohnfreigabe'
 
 /**
  * §137 Meine Lohnabrechnungen.
@@ -15,6 +16,15 @@ import { Receipt, Download, FileText, Loader2 } from 'lucide-react'
  *
  * Deshalb ein eigener Ort, nach Jahren sortiert, mit dem Monat als Überschrift
  * statt eines Dateinamens wie „Entgeltabrechnung_2026_09_Fischer.pdf".
+ *
+ * §201 Davor liegt jetzt eine zweite Tür: das eigene Passwort, danach eine
+ * Viertelstunde frei. Warum, steht in `src/lib/lohnsiegel.ts` — kurz: eine
+ * Sitzung hält dreißig Tage, und das Tablet im Dienstzimmer wechselt öfter
+ * die Hand als das.
+ *
+ * Die Sperre hier ist die Bedienung, nicht der Schutz. Der sitzt an
+ * `/api/files/[id]`; diese Seite sorgt nur dafür, dass niemand erst auf eine
+ * Fehlermeldung läuft.
  */
 
 interface Datei {
@@ -53,6 +63,9 @@ export default function MeinLohn() {
   const [dateien, setDateien] = useState<Datei[]>([])
   const [laedt, setLaedt] = useState(true)
 
+  // §201 Die Freigabe — gemeinsam mit „Meine Daten" im Profil.
+  const siegel = useLohnsiegel()
+
   useEffect(() => {
     if (!user?.employeeId) return
     fetch(`/api/files?ownerType=employee&ownerId=${user.employeeId}`)
@@ -83,6 +96,16 @@ export default function MeinLohn() {
           Deine Abrechnungen zum Ansehen und Herunterladen.
         </p>
       </div>
+
+      {siegel.frei === null ? (
+        <div className="flex justify-center py-10">
+          <Loader2 size={22} className="animate-spin text-gray-300" />
+        </div>
+      ) : !siegel.frei ? (
+        <Siegelkarte stand={siegel} text="Deine Abrechnungen sieht niemand außer dir." />
+      ) : (
+      <>
+      <Freigabeleiste stand={siegel} />
 
       {laedt ? (
         <div className="flex justify-center py-10">
@@ -152,6 +175,8 @@ export default function MeinLohn() {
             kommt von der Finanzverwaltung.
           </p>
         </div>
+      )}
+      </>
       )}
     </div>
   )
