@@ -131,17 +131,55 @@ Der E-Mail-Faktor läuft unabhängig davon.
    die einzige Methode ohne fremden Dienstleister ist. Wenn er sie ganz
    entfernt haben will, ist das sein Recht — dann wirklich entfernen.
 
-## Wo was steht
+## Alle Unterlagen — nichts davon ist in diese Übergabe kopiert
 
-| Datei | Inhalt |
+**Absichtlich nicht kopiert.** Zwei Fassungen derselben Liste laufen immer
+auseinander, und dann weiß niemand mehr, welche gilt. Die Dateien liegen im
+Verzeichnis; dieser Abschnitt sagt nur, welche es gibt und wozu.
+
+### Was der Eigentümer tun muss
+| Datei | Was drinsteht |
 |---|---|
-| `DEINE-LISTE.md` | alles, was der Eigentümer selbst tun muss |
-| `STAND.md` | was fertig ist |
-| `ANFRAGEN.md` | fertige Briefe (Steuerberater, ITSG, ELSTER) |
-| `FIREBASE.md` | Benachrichtigungen, beide Wege |
-| `APP-STORES.md` | Weg in Play Store und App Store, inkl. Mac-Frage |
-| `DESKTOP.md` | Windows-Programm und Signatur |
-| `LOHN-ZERTIFIZIERUNG.md` | Meldewesen selbst machen oder nicht |
-| `AGENTS.md` | Hinweis zur Next.js-Fassung |
+| `DEINE-LISTE.md` | **Die Hauptliste.** Alles, was ein Konto, eine Unterschrift oder einen Kauf braucht — nach Dringlichkeit, mit dem, was es jeweils blockiert. Hier wird nachgeführt. |
+| `ANFRAGEN.md` | **Fertige Briefe zum Abschicken:** Steuerberater (prüferische Durchsicht einer Abrechnung + anonymisierte ELStAM-Datei + Aufbewahrungsfristen), ITSG, ELSTER-Entwicklerbetreuung. |
+| `impressum-angaben.md` | Vorlage für die Firmenangaben. Erledigt — die Angaben stehen bei Railway. |
+| `recherche-auftrag-umlagen.md` | Rechercheauftrag für die U1/U2-Sätze. **Jährlich im Dezember fällig**, dann `npm run umlagen:import`. |
+| `website-texte.md` | Vorlage, über die der Eigentümer Website-Texte ändert. |
+
+### Lohn, Meldewesen, Zertifizierung
+| Datei | Was drinsteht |
+|---|---|
+| `LOHN-ZERTIFIZIERUNG.md` | Die Entscheidung: Meldewesen selbst machen (ITSG-Systemuntersuchung, ERiC) oder über den Steuerberater. Mit dem, wovon sie wirklich abhängt. |
+| `FAHRPLAN-KOMPLETTLOESUNG.md` | Der lange Weg dorthin: OKUN rechnet, meldet und bescheinigt selbst. |
+| `ABLAUFPLAN.md` | Die Schritte bis zum ersten echten Kunden. Punkt 1 ist die Gegenzeichnung durch den Steuerberater. |
+
+### Ausliefern
+| Datei | Was drinsteht |
+|---|---|
+| `APP-STORES.md` | Weg in Play Store und App Store. Reihenfolge, D-U-N-S für **beide** Stores, und die ungeklärte Mac-Frage für iOS. |
+| `FIREBASE.md` | Benachrichtigungen. **Zwei Wege:** Browser-Push (VAPID, braucht kein Google-Konto) und nativ über Firebase. |
+| `DESKTOP.md` | Das Windows-Programm und die Signatur (Azure Artifact Signing, North Europe). |
+| `DOMAIN.md` | Wie die Domain mit Railway verbunden wurde. Erledigt, bleibt zum Nachsehen. |
+
+### Produkt und Technik
+| Datei | Was drinsteht |
+|---|---|
+| `STAND.md` | Was fertig ist. |
+| `FEATURES.md` | Das Gedächtnis: jede Funktion und wie sie nachgewiesen wurde (~3.300 Zeilen). |
+| `FEHLERKREISLAUF.md` | Funde erfassen, täglich auswerten, automatisch beheben — gebaut. |
+| `PRODUKT-NOTIZEN.md` | Ältere Bestandsaufnahme. |
+| `briefing-texter.md` | Briefing für jemanden, der Werbetexte schreibt. |
+| `AGENTS.md` / `CLAUDE.md` | Hinweis zur Next.js-Fassung. `CLAUDE.md` verweist nur auf `AGENTS.md`; den Block schreibt `next dev` selbst. |
+
+## Wo der Code liegt
+
+| Ort | Inhalt |
+|---|---|
 | `pruefungen/` | die Nachweise gegen das laufende System |
-| `solver-service/` | Rechenkern und Regelpakete |
+| `pruefungen/browser/` | die, die einen echten Browser brauchen |
+| `pruefungen/desktop/` | die Hülle für den Rechner |
+| `solver-service/` | Rechenkern (CP-SAT) und Regelpakete |
+| `solver-service/rulepacks/bausteine.py` | die gemeinsamen Bausteine — nur erweitern, nie umbauen |
+| `solver-service/rulepacks/kunden/` | die Pakete je Kunde |
+| `scripts/` | Einrichtung und Messwerkzeuge (`kunde-wohngruppe.mjs`, `schrift-messen.mjs`, `hintergrund-aufbereiten.mjs`) |
+| `prisma/` | Schema, Migrationen, Testdaten |
