@@ -32,10 +32,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const verwehrt = await assertEmployeeAccess(session, params.id)
   if (verwehrt) return verwehrt
   const body = await req.json()
-  const {
-    shiftPreference, childPickupTimes, maxConsecutiveDays, weekendRule,
-    planningNote, surchargeMode, surchargeOverrides,
-  } = body
+  // §200 Kinder-Abholzeiten, Wochenend-Vereinbarung, maximale Folgetage und
+  // Planungsnotiz werden nicht mehr geschrieben: Kein Rechenkern und kein
+  // Regelpaket hat sie je gelesen (siehe admin/employees). Was davon in der
+  // Datenbank steht, bleibt unberührt — es wird hier nur nicht mehr gesetzt,
+  // auch nicht auf leer.
+  const { shiftPreference, surchargeMode, surchargeOverrides } = body
 
   // §171 Wie viele Wochenstunden dieser Mensch IM DIENSTPLAN belegt.
   //
@@ -86,10 +88,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const werte = {
     shiftPreference: shiftPreference ?? 'keine',
-    childPickupTimes: childPickupTimes ?? [],
-    maxConsecutiveDays: maxConsecutiveDays ?? 0,
-    weekendRule: weekendRule ?? null,
-    planningNote: planningNote ?? null,
     planungsStundenSoll,
     // Prisma kennt für ein JSON-Feld nur sein eigenes Eingabeformat; eine
     // Liste von Objekten passt erst nach dieser Umdeutung hinein. Geprüft ist

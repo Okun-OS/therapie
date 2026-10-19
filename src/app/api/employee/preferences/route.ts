@@ -17,12 +17,11 @@ export async function GET(req: NextRequest) {
 
   const profile = await prisma.employeePlanningProfile.findUnique({
     where: { employeeId },
-    select: { shiftPreference: true, planningNote: true },
+    select: { shiftPreference: true },
   })
 
   return NextResponse.json({
     shiftPreference: profile?.shiftPreference ?? 'keine',
-    planningNote: profile?.planningNote ?? null,
   })
 }
 
@@ -36,7 +35,8 @@ export async function PUT(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { shiftPreference, planningNote } = body
+  // §200 Die Planungsnotiz ist entfernt — kein Rechenkern hat sie gelesen.
+  const { shiftPreference } = body
 
   const validPreferences = ['frueh', 'spaet', 'nacht', 'keine']
   if (shiftPreference !== undefined && !validPreferences.includes(shiftPreference)) {
@@ -48,13 +48,11 @@ export async function PUT(req: NextRequest) {
     create: {
       employeeId,
       ...(shiftPreference !== undefined && { shiftPreference }),
-      ...(planningNote !== undefined && { planningNote }),
     },
     update: {
       ...(shiftPreference !== undefined && { shiftPreference }),
-      ...(planningNote !== undefined && { planningNote }),
     },
-    select: { shiftPreference: true, planningNote: true },
+    select: { shiftPreference: true },
   })
 
   return NextResponse.json(profile)

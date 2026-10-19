@@ -111,28 +111,30 @@ auf die Website. Dafür gibt es den Beispielbetrieb (§184,
 ```bash
 npx tsc --noEmit
 npm run test                 # 1055 Modultests
-npm run pruefen              # 1653 Checks in 45 Prüfungen
+npm run pruefen              # 1690 Checks in 46 Prüfungen
 cd solver-service && /usr/bin/python3 -m pytest -q   # 154
 npm run build
 ```
 
 Alles grün, sonst wird nicht eingecheckt.
 
-## Offene Aufgabe in diesem Bereich
+## Erledigt in §200: Regelpakete je Standort
 
-**Die Regelpaket-Zuweisung sitzt an der falschen Stelle.** Sie liegt heute auf
-einer eigenen Seite (`/okun/dienstplanung`), die alle Standorte aller Kunden
-untereinander listet. Der Eigentümer will sie dort, wo er ohnehin arbeitet:
+Die Zuweisung sitzt jetzt dort, wo der Eigentümer arbeitet:
 
-> Kunden → Kunde öffnen → seine Standorte → **je Standort** das Regelpaket
-> zuweisen und die Dienstplanung freischalten.
+> Kunden → Kunde aufklappen → Standort aufklappen → **Regelpaket zuweisen,
+> freischalten, Hinweis für den Kunden, Belegschaft einspielen.**
 
-**Je Standort, nicht je Kunde** — ein Kunde kann zehn Standorte mit zehn
-verschiedenen Regelpaketen haben.
+Je Standort, nicht je Kunde. Schon die zugeklappte Standortzeile zeigt Paket
+und Stand und warnt, wenn ein Standort ohne Paket freigeschaltet ist. Die alte
+Seite `/okun/dienstplanung` leitet dorthin um; die Schnittstelle
+`/api/okun/dienstplanung` ist unverändert.
 
-Die Technik kann das schon: `PATCH /api/okun/dienstplanung` nimmt eine
-`locationId`, und `/okun/customers` klappt Kunden bereits zu ihren Standorten
-auf. Es fehlt nur die Bedienung an der richtigen Stelle.
+Nachweis: `node --env-file=.env pruefungen/browser/dienstplanung-am-standort.mjs`.
+
+**Neu für den Kunden:** Die E-Mail-Adressen der Belegschaft (beim Einspielen
+Platzhalter, §183) trägt der Betrieb jetzt selbst ein — Mitarbeiter öffnen →
+„Zugang zur App" → „Adresse eintragen". Die Einladung geht im selben Zug raus.
 
 ## Alle Unterlagen — nichts davon ist in diese Übergabe kopiert
 

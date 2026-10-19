@@ -35,12 +35,27 @@ console.log(`Planwoche ${woche[0]} bis ${woche[4]}\n`)
  * Fehlschlag sähe dann aus wie ein kaputter Rechenkern und wäre in Wahrheit
  * nur hinterlassener Zustand.
  */
-const fremdesPaket = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
-  ?.find(s => s.id === locationId)?.rulePackId
+const standortVorher = (await hole(okun, '/api/okun/dienstplanung')).body.standorte
+  ?.find(s => s.id === locationId)
+const fremdesPaket = standortVorher?.rulePackId
 if (fremdesPaket) {
   await sende(okun, '/api/okun/dienstplanung', 'PATCH',
     { locationId, rulePackId: null })
   console.log(`Regelpaket „${fremdesPaket}" entfernt — es gehört nicht zu diesem Standort.\n`)
+}
+
+/*
+ * §200 Und: Der Standort muss freigeschaltet sein. Bisher wurde das
+ * stillschweigend vorausgesetzt — in einer frisch befüllten Datenbank ist er
+ * es nicht (neue Standorte starten gesperrt, §127), und dann scheiterte der
+ * Planungslauf mit HTTP 423, als wäre der Rechenkern kaputt. Am Ende wird
+ * der vorgefundene Zustand wiederhergestellt.
+ */
+const warGesperrt = standortVorher && !standortVorher.dienstplanungFrei
+if (warGesperrt) {
+  await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+    { locationId, dienstplanungFrei: true })
+  console.log('Dienstplanung für die Prüfung freigeschaltet — sie war gesperrt.\n')
 }
 
 // ── F1 Rechenkern ──────────────────────────────────────────────────────────
@@ -231,6 +246,11 @@ if (tauschId) {
     { status: 'declined' })
   check('Ein beantworteter Tausch lässt sich nicht erneut beantworten',
     nochmal.status === 409, `HTTP ${nochmal.status}`)
+}
+
+if (warGesperrt) {
+  await sende(okun, '/api/okun/dienstplanung', 'PATCH',
+    { locationId, dienstplanungFrei: false })
 }
 
 process.exit(bilanz() ? 1 : 0)

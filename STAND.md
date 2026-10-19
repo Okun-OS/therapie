@@ -3,7 +3,7 @@
 **Diese Seite ist die Wahrheit.** Nicht das Gespräch, nicht die Erinnerung.
 Wer wissen will, wo etwas steht, liest hier — und nur hier.
 
-Zuletzt aktualisiert: **27.09.2026**
+Zuletzt aktualisiert: **19.10.2026**
 
 > **Regel für Claude:** Diese Datei wird bei **jedem** abgeschlossenen Punkt
 > aktualisiert, im selben Commit wie die Arbeit. Nie später, nie gesammelt.
@@ -17,8 +17,8 @@ Zuletzt aktualisiert: **27.09.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §186 Der richtige Schriftzug — in den Markendateien lag ein anderer als der des Hauses |
-| **Nachweisstand** | 1601/1601 in 43 Prüfungen, 61 im Browser, 17 am Programmfenster, 154 im Rechendienst, 1034 Modultests |
+| **Zuletzt fertig** | §200 Regelpakete je Standort unter Kunden; E-Mail-Adresse tauschen und neu einladen; Planungsprofil ohne die Felder, die nie in einen Plan flossen |
+| **Nachweisstand** | 1690/1690 in 46 Prüfungen, 154 im Rechendienst, 1055 Modultests; neu im Browser: 20 (Dienstplanung am Standort) und 17 (Zugang, Planungsprofil) |
 | **Als Nächstes** | Die Website gemeinsam fertig machen (steht in `DEINE-LISTE.md`) |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 

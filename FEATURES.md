@@ -740,7 +740,8 @@ Standort, kein Aufruf im Solver, kein Kundenverzeichnis, keine Sperre.
       Standort hinterlegen kann („wird gerade eingerichtet, wir melden uns").
 - [x] **Freischalten darf nur OKUN**, weder die Standortleitung noch das
       Unternehmen. Wer freigeschaltet hat und wann, wird festgehalten.
-- [x] Eine eigene Seite unter `/okun/dienstplanung`.
+- [x] ~~Eine eigene Seite unter `/okun/dienstplanung`.~~ Seit §200 am Standort
+      unter Kunden → Kunde → Standort; die alte Adresse leitet dorthin.
 - [x] **Bestehende Standorte werden nicht still gesperrt** — sie arbeiten heute
       damit, und ein stiller Entzug wäre schlimmer als die fehlende Sperre. Nur
       neue Standorte starten gesperrt.
@@ -3329,6 +3330,67 @@ nicht nur hier.
 Nachweis: 53 Prüfungen in `d21-umlagen` unverändert grün, Gesamtlauf
 **1424/1424 in 39 Prüfungen**, 958 Modultests, 128 im Rechendienst, Bauen
 sauber.
+
+## Block §200 (19.10.) — Am richtigen Ort, und eine Adresse, die sich ändern lässt
+
+### Die Dienstplanung wird am Standort eingerichtet
+Regelpaket zuordnen, freischalten, Hinweis für den Kunden und die Belegschaft
+einspielen stehen jetzt unter **Kunden → Kunde → Standort aufklappen** — je
+Standort, denn ein Kunde mit zehn Standorten kann zehn Pakete haben. Schon die
+zugeklappte Zeile zeigt Paket und Stand, und sie warnt, wenn ein Standort
+freigeschaltet ist, aber kein Paket hat. `/okun/dienstplanung` leitet um.
+
+Nachweis: `pruefungen/browser/dienstplanung-am-standort.mjs`, 20 Checks. Die
+Gegenprobe ist ein zweiter Standort desselben Kunden, der beim Zuweisen am
+ersten unverändert bleiben muss.
+
+### E-Mail-Adresse tauschen und neu einladen — Standort und Unternehmen
+In den Mitarbeiterdetails (Standortleitung) und auf der Mitarbeiterseite
+(Geschäftsführung) steht jetzt der **Zugang**: Adresse, ob das Konto steht oder
+die Einladung offen ist, „Adresse ändern" und „Einladung erneut senden".
+
+- [x] Der alte Einladungslink wird beim Tausch ungültig.
+- [x] Ein bestehendes Konto zieht mit um und bleibt **ein** Konto. Vorher legte
+      die Annahme einer Einladung an die neue Adresse ein zweites an.
+- [x] Die alte Adresse erfährt davon (nur wenn es ein Konto gab — sonst war sie
+      meist ein Tippfehler, und das Postfach gehört jemand anderem).
+- [x] Die normale Bearbeitung hat dieselbe Wirkung. Vorher änderte sie nur die
+      Mitarbeiterzeile, und der alte Link blieb gültig.
+- [x] Leitungskonten werden so nicht umgestellt.
+- [x] An Platzhalter-Adressen (§183) wird auch hier nicht eingeladen.
+
+**Fund dabei:** `/api/employees/[id]/invite` prüfte nur die Rolle. Eine fremde
+Leitung konnte für jeden Mitarbeiter eine Einladung auslösen. Jetzt nur noch
+im eigenen Bereich — die Gegenprobe gegen den alten Stand ist rot geworden.
+
+**Fund dabei:** Resend 6 wirft nicht, wenn es eine Mail ablehnt, sondern gibt
+`{ error }` zurück. Eine abgelehnte Einladung meldete „versendet". Für
+Einladungen wird das jetzt ausgewertet; für alle anderen Mails noch nicht
+(siehe Übergabe).
+
+Nachweis: `pruefungen/a5-zugang.mjs`, 38 Checks (gegen den alten Stand: 25
+rot), dazu `pruefungen/browser/zugang-und-planungsprofil.mjs`.
+
+### Das Planungsprofil ohne das, was nie in einen Plan floss
+Kinder-Abholzeiten, Wochenend-Vereinbarung, maximale Folgetage je Person und
+die dauerhafte Planungsnotiz sind entfernt. Nachgesehen: Sie gingen in keinen
+Rechenkern und kein Regelpaket — nur in einen Freitext, den der Rechendienst
+nicht liest, und in den KI-Chat. Wer „Abholung Mo 15:30" eintrug, durfte
+glauben, der Plan richte sich danach. Er tat es nie.
+
+**Geblieben:** die Schichtvorliebe (das Kita-Paket liest sie, §181), die
+Planstunden (§171), die Zuschlagsregelung. Die Datenbankspalten der entfernten
+Felder stehen noch; sie zu löschen berührt Produktionsdaten und ist ein eigener
+Schritt.
+
+### Zwei Funde nebenbei
+- Wer mit einer fremden Rolle auf eine Seite kam (die Geschäftsführung auf
+  `/okun/customers`), sah „Etwas ist schiefgelaufen" statt seiner eigenen
+  Seite: Die Seite wurde gezeichnet, bekam 403 und stürzte ab, und der Absturz
+  verdrängte die Umleitung. Das Layout zeichnet jetzt nichts, bis umgeleitet ist.
+- `f-dienstplan.mjs` setzte voraus, dass sein Standort freigeschaltet ist. In
+  einer frisch befüllten Datenbank ist er es nicht. Die Prüfung stellt das
+  jetzt selbst her und hinterher zurück.
 
 ## Zur Zertifizierung — Stand der Überlegung
 

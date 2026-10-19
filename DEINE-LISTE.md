@@ -4,7 +4,7 @@ Alles, was **nicht programmiert werden kann** — weil es ein Konto, eine
 Unterschrift, einen Kauf oder eine Zahl aus einer Satzung braucht. Nach
 Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 
-> Stand: 18.10.2026 · Was fertig ist, steht in `STAND.md`.
+> Stand: 19.10.2026 · Was fertig ist, steht in `STAND.md`.
 > Zum Abhaken: `- [ ]` zu `- [x]` machen.
 
 ---
@@ -432,6 +432,14 @@ Nichts davon hält etwas auf. Beides sind Verbesserungen, keine Lücken.
       Wohngruppe mit fünf Bewohnern". Das trägt den Nachweis, dass es im Echten
       läuft, und nennt niemanden. Auf der Seite steht derzeit keine Variante
       von beidem; sag mir, welche es sein soll.
+- [ ] **Die alten Planungsprofil-Felder auch aus der Datenbank löschen?**
+      Kinder-Abholzeiten, Wochenend-Vereinbarung, Folgetage und
+      Planungsnotiz sind seit §200 aus der Maske entfernt — sie sind nie in
+      einen Plan geflossen. In der Datenbank stehen sie noch, mit allem, was
+      je eingetragen wurde. Löschen hieße: Was dort steht, ist weg, auch in
+      der Produktion. Das mache ich nur auf dein ausdrückliches Ja. Bis dahin
+      stört es nicht: Geschrieben wird es nicht mehr, gelesen nur noch von der
+      DSGVO-Auskunft — die muss nennen, was gespeichert ist.
 - [ ] **Die Download-Seite für das Windows-Programm.** Die baue ich, sobald
       das Zertifikat da ist — eine unsignierte Datei zum Herunterladen
       anzubieten, schreckt mehr Leute ab, als sie überzeugt. Hängt also am
@@ -450,6 +458,10 @@ Beim Einrichten gibt es sie noch nicht; bis dahin steht eine Platzhalter-
 adresse da, an die nichts zugestellt werden kann. **Solange sie fehlt, kann
 niemand eingeladen werden** — das Programm lehnt die Einladung mit einem Satz
 ab, der sagt, was zu tun ist.
+
+**Wo (seit §200):** Mitarbeiter öffnen → Kasten **„Zugang zur App"** →
+„Adresse eintragen" → „Ändern und einladen". Das geht bei der Standortleitung
+und bei der Geschäftsführung, und die Einladung geht im selben Zug raus.
 
 ### 🟡 Zwei Angaben bestätigen, die ich geschätzt habe
 - **Tage pro Woche** je Person: aus dem Pensum geschätzt (Pensum ÷ 8 Stunden).

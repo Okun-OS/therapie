@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { Employee, Location, Shift, ScheduleEntry, VacationRequest, TimeLog } from '@/lib/types'
+import { ZugangVerwalten } from '@/components/employees/ZugangVerwalten'
 import { formatDate, formatHours } from '@/lib/utils'
 import {
   ArrowLeft, Clock, TrendingUp, Palmtree, Calendar, Baby, Download,
@@ -239,6 +240,12 @@ export default function EmployeeDetailPage() {
         {/* ── ÜBERSICHT ──────────────────────────────────────────────── */}
         {tab === 'overview' && (
           <div className="space-y-4">
+            {/* §200 Adresse tauschen und neu einladen — wie auf Standortebene */}
+            <ZugangVerwalten
+              employeeId={employee.id}
+              onEmailGeaendert={email =>
+                setEMPLOYEES(prev => prev.map(e => e.id === employee.id ? { ...e, email } : e))}
+            />
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: 'Stundenkonto', value: `${employee.hoursBalance >= 0 ? '+' : ''}${employee.hoursBalance}h`, color: balanceColor, icon: TrendingUp },

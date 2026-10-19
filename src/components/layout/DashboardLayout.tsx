@@ -59,6 +59,21 @@ export function DashboardLayout({ children, requiredRole }: DashboardLayoutProps
 
   if (!user) return null
 
+  /*
+   * §200 Fremde Rolle: nichts rendern, bis die Umleitung oben greift.
+   *
+   * Vorher wurde die Seite trotzdem gezeichnet. Sie holte ihre Daten, bekam
+   * 403 und stürzte ab (gefunden: die Geschäftsführung auf /okun/customers —
+   * `CUSTOMERS.length` von undefined). Der Absturz ersetzte das ganze Layout
+   * durch die Fehlerseite, und damit lief auch die Umleitung nie. Daten
+   * kamen nicht heraus — die Schnittstellen prüfen selbst —, aber wer sich
+   * verirrt, landete auf „Etwas ist schiefgelaufen" statt auf seiner Seite.
+   */
+  if (requiredRole) {
+    const allowed = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
+    if (!allowed.includes(user.role)) return null
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 bg-dot-grid">
 

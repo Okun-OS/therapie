@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useToast } from '@/lib/toast-context'
-import { Building2, Plus, Mail, ChevronRight, ChevronDown, Edit, Users, AlertTriangle, MapPin, User, Trash2, Search, SortAsc } from 'lucide-react'
+import { Building2, Plus, Mail, ChevronRight, ChevronDown, Edit, Users, AlertTriangle, MapPin, User, Trash2, Search, SortAsc, Lock, Unlock } from 'lucide-react'
 import type { Customer, CustomerStatus, LicensePlan, Location } from '@/lib/types'
+import { paketName, type Regelpaket } from '@/lib/regelpakete'
+import { StandortDienstplanung, dienstplanungProblem, type DienstplanungStandort } from '@/components/okun/StandortDienstplanung'
 
 interface UnassignedLocation { id: string; name: string; city: string; employeeCount: number }
 interface UnassignedCompanyUser { id: string; name: string; email: string; role: 'company' | 'admin' }
@@ -68,6 +70,61 @@ export default function OkunCustomers() {
   const [deleteEmployeeTarget, setDeleteEmployeeTarget] = useState<Employee | null>(null)
   const [deleteEmployeeLoading, setDeleteEmployeeLoading] = useState(false)
 
+  /*
+   * §200 Dienstplanung je Standort — vorher eine eigene Seite
+   * `/okun/dienstplanung` mit allen Standorten aller Kunden untereinander.
+   * Jetzt hier, am Standort, wo der Kunde ohnehin eingerichtet wird.
+   * Die Schnittstelle ist dieselbe; sie liefert alle Standorte auf einmal,
+   * damit schon die zugeklappte Zeile zeigen kann, wie es um sie steht.
+   */
+  const [dienstplanung, setDienstplanung] = useState<Record<string, DienstplanungStandort>>({})
+  const [regelpakete, setRegelpakete] = useState<Regelpaket[]>([])
+  const [rechendienstErreichbar, setRechendienstErreichbar] = useState(true)
+  const [dienstplanungArbeitet, setDienstplanungArbeitet] = useState<string | null>(null)
+  const [gruppenJeStandort, setGruppenJeStandort] = useState<Record<string, string[]>>({})
+
+  const ladeDienstplanung = useCallback(async () => {
+    try {
+      const res = await fetch('/api/okun/dienstplanung')
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(d.error ?? 'Dienstplanung konnte nicht geladen werden', 'error'); return }
+      const jeId: Record<string, DienstplanungStandort> = {}
+      for (const st of (d.standorte ?? []) as DienstplanungStandort[]) jeId[st.id] = st
+      setDienstplanung(jeId)
+      setRegelpakete(d.pakete ?? [])
+      setRechendienstErreichbar(d.rechendienstErreichbar !== false)
+    } catch { showToast('Dienstplanung konnte nicht geladen werden', 'error') }
+  }, [showToast])
+
+  const aendereDienstplanung = async (locationId: string, daten: Record<string, unknown>) => {
+    setDienstplanungArbeitet(locationId)
+    try {
+      const res = await fetch('/api/okun/dienstplanung', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId, ...daten }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(d.error ?? 'Änderung fehlgeschlagen', 'error'); return }
+      showToast(d.hinweis ?? 'Gespeichert', 'success')
+      await ladeDienstplanung()
+    } catch { showToast('Änderung fehlgeschlagen', 'error') }
+    finally { setDienstplanungArbeitet(null) }
+  }
+
+  /*
+   * §183/§200 Die Gruppennamen eines Standorts — für die Belegschaftsliste.
+   * Die alte Seite holte sie für alle Standorte auf einmal; hier erst beim
+   * Aufklappen, denn die Kundenliste kann viele Standorte haben.
+   */
+  const ladeGruppen = async (locationId: string) => {
+    try {
+      const r = await fetch(`/api/okun/belegschaft?locationId=${encodeURIComponent(locationId)}`)
+      if (!r.ok) return
+      const d = await r.json().catch(() => ({}))
+      setGruppenJeStandort(prev => ({ ...prev, [locationId]: d.gruppen ?? [] }))
+    } catch { /* ohne Gruppenliste wird nur weniger geprüft, nicht falsch */ }
+  }
+
   const loadUnassigned = () => {
     fetch('/api/okun/unassigned').then(r => r.json()).then(d => {
       setUnassignedLocations(d.locations ?? [])
@@ -80,7 +137,8 @@ export default function OkunCustomers() {
     fetch('/api/customers').then(r => r.json()).then(d => setCUSTOMERS(d.customers))
     fetch('/api/locations').then(r => r.json()).then(d => setAllLocations(d.locations ?? []))
     loadUnassigned()
-  }, [])
+    ladeDienstplanung()
+  }, [ladeDienstplanung])
 
   // Filtered + sorted customers
   const filteredCustomers = useMemo(() => {
@@ -119,6 +177,7 @@ export default function OkunCustomers() {
       return
     }
     setExpandedLocations(prev => new Set(prev).add(locationId))
+    if (!(locationId in gruppenJeStandort)) ladeGruppen(locationId)
     if (!(locationId in locationEmployees)) {
       setLoadingLocations(prev => new Set(prev).add(locationId))
       try {
@@ -334,6 +393,16 @@ export default function OkunCustomers() {
           </div>
         </div>
 
+        {!rechendienstErreichbar && (
+          <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+            <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-900">
+              Der Rechendienst ist nicht erreichbar. Solange lässt sich nicht prüfen,
+              welche Regelpakete es gibt — Zuordnungen sind vorübergehend gesperrt.
+            </p>
+          </div>
+        )}
+
         {filteredCustomers.length === 0 && CUSTOMERS.length > 0 && (
           <p className="text-sm text-gray-400 text-center py-4">Keine Kunden entsprechen den Filterkriterien.</p>
         )}
@@ -404,6 +473,7 @@ export default function OkunCustomers() {
               <div key={c.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 {/* Customer row */}
                 <div
+                  data-kunde={c.id}
                   onClick={() => toggleCustomer(c.id)}
                   className="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-colors select-none"
                 >
@@ -451,9 +521,12 @@ export default function OkunCustomers() {
                         const isLoadingEmps = loadingLocations.has(loc.id)
                         const employees = locationEmployees[loc.id] ?? []
                         const isLast = locIdx === customerLocations.length - 1
+                        const dp = dienstplanung[loc.id]
+                        const dpProblem = dp ? dienstplanungProblem(dp) : null
+                        const dpPaket = dp?.rulePackId ? regelpakete.find(p => p.id === dp.rulePackId) : undefined
 
                         return (
-                          <div key={loc.id} className={isLast ? '' : 'border-b border-gray-50'}>
+                          <div key={loc.id} data-standort={loc.id} className={isLast ? '' : 'border-b border-gray-50'}>
                             <div
                               onClick={() => toggleLocation(loc.id)}
                               className="flex items-center gap-3 pl-10 pr-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors select-none"
@@ -469,6 +542,27 @@ export default function OkunCustomers() {
                                 <p className="text-xs text-gray-400 truncate">{loc.city}</p>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
+                                {/* §200 Stand der Dienstplanung schon in der zugeklappten Zeile */}
+                                {dp && (
+                                  <span
+                                    data-test="dienstplanung-stand"
+                                    title={dpProblem ?? (dp.dienstplanungFrei ? 'Dienstplanung freigeschaltet' : 'Dienstplanung gesperrt')}
+                                    className={`hidden sm:flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg max-w-[14rem] ${
+                                      dpProblem ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                        : dp.dienstplanungFrei ? 'bg-teal-50 text-teal-800' : 'bg-gray-100 text-gray-500'}`}>
+                                    {dpProblem ? <AlertTriangle size={11} className="shrink-0" />
+                                      : dp.dienstplanungFrei ? <Unlock size={11} className="shrink-0" /> : <Lock size={11} className="shrink-0" />}
+                                    <span className="truncate">
+                                      {dpPaket ? paketName(dpPaket) : dp.rulePackId ?? 'kein Regelpaket'}
+                                    </span>
+                                  </span>
+                                )}
+                                {dp && (dpProblem || dp.dienstplanungFrei) && (
+                                  <span className="sm:hidden">
+                                    {dpProblem ? <AlertTriangle size={13} className="text-amber-600" />
+                                      : <Unlock size={13} className="text-teal-600" />}
+                                  </span>
+                                )}
                                 <div className="flex items-center gap-1 text-xs text-gray-400">
                                   <Users size={12} />
                                   <span>{loc.employeeCount ?? '–'}</span>
@@ -484,6 +578,19 @@ export default function OkunCustomers() {
                             </div>
 
                             {/* Employees */}
+                            {isLocExpanded && dp && (
+                              <div className="pl-10 sm:pl-20 pr-4 pb-3">
+                                <StandortDienstplanung
+                                  standort={dp}
+                                  pakete={regelpakete}
+                                  erreichbar={rechendienstErreichbar}
+                                  arbeitet={dienstplanungArbeitet === loc.id}
+                                  gruppen={gruppenJeStandort[loc.id] ?? []}
+                                  aendern={aendereDienstplanung}
+                                />
+                              </div>
+                            )}
+
                             {isLocExpanded && (
                               <div className="pl-20 pr-4 pb-2">
                                 {isLoadingEmps ? (

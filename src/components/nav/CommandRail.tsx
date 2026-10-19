@@ -47,7 +47,6 @@ const PATH_LABELS: Record<string, string> = {
   // OKUN
   '/okun':                     'Systemübersicht',
   '/okun/customers':           'Kunden',
-  '/okun/dienstplanung':       'Dienstplanung einrichten',
   '/okun/support':             'Support',
   '/okun/bugs':                'Bug-Management',
   '/okun/test-accounts':       'Testzugänge',

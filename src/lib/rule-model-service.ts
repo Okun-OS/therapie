@@ -507,14 +507,12 @@ export async function buildRuleModel(
       einheiten.forEach(e => { if (!empEinheiten.includes(e.id)) empEinheiten.push(e.id) })
     }
 
-    const profileText = empProfile ? [
-      empProfile.shiftPreference !== 'keine' ? `bevorzugt ${empProfile.shiftPreference}` : null,
-      empProfile.weekendRule ?? null,
-      empProfile.planningNote ?? null,
-      (empProfile.childPickupTimes as {day: string; beforeTime: string}[]).length > 0
-        ? `Kinderabholung: ${(empProfile.childPickupTimes as {day: string; beforeTime: string}[]).map(c => `${c.day} bis ${c.beforeTime}`).join(', ')}`
-        : null,
-    ].filter(Boolean).join('; ') : null
+    // §200 Hier standen auch Wochenend-Vereinbarung, Planungsnotiz und
+    // Kinder-Abholzeiten. Sie gingen nur in diesen Freitext, und den liest der
+    // Rechendienst nicht — geplant wurde nie danach. Mit der Maske entfernt.
+    const profileText = empProfile && empProfile.shiftPreference !== 'keine'
+      ? `bevorzugt ${empProfile.shiftPreference}`
+      : null
 
     // §171 Planstunden schlagen Vertragsstunden. Leer heißt: es gibt keinen
     // Unterschied. Eine ausdrückliche 0 ist ein gültiger Wert — „diese Person

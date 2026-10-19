@@ -29,7 +29,7 @@ Zweig löst eine Auslieferung samt `prisma migrate deploy` aus).
 ## Wie hier gearbeitet wird — das ist der Kern
 
 * **Kommentare auf Deutsch, und sie erklären das Warum.** Durchnummeriert mit
-  `§`; Stand **§198**, nächste Nummer §199. Wo ein Fehler behoben wird, steht
+  `§`; Stand **§200**, nächste Nummer §201. Wo ein Fehler behoben wird, steht
   dabei, was vorher dastand und warum es falsch war — damit niemand es
   zurückbaut.
 * **Nichts behaupten, was nicht gemessen ist.** Zahlen, Preise, Fristen,
@@ -57,6 +57,11 @@ cd .. && npm run dev
 **Stolperfallen, die hier schon Zeit gekostet haben:**
 
 * `/usr/bin/python3`, nicht `python3` — nur dort liegen uvicorn und ortools.
+  In einem **frischen** Behälter fehlen sie auch dort:
+  `/usr/bin/python3 -m pip install -r solver-service/requirements.txt`.
+* In einem frischen Behälter gibt es auch die Datenbank nicht. Ein Benutzer
+  und `therapie_dev` müssen erst angelegt werden (`su postgres -c "psql …"`),
+  bevor `.env` und `migrate deploy` greifen.
 * Der Rechendienst läuft auf **8080** (so steht es in `.env`), nicht 8000.
 * `.env` fehlt in frischen Behältern (zu Recht gitignoriert) — aus
   `.env.example` neu bauen, dann `npx prisma migrate deploy`, `npm run seed`,
@@ -74,11 +79,13 @@ cd .. && npm run dev
 ```bash
 npx tsc --noEmit
 npm run test                                        # 1055 Modultests
-npm run pruefen                                     # 1653 Checks, 45 Prüfungen
+npm run pruefen                                     # 1690 Checks, 46 Prüfungen
 cd solver-service && /usr/bin/python3 -m pytest -q  # 154
 npm run build
 node pruefungen/browser/marke.mjs                   # dazu lohnverwaltung,
-node --env-file=.env pruefungen/browser/massnahmen.mjs   # massnahmen, schaufenster
+node --env-file=.env pruefungen/browser/massnahmen.mjs   # massnahmen, schaufenster,
+node --env-file=.env pruefungen/browser/dienstplanung-am-standort.mjs   # §200
+node pruefungen/browser/zugang-und-planungsprofil.mjs    # §200
 npm run desktop:pruefen                             # 46, braucht Electron
 ```
 
@@ -92,6 +99,12 @@ Manche sprechen Prisma direkt an und brauchen `node --env-file=.env`.
 Impressum und Datenschutz vollständig, Desktop-Hülle mit vorbereiteter
 Windows-Signatur, zweiter Faktor per E-Mail/SMS/Authenticator-App, zwei
 Kundenregelpakete (Kita mit zwei Etagen, Wohngruppe).
+
+**§200 fertig:** Regelpaket und Freischaltung je Standort unter Kunden →
+Kunde → Standort (die alte Seite leitet um). E-Mail-Adresse tauschen und
+neu einladen auf Standort- und Unternehmensebene. Das Planungsprofil ohne
+Abholzeiten, Wochenend-Vereinbarung, Folgetage und Planungsnotiz — die
+flossen nie in einen Plan. Einzelheiten in `FEATURES.md`, Block §200.
 
 **Beim Eigentümer offen** (steht in `DEINE-LISTE.md`, dort nachführen):
 Code-Signing-Zertifikat (Azure Artifact Signing, North Europe, Identitäts­
@@ -108,12 +121,7 @@ Der E-Mail-Faktor läuft unabhängig davon.
 
 ## Offene Aufgaben
 
-1. **Regelpaket-Zuweisung umziehen.** Heute auf `/okun/dienstplanung`, einer
-   eigenen Seite mit allen Standorten aller Kunden untereinander. Der
-   Eigentümer will sie unter **Kunden → Kunde → Standort**, und zwar **je
-   Standort** — ein Kunde kann zehn Standorte mit zehn Paketen haben. Die
-   Technik kann es bereits (`PATCH /api/okun/dienstplanung` nimmt eine
-   `locationId`), es fehlt die Bedienung an der richtigen Stelle.
+1. ~~Regelpaket-Zuweisung umziehen~~ — erledigt in §200.
 2. **Lohnabrechnung besser schützen.** Der Eigentümer möchte eine zusätzliche
    Stufe, bevor jemand seine Lohnabrechnung öffnet. Vorschlag, dem er noch
    nicht zugestimmt hat: **kein zweites Passwort** (das vergisst man, es
@@ -130,6 +138,24 @@ Der E-Mail-Faktor läuft unabhängig davon.
    wollte sie heraus; sie steht jetzt hinter „für Fortgeschrittene", weil sie
    die einzige Methode ohne fremden Dienstleister ist. Wenn er sie ganz
    entfernt haben will, ist das sein Recht — dann wirklich entfernen.
+6. **Die alten Planungsprofil-Spalten** (`childPickupTimes`, `weekendRule`,
+   `maxConsecutiveDays` im Profil, `planningNote`) stehen noch in der
+   Datenbank. Löschen nur auf ausdrückliches Ja des Eigentümers — es
+   berührt Produktionsdaten (steht in `DEINE-LISTE.md`).
+7. **Resend-Ablehnungen bei allen anderen Mails.** Resend 6 wirft nicht,
+   sondern gibt `{ error }` zurück. Seit §200 wird das bei Einladungen
+   ausgewertet (`ablehnungMelden`). Bei den übrigen elf Aufrufern von
+   `sendEmail` (2FA-Code, Passwort zurücksetzen, Tausch, Benachrichtigungen …)
+   wird eine Ablehnung nur protokolliert. Einige stehen mitten in einem
+   Ablauf ohne Auffangnetz — darum nicht nebenbei umgestellt.
+8. 🔴 **`PATCH /api/employees/[id]` übernimmt den Rest des Bodys ungefiltert**
+   in die Datenbank (`updateEmployee`). Geprüft wird nur, dass der
+   Mitarbeiter zum eigenen Unternehmen gehört — nicht, WAS geändert wird.
+   **Nachgemessen am 19.10.2026:** Die Leitung der Reha setzt mit
+   `{ customerId: "seed-kunde-kita" }` einen ihrer Mitarbeiter in einen
+   fremden Mandanten, Antwort 200. Gefunden in §200, nicht behoben: Es
+   braucht eine Liste der erlaubten Felder, und die berührt jede Maske, die
+   diese Route benutzt. Vor dem ersten echten Kunden schließen.
 
 ---
 

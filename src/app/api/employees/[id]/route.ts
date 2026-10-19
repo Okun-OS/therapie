@@ -5,6 +5,9 @@ import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
 import { restlosEntfernen } from '@/lib/dsgvo-loeschung'
 import { pruefeTagesmuster, musterText } from '@/lib/tagesmuster'
+import { assertEmployeeAccess } from '@/lib/scope'
+import { zugangNeuEinladen, ZugangKonflikt } from '@/lib/invitations'
+import { getAppOrigin } from '@/lib/app-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,6 +85,51 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const fields: Record<string, unknown> = { ...body }
   if (typeof body.avatarUrl === 'string') fields.avatarUrl = body.avatarUrl
 
+  /*
+   * §200 Die E-Mail-Adresse geht durch dieselbe Tür wie „Zugang neu
+   * einladen" (`/api/employees/[id]/invite`).
+   *
+   * Vorher wurde sie hier einfach in die Mitarbeiterzeile geschrieben. Der
+   * alte Einladungslink blieb gültig, ein bestehendes Konto meldete sich
+   * weiter mit der alten Adresse an — und die Leitung glaubte, sie habe die
+   * Adresse geändert.
+   *
+   * Wer schon eingeladen ist oder ein Konto hat, bekommt deshalb hier wie
+   * dort: alte Links ungültig, Konto umgestellt, neue Einladung. Wer noch nie
+   * eingeladen wurde — der Mitarbeiter, der gerade im Gespräch entsteht —,
+   * bekommt nur die neue Adresse; seine Einladung kommt erst mit der
+   * Bestätigung der Leitung.
+   */
+  let zugang: Awaited<ReturnType<typeof zugangNeuEinladen>> | null = null
+  if (typeof body.email === 'string') {
+    const neu = body.email.trim().toLowerCase()
+    const bisher = await prisma.employee.findUnique({ where: { id: params.id }, select: { email: true } })
+    if (!bisher) return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
+    delete fields.email
+    if (neu !== bisher.email.trim().toLowerCase()) {
+      const verwehrt = await assertEmployeeAccess(session, params.id)
+      if (verwehrt) return verwehrt
+      const [konto, einladung] = await Promise.all([
+        prisma.user.findFirst({ where: { employeeId: params.id }, select: { id: true } }),
+        prisma.invitationToken.findFirst({ where: { employeeId: params.id }, select: { id: true } }),
+      ])
+      try {
+        if (konto || einladung) {
+          zugang = await zugangNeuEinladen(params.id, neu, getAppOrigin(req))
+        } else {
+          const vergeben = await prisma.employee.findFirst({
+            where: { email: { equals: neu, mode: 'insensitive' }, NOT: { id: params.id } }, select: { id: true },
+          })
+          if (vergeben) throw new ZugangKonflikt('Diese E-Mail-Adresse ist bereits vergeben.')
+          fields.email = neu
+        }
+      } catch (err) {
+        if (err instanceof ZugangKonflikt) return NextResponse.json({ error: err.message }, { status: err.status })
+        throw err
+      }
+    }
+  }
+
   try {
     const employee = await updateEmployee(params.id, fields as any)
     if (!employee) return NextResponse.json({ error: 'Mitarbeiter nicht gefunden' }, { status: 404 })
@@ -95,7 +143,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       customerId: employee.customerId ?? undefined,
       details: { updatedFields: Object.keys(fields) },
     }).catch(() => {})
-    return NextResponse.json({ employee })
+    return NextResponse.json({ employee, ...(zugang ? { zugang } : {}) })
   } catch (err: unknown) {
     console.error('employees PATCH', err)
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'

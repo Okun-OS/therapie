@@ -7,6 +7,17 @@ const APP_ORIGIN = process.env.APP_URL?.replace(/\/+$/, '') || 'http://localhost
 interface SendEmailOptions {
   ctaLabel?: string
   ctaUrl?: string
+  /**
+   * §200 Eine Ablehnung des Versanddienstes als Fehler melden.
+   *
+   * Resend (6.x) WIRFT nicht, wenn es eine Mail ablehnt — es gibt `{ error }`
+   * zurück. Bisher wurde das nicht angesehen: Eine abgelehnte Einladung
+   * meldete „versendet". Für Einladungen ist das eingeschaltet, denn dort
+   * entscheidet die Rückmeldung, ob die Leitung es noch einmal versucht.
+   * Für alle anderen Wege (noch) nicht — einige von ihnen stehen mitten in
+   * einem Ablauf ohne Auffangnetz, und ein Wurf dort wäre ein eigener Umbau.
+   */
+  ablehnungMelden?: boolean
 }
 
 function escapeHtml(value: string): string {
@@ -95,11 +106,17 @@ export async function sendEmail(to: string, subject: string, text: string, optio
     console.log(`[email:dev] an ${to} – "${subject}"\n${text}${options.ctaUrl ? `\n${options.ctaUrl}` : ''}`)
     return
   }
-  await resend.emails.send({
+  const ergebnis = await resend.emails.send({
     from: process.env.EMAIL_FROM || 'OKUN Workforce <onboarding@resend.dev>',
     to,
     subject,
     text,
     html: renderEmailHtml(text, options),
   })
+  if (ergebnis?.error) {
+    console.error(`[email] abgelehnt: ${to} – "${subject}": ${ergebnis.error.message}`)
+    if (options.ablehnungMelden) {
+      throw new Error(`Der Versanddienst hat die E-Mail abgelehnt: ${ergebnis.error.message}`)
+    }
+  }
 }

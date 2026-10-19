@@ -116,5 +116,6 @@ export async function POST(req: NextRequest) {
       status: 'pending',
       sentAt: invitation.createdAt.toISOString().split('T')[0],
     },
+    emailSent: invitation.emailSent,
   })
 }

@@ -43,7 +43,10 @@ export async function PUT(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const body = await req.json()
-  const { employeeId, shiftPreference, childPickupTimes, maxConsecutiveDays, weekendRule, planningNote } = body
+  // §200 Nur noch die Schichtvorliebe. Abholzeiten, Wochenend-Vereinbarung,
+  // Folgetage und Planungsnotiz hat kein Rechenkern gelesen; sie sind aus der
+  // Maske entfernt und werden auch hier nicht mehr angenommen.
+  const { employeeId, shiftPreference } = body
 
   if (!employeeId) {
     return NextResponse.json({ error: 'employeeId ist erforderlich' }, { status: 400 })
@@ -67,17 +70,9 @@ export async function PUT(req: NextRequest) {
     create: {
       employeeId,
       shiftPreference: shiftPreference ?? 'keine',
-      childPickupTimes: childPickupTimes ?? [],
-      maxConsecutiveDays: maxConsecutiveDays ?? 0,
-      weekendRule: weekendRule ?? null,
-      planningNote: planningNote ?? null,
     },
     update: {
       ...(shiftPreference !== undefined && { shiftPreference }),
-      ...(childPickupTimes !== undefined && { childPickupTimes }),
-      ...(maxConsecutiveDays !== undefined && { maxConsecutiveDays }),
-      ...(weekendRule !== undefined && { weekendRule }),
-      ...(planningNote !== undefined && { planningNote }),
     },
   })
 

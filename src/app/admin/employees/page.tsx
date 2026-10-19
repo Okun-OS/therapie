@@ -11,6 +11,7 @@ import { useToast } from '@/lib/toast-context'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
 import { EmployeeCreationForm } from '@/components/employees/EmployeeCreationForm'
+import { ZugangVerwalten } from '@/components/employees/ZugangVerwalten'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Users, Plus, Search, Clock, TrendingUp, Palmtree, ChevronRight, MessageCircle, Sparkles, ListChecks, AlertTriangle } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
@@ -28,12 +29,25 @@ interface EmployeeHumanContext {
   agreements: string | null
 }
 
+/*
+ * §200 Kinder-Abholzeiten, Wochenend-Vereinbarung, maximale Folgetage je
+ * Person und die dauerhafte Planungsnotiz sind hier entfernt.
+ *
+ * Sie stammen aus der Zeit vor den Regelpaketen. Nachgesehen, wohin sie
+ * flossen: in keinen Rechenkern und in kein Regelpaket — nur als Freitext
+ * („besonderheiten"), den der Rechendienst nicht liest, und in den Kontext
+ * des KI-Chats. Eine Leitung, die „Abholung Mo 15:30" eintrug, durfte also
+ * annehmen, der Plan richte sich danach. Er tat es nie. Was ein Betrieb
+ * wirklich braucht, steht heute im Regelpaket des Standorts.
+ *
+ * GEBLIEBEN, und warum: die Schichtvorliebe liest das Regelpaket der Kita
+ * (`vorlieben_aus_stammdaten`, §181), die Planstunden der Rechendienst
+ * (§171), die Zuschlagsregelung die Lohnabrechnung. Die Spalten der
+ * entfernten Felder stehen noch in der Datenbank — sie zu löschen ist ein
+ * eigener Schritt, der Produktionsdaten berührt.
+ */
 interface PlanningProfile {
   shiftPreference: string
-  childPickupTimes: { day: string; beforeTime: string }[]
-  maxConsecutiveDays: number
-  weekendRule: string | null
-  planningNote: string | null
   /** §171 leer = Vertragsstunden aus den Stammdaten */
   planungsStundenSoll: number | null
   surchargeMode: string
@@ -303,14 +317,26 @@ export default function AdminEmployees() {
 
   const handleUpdateFromForm = async (draft: EmployeeDraft) => {
     if (!editFormEmployee) return
-    const updated = await parseEmployeeResponse(await fetch(`/api/employees/${editFormEmployee.id}`, {
+    const antwort = await fetch(`/api/employees/${editFormEmployee.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patchFieldsFromDraft(draft)),
-    }))
+    })
+    const kopie = antwort.clone()
+    const updated = await parseEmployeeResponse(antwort)
     setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
     await saveHumanContextFromDraft(editFormEmployee.id, draft)
-    showToast('Profil aktualisiert', 'success')
+    // §200 Eine geänderte Adresse lädt neu ein — das soll die Leitung lesen,
+    // nicht nur „aktualisiert".
+    const { zugang } = await kopie.json().catch(() => ({})) as { zugang?: { email: string; emailSent: boolean } }
+    if (zugang) {
+      showToast(zugang.emailSent
+        ? `Profil aktualisiert · Einladung an ${zugang.email} versendet`
+        : 'Profil aktualisiert, aber die Einladung an die neue Adresse konnte nicht versendet werden',
+      zugang.emailSent ? 'success' : 'error')
+    } else {
+      showToast('Profil aktualisiert', 'success')
+    }
     setEditFormEmployee(null)
     setSelectedEmployee(prev => prev && prev.id === editFormEmployee.id ? { ...prev, ...draft } as Employee : prev)
   }
@@ -471,6 +497,16 @@ export default function AdminEmployees() {
               </div>
             </div>
 
+            {/* §200 Adresse tauschen und neu einladen */}
+            <ZugangVerwalten
+              key={selectedEmployee.id}
+              employeeId={selectedEmployee.id}
+              onEmailGeaendert={email => {
+                setAllEmployees(prev => prev.map(e => e.id === selectedEmployee.id ? { ...e, email } : e))
+                setSelectedEmployee(prev => prev ? { ...prev, email } : prev)
+              }}
+            />
+
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: 'Stundenkonto', value: `${selectedEmployee.hoursBalance >= 0 ? '+' : ''}${selectedEmployee.hoursBalance}h`, color: getBalanceColor(selectedEmployee.hoursBalance) },
@@ -579,10 +615,6 @@ export default function AdminEmployees() {
                   if (!planningProfileDraft) {
                     setPlanningProfileDraft(planningProfile ?? {
                       shiftPreference: 'keine',
-                      childPickupTimes: [],
-                      maxConsecutiveDays: 0,
-                      weekendRule: null,
-                      planningNote: null,
                       planungsStundenSoll: null,
                       surchargeMode: 'unternehmensregel',
                     })
@@ -610,73 +642,6 @@ export default function AdminEmployees() {
                     </select>
                   </div>
 
-                  {/* Kinder-Abholzeiten */}
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Kinder-Abholzeiten (kein Spätdienst danach)</label>
-                    {planningProfileDraft.childPickupTimes.map((cp, i) => (
-                      <div key={i} className="flex gap-1 mb-1">
-                        <select
-                          value={cp.day}
-                          onChange={e => {
-                            const arr = [...planningProfileDraft.childPickupTimes]
-                            arr[i] = { ...arr[i], day: e.target.value }
-                            setPlanningProfileDraft(d => d ? { ...d, childPickupTimes: arr } : d)
-                          }}
-                          className="text-xs border border-gray-200 rounded px-1.5 py-1 w-16"
-                        >
-                          {['Mo','Di','Mi','Do','Fr','Sa','So'].map(day => <option key={day}>{day}</option>)}
-                        </select>
-                        <input
-                          type="time"
-                          value={cp.beforeTime}
-                          onChange={e => {
-                            const arr = [...planningProfileDraft.childPickupTimes]
-                            arr[i] = { ...arr[i], beforeTime: e.target.value }
-                            setPlanningProfileDraft(d => d ? { ...d, childPickupTimes: arr } : d)
-                          }}
-                          className="text-xs border border-gray-200 rounded px-1.5 py-1 flex-1"
-                        />
-                        <button
-                          onClick={() => {
-                            const arr = planningProfileDraft.childPickupTimes.filter((_, j) => j !== i)
-                            setPlanningProfileDraft(d => d ? { ...d, childPickupTimes: arr } : d)
-                          }}
-                          className="text-xs text-red-500 px-1"
-                        >&#x2715;</button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => setPlanningProfileDraft(d => d ? { ...d, childPickupTimes: [...d.childPickupTimes, { day: 'Mo', beforeTime: '15:30' }] } : d)}
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      + Abholzeit hinzufügen
-                    </button>
-                  </div>
-
-                  {/* Wochenend-Vereinbarung */}
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Wochenend-Vereinbarung</label>
-                    <input
-                      type="text"
-                      value={planningProfileDraft.weekendRule ?? ''}
-                      onChange={e => setPlanningProfileDraft(d => d ? { ...d, weekendRule: e.target.value || null } : d)}
-                      placeholder="z. B. jedes 2. Wochenende frei"
-                      className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Max aufeinanderfolgende Tage */}
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Max. aufeinanderfolgende Tage (0 = Unternehmensregel)</label>
-                    <input
-                      type="number"
-                      min={0} max={7}
-                      value={planningProfileDraft.maxConsecutiveDays}
-                      onChange={e => setPlanningProfileDraft(d => d ? { ...d, maxConsecutiveDays: Number(e.target.value) } : d)}
-                      className="w-20 text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none"
-                    />
-                  </div>
-
                   {/* §171 Planstunden */}
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">
@@ -699,18 +664,6 @@ export default function AdminEmployees() {
                       mit 40 Vertrags- und 0 Planstunden zum Beispiel. Leitungszeit
                       gehört nicht in den Dienstplan.
                     </p>
-                  </div>
-
-                  {/* Planungsnotiz */}
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Dauerhafte Planungsnotiz</label>
-                    <textarea
-                      value={planningProfileDraft.planningNote ?? ''}
-                      onChange={e => setPlanningProfileDraft(d => d ? { ...d, planningNote: e.target.value || null } : d)}
-                      placeholder="z. B. bevorzugt keine Freitag-Spätdienste"
-                      rows={2}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none"
-                    />
                   </div>
 
                   {/* Zuschlagsregelung */}
