@@ -308,6 +308,85 @@ async function starten(adresse) {
   })
 }
 
+
+// ── §205 Der Installationsassistent und die Selbstaktualisierung ───────────
+console.log('\n=== §205 Installieren und aktualisieren ===')
+
+/*
+ * WARUM DIESE PRÜFUNG NUR DIE BAUANLEITUNG LIEST
+ * Ein Windows-Installationsprogramm lässt sich hier weder bauen noch
+ * ausführen. Was sich prüfen lässt, ist das, woran es scheitern WÜRDE — und
+ * das sind lauter Dinge, die still falsch sind: ein Bild in der falschen
+ * Größe wird nicht skaliert, sondern abgeschnitten; eine fehlende Zeile in
+ * `files` lässt die Selbstaktualisierung aus dem Paket fallen, ohne dass
+ * jemand etwas merkt.
+ */
+
+const SYMBOLORDNER = join(process.cwd(), 'desktop', 'symbole')
+
+/** Maße eines BMP aus dem Kopf lesen. */
+function bmpMasse(datei) {
+  try {
+    const b = readFileSync(join(SYMBOLORDNER, datei))
+    if (b.toString('ascii', 0, 2) !== 'BM') return null
+    return { w: b.readInt32LE(18), h: b.readInt32LE(22), bit: b.readUInt16LE(28) }
+  } catch { return null }
+}
+
+for (const [datei, w, h, wofuer] of [
+  ['installer-seite.bmp', 164, 314, 'die Seitenfläche'],
+  ['installer-kopf.bmp', 150, 57, 'der Kopfstreifen'],
+]) {
+  const m = bmpMasse(datei)
+  check(`${wofuer}: ${datei} liegt vor und ist ein BMP`, Boolean(m),
+    m ? `${m.w}×${m.h}, ${m.bit} Bit` : 'fehlt oder ist kein BMP')
+  check(`${wofuer}: genau ${w}×${h} — andere Maße werden abgeschnitten, nicht skaliert`,
+    m?.w === w && m?.h === h, m ? `${m.w}×${m.h}` : 'nicht lesbar')
+}
+
+check('Der Assistent führt durch Schritte, statt sich wortlos zu entpacken',
+  bauplan.nsis?.oneClick === false
+  && bauplan.nsis?.allowToChangeInstallationDirectory === true,
+  `oneClick=${bauplan.nsis?.oneClick}, Ordnerwahl=${bauplan.nsis?.allowToChangeInstallationDirectory}`)
+check('Unter „Apps & Features" steht ein lesbarer Name',
+  bauplan.nsis?.uninstallDisplayName === 'OKUN Workforce',
+  String(bauplan.nsis?.uninstallDisplayName))
+check('Die Bilder sind auch eingehängt, nicht nur vorhanden',
+  bauplan.nsis?.installerSidebar === 'symbole/installer-seite.bmp'
+  && bauplan.nsis?.installerHeader === 'symbole/installer-kopf.bmp',
+  JSON.stringify({ seite: bauplan.nsis?.installerSidebar, kopf: bauplan.nsis?.installerHeader }))
+check('Beim Deinstallieren bleiben Adresse und Fensterlage liegen',
+  bauplan.nsis?.deleteAppDataOnUninstall === false,
+  'Es sind keine Kunden- und keine Lohndaten — die liegen auf dem Server.')
+
+/*
+ * §205 Der Ausgabeort — und die Gegenprobe, auf die es ankommt.
+ *
+ * Ohne Adresse darf KEIN Ausgabeort in der Bauanleitung stehen. Stünde
+ * einer da, an dem nichts liegt, liefe bei jedem Start eine Suche ins
+ * Leere — beim Kunden, täglich, unsichtbar.
+ */
+const { plan: planOhne } = mitUmgebung({ OKUN_UPDATE_URL: undefined })
+check('Ohne Ausgabeort wird keiner eingetragen', planOhne?.publish == null,
+  `${JSON.stringify(planOhne?.publish)} — ein Ausgabeort, an dem nichts liegt, `
+  + 'lässt jeden Start ins Leere suchen.')
+
+const { plan: planMit } = mitUmgebung({ OKUN_UPDATE_URL: 'https://beispiel.invalid/programm/' })
+check('Mit Ausgabeort steht er drin, und zwar als eigener Ort',
+  planMit?.publish?.provider === 'generic'
+  && planMit?.publish?.url === 'https://beispiel.invalid/programm/',
+  JSON.stringify(planMit?.publish)
+  + ' — `generic` statt GitHub: Ein privates Repository bräuchte ein '
+  + 'Zugriffswort auf jedem Kundenrechner.')
+
+check('Die Selbstaktualisierung ist überhaupt im Paket',
+  (bauplan.files ?? []).includes('node_modules/**'),
+  `files: ${JSON.stringify(bauplan.files)} — ohne diese Zeile fehlte `
+  + 'electron-updater, und zwar lautlos.')
+check('Und sie steht als Abhängigkeit der Hülle da',
+  Boolean(huellenPaket.dependencies?.['electron-updater']),
+  JSON.stringify(huellenPaket.dependencies ?? {}))
+
 console.log('=== Die Hülle zeigt die Anlage ===')
 let programm = await starten(ADRESSE)
 let fenster = await programm.firstWindow()

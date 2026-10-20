@@ -8,6 +8,9 @@
   "homepage": "https://okun-workforce.com",
   "private": true,
   "main": "haupt.js",
-  "_warum_leer": "§173 Diese Hülle hat KEINE Abhängigkeiten, und das ist Absicht. Der Paketbauer packt alle Produktionsabhängigkeiten des Projekts mit ein — ohne eigenes Paket landeten Prisma samt Rechenkern, der Anthropic-Zugang und der Mailversand auf jedem Kundenrechner: 280 MB, von denen die Hülle nichts braucht und die alle auf Sicherheitslücken zu prüfen wären. Mit eigenem Paket sind es die drei Dateien, aus denen die Hülle wirklich besteht.",
-  "_warum_angaben": "§187 Diese drei Zeilen landen im Windows-Installationsprogramm und in den Paketangaben des .deb — ein Kunde sieht sie. Hier stand bis zum 05.10.2026 „für Pflege, Kita und Eingliederungshilfe\" und eine Adresse auf okun.de: eine Branchenverengung, die von der Website längst entfernt war, und ein Absender, den es so nicht gibt. Die Angaben stimmen jetzt mit dem Impressum überein — und mit dem Namen, der gleich im Signaturzertifikat stehen wird."
+  "_warum_leer": "§173/§205 Diese Hülle hat GENAU EINE Abhängigkeit, und das ist Absicht. Der Paketbauer packt alle Produktionsabhängigkeiten des Projekts mit ein — ohne eigenes Paket landeten Prisma samt Rechenkern, der Anthropic-Zugang und der Mailversand auf jedem Kundenrechner: 280 MB, von denen die Hülle nichts braucht und die alle auf Sicherheitslücken zu prüfen wären. Hinzugekommen ist seit §205 `electron-updater` (16 Pakete, 3,3 MB) — ohne ihn erreicht keine Verbesserung an der Hülle jemanden, der sie schon installiert hat. Wer hier etwas ergänzt, soll denselben Satz schreiben können: wofür, und was es wiegt.",
+  "_warum_angaben": "§187 Diese drei Zeilen landen im Windows-Installationsprogramm und in den Paketangaben des .deb — ein Kunde sieht sie. Hier stand bis zum 05.10.2026 „für Pflege, Kita und Eingliederungshilfe\" und eine Adresse auf okun.de: eine Branchenverengung, die von der Website längst entfernt war, und ein Absender, den es so nicht gibt. Die Angaben stimmen jetzt mit dem Impressum überein — und mit dem Namen, der gleich im Signaturzertifikat stehen wird.",
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
 }

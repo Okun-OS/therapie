@@ -3787,3 +3787,89 @@ Fehlversuchen steht er unverändert da. Ein **entschiedener** Antrag ergibt
 haben, stehen jetzt ausdrücklich auch aus Sicht der Leitung da.
 
 **Stand:** 1794/1794 in 48 Prüfungen, 1096 Modultests, tsc und Bauen sauber.
+
+## §205 Der Installationsassistent und die Selbstaktualisierung
+
+**Der Anlass.** Der Eigentümer: „Ich möchte, dass ich was runterlade, was ein
+richtiges Programm ist, was ich dann installiere … und nicht, was so billig
+aussieht." Von den Wegen, die dafür offenstanden, sind das die beiden mit dem
+besten Verhältnis von Arbeit zu Wirkung — und die Selbstaktualisierung ist
+die Voraussetzung für alles Weitere: Ohne sie erreicht keine künftige
+Verbesserung jemanden, der das Programm schon installiert hat.
+
+### Eine Absage zurückgenommen — mit Begründung
+
+In §173 stand: keine Selbstaktualisierung, und zwar bewusst. Die Begründung
+war gut und gilt immer noch: Die Hülle enthält keine Anwendung, Korrekturen
+an Lohn und Dienstplan gehen über den Server.
+
+Was sich geändert hat, ist die Hülle selbst. Seit §201 trägt sie den
+Fensterrahmen; als Nächstes kommen Offlinebetrieb und Benachrichtigungen. Sie
+ist damit zu etwas geworden, das sich ändert — und das war die Bedingung, an
+der die alte Entscheidung hing.
+
+### Der Ausgabeort — und warum „keiner" besser ist als „einer ins Leere"
+
+Alles hängt an einer Variablen beim Bauen:
+
+| Ohne `OKUN_UPDATE_URL` | Mit ihr |
+|---|---|
+| `publish: null`, kein `app-update.yml` im Paket | `provider: generic` mit dieser Adresse |
+| Das Programm merkt das und sucht **gar nicht erst** | 20 s nach dem Start, danach alle sechs Stunden |
+
+Ein eingetragener Ausgabeort, an dem nichts liegt, liefe bei **jedem Start**
+ins Leere — beim Kunden, täglich, unsichtbar. Deshalb ist das `null` kein
+Versäumnis, sondern die Entscheidung.
+
+`generic` und nicht GitHub: Ein privates Repository bräuchte ein Zugriffswort
+in jedem ausgelieferten Programm — ein Geheimnis auf dem Rechner jedes
+Kunden.
+
+### Die stille Falle beim Packen
+
+`files` war in der Bauanleitung eine ausdrückliche Liste. Sobald sie gesetzt
+ist, gilt **nur** noch sie — `node_modules/**` fehlte darin, und damit wäre
+`electron-updater` nicht im Paket gelandet. Das Programm hat für genau diesen
+Fall einen Rückfallweg (`require` in `try`), also hätte nichts gemeldet, dass
+die Selbstaktualisierung fehlt. Sie wäre einfach nie gelaufen.
+
+Nachgesehen wurde deshalb am fertigen Paket, nicht in der Bauanleitung:
+`electron-updater` liegt im `app.asar`, `app-update.yml` in `resources/` —
+und ohne die Variable ist es nicht da.
+
+### Die Bilder
+
+NSIS kann nur BMP, und nur in zwei festen Größen. Wer andere liefert, bekommt
+kein skaliertes Bild, sondern einen abgeschnittenen Rand. Erzeugt werden sie
+von `scripts/installer-bilder.mjs` aus dem Logo und den Hausfarben —
+eingecheckt werden sie trotzdem, damit der Bau nicht von einem Skript
+abhängt, das jemand zu laufen vergisst.
+
+**Dabei ein eigener Fehler, gefunden durch Nachmessen:** Als senkrechte Mitte
+des Kopfstreifens stand `(57 - 42) / 2` da, also **7,5**. Ein halber
+Zeilenversatz wird beim Rechnen zu `7,5 × 150 = 1125` — einer ganzen Zahl,
+nur eben der falschen. Das Zeichen landete 75 Punkte weiter links: statt
+rechts fast in der Mitte, wo im Assistenten die Überschrift steht. Nichts
+stürzte ab, nichts warnte. Aufgefallen ist es erst, als ich das fertige Bild
+vermessen habe, statt es anzusehen — auf 150 Punkten Breite sieht man den
+Unterschied mit dem Auge nicht sicher.
+
+### Was bewusst fehlt
+
+* **Keine Lizenzseite im Assistenten.** Welche Nutzungsbedingungen dort
+  stehen, ist eine juristische Entscheidung und keine, die beim Programmieren
+  getroffen wird.
+* **Kein Ort für die Dateien.** Die Selbstaktualisierung ist gebaut und
+  geprüft, aber bis `latest.yml` und die `.exe` irgendwo liegen, läuft sie
+  nicht. Das ist jetzt der Punkt, an dem alles Weitere hängt — in `DESKTOP.md`
+  entsprechend hochgestuft.
+
+### Nachweise
+
+`pruefungen/desktop/huelle.mjs` wächst von 49 auf 61 Checks: beide Bilder
+vorhanden, BMP, **und genau in den geforderten Maßen**; der Assistent führt
+durch Schritte; `node_modules/**` steht in `files`; und die Gegenprobe, auf
+die es ankommt — **ohne Ausgabeort wird keiner eingetragen**.
+
+**Stand:** 61/61 Desktop-Checks, 1794/1794 in 48 Prüfungen, 1096 Modultests,
+tsc und Bauen sauber.

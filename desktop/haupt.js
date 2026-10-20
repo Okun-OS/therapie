@@ -344,6 +344,134 @@ ipcMain.handle('okun:version', () => ({
   electron: process.versions.electron,
 }))
 
+// ── §205 Selbstaktualisierung ──────────────────────────────────────────────
+//
+// WARUM ES SIE JETZT GIBT — UND WARUM VORHER NICHT
+// In §173 stand hier eine Absage mit Begründung: Die Hülle enthält keine
+// Anwendung, Korrekturen an Lohn und Dienstplan gehen über den Server und
+// sind beim nächsten Öffnen da. Das stimmt weiterhin.
+//
+// Was sich geändert hat, ist die Hülle selbst. Seit §201 trägt sie den
+// Fensterrahmen, und als Nächstes kommen Offlinebetrieb, Benachrichtigungen
+// und ein Symbol im Infobereich. Damit wird sie zu etwas, das sich ändert —
+// und ohne Selbstaktualisierung erreicht keine dieser Verbesserungen jemals
+// jemanden, der das Programm schon installiert hat. Er müsste von selbst auf
+// die Idee kommen, nachzusehen.
+//
+// WAS HIER BEWUSST NICHT PASSIERT
+//   – Es wird nichts erzwungen. Gefragt wird, wenn die neue Fassung fertig
+//     heruntergeladen ist, und „Später" ist eine vollwertige Antwort. Ein
+//     Programm, das sich mitten in der Dienstplanung selbst neu startet,
+//     verliert Vertrauen schneller, als eine neue Fassung es aufbauen kann.
+//   – Es wird nicht gemeldet, wenn nichts da ist. Eine automatische Suche,
+//     die bei jedem Start „Sie sind aktuell" sagt, ist Lärm.
+//   – Es wird nicht gemeldet, wenn die Suche scheitert. Solange die Dateien
+//     nirgends liegen (siehe DESKTOP.md), scheitert sie bei JEDEM Start —
+//     eine Fehlermeldung dafür wäre das Erste, was der Kunde vom Programm
+//     sieht. Wer von Hand sucht, bekommt die Auskunft sehr wohl.
+//
+// SICHERHEIT
+// Eine Selbstaktualisierung ist ein Weg, fremden Code auf einen Kundenrechner
+// zu bringen — deshalb hängt alles daran, dass die heruntergeladene Datei
+// geprüft wird. Das tut electron-updater unter Windows von sich aus: Es
+// vergleicht den Herausgeber der Signatur mit dem, der beim Bauen in
+// `app-update.yml` geschrieben wurde, und lehnt ab, wenn beides nicht
+// zusammenpasst. Ein unsigniert gebautes Programm scheitert damit an der
+// eigenen Prüfung — und das ist richtig so.
+//
+// Gesucht wird nur, wenn beim Bauen überhaupt ein Ausgabeort eingetragen
+// wurde. Ohne den legt electron-builder kein `app-update.yml` an, und dann
+// gibt es nichts zu holen.
+
+let aktualisierung = null
+/** Hat der Mensch selbst gesucht? Dann bekommt er auch eine Antwort. */
+let suchtSelbst = false
+
+/** Wurde beim Bauen ein Ausgabeort eingetragen? */
+function ausgabeortVorhanden() {
+  try {
+    return fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'))
+  } catch {
+    return false
+  }
+}
+
+function aktualisierungEinrichten() {
+  if (!app.isPackaged) return null // In der Entwicklung gibt es nichts zu holen.
+  if (!ausgabeortVorhanden()) return null
+
+  let updater
+  try {
+    ({ autoUpdater: updater } = require('electron-updater'))
+  } catch {
+    return null // Paket nicht mitgebaut — dann eben ohne.
+  }
+
+  updater.autoDownload = true
+  updater.autoInstallOnAppQuit = true
+  updater.logger = null
+
+  updater.on('update-downloaded', (stand) => {
+    if (!fenster || fenster.isDestroyed()) return
+    dialog.showMessageBox(fenster, {
+      type: 'info',
+      title: 'Neue Fassung bereit',
+      message: `OKUN Workforce ${stand?.version ?? ''} ist heruntergeladen.`,
+      detail: 'Sie wird beim nächsten Start verwendet. Jetzt neu starten?',
+      buttons: ['Jetzt neu starten', 'Später'],
+      defaultId: 1,
+      cancelId: 1,
+    }).then(({ response }) => {
+      if (response === 0) updater.quitAndInstall()
+    })
+  })
+
+  updater.on('update-not-available', () => {
+    if (!suchtSelbst) return
+    suchtSelbst = false
+    dialog.showMessageBox(fenster, {
+      type: 'info', title: 'Alles aktuell',
+      message: `Sie benutzen bereits die neueste Fassung (${app.getVersion()}).`,
+      buttons: ['Schließen'],
+    })
+  })
+
+  updater.on('error', (fehler) => {
+    if (!suchtSelbst) return
+    suchtSelbst = false
+    dialog.showMessageBox(fenster, {
+      type: 'warning',
+      title: 'Suche nicht möglich',
+      message: 'Es ließ sich nicht nachsehen, ob es eine neue Fassung gibt.',
+      detail: `Meist liegt es an der Verbindung dieses Rechners.\n\n`
+        + `Meldung des Systems: ${fehler?.message ?? fehler}`,
+      buttons: ['Schließen'],
+    })
+  })
+
+  return updater
+}
+
+/** @param {boolean} vonHand */
+function nachAktualisierungSuchen(vonHand = false) {
+  if (!aktualisierung) {
+    if (!vonHand) return
+    dialog.showMessageBox(fenster, {
+      type: 'info',
+      title: 'Keine Selbstaktualisierung',
+      message: 'Diese Fassung aktualisiert sich nicht selbst.',
+      detail: app.isPackaged
+        ? 'Sie wurde ohne Ausgabeort gebaut. Neue Fassungen gibt es auf '
+          + 'okun-workforce.com.'
+        : 'Im Entwicklungsbetrieb gibt es nichts zu holen.',
+      buttons: ['Schließen'],
+    })
+    return
+  }
+  suchtSelbst = vonHand
+  aktualisierung.checkForUpdates().catch(() => undefined)
+}
+
 // ── Menü ───────────────────────────────────────────────────────────────────
 
 function adresseFragen() {
@@ -389,6 +517,14 @@ function menuBauen() {
       label: 'Hilfe',
       submenu: [
         {
+          // §205 Von Hand suchen gibt es immer — auch wenn automatisch
+          // gesucht wird. Wer wissen will, ob er aktuell ist, soll es
+          // nachsehen können, statt auf den nächsten Start zu warten.
+          label: 'Nach Aktualisierung suchen…',
+          click: () => nachAktualisierungSuchen(true),
+        },
+        { type: 'separator' },
+        {
           label: 'Über OKUN Workforce',
           click: () => dialog.showMessageBox(fenster, {
             type: 'info',
@@ -428,6 +564,23 @@ if (!app.requestSingleInstanceLock()) {
 
     menuBauen()
     fensterBauen()
+
+    /*
+     * §205 Einmal nach dem Start nachsehen, und danach alle sechs Stunden.
+     *
+     * Die Verzögerung ist Absicht: In den ersten Sekunden lädt das Fenster
+     * die Anlage, und darauf wartet jemand. Eine Aktualisierung wartet nicht,
+     * sie kann warten.
+     *
+     * Sechs Stunden, weil die Hülle sich selten ändert und das Programm oft
+     * tagelang offen bleibt. Häufiger zu fragen brächte nichts und kostet
+     * jeden Kunden Datenverkehr.
+     */
+    aktualisierung = aktualisierungEinrichten()
+    if (aktualisierung) {
+      setTimeout(() => nachAktualisierungSuchen(false), 20_000)
+      setInterval(() => nachAktualisierungSuchen(false), 6 * 60 * 60 * 1000)
+    }
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) fensterBauen()

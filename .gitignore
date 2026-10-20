@@ -38,3 +38,9 @@ next-env.d.ts
 # §173 Die gebauten Programme fürs Gerät. Über hundert Megabyte je Datei,
 # und sie entstehen aus dem, was daneben liegt — sie gehören nicht ins Repo.
 /desktop/pakete/
+
+# §205 Die Hülle hat seit der Selbstaktualisierung eine eigene
+# Abhängigkeitsliste. Der Ordner gehört nicht ins Repository — `/node_modules`
+# weiter oben greift hier nicht, weil der Schrägstrich am Anfang nur die
+# Wurzel meint.
+/desktop/node_modules/

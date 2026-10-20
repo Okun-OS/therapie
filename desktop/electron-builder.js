@@ -185,14 +185,21 @@ module.exports = {
   // auf jedem Kundenrechner zu pflegen und auf Sicherheitslücken zu prüfen.
   //
   // Gebaut wird deshalb MIT DIESEM Verzeichnis als Projekt
-  // (`electron-builder --project desktop`), und `desktop/package.json` hat
-  // keine Abhängigkeiten.
+  // (`electron-builder --project desktop`). §205: `desktop/package.json` hat
+  // seither genau eine Abhängigkeit — `electron-updater`, 16 Pakete, 3,3 MB.
   directories: {
     output: 'pakete',
     buildResources: 'symbole',
   },
 
-  files: ['haupt.js', 'bruecke.js', '*.html', 'symbole/**', 'package.json'],
+  // §205 `node_modules/**` steht ausdrücklich dabei. Sobald `files` gesetzt
+  // ist, gilt nur noch diese Liste — ohne die Zeile fehlte `electron-updater`
+  // im Paket, und die Selbstaktualisierung wäre still ausgefallen. Still,
+  // weil das Programm genau dafür einen Rückfallweg hat (siehe haupt.js).
+  files: [
+    'haupt.js', 'bruecke.js', '*.html', 'symbole/**', 'package.json',
+    'node_modules/**',
+  ],
 
   // Die Fassung von Electron steht in der Entwicklungsliste des Hauptpakets;
   // das Hüllenpaket kennt sie nicht.
@@ -200,19 +207,32 @@ module.exports = {
 
   artifactName: 'OKUN-Workforce-${version}-${os}-${arch}.${ext}',
 
-  // §173 Keine Selbstaktualisierung — bewusst, und mit einem Grund, der
-  // nicht „noch nicht gebaut" heißt.
-  //
-  // Die Hülle enthält keine Anwendung. Korrekturen an Lohn, Dienstplan oder
-  // Recht gehen über den Server und sind beim nächsten Öffnen da; niemand
-  // wartet auf ein Programm-Update. Was sich hier ändern könnte, ist das
-  // Fenster selbst — selten. Eine Selbstaktualisierung bräuchte dafür einen
-  // dauerhaft erreichbaren Ausgabekanal und eine Signatur, also zwei
-  // Angriffsflächen für einen Nutzen, den es kaum gibt.
-  //
-  // Wird das später anders gesehen: `provider: 'generic'` mit einer Adresse,
-  // die OKUN kontrolliert, plus electron-updater. Siehe DESKTOP.md.
-  publish: null,
+  /**
+   * §205 Der Ausgabeort für die Selbstaktualisierung.
+   *
+   * In §173 stand hier eine Absage: Die Hülle enthält keine Anwendung,
+   * Korrekturen gehen über den Server. Das stimmt weiterhin — nur ändert
+   * sich seit §201 die Hülle selbst (Fensterrahmen, als Nächstes Offline
+   * und Benachrichtigungen). Ohne Selbstaktualisierung erreicht davon
+   * nichts jemanden, der das Programm schon installiert hat.
+   *
+   * `generic` statt GitHub: Die Dateien gehören auf eine Adresse, die OKUN
+   * kontrolliert. Ein privates GitHub-Repository bräuchte ein Zugriffswort
+   * in jedem ausgelieferten Programm — also ein Geheimnis auf dem Rechner
+   * jedes Kunden, das dort nichts zu suchen hat.
+   *
+   * OHNE `OKUN_UPDATE_URL` BLEIBT ES AUS, und zwar absichtlich: Dann legt
+   * electron-builder kein `app-update.yml` an, das Programm merkt das und
+   * sucht gar nicht erst. Ein eingetragener Ausgabeort, an dem nichts liegt,
+   * wäre schlechter — dann liefe bei jedem Start eine Suche ins Leere.
+   *
+   * Wohin die Dateien kommen, steht noch nicht fest (DESKTOP.md, „Eine Seite
+   * zum Herunterladen"). Gebraucht werden dort `latest.yml` und die .exe aus
+   * `desktop/pakete/`.
+   */
+  publish: process.env.OKUN_UPDATE_URL
+    ? { provider: 'generic', url: process.env.OKUN_UPDATE_URL, channel: 'latest' }
+    : null,
 
   linux: {
     category: 'Office',
@@ -247,6 +267,13 @@ module.exports = {
     ...signatur,
   },
 
+  /**
+   * §205 Der Installationsassistent.
+   *
+   * Daran misst jeder in den ersten dreißig Sekunden, ob eine Software ernst
+   * gemeint ist — lange bevor er eine Funktion gesehen hat. Eine Datei, die
+   * sich wortlos selbst entpackt, sieht aus wie ein Download von 2004.
+   */
   nsis: {
     // Ohne Administratorrechte installierbar. In Einrichtungen hat die
     // Verwaltung selten Administratorrechte auf ihrem Rechner, und auf die
@@ -257,6 +284,34 @@ module.exports = {
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     shortcutName: 'OKUN Workforce',
+
+    // Die beiden Bilder des Assistenten. Erzeugt von
+    // `node scripts/installer-bilder.mjs`; NSIS kann nur BMP, und nur in
+    // genau diesen Maßen (164×314 und 150×57).
+    installerSidebar: 'symbole/installer-seite.bmp',
+    uninstallerSidebar: 'symbole/installer-seite.bmp',
+    installerHeader: 'symbole/installer-kopf.bmp',
+
+    // §205 Was unter „Apps & Features" steht. Ohne das steht dort der
+    // technische Name — und daneben ein leeres Feld beim Herausgeber, was
+    // in einer Einrichtung mit verwalteten Rechnern sofort auffällt.
+    uninstallDisplayName: 'OKUN Workforce',
+    menuCategory: false,
+
+    // Nach der Installation gleich starten. Wer gerade installiert hat, will
+    // hinein — nicht erst das Startmenü suchen.
+    runAfterFinish: true,
+
+    // §205 Beim Deinstallieren bleiben die eigenen Daten liegen: die
+    // eingestellte Anlagen-Adresse und die Fensterlage. Wer neu installiert,
+    // findet sein Fenster wieder, wo es war. Es sind keine Kunden- und keine
+    // Lohndaten — die liegen auf dem Server, nicht hier (siehe §173).
+    deleteAppDataOnUninstall: false,
+
+    // Nur den Unterschied zur vorigen Fassung laden. Bei einer Hülle von
+    // ~90 MB, die sich um ein paar Zeilen ändert, ist das der Unterschied
+    // zwischen „lädt kurz" und „lädt im Hintergrund minutenlang".
+    differentialPackage: true,
   },
 
   mac: {

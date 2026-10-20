@@ -170,10 +170,93 @@ nach zwei Wochen ignoriert.
 |---|---|---|
 | 🔴 | **Die .exe signieren** | Der Bau ist vorbereitet (§187, siehe unten) — es fehlt das Zertifikat. Ein Kauf, keine Programmierarbeit. |
 | 🔴 | **.dmg bauen und beglaubigen** | Braucht einen Mac und das Apple-Developer-Konto. Ohne Beglaubigung („notarization") warnt macOS beim ersten Start. Hängt an derselben D-U-N-S-Nummer wie der App Store — siehe `APP-STORES.md`. |
-| 🟡 | **Eine Seite zum Herunterladen** | Die Dateien müssen irgendwo liegen. Gehört zur eigenen Domain und zur überarbeiteten Startseite. |
+| 🔴 | **Ein Ort für die Dateien** | Seit §205 kann sich das Programm selbst aktualisieren — aber nur, wenn `latest.yml` und die `.exe` irgendwo liegen, wo es sie findet. Ohne das bleibt die Selbstaktualisierung aus (und zwar still, siehe unten). Das ist jetzt der Punkt, an dem alles Weitere hängt. |
+| 🟡 | **Eine Seite zum Herunterladen** | Dasselbe für Menschen: eine Seite auf okun-workforce.com, die zu den Dateien führt. |
 | 🟢 | Fassungsnummer gemeinsam führen | `desktop/package.json` hat eine eigene Version. Solange die Hülle sich kaum ändert, ist das in Ordnung; sobald sie öfter ausgeliefert wird, sollte ein Befehl beide setzen. |
 
 🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt
+
+---
+
+## §205 Der Installationsassistent und die Selbstaktualisierung
+
+### Der Assistent
+
+Daran misst jeder in den ersten dreißig Sekunden, ob eine Software ernst
+gemeint ist — lange bevor er eine Funktion gesehen hat.
+
+| Einstellung | Wirkung |
+|---|---|
+| `oneClick: false` | Ein Assistent mit Schritten statt einer Datei, die sich wortlos entpackt |
+| `allowToChangeInstallationDirectory` | Der Ordner lässt sich wählen |
+| `perMachine: false` | Keine Administratorrechte nötig — in Einrichtungen hat die Verwaltung die selten, und auf die IT zu warten heißt oft: es passiert nie |
+| `installerSidebar` / `installerHeader` | Die beiden Bilder des Assistenten |
+| `uninstallDisplayName` | Was unter „Apps & Features" steht |
+| `runAfterFinish` | Nach der Installation gleich starten |
+| `deleteAppDataOnUninstall: false` | Adresse und Fensterlage bleiben liegen. Es sind keine Kunden- und keine Lohndaten — die liegen auf dem Server |
+| `differentialPackage` | Nur den Unterschied zur vorigen Fassung laden |
+
+**Die Bilder erzeugt ein Skript:**
+
+```bash
+node scripts/installer-bilder.mjs
+```
+
+Sie werden trotzdem eingecheckt — der Bau soll nicht von einem Skript
+abhängen, das jemand zu laufen vergisst. NSIS kann nur **BMP**, und nur in
+genau zwei Größen: `164×314` für die Seitenfläche, `150×57` für den
+Kopfstreifen. Wer andere Maße liefert, bekommt kein skaliertes Bild, sondern
+einen abgeschnittenen Rand.
+
+> **Noch offen und bewusst so: keine Lizenzseite.** Die meisten Assistenten
+> zeigen eine. Welche Nutzungsbedingungen dort stehen, ist eine juristische
+> Entscheidung und keine, die beim Programmieren getroffen wird. Ist der Text
+> da, kommt er als `nsis.license` dazu.
+
+### Die Selbstaktualisierung
+
+In §173 stand hier eine Absage mit Begründung: Die Hülle enthält keine
+Anwendung, Korrekturen gehen über den Server. Das stimmt weiterhin — nur
+ändert sich seit §201 die **Hülle selbst**, und ohne Selbstaktualisierung
+erreicht davon nichts jemanden, der das Programm schon installiert hat.
+
+**Gesteuert wird alles über eine Variable beim Bauen:**
+
+```bash
+OKUN_UPDATE_URL=https://… npm run desktop:win
+```
+
+| Ohne sie | Mit ihr |
+|---|---|
+| `publish: null`, kein `app-update.yml` im Paket | `provider: generic` mit dieser Adresse |
+| Das Programm merkt das und sucht **gar nicht erst** | Einmal 20 Sekunden nach dem Start, danach alle sechs Stunden |
+
+Ein eingetragener Ausgabeort, an dem nichts liegt, wäre schlechter als keiner:
+Dann liefe bei jedem Start eine Suche ins Leere — beim Kunden, täglich,
+unsichtbar.
+
+**`generic` und nicht GitHub:** Ein privates Repository bräuchte ein
+Zugriffswort in jedem ausgelieferten Programm, also ein Geheimnis auf dem
+Rechner jedes Kunden.
+
+**Was dort liegen muss:** `latest.yml` und die `.exe` aus `desktop/pakete/`.
+Beide entstehen beim Bauen; hochgeladen werden müssen sie von Hand oder von
+einem Ausliefervorgang, den es noch nicht gibt.
+
+**Was das Programm tut und was nicht:**
+
+* Es erzwingt nichts. Gefragt wird erst, wenn die neue Fassung fertig geladen
+  ist, und „Später" ist eine vollwertige Antwort.
+* Es meldet sich nicht, wenn nichts da ist. Eine Suche, die bei jedem Start
+  „Sie sind aktuell" sagt, ist Lärm.
+* Es meldet sich nicht, wenn die Suche scheitert — außer, der Mensch hat
+  selbst gesucht (*Hilfe → Nach Aktualisierung suchen…*).
+
+**Sicherheit:** electron-updater vergleicht unter Windows den Herausgeber der
+heruntergeladenen Signatur mit dem, der beim Bauen in `app-update.yml`
+geschrieben wurde, und lehnt ab, wenn beides nicht zusammenpasst. Ein
+unsigniert gebautes Programm scheitert damit an der eigenen Prüfung — und das
+ist richtig so. **Erst signieren (§187), dann ausliefern.**
 
 ---
 
