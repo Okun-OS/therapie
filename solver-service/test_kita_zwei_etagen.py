@@ -1474,3 +1474,70 @@ def test_fahrt_ohne_zeitraum_ist_die_gruppe_an_allen_tagen_besetzt():
     plan = Plan(rechne(regelmodell()))
     for t in FAHRT:
         assert plan.in_gruppe(t, "g3") >= 1, f"{t}: Gruppe 3 unbesetzt ohne jede Fahrt"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# §209 Der Standort sagt etwas anderes als das Paket
+#
+# Aufgefallen im echten Betrieb: Auf jeder Etage standen jeden Tag zwei Früh-
+# und zwei Spätdienste. Das Paket verlangt genau einen — aber in den
+# Standortdaten stand je Etage eine Mindestbesetzung von 2, und die wog
+# schwerer. Dazu meldete die Begründung jede Dienstvariante, die an diesem
+# Tag niemand hatte, als „nur 0 von 1 Stellen besetzt".
+#
+# Die Abnahme oben hat das nie gesehen, weil ihr Modell die Standortwerte
+# sauber auf 0 setzt. Hier stehen sie so, wie sie ein Betrieb einträgt, ohne
+# das Paket zu kennen: jede Dienstvariante 1, jede Gruppe 2, jede Etage 2.
+# ════════════════════════════════════════════════════════════════════════════
+
+def modell_mit_standortwerten() -> dict:
+    m = regelmodell()
+    for s in m["schichten"]:
+        s["minBesetzungGesamt"] = 1
+    for e in m["einheiten"]:
+        e["mindestbesetzung"] = 2
+    return m
+
+
+@pytest.fixture(scope="module")
+def standortwerte() -> Plan:
+    p = Plan(rechne(modell_mit_standortwerten()))
+    abnehmen(p, "Der Lauf mit widersprechenden Standortwerten")
+    return p
+
+
+@pytest.mark.parametrize("typ", ["frueh", "spaet"])
+def test_standortwerte_genau_ein_dienst_je_etage(standortwerte, typ):
+    for t in TAGE:
+        zaehler = standortwerte.je_etage(t, typ)
+        assert zaehler[UNTEN] == 1, f"untere Etage am {t}: {zaehler[UNTEN]}× {typ}"
+        assert zaehler[OBEN] == 1, f"obere Etage am {t}: {zaehler[OBEN]}× {typ}"
+
+
+def test_standortwerte_keine_erfundenen_fehlbesetzungen(standortwerte):
+    gemeldet = [d["beschreibung"] for d in standortwerte.roh.get("decisions", [])
+                if d.get("typ") == "unterbesetzung"]
+    assert gemeldet == [], gemeldet[:3]
+
+
+def test_standortwerte_die_leitung_bleibt_draussen(standortwerte):
+    assert standortwerte.tage("Franke Leitner") == []
+
+
+def test_standortwerte_das_paket_sagt_es_im_protokoll(standortwerte):
+    assert standortwerte.paket.get("besetzungAusPaket") is True
+    assert any("Besetzung nur aus dem Regelpaket" in r
+               for r in standortwerte.paket.get("regeln", []))
+
+
+def test_standortwerte_ohne_paket_gelten_sie():
+    """
+    Die Gegenprobe: Ohne Paket verlangt derselbe Standort wieder zwei je
+    Etage. Sonst wäre die Prüfung oben auch grün, wenn die Etagenwerte
+    schlicht nie ankämen.
+    """
+    m = modell_mit_standortwerten()
+    m["rulePackId"] = None
+    plan = Plan(rechne(m))
+    zwei = sum(1 for t in TAGE if plan.je_etage(t, "frueh")[UNTEN] >= 2)
+    assert zwei >= len(TAGE) // 2, f"nur an {zwei} Tagen zwei Frühdienste unten"

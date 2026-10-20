@@ -560,6 +560,12 @@ def solve(rule_model: dict) -> dict:
         massnahmen=rule_model.get("massnahmen") or [],
     )
     pack_report = apply_pack(rule_model.get("rulePackId"), kontext)
+    # §209 Hat das Paket die Besetzung uebernommen, fallen die
+    # Mindestbesetzungen des Standorts weg (C1, C9 und die Meldung danach).
+    # Begruendung in `rulepacks.apply_pack`. Ein Paket, das nicht geladen
+    # werden konnte, uebernimmt nichts — dann gilt der Standort, damit
+    # ueberhaupt ein Plan mit Besetzung entsteht.
+    besetzung_aus_paket = bool(pack_report and pack_report.get("besetzungAusPaket"))
 
     # H3: Legal max weekly hours (NET working minutes, §72)
     for ei in range(n_emp):
@@ -653,7 +659,8 @@ def solve(rule_model: dict) -> dict:
     # Vorliebe nicht durchkam, die leicht zu erfuellen gewesen waere.
     #
     # Fehlt die Angabe ganz, bleibt es bei 1 wie bisher.
-    for di in range(n_days):
+    # §209 Mit Regelpaket entfaellt das ganz — das Paket bestimmt die Besetzung.
+    for di in range(n_days if not besetzung_aus_paket else 0):
         for si, shift in enumerate(shifts):
             roh = shift.get("minBesetzungGesamt", 1)
             min_staff = 1 if roh is None else int(roh)
@@ -779,7 +786,7 @@ def solve(rule_model: dict) -> dict:
     # b) every ETAGE needs minStaff people per Früh- and Spät-shift (someone
     #    opens and closes each floor), drawn from its child groups.
     # Both soft with the heavy understaffing penalty (always solvable).
-    if group_active:
+    if group_active and not besetzung_aus_paket:
         for d in range(n_days):
             for gi, grp in enumerate(gruppen):
                 min_staff_g = int(grp.get("mindestbesetzung", 1) or 0)
@@ -992,10 +999,18 @@ def solve(rule_model: dict) -> dict:
                         "grund": "Kein Dienst zugewiesen (Stundenziel erreicht oder keine passende Schicht verfügbar)",
                     })
 
-        for di, day in enumerate(days):
+        # §209 Gemeldet wird nur, was auch verlangt war. Hier stand
+        # `max(1, ...)`: Eine Schicht mit Mindestbesetzung 0 erschien trotzdem
+        # als „nur 0 von 1 Stellen besetzt" — und bei einem Regelpaket, das
+        # die Besetzung selbst regelt, stand die Begruendung voll mit
+        # Fehlbesetzungen, die es nicht gab.
+        for di, day in enumerate(days if not besetzung_aus_paket else []):
             for si, shift in enumerate(shifts):
                 filled = sum(solver_inst.boolean_value(X[e, di, si]) for e in range(n_emp))
-                min_staff = max(1, shift.get("minBesetzungGesamt", 1))
+                roh = shift.get("minBesetzungGesamt", 1)
+                min_staff = 1 if roh is None else int(roh)
+                if min_staff <= 0:
+                    continue
                 if filled < min_staff:
                     decisions.append(
                         {

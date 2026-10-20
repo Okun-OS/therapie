@@ -17,6 +17,11 @@ META = {
     "version": 1,
     "beschreibung": "Zwei Etagen, vier Gruppen, Früh- und Spätdienst im Wechsel.",
     "aufgenommen": "2026-09-11",
+    # §209 Offene Schuld: Dieses Paket sagt noch nicht, wie viele wo stehen.
+    # Bis es das tut, gilt die Mindestbesetzung aus den Standortdaten — ohne
+    # sie verlangte der Plan niemanden. Beschreibt das Paket die Besetzung
+    # selbst, faellt diese Zeile weg.
+    "besetzung_aus_standort": True,
 }
 
 # §202 Die Einrichtung, die mit diesem Paket an einen Standort geht —

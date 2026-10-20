@@ -44,6 +44,11 @@ META = {
         "Was nicht passt, wird übersprungen und protokolliert.",
     "aufgenommen": "2026-09-26",
     "muster": True,
+    # §209 Offene Schuld: Dieses Paket sagt noch nicht, wie viele wo stehen.
+    # Bis es das tut, gilt die Mindestbesetzung aus den Standortdaten — ohne
+    # sie verlangte der Plan niemanden. Beschreibt das Paket die Besetzung
+    # selbst, faellt diese Zeile weg.
+    "besetzung_aus_standort": True,
 }
 
 # Wie eine Fachkraft in den Stammdaten heißen kann. Die Begriffe kommen aus

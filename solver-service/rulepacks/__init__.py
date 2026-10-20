@@ -224,9 +224,37 @@ def apply_pack(pack_id: str | None, ctx) -> dict | None:
         return {"id": pack_id, "name": name, "angewendet": False,
                 "fehler": f"{type(exc).__name__}: {exc}"[:300]}
 
+    # §209 Wer die Besetzung bestimmt: das Paket, nicht der Standort.
+    #
+    # Hat ein Standort ein Regelpaket, sagt NUR das Paket, wie viele wo stehen.
+    # Die Mindestbesetzungen aus den Standortdaten (je Dienst, je Gruppe, je
+    # Etage) zaehlen dann nicht mehr. Sonst steht dieselbe Regel an zwei
+    # Orten, und die beiden widersprechen sich irgendwann.
+    #
+    # Genau das ist passiert: Im Standort stand je Etage eine
+    # Mindestbesetzung von 2, im Paket „genau einer je Etage". Die 2 kostete
+    # beim Unterschreiten 10 000, die zweite Kraft im Paket nur 1 500 — und
+    # der Plan hatte auf jeder Etage jeden Tag zwei Frueh- und zwei
+    # Spaetdienste.
+    #
+    # Die EINRICHTUNG eines Pakets (§201) hilft dagegen nicht: Sie legt nur
+    # an, was am Standort fehlt, und ueberschreibt nichts. Ein Standort, der
+    # schon vorher eingerichtet war, behielte seine alten Werte.
+    #
+    # Ein Paket, das seine Besetzung noch NICHT selbst beschreibt, sagt das
+    # ausdruecklich mit `besetzung_aus_standort` in META. Das ist eine offene
+    # Schuld, keine Einstellung: Ohne den Schalter bekaeme es einen Plan, in
+    # dem niemand verlangt wird.
+    aus_paket = not meta.get("besetzung_aus_standort", False)
+    if aus_paket:
+        ctx.notiere(
+            "Besetzung nur aus dem Regelpaket — Mindestbesetzungen aus den "
+            "Standortdaten (Dienste, Gruppen, Etagen) bleiben unberücksichtigt."
+        )
     return {
         "id": pack_id,
         "name": name,
         "angewendet": True,
+        "besetzungAusPaket": aus_paket,
         "regeln": list(ctx.protokoll),
     }
