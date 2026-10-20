@@ -263,7 +263,8 @@ Eine echte Abrechnung eines echten Monats, Zeile für Zeile. Solange das nicht
 jemand mit Berufshaftpflicht bestätigt hat, ist jede Zahl hier nur *von uns*
 gerechnet.
 
-**Der Brief steht fertig in `ANFRAGEN.md`** — kopieren, abschicken. Das ist
+**Der Brief steht fertig in `ANFRAGEN.md`** — kopieren, abschicken. **Wen
+anschreiben**, findet der Suchauftrag in `SUCHAUFTRAEGE.md`, Abschnitt 1. Das ist
 kein ungewöhnliches Anliegen, sondern eine *prüferische Durchsicht*: ein
 normales Mandat, nach Zeit abgerechnet. Entscheidend ist, dass die Bestätigung
 **schriftlich** kommt.

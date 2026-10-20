@@ -3,6 +3,10 @@
 Fertige Texte. Kopieren, Anrede prüfen, abschicken. Nichts davon muss
 umformuliert werden.
 
+> **Wen anschreiben?** Das steht in `SUCHAUFTRAEGE.md` — dort liegen die
+> Suchaufträge für ChatGPT, mit denen sich passende Kanzleien und die
+> zuständigen Stellen finden lassen. Hier stehen nur die Briefe selbst.
+
 > Absender überall: **OKUN Systems UG (haftungsbeschränkt)**, Potsdamer Platz 1,
 > 10785 Berlin, vertreten durch Felix Okun, kontakt@okun-systems.com,
 > Amtsgericht Charlottenburg HRB 292175 B.
