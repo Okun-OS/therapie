@@ -3731,3 +3731,59 @@ Prozess, der den Port noch hielt — der neu gestartete konnte sich nicht
 binden und starb still. Wer hier etwas prüft, sollte vorher
 `ps -eo pid,lstart,args | grep -E "next-server|uvicorn"` ansehen: Steht dort
 eine Startzeit von vor der eigenen Änderung, prüft man den alten Stand.
+
+## §204 Den eigenen Überstundenantrag zurückziehen — und ein größerer Fund dabei
+
+### Der Nebenbefund aus §203
+
+Für Überstundenanträge führte nichts heraus. Wer sich beim Ausstempeln
+vertippt oder versehentlich Mehrarbeit gemeldet hatte, bekam den Antrag nicht
+mehr weg; die Leitung konnte ihn nur genehmigen oder ablehnen. Ein Mensch
+musste also eine fremde Entscheidung über seinen eigenen Irrtum erbitten.
+
+**Wer und wann:** nur der Antragsteller selbst, und nur solange nichts
+entschieden ist.
+
+* Die **Leitung darf hier nicht löschen**. Sie hat zwei Werkzeuge,
+  genehmigen und ablehnen, und beide hinterlassen eine Spur. Ein stilles
+  Verschwinden eines fremden Antrags wäre etwas anderes: Dann stünde Aussage
+  gegen Aussage darüber, ob er je gestellt wurde.
+* Ein **entschiedener Antrag bleibt**. „Zurückziehen" nach der Genehmigung
+  hieße, eine Entscheidung zu tilgen, an der womöglich schon eine Auszahlung
+  hängt.
+
+**Warum wirklich gelöscht und nicht nur umgeschaltet:** Der Antrag trägt die
+Spur nicht. Was passiert ist, steht am Zeiteintrag — `abweichung` und
+`grundGehen` bleiben unberührt. Ein Status „zurückgezogen" wäre dagegen eine
+Zeile, die jede Liste und jede Auswertung ab jetzt mitschleppen müsste, ohne
+je etwas zu bedeuten. Den Vorgang hält das Protokoll fest; dort gehören
+Spuren hin.
+
+### Der Fund, der größer war als die Aufgabe
+
+Die Gegenprobe zu „die Spur bleibt am Zeiteintrag" war rot. Sie blieb auch —
+nur **sehen konnte sie niemand**: `grundKommen`, `grundGehen` und
+`abweichung` gab es seit §203 in der Datenbank, aber `toTimeLog` ließ sie
+weg, und im Typ `TimeLog` standen sie nicht.
+
+Damit war die ganze Nachfrage aus §203 **write-only**. Gefragt wurde,
+gespeichert wurde, gelesen von niemandem. Die Leitung sah weiter eine Zahl
+ohne Erklärung — also genau das, was §203 abstellen sollte. Eine Funktion,
+die zur Hälfte fehlt, sieht im Betrieb aus wie eine, die nicht funktioniert.
+
+Die Felder stehen jetzt im Typ, im Mapper und an beiden Stellen, an denen
+Zeiten gelesen werden: beim Monatsabschluss der Leitung und in der eigenen
+Liste des Beschäftigten. Steht eine Abweichung ohne Begründung da, wird das
+auch so gesagt — „länger geblieben, ohne Angabe" ist eine ehrliche Auskunft;
+ein leeres Feld sähe aus, als wäre nichts gewesen.
+
+### Nachweise
+
+`b5-stempelgrund` wächst auf 44 Checks. Die Gegenproben tragen hier die
+Prüfung: Ein **fremder** Antrag lässt sich nicht zurückziehen, auch **nicht
+von der Leitung**, auch nicht **ohne Anmeldung** — und nach allen drei
+Fehlversuchen steht er unverändert da. Ein **entschiedener** Antrag ergibt
+409 mit Begründung. Und die beiden Checks, die den Mapper-Fehler gefunden
+haben, stehen jetzt ausdrücklich auch aus Sicht der Leitung da.
+
+**Stand:** 1794/1794 in 48 Prüfungen, 1096 Modultests, tsc und Bauen sauber.

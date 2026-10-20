@@ -15,6 +15,7 @@ import {
   MessageSquare, ShieldCheck, ShieldX, Pencil, CalendarPlus, AlertTriangle, Printer,
   Download, Paperclip,
 } from 'lucide-react'
+import { ABWEICHUNG_TEXT, type Abweichungsart } from '@/lib/stempelgrund'
 import { formatDate, formatTime } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/EmptyState'
 
@@ -464,12 +465,38 @@ export default function AdminTimeTracking() {
                         <div className="space-y-1 pt-1 border-t border-gray-200">
                           <p className="text-xs font-semibold text-navy pt-2">Gebuchte Zeiten</p>
                           {(timeLogsByClosing[closing.id] ?? []).map(log => (
-                            <div key={log.id} className="flex items-center gap-2 text-xs text-gray-600">
-                              <span className="flex-1">{formatDate(log.date)} · {log.clockIn}–{log.clockOut ?? '–'} Uhr{log.breakMinutes ? ` · ${log.breakMinutes} Min. Pause` : ''}</span>
-                              {closing.status !== 'freigegeben' && (
-                                <button onClick={() => openEditLog(log, closing.id)} className="text-gray-400 hover:text-navy">
-                                  <Pencil size={12} />
-                                </button>
+                            <div key={log.id} className="text-xs text-gray-600">
+                              <div className="flex items-center gap-2">
+                                <span className="flex-1">{formatDate(log.date)} · {log.clockIn}–{log.clockOut ?? '–'} Uhr{log.breakMinutes ? ` · ${log.breakMinutes} Min. Pause` : ''}</span>
+                                {closing.status !== 'freigegeben' && (
+                                  <button onClick={() => openEditLog(log, closing.id)} className="text-gray-400 hover:text-navy">
+                                    <Pencil size={12} />
+                                  </button>
+                                )}
+                              </div>
+                              {/*
+                                §204 Was beim Stempeln angegeben wurde.
+                                Seit §203 wird danach gefragt — gelesen werden
+                                konnte es bis hierher von niemandem. Genau das
+                                sollte §203 aber abstellen: eine Zahl ohne
+                                Erklärung am Monatsende.
+
+                                Steht eine Abweichung ohne Begründung da, wird
+                                das auch so gesagt. „Länger geblieben, ohne
+                                Angabe" ist eine ehrliche Auskunft; ein leeres
+                                Feld sähe aus, als wäre nichts gewesen.
+                              */}
+                              {log.abweichung && (
+                                <p className="mt-0.5 flex items-start gap-1.5 text-[11px] text-amber-700">
+                                  <AlertTriangle size={11} className="shrink-0 mt-0.5" />
+                                  <span>
+                                    {ABWEICHUNG_TEXT[log.abweichung as Abweichungsart] ?? log.abweichung}
+                                    {' — '}
+                                    {log.grundGehen || log.grundKommen || (
+                                      <span className="text-gray-500">ohne Angabe</span>
+                                    )}
+                                  </span>
+                                </p>
                               )}
                             </div>
                           ))}

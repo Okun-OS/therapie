@@ -18,6 +18,10 @@ function toTimeLog(row: any): TimeLog {
     breakStartAt: row.breakStartAt ? row.breakStartAt.toISOString() : undefined,
     note: row.note ?? undefined,
     locationId: row.locationId,
+    // §204 Ohne diese drei Zeilen war die Nachfrage aus §203 write-only.
+    grundKommen: row.grundKommen ?? undefined,
+    grundGehen: row.grundGehen ?? undefined,
+    abweichung: row.abweichung ?? undefined,
   }
 }
 

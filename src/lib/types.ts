@@ -182,6 +182,24 @@ export interface TimeLog {
   breakStartAt?: string
   note?: string
   locationId: string
+  /**
+   * §204 Was beim Stempeln angegeben wurde.
+   *
+   * Diese drei Felder gab es seit §203 in der Datenbank — im Mapper fehlten
+   * sie, und damit war die ganze Nachfrage write-only: geschrieben, aber von
+   * niemandem lesbar. Die Leitung sah weiterhin eine Zahl ohne Erklärung,
+   * also genau das, was §203 abstellen sollte.
+   *
+   * Gefunden hat es eine Gegenprobe, die eigentlich etwas anderes zeigen
+   * wollte — dass beim Zurückziehen eines Antrags die Spur am Zeiteintrag
+   * bleibt. Sie blieb, nur sehen konnte sie niemand.
+   */
+  /** Warum ohne geplanten Dienst gestempelt wurde. */
+  grundKommen?: string
+  /** Warum die gearbeitete Zeit nicht zum Plan passt. */
+  grundGehen?: string
+  /** `ohne-dienst` | `frueher` | `laenger` */
+  abweichung?: string
 }
 
 // ─── Überstunden ──────────────────────────────────────────────────────────────

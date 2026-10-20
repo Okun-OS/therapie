@@ -29,7 +29,7 @@ Zweig löst eine Auslieferung samt `prisma migrate deploy` aus).
 ## Wie hier gearbeitet wird — das ist der Kern
 
 * **Kommentare auf Deutsch, und sie erklären das Warum.** Durchnummeriert mit
-  `§`; Stand **§203**, nächste Nummer §204. Wo ein Fehler behoben wird, steht
+  `§`; Stand **§204**, nächste Nummer §205. Wo ein Fehler behoben wird, steht
   dabei, was vorher dastand und warum es falsch war — damit niemand es
   zurückbaut.
 * **Nichts behaupten, was nicht gemessen ist.** Zahlen, Preise, Fristen,
@@ -153,9 +153,11 @@ Der E-Mail-Faktor läuft unabhängig davon.
    Buchungen stimmen. Die alten lassen sich aus `clockInAt` zurückrechnen
    (`clockOut` aus `clockInAt + totalMinutes + breakMinutes`). **Berührt
    Produktionsdaten — nur mit ausdrücklicher Freigabe des Eigentümers.**
-6. **Kein Löschweg für Überstundenanträge.** Wer versehentlich einen stellt,
-   bekommt ihn nicht mehr weg; die Leitung kann nur genehmigen oder ablehnen.
-   Gefunden in §203, nicht behoben.
+6. ~~Kein Löschweg für Überstundenanträge~~ — erledigt in §204. Nur der
+   Antragsteller selbst, nur solange nichts entschieden ist. Dabei fiel auf,
+   dass die Begründungen aus §203 **write-only** waren: Der Mapper ließ sie
+   weg, also sah sie niemand. Jetzt stehen sie beim Monatsabschluss der
+   Leitung und in der eigenen Liste.
 7. **Bereits hochgeladene Profilbilder bleiben beschnitten** (§203). Das
    Original ist nicht gespeichert, nur der falsche Ausschnitt. Betroffene
    müssen das Bild neu hochladen — eine Ansage im Programm fehlt noch.

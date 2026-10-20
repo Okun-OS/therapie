@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { ABWEICHUNG_TEXT, type Abweichungsart } from '@/lib/stempelgrund'
 import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -12,7 +13,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { OVERTIME_REASONS, type AbsenceType, type Employee, type TimeLog, type ScheduleEntry, type Shift, type OvertimeRequest, type HoursAccountSummary, type MonthlyClosing } from '@/lib/types'
 import { OVERTIME_MIN_MINUTES } from '@/lib/workforce-score-constants'
-import { PlayCircle, StopCircle, Clock, Timer, TrendingUp, Calendar, Coffee, AlertCircle, FileText, ChevronDown, ChevronUp, Stethoscope } from 'lucide-react'
+import { PlayCircle, StopCircle, Clock, Timer, TrendingUp, Calendar, Coffee, AlertCircle, FileText, ChevronDown, ChevronUp, Stethoscope, Trash2, Loader2 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate, formatTime, getWeekDays, toDateString } from '@/lib/utils'
 
@@ -53,6 +54,9 @@ export default function TimeTracking() {
   const refresh = () => forceRender(n => n + 1)
 
 
+  // §204 Der Antrag, der gerade zurückgezogen werden soll.
+  const [zurueckziehen, setZurueckziehen] = useState<OvertimeRequest | null>(null)
+  const [zieht, setZieht] = useState(false)
   const [absenceModalOpen, setAbsenceModalOpen] = useState(false)
   const [absenceType, setAbsenceType] = useState<AbsenceType>('krankheit')
   const [absenceStart, setAbsenceStart] = useState('')
@@ -236,6 +240,31 @@ export default function TimeTracking() {
    */
 
 
+  /**
+   * §204 Den eigenen Antrag zurückziehen.
+   *
+   * Gefragt wird vorher — das Löschen lässt sich nicht rückgängig machen, und
+   * ein Mülltonnensymbol trifft man auf dem Telefon schneller, als einem lieb
+   * ist. Was wirklich passiert ist, bleibt am Zeiteintrag stehen (§203); weg
+   * ist nur der offene Posten bei der Leitung.
+   */
+  const antragZurueckziehen = async () => {
+    if (!zurueckziehen) return
+    setZieht(true)
+    try {
+      const r = await fetch(`/api/overtime-requests/${zurueckziehen.id}`, { method: 'DELETE' })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { showToast(d.error ?? 'Das hat nicht geklappt', 'error'); return }
+      setZurueckziehen(null)
+      showToast('Antrag zurückgezogen', 'success')
+      fetchOvertimeRequests()
+    } catch {
+      showToast('Keine Verbindung — bitte noch einmal versuchen', 'error')
+    } finally {
+      setZieht(false)
+    }
+  }
+
   const handleSubmitAbsence = async () => {
     if (!user?.employeeId) return
     if (!absenceStart || !absenceEnd) { showToast('Bitte Zeitraum angeben', 'error'); return }
@@ -396,6 +425,21 @@ export default function TimeTracking() {
                       <p className="text-sm font-semibold text-navy">{formatDate(req.date)} · +{formatTime(req.overtimeMinutes)}</p>
                       <p className="text-xs text-gray-500">{req.reason}{req.adminComment ? ` · ${req.adminComment}` : ''}</p>
                     </div>
+                    {/*
+                      §204 Zurückziehen gibt es nur, solange nichts entschieden
+                      ist. Ein Knopf, der bei einem genehmigten Antrag
+                      danebensteht und dann „geht nicht" sagt, ist eine Frage,
+                      die niemand gestellt hat.
+                    */}
+                    {req.status === 'pending' && (
+                      <button
+                        onClick={() => setZurueckziehen(req)}
+                        aria-label="Antrag zurückziehen"
+                        className="shrink-0 p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
                     <Badge variant={status.variant}>{status.label}</Badge>
                   </div>
                 )
@@ -486,6 +530,18 @@ export default function TimeTracking() {
                         {log.clockIn} Uhr → {log.clockOut ? `${log.clockOut} Uhr` : 'läuft...'}
                         {(log.breakMinutes ?? 0) > 0 && ` · Pause ${formatTime(log.breakMinutes!)}`}
                       </p>
+                      {/*
+                        §204 Was man selbst angegeben hat, soll man auch
+                        wiederfinden — sonst schreibt man es in ein Loch.
+                      */}
+                      {log.abweichung && (
+                        <p className="text-[11px] text-amber-700 mt-0.5 truncate">
+                          {ABWEICHUNG_TEXT[log.abweichung as Abweichungsart] ?? log.abweichung}
+                          {(log.grundGehen || log.grundKommen)
+                            ? ` — ${log.grundGehen || log.grundKommen}`
+                            : ' — ohne Angabe'}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className={`text-sm font-bold ${isOver ? 'text-amber-600' : 'text-navy'}`}>
@@ -508,6 +564,45 @@ export default function TimeTracking() {
         der Antrag entsteht aus derselben Begründung
         (`/api/time-tracking/begruendung`).
       */}
+
+      {/* §204 Zurückziehen — mit Rückfrage, weil es nicht umkehrbar ist. */}
+      <Modal
+        open={Boolean(zurueckziehen)}
+        onClose={() => setZurueckziehen(null)}
+        title="Antrag zurückziehen?"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            {zurueckziehen && (
+              <>
+                Der Antrag über <strong>{formatTime(zurueckziehen.overtimeMinutes)}</strong>{' '}
+                vom {formatDate(zurueckziehen.date)} verschwindet aus der Liste deiner
+                Leitung. Deine erfasste Arbeitszeit und die Begründung bleiben
+                unverändert stehen.
+              </>
+            )}
+          </p>
+          <div className="flex gap-2.5">
+            <button
+              onClick={() => setZurueckziehen(null)}
+              disabled={zieht}
+              className="flex-1 h-12 rounded-2xl bg-gray-100 text-gray-700 font-semibold text-sm disabled:opacity-50"
+            >
+              Behalten
+            </button>
+            <button
+              onClick={antragZurueckziehen}
+              disabled={zieht}
+              className="flex-1 h-12 rounded-2xl bg-red-600 text-white font-bold text-sm
+                         flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {zieht && <Loader2 size={16} className="animate-spin" />}
+              Zurückziehen
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Abwesenheit melden */}
       <Modal open={absenceModalOpen} onClose={() => setAbsenceModalOpen(false)} title="Abwesenheit melden">

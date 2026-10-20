@@ -267,6 +267,121 @@ check('Mit der gewählten Kategorie, nicht einer geratenen',
 check('Und dem freien Text als Kommentar',
   (neuester?.comment ?? '').includes('Spätdienst'), JSON.stringify(neuester?.comment))
 
+
+// ── B5.6 Den eigenen Antrag zurückziehen ───────────────────────────────────
+console.log('\n=== B5.6 Zurückziehen ===')
+
+/*
+ * §204 Vorher führte hier nichts heraus: Wer versehentlich Mehrarbeit
+ * gemeldet hatte, bekam den Antrag nicht mehr weg, und die Leitung musste
+ * über einen fremden Irrtum entscheiden.
+ *
+ * Die Gegenproben sind hier die halbe Prüfung. Ein Löschweg, der zu weit
+ * reicht, ist schlimmer als keiner: Dann verschwinden fremde Anträge oder
+ * entschiedene Vorgänge, und hinterher steht Aussage gegen Aussage.
+ */
+const vorVierB = new Date(Date.now() - 4 * 60 * 60 * 1000)
+const tagB = berlinTag(vorVierB)
+tage.add(tagB)
+await dienstSetzen(tagB, berlinUhr(vorVierB), plus(berlinUhr(vorVierB), 120), shiftId)
+await stempeln({ aktion: 'kommen', zeitpunkt: vorVierB.toISOString() })
+const rausB = await stempeln({ aktion: 'gehen' })
+const neuerAntrag = (await sende(person, '/api/time-tracking/begruendung', 'POST', {
+  logId: rausB.body?.nachfrage?.logId,
+  grund: 'Versehentlich gemeldet — wird gleich zurückgezogen',
+})).body?.antrag
+check('Für den Versuch steht ein Antrag bereit', Boolean(neuerAntrag?.id),
+  JSON.stringify(neuerAntrag))
+if (neuerAntrag?.id) antragsIds.add(neuerAntrag.id)
+
+// Gegenprobe 1: Ein Fremder kommt nicht heran.
+const fremderZugang = await login('thomas.weber@rheinblick-reha.de')
+const fremdesLoeschen = await sende(fremderZugang,
+  `/api/overtime-requests/${neuerAntrag?.id}`, 'DELETE')
+check('Ein fremder Antrag lässt sich NICHT zurückziehen',
+  fremdesLoeschen.status === 403, `HTTP ${fremdesLoeschen.status}`)
+
+// Gegenprobe 2: Auch die Leitung nicht — sie hat genehmigen und ablehnen,
+// und beides hinterlässt eine Spur.
+const leitungLoeschen = await sende(gf,
+  `/api/overtime-requests/${neuerAntrag?.id}`, 'DELETE')
+check('Auch die Leitung löscht keinen fremden Antrag',
+  leitungLoeschen.status === 403, `HTTP ${leitungLoeschen.status}`)
+
+const ohneAnmeldungLoeschen = await fetch(
+  `${BASIS}/api/overtime-requests/${neuerAntrag?.id}`, { method: 'DELETE' })
+check('Ohne Anmeldung erst recht nicht', ohneAnmeldungLoeschen.status === 401,
+  `HTTP ${ohneAnmeldungLoeschen.status}`)
+
+// Und er ist nach alldem noch da.
+check('Nach den Fehlversuchen steht der Antrag unverändert da',
+  (await antraege()).some(a => a.id === neuerAntrag?.id))
+
+const zurueck = await sende(person, `/api/overtime-requests/${neuerAntrag?.id}`, 'DELETE')
+check('Der eigene Antrag lässt sich zurückziehen', zurueck.status === 200,
+  `HTTP ${zurueck.status} · ${JSON.stringify(zurueck.body)}`)
+check('Und ist danach wirklich weg',
+  !(await antraege()).some(a => a.id === neuerAntrag?.id))
+if (neuerAntrag?.id) antragsIds.delete(neuerAntrag.id)
+
+// Gegenprobe 3: Die Spur bleibt am Zeiteintrag. Genau deshalb darf der
+// Antrag verschwinden — was passiert ist, steht woanders.
+const logsNachher = (await hole(person,
+  `/api/time-logs?employeeId=${employeeId}`)).body.logs ?? []
+const betroffen = logsNachher.find(l => l.id === rausB.body?.nachfrage?.logId)
+check('Die Begründung steht weiterhin am Zeiteintrag',
+  (betroffen?.grundGehen ?? '').includes('Versehentlich'),
+  JSON.stringify(betroffen?.grundGehen))
+check('Und die Abweichung ebenfalls', betroffen?.abweichung === 'laenger',
+  JSON.stringify(betroffen?.abweichung))
+
+/*
+ * §204 Und sie kommt bei der LEITUNG an.
+ *
+ * Diese beiden Checks waren beim ersten Lauf rot — und haben damit einen
+ * größeren Fehler aufgedeckt als den, um den es hier ging: Die Felder gab es
+ * seit §203 in der Datenbank, aber der Mapper ließ sie weg. Gefragt wurde
+ * also, gespeichert auch, gelesen von niemandem. Die Leitung sah weiter eine
+ * Zahl ohne Erklärung — genau das, was §203 abstellen sollte.
+ *
+ * Deshalb steht die Prüfung jetzt ausdrücklich auch aus ihrer Sicht da.
+ */
+const ausSichtDerLeitung = (await hole(gf,
+  `/api/time-logs?employeeId=${employeeId}`)).body.logs ?? []
+const beiDerLeitung = ausSichtDerLeitung.find(l => l.id === rausB.body?.nachfrage?.logId)
+check('Die Leitung sieht die Abweichung', beiDerLeitung?.abweichung === 'laenger',
+  JSON.stringify(beiDerLeitung?.abweichung))
+check('Und sie sieht auch den Grund dazu',
+  (beiDerLeitung?.grundGehen ?? '').includes('Versehentlich'),
+  JSON.stringify(beiDerLeitung?.grundGehen))
+
+// Gegenprobe 4: Ein entschiedener Antrag bleibt. „Zurückziehen" nach der
+// Genehmigung hiesse, eine Entscheidung zu tilgen.
+const vorDreiB = new Date(Date.now() - 3 * 60 * 60 * 1000)
+const tagC = berlinTag(vorDreiB)
+tage.add(tagC)
+await dienstSetzen(tagC, berlinUhr(vorDreiB), plus(berlinUhr(vorDreiB), 60), shiftId)
+await stempeln({ aktion: 'kommen', zeitpunkt: vorDreiB.toISOString() })
+const rausC = await stempeln({ aktion: 'gehen' })
+const antragC = (await sende(person, '/api/time-tracking/begruendung', 'POST', {
+  logId: rausC.body?.nachfrage?.logId, grund: 'Wird gleich entschieden',
+})).body?.antrag
+if (antragC?.id) antragsIds.add(antragC.id)
+await sende(gf, `/api/overtime-requests/${antragC?.id}`, 'PATCH', {
+  status: 'approved', respondedBy: 'Nachweis B5', approvedMinutes: 60,
+})
+const nachEntscheidung = await sende(person,
+  `/api/overtime-requests/${antragC?.id}`, 'DELETE')
+check('Ein entschiedener Antrag lässt sich nicht mehr zurückziehen',
+  nachEntscheidung.status === 409, `HTTP ${nachEntscheidung.status}`)
+check('Und die Antwort sagt, warum',
+  nachEntscheidung.body?.code === 'SCHON_ENTSCHIEDEN',
+  JSON.stringify(nachEntscheidung.body?.code))
+
+const erfunden = await sende(person, '/api/overtime-requests/gibt-es-nicht', 'DELETE')
+check('Eine erfundene Kennung ergibt 404', erfunden.status === 404,
+  `HTTP ${erfunden.status}`)
+
 // ── Aufräumen ──────────────────────────────────────────────────────────────
 await wegraeumen()
 
