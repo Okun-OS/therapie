@@ -3944,3 +3944,64 @@ zu hoch bewertet. Das ließe sich zurückrechnen; es berührt Produktionsdaten.
 
 **Stand:** 1802/1802 in 48 Prüfungen, 1107 Modultests, 61/61 Desktop, tsc und
 Bauen sauber.
+
+## §207 Die untere Leiste auf dem Telefon
+
+**Was gemeldet wurde.** „Wenn man darauf klickt, sieht das sehr
+unprofessionell aus. Diese Kacheln, der Effekt muss da weg. Weil wenn die
+groß werden, dann geht es aus dem Bereich raus. Aber nur auf der mobilen
+Variante."
+
+Drei Dinge waren schuld, und alle drei sind Antworten auf einen **Mauszeiger**:
+
+| Was | Wirkung |
+|---|---|
+| Vergrößerung | Die Kachel wuchs auf das 1,42-fache — und blieb so |
+| Welle | wächst auf das Dreifache |
+| Lichtkranz | vierzehn Punkte Schatten rundherum |
+
+Dass die Vergrößerung auf einem Telefon überhaupt auftritt, liegt daran, dass
+Browser beim Antippen ein **künstliches `mousemove`** erzeugen. Danach folgt
+kein `mouseleave` — die Kachel blieb also dauerhaft vergrößert und stand über
+der Leiste.
+
+### Warum nach dem Zeigegerät gefragt wird und nicht nach der Breite
+
+Es geht nicht um die Größe des Bildschirms, sondern um die Art der Bedienung.
+`(hover: hover) and (pointer: fine)` ist die Frage „gibt es hier einen Zeiger,
+der über etwas fahren kann". Ein schmales Fenster am Schreibtisch behält die
+Effekte; ein Tablet im Querformat ist breit und bekommt sie zu Recht nicht.
+
+Abgeschaltet wird in JavaScript und nicht per Media Query: Die Wellen
+entfernen sich selbst, wenn ihre Animation endet — eine Animation, die per
+CSS auf `none` steht, endet nie, und die Elemente blieben für immer stehen.
+
+### Die Prüfung, die zuerst nichts bewiesen hat
+
+Erster Entwurf: antippen, nachsehen. **Acht von acht grün — auch als ich die
+Sperre zur Probe wieder herausnahm.** Zwei Gründe:
+
+1. Playwrights `tap()` erzeugt kein künstliches Mausereignis. Ein echtes
+   Telefon erzeugt es, und genau daran hing der Fehler. Die Prüfung löst es
+   jetzt ausdrücklich aus — das ist nicht geschummelt, sondern stellt her,
+   was auf dem Gerät wirklich passiert.
+2. Gemessen wurde **nach** dem Antippen. Das Antippen löst ein `mouseleave`
+   aus, das die Vergrößerung zurücksetzt — es stand also immer 1 da, mit
+   Sperre wie ohne. Jetzt wird vorher gemessen.
+
+Danach wurden mit herausgenommener Sperre **drei** Checks rot statt einem.
+Erst damit ist die Prüfung etwas wert.
+
+Und die Gegenprobe ist die halbe Prüfung: Am Schreibtisch bleiben Wellen
+(2 gefunden) und Vergrößerung (1,42× unter dem Zeiger). Eine Änderung, die
+die Effekte überall abschaltet, wäre genauso falsch wie keine.
+
+### Nebenbefund an der eigenen Arbeit
+
+`b5-stempelgrund` bestand allein, aber nicht im Gesamtlauf: Sie suchte ihre
+Zeitbuchung über das Datum, und b2 und b3 stempeln für dieselbe Person am
+selben Tag. Sie sucht jetzt über die Kennung. Eine Prüfung, die nur allein
+besteht, ist kein Sicherheitsnetz.
+
+**Stand:** 1802/1802 in 48 Prüfungen, 1107 Modultests, Browser 8+31+12,
+tsc und Bauen sauber.

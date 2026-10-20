@@ -9,6 +9,26 @@ import { ChevronUp } from 'lucide-react'
 import { getDockItems, type DockItem } from './navData'
 
 // ── Ripple helper ────────────────────────────────────────────────
+/**
+ * §207 Hat dieses Gerät überhaupt einen Mauszeiger?
+ *
+ * WARUM DIESE FRAGE UND NICHT DIE BILDSCHIRMBREITE
+ * Weil es nicht um die Größe geht, sondern um die Art der Bedienung. Die
+ * Vergrößerung der Kacheln, der Lichtkranz und die Wellen sind Antworten auf
+ * einen Zeiger, der über etwas fährt. Auf einem Telefon fährt niemand über
+ * etwas — dort passiert alles beim Antippen, und dann wachsen die Kacheln
+ * aus der Leiste heraus. Der Eigentümer hat es so gemeldet: „Wenn die groß
+ * werden, dann geht es aus dem Bereich raus."
+ *
+ * Ein schmales Fenster am Schreibtisch hat weiterhin eine Maus und behält
+ * die Effekte. Ein Tablet im Querformat ist breit und hat keine — und bekommt
+ * sie zu Recht nicht.
+ */
+function hatMauszeiger(): boolean {
+  if (typeof window === 'undefined' || !window.matchMedia) return true
+  return window.matchMedia('(hover: hover) and (pointer: fine)').matches
+}
+
 function spawnRipples(el: HTMLElement, isGold: boolean) {
   const color = isGold ? '200,156,91' : '38,198,198'
   for (let i = 0; i < 2; i++) {
@@ -169,6 +189,10 @@ function DockIcon({
     : (item.panel?.sections.flatMap(s => s.items).some(i => pathname.startsWith(i.href)) ?? false)
 
   const handleMouseEnter = () => {
+    // §207 Auf einem Telefon löst ein Antippen ebenfalls „mouseenter" aus —
+    // und danach kommt kein „mouseleave". Der Name der Kachel bliebe über der
+    // Leiste stehen, bis man woanders hintippt.
+    if (!hatMauszeiger()) return
     const el = btnRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
@@ -179,15 +203,33 @@ function DockIcon({
     const el = btnRef.current
     if (!el) return
 
+    // Das kurze Rucken bleibt — es ist die Rückmeldung, die auf einem Telefon
+    // tatsächlich etwas taugt, und es wächst nirgendwo hinaus.
     if ('vibrate' in navigator) navigator.vibrate([10])
 
-    spawnRipples(el, item.isGold ?? false)
+    /*
+     * §207 Auf dem Telefon keine Wellen und kein Lichtkranz.
+     *
+     * Die Welle wächst auf das Dreifache, der Lichtkranz legt vierzehn Punkte
+     * Schatten darum — beides tritt über den Rand der Leiste. Am Schreibtisch
+     * sieht man das kaum, weil die Leiste frei im Fenster schwebt; auf einem
+     * Telefon klebt sie am unteren Rand, und dann steht das halbe Quadrat
+     * über ihr.
+     *
+     * Abgeschaltet wird HIER und nicht per Media Query im Stylesheet: Die
+     * Wellen entfernen sich selbst, wenn ihre Animation endet. Eine Animation,
+     * die per CSS auf `none` steht, endet nie — die Elemente blieben für
+     * immer im Dokument stehen.
+     */
+    if (hatMauszeiger()) {
+      spawnRipples(el, item.isGold ?? false)
 
-    const glowClass = item.isGold ? 'animate-dock-glow-gold' : 'animate-dock-glow'
-    el.classList.remove(glowClass)
-    void el.offsetWidth
-    el.classList.add(glowClass)
-    el.addEventListener('animationend', () => el.classList.remove(glowClass), { once: true })
+      const glowClass = item.isGold ? 'animate-dock-glow-gold' : 'animate-dock-glow'
+      el.classList.remove(glowClass)
+      void el.offsetWidth
+      el.classList.add(glowClass)
+      el.addEventListener('animationend', () => el.classList.remove(glowClass), { once: true })
+    }
 
     if (item.href) {
       onActivate(null)
@@ -301,6 +343,16 @@ export function FloatingDock() {
 
   // ── Magnetic effect ──
   const handleMouseMove = useCallback((e: MouseEvent) => {
+    /*
+     * §207 Nur mit echter Maus.
+     *
+     * Beim Antippen erzeugen die meisten Browser ein künstliches
+     * „mousemove". Die angetippte Kachel wuchs dadurch auf das 1,42-fache —
+     * und blieb so, weil danach kein „mouseleave" folgt. Auf dem
+     * Bildschirmfoto des Eigentümers steht genau das: eine Kachel größer als
+     * die anderen, oben aus der Leiste heraus.
+     */
+    if (!hatMauszeiger()) return
     const dock = dockRef.current
     if (!dock) return
     const icons = Array.from(dock.querySelectorAll<HTMLElement>('[data-dock-slot]'))

@@ -413,14 +413,24 @@ const tagP = berlinTag(vorDrei)
 tage.add(tagP)
 await dienstSetzen(tagP, berlinUhr(vorDrei), plus(berlinUhr(vorDrei), 180), shiftId)
 
-await stempeln({ aktion: 'kommen', zeitpunkt: vorDrei.toISOString() })
+const kommenP = await stempeln({ aktion: 'kommen', zeitpunkt: vorDrei.toISOString() })
 // Eine Stunde Pause, nachgereicht wie aus dem Funkloch.
 await stempeln({ aktion: 'pause-start', zeitpunkt: vorEins.toISOString() })
 await stempeln({ aktion: 'pause-ende', zeitpunkt: new Date(Date.now() - 30 * 60 * 1000).toISOString() })
-const rausP = await stempeln({ aktion: 'gehen' })
+await stempeln({ aktion: 'gehen' })
 
+/*
+ * §206 Die Buchung über ihre KENNUNG wiederfinden, nicht über das Datum.
+ *
+ * Erster Versuch nahm die erste Buchung des Tages. Allein bestand die
+ * Prüfung damit, im Gesamtlauf nicht: b2 und b3 stempeln für dieselbe Person
+ * am selben Tag und lassen ihre Buchungen stehen — dann traf `find` die
+ * falsche. Eine Prüfung, die nur allein besteht, ist kein Sicherheitsnetz
+ * (Regel 1 der Nachweis-README).
+ */
+const eigeneId = kommenP.body?.log?.id
 const logsP = (await hole(person, `/api/time-logs?employeeId=${employeeId}`)).body.logs ?? []
-const eintrag = logsP.find(l => l.date === tagP && l.clockOut)
+const eintrag = logsP.find(l => l.id === eigeneId)
 check('Die Zeitbuchung steht da', Boolean(eintrag), JSON.stringify(eintrag ?? null).slice(0, 140))
 check('Die Pause ist vermerkt', (eintrag?.breakMinutes ?? 0) >= 25,
   `${eintrag?.breakMinutes} Minuten`)
