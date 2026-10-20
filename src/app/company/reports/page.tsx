@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { Employee, Location, TimeLog, VacationRequest, Absence } from '@/lib/types'
 import { Download, BarChart3, TrendingUp, Users, Clock, Palmtree, Building2, Filter, Stethoscope } from 'lucide-react'
+import { nettoSumme } from '@/lib/arbeitszeit'
 
 export default function CompanyReports() {
   const [locationFilter, setLocationFilter] = useState('all')
@@ -33,7 +34,7 @@ export default function CompanyReports() {
 
   const filteredEmployees = locationFilter === 'all' ? employees : employees.filter(e => e.locationId === locationFilter)
 
-  const totalHours = logs.reduce((s, l) => s + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0)
+  const totalHours = nettoSumme(logs)  // §206
   const avgHoursPerEmp = employees.length > 0 ? Math.round(totalHours / employees.length / 60) : 0
   const totalVacationDays = employees.reduce((s, e) => s + e.vacationDaysUsed, 0)
   const totalVacationRemaining = employees.reduce((s, e) => s + (e.vacationDaysTotal - e.vacationDaysUsed), 0)
@@ -52,7 +53,7 @@ export default function CompanyReports() {
   const locationData = locations.map(loc => {
     const emps = employees.filter(e => e.locationId === loc.id)
     const locLogs = logs.filter(l => l.locationId === loc.id)
-    const hours = Math.round(locLogs.reduce((s, l) => s + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0) / 60)
+    const hours = Math.round(nettoSumme(locLogs) / 60)  // §206
     const vacReqs = VACATION_REQUESTS.filter(v => v.locationId === loc.id)
     const approved = vacReqs.filter(v => v.status === 'approved').reduce((s, v) => s + v.days, 0)
     const pending = vacReqs.filter(v => v.status === 'pending').length

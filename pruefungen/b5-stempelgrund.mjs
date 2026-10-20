@@ -63,6 +63,13 @@ async function dienstLoeschen(tag) {
   })
 }
 
+/** Minuten zwischen zwei „HH:MM", über Mitternacht hinweg. */
+function dauerMinuten(von, bis) {
+  const m = (u) => { const [h, x] = String(u).split(':').map(Number); return h * 60 + x }
+  const a = m(von); const b = m(bis)
+  return b >= a ? b - a : b + 24 * 60 - a
+}
+
 /** Minuten auf eine „HH:MM" draufrechnen, über Mitternacht hinweg. */
 function plus(uhr, min) {
   const [h, m] = uhr.split(':').map(Number)
@@ -381,6 +388,92 @@ check('Und die Antwort sagt, warum',
 const erfunden = await sende(person, '/api/overtime-requests/gibt-es-nicht', 'DELETE')
 check('Eine erfundene Kennung ergibt 404', erfunden.status === 404,
   `HTTP ${erfunden.status}`)
+
+
+// ── B5.7 Die Pause wird genau einmal abgezogen ─────────────────────────────
+console.log('\n=== B5.7 Pause, Summen und die Korrektur ===')
+
+/*
+ * §206 Der Eigentümer hat gemeldet: „Die Zeiten stimmen nicht überein."
+ * Ein Eintrag zeigte 3 h 32 min, die Kachel darüber 0 h 44 min für denselben
+ * Tag. 212 − 168 = 44 — die Pause war ein zweites Mal abgezogen.
+ *
+ * Dahinter steckte Schlimmeres: Die Spalte `totalMinutes` hatte ZWEI
+ * Bedeutungen. Die Stempeluhr schrieb netto, die Korrektur der Leitung
+ * brutto — und die Lohnabrechnung nimmt den Wert unverändert als bezahlte
+ * Zeit. Eine korrigierte Buchung wurde um die ganze Pause zu hoch bezahlt.
+ *
+ * Deshalb steht hier die Gegenprobe, die das gefunden hätte: beide
+ * Schreibwege am selben Eintrag, und beide müssen dieselbe Zahl ergeben.
+ */
+
+const vorDrei = new Date(Date.now() - 3 * 60 * 60 * 1000)
+const vorEins = new Date(Date.now() - 1 * 60 * 60 * 1000)
+const tagP = berlinTag(vorDrei)
+tage.add(tagP)
+await dienstSetzen(tagP, berlinUhr(vorDrei), plus(berlinUhr(vorDrei), 180), shiftId)
+
+await stempeln({ aktion: 'kommen', zeitpunkt: vorDrei.toISOString() })
+// Eine Stunde Pause, nachgereicht wie aus dem Funkloch.
+await stempeln({ aktion: 'pause-start', zeitpunkt: vorEins.toISOString() })
+await stempeln({ aktion: 'pause-ende', zeitpunkt: new Date(Date.now() - 30 * 60 * 1000).toISOString() })
+const rausP = await stempeln({ aktion: 'gehen' })
+
+const logsP = (await hole(person, `/api/time-logs?employeeId=${employeeId}`)).body.logs ?? []
+const eintrag = logsP.find(l => l.date === tagP && l.clockOut)
+check('Die Zeitbuchung steht da', Boolean(eintrag), JSON.stringify(eintrag ?? null).slice(0, 140))
+check('Die Pause ist vermerkt', (eintrag?.breakMinutes ?? 0) >= 25,
+  `${eintrag?.breakMinutes} Minuten`)
+
+// Anwesenheit = gearbeitet + Pause. Die Stempeluhr hat die Pause genau
+// einmal abgezogen — also muss das wieder zusammenpassen.
+const anwesend = dauerMinuten(eintrag?.clockIn, eintrag?.clockOut)
+check('Gearbeitet + Pause ergibt wieder die Anwesenheit',
+  Math.abs((eintrag.totalMinutes + eintrag.breakMinutes) - anwesend) <= 1,
+  `${eintrag?.totalMinutes} + ${eintrag?.breakMinutes} = `
+  + `${eintrag?.totalMinutes + eintrag?.breakMinutes}, anwesend ${anwesend}`)
+
+// Die Summe im Stundenkonto darf die Pause NICHT noch einmal abziehen.
+const jahr = Number(tagP.slice(0, 4))
+const monat = Number(tagP.slice(5, 7))
+const konto = (await hole(person,
+  `/api/hours-account?employeeId=${employeeId}&year=${jahr}&month=${monat}`)).body.summary
+const summeAusEintraegen = logsP
+  .filter(l => l.date.startsWith(`${jahr}-${String(monat).padStart(2, '0')}`))
+  .reduce((s, l) => s + (l.totalMinutes ?? 0), 0)
+check('Das Stundenkonto zählt dieselben Minuten wie die Einträge',
+  konto?.istMinutes === summeAusEintraegen,
+  `Konto ${konto?.istMinutes}, Einträge ${summeAusEintraegen} — `
+  + 'ein Unterschied in Höhe der Pausen hieße: zweimal abgezogen.')
+
+// ── Die Korrektur der Leitung schreibt dasselbe ───────────────────────────
+const abschluss = (await sende(gf, '/api/monthly-closings/get-or-create', 'POST', {
+  employeeId, year: jahr, month: monat,
+})).body
+const abschlussId = abschluss?.closing?.id ?? abschluss?.id
+check('Für den Monat gibt es einen Abschluss', Boolean(abschlussId),
+  JSON.stringify(abschluss ?? null).slice(0, 140))
+
+const neuesEnde = plus(eintrag.clockOut, 60)
+const korrigiert = await sende(gf, `/api/monthly-closings/${abschlussId}/correct`, 'POST', {
+  timeLogId: eintrag.id,
+  updates: { clockIn: eintrag.clockIn, clockOut: neuesEnde, breakMinutes: eintrag.breakMinutes },
+  correctedBy: 'Nachweis B5',
+})
+check('Die Leitung kann die Buchung korrigieren', korrigiert.status === 200,
+  `HTTP ${korrigiert.status} · ${JSON.stringify(korrigiert.body).slice(0, 120)}`)
+
+const nachKorrektur = ((await hole(person,
+  `/api/time-logs?employeeId=${employeeId}`)).body.logs ?? []).find(l => l.id === eintrag.id)
+const anwesendNeu = dauerMinuten(nachKorrektur?.clockIn, nachKorrektur?.clockOut)
+check('Auch nach der Korrektur ist die Pause genau einmal abgezogen',
+  nachKorrektur?.totalMinutes === anwesendNeu - nachKorrektur?.breakMinutes,
+  `${nachKorrektur?.totalMinutes} statt ${anwesendNeu - (nachKorrektur?.breakMinutes ?? 0)} `
+  + '— hier schrieb die Korrektur brutto, die Stempeluhr netto. Die '
+  + 'Lohnabrechnung nimmt den Wert ungeprüft als bezahlte Zeit.')
+check('Und die Stunde mehr ist wirklich angekommen',
+  nachKorrektur?.totalMinutes === eintrag.totalMinutes + 60,
+  `${eintrag?.totalMinutes} → ${nachKorrektur?.totalMinutes}`)
 
 // ── Aufräumen ──────────────────────────────────────────────────────────────
 await wegraeumen()

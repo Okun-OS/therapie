@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { Employee, TimeLog, Absence, OvertimeRequest } from '@/lib/types'
 import { Download, BarChart3, TrendingUp, Clock, Users, Calendar, Stethoscope, AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { nettoSumme } from '@/lib/arbeitszeit'
 
 export default function AdminReports() {
   const { user } = useAuth()
@@ -49,13 +50,13 @@ export default function AdminReports() {
   const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
   const monthlyHours = months.map((_, i) => {
     const monthLogs = logs.filter(l => new Date(l.date + 'T00:00:00').getMonth() === i)
-    return Math.round(monthLogs.reduce((s, l) => s + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0) / 60)
+    return Math.round(nettoSumme(monthLogs) / 60)  // §206
   })
   const maxHours = Math.max(...monthlyHours, 1)
 
   const employeeHours = employees.map(emp => {
     const empLogs = logs.filter(l => l.employeeId === emp.id)
-    const total = empLogs.reduce((s, l) => s + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0)
+    const total = nettoSumme(empLogs)  // §206
     return { ...emp, totalHours: Math.round(total / 60) }
   }).sort((a, b) => b.totalHours - a.totalHours)
 

@@ -396,7 +396,7 @@ export default function EmployeeProfile() {
               <div key={closing.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
                 <div>
                   <p className="text-sm font-semibold text-navy">{MONTH_NAMES[closing.month - 1]} {closing.year}</p>
-                  <p className="text-xs text-gray-500">{closing.arbeitstage} Arbeitstage</p>
+                  <p className="text-xs text-gray-500">{closing.arbeitstage} {closing.arbeitstage === 1 ? 'Tag' : 'Tage'} erfasst</p>
                 </div>
                 <Badge variant={closing.status === 'freigegeben' ? 'success' : closing.status === 'geprueft' ? 'info' : 'warning'}>
                   {CLOSING_STATUS_LABEL[closing.status]}

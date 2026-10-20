@@ -16,6 +16,7 @@ import {
 import Link from 'next/link'
 import type { Employee, Location, VacationRequest, TimeLog } from '@/lib/types'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { nettoSumme } from '@/lib/arbeitszeit'
 
 type Tab = 'overview' | 'employees' | 'locations'
 
@@ -44,12 +45,12 @@ export default function CompanyDashboard() {
 
   const totalEmployees = EMPLOYEES.filter(e => e.role === 'employee').length
   const pendingVacations = VACATION_REQUESTS.filter(v => v.status === 'pending')
-  const monthHours = TIME_LOGS.reduce((s, l) => s + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0)
+  const monthHours = nettoSumme(TIME_LOGS)  // §206
 
   const locationStats = LOCATIONS.map(loc => {
     const emps = EMPLOYEES.filter(e => e.locationId === loc.id && e.role === 'employee')
     const locLogs = TIME_LOGS.filter(t => t.locationId === loc.id)
-    const locHours = Math.round(locLogs.reduce((s, l) => s + (l.totalMinutes || 0) - (l.breakMinutes || 0), 0) / 60)
+    const locHours = Math.round(nettoSumme(locLogs) / 60)  // §206
     const pending = VACATION_REQUESTS.filter(v => v.locationId === loc.id && v.status === 'pending')
     const admin = EMPLOYEES.find(e => e.id === loc.adminId)
     return { ...loc, empCount: emps.length, locHours, pendingVacations: pending.length, adminName: admin?.name ?? '–' }

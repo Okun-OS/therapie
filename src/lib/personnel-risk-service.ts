@@ -6,6 +6,7 @@ import { listEmployees, listLocations } from './entities'
 import { getFairnessInsights } from './fairness'
 import { getRiskLevel, type RiskLevel } from './risk-constants'
 import { toDateString } from './utils'
+import { nettoMinuten } from '@/lib/arbeitszeit'
 
 async function scopeLocationIds(locationId?: string, customerId?: string): Promise<string[]> {
   return locationId ? [locationId] : (await listLocations(customerId)).map(l => l.id)
@@ -27,7 +28,7 @@ async function getOvertimeHoursByEmployee(employeeIds: string[]): Promise<Map<st
 
   const logsByEmployee = await Promise.all(employeeIds.map(id => getTimeLogsByEmployee(id)))
   for (const log of logsByEmployee.flat()) {
-    const minutes = (log.totalMinutes || 0) - (log.breakMinutes || 0)
+    const minutes = nettoMinuten(log)  // §206
     if (minutes > DAILY_TARGET_MINUTES) {
       overtimeMinutes.set(log.employeeId, (overtimeMinutes.get(log.employeeId) ?? 0) + (minutes - DAILY_TARGET_MINUTES))
     }

@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { nettoSumme } from '@/lib/arbeitszeit'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -42,11 +43,11 @@ export default function AdminDashboard() {
   const presentToday = todaySchedule.length
 
   const weekLogs = TIME_LOGS.filter(t => t.locationId === locationId)
-  const weekHours = weekLogs.reduce((s, t) => s + (t.totalMinutes || 0) - (t.breakMinutes || 0), 0)
+  const weekHours = nettoSumme(weekLogs)  // §206
 
   const last7Days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
   const hoursChartData = last7Days.map(date => {
-    const minutes = weekLogs.filter(t => t.date === date).reduce((s, t) => s + (t.totalMinutes || 0) - (t.breakMinutes || 0), 0)
+    const minutes = nettoSumme(weekLogs.filter(t => t.date === date))  // §206
     return { day: getDayName(date, true), hours: Math.round((minutes / 60) * 10) / 10 }
   })
 

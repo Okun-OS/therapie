@@ -2,6 +2,7 @@
 // OVERTIME_REQUESTS, ABSENCES und MONTHLY_CLOSINGS aus mock-data.ts). Server-only.
 import { prisma } from './prisma'
 import { uhrzeitIn } from './zeitzone'
+import { nettoSumme, zuSpeicherndeMinuten } from './arbeitszeit'
 import type { TimeLog, OvertimeRequest, Absence, HoursAccountSummary, MonthlyClosing } from './types'
 
 function toTimeLog(row: any): TimeLog {
@@ -248,7 +249,8 @@ export async function getAbsencesByEmployee(employeeId: string): Promise<Absence
 
 export async function getHoursAccountSummary(employeeId: string, year: number, month: number, weeklyHours: number = 40): Promise<HoursAccountSummary> {
   const logs = await getTimeLogsByMonth(employeeId, year, month)
-  const istMinutes = logs.reduce((s, t) => s + (t.totalMinutes ?? 0) - (t.breakMinutes ?? 0), 0)
+  // §206 Nicht noch einmal die Pause abziehen — siehe `src/lib/arbeitszeit.ts`.
+  const istMinutes = nettoSumme(logs)
   const breakMinutes = logs.reduce((s, t) => s + (t.breakMinutes ?? 0), 0)
   const prefix = `${year}-${String(month).padStart(2, '0')}`
 
@@ -284,7 +286,10 @@ export async function getOrCreateMonthlyClosing(
   if (existing) return toMonthlyClosing(existing)
 
   const summary = await getHoursAccountSummary(employeeId, year, month, employeeInfo?.weeklyHours)
-  const arbeitstage = (await getTimeLogsByMonth(employeeId, year, month)).length
+  // §206 Tage, nicht Buchungen: Wer vormittags und nachmittags stempelt,
+  // hat einen Arbeitstag, nicht zwei.
+  const arbeitstage = new Set(
+    (await getTimeLogsByMonth(employeeId, year, month)).map(l => l.date)).size
   const prefix = `${year}-${String(month).padStart(2, '0')}`
   const approvalsCount = await prisma.overtimeRequest.count({
     where: { employeeId, status: { not: 'pending' }, date: { startsWith: prefix } },
@@ -355,15 +360,32 @@ export async function correctMonthlyClosingTimeLog(
   const clockIn = updates.clockIn ?? log.clockIn
   const clockOut = updates.clockOut ?? log.clockOut
   if (clockOut) {
+    /*
+     * §206 Die Pause gehört heraus — hier stand sie noch drin.
+     *
+     * Das war die Wurzel: Die Stempeluhr schreibt `totalMinutes` NETTO, diese
+     * Korrektur schrieb BRUTTO. Dieselbe Spalte, zwei Bedeutungen. Die
+     * Lohnabrechnung nimmt den Wert unverändert als bezahlte Zeit — eine von
+     * der Leitung korrigierte Buchung wurde damit zu hoch bezahlt, und zwar
+     * genau um die Pause.
+     *
+     * Über Mitternacht wird mitgerechnet: Ein Nachtdienst von 22:00 bis 06:00
+     * ist acht Stunden, nicht minus sechzehn. Vorher ergab er null.
+     */
     const [inH, inM] = clockIn.split(':').map(Number)
     const [outH, outM] = clockOut.split(':').map(Number)
-    logUpdates.totalMinutes = Math.max(0, (outH * 60 + outM) - (inH * 60 + inM))
+    const von = inH * 60 + inM
+    const bis = outH * 60 + outM
+    const anwesend = bis >= von ? bis - von : bis + 24 * 60 - von
+    const pause = updates.breakMinutes ?? log.breakMinutes ?? 0
+    logUpdates.totalMinutes = zuSpeicherndeMinuten(anwesend, pause)
   }
   const updatedLog = await prisma.timeLog.update({ where: { id: timeLogId }, data: logUpdates })
 
   const monthLogs = await getTimeLogsByMonth(closing.employeeId, closing.year, closing.month)
-  const istMinutes = monthLogs.reduce((s, t) => s + (t.totalMinutes ?? 0) - (t.breakMinutes ?? 0), 0)
+  const istMinutes = nettoSumme(monthLogs)  // §206
   const breakMinutes = monthLogs.reduce((s, t) => s + (t.breakMinutes ?? 0), 0)
+  const arbeitstage = new Set(monthLogs.map(l => l.date)).size  // §206
   const undertimeMinutes = Math.max(0, closing.sollMinutes - istMinutes)
   const comments = [
     ...(closing.comments as MonthlyClosing['comments']),
@@ -374,6 +396,7 @@ export async function correctMonthlyClosingTimeLog(
     where: { id: closingId },
     data: {
       istMinutes,
+      arbeitstage,
       breakMinutes,
       undertimeMinutes,
       comments,
@@ -395,9 +418,23 @@ export async function backfillTimeLog(
     throw new Error('Monat ist bereits freigegeben – keine Nacherfassung mehr möglich')
   }
 
+  /*
+   * §206 Der dritte Schreibweg — und er war genauso falsch wie die Korrektur.
+   *
+   * Die Nacherfassung der Leitung schrieb `totalMinutes` brutto, die
+   * Stempeluhr netto. Dieselbe Spalte, und die Lohnabrechnung nimmt sie
+   * unverändert als bezahlte Zeit: Jede nacherfasste Schicht wurde um die
+   * eingetragene Pause zu hoch bezahlt.
+   *
+   * Dazu ergab ein Nachtdienst von 22:00 bis 06:00 null Minuten, weil über
+   * Mitternacht nicht gerechnet wurde.
+   */
   const [inH, inM] = input.clockIn.split(':').map(Number)
   const [outH, outM] = input.clockOut.split(':').map(Number)
-  const totalMinutes = Math.max(0, (outH * 60 + outM) - (inH * 60 + inM))
+  const von = inH * 60 + inM
+  const bis = outH * 60 + outM
+  const anwesend = bis >= von ? bis - von : bis + 24 * 60 - von
+  const totalMinutes = zuSpeicherndeMinuten(anwesend, input.breakMinutes ?? 0)
 
   const row = await prisma.timeLog.create({
     data: {
@@ -414,8 +451,12 @@ export async function backfillTimeLog(
 
   if (closing) {
     const monthLogs = await getTimeLogsByMonth(input.employeeId, year, month)
-    const istMinutes = monthLogs.reduce((s, t) => s + (t.totalMinutes ?? 0) - (t.breakMinutes ?? 0), 0)
+    const istMinutes = nettoSumme(monthLogs)  // §206
     const breakMinutesSum = monthLogs.reduce((s, t) => s + (t.breakMinutes ?? 0), 0)
+    // §206 Mitführen, nicht einfrieren: Der Wert wurde beim Anlegen des
+    // Monats gesetzt und danach nie wieder — in einem Monat ohne Stempelung
+    // stand dauerhaft „0", auch nachdem Zeiten nacherfasst worden waren.
+    const arbeitstage = new Set(monthLogs.map(l => l.date)).size
     const undertimeMinutes = Math.max(0, closing.sollMinutes - istMinutes)
     const comments = [
       ...(closing.comments as MonthlyClosing['comments']),
@@ -425,6 +466,7 @@ export async function backfillTimeLog(
       where: { id: closing.id },
       data: {
         istMinutes,
+        arbeitstage,
         breakMinutes: breakMinutesSum,
         undertimeMinutes,
         comments,

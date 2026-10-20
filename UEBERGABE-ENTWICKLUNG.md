@@ -29,7 +29,7 @@ Zweig löst eine Auslieferung samt `prisma migrate deploy` aus).
 ## Wie hier gearbeitet wird — das ist der Kern
 
 * **Kommentare auf Deutsch, und sie erklären das Warum.** Durchnummeriert mit
-  `§`; Stand **§205**, nächste Nummer §206. Wo ein Fehler behoben wird, steht
+  `§`; Stand **§206**, nächste Nummer §207. Wo ein Fehler behoben wird, steht
   dabei, was vorher dastand und warum es falsch war — damit niemand es
   zurückbaut.
 * **Nichts behaupten, was nicht gemessen ist.** Zahlen, Preise, Fristen,
@@ -153,38 +153,45 @@ Der E-Mail-Faktor läuft unabhängig davon.
    Paket dort hängt (kein Zugang zur Produktion). Ist es die Vorlage
    `muster_pflege`, bringt sie keine Dienstzeiten mit — dann steht dort
    „bitte bei OKUN melden", und die Dienstzeiten müssen ins Paket.
-6. 🔴 **Falsche Uhrzeiten in bestehenden Zeitbuchungen.** Bis §203 wurden
+6. 🔴 **Falsch bewertete Zeitbuchungen aus Korrektur und Nacherfassung.**
+   Bis §206 schrieben beide Leitungs-Wege `totalMinutes` **brutto**, die
+   Stempeluhr **netto** — und die Lohnabrechnung nimmt den Wert unverändert
+   als bezahlte Zeit. Solche Buchungen sind um die eingetragene Pause zu hoch
+   bewertet. Neue stimmen. Zurückrechnen ließe es sich (`clockIn`/`clockOut`
+   minus `breakMinutes`), **berührt aber Produktionsdaten — nur mit
+   ausdrücklicher Freigabe.**
+7. 🔴 **Falsche Uhrzeiten in bestehenden Zeitbuchungen.** Bis §203 wurden
    `clockIn`, `clockOut` und `date` in der Zeitzone des Servers geschrieben —
    bei Railway UTC, also zwei Stunden daneben (im Winter eine). Neue
    Buchungen stimmen. Die alten lassen sich aus `clockInAt` zurückrechnen
    (`clockOut` aus `clockInAt + totalMinutes + breakMinutes`). **Berührt
    Produktionsdaten — nur mit ausdrücklicher Freigabe des Eigentümers.**
-7. ~~Kein Löschweg für Überstundenanträge~~ — erledigt in §204. Nur der
+8. ~~Kein Löschweg für Überstundenanträge~~ — erledigt in §204. Nur der
    Antragsteller selbst, nur solange nichts entschieden ist. Dabei fiel auf,
    dass die Begründungen aus §203 **write-only** waren: Der Mapper ließ sie
    weg, also sah sie niemand. Jetzt stehen sie beim Monatsabschluss der
    Leitung und in der eigenen Liste.
-8. **Bereits hochgeladene Profilbilder bleiben beschnitten** (§203). Das
+9. **Bereits hochgeladene Profilbilder bleiben beschnitten** (§203). Das
    Original ist nicht gespeichert, nur der falsche Ausschnitt. Betroffene
    müssen das Bild neu hochladen — eine Ansage im Programm fehlt noch.
-9. **Keine Ersatzcodes für den zweiten Faktor.** Wer SMS oder E-Mail aktiv hat
+10. **Keine Ersatzcodes für den zweiten Faktor.** Wer SMS oder E-Mail aktiv hat
    und den Zugang verliert, kommt ohne fremde Hilfe nicht mehr hinein. Bekannt,
    bewusst offen, noch nicht entschieden.
-10. **Authenticator-App ist eingeklappt, nicht gelöscht** (§196). Der Eigentümer
+11. **Authenticator-App ist eingeklappt, nicht gelöscht** (§196). Der Eigentümer
    wollte sie heraus; sie steht jetzt hinter „für Fortgeschrittene", weil sie
    die einzige Methode ohne fremden Dienstleister ist. Wenn er sie ganz
    entfernt haben will, ist das sein Recht — dann wirklich entfernen.
-11. **Die alten Planungsprofil-Spalten** (`childPickupTimes`, `weekendRule`,
+12. **Die alten Planungsprofil-Spalten** (`childPickupTimes`, `weekendRule`,
    `maxConsecutiveDays` im Profil, `planningNote`) stehen noch in der
    Datenbank. Löschen nur auf ausdrückliches Ja des Eigentümers — es
    berührt Produktionsdaten (steht in `DEINE-LISTE.md`).
-12. **Resend-Ablehnungen bei allen anderen Mails.** Resend 6 wirft nicht,
+13. **Resend-Ablehnungen bei allen anderen Mails.** Resend 6 wirft nicht,
    sondern gibt `{ error }` zurück. Seit §200 wird das bei Einladungen
    ausgewertet (`ablehnungMelden`). Bei den übrigen elf Aufrufern von
    `sendEmail` (2FA-Code, Passwort zurücksetzen, Tausch, Benachrichtigungen …)
    wird eine Ablehnung nur protokolliert. Einige stehen mitten in einem
    Ablauf ohne Auffangnetz — darum nicht nebenbei umgestellt.
-13. 🔴 **`PATCH /api/employees/[id]` übernimmt den Rest des Bodys ungefiltert**
+14. 🔴 **`PATCH /api/employees/[id]` übernimmt den Rest des Bodys ungefiltert**
    in die Datenbank (`updateEmployee`). Geprüft wird nur, dass der
    Mitarbeiter zum eigenen Unternehmen gehört — nicht, WAS geändert wird.
    **Nachgemessen am 19.10.2026:** Die Leitung der Reha setzt mit
@@ -192,14 +199,14 @@ Der E-Mail-Faktor läuft unabhängig davon.
    fremden Mandanten, Antwort 200. Gefunden in §200, nicht behoben: Es
    braucht eine Liste der erlaubten Felder, und die berührt jede Maske, die
    diese Route benutzt. Vor dem ersten echten Kunden schließen.
-14. **Kita Sonnenschein: Spätdienst bis 17:00 oder 17:30?** Das Paket sagt
+15. **Kita Sonnenschein: Spätdienst bis 17:00 oder 17:30?** Das Paket sagt
    im Text 17:30, die Testdaten (und damit seine Einrichtung) 17:00. Nur der
    Betrieb weiß es.
-15. **Der Einrichtungsweg per Skript** (`scripts/kunde-wohngruppe.mjs`) legt
+16. **Der Einrichtungsweg per Skript** (`scripts/kunde-wohngruppe.mjs`) legt
     Dienste und Bereich noch selbst an. Das ist jetzt doppelt — beim nächsten
     neuen Kunden gehört die Einrichtung ins Paket, und das Skript macht nur
     noch Kunde, Standort, Zuweisung und Belegschaft.
-16. **Die Schnittstellen des alten Modells** (`location-model/*`,
+17. **Die Schnittstellen des alten Modells** (`location-model/*`,
     `company-model/*`, `onboarding-chat`, `location-onboarding/*`,
     `admin/setup-extract`, `admin/custom-constraints`) sind seit §202 nur
     noch für OKUN beschreibbar, aber nicht gelöscht. Sie zu löschen ist ein

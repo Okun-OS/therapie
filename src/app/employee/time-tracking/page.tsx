@@ -16,6 +16,7 @@ import { OVERTIME_MIN_MINUTES } from '@/lib/workforce-score-constants'
 import { PlayCircle, StopCircle, Clock, Timer, TrendingUp, Calendar, Coffee, AlertCircle, FileText, ChevronDown, ChevronUp, Stethoscope, Trash2, Loader2 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate, formatTime, getWeekDays, toDateString } from '@/lib/utils'
+import { nettoMinuten } from '@/lib/arbeitszeit'
 
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 
@@ -104,7 +105,9 @@ export default function TimeTracking() {
 
   const myLogs = TIME_LOGS.filter(t => t.employeeId === user?.employeeId).sort((a, b) => b.date.localeCompare(a.date))
 
-  const netMinutes = (t: TimeLog) => Math.max(0, (t.totalMinutes || 0) - (t.breakMinutes || 0))
+  // §206 Hier wurde die Pause ein zweites Mal abgezogen — sie ist beim
+  // Ausstempeln längst heraus. Siehe `src/lib/arbeitszeit.ts`.
+  const netMinutes = nettoMinuten
 
   const todayMinutes = myLogs
     .filter(t => t.date === toDateString(new Date()))
@@ -466,7 +469,7 @@ export default function TimeTracking() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-navy">{MONTH_NAMES[closing.month - 1]} {closing.year}</p>
-                      <p className="text-xs text-gray-500">{closing.arbeitstage} Arbeitstage</p>
+                      <p className="text-xs text-gray-500">{closing.arbeitstage} {closing.arbeitstage === 1 ? 'Tag' : 'Tage'} erfasst</p>
                     </div>
                     <Badge variant={status.variant}>{status.label}</Badge>
                     {isOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}

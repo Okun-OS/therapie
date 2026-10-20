@@ -3873,3 +3873,74 @@ die es ankommt — **ohne Ausgabeort wird keiner eingetragen**.
 
 **Stand:** 61/61 Desktop-Checks, 1794/1794 in 48 Prüfungen, 1096 Modultests,
 tsc und Bauen sauber.
+
+## §206 „Die Zeiten stimmen nicht überein" — eine Spalte mit zwei Bedeutungen
+
+**Was gemeldet wurde.** Ein Zeitnachweis zeigte **3 h 32 min**, die Kachel
+darüber für denselben Tag **0 h 44 min**. Nachgerechnet: 212 − 168 = 44. Die
+Pause war ein zweites Mal abgezogen.
+
+Das war das Symptom. Die Ursache war schlimmer.
+
+### Dieselbe Spalte, drei Schreibweisen
+
+`TimeLog.totalMinutes` bedeutete nicht überall dasselbe:
+
+| Wer schreibt | Was drinstand |
+|---|---|
+| Stempeluhr (§137) | **netto** — Pause abgezogen |
+| Korrektur der Leitung | **brutto** — Ende minus Anfang |
+| Nacherfassung der Leitung | **brutto** — und über Mitternacht null |
+
+Gelesen wurde sie ebenfalls zweierlei: Die **Lohnabrechnung**
+(`payroll-monat.ts`) nahm den Wert unverändert als bezahlte Zeit, **sechzehn
+Anzeigestellen** zogen die Pause noch einmal ab. In der Kombination:
+
+* eine **gestempelte** Buchung wurde in jeder Übersicht **zu niedrig** gezeigt
+  — auch im Nachweis nach §16 Abs. 2 ArbZG, also in der Zahl, auf die sich
+  bei einer Prüfung jemand beruft;
+* eine von der Leitung **korrigierte oder nacherfasste** Buchung wurde **zu
+  hoch bezahlt**, und zwar genau um die eingetragene Pause.
+
+Das Zweite ist der eigentliche Schaden. Es fällt niemandem auf, weil beide
+Zahlen für sich plausibel aussehen.
+
+### Die Entscheidung: netto
+
+Weil `totalMinutes` das ist, was ausgezahlt wird, und bezahlt wird
+Arbeitszeit, nicht Anwesenheit. Die andere Richtung hätte bedeutet, die
+Lohnrechnung zu ändern **und** alle bestehenden Stempelungen umzurechnen. Bei
+einer Zahl, an der Geld hängt, nimmt man den Weg, der die vorhandenen Daten
+in Ruhe lässt.
+
+Der Name bleibt irreführend; deshalb steht die Bedeutung jetzt an **einer**
+Stelle (`src/lib/arbeitszeit.ts`), und alles liest über `nettoMinuten()`.
+Nebenbei behoben: Beide Leitungs-Wege rechnen jetzt über Mitternacht — ein
+Nachtdienst von 22:00 bis 06:00 ergab vorher null Minuten.
+
+### Noch zwei Kleinigkeiten aus demselben Bild
+
+* **„0 Arbeitstage" neben „Soll 176 h".** Der Wert zählt Tage mit einer
+  Buchung, nicht Arbeitstage, und er wurde beim Anlegen des Monats
+  eingefroren und nie wieder nachgeführt. Jetzt wird er mitgerechnet, zählt
+  **Tage statt Buchungen** (wer vor- und nachmittags stempelt, hat einen
+  Arbeitstag) und heißt in der Oberfläche, was er ist: „3 Tage erfasst".
+* **Ein totes Feld entfernt.** Der Monatsnachweis reichte ein `totalMinutes`
+  durch, das niemand las — ein unbenutzter, mehrdeutig benannter Wert ist
+  genau das, woraus dieser Fehler entstanden ist.
+
+### Nachweise
+
+`b5-stempelgrund` wächst auf **52 Checks**. Der entscheidende ist die
+Gegenprobe, die das gefunden hätte: **derselbe Eintrag, beide Schreibwege.**
+Erst stempeln (mit Pause), dann die Leitung korrigieren lassen — und danach
+muss die Pause immer noch genau einmal abgezogen sein. Dazu: „gearbeitet +
+Pause ergibt wieder die Anwesenheit" und „das Stundenkonto zählt dieselben
+Minuten wie die Einträge". 11 Modultests zur Bedeutung der Spalte.
+
+**Offen und nur mit Freigabe:** Bestehende Buchungen, die über Korrektur oder
+Nacherfassung entstanden sind, tragen weiterhin den Bruttowert — sie wurden
+zu hoch bewertet. Das ließe sich zurückrechnen; es berührt Produktionsdaten.
+
+**Stand:** 1802/1802 in 48 Prüfungen, 1107 Modultests, 61/61 Desktop, tsc und
+Bauen sauber.

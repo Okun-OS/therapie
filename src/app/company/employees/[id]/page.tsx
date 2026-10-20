@@ -13,6 +13,7 @@ import {
   ArrowLeft, Clock, TrendingUp, Palmtree, Calendar, Baby, Download,
   CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight,
 } from 'lucide-react'
+import { nettoSumme, nettoMinuten } from '@/lib/arbeitszeit'
 
 type Tab = 'overview' | 'timelogs' | 'shifts' | 'vacation'
 
@@ -104,7 +105,7 @@ export default function EmployeeDetailPage() {
 
   const balanceColor = employee.hoursBalance < 0 ? 'text-red-500' : 'text-green-600'
   const remainingVacation = employee.vacationDaysTotal - employee.vacationDaysUsed
-  const monthTotalMin = monthLogs.reduce((s, l) => s + (l.totalMinutes ?? 0) - (l.breakMinutes ?? 0), 0)
+  const monthTotalMin = nettoSumme(monthLogs)  // §206
   const expectedMonthMin = Math.round((employee.weeklyHours / 5) * 8 * 60 * monthLogs.length)
 
   const prevMonth = () => {
@@ -119,7 +120,7 @@ export default function EmployeeDetailPage() {
   const downloadCSV = () => {
     const lines = ['Datum,Einstempeln,Ausstempeln,Stunden,Notiz']
     monthLogs.forEach(l => {
-      const h = l.totalMinutes ? (((l.totalMinutes - (l.breakMinutes ?? 0)) / 60)).toFixed(2) : '–'
+      const h = l.totalMinutes ? (nettoMinuten(l) / 60).toFixed(2) : '–'  // §206
       lines.push(`${l.date},${l.clockIn},${l.clockOut ?? '–'},${h},${l.note ?? ''}`)
     })
     lines.push('')
@@ -149,7 +150,7 @@ export default function EmployeeDetailPage() {
         const d = new Date(l.date + 'T00:00:00')
         return d.getFullYear() === today.getFullYear() && d.getMonth() + 1 === m
       })
-      const mMin = mLogs.reduce((s, l) => s + (l.totalMinutes ?? 0) - (l.breakMinutes ?? 0), 0)
+      const mMin = nettoSumme(mLogs)  // §206
       lines.push(`${MONTH_NAMES[m - 1]},${mLogs.length},${(mMin / 60).toFixed(1)}h`)
     }
     const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
@@ -323,7 +324,7 @@ export default function EmployeeDetailPage() {
                         {log.clockIn} – {log.clockOut ?? 'läuft'}
                       </div>
                       <div className="text-xs font-semibold text-navy">
-                        {log.totalMinutes ? formatHours(log.totalMinutes - (log.breakMinutes ?? 0)) : '–'}
+                        {log.totalMinutes ? formatHours(nettoMinuten(log)) : '–'}
                       </div>
                     </div>
                   ))}
@@ -422,7 +423,7 @@ export default function EmployeeDetailPage() {
                     <tbody>
                       {monthLogs.map((log, idx) => {
                         const expectedMin = Math.round((employee.weeklyHours / 5) * 60)
-                        const netMin = (log.totalMinutes ?? 0) - (log.breakMinutes ?? 0)
+                        const netMin = nettoMinuten(log)  // §206
                         const diff = netMin - expectedMin
                         return (
                           <tr key={log.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>

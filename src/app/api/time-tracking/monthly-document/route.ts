@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { assertEmployeeAccess } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
+import { nettoMinuten } from '@/lib/arbeitszeit'
 
 export async function GET(req: NextRequest) {
   // §109: Der Mitarbeiter kam an sein EIGENES Zeitprotokoll nicht heran.
@@ -69,7 +70,6 @@ export async function GET(req: NextRequest) {
     clockIn: string | null
     clockOut: string | null
     breakMinutes: number
-    totalMinutes: number
     istHours: number
     differenceMinutes: number
     note: string | null
@@ -91,10 +91,16 @@ export async function GET(req: NextRequest) {
     const sollHours = isWorkday ? dailySollHours : 0
     const sollMinutes = Math.round(sollHours * 60)
 
-    const totalMinutes = log?.totalMinutes ?? 0
+    /*
+     * §206 Hier wurde die Pause ein zweites Mal abgezogen.
+     *
+     * Das ist die Zahl, die im Arbeitszeitnachweis nach §16 Abs. 2 ArbZG
+     * steht — also die, auf die sich bei einer Prüfung jemand beruft. Sie war
+     * um die Pausenzeit zu niedrig, und zwar bei jedem, der Pause macht.
+     */
     const breakMinutes = log?.breakMinutes ?? 0
-    const istHours = totalMinutes > 0 ? (totalMinutes - breakMinutes) / 60 : 0
-    const istMinutes = Math.round(istHours * 60)
+    const istMinutes = log ? nettoMinuten(log) : 0
+    const istHours = istMinutes / 60
 
     const differenceMinutes = istMinutes - sollMinutes
     runningBalanceMinutes += differenceMinutes
@@ -114,7 +120,6 @@ export async function GET(req: NextRequest) {
       clockIn: log?.clockIn ?? null,
       clockOut: log?.clockOut ?? null,
       breakMinutes,
-      totalMinutes,
       istHours,
       differenceMinutes,
       note,

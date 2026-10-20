@@ -11,7 +11,6 @@ interface DayRecord {
   clockIn: string | null
   clockOut: string | null
   breakMinutes: number
-  totalMinutes: number
   istHours: number
   differenceMinutes: number
   note: string | null

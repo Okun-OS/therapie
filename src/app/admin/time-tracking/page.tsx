@@ -445,7 +445,7 @@ export default function AdminTimeTracking() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-navy">{closing.employeeName} · {MONTH_NAMES[closing.month - 1]} {closing.year}</p>
-                        <p className="text-xs text-gray-500">{closing.arbeitstage} Arbeitstage · {closing.approvalsCount} Genehmigungen</p>
+                        <p className="text-xs text-gray-500">{closing.arbeitstage} {closing.arbeitstage === 1 ? 'Tag' : 'Tage'} erfasst · {closing.approvalsCount} Genehmigungen</p>
                       </div>
                       <Badge variant={status.variant}>{status.label}</Badge>
                       {isOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
