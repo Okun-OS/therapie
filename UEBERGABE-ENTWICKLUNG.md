@@ -78,8 +78,8 @@ cd .. && npm run dev
 
 ```bash
 npx tsc --noEmit
-npm run test                                        # 1055 Modultests
-npm run pruefen                                     # 1709 Checks, 46 Prüfungen
+npm run test                                        # 1069 Modultests
+npm run pruefen                                     # 1750 Checks, 47 Prüfungen
 cd solver-service && /usr/bin/python3 -m pytest -q  # 158
 npm run build
 node pruefungen/browser/marke.mjs                   # dazu lohnverwaltung,
@@ -87,7 +87,7 @@ node --env-file=.env pruefungen/browser/massnahmen.mjs   # massnahmen, schaufens
 node --env-file=.env pruefungen/browser/dienstplanung-am-standort.mjs   # §200
 node pruefungen/browser/zugang-und-planungsprofil.mjs    # §200
 node --env-file=.env pruefungen/browser/einrichtung-kommt-mit-dem-paket.mjs   # §202
-npm run desktop:pruefen                             # 46, braucht Electron
+npm run desktop:pruefen                             # 49, braucht Electron
 ```
 
 Browserprüfungen brauchen Playwright von

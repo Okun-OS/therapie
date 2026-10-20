@@ -115,8 +115,8 @@ auf die Website. Dafür gibt es den Beispielbetrieb (§184,
 
 ```bash
 npx tsc --noEmit
-npm run test                 # 1055 Modultests
-npm run pruefen              # 1709 Checks in 46 Prüfungen
+npm run test                 # 1069 Modultests
+npm run pruefen              # 1750 Checks in 47 Prüfungen
 cd solver-service && /usr/bin/python3 -m pytest -q   # 158
 npm run build
 ```

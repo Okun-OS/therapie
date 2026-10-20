@@ -3,7 +3,7 @@
 **Diese Seite ist die Wahrheit.** Nicht das Gespräch, nicht die Erinnerung.
 Wer wissen will, wo etwas steht, liest hier — und nur hier.
 
-Zuletzt aktualisiert: **19.10.2026**
+Zuletzt aktualisiert: **20.10.2026**
 
 > **Regel für Claude:** Diese Datei wird bei **jedem** abgeschlossenen Punkt
 > aktualisiert, im selben Commit wie die Arbeit. Nie später, nie gesammelt.
@@ -17,8 +17,8 @@ Zuletzt aktualisiert: **19.10.2026**
 | | |
 |---|---|
 | **Baustelle** | Keine |
-| **Zuletzt fertig** | §202 Das Regelpaket bringt seine Einrichtung mit; der Standort richtet nichts mehr selbst ein. Davor §200: Regelpakete je Standort, E-Mail tauschen, Planungsprofil gekürzt |
-| **Nachweisstand** | 1709/1709 in 46 Prüfungen, 158 im Rechendienst, 1055 Modultests, Bauen sauber; Browser 31+25+17+22+21+17+17, Desktop 46/46 |
+| **Zuletzt fertig** | §202 Das Regelpaket bringt seine Einrichtung mit; der Standort richtet nichts mehr selbst ein. §201 (parallele Sitzung): Lohndaten hinter Passwortbestätigung, Programmrahmen. §200: Regelpakete je Standort, E-Mail tauschen, Planungsprofil gekürzt |
+| **Nachweisstand** | 1750/1750 in 47 Prüfungen, 158 im Rechendienst, 1069 Modultests, Bauen sauber; Browser 31+25+17+22+21+17+17+12, Desktop 49/49 |
 | **Als Nächstes** | Die Website gemeinsam fertig machen (steht in `DEINE-LISTE.md`) |
 | **Danach** | Eigene Domain, dann die Dateien zum Herunterladen dort hinlegen |
 
