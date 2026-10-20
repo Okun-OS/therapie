@@ -1,6 +1,7 @@
 // Echte Postgres-Persistenz für Zeiterfassung (ersetzt TIME_LOGS,
 // OVERTIME_REQUESTS, ABSENCES und MONTHLY_CLOSINGS aus mock-data.ts). Server-only.
 import { prisma } from './prisma'
+import { uhrzeitIn } from './zeitzone'
 import type { TimeLog, OvertimeRequest, Absence, HoursAccountSummary, MonthlyClosing } from './types'
 
 function toTimeLog(row: any): TimeLog {
@@ -130,7 +131,8 @@ export async function startBreak(employeeId: string): Promise<void> {
   const log = await getActiveTimeLog(employeeId)
   if (!log) return
   const now = new Date()
-  await updateTimeLog(log.id, { breakStart: now.toTimeString().slice(0, 5), breakStartAt: now.toISOString() })
+  // §203 Betriebszeitzone, nicht die des Servers — siehe `src/lib/zeitzone.ts`.
+  await updateTimeLog(log.id, { breakStart: uhrzeitIn(now), breakStartAt: now.toISOString() })
 }
 
 export async function endBreak(employeeId: string): Promise<void> {

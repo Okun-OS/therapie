@@ -31,14 +31,41 @@ const leitung = await login('leitung@rheinblick-reha.de')
 const mPerson = (await hole(person, '/api/auth/me')).body.user
 const mKollege = (await hole(kollege, '/api/auth/me')).body.user
 
+/*
+ * §203 Der Grund beim Kommen — siehe b2.
+ *
+ * Diese Prüfung geht über die Warteschlange: nachgereichte Handgriffe aus dem
+ * Funkloch, jeder mit seiner eigenen Uhrzeit. Mit dem Dienstplan hat das
+ * nichts zu tun. Dass die Begründung verlangt und gespeichert wird, steht in
+ * `b5-stempelgrund.mjs`.
+ */
 const stempeln = (aktion, zeitpunkt) =>
-  sende(person, '/api/time-tracking/stempeln', 'POST',
-    zeitpunkt === undefined ? { aktion } : { aktion, zeitpunkt })
+  sende(person, '/api/time-tracking/stempeln', 'POST', {
+    aktion,
+    ...(zeitpunkt === undefined ? {} : { zeitpunkt }),
+    ...(aktion === 'kommen' ? { grund: 'Nachweis B8 — Warteschlange' } : {}),
+  })
 
 const zustand = async () =>
   (await hole(person, '/api/time-tracking/stempeln')).body.zustand
 
 const vorMinuten = m => new Date(Date.now() - m * 60_000).toISOString()
+
+/*
+ * §203 Die erwartete Uhrzeit in ORTSZEIT, nicht aus der ISO-Zeichenkette.
+ *
+ * Hier stand `.slice(11, 16)` — also die Stunde aus dem UTC-Text. Damit
+ * prüfte dieser Nachweis genau den Fehler nach, den er hätte finden müssen:
+ * Die Buchung stand in Serverzeit, die Erwartung auch, und beide waren zwei
+ * Stunden daneben. Beim ersten Lauf nach der Behebung schlug er an —
+ * „gebucht 06:43, gestempelt 04:43" —, und das war die Bestätigung.
+ */
+const alsOrtszeit = iso => new Intl.DateTimeFormat('de-DE', {
+  timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', hour12: false,
+}).format(new Date(iso))
+const alsOrtstag = iso => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date(iso))
 
 // Ausgangszustand: nicht eingestempelt. Sonst prüft der Rest ins Leere.
 if ((await zustand())?.laeuft) await stempeln('gehen')
@@ -72,15 +99,15 @@ check('Am Ende läuft nichts mehr — die Kette ist vollständig verbucht',
 
 const buchung = antworten[0][1].body.log
 check('Der Beginn zählt mit der Uhrzeit des Stempelns, nicht der Übertragung',
-  buchung?.clockIn === kette[0][1].slice(11, 16),
-  `gebucht ${buchung?.clockIn}, gestempelt ${kette[0][1].slice(11, 16)}`)
+  buchung?.clockIn === alsOrtszeit(kette[0][1]),
+  `gebucht ${buchung?.clockIn}, gestempelt ${alsOrtszeit(kette[0][1])}`)
 check('Und ist als nachgereicht gekennzeichnet',
   buchung?.quelle === 'offline', buchung?.quelle)
 
-const tag = kette[0][1].slice(0, 10)
+const tag = alsOrtstag(kette[0][1])
 const logs = (await hole(person, `/api/time-logs?employeeId=${mPerson.employeeId}`))
   .body.logs ?? []
-const heutige = logs.find(l => l.date === tag && l.clockIn === kette[0][1].slice(11, 16))
+const heutige = logs.find(l => l.date === tag && l.clockIn === alsOrtszeit(kette[0][1]))
 check('Die Pause aus der Kette steht in der Buchung',
   (heutige?.breakMinutes ?? 0) >= 25 && (heutige?.breakMinutes ?? 0) <= 35,
   `${heutige?.breakMinutes} Minuten Pause`)

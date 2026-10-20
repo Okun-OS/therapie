@@ -6,6 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useAuth } from '@/lib/auth-context'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { zuschnitt } from '@/lib/bildzuschnitt'
 import { MeineDatenrechte } from '@/components/datenschutz/MeineDatenrechte'
 import {
   User, Mail, Shield, Bell, LogOut, Camera, Trash2,
@@ -91,10 +92,22 @@ export default function AccountPage() {
         canvas.width = SIZE
         canvas.height = SIZE
         const ctx = canvas.getContext('2d')!
-        const scale = Math.max(SIZE / img.width, SIZE / img.height)
-        const sx = (img.width * scale - SIZE) / 2
-        const sy = (img.height * scale - SIZE) / 2
-        ctx.drawImage(img, -sx / scale, -sy / scale, img.width, img.height)
+
+        /*
+         * §203 Das Bild wurde nicht verkleinert, sondern ausgeschnitten.
+         *
+         * Hier stand `drawImage(img, x, y, img.width, img.height)`. Die beiden
+         * letzten Werte sind aber die ZIELmaße, nicht die Quellmaße — das Foto
+         * wurde in Originalgröße auf eine 256er Fläche gemalt, und übrig blieb
+         * ein 256×256-Ausschnitt aus der Mitte. Bei einem Porträt die Augen.
+         *
+         * Die Rechnung steht jetzt in `src/lib/bildzuschnitt.ts` und ist dort
+         * nachgerechnet — hier im Datei-Handler sah sie niemand an, und
+         * prüfen ließ sie sich nicht: `canvas` gibt es im Testlauf nicht.
+         */
+        const z = zuschnitt(img.width, img.height, SIZE)
+        ctx.drawImage(img, z.dx, z.dy, z.dw, z.dh)
+
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
         uploadAvatar(dataUrl)
       }

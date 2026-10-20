@@ -36,8 +36,8 @@ Features zu bauen.
 ## Wie hier gearbeitet wird
 
 * Kommentare auf **Deutsch**, und sie erklären das **Warum**, nicht das Was.
-  Durchnummeriert mit `§` — der Stand ist **§201**, die nächste Nummer ist
-  §202.
+  Durchnummeriert mit `§` — der Stand ist **§203**, die nächste Nummer ist
+  §204.
 * Jede Behauptung wird **nachgemessen**, nicht geschätzt. Wenn etwas nicht
   prüfbar ist, wird das gesagt — nicht übersprungen.
 * Drei Regeln für Prüfungen (`pruefungen/README`): Jede Prüfung stellt ihren

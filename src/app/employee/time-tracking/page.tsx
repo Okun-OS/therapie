@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -51,10 +52,6 @@ export default function TimeTracking() {
   const [, forceRender] = useState(0)
   const refresh = () => forceRender(n => n + 1)
 
-  const [overtimeModalOpen, setOvertimeModalOpen] = useState(false)
-  const [pendingOvertime, setPendingOvertime] = useState<{ timeLogId: string; date: string; minutes: number } | null>(null)
-  const [overtimeReason, setOvertimeReason] = useState('')
-  const [overtimeComment, setOvertimeComment] = useState('')
 
   const [absenceModalOpen, setAbsenceModalOpen] = useState(false)
   const [absenceType, setAbsenceType] = useState<AbsenceType>('krankheit')
@@ -222,110 +219,22 @@ export default function TimeTracking() {
    * Jetzt entscheidet der Server, was erlaubt ist, und antwortet mit dem neuen
    * Zustand. Diese Seite zeigt ihn nur noch an.
    */
-  const handleClockIn = async () => {
-    const r = await fetch('/api/time-tracking/stempeln', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ aktion: 'kommen', zeitpunkt: new Date().toISOString() }),
-    })
-    const d = await r.json().catch(() => ({}))
-    if (!r.ok) { showToast(d.error ?? 'Einstempeln hat nicht geklappt', 'error'); return }
-    setClockedIn(true)
-    setClockInTime(d.log?.clockInAt ? new Date(d.log.clockInAt) : new Date())
-    setElapsed(0)
-    setActiveTimeLogId(d.log?.id ?? null)
-    fetchActiveLog()
-    refresh()
-  }
+  /*
+   * §203 Hier standen `handleClockIn`, `handleClockOut` und die beiden
+   * Pausen-Handgriffe — die zweite Stempeluhr dieser App.
+   *
+   * Sie sind weg, weil die Uhr weg ist. Mit ihnen geht die eigene
+   * Überstunden-Rückfrage, die `handleClockOut` auslöste: Sie verglich die
+   * UHRZEIT des Gehens mit dem Dienstende und rechnete dabei in der Zeitzone
+   * des Browsers gegen Daten aus `SCHEDULE_ENTRIES`. Wer später kam und
+   * später ging, bekam eine Überstundenfrage für Stunden, die er nicht
+   * gearbeitet hatte.
+   *
+   * Gefragt wird jetzt an einer Stelle und nach der DAUER, auf dem Server:
+   * `src/lib/stempelgrund.ts`. Der Überstundenantrag entsteht aus derselben
+   * Begründung in `/api/time-tracking/begruendung`.
+   */
 
-  const handleClockOut = async () => {
-    const clockOutDate = new Date()
-    const beendeter = activeTimeLogId
-
-    const r = await fetch('/api/time-tracking/stempeln', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ aktion: 'gehen', zeitpunkt: clockOutDate.toISOString() }),
-    })
-    const d = await r.json().catch(() => ({}))
-    if (!r.ok) { showToast(d.error ?? 'Ausstempeln hat nicht geklappt', 'error'); return }
-
-    setClockedIn(false)
-    setClockInTime(null)
-    setElapsed(0)
-    setActiveTimeLogId(null)
-    setActiveEntryId(null)
-
-    // Laenger geblieben als geplant? Dann gleich fragen, wofuer — spaeter weiss
-    // es niemand mehr, und ohne Grund wird aus Mehrarbeit keine Ueberstunde.
-    const scheduleEntry = SCHEDULE_ENTRIES.find(
-      e => e.employeeId === user?.employeeId && e.date === todayStr)
-    const shift = scheduleEntry ? getShiftById(scheduleEntry.shiftId) : undefined
-    if (shift && beendeter) {
-      const [eh, em] = shift.endTime.split(':').map(Number)
-      const plannedEnd = eh * 60 + em
-      const actualEnd = clockOutDate.getHours() * 60 + clockOutDate.getMinutes()
-      const diff = actualEnd - plannedEnd
-      if (diff >= OVERTIME_MIN_MINUTES) {
-        setPendingOvertime({ timeLogId: beendeter, date: todayStr, minutes: diff })
-        setOvertimeReason('')
-        setOvertimeComment('')
-        setOvertimeModalOpen(true)
-      }
-    }
-
-    fetchActiveLog()
-    fetchAccount()
-    refresh()
-  }
-
-  const stempelPause = async (aktion: 'pause-start' | 'pause-ende') => {
-    const r = await fetch('/api/time-tracking/stempeln', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ aktion, zeitpunkt: new Date().toISOString() }),
-    })
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}))
-      showToast(d.error ?? 'Das hat nicht geklappt', 'error')
-      return
-    }
-    fetchActiveLog()
-    refresh()
-  }
-
-  const handleStartBreak = () => stempelPause('pause-start')
-  const handleEndBreak = () => stempelPause('pause-ende')
-
-  const handleSubmitOvertime = async () => {
-    if (!user?.employeeId || !pendingOvertime) return
-    if (!overtimeReason) { showToast('Bitte einen Grund auswählen', 'error'); return }
-    const locationId = myEmployee?.locationId || user.locationId
-    await fetch('/api/overtime-requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        employeeId: user.employeeId,
-        employeeName: user.name,
-        locationId,
-        date: pendingOvertime.date,
-        timeLogId: pendingOvertime.timeLogId,
-        overtimeMinutes: pendingOvertime.minutes,
-        reason: overtimeReason,
-        comment: overtimeComment.trim() || undefined,
-      }),
-    })
-    fetch('/api/time-tracking/notify-admin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeName: user.name, locationId, kind: 'overtime', date: pendingOvertime.date }),
-    }).catch(() => {})
-    setOvertimeModalOpen(false)
-    setPendingOvertime(null)
-    showToast('Überstundenantrag wurde erstellt', 'success')
-    fetchOvertimeRequests()
-    refresh()
-  }
 
   const handleSubmitAbsence = async () => {
     if (!user?.employeeId) return
@@ -367,67 +276,44 @@ export default function TimeTracking() {
       
       <div className="p-4 sm:p-6 space-y-5">
 
-        {/* Main Clock Widget */}
-        <Card className="bg-gradient-to-br from-navy to-navy-light border-0 text-center" padding="lg">
-          <div className="py-4">
-            {/* Digital Clock */}
-            <p className="text-6xl sm:text-7xl font-bold text-white font-mono tracking-tight mb-1">
-              {currentTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-            </p>
-            <p className="text-navy-100 text-sm mb-6">
-              {currentTime.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
+        {/*
+          §203 Hier stand eine zweite Stempeluhr.
 
-            {clockedIn && (
-              <div className="mb-6">
-                <div className="flex items-center justify-center gap-2 mb-1">
+          Gestempelt wurde an zwei Stellen: hier und auf „Mein Tag". Zwei
+          Uhren für denselben Handgriff sind nicht doppelt bequem, sondern
+          doppelt unsicher — jede hatte ihre eigene Logik, und die hier
+          sperrte sogar das Einstempeln ohne geplanten Dienst („Einstempeln
+          nicht möglich"), während die andere es zuließ. Wer am Monatsende
+          eine Lücke sucht, findet zwei Wege, auf denen sie entstehen kann.
+
+          Diese Seite zeigt jetzt nur noch an, was läuft. Gestempelt wird auf
+          „Mein Tag" — dort, wo die App morgens ohnehin geöffnet wird.
+        */}
+        {clockedIn && (
+          <Card className="bg-gradient-to-br from-navy to-navy-light border-0" padding="lg">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${onBreak ? 'bg-amber-400' : 'bg-green-400'} animate-pulse`} />
-                  <p className={`text-sm font-medium ${onBreak ? 'text-amber-300' : 'text-green-300'}`}>{onBreak ? 'Pause aktiv' : 'Aktive Session'}</p>
+                  <p className={`text-xs font-medium ${onBreak ? 'text-amber-300' : 'text-green-300'}`}>
+                    {onBreak ? 'Pause aktiv' : 'Läuft gerade'}
+                  </p>
                 </div>
-                <p className="text-brand text-4xl font-bold font-mono">{formatElapsed(elapsed)}</p>
+                <p className="text-brand text-3xl font-bold font-mono mt-0.5">{formatElapsed(elapsed)}</p>
                 <p className="text-navy-100 text-xs mt-1">
-                  Start: {clockInTime?.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                  seit {activeLog?.clockIn} Uhr
                   {(activeLog?.breakMinutes ?? 0) > 0 && ` · Pause: ${formatTime(activeLog!.breakMinutes!)}`}
                 </p>
               </div>
-            )}
-
-            <div className="flex flex-col items-center gap-3">
-              <div className="flex justify-center">
-                {!clockedIn ? (
-                  <button
-                    onClick={handleClockIn}
-                    disabled={!hasShiftToday}
-                    className="w-24 h-24 rounded-full bg-brand hover:bg-brand-dark transition-all shadow-xl hover:shadow-2xl active:scale-95 flex flex-col items-center justify-center gap-1 group disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-xl disabled:active:scale-100"
-                  >
-                    <PlayCircle size={36} className="text-navy group-hover:scale-110 transition-transform" />
-                    <span className="text-navy text-xs font-bold">Starten</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleClockOut}
-                    className="w-24 h-24 rounded-full bg-red-500 hover:bg-red-600 transition-all shadow-xl hover:shadow-2xl active:scale-95 flex flex-col items-center justify-center gap-1 group"
-                  >
-                    <StopCircle size={36} className="text-white group-hover:scale-110 transition-transform" />
-                    <span className="text-white text-xs font-bold">Stoppen</span>
-                  </button>
-                )}
-              </div>
-              {clockedIn && (
-                <button
-                  onClick={onBreak ? handleEndBreak : handleStartBreak}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${onBreak ? 'bg-amber-400 text-navy hover:bg-amber-500' : 'bg-navy-light text-white hover:bg-navy-light/80'}`}
-                >
-                  <Coffee size={14} />
-                  {onBreak ? 'Pause beenden' : 'Pause starten'}
-                </button>
-              )}
-              {!clockedIn && !hasShiftToday && (
-                <p className="text-navy-100 text-xs">Kein Dienst heute geplant – Einstempeln nicht möglich</p>
-              )}
+              <Link
+                href="/employee"
+                className="shrink-0 px-4 py-3 rounded-2xl bg-white/15 text-white text-sm font-semibold"
+              >
+                Stempeln
+              </Link>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
@@ -615,32 +501,13 @@ export default function TimeTracking() {
         </Card>
       </div>
 
-      {/* Überstunden-Abfrage */}
-      <Modal open={overtimeModalOpen} onClose={() => setOvertimeModalOpen(false)} title="Überstunden erfasst">
-        <div className="space-y-4">
-          <p className="text-sm text-navy">
-            Du hast deine geplante Arbeitszeit um {pendingOvertime ? formatTime(pendingOvertime.minutes) : ''} überschritten. Was war der Grund?
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {OVERTIME_REASONS.map(reason => (
-              <button
-                key={reason}
-                onClick={() => setOvertimeReason(reason)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-colors ${overtimeReason === reason ? 'bg-brand border-brand-dark text-navy' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-              >
-                {reason}
-              </button>
-            ))}
-          </div>
-          <Textarea
-            label="Kommentar (optional)"
-            value={overtimeComment}
-            onChange={e => setOvertimeComment(e.target.value)}
-            rows={2}
-          />
-          <Button className="w-full" onClick={handleSubmitOvertime}>Überstundenantrag senden</Button>
-        </div>
-      </Modal>
+      {/*
+        §203 Hier stand die Überstunden-Abfrage. Ausgelöst wurde sie von der
+        zweiten Stempeluhr dieser Seite — die ist weg, also war die Maske nur
+        noch unerreichbar. Gefragt wird jetzt dort, wo gestempelt wird, und
+        der Antrag entsteht aus derselben Begründung
+        (`/api/time-tracking/begruendung`).
+      */}
 
       {/* Abwesenheit melden */}
       <Modal open={absenceModalOpen} onClose={() => setAbsenceModalOpen(false)} title="Abwesenheit melden">

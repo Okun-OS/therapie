@@ -33,6 +33,8 @@
  * eine Behauptung, die niemand prüfen kann — und sie entscheidet über Lohn.
  */
 
+import { uhrzeitIn, tagIn } from './zeitzone'
+
 export type Stempelaktion = 'kommen' | 'gehen' | 'pause-start' | 'pause-ende'
 
 /** Woher ein Zeiteintrag stammt. */
@@ -165,15 +167,28 @@ export function bestimmeZeitpunkt(
   return { zeitpunkt: quelle === 'offline' ? wert : jetzt, quelle }
 }
 
+/**
+ * §203 Uhrzeit und Tag kommen aus der Betriebszeitzone, nicht aus der des
+ * Servers.
+ *
+ * Hier stand `toTimeString()` und `getFullYear()`. Beide nehmen die Zeitzone
+ * des Rechners — auf dem Entwicklungsrechner Berlin, bei Railway UTC. Also
+ * lief es hier richtig und im Betrieb zwei Stunden daneben: „Wenn ich mich
+ * 10:19 einlogge, dann steht da 8:19."
+ *
+ * Bei Nachtdiensten war auch der Tag falsch: Wer um 00:30 Berlin kommt, kam
+ * um 22:30 UTC — der Dienst landete im Vortag und damit möglicherweise im
+ * falschen Abrechnungsmonat.
+ */
+
 /** Uhrzeit als "HH:MM", wie sie in der Zeitbuchung steht. */
 export function alsUhrzeit(d: Date): string {
-  return d.toTimeString().slice(0, 5)
+  return uhrzeitIn(d)
 }
 
 /** Der Tag, zu dem ein Stempel gehört — der Tag, an dem er entsteht. */
 export function alsTag(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    + `-${String(d.getDate()).padStart(2, '0')}`
+  return tagIn(d)
 }
 
 /**

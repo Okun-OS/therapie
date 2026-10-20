@@ -17,9 +17,24 @@ const person = await login('maria.schneider@rheinblick-reha.de')
 const gf = await login('gf@rheinblick-reha.de')
 const mPerson = (await hole(person, '/api/auth/me')).body.user
 
+/*
+ * §203 Der Grund beim Kommen.
+ *
+ * Seit §203 verlangt das Einstempeln ohne geplanten Dienst eine Begründung.
+ * Diese Prüfung hat mit dem Dienstplan nichts zu tun — sie prüft die Mechanik:
+ * Reihenfolge der Handgriffe, Zeitpunkte aus dem Funkloch, für wen gestempelt
+ * wird. Sie schickt deshalb immer einen Grund mit und bleibt damit bei ihrer
+ * Aufgabe.
+ *
+ * Dass die Begründung wirklich verlangt und gespeichert wird, steht in
+ * `b5-stempelgrund.mjs` — an einer Stelle, nicht an zweien.
+ */
 const stempeln = (cookie, aktion, zeitpunkt) =>
-  sende(cookie, '/api/time-tracking/stempeln', 'POST',
-    zeitpunkt === undefined ? { aktion } : { aktion, zeitpunkt })
+  sende(cookie, '/api/time-tracking/stempeln', 'POST', {
+    aktion,
+    ...(zeitpunkt === undefined ? {} : { zeitpunkt }),
+    ...(aktion === 'kommen' ? { grund: 'Nachweis B7 — Mechanik der Stempeluhr' } : {}),
+  })
 
 const zustand = async cookie =>
   (await hole(cookie, '/api/time-tracking/stempeln')).body.zustand

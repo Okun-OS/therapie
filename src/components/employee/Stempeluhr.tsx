@@ -5,6 +5,8 @@ import { Play, Square, Coffee, AlertTriangle, Loader2, CloudOff } from 'lucide-r
 import {
   einreihen, alle, zustandMitWarteschlange, type Uhrzustand,
 } from '@/lib/warteschlange'
+import { OVERTIME_REASONS } from '@/lib/types'
+import { Modal } from '@/components/ui/Modal'
 import { schlangeGeaendert, SCHLANGE_EREIGNIS } from '@/components/offline/Warteschlange'
 
 /**
@@ -76,6 +78,15 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
   const [offline, setOffline] = useState(false)
   const ersterLauf = useRef(true)
 
+  // §203 Die beiden Rückfragen: vor dem Einstempeln ohne Dienst, und nach dem
+  // Ausstempeln, wenn die Zeit nicht zum Plan passt.
+  const [frageKommen, setFrageKommen] = useState(false)
+  const [nachfrage, setNachfrage] =
+    useState<{ art: string; text: string; logId: string } | null>(null)
+  const [grund, setGrund] = useState('')
+  const [kategorie, setKategorie] = useState('')
+  const [schickt, setSchickt] = useState(false)
+
   const holen = useCallback(async () => {
     try {
       const r = await fetch('/api/time-tracking/stempeln')
@@ -122,12 +133,29 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
     return () => clearInterval(takt)
   }, [zustand.laeuft])
 
-  async function stempeln(aktion: string) {
+  /**
+   * §203 Einstempeln ohne geplanten Dienst — erst fragen.
+   *
+   * Gesperrt wird nicht: Es gibt den Einspringer, die Übergabe, den Notfall,
+   * und wer dann nicht stempeln kann, arbeitet unbezahlt. Was fehlt, ist
+   * nicht die Erlaubnis, sondern die Erklärung.
+   *
+   * Gefragt wird HIER und nicht erst nach einer Antwort des Servers: Sonst
+   * ginge es im Funkloch gar nicht. Der Server prüft trotzdem noch einmal —
+   * ein Gerät, das die Rückfrage überspringt, soll nicht die Lücke sein.
+   */
+  function kommen() {
+    if (!dienst) { setFrageKommen(true); setGrund(''); return }
+    stempeln('kommen')
+  }
+
+  async function stempeln(aktion: string, grundText?: string) {
     setArbeitet(aktion); setFehler(''); setHinweis('')
     // Der Zeitpunkt entsteht HIER, nicht beim Absenden: Im Funkloch zählt
     // später die Zeit des Stempelns, nicht die des Hochladens.
     const zeitpunkt = new Date().toISOString()
-    const daten = { aktion, zeitpunkt }
+    const daten: Record<string, unknown> = { aktion, zeitpunkt }
+    if (grundText) daten.grund = grundText
 
     try {
       const r = await fetch('/api/time-tracking/stempeln', {
@@ -143,6 +171,10 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
 
       const d = await r.json().catch(() => ({}))
       if (!r.ok) {
+        // §203 Der Server hält den Dienstplan für maßgeblich, nicht die
+        // Anzeige. Sagt er „ohne Dienst", wird gefragt — auch wenn oben ein
+        // Dienst stand, der inzwischen abgesagt wurde.
+        if (d.code === 'GRUND_NOETIG') { setFrageKommen(true); setGrund(''); return }
         setFehler(d.error ?? 'Das hat nicht geklappt.')
         if (d.zustand) setZustand(d.zustand)
         return
@@ -152,6 +184,9 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
       setJetzt(Date.now())
       setOffline(false)
       if (d.hinweis) setHinweis(d.hinweis)
+      // §203 Die gearbeitete Zeit passt nicht zum Plan. Der Stempel ist schon
+      // gesetzt — gefragt wird danach.
+      if (d.nachfrage) { setNachfrage(d.nachfrage); setGrund(''); setKategorie('') }
     } catch {
       // §138 Kein Netz: merken statt verlieren. Die angezeigte Uhr geht
       // trotzdem weiter — für den Menschen hat der Handgriff stattgefunden.
@@ -170,6 +205,47 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
       schlangeGeaendert()
     } finally {
       setArbeitet(null)
+    }
+  }
+
+  /** Den nachgereichten Grund abschicken. */
+  async function begruendungSenden() {
+    if (!nachfrage) return
+    setSchickt(true)
+    try {
+      const r = await fetch('/api/time-tracking/begruendung', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logId: nachfrage.logId, grund, kategorie }),
+      })
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        setFehler(d.error ?? 'Der Grund ließ sich nicht speichern.')
+        return
+      }
+      const d = await r.json().catch(() => ({}))
+      setNachfrage(null)
+      setGrund('')
+      setKategorie('')
+      setHinweis(d.antrag
+        ? 'Danke — der Überstundenantrag ist raus.'
+        : 'Danke — das steht jetzt dabei.')
+    } catch {
+      /*
+       * §203 Ohne Netz geht der Grund verloren, der Stempel nicht.
+       *
+       * Das ist die richtige Reihenfolge: Die gearbeitete Zeit ist Lohn, die
+       * Begründung ist Erklärung. Die Abweichung bleibt beim Eintrag
+       * vermerkt — die Leitung sieht „länger geblieben, ohne Angabe" und
+       * kann fragen. Eine Begründung zu merken und Tage später
+       * nachzuschicken wäre schlimmer: Dann stünde ein Satz an einem
+       * Arbeitstag, an den sich niemand mehr erinnert.
+       */
+      setFehler('Kein Netz — der Stempel ist gesetzt, der Grund nicht. '
+        + 'Bitte sag deiner Leitung kurz Bescheid.')
+      setNachfrage(null)
+    } finally {
+      setSchickt(false)
     }
   }
 
@@ -227,7 +303,7 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
         </div>
       ) : !zustand.laeuft ? (
         <button
-          onClick={() => stempeln('kommen')}
+          onClick={kommen}
           disabled={!!arbeitet}
           className="w-full h-16 rounded-2xl bg-brand text-navy font-bold text-lg
                      flex items-center justify-center gap-2.5 active:scale-[0.98]
@@ -285,6 +361,149 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
           Ohne Netz gestempelt — die Zeit des Stempelns zählt, nicht die der Übertragung.
         </p>
       )}
+
+      {/* §203 Vor dem Einstempeln ohne geplanten Dienst */}
+      {frageKommen && (
+        <Rueckfrage
+          titel="Du hast heute keinen Dienst"
+          text="Trotzdem einstempeln? Schreib bitte kurz dazu, warum — das spart
+                deiner Leitung am Monatsende eine Rückfrage."
+          platzhalter="z. B. für Melanie eingesprungen"
+          grund={grund}
+          setGrund={setGrund}
+          laeuft={!!arbeitet}
+          bestaetigen="Ja, einstempeln"
+          abbrechen={() => { setFrageKommen(false); setGrund('') }}
+          absenden={() => { setFrageKommen(false); stempeln('kommen', grund.trim()) }}
+        />
+      )}
+
+      {/* §203 Nach dem Ausstempeln, wenn die Zeit nicht zum Plan passt */}
+      {nachfrage && (
+        <Rueckfrage
+          titel={nachfrage.art === 'laenger' ? 'Du warst länger da'
+            : nachfrage.art === 'frueher' ? 'Du bist früher gegangen'
+              : 'Heute war kein Dienst geplant'}
+          text={`${nachfrage.text} Woran lag es?`}
+          platzhalter="z. B. Übergabe hat länger gedauert"
+          grund={grund}
+          setGrund={setGrund}
+          laeuft={schickt}
+          bestaetigen="Speichern"
+          // §203 Nur bei Mehrarbeit: Daraus wird ein Überstundenantrag, und
+          // die Leitung sieht die Anträge gruppiert. Beim früheren Gehen gibt
+          // es nichts zu gruppieren — dort wären die Kategorien nur eine
+          // zusätzliche Frage ohne Zweck.
+          kategorien={nachfrage.art === 'laenger' ? [...OVERTIME_REASONS] : undefined}
+          kategorie={kategorie}
+          setKategorie={setKategorie}
+          // Ausgestempelt ist ausgestempelt — wer jetzt wegwischt, verliert
+          // nichts als die Erklärung. Deshalb „Später", nicht „Abbrechen".
+          abbrechenText="Später"
+          abbrechen={() => { setNachfrage(null); setGrund('') }}
+          absenden={begruendungSenden}
+        />
+      )}
     </div>
+  )
+}
+
+/**
+ * §203 Die Rückfrage.
+ *
+ * Eine Maske für beide Fälle: Zwei Abschriften derselben Eingabe laufen
+ * auseinander — dann hat die eine eine Mindestlänge und die andere nicht.
+ *
+ * Sie liegt über dem ganzen Bildschirm und nicht in der Karte: Auf einem
+ * Telefon ist die Stempeluhr oben, und ein Eingabefeld, das die Tastatur
+ * verdeckt, ist keins.
+ */
+function Rueckfrage({
+  titel, text, platzhalter, grund, setGrund, laeuft,
+  bestaetigen, abbrechen, absenden, abbrechenText = 'Abbrechen',
+  kategorien, kategorie, setKategorie,
+}: {
+  titel: string
+  text: string
+  platzhalter: string
+  grund: string
+  setGrund: (w: string) => void
+  laeuft: boolean
+  bestaetigen: string
+  abbrechenText?: string
+  abbrechen: () => void
+  absenden: () => void
+  kategorien?: string[]
+  kategorie?: string
+  setKategorie?: (w: string) => void
+}) {
+  // Der freie Text zählt, die Kategorie ist das Beiwerk. Umgekehrt stünde in
+  // der Übersicht der Leitung siebenmal „Personalmangel" und sonst nichts.
+  const reicht = grund.trim().length >= 3
+
+  /*
+   * §203 Die Maske läuft über `Modal` und damit über ein Portal am `body`.
+   *
+   * Erster Versuch war ein eigenes `fixed inset-0 z-50` innerhalb der Karte.
+   * Im Bild lag die Rückfrage dann UNTER der schwebenden Leiste: `main` trägt
+   * eine Animation und bildet damit einen eigenen Stapelkontext — ein z-Wert
+   * darin kommt gegen ein Geschwisterelement draußen nicht an, egal wie hoch
+   * er ist. Dieselbe Komponente kündigt außerdem ihr Öffnen an, worauf die
+   * Leiste sich zurücknimmt.
+   */
+  return (
+    <Modal open onClose={abbrechen} title={titel} size="sm">
+      <p className="text-sm text-gray-600">{text}</p>
+
+      {kategorien && setKategorie && (
+        <div className="flex flex-wrap gap-2 mt-4">
+          {kategorien.map(k => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setKategorie(kategorie === k ? '' : k)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-colors ${
+                kategorie === k
+                  ? 'bg-brand border-brand text-navy'
+                  : 'border-gray-200 text-gray-600'}`}
+            >
+              {k}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <textarea
+        autoFocus
+        value={grund}
+        onChange={e => setGrund(e.target.value)}
+        placeholder={platzhalter}
+        rows={3}
+        maxLength={500}
+        className="w-full mt-4 rounded-2xl border border-gray-200 px-4 py-3 text-sm
+                   text-navy focus:outline-none focus:ring-2 focus:ring-teal-500/30
+                   focus:border-teal-500 resize-none"
+      />
+
+      <div className="flex gap-2.5 mt-4">
+        <button
+          onClick={abbrechen}
+          disabled={laeuft}
+          className="flex-1 h-12 rounded-2xl bg-gray-100 text-gray-700
+                     font-semibold text-sm active:bg-gray-200 disabled:opacity-50"
+        >
+          {abbrechenText}
+        </button>
+        <button
+          onClick={absenden}
+          disabled={!reicht || laeuft}
+          className="flex-1 h-12 rounded-2xl bg-brand text-navy font-bold text-sm
+                     flex items-center justify-center gap-2 disabled:opacity-40"
+        >
+          {laeuft && <Loader2 size={16} className="animate-spin" />}
+          {bestaetigen}
+        </button>
+      </div>
+    </Modal>
   )
 }

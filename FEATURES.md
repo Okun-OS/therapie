@@ -3611,3 +3611,123 @@ auch bei Abbruch weg — nachgewiesen mit einem absichtlich eingebauten Abbruch.
 
 **Stand:** 1732/1732 in 47 Prüfungen, 1069 Modultests, 154 im Rechendienst,
 Desktop 49/49, Browser 12+20+17+31+25+22+17, tsc und Bauen sauber.
+
+## §203 Fünf Meldungen aus der App — und was dahinter steckte
+
+### 1. „Wenn ich mich 10:19 einlogge, steht da 8:19"
+
+Der schwerste der fünf. Die Uhrzeit wurde mit `toTimeString()` gebildet, der
+Tag mit `getFullYear()`/`getMonth()`. Beide nehmen die Zeitzone des Rechners,
+auf dem der Code läuft: auf dem Entwicklungsrechner Berlin, bei Railway UTC.
+**Es lief hier richtig und im Betrieb falsch** — die schlimmste Sorte Fehler.
+
+Die DAUER stimmte immer, die wird aus `clockInAt` gerechnet. Falsch waren die
+geschriebenen Felder `clockIn`, `clockOut` und `date`. Also:
+
+* Auf jedem Stundenzettel stand eine falsche Uhrzeit. Ein Arbeitszeitnachweis
+  mit falschen Uhrzeiten ist als Nachweis wertlos (§16 Abs. 2 ArbZG).
+* Bei Nachtdiensten war auch der **Tag** falsch: Wer um 00:30 Berlin kommt,
+  kam um 22:30 UTC — also am Vortag. Am Monatsersten damit im falschen
+  Abrechnungsmonat.
+
+Jetzt kommt beides aus `src/lib/zeitzone.ts`, über `Intl` und nicht über eine
+selbst gerechnete Verschiebung: In der Nacht der Zeitumstellung liegt jede
+gerechnete Verschiebung um eine Stunde daneben, und das ist eine Nacht, in
+der gearbeitet wird.
+
+**Der Test, der ihn hätte finden müssen, hat ihn gedeckt.** Er lautete
+`new Date(2026, 8, 5, 22, 30)` — und dieser Aufruf nimmt ebenfalls die Zone
+des Rechners. Zwei Fehler, die sich gegenseitig aufheben. Er steht jetzt mit
+festen UTC-Zeitpunkten da und prüft genau das, worauf es ankommt: Das
+Ergebnis darf von der Uhr des Servers nicht abhängen.
+
+Dasselbe in `b3-warteschlange`: Dort stand `.slice(11, 16)` auf der
+ISO-Zeichenkette, also wieder die UTC-Stunde. Beim ersten Lauf nach der
+Behebung schlug die Prüfung an — „gebucht 06:43, gestempelt 04:43". Das war
+die Bestätigung.
+
+**Offen und bewusst so:** Die bereits geschriebenen Werte bleiben falsch. Sie
+ließen sich aus `clockInAt` zurückrechnen; das berührt Produktionsdaten und
+ist nicht ohne Freigabe zu machen.
+
+### 2. Zwei Stempeluhren
+
+Gestempelt wurde an zwei Stellen: auf „Mein Tag" und auf „Meine Zeiten". Zwei
+Uhren für denselben Handgriff sind nicht doppelt bequem, sondern doppelt
+unsicher — jede hatte ihre eigene Logik, und die auf „Meine Zeiten" sperrte
+das Einstempeln ohne Dienst („Einstempeln nicht möglich"), während die andere
+es zuließ.
+
+Die zweite ist weg; die Seite zeigt nur noch an, was läuft. Mit ihr ging
+`handleClockOut` samt eigener Überstundenfrage: Die verglich die **Uhrzeit**
+des Gehens mit dem Dienstende, in der Zeitzone des Browsers. Wer eine Stunde
+später kam und eine Stunde später ging, bekam eine Überstundenfrage für
+Stunden, die er nie gearbeitet hatte — und hätte er sie bestätigt, wären sie
+bezahlt worden.
+
+### 3. und 4. Stempeln ohne Dienst, Abweichung vom Plan
+
+Gesperrt wird nicht — es gibt den Einspringer, die Übergabe, den Notfall, und
+wer dann nicht stempeln kann, arbeitet unbezahlt. Was fehlt, ist nicht die
+Erlaubnis, sondern die Erklärung:
+
+| Wann | Was passiert |
+|---|---|
+| Einstempeln ohne geplanten Dienst | Rückfrage **vorher**, Grund ist Pflicht |
+| Ausstempeln, Dauer ≠ Plan (±15 min) | Rückfrage **danach**, Stempel sitzt schon |
+| Länger geblieben | dazu Kategorie, daraus entsteht der Überstundenantrag |
+
+Verglichen wird die **Dauer**, nicht die Uhrzeit des Gehens: Wer eine halbe
+Stunde später kommt und später geht, hat seinen Dienst voll gearbeitet. Die
+Rückfrage beim Gehen kommt **nach** dem Stempeln — die gearbeitete Zeit ist
+Lohn, die Begründung ist Erklärung, und das eine darf das andere nicht
+blockieren.
+
+Gefragt wird im Browser (damit es auch im Funkloch geht) **und** geprüft auf
+dem Server (damit ein Gerät, das die Rückfrage überspringt, nicht die Lücke
+ist).
+
+### 5. „Die Profilbilder sind rangezoomt"
+
+```js
+ctx.drawImage(img, x, y, img.width, img.height)
+```
+
+Die beiden letzten Werte sind bei dieser Form die **Ziel**maße, nicht die
+Quellmaße. Ein Handyfoto mit 3000×4000 Punkten wurde in Originalgröße auf
+eine 256er Fläche gemalt — übrig blieb ein 256×256-Ausschnitt aus der Mitte,
+bei einem Porträt die Augen. Die Rechnung steht jetzt in
+`src/lib/bildzuschnitt.ts` und ist nachgerechnet; im Datei-Handler sah sie
+niemand an, und prüfbar war sie dort nicht (`canvas` gibt es im Testlauf
+nicht).
+
+**Bereits hochgeladene Bilder bleiben, wie sie sind** — das Original ist weg,
+gespeichert wurde nur der Ausschnitt. Sie müssen neu hochgeladen werden.
+
+### Nebenbefund
+
+Für **Überstundenanträge gibt es keinen Löschweg** — weder für die Leitung
+noch für den Antragsteller, der sich vertippt hat. Nicht behoben: Das ist
+eine eigene Entscheidung, kein Nebenbei.
+
+### Nachweise
+
+`pruefungen/b5-stempelgrund.mjs`, 30 Checks gegen das laufende System, mit den
+Gegenproben: Bei der abgelehnten Stempelung entsteht **keine** Zeitbuchung;
+ein Punkt als Grund genügt nicht; eine fremde Kennung lässt sich nicht
+beschriften; **wer seinen Dienst arbeitet, wird nicht gefragt**. Dazu die
+Uhrzeit gegen die echte Ortszeit geprüft. 22 Modultests zur Zeitzone
+(Sommerzeit, Winterzeit, Mitternacht, Nachtdienst, Nacht der Umstellung), 16
+zur Begründungslogik, 6 zum Bildzuschnitt.
+
+**Stand nach dem Zusammenführen mit §202:** 1780/1780 in 48 Prüfungen, 1096
+Modultests, 158 im Rechendienst, Desktop 49/49,
+Browser 12+25+31+22+17+20+17, tsc und Bauen sauber.
+
+**Eine Falle, die zweimal zugeschnappt ist:** Nach dem Zusammenführen war
+`f10-paket-einrichtung` rot („dienstzeiten: 0"), und dasselbe vorher bei den
+Browser-Prüfungen. Beide Male lag es nicht am Code, sondern an einem ALTEN
+Prozess, der den Port noch hielt — der neu gestartete konnte sich nicht
+binden und starb still. Wer hier etwas prüft, sollte vorher
+`ps -eo pid,lstart,args | grep -E "next-server|uvicorn"` ansehen: Steht dort
+eine Startzeit von vor der eigenen Änderung, prüft man den alten Stand.

@@ -708,6 +708,22 @@ model TimeLog {
   /// Behauptung.
   quelle       String?
 
+  /// §203 Warum ohne geplanten Dienst gestempelt wurde.
+  ///
+  /// Bisher ließ sich einstempeln, ohne dass für den Tag ein Dienst stand —
+  /// und am Monatsende sah die Leitung eine Zahl ohne Erklärung. Der Grund
+  /// wird im Moment des Stempelns geschrieben; drei Wochen später erinnert
+  /// sich niemand mehr, und dann ist er geraten.
+  grundKommen  String?
+
+  /// §203 Warum die gearbeitete Zeit nicht zum Plan passt.
+  grundGehen   String?
+
+  /// §203 Welcher Art die Abweichung war: ohne-dienst | frueher | laenger.
+  /// Getrennt vom Text, damit sich danach auswerten laesst, ohne in Saetzen
+  /// zu suchen.
+  abweichung   String?
+
   createdAt    DateTime  @default(now())
 }
 

@@ -119,9 +119,60 @@ describe('Rechnen mit Zeiten', () => {
       new Date('2026-09-12T09:00:00'))).toBe(0)
   })
 
+  /*
+   * §203 Hier stand ein Test, der nichts bewiesen hat.
+   *
+   * Er lautete `new Date(2026, 8, 5, 22, 30)` — und dieser Aufruf nimmt die
+   * Zeitzone des RECHNERS, auf dem der Test läuft. Die alte Umsetzung tat
+   * dasselbe. Zwei Fehler, die sich gegenseitig aufheben: Auf einem
+   * Entwicklungsrechner in Berlin war beides Berlin, der Test war grün, und
+   * bei Railway in UTC stand auf dem Stundenzettel eine Uhrzeit, die zwei
+   * Stunden danebenlag.
+   *
+   * Jetzt stehen hier feste Zeitpunkte in UTC. Damit prüft der Test genau
+   * das, worauf es ankommt: Das Ergebnis darf von der Uhr des Servers NICHT
+   * abhängen. Dieser Behälter läuft in UTC — die Tests hätten den Fehler
+   * also gefunden.
+   */
+  it('nimmt die Betriebszeitzone, nicht die des Servers (Sommerzeit)', () => {
+    // Genau der gemeldete Fall: 08:19 UTC sind in Berlin 10:19.
+    expect(alsUhrzeit(new Date('2026-10-20T08:19:00Z'))).toBe('10:19')
+  })
+
+  it('und auch im Winter, wenn der Abstand nur eine Stunde ist', () => {
+    expect(alsUhrzeit(new Date('2026-01-15T08:19:00Z'))).toBe('09:19')
+  })
+
   it('schreibt den Tag in der Zeitzone des Betriebs', () => {
-    const d = new Date(2026, 8, 5, 22, 30)
-    expect(alsTag(d)).toBe('2026-09-05')
-    expect(alsUhrzeit(d)).toBe('22:30')
+    expect(alsTag(new Date('2026-09-05T20:30:00Z'))).toBe('2026-09-05')
+    expect(alsUhrzeit(new Date('2026-09-05T20:30:00Z'))).toBe('22:30')
+  })
+
+  it('zählt den Nachtdienst zum richtigen Tag', () => {
+    /*
+     * Der Fall, der nicht nur unschön, sondern teuer ist: Wer um 00:30 in
+     * Berlin kommt, kam um 22:30 UTC — also am Vortag. Mit der alten
+     * Umsetzung landete der Dienst im falschen Tag und am Monatsersten damit
+     * im falschen Abrechnungsmonat.
+     */
+    const nachts = new Date('2026-09-05T22:30:00Z') // = 06.09., 00:30 Berlin
+    expect(alsTag(nachts)).toBe('2026-09-06')
+    expect(alsUhrzeit(nachts)).toBe('00:30')
+  })
+
+  it('kommt mit Mitternacht zurecht', () => {
+    // 22:00 UTC = 00:00 Berlin. Manche Umgebungen liefern hier „24".
+    expect(alsUhrzeit(new Date('2026-07-01T22:00:00Z'))).toBe('00:00')
+    expect(alsTag(new Date('2026-07-01T22:00:00Z'))).toBe('2026-07-02')
+  })
+
+  it('trifft die Nacht der Zeitumstellung', () => {
+    /*
+     * In dieser Nacht liegt jede selbst gerechnete Verschiebung um eine
+     * Stunde daneben — und es ist eine Nacht, in der gearbeitet wird.
+     * Umstellung 2026: 25.10., 03:00 → 02:00 Berlin.
+     */
+    expect(alsUhrzeit(new Date('2026-10-25T00:30:00Z'))).toBe('02:30') // noch Sommerzeit
+    expect(alsUhrzeit(new Date('2026-10-25T01:30:00Z'))).toBe('02:30') // schon Winterzeit
   })
 })
