@@ -13,6 +13,10 @@ weiteren Zusammenhang.
 >
 > * Steht die Kanzlei im **amtlichen Steuerberaterverzeichnis** der
 >   Bundessteuerberaterkammer? Wer dort nicht steht, ist kein Steuerberater.
+> * Bei Anwälten: Steht die Person im **Bundesweiten Amtlichen
+>   Anwaltsverzeichnis** (`rechtsanwaltsregister.org`)? „Fachanwalt für
+>   IT-Recht" ist eine verliehene Bezeichnung (§43c BRAO) — wer sie führt,
+>   steht dort.
 > * Gibt es eine **eigene Website mit Impressum**, und passt die Adresse?
 > * Stimmt die E-Mail-Adresse mit der im Impressum überein?
 >
@@ -207,8 +211,239 @@ unabhängig voneinander; man kann beide am selben Tag abschicken.
 
 ---
 
+## 3 · Wer die Aufbewahrungsfristen gegenzeichnet (Block B)
+
+### Erst die Lage — sonst suchst du den Falschen
+
+Im Programm steht für jede Datenart, wie lange sie nach dem Ausscheiden bleibt
+und warum (`AUFBEWAHRUNGSFRISTEN.md`, erzeugt mit `npm run fristen:blatt`).
+Zwanzig Zeilen, in drei Blöcken:
+
+| | Woraus die Frist folgt | Wer kann unterschreiben |
+|---|---|---|
+| **Block A** — 7 Fristen | §41 EStG, §147 AO, §257 HGB, §28f SGB IV | Steuerberater — **läuft schon** |
+| **Block B** — 3 Fristen | §16 ArbZG, §17 MiLoG, Art. 5 und 17 DSGVO | **den suchst du hier** |
+| **Block C** — 10 Datenarten | wo wir **löschen** statt aufzubewahren | je nach Fundstelle beide |
+
+**Warum der Steuerberater Block B nicht mitmachen kann:** Seine
+Berufshaftpflicht trägt Steuer- und Sozialversicherungsrecht. Für das
+Arbeitszeitgesetz und die DSGVO steht er nicht ein — er wird freundlich
+nicken, und du hättest hinterher nichts, was trägt.
+
+### Und jetzt der Punkt, der die Suche entscheidet
+
+**Nimm einen Fachanwalt, nicht „einen Datenschutzbeauftragten".**
+
+Der ganze Zweck einer Gegenzeichnung ist, dass jemand mit **Berufshaftpflicht**
+dafür einsteht. Bei Rechtsanwälten ist die Pflicht: mindestens **250.000 € je
+Versicherungsfall**, gesetzlich vorgeschrieben (§51 Abs. 4 BRAO; im Jahr
+gedeckelt auf das Vierfache). Und „Fachanwalt für IT-Recht" darf nur führen,
+wem die Kammer es verliehen hat — zum Fachgebiet gehört ausdrücklich das
+Datenschutzrecht (§14k FAO).
+
+„Datenschutzbeauftragter" dagegen ist **keine staatlich geprüfte
+Berufsbezeichnung**. Die DSGVO verlangt Fachkunde (Art. 37 Abs. 5), schreibt
+aber keinen Nachweis vor; es gibt nur private Zertifikate (TÜV, DEKRA, BvD).
+Darunter sind sehr gute Leute — aber ob eine Vermögensschadenhaftpflicht
+dahintersteht, muss man **einzeln fragen**. Ohne die ist die Unterschrift ein
+freundliches Schreiben und kein Nachweis.
+
+> **Am besten ist beides in einer Person:** Fachanwalt für IT-Recht **und**
+> externer Datenschutzbeauftragter. Das gibt es häufig, und dann hast du
+> Fachkunde und Haftung in einer Unterschrift.
+
+### Der Suchauftrag
+
+```
+Du hilfst mir, einen Fachanwalt zu finden. Suche im Netz und nenne nur
+konkrete, belegbare Treffer mit Quellenlink — keine erfundenen Kanzleien,
+keine erfundenen E-Mail-Adressen. Wo du etwas nicht belegen kannst,
+schreib „nicht gefunden".
+
+WER FRAGT
+OKUN Systems UG (haftungsbeschränkt), Berlin. Ein kleines Softwarehaus,
+ein Geschäftsführer, keine Angestellten. Wir entwickeln und betreiben
+eine Personalsoftware (Dienstplanung, Zeiterfassung, Personalakte,
+Entgeltabrechnung), die Kunden im Mietmodell selbst bedienen. Gegenüber
+unseren Kunden sind wir Auftragsverarbeiter nach Art. 28 DSGVO.
+
+WAS ICH BRAUCHE
+Ein KURZMANDAT, kein Dauermandat: Eine schriftliche Bestätigung, dass
+die Lösch- und Aufbewahrungsfristen, die in unserer Software hinterlegt
+sind, zutreffen — oder, wo nicht, welche richtig wäre und warum.
+
+Es geht um eine Seite Tabelle mit folgenden Punkten:
+- Arbeitszeitnachweise, 2 Jahre (§16 Abs. 2 ArbZG, §17 MiLoG)
+- Nachweise über erfolgte Unterweisungen, 3 Jahre gesperrt
+  (Art. 17 Abs. 3 lit. e DSGVO, Regelverjährung)
+- Zugriffsprotokolle, 3 Jahre (Art. 5 Abs. 2 DSGVO,
+  Rechenschaftspflicht)
+- Bewerbungsunterlagen, 6 Monate nach Verfahrensende (§15 Abs. 4 AGG)
+- zehn weitere Datenarten, die wir vollständig löschen — darunter
+  Angaben zum betrieblichen Eingliederungsmanagement. Hier ist die
+  Frage nicht, ob wir zu lange aufbewahren, sondern ob wir ZU FRÜH
+  löschen.
+
+Den steuer- und sozialversicherungsrechtlichen Teil (§41 EStG, §147 AO,
+§257 HGB, §28f SGB IV) prüft parallel ein Steuerberater. Den brauche
+ich hier nicht.
+
+WORAUF ES BEI DER AUSWAHL ANKOMMT
+Entscheidend ist, dass die Person mit BERUFSHAFTPFLICHT für die
+Aussage einsteht. Deshalb:
+- bevorzugt „Fachanwalt für IT-Recht" oder „Fachanwalt für
+  Arbeitsrecht" — verliehene Bezeichnungen nach §43c BRAO, mit
+  gesetzlicher Berufshaftpflicht (§51 BRAO)
+- ideal: zusätzlich als externer Datenschutzbeauftragter tätig
+- Schwerpunkt Beschäftigtendatenschutz oder HR-Software ist ein
+  klares Plus
+- Sitz in Berlin bevorzugt, deutschlandweit möglich — die
+  Zusammenarbeit läuft digital
+- Kanzleien, die ausdrücklich mit SaaS-Anbietern oder Startups
+  arbeiten, nehmen so eine Anfrage eher an als reine
+  Unternehmenskanzleien
+
+Berate mich NICHT selbst zu den Fristen. Ich will keine Einschätzung
+von dir, ob 2 oder 3 Jahre richtig sind — ich will wissen, WEN ich
+frage.
+
+WAS ICH VON DIR WILL
+
+Erstens: eine Tabelle mit 8 bis 12 Treffern:
+Name | Kanzlei | Ort | Fachanwaltstitel | auch externer DSB? |
+E-Mail aus dem Impressum | Website | Quelle (Link) | warum passend
+
+Prüfe nach Möglichkeit, ob die Person im Bundesweiten Amtlichen
+Anwaltsverzeichnis (rechtsanwaltsregister.org) geführt wird, und sag
+dazu, ob du es geprüft hast oder nicht.
+
+Zweitens: Was kostet so ein Kurzmandat erfahrungsgemäß? Nenne die
+üblichen Abrechnungsformen (Stundensatz, Pauschale) mit Spannen und
+Quelle. Wenn du dazu nichts Belegbares findest, sag es.
+
+Drittens: Für die drei besten Treffer je eine FERTIGE E-MAIL zum
+Abschicken — mit der Anrede aus dem Impressum, dem Betreff und dem
+Text unten, auf die jeweilige Kanzlei zugeschnitten (ein Satz, warum
+genau sie). Kein Serienbrief-Ton.
+
+Sortiere nach Passung, nicht nach Bekanntheit.
+
+Der Brief, auf dem die E-Mails aufbauen sollen, steht unten.
+
+---
+[HIER DEN BRIEF AUS `ANFRAGEN.md`, ABSCHNITT 4, EINFÜGEN]
+```
+
+### Was mitgeschickt wird
+
+Der Brief steht in `ANFRAGEN.md`, Abschnitt 4 — dort ist er die maßgebliche
+Fassung. **Das Blatt `AUFBEWAHRUNGSFRISTEN.md` gehört in den Anhang**, nicht in
+die E-Mail: Eine Tabelle im Mailtext liest niemand, und zum Abhaken braucht es
+sie ohnehin als Datei.
+
+Zwei Dinge beim Abschicken:
+
+1. **Drei bis fünf Kanzleien, nicht zwanzig.** Wer eine Serienmail erkennt,
+   antwortet nicht.
+2. **Die Zusatzfrage zur Folgenabschätzung** (US-Übermittlung an Anthropic und
+   Resend) gleich mitnehmen — sie steht im selben Abschnitt und kostet
+   dieselbe Einarbeitung.
+
+### Woran du eine gute Antwort erkennst
+
+| Gutes Zeichen | Schlechtes Zeichen |
+|---|---|
+| Fragt nach dem Blatt und will es sehen, bevor er ein Honorar nennt | Nennt sofort eine Pauschale |
+| Sagt zu, dass du die Bestätigung **Kunden gegenüber** verwenden darfst | Weicht genau dieser Frage aus |
+| Nennt von sich aus Block C („wo löschen Sie?") als den kritischen Teil | Geht nur auf die Jahreszahlen ein |
+| Trennt, was er verantwortet, von dem, was beim Steuerberater liegt | Will „alles zusammen" bestätigen |
+
+Die letzte Zeile ist kein Formfehler, sondern die Probe: Wer anbietet, auch
+Block A mit zu unterschreiben, hat nicht verstanden, wofür er haftet — oder
+es ist ihm gleich. Beides ist ein Grund, weiterzusuchen.
+
+---
+
+## 4 · Versicherungsmakler für die Haftpflicht
+
+Dasselbe Verfahren, anderes Ziel. **Warum ein Makler und nicht direkt ein
+Versicherer:** Ob „Entgeltabrechnung" in der versicherten Tätigkeit steht,
+entscheidet über genau den Schaden, um den es geht — und das verhandelt ein
+Makler, kein Online-Formular. Die ganze Begründung steht in `VERSICHERUNG.md`.
+
+```
+Du hilfst mir, einen Versicherungsmakler zu finden. Nur belegbare
+Treffer mit Quellenlink; wo du nichts findest, schreib „nicht
+gefunden". Erfinde keine Namen und keine E-Mail-Adressen.
+
+WER FRAGT
+OKUN Systems UG (haftungsbeschränkt), Berlin. Softwarehaus, ein
+Geschäftsführer, keine Angestellten. Wir entwickeln und betreiben eine
+Personalsoftware im Mietmodell (SaaS) — Dienstplanung, Zeiterfassung
+und ENTGELTABRECHNUNG. Server in der EU. Kunden sind kleine und
+mittlere Betriebe, überwiegend Sozial- und Bildungsbereich.
+
+WAS ICH SUCHE
+Einen Makler mit Schwerpunkt IT- und Technologieunternehmen, der eine
+IT-Haftpflicht mit echter VERMÖGENSSCHADENDECKUNG platzieren kann.
+Unser Risiko ist kein Sachschaden, sondern eine falsch gerechnete
+Zahl: eine Nachforderung bei einer Betriebsprüfung, ein
+Säumniszuschlag, eine verspätete Meldung.
+
+DAS ENTSCHEIDENDE
+Die meisten IT-Policen schließen „Lohn- und Finanzbuchhaltung" oder
+„Steuer- und Rechtsberatung" aus. Ich brauche einen Makler, der mit
+diesem Ausschluss umgehen kann und die Tätigkeit „Entwicklung und
+Betrieb von Software zur Personalverwaltung einschließlich
+Entgeltabrechnung" in den Vertrag bekommt.
+
+WAS ICH VON DIR WILL
+
+Erstens: 6 bis 10 Makler oder Maklerhäuser mit nachweisbarem
+Schwerpunkt IT/SaaS:
+Name | Ort | Schwerpunkt | E-Mail aus dem Impressum | Website |
+Quelle | warum passend
+Prüfe, ob eine Erlaubnis als Versicherungsmakler nach §34d GewO im
+Vermittlerregister (vermittlerregister.info) eingetragen ist, und sag
+dazu, ob du es geprüft hast.
+
+Zweitens: Welche Versicherer zeichnen in Deutschland IT-Haftpflicht
+mit Vermögensschadendeckung für SaaS-Anbieter? Nenne sie mit Quelle
+und — falls öffentlich auffindbar — mit dem Hinweis, ob ihre
+Bedingungen Lohnbuchhaltung ausschließen. Wenn das nicht öffentlich
+steht, sag es, statt zu raten.
+
+Drittens: Für die drei besten Treffer je eine fertige E-Mail zum
+Abschicken, auf Grundlage des Briefes unten, mit Anrede aus dem
+Impressum.
+
+WAS ICH NICHT WILL
+Keine Vergleichsportale, keine Abschlussstrecken, keine allgemeine
+Erklärung, was eine Vermögensschadenhaftpflicht ist. Ich brauche
+Ansprechpartner.
+
+---
+[HIER DEN BRIEF AUS `ANFRAGEN.md`, ABSCHNITT 5, EINFÜGEN]
+```
+
+> **Erst nach der Antwort des Steuerberaters abschicken.** Eine unabhängig
+> gegengezeichnete Abrechnung ist im Risikogespräch das stärkste Argument,
+> das du hast — sie senkt nicht nur die Prämie, sie senkt das Risiko.
+
+---
+
 ## Was danach passiert
 
 Antworten zurückgeben. Die Zahlen kommen nach `LOHN-ZERTIFIZIERUNG.md`, die
 Bestätigung des Steuerberaters hakt Punkt 1 in `ABLAUFPLAN.md` ab — und das
 ist der Punkt, der den ersten echten Kunden blockiert.
+
+Die gegengezeichneten Fristen und die Police kommen auf deine Liste
+(`DEINE-LISTE.md`, Abschnitt 3) — das sind die beiden letzten Punkte dort, die
+nicht auf etwas von außen warten.
+
+> **Noch einmal, weil es der häufigste Weg ist, Geld zu verbrennen:** Jeder
+> Treffer aus diesen vier Suchaufträgen ist eine **Behauptung von ChatGPT**,
+> bis du Name, Register und Impressum selbst gesehen hast. Das gilt besonders
+> für die fertigen E-Mails — eine gut formulierte Mail an eine erfundene
+> Adresse sieht genauso aus wie eine an eine echte.

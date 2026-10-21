@@ -190,9 +190,9 @@ der Aufbewahrungsfristen gegenzeichnet — zwei Anliegen, ein Mandat.
 1. **Antwort des Steuerberaters abwarten.** Eine unabhängig gegengezeichnete
    Abrechnung ist das stärkste Argument im Risikogespräch — und sie senkt
    nicht nur die Prämie, sie senkt das Risiko.
-2. **Makler anschreiben** (`ANFRAGEN.md`, Abschnitt 5). Zwei oder drei
-   parallel; die Antworten auf die neun Fragen unterscheiden sich mehr als die
-   Preise.
+2. **Makler anschreiben** (`ANFRAGEN.md`, Abschnitt 5; wen, findet der
+   Suchauftrag in `SUCHAUFTRAEGE.md`, Abschnitt 4). Zwei oder drei parallel;
+   die Antworten auf die neun Fragen unterscheiden sich mehr als die Preise.
 3. **Die neun Antworten vergleichen**, nicht die Prämien. Eine Police ohne
    Entgeltabrechnung in der Tätigkeitsbeschreibung ist zu jedem Preis zu
    teuer.

@@ -183,10 +183,21 @@ dann trotzdem nichts bestätigt, was im Streitfall trägt. Seine
 Berufshaftpflicht deckt Steuer- und Sozialversicherungsrecht, nicht Art. 5
 Abs. 2 DSGVO.
 
-**An:** einen externen Datenschutzbeauftragten oder einen Fachanwalt für
-IT-Recht bzw. Arbeitsrecht
+**An:** einen **Fachanwalt für IT-Recht oder Arbeitsrecht** — ersatzweise einen
+externen Datenschutzbeauftragten
 **Betreff:** Kurzmandat — Prüfung von Lösch- und Aufbewahrungsfristen einer
 Personalsoftware
+
+> **Warum in dieser Reihenfolge, und nicht umgekehrt:** Der ganze Zweck einer
+> Gegenzeichnung ist, dass jemand mit **Berufshaftpflicht** dafür einsteht.
+> Bei Rechtsanwälten ist die gesetzlich vorgeschrieben — mindestens 250.000 €
+> je Versicherungsfall (§51 Abs. 4 BRAO) — und „Fachanwalt für IT-Recht" darf
+> nur führen, wem die Kammer es verliehen hat; Datenschutzrecht gehört
+> ausdrücklich zum Fachgebiet (§14k FAO). „Datenschutzbeauftragter" ist
+> dagegen keine staatlich geprüfte Berufsbezeichnung: Die DSGVO verlangt
+> Fachkunde (Art. 37 Abs. 5), schreibt aber keinen Nachweis vor. Darunter sind
+> sehr gute Leute — aber ob eine Haftpflicht dahintersteht, muss man einzeln
+> fragen. **Wen anschreiben: `SUCHAUFTRAEGE.md`, Abschnitt 3.**
 
 > Sehr geehrte Damen und Herren,
 >

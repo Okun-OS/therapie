@@ -366,10 +366,21 @@ er nicht ein, auch wenn er freundlich nickt. Darum ist das Blatt geteilt:
 | **Block C** | wo wir **löschen** statt aufzubewahren — **10 Datenarten** | beide, je nach Fundstelle | mit den Blöcken mit |
 
 **Was du tun musst:** den Brief aus `ANFRAGEN.md`, Abschnitt 4, abschicken —
-mit dem Blatt im Anhang. Wen anschreiben: ein externer
-Datenschutzbeauftragter oder ein Fachanwalt; ein Kurzmandat, keine
-Dauerbestellung. Ein Datenschutzbeauftragter ist bei euch ohnehin erst ab 20
-Personen Pflicht (§38 BDSG).
+mit dem Blatt im Anhang. **Wen anschreiben, findet der Suchauftrag in
+`SUCHAUFTRAEGE.md`, Abschnitt 3** — er liefert dir auch gleich drei fertige
+E-Mails. Ein Kurzmandat, keine Dauerbestellung; ein
+Datenschutzbeauftragter ist bei euch ohnehin erst ab 20 Personen Pflicht
+(§38 BDSG).
+
+> **Und nimm einen Fachanwalt, nicht „einen Datenschutzbeauftragten".** Der
+> ganze Zweck ist, dass jemand mit **Berufshaftpflicht** einsteht. Bei
+> Anwälten ist die Pflicht — mindestens 250.000 € je Versicherungsfall
+> (§51 Abs. 4 BRAO) —, und „Fachanwalt für IT-Recht" darf nur führen, wem die
+> Kammer es verliehen hat; Datenschutzrecht gehört zum Fachgebiet (§14k FAO).
+> „Datenschutzbeauftragter" ist keine staatlich geprüfte Berufsbezeichnung:
+> Fachkunde verlangt die DSGVO (Art. 37 Abs. 5), einen Nachweis nicht. Ohne
+> Haftpflicht ist die Unterschrift ein freundliches Schreiben. Am besten ist
+> beides in einer Person — das gibt es häufig.
 
 > **Block C ist der Teil, den man weglassen würde, und der teurere.** Zu lange
 > aufzubewahren kostet ein Bußgeld. Zu früh zu löschen heißt, bei der Prüfung
@@ -385,7 +396,8 @@ Personen Pflicht (§38 BDSG).
 ### 🟡 Vermögensschadenhaftpflicht klären — **`VERSICHERUNG.md`**
 
 Wer Gehälter rechnet, haftet. **Worauf zu achten ist, steht jetzt vollständig
-in `VERSICHERUNG.md`; der Brief an den Makler in `ANFRAGEN.md`, Abschnitt 5.**
+in `VERSICHERUNG.md`; der Brief an den Makler in `ANFRAGEN.md`, Abschnitt 5;
+wen du anschreibst, findet `SUCHAUFTRAEGE.md`, Abschnitt 4.**
 Die drei Dinge, an denen es hängt — alles andere ist Verhandlung:
 
 1. **„Entgeltabrechnung" muss in der versicherten Tätigkeit stehen.** Steht
@@ -563,19 +575,13 @@ Nichts davon hält etwas auf. Beides sind Verbesserungen, keine Lücken.
       der Produktion. Das mache ich nur auf dein ausdrückliches Ja. Bis dahin
       stört es nicht: Geschrieben wird es nicht mehr, gelesen nur noch von der
       DSGVO-Auskunft — die muss nennen, was gespeichert ist.
-- [ ] **Die alten Zeitbuchungen nachrechnen?** Bis §206 hatte `totalMinutes`
-      drei verschiedene Bedeutungen: Beim Stempeln war es die Zeit **ohne**
-      Pause, bei einer Korrektur und beim Nachtragen **mit** — und sechzehn
-      Stellen in der Anzeige haben die Pause noch einmal abgezogen. Korrigierte
-      Buchungen wurden dadurch **zu hoch** bezahlt, gestempelte zu niedrig
-      angezeigt, auch im §16-ArbZG-Nachweis. Die Rechnung selbst ist seit §206
-      eindeutig; **was vorher in der Datenbank steht, ist unverändert falsch.**
-
-      Das lässt sich nachrechnen. Aber es ändert bezahlte Beträge, und zwar in
-      der Produktion — **das mache ich nur auf dein ausdrückliches Ja.** Vorher
-      zeige ich dir eine Liste: welche Buchungen, welcher Monat, welche
-      Differenz, und ob jemand zu viel oder zu wenig bekommen hat. Sag Bescheid,
-      dann rechne ich sie dir zuerst aus, ohne etwas zu ändern.
+- [x] **Die alten Zeitbuchungen nachrechnen? — nein, entschieden am 21.10.**
+      Bis §206 hatte `totalMinutes` drei verschiedene Bedeutungen, wodurch
+      korrigierte Buchungen zu hoch und gestempelte zu niedrig standen. Die
+      Rechnung ist seit §206 eindeutig; die alten Zahlen blieben falsch.
+      **Du hast klargestellt: Es betrifft ausschließlich Demo-Kunden** — es ist
+      also nie ein Gehalt danach ausgezahlt worden. Damit ist nichts
+      nachzurechnen, und ich fasse die Buchungen nicht an.
 - [ ] **Die Download-Seite für das Windows-Programm.** Die baue ich, sobald
       das Zertifikat da ist — eine unsignierte Datei zum Herunterladen
       anzubieten, schreckt mehr Leute ab, als sie überzeugt. Hängt also am
