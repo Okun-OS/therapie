@@ -69,13 +69,37 @@ Der Steuerberater sieht ELStAM-Änderungslisten täglich. Häng diese Absätze a
 >    nur gegen nachgebaute Dateien geprüft. Uns geht es ausschließlich um das
 >    Dateiformat, nicht um Inhalte.
 > 5. Könnten Sie die **Aufbewahrungsfristen** bestätigen, die wir im Programm
->    hinterlegt haben? Es sind vier, jeweils mit Fundstelle. Eine Seite zum
->    Gegenlesen.
+>    hinterlegt haben? Wir legen sie als ein Blatt bei: sieben Fristen aus dem
+>    Steuer- und Sozialversicherungsrecht, jeweils mit Fundstelle, dazu zehn
+>    Datenarten, bei denen wir löschen. Zum Gegenlesen und Abhaken.
 
 > **Warum Frage 4 hierher gehört:** Eine echte Änderungsliste entsteht nur in
 > einem laufenden Arbeitgeberverhältnis. Entweder du wartest auf den ersten
 > Kunden — oder du fragst jemanden, der sie ohnehin täglich sieht. Anonymisiert
 > reicht völlig; gebraucht wird nur das Format.
+
+### 🔴 Berichtigung zu Frage 5 — nachschicken
+
+**Hier stand „Es sind vier", und das ist falsch.** Es sind **zehn Fristen**, und
+außerdem zehn Datenarten, bei denen das Programm löscht statt aufzubewahren.
+„Vier" war die Zahl der verschiedenen *Jahreszahlen* (2, 3, 6 und 10 Jahre) —
+nicht die Zahl der Zeilen. Nachgezählt im Katalog selbst (20 Datenarten).
+
+Falls der Brief mit „vier" schon heraus ist: Das ist kein Beinbruch, aber es
+gehört richtiggestellt, **bevor** eine Unterschrift darunter kommt. Ein Satz
+genügt:
+
+> Nachtrag zu Frage 5: Die Zahl „vier" in meiner Anfrage war die Zahl der
+> verschiedenen Fristlängen, nicht die der Positionen. Tatsächlich sind es
+> zehn Fristen, dazu zehn Datenarten, bei denen wir löschen. Ich lege das
+> vollständige Blatt bei; der Umfang bleibt eine Seite plus Erläuterungen.
+
+**Das Blatt selbst liegt jetzt bereit:** `AUFBEWAHRUNGSFRISTEN.md`. Es wird aus
+dem Katalog gerechnet (`npm run fristen:blatt`), nicht von Hand geschrieben —
+damit kann es gar nicht erst etwas anderes behaupten als das Programm tut. Es
+ist in drei Blöcke geteilt, und die Teilung ist der Punkt: **Block A** (sieben
+Fristen) ist das, wofür ein Steuerberater einstehen kann, **Block B** (drei
+Fristen) nicht — dazu unten, Abschnitt 4.
 
 ---
 
@@ -146,6 +170,154 @@ läuft das über den Steuerberater, und das ist in Ordnung — siehe
 > Mit freundlichen Grüßen
 > Felix Okun
 > OKUN Systems UG (haftungsbeschränkt)
+
+---
+
+## 4 · Datenschutzbeauftragter oder Fachanwalt — Block B gegenzeichnen
+
+**Warum dieser Brief überhaupt nötig ist, obwohl der Steuerberater schon
+gefragt ist:** Drei der zehn Fristen folgen nicht aus dem Steuerrecht. Sie
+stehen im Arbeitszeitgesetz, im Mindestlohngesetz und in der DSGVO selbst.
+Dafür steht ein Steuerberater nicht ein — er wird freundlich nicken und hat
+dann trotzdem nichts bestätigt, was im Streitfall trägt. Seine
+Berufshaftpflicht deckt Steuer- und Sozialversicherungsrecht, nicht Art. 5
+Abs. 2 DSGVO.
+
+**An:** einen externen Datenschutzbeauftragten oder einen Fachanwalt für
+IT-Recht bzw. Arbeitsrecht
+**Betreff:** Kurzmandat — Prüfung von Lösch- und Aufbewahrungsfristen einer
+Personalsoftware
+
+> Sehr geehrte Damen und Herren,
+>
+> wir sind ein Softwarehaus aus Berlin und betreiben eine Personalsoftware
+> (Dienstplanung, Zeiterfassung, Entgeltabrechnung), die bei Kunden als
+> Auftragsverarbeiter eingesetzt wird.
+>
+> Die Software löscht beim Ausscheiden einer beschäftigten Person nicht
+> pauschal, sondern entscheidet je Datenart: löschen, anonymisieren oder nach
+> Art. 18 DSGVO sperren, bis eine gesetzliche Aufbewahrungsfrist abgelaufen
+> ist. Diese Entscheidungen sind dokumentiert und jeweils mit Fundstelle
+> belegt, aber nicht anwaltlich geprüft.
+>
+> Der steuer- und sozialversicherungsrechtliche Teil ist bei einem
+> Steuerberater in Prüfung. Uns geht es hier um den übrigen Teil:
+>
+> 1. **Arbeitszeitnachweise** — zwei Jahre, gestützt auf §16 Abs. 2 ArbZG und
+>    §17 MiLoG.
+> 2. **Nachweise über erfolgte Unterweisungen** — drei Jahre gesperrt,
+>    gestützt auf Art. 17 Abs. 3 lit. e DSGVO und die Regelverjährung.
+> 3. **Zugriffsprotokolle** — drei Jahre, gestützt auf die
+>    Rechenschaftspflicht (Art. 5 Abs. 2 DSGVO).
+> 4. **Bewerbungsunterlagen** — sechs Monate nach Abschluss des Verfahrens,
+>    gestützt auf §15 Abs. 4 AGG.
+> 5. **Zehn weitere Datenarten, die wir vollständig löschen** — darunter
+>    Angaben zum betrieblichen Eingliederungsmanagement. Hier ist die Frage
+>    nicht, ob wir zu lange aufbewahren, sondern ob wir zu früh löschen.
+>
+> Wir legen das vollständige Blatt bei; es ist eine Seite Tabelle mit
+> Erläuterungen. Gebeten wird um eine **schriftliche Bestätigung**, dass die
+> Fristen und Fundstellen zutreffen, oder um den Hinweis, welche Frist richtig
+> wäre und warum.
+>
+> Zwei Fragen vorab:
+>
+> * Übernehmen Sie ein solches Kurzmandat, und in welchem Rahmen?
+> * Dürfen wir die Bestätigung unseren Kunden gegenüber als Nachweis
+>   verwenden?
+>
+> Mit freundlichen Grüßen
+> Felix Okun
+> OKUN Systems UG (haftungsbeschränkt)
+
+### Wenn ohnehin jemand draufschaut — eine Frage mitnehmen
+
+Für die Übermittlung an Anthropic und Resend in die USA fehlt noch eine
+Folgenabschätzung (Transfer Impact Assessment). Das ist eine Seite, kein
+Projekt, und wer gerade im Mandat ist, macht sie mit:
+
+> Darüber hinaus: Wir übermitteln an zwei Dienstleister in die USA, in beiden
+> Fällen auf Grundlage der Standardvertragsklauseln (Modul 2). Könnten Sie uns
+> eine kurze Folgenabschätzung für diese Übermittlungen erstellen oder die
+> von uns entworfene gegenlesen?
+
+> **Was dieser Brief NICHT ist:** eine Anfrage, einen Datenschutzbeauftragten
+> zu bestellen. Pflicht ist das erst ab 20 Personen (§38 BDSG) — ihr seid
+> weit darunter. Gefragt ist eine einmalige Durchsicht, kein Dauermandat.
+
+---
+
+## 5 · Versicherungsmakler — Vermögensschadenhaftpflicht
+
+**Nicht direkt bei einem Versicherer anfragen, sondern bei einem Makler mit
+Schwerpunkt IT.** Der Grund ist nicht der Preis, sondern die
+Tätigkeitsbeschreibung: Ob „Entgeltabrechnung" im Vertrag steht oder nicht,
+entscheidet über genau den Schaden, um den es hier geht — und das verhandelt
+ein Makler, kein Formular.
+
+**Die Begründung im Einzelnen und alle Fallen stehen in `VERSICHERUNG.md`.**
+Dieser Brief ist nur der Anfang davon.
+
+**An:** einen Versicherungsmakler für IT- und Technologieunternehmen
+**Betreff:** IT-Haftpflicht mit Vermögensschadendeckung — Angebotsanfrage,
+Softwarehaus mit Entgeltabrechnung
+
+> Sehr geehrte Damen und Herren,
+>
+> wir sind die OKUN Systems UG (haftungsbeschränkt) aus Berlin, ein
+> Softwarehaus mit derzeit einem Geschäftsführer und ohne Angestellte. Wir
+> entwickeln und betreiben eine Personalsoftware, die unsere Kunden selbst
+> bedienen: Dienstplanung, Zeiterfassung und **Entgeltabrechnung**. Die
+> Software läuft als Mietmodell (SaaS) auf Servern in der EU; die Kunden sind
+> kleine und mittlere Betriebe, überwiegend aus dem Sozial- und
+> Bildungsbereich.
+>
+> Wir suchen eine Haftpflichtversicherung, die **echte Vermögensschäden**
+> abdeckt. Der Schaden, der uns realistisch trifft, ist nicht ein zerstörter
+> Gegenstand, sondern ein falsch gerechneter Beitrag: eine Nachforderung bei
+> einer Betriebsprüfung, ein Säumniszuschlag, eine verspätete Meldung.
+>
+> Bitte beantworten Sie uns vor einem Angebot die folgenden Punkte
+> **schriftlich** — sie entscheiden darüber, ob eine Police für uns überhaupt
+> etwas wert ist:
+>
+> 1. Steht in der versicherten Tätigkeit ausdrücklich **„Entwicklung und
+>    Betrieb von Software zur Personalverwaltung einschließlich
+>    Entgeltabrechnung"**? Falls nicht: Welche Formulierung schließt diesen
+>    Bereich ein?
+> 2. Enthält die Police einen **Ausschluss für Lohn-, Finanzbuchhaltung oder
+>    Steuerberatung**? Wenn ja, in welchem Wortlaut, und greift er auch dann,
+>    wenn nicht wir, sondern der Kunde die Abrechnung auslöst?
+> 3. Gilt die Deckung nach dem **Verstoßprinzip** oder dem
+>    **Anspruchserhebungsprinzip** („claims made")?
+> 4. Wie lang ist die **Nachhaftung**, und gibt es
+>    **Rückwärtsdeckung** für Pflichtverletzungen aus der Zeit vor
+>    Vertragsbeginn, die noch niemandem aufgefallen sind?
+> 5. Welche **Deckungssumme** empfehlen Sie für diese Tätigkeit, und wie oft
+>    steht sie im Jahr zur Verfügung (Maximierung)?
+> 6. Sind **Datenschutzverstöße** mitversichert, und zwar getrennt nach
+>    Ansprüchen Betroffener (Art. 82 DSGVO), Bußgeldern und den Kosten eines
+>    Datenschutzvorfalls?
+> 7. Ist **Mangelbeseitigung** (Nacherfüllung, Nachprogrammierung)
+>    ausgeschlossen? Wir gehen davon aus — bitte bestätigen Sie es, damit wir
+>    nicht damit rechnen.
+> 8. Welche Anforderungen stellt der Versicherer an **unsere eigenen
+>    Verträge**, insbesondere an eine Haftungsbegrenzung in unseren AGB? Wir
+>    möchten unsere Verträge an die Police anpassen, nicht umgekehrt.
+> 9. Verlangt der Versicherer Nachweise über **Qualitätssicherung**? Wir
+>    können eine automatisierte Prüfstrecke und eine unabhängige Durchsicht
+>    unserer Abrechnungsergebnisse durch einen Steuerberater belegen.
+>
+> Über eine Einschätzung und ein Angebot würden wir uns freuen.
+>
+> Mit freundlichen Grüßen
+> Felix Okun
+> OKUN Systems UG (haftungsbeschränkt)
+
+> **Punkt 9 ist kein Angeberei-Satz**, sondern ein Preisargument: Eine
+> gegengezeichnete Abrechnung und eine Prüfstrecke sind genau das, was ein
+> Risikoprüfer sehen will. Darum lohnt es, diesen Brief **nach** der Antwort
+> des Steuerberaters zu schicken — nicht davor.
 
 ---
 

@@ -13,9 +13,8 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 
 ```
 HEUTE MÖGLICH
-  VAPID-Schlüssel ──5 Minuten──►  Push im Browser
-  Firebase        ──20 Minuten──►  Push in der App (Android)
-  Zehn E-Mail-Adressen ──►  die Wohngruppe kann die App benutzen
+  Zwei Briefe abschicken ──►  Fristen gegengezeichnet (Block B)
+                         └─►  Angebote für die Haftpflicht
 
 LÄUFT SCHON — WARTET AUF ANTWORT
   D-U-N-S-Nummer ──beantragt 21.10.──►  Apple-Konto ─► APNs ─► App Store
@@ -23,11 +22,17 @@ LÄUFT SCHON — WARTET AUF ANTWORT
                                      └─►  Play-Konto ─► Play Store
                                           Beide Stores, eine Nummer.
   Steuerberater  ──angeschrieben 21.10.──►  erster echter Kunde
+                                      └─►  Fristen Block A
+                                      └─►  ELStAM-Beispieldatei
 
 ERLEDIGT
-  Domain · Firmenangaben · Impressum · Website
+  Domain · Firmenangaben · Impressum · Website · Benachrichtigungen
   AVVs (alle fünf) · Cloudflare R2 · Code-Signing (Azure)
 ```
+
+**Es sind nur noch zwei eigenständige Punkte offen** — die beiden Briefe oben.
+Alles andere wartet entweder auf eine Antwort von außen oder ist Bauarbeit und
+steht damit auf meiner Liste, nicht auf deiner.
 
 **Erledigt am 27.09.:** Die Umlagesätze U1/U2 standen hier als deine Aufgabe.
 Das war falsch einsortiert — sie gehören dem Kunden, nicht dir (siehe unten
@@ -70,6 +75,19 @@ Vorlage gemessen.
   die Programmdateien einen Ort; die Adresse dafür ist
   `okun-workforce.com/programm/…` und steht auf der eigenen Domain, damit
   der Speicher dahinter austauschbar bleibt.
+* **Die Benachrichtigungen sind eingeschaltet.** Alle drei VAPID-Variablen
+  stehen bei Railway, auch die öffentliche mit `NEXT_PUBLIC_`. Damit klingelt
+  es im Browser und auf dem iPhone, wenn die Seite auf dem Startbildschirm
+  liegt. Was noch fehlt, ist nur der Weg über die Stores — und der wartet auf
+  die D-U-N-S-Nummer, nicht auf dich.
+
+**Von der Liste gestrichen am 21.10. — der Testkunde.** Hier stand ein ganzer
+Abschnitt „4b · Der neue Kunde: Wohngruppe" mit zehn E-Mail-Adressen, zwei zu
+bestätigenden Schätzungen und den Fixterminen der Leitung. Das war ein
+**Regelpaket zum Ausprobieren**, mit dem du nachsehen wolltest, ob die
+Dienstpläne stimmen — kein Betrieb, der auf etwas wartet. Drei rote Punkte
+weniger, und keiner davon durch Arbeit erledigt, sondern durch eine
+Richtigstellung von dir.
 
 **Drei Punkte von dieser Liste gestrichen, 05.10. (von dir berichtigt):** Die
 D-U-N-S-Nummer ist beantragt. Die Domain war längst verbunden — ich hatte sie
@@ -87,8 +105,8 @@ alles. Sie steht nicht mehr auf dieser Liste.
 Google überhaupt nicht und lässt sich in fünf Minuten einschalten — du hast
 darauf gewartet, ohne dass du musstest. Anleitung: `FIREBASE.md`.
 
-Punkt 1 hängt an Dritten und läuft. **Jetzt oben: das Zertifikat für Windows**
-— die Identitätsprüfung dauert bis zu 20 Werktage, alles andere läuft daneben.
+**Jetzt oben: die zwei Briefe** (Fristen Block B, Haftpflicht). Alles andere
+hängt an Dritten und läuft — oder ist Bauarbeit und steht auf meiner Liste.
 
 ---
 
@@ -209,7 +227,14 @@ bleibt in `DOMAIN.md` stehen — falls die Einträge einmal nachzusehen sind.
 
 ## 2 · Konten, Schlüssel und Firmenangaben
 
-### 🔴 Benachrichtigungen einschalten — **Anleitung: `FIREBASE.md`**
+### ✅ Benachrichtigungen einschalten — erledigt am 21.10.
+
+**Weg 1 steht.** Die drei VAPID-Variablen liegen bei Railway, einschließlich
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Im Browser klingelt es, und auf dem iPhone
+auch, sobald die Seite auf dem Startbildschirm liegt. **Weg 2 (Firebase)
+bleibt offen — aber er wird erst gebraucht, wenn die App in den Stores
+liegt**, und das hängt an der D-U-N-S-Nummer. Vorher gibt es dort nichts
+einzurichten.
 
 **Hier stand, ohne den Firebase-Schlüssel verschicke das System „keine
 einzige Benachrichtigung". Das war falsch**, und es hat dich Wochen gekostet,
@@ -223,20 +248,13 @@ Es sind zwei getrennte Wege, und nur einer braucht Firebase:
 | **1** | **Web-Push** | jeden im Browser, und das iPhone mit der Seite auf dem Startbildschirm | **nichts.** Kein Google-Konto, kein Store |
 | **2** | **Nativ (Firebase)** | die App aus den Stores, auch wenn sie zu ist | Firebase, für iOS zusätzlich das Apple-Konto |
 
-**🟢 Weg 1 geht heute, in fünf Minuten:**
-
-```bash
-npm run push:schluessel
-```
-
-Die zwei Schlüssel bei Railway eintragen — `VAPID_PUBLIC_KEY`,
-`VAPID_PRIVATE_KEY` und denselben öffentlichen noch einmal als
-`NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Fertig. Danach klingelt es im Browser.
+**✅ Weg 1 ist eingeschaltet** — `npm run push:schluessel` erzeugt die
+Schlüssel, alle drei stehen bei Railway. Nichts mehr zu tun.
 
 **🟡 Weg 2 für Android:** Firebase-Projekt anlegen, Dienstkonto-Schlüssel nach
-Railway, `google-services.json` an mich. Zwanzig Minuten, kostenlos. Die App
-selbst in den Play Store zu bringen braucht aber das Entwicklerkonto — und das
-wartet auf die D-U-N-S-Nummer.
+Railway, `google-services.json` an mich. Zwanzig Minuten, kostenlos. **Aber
+erst, wenn das Play-Konto steht** — ohne Store bringt der Weg nichts, was Weg 1
+nicht schon kann. Und das Konto wartet auf die D-U-N-S-Nummer.
 
 **🔴 Weg 2 für iPhone:** wartet auf die D-U-N-S-Nummer — und auf einen Mac,
 siehe `APP-STORES.md`.
@@ -309,21 +327,87 @@ normales Mandat, nach Zeit abgerechnet. Entscheidend ist, dass die Bestätigung
 
 **Blockiert:** den ersten echten Kunden. Details: `ABLAUFPLAN.md`, Punkt 1.
 
-### 🔴 Eine echte ELStAM-Änderungsliste besorgen
+### 🟡 Eine echte ELStAM-Änderungsliste besorgen — mitgefragt am 21.10.
 Der Import ist gebaut, aber nur an nachgebauten Dateien geprüft. Eine echte
 Liste zeigt, ob das Format stimmt.
 
 **Sie entsteht nur in einem laufenden Arbeitgeberverhältnis** — also entweder
 beim ersten Kunden, oder, schneller, beim Steuerberater, der solche Listen
-täglich sieht. **Anonymisiert reicht**; gebraucht wird nur das Format. Die
-Frage steht fertig formuliert in `ANFRAGEN.md`, gleich im selben Brief.
+täglich sieht. **Anonymisiert reicht**; gebraucht wird nur das Format.
 
-### 🟡 Aufbewahrungsfristen gegenzeichnen lassen
-Vier Fristen stehen mit Vorschrift in `src/lib/dsgvo-katalog.ts`, sind aber
-ungeprüft. Steuerberater **oder** Datenschutzbeauftragter.
+**Steht als Frage 4 im Brief an den Steuerberater und ist damit unterwegs.**
+Dieser Punkt wartet jetzt auf dieselbe Antwort wie der darüber — du musst
+dafür nichts mehr tun.
 
-### 🟡 Vermögensschadenhaftpflicht klären
-Wer Gehälter rechnet, haftet. Vor dem ersten echten Kunden klären.
+### 🟡 Aufbewahrungsfristen gegenzeichnen lassen — **es braucht zwei Unterschriften, nicht eine**
+
+**Das Blatt zum Gegenzeichnen liegt jetzt bereit:
+`AUFBEWAHRUNGSFRISTEN.md`.** Es wird aus dem Katalog gerechnet
+(`npm run fristen:blatt`), nicht getippt — es kann also nichts anderes
+behaupten als das, was das Programm tatsächlich löscht. Eine Prüfung hält das
+fest: Kommt eine Datenart dazu und erzeugt niemand das Blatt neu, wird sie rot.
+
+**Berichtigung, 21.10.:** Hier stand „vier Fristen". Es sind **zehn**, dazu
+zehn Datenarten, bei denen gelöscht wird — zusammen zwanzig Zeilen. „Vier" war
+die Zahl der verschiedenen Fristlängen (2, 3, 6 und 10 Jahre). Dieselbe falsche
+Zahl steht in dem Brief, den du am 21.10. abgeschickt hast; **ein Satz zum
+Nachschicken steht in `ANFRAGEN.md`**, direkt unter Frage 5.
+
+**Und der eigentliche Punkt: ein Steuerberater kann das nicht allein
+unterschreiben.** Seine Berufshaftpflicht trägt Steuer- und
+Sozialversicherungsrecht. Drei der zehn Fristen stehen aber im
+Arbeitszeitgesetz, im Mindestlohngesetz und in der DSGVO selbst — dafür steht
+er nicht ein, auch wenn er freundlich nickt. Darum ist das Blatt geteilt:
+
+| | Woraus die Fristen folgen | Wer unterschreibt | Stand |
+|---|---|---|---|
+| **Block A** | §41 EStG, §147 AO, §257 HGB, §28f SGB IV, SGB III, ZPO — **7 Fristen** | Steuerberater | ✉️ gefragt 21.10. |
+| **Block B** | §16 ArbZG, §17 MiLoG, Art. 5 und 17 DSGVO — **3 Fristen** | Datenschutzbeauftragter **oder** Fachanwalt (IT-/Arbeitsrecht) | 🔴 **Brief steht fertig** |
+| **Block C** | wo wir **löschen** statt aufzubewahren — **10 Datenarten** | beide, je nach Fundstelle | mit den Blöcken mit |
+
+**Was du tun musst:** den Brief aus `ANFRAGEN.md`, Abschnitt 4, abschicken —
+mit dem Blatt im Anhang. Wen anschreiben: ein externer
+Datenschutzbeauftragter oder ein Fachanwalt; ein Kurzmandat, keine
+Dauerbestellung. Ein Datenschutzbeauftragter ist bei euch ohnehin erst ab 20
+Personen Pflicht (§38 BDSG).
+
+> **Block C ist der Teil, den man weglassen würde, und der teurere.** Zu lange
+> aufzubewahren kostet ein Bußgeld. Zu früh zu löschen heißt, bei der Prüfung
+> nichts vorlegen zu können — und das zahlt der Kunde, der euch dann in
+> Anspruch nimmt. Darum steht auf dem Blatt auch, wo wir löschen, mit der
+> Frage, ob das richtig ist.
+
+> **Nicht beim Steuerberater mitfragen und bei der Aufsichtsbehörde auch
+> nicht.** Die Berliner Datenschutzbeauftragte beantwortet Fragen, aber sie
+> zeichnet nichts gegen und gibt keine verbindliche Auskunft. Ein Nachweis
+> gegenüber einem Kunden entsteht dort nicht.
+
+### 🟡 Vermögensschadenhaftpflicht klären — **`VERSICHERUNG.md`**
+
+Wer Gehälter rechnet, haftet. **Worauf zu achten ist, steht jetzt vollständig
+in `VERSICHERUNG.md`; der Brief an den Makler in `ANFRAGEN.md`, Abschnitt 5.**
+Die drei Dinge, an denen es hängt — alles andere ist Verhandlung:
+
+1. **„Entgeltabrechnung" muss in der versicherten Tätigkeit stehen.** Steht
+   dort nur „Softwareentwicklung", lehnt der Versicherer genau den Schaden ab,
+   gegen den du dich versichert hast — zu Recht.
+2. **Der Ausschluss für „Lohn- und Finanzbuchhaltung"** steht in vielen
+   IT-Policen weit hinten und macht sie für euch leer. Den Satz suchen,
+   zitieren, schriftlich beantworten lassen.
+3. **Nachhaftung und Rückwärtsdeckung.** Die meisten Policen zahlen, wenn der
+   Anspruch während der Laufzeit *gestellt* wird. Ein Abrechnungsfehler fällt
+   aber erst bei der Betriebsprüfung auf — Jahre später. Fünf Jahre
+   Nachhaftung, und **abschließen, bevor der erste echte Kunde abrechnet**:
+   danach gibt es für die Zeit davor keine Deckung mehr.
+
+> **Und eine Reihenfolge, die Geld spart:** erst die Antwort des
+> Steuerberaters, dann den Makler anschreiben. Eine unabhängig
+> gegengezeichnete Abrechnung ist das stärkste Argument im Risikogespräch.
+
+> **Was ich dabei nicht kann:** einen Preis nennen und einen Versicherer
+> empfehlen. Beides entscheidet das Angebot, und jede Zahl, die ich hier
+> hinschriebe, wäre geraten. Was ich kann, ist die neun Fragen zu stellen, auf
+> die es ankommt — die stehen im Brief.
 
 ### ✅ AVVs mit den Dienstleistern — alle fünf erledigt
 Auftragsverarbeitungsverträge. Ohne sie kein DSGVO-konformer Betrieb beim
@@ -479,6 +563,19 @@ Nichts davon hält etwas auf. Beides sind Verbesserungen, keine Lücken.
       der Produktion. Das mache ich nur auf dein ausdrückliches Ja. Bis dahin
       stört es nicht: Geschrieben wird es nicht mehr, gelesen nur noch von der
       DSGVO-Auskunft — die muss nennen, was gespeichert ist.
+- [ ] **Die alten Zeitbuchungen nachrechnen?** Bis §206 hatte `totalMinutes`
+      drei verschiedene Bedeutungen: Beim Stempeln war es die Zeit **ohne**
+      Pause, bei einer Korrektur und beim Nachtragen **mit** — und sechzehn
+      Stellen in der Anzeige haben die Pause noch einmal abgezogen. Korrigierte
+      Buchungen wurden dadurch **zu hoch** bezahlt, gestempelte zu niedrig
+      angezeigt, auch im §16-ArbZG-Nachweis. Die Rechnung selbst ist seit §206
+      eindeutig; **was vorher in der Datenbank steht, ist unverändert falsch.**
+
+      Das lässt sich nachrechnen. Aber es ändert bezahlte Beträge, und zwar in
+      der Produktion — **das mache ich nur auf dein ausdrückliches Ja.** Vorher
+      zeige ich dir eine Liste: welche Buchungen, welcher Monat, welche
+      Differenz, und ob jemand zu viel oder zu wenig bekommen hat. Sag Bescheid,
+      dann rechne ich sie dir zuerst aus, ohne etwas zu ändern.
 - [ ] **Die Download-Seite für das Windows-Programm.** Die baue ich, sobald
       das Zertifikat da ist — eine unsignierte Datei zum Herunterladen
       anzubieten, schreckt mehr Leute ab, als sie überzeugt. Hängt also am
@@ -486,33 +583,22 @@ Nichts davon hält etwas auf. Beides sind Verbesserungen, keine Lücken.
 
 ---
 
-## 4b · Der neue Kunde: Wohngruppe
+## 4b · Der Testkunde Wohngruppe — gestrichen am 21.10.
 
-Das Regelpaket ist gebaut und gerechnet (Score 98, Freigabe erteilt). Kunde,
-Standort, die 18 Dienstzeiten und die zehn Mitarbeiterprofile sind angelegt.
-Drei Dinge kann nur der Betrieb selbst:
+Hier standen drei Punkte: zehn E-Mail-Adressen eintragen, zwei geschätzte
+Angaben bestätigen, die Fixtermine der Leitung nachtragen. **Alle drei sind
+weg** — du hast klargestellt, dass die Wohngruppe ein Regelpaket zum
+Ausprobieren war, mit dem du nachsehen wolltest, ob die Dienstpläne stimmen.
 
-### 🔴 E-Mail-Adressen der zehn Beschäftigten eintragen
-Beim Einrichten gibt es sie noch nicht; bis dahin steht eine Platzhalter-
-adresse da, an die nichts zugestellt werden kann. **Solange sie fehlt, kann
-niemand eingeladen werden** — das Programm lehnt die Einladung mit einem Satz
-ab, der sagt, was zu tun ist.
+Es wartet dort also kein Betrieb. Kunde, Standort, die 18 Dienstzeiten und die
+zehn Profile bleiben als Testdaten im System stehen; das Regelpaket ist
+gerechnet (Score 98) und taugt weiter als Vorführung. Wird daraus doch ein
+echter Kunde, kommen die drei Punkte zurück.
 
-**Wo (seit §200):** Mitarbeiter öffnen → Kasten **„Zugang zur App"** →
-„Adresse eintragen" → „Ändern und einladen". Das geht bei der Standortleitung
-und bei der Geschäftsführung, und die Einladung geht im selben Zug raus.
-
-### 🟡 Zwei Angaben bestätigen, die ich geschätzt habe
-- **Tage pro Woche** je Person: aus dem Pensum geschätzt (Pensum ÷ 8 Stunden).
-  Das ist die einzige Zahl in den Stammdaten, die nicht im Regelwerk steht.
-- **Die festen Einsätze der 25-%-Kraft** (Mo 07:45–19:15, Do 07:15–08:30). Ich
-  habe nur ihre Verfügbarkeit hinterlegt — „nur Mo und Do" —, nicht die festen
-  Zeiten. Der Plan gibt ihr derzeit andere Dienste an diesen Tagen.
-
-### 🟡 Die Fixtermine der Leitung eintragen
-Teamsitzung, WWS-Sitzung, Gesamtsitzung. Das Regelwerk nennt sie selbst als
-ERSTEN Schritt der Planung, noch vor dem Rechnen — sie gehören als Termin in
-den Plan, nicht als Regel ins Paket, und sie ändern sich monatlich.
+> **Der Weg für echte Kunden bleibt derselbe** und steht nicht mehr auf dieser
+> Liste, sondern in `UEBERGABE-KUNDEN.md`: Mitarbeiter öffnen → Kasten
+> „Zugang zur App" → „Adresse eintragen" → „Ändern und einladen". Ohne Adresse
+> lehnt das Programm die Einladung ab und sagt, was zu tun ist.
 
 ---
 
@@ -609,9 +695,11 @@ manche Kassen ändern sie mitten im Jahr (2026 gleich drei).
 
 Damit du weißt, was du **nicht** übernehmen musst:
 
-1. `google-services.json` einbauen und dir **die fertige `.apk` schicken**,
-   sobald du das Firebase-Projekt angelegt hast. Dann klingelt dein Telefon —
-   ohne Play Store, ohne Konto.
+1. `google-services.json` einbauen, **sobald das Play-Konto steht** — vorher
+   bringt Firebase nichts, was der Weg über den Browser nicht schon kann.
+   (Wenn du es trotzdem früher auf dem Telefon haben willst: Firebase-Projekt
+   anlegen, `google-services.json` an mich, dann schicke ich dir die fertige
+   `.apk` — ohne Store, ohne Konto.)
 2. **Den macOS-Läufer bei GitHub Actions einrichten**, sobald das
    Apple-Konto steht. Damit braucht niemand einen Mac zu kaufen.
 3. Die **Seite zum Herunterladen** bauen, sobald die .exe signiert ist.

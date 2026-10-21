@@ -29,6 +29,7 @@
     "hintergrund:aufbereiten": "node scripts/hintergrund-aufbereiten.mjs",
     "hintergrund:messen": "node scripts/hintergrund-messen.mjs",
     "push:schluessel": "web-push generate-vapid-keys",
+    "fristen:blatt": "npx tsx scripts/fristen-blatt.ts",
     "desktop": "electron desktop/haupt.js",
     "desktop:bauen": "electron-builder --project desktop --linux --win",
     "desktop:linux": "electron-builder --project desktop --linux",
