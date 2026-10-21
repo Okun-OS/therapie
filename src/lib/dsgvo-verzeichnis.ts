@@ -126,7 +126,8 @@ export const UNTERAUFTRAEGE: Unterauftrag[] = [
     zweck: 'Versand von E-Mails (Einladungen, Benachrichtigungen, Lohnbelege)',
     ort: 'USA',
     daten: 'Name, E-Mail-Adresse und der Inhalt der jeweiligen Nachricht.',
-    vertrag: 'offen',
+    // §211 Abgeschlossen; vom Eigentümer am 21.10.2026 gemeldet.
+    vertrag: 'geschlossen',
     drittland:
       'Übermittlung in die USA. Zu stützen auf das EU-US Data Privacy '
       + 'Framework, soweit der Anbieter zertifiziert ist, sonst auf '
@@ -206,7 +207,8 @@ export const UNTERAUFTRAEGE: Unterauftrag[] = [
     daten:
       'Die Gerätekennung und der Text der Benachrichtigung. Personenbezogene '
       + 'Inhalte gehören deshalb nicht in den Text einer Benachrichtigung.',
-    vertrag: 'offen',
+    // §211 Abgeschlossen; vom Eigentümer am 21.10.2026 gemeldet.
+    vertrag: 'geschlossen',
   },
 ]
 

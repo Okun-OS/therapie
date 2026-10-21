@@ -4,7 +4,7 @@ Alles, was **nicht programmiert werden kann** — weil es ein Konto, eine
 Unterschrift, einen Kauf oder eine Zahl aus einer Satzung braucht. Nach
 Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 
-> Stand: 19.10.2026 · Was fertig ist, steht in `STAND.md`.
+> Stand: 21.10.2026 · Was fertig ist, steht in `STAND.md`.
 > Zum Abhaken: `- [ ]` zu `- [x]` machen.
 
 ---
@@ -13,24 +13,20 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 
 ```
 HEUTE MÖGLICH
-  Code-Signing  ──Identitätsprüfung 1–20 Werktage──►  Windows ohne Warnung
-                                                   └─►  Download-Seite
+  Azure-Variablen bei Railway  ──►  Windows ohne Warnung
   VAPID-Schlüssel ──5 Minuten──►  Push im Browser
   Firebase        ──20 Minuten──►  Push in der App (Android)
-  (Google-Play-Konto braucht AUCH die D-U-N-S — siehe unten)
 
-LÄUFT SCHON
-  D-U-N-S-Nummer ──beantragt──►  Apple-Konto ─► APNs ─► App Store
-                 (bis 30 Tage)             └─►  .dmg beglaubigen
-                              └─►  Play-Konto ─► Play Store
-                                   Beide Stores, eine Nummer.
+LÄUFT SCHON — WARTET AUF ANTWORT
+  D-U-N-S-Nummer ──beantragt 21.10.──►  Apple-Konto ─► APNs ─► App Store
+                 (bis 30 Tage)                    └─►  .dmg beglaubigen
+                                     └─►  Play-Konto ─► Play Store
+                                          Beide Stores, eine Nummer.
+  Steuerberater  ──angeschrieben 21.10.──►  erster echter Kunde
 
 ERLEDIGT
   Domain · Firmenangaben · Impressum · Website
-
-BRAUCHT EINEN TERMIN
-  Steuerberater ──►  erster echter Kunde
-  AVVs (5 Stück) ──►  DSGVO-konformer Betrieb
+  AVVs (alle fünf) · Cloudflare R2 für die Programmdateien
 ```
 
 **Erledigt am 27.09.:** Die Umlagesätze U1/U2 standen hier als deine Aufgabe.
@@ -49,6 +45,26 @@ angelegt, die zehn Mitarbeiterprofile erstellt.
 **Erledigt am 05.10.:** Der echte Schriftzug ist überall drin. In den
 Markendateien lag vorher ein anderer — mein Fehler, zweimal gegen die falsche
 Vorlage gemessen.
+
+**Erledigt am 21.10.:** Vier Punkte auf einmal.
+
+* **Der Steuerberater ist angeschrieben** — die prüferische Durchsicht einer
+  Entgeltabrechnung. Das war der Punkt, der den ersten echten Kunden
+  blockiert hat. Jetzt wartet er auf Antwort; woran eine gute zu erkennen
+  ist, steht in `SUCHAUFTRAEGE.md`.
+* **Die D-U-N-S-Nummer ist (erneut) beantragt.** Sie stand hier seit dem
+  10.10. als „läuft"; ob der erste Antrag je angekommen ist, ließ sich nicht
+  feststellen. Falls D&B wegen eines Doppeleintrags nachfragt: einfach sagen,
+  dass nur ein Eintrag gewünscht ist.
+* **Alle fünf AVVs stehen.** Resend und Google waren die letzten beiden. Das
+  Verzeichnis im Programm (*Datenschutz → Verzeichnis*) zeigt keinen offenen
+  Vertrag mehr — und das ist die Fassung, die einem Kunden vorgelegt wird,
+  nicht diese Liste.
+* **Cloudflare R2 ist eingerichtet** — privater Bucket `okun-programm`, ein
+  Token, der nur lesen darf, und die vier Angaben bei Railway. Damit haben
+  die Programmdateien einen Ort; die Adresse dafür ist
+  `okun-workforce.com/programm/…` und steht auf der eigenen Domain, damit
+  der Speicher dahinter austauschbar bleibt.
 
 **Drei Punkte von dieser Liste gestrichen, 05.10. (von dir berichtigt):** Die
 D-U-N-S-Nummer ist beantragt. Die Domain war längst verbunden — ich hatte sie
@@ -143,7 +159,7 @@ gesammelten Ruf zurück.
 **Blockiert:** die Auslieferung des Windows-Programms an Kunden. Die
 Abwägung im Detail: `DESKTOP.md`, Abschnitt §187.
 
-### 🟡 D-U-N-S-Nummer — beantragt, läuft
+### 🟡 D-U-N-S-Nummer — beantragt am 21.10., bis 30 Tage
 
 **Berichtigt am 10.10.: Sie blockiert BEIDE Stores, nicht nur Apple.** Hier
 stand „ohne sie gibt es kein Apple Developer Program als Organisation" — das
@@ -258,7 +274,7 @@ erst ab 20 Personen Pflicht, §38 BDSG).
 
 ## 3 · Zahlen und Unterschriften
 
-### 🔴 Steuerberater die Rechnung gegenzeichnen lassen
+### 🟡 Steuerberater die Rechnung gegenzeichnen lassen — angeschrieben 21.10., wartet auf Antwort
 Eine echte Abrechnung eines echten Monats, Zeile für Zeile. Solange das nicht
 jemand mit Berufshaftpflicht bestätigt hat, ist jede Zahl hier nur *von uns*
 gerechnet.
@@ -287,7 +303,7 @@ ungeprüft. Steuerberater **oder** Datenschutzbeauftragter.
 ### 🟡 Vermögensschadenhaftpflicht klären
 Wer Gehälter rechnet, haftet. Vor dem ersten echten Kunden klären.
 
-### 🔴 AVVs mit den Dienstleistern
+### ✅ AVVs mit den Dienstleistern — alle fünf erledigt
 Auftragsverarbeitungsverträge. Ohne sie kein DSGVO-konformer Betrieb beim
 Kunden — und sobald ein Kunde selbst einen AVV mit dir schließt, musst du ihm
 diese Kette nachweisen (Art. 28 Abs. 4 DSGVO: du haftest ihm gegenüber für
@@ -297,8 +313,8 @@ deine Unterauftragnehmer).
 Railway und Google — der E-Mail-Versand und die SMS fehlten, und das sind
 gerade die beiden mit US-Übermittlung. Maßgeblich ist das Verzeichnis im Code
 (`src/lib/dsgvo-verzeichnis.ts`), nicht diese Liste; es erscheint im Programm
-unter *Datenschutz → Verzeichnis*, und dort stehen **alle fünf als „Vertrag
-offen"**.
+unter *Datenschutz → Verzeichnis*. Dort steht seit dem 21.10. **kein offener
+Vertrag mehr** — vier geschlossen, einer nicht nötig.
 
 Verhandeln muss man nichts, alle fünf haben ein Standarddokument zum Annehmen:
 
@@ -306,9 +322,9 @@ Verhandeln muss man nichts, alle fünf haben ein Standarddokument zum Annehmen:
 |---|---|---|---|---|
 | 1 | **Railway** | Hosting und Datenbank — hier liegt **alles** | EU | ✅ **unterschrieben 18.10.** |
 | 2 | **Anthropic** | der Hilfe-Assistent (sieht keine Betriebsdaten) | **USA** | ✅ **gilt automatisch** |
-| 3 | **Resend** | E-Mails: Einladungen, Benachrichtigungen, Lohnbelege | **USA** | 🔴 offen |
+| 3 | **Resend** | E-Mails: Einladungen, Benachrichtigungen, Lohnbelege | **USA** | ✅ **geschlossen 21.10.** |
 | 4 | **Twilio** | SMS für den zweiten Anmeldefaktor | **USA** | ⚪ **nicht nötig — noch nicht in Benutzung** |
-| 5 | **Google** | Push an die App aus dem Store | EU, für iPhones weiter an Apple | 🔴 offen |
+| 5 | **Google** | Push an die App aus dem Store | EU, für iPhones weiter an Apple | ✅ **geschlossen 21.10.** |
 
 ### Was ich nebenbei behoben habe (§195)
 

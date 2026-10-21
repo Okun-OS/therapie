@@ -137,6 +137,30 @@ describe('Art. 30 Abs. 2 — OKUN als Auftragsverarbeiter', () => {
     }
   })
 
+  it('führt einen geschlossenen Vertrag NICHT als offen', () => {
+    /*
+     * §211 Die Gegenprobe zum Test darüber. Seit dem 21.10. ist kein
+     * Dienstleistervertrag mehr offen — die Schleife oben läuft also ins
+     * Leere und bewiese von sich aus nichts mehr. Entscheidend ist jetzt die
+     * andere Richtung: Ein abgeschlossener Vertrag darf dem Kunden nicht
+     * weiter als Lücke vorgelegt werden.
+     */
+    const geschlossen = UNTERAUFTRAEGE.filter(u => u.vertrag === 'geschlossen')
+    expect(geschlossen.length).toBeGreaterThan(0)
+    for (const u of geschlossen) {
+      expect(v.offen.some(o => o.includes(u.name)), u.name).toBe(false)
+    }
+  })
+
+  it('zählt keinen Vertrag als nötig, der nicht nötig ist', () => {
+    // Twilio ist nicht in Benutzung. Ein Vertrag dafür wäre eine Aufgabe,
+    // die nie jemand erledigen kann, weil es nichts zu regeln gibt.
+    const nichtNoetig = UNTERAUFTRAEGE.filter(u => u.vertrag === 'nicht_noetig')
+    for (const u of nichtNoetig) {
+      expect(offeneVertraege().includes(u), u.name).toBe(false)
+    }
+  })
+
   it('meldet fehlende Angaben zum Anbieter, statt sie zu verschweigen', () => {
     // In der Entwicklungsumgebung sind die Umgebungswerte nicht gesetzt —
     // genau dann muss das Verzeichnis es sagen.
