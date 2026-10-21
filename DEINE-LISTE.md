@@ -13,9 +13,9 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 
 ```
 HEUTE MÖGLICH
-  Azure-Variablen bei Railway  ──►  Windows ohne Warnung
   VAPID-Schlüssel ──5 Minuten──►  Push im Browser
   Firebase        ──20 Minuten──►  Push in der App (Android)
+  Zehn E-Mail-Adressen ──►  die Wohngruppe kann die App benutzen
 
 LÄUFT SCHON — WARTET AUF ANTWORT
   D-U-N-S-Nummer ──beantragt 21.10.──►  Apple-Konto ─► APNs ─► App Store
@@ -26,7 +26,7 @@ LÄUFT SCHON — WARTET AUF ANTWORT
 
 ERLEDIGT
   Domain · Firmenangaben · Impressum · Website
-  AVVs (alle fünf) · Cloudflare R2 für die Programmdateien
+  AVVs (alle fünf) · Cloudflare R2 · Code-Signing (Azure)
 ```
 
 **Erledigt am 27.09.:** Die Umlagesätze U1/U2 standen hier als deine Aufgabe.
@@ -60,6 +60,11 @@ Vorlage gemessen.
   Verzeichnis im Programm (*Datenschutz → Verzeichnis*) zeigt keinen offenen
   Vertrag mehr — und das ist die Fassung, die einem Kunden vorgelegt wird,
   nicht diese Liste.
+* **Die Azure-Variablen stehen bei Railway** — damit ist das Code-Signing
+  für Windows vollständig eingerichtet. Offen ist nur noch der erste
+  signierte Bau, und der ist keine Einkaufs-, sondern eine Bausache.
+* **Die Postleitzahl ist geklärt.** Im Impressum steht 10785; nachgesehen am
+  21.10., die Seite antwortet mit genau dieser Angabe.
 * **Cloudflare R2 ist eingerichtet** — privater Bucket `okun-programm`, ein
   Token, der nur lesen darf, und die vier Angaben bei Railway. Damit haben
   die Programmdateien einen Ort; die Adresse dafür ist
@@ -89,7 +94,22 @@ Punkt 1 hängt an Dritten und läuft. **Jetzt oben: das Zertifikat für Windows*
 
 ## 1 · Was Wochen dauert — jetzt anstoßen
 
-### 🔴 Code-Signing-Zertifikat für Windows — jetzt der oberste Punkt
+### ✅ Code-Signing für Windows — eingerichtet am 21.10.
+
+**Erledigt.** Azure Artifact Signing steht: Identitätsprüfung bestanden
+(gültig bis 7.1.2029), Zertifikatsprofil `okun-public`, eine App-Registrierung
+mit der Rolle *Artifact Signing Certificate Profile Signer*, und die sechs
+Variablen liegen bei Railway. Die Einzelheiten samt der beiden Ablauftermine
+stehen in `DESKTOP.md`.
+
+**Was noch aussteht, ist kein Einkauf mehr, sondern ein Bau:** Erst die erste
+wirklich signierte `.exe` zeigt, ob die Kette hält. Das sieht man sofort —
+Windows nennt dann „OKUN Systems UG (haftungsbeschränkt)" statt „Unbekannter
+Herausgeber".
+
+<details>
+<summary>Warum es so lange der oberste Punkt war</summary>
+
 Ohne Signatur zeigt Windows beim ersten Start „Unbekannter Herausgeber". Bei
 einem Programm, das Gehälter anzeigt, installiert das niemand.
 
@@ -105,7 +125,9 @@ zertifizierter Hardware liegen — **USB-Stick oder Cloud-Tresor**. Mit Stick
 kann nur der Rechner signieren, in dem er steckt; jede Auslieferung wäre
 Handarbeit. Mit Cloud-Tresor signiert der Bau selbst.
 
-### Wo du es kaufst
+</details>
+
+### Wo du es gekauft hast
 
 **Empfehlung: Azure Artifact Signing** (früher „Trusted Signing"), **9,99 $ im
 Monat** für 5.000 Signaturen. Kein Zertifikatskauf, keine Hardware, und der Bau
