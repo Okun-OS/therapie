@@ -402,4 +402,46 @@ for (const seite of ['/funktionen', '/kontakt', '/impressum', '/datenschutz']) {
     `HTTP ${r.status}`)
 }
 
+// ── §210 Die Adresse, unter der das Programm liegt ─────────────────────────
+console.log('\n=== §210 /programm — der Ausgabeort des Desktop-Programms ===')
+
+/*
+ * Diese Adresse wird in JEDES ausgelieferte Windows-Programm eingebacken.
+ * Was heute installiert wird, schaut in zwei Jahren noch genau hier nach —
+ * deshalb muss sie ohne Anmeldung erreichbar sein und darf nirgendwo
+ * hinführen, wo sie nicht hinsoll.
+ */
+const programm = async (pfad) => {
+  const r = await fetch(`${BASIS}/programm/${pfad}`, { redirect: 'manual' })
+  return {
+    status: r.status,
+    ziel: r.headers.get('location') ?? '',
+    body: await r.json().catch(() => ({})),
+  }
+}
+
+const yml = await programm('latest.yml')
+check('Ohne Anmeldung wird nicht abgewiesen',
+  yml.status !== 401 && yml.status !== 403,
+  `HTTP ${yml.status} — das Programm aktualisiert sich, bevor sich jemand `
+  + 'angemeldet hat. Eine Anmeldepflicht hier hieße: nie eine Aktualisierung.')
+
+check('Ohne eingerichteten Speicher sagt sie das ehrlich',
+  yml.status === 503 && /nicht eingerichtet/i.test(JSON.stringify(yml.body)),
+  `HTTP ${yml.status} ${JSON.stringify(yml.body).slice(0, 140)} — 404 hieße `
+  + '„gibt es nicht", 503 heißt „noch nicht eingerichtet". Das ist etwas anderes.')
+
+// Die Gegenproben: Der Pfad aus der Anfrage wird zum Schlüssel im Speicher.
+for (const [versuch, was] of [
+  ['..%2F..%2Fetc%2Fpasswd', 'ein Ausbruch aus dem Verzeichnis'],
+  ['unterordner/datei.exe', 'ein Pfad mit Schrägstrich'],
+  ['boese.sh', 'eine fremde Dateiendung'],
+  ['.versteckt.yml', 'ein Name, der mit einem Punkt beginnt'],
+]) {
+  const r = await programm(versuch)
+  check(`Abgewiesen: ${was}`, r.status === 404,
+    `HTTP ${r.status} für „${versuch}"`)
+}
+
+
 process.exit(bilanz() ? 1 : 0)

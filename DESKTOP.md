@@ -398,6 +398,56 @@ Die Farbe der Knöpfe meldet jede Seite selbst (`fensterleiste()` in
 `src/lib/drucken.ts`): die Anmeldung dunkel, die App dahinter hell. Die Hülle
 führt bewusst keine Liste der dunklen Seiten.
 
+### §210 Wo die Dateien liegen — `okun-workforce.com/programm/…`
+
+Die Adresse, unter der das Programm nach Aktualisierungen sucht, wird in
+**jedes ausgelieferte Programm eingebacken**. Was heute installiert wird,
+schaut in zwei Jahren noch genau dort nach. Deshalb ist es eine Adresse auf
+der eigenen Domain und nicht die eines Speicheranbieters:
+
+```
+okun-workforce.com/programm/latest.yml                        ← durchgereicht
+okun-workforce.com/programm/OKUN-Workforce-0.2.0-win-x64.exe  ← umgeleitet
+```
+
+Dahinter liegt Cloudflare R2 als **privater** Bucket. Die Anlage holt die
+kleine `latest.yml` selbst heraus und stellt für die große `.exe` eine
+Adresse aus, die nach 15 Minuten verfällt — der Download läuft dadurch
+direkt beim Speicher und nicht über Railway, kostet also keinen
+ausgehenden Verkehr.
+
+**Der Speicher ist damit austauschbar.** Liegt morgen alles bei Hetzner,
+merkt kein installiertes Programm etwas. Nur die vier Variablen wechseln.
+
+| Variable | Woher |
+|---|---|
+| `R2_KONTO_ID` | Cloudflare → R2 → Account ID (steht auch in der Adresszeile) |
+| `R2_BUCKET` | `okun-programm` |
+| `R2_SCHLUESSEL` | R2 → Manage API Tokens → Access Key ID |
+| `R2_GEHEIMNIS` | dieselbe Stelle → Secret Access Key |
+
+> **Der Token darf nur lesen, und nur diesen einen Bucket.** Die Anlage lädt
+> nichts hoch und löscht nichts — das macht ein Mensch im Cloudflare-Fenster.
+> Ein Schlüssel auf einem Server, der schreiben darf, ist ein Weg, über den
+> sich eine übernommene Anlage selbst verteilt.
+
+Fehlt eine der vier Angaben, antwortet die Adresse mit **503 und sagt warum**
+— nicht mit 404. „Gibt es nicht" und „noch nicht eingerichtet" sind zwei
+verschiedene Auskünfte.
+
+Kein AWS-Paket im Projekt: Die Signatur (AWS SigV4) steht in sechzig Zeilen
+in `src/lib/r2.ts`. Das Paket `@aws-sdk/client-s3` zöge rund vierzig weitere
+nach, für zwei Handgriffe.
+
+### Ausliefern, Schritt für Schritt
+
+1. `OKUN_UPDATE_URL=https://okun-workforce.com/programm/ npm run desktop:win`
+2. **Alles** aus `desktop/pakete/` in den Bucket `okun-programm` hochladen —
+   flach, ohne Unterordner
+3. Fertig. Jedes installierte Programm merkt es von allein.
+
+---
+
 ### Eingerichtet am 19.10.2026 — die echten Werte
 
 | Variable | Wert |
