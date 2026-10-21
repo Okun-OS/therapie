@@ -15,6 +15,8 @@ Reihenfolge, nicht nach Bereich: Was oben steht, blockiert das meiste darunter.
 HEUTE MÖGLICH
   Zwei Briefe abschicken ──►  Fristen gegengezeichnet (Block B)
                          └─►  Angebote für die Haftpflicht
+  Drei Agentenaufträge   ──►  Kanäle, Zulassungen, eAU
+     (AGENTENAUFTRAEGE.md — ChatGPT arbeitet, du drückst ab)
 
 LÄUFT SCHON — WARTET AUF ANTWORT
   D-U-N-S-Nummer ──beantragt 21.10.──►  Apple-Konto ─► APNs ─► App Store
@@ -222,6 +224,36 @@ bleibt in `DOMAIN.md` stehen — falls die Einträge einmal nachzusehen sind.
 > Zwei Dinge hatte ich hier falsch behauptet und auf Nachfrage berichtigt:
 > dass die nackte Domain ohne `app.` nicht gehe (sie geht), und dass dieser
 > Punkt noch offen sei (war er nicht).
+
+### 🟢 Die drei Agentenaufträge für ChatGPT — **`AGENTENAUFTRAEGE.md`**
+
+**Entschieden am 21.10.: Volllösung bei allen drei Punkten, selbst zertifiziert,
+keine fremde Engine.** Was dafür an Anträgen, Registrierungen und Verträgen
+nötig ist, treibt ChatGPT voran — ein Auftrag pro Unterhaltung:
+
+1. **Stellenanzeigen überall selbst veröffentlichen** — Bundesagentur
+   (kostenlos, Kooperationsvereinbarung), Indeed-Partnerprogramm, Stepstone,
+   XING/onlyfy, dazu ein Multiposting-Anbieter für den langen Schwanz. Mit
+   Rückweg für die Bewerbungen und der Datenschutzfrage je Kanal.
+2. **Lohnabrechnung vollständig selbst** — ITSG-Systemuntersuchung,
+   ELSTER/ERiC-Herstellerzugang, EBICS-Auszahlung ohne BaFin-Erlaubnis, plus
+   die Grenze zum Steuerberatungsgesetz.
+3. **Krankmeldungen selbst bei der Kasse abrufen (eAU)** — und die Frage, ob
+   ein *Zeiterfassungssystem* dafür eine kleinere Tür hat als ein
+   Entgeltabrechnungsprogramm. Das ist der größte Hebel im ganzen Paket.
+
+> **Was ChatGPT dabei nicht kann:** unterschreiben, bezahlen, sich ausweisen,
+> ein Entwicklerportal registrieren, einen Vertrag zeichnen. Es legt dir jeden
+> Schritt fertig vor — ausgefüllt, mit Unterlagenliste —, und du drückst ab.
+> Und es erfindet Ansprechpartner und Gebühren, die plausibel aussehen: Jede
+> Angabe ohne Quelle mit Datum ist geraten. Beides steht in jedem der drei
+> Aufträge als Regel drin.
+
+> **Eine Erwartung dämpfe ich gleich:** Die ITSG-Gebühren wird ChatGPT
+> wahrscheinlich nicht finden — sie stehen nicht öffentlich. Das Ergebnis ist
+> dann der fertige Brief mit genau dieser Frage. Und die Zulassung ist
+> ohnehin nicht das Nadelöhr: **die fünfzehn Meldeverfahren sind es**, und die
+> baue ich, nicht ChatGPT.
 
 ---
 

@@ -1,12 +1,21 @@
 # Weg zur eigenen Lohnabrechnung — Zertifizierung, Kosten, Reihenfolge
 
-Notiert am 10.09.2026.
+Notiert am 10.09.2026. **Entscheidung nachgetragen am 21.10.2026 — Abschnitt 7.**
 
 **Entscheidung, die dahintersteht:** Übergangsweise bleibt es beim heutigen
 Stand — *wir rechnen, der Steuerberater meldet.* Perspektivisch soll die
 Lohnabrechnung vollständig bei OKUN liegen. Dieses Papier sagt, was dafür nötig
 ist, in welcher Reihenfolge es sinnvoll ist, und wo man die echten Zahlen
 erfragt.
+
+> **21.10.2026 — die Richtung ist entschieden, und zwar weiter als dieses
+> Papier bisher annahm:** Die vollständige Lohnabrechnung soll **selbst
+> zertifiziert** bei OKUN liegen — eigene Systemuntersuchung, eigener
+> ELSTER-Zugang, eigene Auszahlung. Ausdrücklich **keine** eingebettete
+> Fremd-Engine, auch nicht als Abkürzung. Begründung des Eigentümers:
+> Unabhängigkeit und Wert des eigenen Produkts. Was das an Zulassungen heißt,
+> steht in Abschnitt 7; die Vorgänge dazu laufen über
+> `AGENTENAUFTRAEGE.md`.
 
 > **Zu den Zahlen:** Gebühren und Fristen sind hier bewusst NICHT geschätzt.
 > Sie ändern sich, und eine geratene Zahl in einer Investitionsentscheidung ist
@@ -63,19 +72,25 @@ hochladen. Beides gehört in seinen Vertrag.
 
 Die Zertifizierungsgebühr ist der kleinste Posten. Das hier ist der Aufwand:
 
+> **Berichtigt am 21.10.2026.** Dieser Abschnitt war sechs Wochen alt und hat
+> als „fehlt" geführt, was längst gebaut und je mit einer eigenen Prüfung am
+> laufenden System belegt ist. Eine veraltete Mängelliste ist in einer
+> Investitionsentscheidung genauso schädlich wie eine geratene Zahl — und sie
+> hätte hier zur falschen Reihenfolge geführt. **Vom Rechenkern fehlt nur noch
+> ein Punkt.**
+
 **Rechenkern**
-- [ ] **Rückwirkende Aufrollung.** Ändert sich etwas am März, müssen April und
-      Mai neu gerechnet und die Differenz fortgeschrieben werden. Heute
-      überschreiben wir nur Entwürfe. **Der größte Brocken — und er hat mit
-      Zertifizierung nichts zu tun.**
-- [ ] Minijob und Übergangsbereich (Midijob) mit eigener Beitragsberechnung
-- [ ] Mehrfachbeschäftigung
-- [ ] Kurzarbeitergeld
-- [ ] Sonstige Bezüge (Einmalzahlungen) — der Ablaufplan kann es bereits,
-      wir reichen es noch nicht durch
-- [ ] Geldwerte Vorteile, Firmenwagen, Sachbezüge
-- [ ] Betriebliche Altersvorsorge, Entgeltumwandlung
-- [ ] Pfändungen und Abtretungen
+- [x] **Rückwirkende Aufrollung** — `pruefungen/d9-aufrollung.mjs`
+- [x] Minijob und Übergangsbereich (Midijob) — `d11-minijob.mjs`,
+      `src/lib/beschaeftigungsart.ts`
+- [x] Mehrfachbeschäftigung — `d20-mehrfach-abfindung.mjs`
+- [x] Kurzarbeitergeld — `d19-kurzarbeit.mjs`
+- [x] Sonstige Bezüge (Einmalzahlungen) — `d10-einmalzahlung.mjs`
+- [ ] **Geldwerte Vorteile, Firmenwagen, Sachbezüge** — dazu gibt es keine
+      Zeile Code. Der einzige echte Rest, und bei Trägern verbreitet:
+      Jobticket, Essenszuschuss, die 50-€-Grenze.
+- [x] Betriebliche Altersvorsorge, Entgeltumwandlung — `d18-bav.mjs`
+- [x] Pfändungen und Abtretungen — `d17-pfaendung.mjs`
 
 **Meldewesen (braucht ITSG)**
 - [ ] An-, Ab-, Jahres-, Unterbrechungs- und Sofortmeldung (DEÜV)
@@ -172,3 +187,128 @@ Nicht von der Gebühr, sondern von zwei Fragen:
    trägt es sie auch.
 
 Solange die Antwort auf 2 „Beiwerk" lautet, ist der heutige Stand richtig.
+
+> **Nachtrag 21.10.2026:** Die Antwort auf Frage 2 ist gefallen, und sie lautet
+> **„eigenes Produkt"**. Damit trägt es die jährliche Prüfung. Abschnitt 6
+> bleibt stehen, weil die Abwägung richtig war — nur ist sie jetzt entschieden.
+
+---
+
+## 7. Nachgetragen am 21.10.2026 — die drei Türen
+
+Recherchiert, nicht erinnert; Quellen stehen in der Sitzung und in
+`AGENTENAUFTRAEGE.md`. Alles hier ist **Ausgangspunkt für die Anfragen**, nicht
+schon die Antwort: Gebühren und Fristen nennen die Stellen selbst.
+
+### Tür A — ELSTER / ERiC: die kleine
+
+**Kein Produktzulassungsverfahren.** Registrierung als Hersteller im
+ELSTER-Entwicklerbereich (das Bayerische Landesamt für Steuern prüft und richtet
+den Zugang ein, Zugangsdaten laut Quelle binnen Tagen), danach **Hersteller-ID**
+beantragen. **ERiC ist eine C-Bibliothek und wird kostenlos bereitgestellt.** Je
+Arbeitgeber braucht es ein **ELSTER-Organisationszertifikat** mit der
+Steuernummer seiner lohnsteuerlichen Betriebsstätte — unternehmensbezogen und
+nicht an eine Person gebunden; enthält es keine gültige Steuernummer, lehnt die
+Finanzverwaltung die Anmeldung ab.
+
+Damit: ELStAM an-/abmelden **und die Änderungsliste selbst abrufen**,
+Lohnsteueranmeldung, elektronische Lohnsteuerbescheinigung.
+
+**Damit löst sich ein Punkt der Eigentümerliste von selbst auf:** Die „echte
+ELStAM-Änderungsliste", die wir beim Steuerberater erbitten, holt sich das
+Programm danach selbst.
+
+### Tür B — ITSG-Systemuntersuchung: die große
+
+Seit dem **7. SGB IV-ÄndG (1.1.2021) gesetzlich vorgeschrieben.** Die ITSG prüft
+im Auftrag des GKV-Spitzenverbands, der Spitzenverband erteilt den Bescheid, die
+ITSG das Zertifikat „systemuntersucht". Ablauf: **Systemprüfung, Pilotierung,
+laufende Qualitätssicherung.** Der Antrag muss **vor dem Einsatz beim ersten
+Kunden** gestellt werden. Gültigkeit jeweils ein Jahr, weil die Gemeinsamen
+Grundsätze jährlich geändert werden. Dazu ein **Trust-Center-Zertifikat** für die
+Übermittlung an die Datenannahmestellen, dazu eine Produktmodifikations-ID, die
+bei jeder eingehenden Meldung geprüft wird. Ohne Zertifikat kann ein Arbeitgeber
+mit unserer Software **keine** Meldung abgeben.
+
+Damit: DEÜV An-, Ab-, Jahres-, Unterbrechungs- und Sofortmeldung,
+Beitragsnachweis je Krankenkasse, AAG-Erstattung U1/U2, **eAU-Abruf**,
+Datenaustausch Entgeltersatzleistungen, Lohnnachweis an die
+Berufsgenossenschaft.
+
+**Drei Fragen, die über den Zeitplan entscheiden** — alle drei stehen im Brief:
+
+1. **Gebühren** erst- und wiederholt. Nicht öffentlich.
+2. **Die Pilotierung braucht offenbar echte Meldungen** eines echten
+   Arbeitgebers. Wie macht das ein Hersteller, der noch keinen Kunden im
+   Meldebetrieb hat? Das ist die eigentliche Henne-Ei-Frage.
+3. **Lösen wir heute schon eine Antragspflicht aus?** Unser Programm rechnet
+   bei Kunden, übermittelt aber nichts. „Vor dem Einsatz beim ersten Kunden"
+   könnte beides heißen.
+
+> **Und die Erkenntnis, die die Reihenfolge bestimmt: Die Zulassung ist nicht
+> das Nadelöhr, das Meldewesen ist.** Die fünfzehn Verfahren aus Abschnitt 3
+> müssen gebaut sein, bevor ein Antrag Sinn hat. Die Gebühr ist der kleinste
+> Posten — das stand schon immer hier und gilt umso mehr.
+
+### Tür C — Auszahlung über EBICS: gar keine Erlaubnis
+
+Zahlungsauslösedienste sind nach **§§10, 11, 34 ZAG erlaubnispflichtig**, und die
+BaFin sagt ausdrücklich, dass eine **Nebentätigkeit nicht davon befreit** — eine
+Lohnsoftware ist also nicht schon deshalb frei, weil Zahlungsverkehr nicht ihr
+Hauptzweck ist.
+
+**Aber:** Nach dem überarbeiteten **BaFin-Merkblatt zum ZAG (Februar 2023)** und
+der **EBA-Auskunft 2021_6235** gilt ein Konto, das über **EBICS** genutzt und
+verwaltet wird, **nicht als online zugänglich** — mangels Online-Banking liegt
+dann weder Zahlungsauslöse- noch Kontoinformationsdienst vor. Eine
+**Transportunterschrift (Typ T)** ist keine Zahlungsautorisierung.
+
+Der Aufbau, der daraus folgt: **Wir übertragen, der Kunde zeichnet** — über die
+verteilte elektronische Unterschrift, im EBICS-Client oder der App seiner Bank.
+Einrichtung je Kunde: Teilnahmeerklärung bei seiner Bank, drei Schlüsselpaare
+(Authentifikation, Verschlüsselung, Unterschrift) erzeugt unsere Software, INI-
+Brief ausgedruckt und unterschrieben zur Bank, danach Bankschlüssel abholen.
+
+**Was niemals passieren darf:** Geld über ein Konto von OKUN führen. Das wäre
+Finanztransfergeschäft und eine ganz andere Erlaubnis.
+
+**Auflage für diese Einschätzung:** Sie stammt aus BaFin-Merkblatt und
+Kanzleibeiträgen, die EBICS-Mechanik aus Bankunterlagen, teils schweizerischen.
+**Vor dem Produktivbetrieb gehört eine schriftliche anwaltliche Einschätzung
+dazu** — der Aufbau entscheidet, nicht die Absicht.
+
+### Tür B' — eAU: möglicherweise eine eigene, kleinere Tür
+
+Seit 2023 holt **der Arbeitgeber** die Arbeitsunfähigkeit elektronisch bei der
+Kasse ab („Datenaustausch eAU"); der Mitarbeiter reicht nichts mehr ein.
+
+Und hier der Fund, der eigenes Nachgehen verdient: Die AOK nennt als zulässige
+Zugangswege nicht nur ein systemgeprüftes Entgeltabrechnungsprogramm, sondern
+auch ein **systemuntersuchtes Zeiterfassungssystem** und eine systemgeprüfte
+**Ausfüllhilfe** (das SV-Meldeportal der ITSG ist so eine und ist für Arbeitgeber
+seit 1.1.2025 kostenpflichtig; es hat sv.net abgelöst, das im Juli 2024
+abgeschaltet wurde).
+
+**OKUN ist ein Zeiterfassungssystem.** Träfe das zu, wäre die
+Krankmeldungs-Automatik **ohne** die große Tür erreichbar — und zwar der ganze
+Ablauf: abfragen, bei Bestätigung selbst abhaken, bei Fehlanzeige den
+Mitarbeiter per Push erinnern, bis es vorliegt. Das ist der Hebel mit dem
+besten Verhältnis von Nutzen zu Zulassungsaufwand im ganzen Papier.
+
+**Das ist eine Krankenkassen-Webseite, keine Rechtsgrundlage.** Es gehört gegen
+die Verfahrensbeschreibung des GKV-Spitzenverbands und eine schriftliche
+ITSG-Auskunft gehalten — Auftrag 3 in `AGENTENAUFTRAEGE.md` tut genau das.
+
+### Reihenfolge, die daraus folgt
+
+| Stufe | Was | Zulassung | Wirkung |
+|---|---|---|---|
+| 0 | Modus „extern" + echte DATEV-Anbindung statt eigener CSV | keine | beseitigt den Medienbruch heute |
+| 1 | **ELSTER/ERiC** | Registrierung + Hersteller-ID | ELStAM selbst, LSt-Anmeldung, Jahresbescheinigung |
+| 1b | **eAU** über die Zeiterfassungs-Tür, falls sie existiert | kleine Systemuntersuchung (?) | Krankmeldungs-Automatik, unabhängig vom Lohn |
+| 2 | Die fünfzehn Meldeverfahren **bauen** | keine | das eigentliche Nadelöhr |
+| 3 | **ITSG-Systemuntersuchung**, selbst | Bescheid + Trust Center, jährlich | alle SV-Meldungen |
+| 4 | **EBICS-Auszahlung** | keine, aber Rechtsgutachten | Gehälter aus OKUN auslösen |
+
+Stufe 0 und 1 kosten nichts und wirken sofort. Stufe 2 ist der Brocken. Stufe 3
+ist die Entscheidung, die am 21.10. gefallen ist.
