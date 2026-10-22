@@ -4072,3 +4072,92 @@ zweimal hintereinander verbraucht nur eine Einheit.
 **Was von Hand geprüft werden muss:** dass Google die Signatur annimmt. Das
 braucht ein echtes Dienstkonto und die eingetragene Inhaberschaft — kein Test
 kann das ersetzen.
+
+## Block §217 (22.10.) — Vier Befunde am Zahlungsweg, bevor EBICS gebaut wird
+
+Entstanden aus einer Untersuchung des Ist-Stands für die geplante
+EBICS-Anbindung (`EBICS-ARCHITEKTUR-IST-SOLL.md`). Gesucht war der Stand der
+Bankanbindung; gefunden wurden vier Dinge am bestehenden Zahlungsweg, die
+ohnehin behoben gehören — und die mit EBICS größer würden, weil dann ein
+Auftrag die Anlage verlässt, statt auf einem Bildschirm zu landen.
+
+### 1 · Die Standortleitung konnte die Zahldatei des ganzen Trägers abrufen
+
+`payroll/export/route.ts` prüfte den Standortbezug **nur, wenn ein Standort
+mitgegeben wurde** — und warf das Ergebnis dann weg. Ohne den Parameter
+lautete die Abfrage `{ customerId, year, month }`. Herunterladbar war damit
+eine Datei mit **Name, IBAN und Auszahlungsbetrag jeder beschäftigten Person
+des gesamten Unternehmens**.
+
+Dass es ein Versehen war und keine Entscheidung, zeigt der Vergleich: Sechs
+andere Wege der Lohnabrechnung rufen `allowedLocationScope` auf und schränken
+ein. Dieser war die Ausnahme.
+
+**Dieselbe Lücke schreibend im Belegweg** (`payroll/beleg/route.ts`): Ohne
+Standortangabe erzeugte eine Standortleitung die Entgeltabrechnungen des
+ganzen Trägers, legte sie in fremde Personalakten und benachrichtigte fremde
+Beschäftigte.
+
+**Nachgewiesen statt behauptet.** Im Seed hat jeder Träger genau einen
+Standort — eine Prüfung hätte dort auch mit der Lücke bestanden. Sie legt sich
+deshalb **einen zweiten Standort mit einer Person selbst an**, unter festem
+Namen, damit ein zweiter Lauf ihn wiederfindet statt ihn zu vermehren.
+Gegengeprüft mit entfernter Sperre: Dann steht der fremde Name in der Datei
+der Leitung.
+
+### 2 · Entwürfe waren auszahlbar
+
+Der Export filterte nicht auf den Stand der Abrechnung. Die Regel „kein Lohn
+ohne freigegebenen Monat" (§136) greift beim **Rechnen** — beim **Auszahlen**
+griff sie nicht. Jetzt entsteht eine Zahldatei nur aus `approved` oder `paid`,
+und wer nichts freigegeben hat, bekommt das gesagt statt einer Suche nach
+einer fehlenden Bankverbindung.
+
+### 3 · Kein Schutz gegen die doppelte Gehaltszahlung
+
+Die Nachrichtenkennung war `OKUN-${Date.now()}`. Zwei Abrufe desselben Monats
+ergaben zwei verschiedene Kennungen — für eine Bank zwei verschiedene
+Aufträge, und sie nimmt beide an. Wer zweimal herunterlud und zweimal
+einreichte, zahlte zweimal. Die Bank konnte auch nichts dagegen tun: Sie sah
+nie zweimal dasselbe.
+
+Die Kennung wird jetzt **aus dem Inhalt gerechnet** — Mandant, Monat,
+Standortauswahl und die sortierte Liste aus Empfängerkonto und Betrag. Daraus
+folgen beide Eigenschaften, auf die es ankommt:
+
+* **Derselbe Lauf trägt dieselbe Kennung.** Erst dadurch *kann* die Bank die
+  Dublette erkennen.
+* **Ein korrigierter Lauf trägt eine andere.** Ein starrer Wert je Monat hätte
+  die berechtigte Nachzahlung mit blockiert — der Fehler, den die naheliegende
+  Lösung gemacht hätte.
+
+Sortiert wird vor dem Rechnen, damit die Reihenfolge der Abrechnungen die
+Kennung nicht verändert.
+
+### 4 · Weder Zahldatei noch Bankverbindung hinterließen eine Spur
+
+Kein Protokolleintrag beim Export, keiner beim Ändern einer IBAN — weder beim
+Unternehmen noch bei einer Person. Jetzt drei Spuren: der SEPA-Export mit
+Kennung, Anzahl und **Summe**, der DATEV-Export, und jede Änderung einer
+Kontoverbindung mit der Angabe, ob sie **erstmalig gesetzt oder getauscht**
+wurde.
+
+Die IBAN steht dabei nur gekürzt im Protokoll (`DE89…3000`): genug, um eine
+Änderung zu erkennen, zu wenig, um davon zu überweisen. Diese Abwägung ist der
+Grund, warum überhaupt etwas von der IBAN dort steht — **der häufigste Betrug
+bei Gehaltszahlungen ist nicht der gehackte Bankzugang, sondern die
+stillschweigend getauschte Kontonummer.**
+
+### Was dabei offen bleibt
+
+Der Zahllauf als eigener Vorgang mit Zuständen und gespeicherter Datei, damit
+die Anlage weiß, ob ein Monat bezahlt wurde — `paid` setzt bis heute niemand,
+weil ein Download nicht weiß, ob die Datei wirklich eingereicht wurde. Dazu
+die Verschlüsselung der Kontoverbindungen auf Anwendungsebene und die
+Feiertage beim Ausführungsdatum. Alles drei steht in
+`EBICS-ARCHITEKTUR-IST-SOLL.md`, Abschnitt 5.
+
+Nachweis: **1177 Modultests** (13 neue für Kennung und gekürzte IBAN) und
+`pruefungen/d-lohn.mjs` **53/53** statt vorher 40 — darunter die Gegenprobe
+„Aus Entwürfen entsteht keine Zahldatei", die vor der Freigabe steht, weil sie
+nur dort etwas zeigt.

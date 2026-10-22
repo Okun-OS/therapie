@@ -35,12 +35,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Jahr und Monat sind erforderlich' }, { status: 400 })
   }
 
+  /*
+   * §217 Auch ohne Standortangabe gilt der Standortbezug.
+   *
+   * Vorher griff die Prüfung nur, wenn ein Standort mitgegeben wurde. Ohne
+   * ihn erzeugte eine Standortleitung die Belege für den GANZEN Träger —
+   * legte sie in fremde Personalakten und benachrichtigte fremde
+   * Beschäftigte. Dieselbe Lücke wie beim Export (§217), nur schreibend
+   * statt lesend.
+   */
+  let standortFilter: Record<string, unknown> = {}
   if (employeeId) {
     const verweigert = await assertEmployeeAccess(session, employeeId)
     if (verweigert) return verweigert
-  } else if (locationId) {
+  } else {
     const erlaubt = await locationFilter(session, locationId)
     if (erlaubt instanceof NextResponse) return erlaubt
+    if (erlaubt) standortFilter = { locationId: { in: erlaubt } }
   }
 
   // Abrechnungen laden, für die ein Beleg erzeugt werden soll
@@ -48,7 +59,7 @@ export async function POST(req: NextRequest) {
     where: {
       customerId, year, month,
       ...(employeeId ? { employeeId } : {}),
-      ...(locationId ? { locationId } : {}),
+      ...standortFilter,
     },
   })
   if (abrechnungen.length === 0) {

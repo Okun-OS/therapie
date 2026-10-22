@@ -175,6 +175,32 @@ check('Fremde Leitung bekommt keinen Export', datevFremd.status === 403, `HTTP $
 
 // ── D6 SEPA-Datei ──────────────────────────────────────────────────────────
 console.log('\n=== D6 SEPA-Datei ===')
+
+/*
+ * §217 Erst die Gegenprobe, dann die Freigabe.
+ *
+ * Bis §217 entstand hier eine fertige Zahldatei aus Abrechnungen, die
+ * niemand freigegeben hatte — Entwürfe waren auszahlbar. Diese Prüfung steht
+ * deshalb VOR der Freigabe: An dieser Stelle sind die Abrechnungen noch
+ * Entwurf, und nur hier zeigt sie überhaupt etwas. Danach wird freigegeben,
+ * und erst dann darf eine Datei entstehen.
+ */
+const sepaEntwurf = await fetch(`${BASIS}/api/payroll/export?art=sepa&year=${jahr}&month=${monat}`,
+  { headers: { cookie: gf } })
+check('Aus Entwürfen entsteht keine Zahldatei', sepaEntwurf.status === 400,
+  `HTTP ${sepaEntwurf.status}`)
+const entwurfGrund = await sepaEntwurf.json().catch(() => ({}))
+check('Und es steht da, woran es liegt',
+  String(entwurfGrund.error ?? '').includes('freigegeben'),
+  String(entwurfGrund.error ?? '').slice(0, 80))
+
+const vorFreigabe = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`)).body.entries ?? []
+for (const e of vorFreigabe) {
+  await sende(gf, '/api/payroll', 'PATCH', { id: e.id, status: 'approved' })
+}
+check('Die Abrechnungen lassen sich freigeben', vorFreigabe.length > 0,
+  `${vorFreigabe.length} Abrechnungen`)
+
 const sepaR = await fetch(`${BASIS}/api/payroll/export?art=sepa&year=${jahr}&month=${monat}`,
   { headers: { cookie: gf } })
 const sepa = await sepaR.text()
@@ -195,6 +221,97 @@ check('Die Kontrollsumme stimmt mit den Einzelbeträgen überein',
 check('Die Anzahl der Zahlungen stimmt', anzahl === betraege.length)
 check('Keine Umlaute in der Datei', !/[äöüÄÖÜß]/.test(sepa))
 check('Ein Ausführungsdatum ist gesetzt', /<ReqdExctnDt>\d{4}-\d{2}-\d{2}<\/ReqdExctnDt>/.test(sepa))
+
+/*
+ * §217 Der Schutz vor der doppelten Gehaltszahlung.
+ *
+ * Vorher war die Nachrichtenkennung `OKUN-${Date.now()}`: Zwei Abrufe
+ * desselben Monats ergaben zwei verschiedene Aufträge, und eine Bank nimmt
+ * beide an. Jetzt wird sie aus dem Inhalt gerechnet — derselbe Lauf trägt
+ * dieselbe Kennung, und erst dadurch KANN die Bank die Dublette erkennen.
+ */
+const sepaZweitR = await fetch(`${BASIS}/api/payroll/export?art=sepa&year=${jahr}&month=${monat}`,
+  { headers: { cookie: gf } })
+const sepaZweit = await sepaZweitR.text()
+const kennung = sepa.match(/<MsgId>([^<]+)<\/MsgId>/)?.[1]
+const kennungZweit = sepaZweit.match(/<MsgId>([^<]+)<\/MsgId>/)?.[1]
+check('Die Kennung ist keine Zufallszahl mehr', /^OKUN-\d{6}-[0-9A-F]{10}$/.test(kennung ?? ''),
+  String(kennung))
+check('Derselbe Lauf trägt beim zweiten Abruf dieselbe Kennung',
+  Boolean(kennung) && kennung === kennungZweit, `${kennung} / ${kennungZweit}`)
+check('Die Kennung steht auch im Kopf der Antwort',
+  sepaZweitR.headers.get('x-okun-kennung') === kennungZweit)
+
+/*
+ * §217 Der Standortbezug gilt auch OHNE Standortangabe.
+ *
+ * Bis hierher prüfte der Export den Standort nur, wenn einer mitgegeben
+ * wurde. Ohne ihn lautete die Abfrage `{ customerId, year, month }` — eine
+ * Standortleitung lud damit eine Datei herunter, in der Name, IBAN und
+ * Auszahlungsbetrag JEDER beschäftigten Person des ganzen Trägers stehen.
+ *
+ * Damit diese Prüfung überhaupt etwas zeigen kann, braucht sie einen zweiten
+ * Standort mit einer Person darauf — im Seed hat jeder Träger nur einen.
+ * Sie legt ihn deshalb selbst an, und zwar unter festem Namen: Beim zweiten
+ * Lauf wird er wiedergefunden statt vermehrt.
+ *
+ * Gegengeprüft: Mit entfernter Sperre steht der fremde Name in der Datei der
+ * Leitung, mit Sperre nicht.
+ */
+console.log('\n=== §217 Standortbezug beim Export ===')
+
+const ZWEIG_NAME = 'Zweigstelle Nachweis 217'
+const ZWEIG_MAIL = 'zweigstelle-217@rheinblick-reha.de'
+const ZWEIG_PERSON = 'Zweigstelle Testperson'
+const ZWEIG_IBAN = 'DE12500105170648489890'
+
+const standorte = (await hole(gf, '/api/locations')).body.locations ?? []
+const zweig = standorte.find(s => s.name === ZWEIG_NAME)
+  ?? (await sende(gf, '/api/locations', 'POST', {
+    name: ZWEIG_NAME, city: 'Köln', zip: '50667', street: 'Teststraße', houseNumber: '1',
+  })).body.location
+check('Ein zweiter Standort steht bereit', Boolean(zweig?.id), zweig?.name)
+
+const belegschaft = (await hole(gf, '/api/employees')).body
+const alleMitarbeiter = belegschaft.employees ?? belegschaft
+const fremder = alleMitarbeiter.find(m => m.email === ZWEIG_MAIL)
+  ?? (await sende(gf, '/api/employees', 'POST', {
+    name: ZWEIG_PERSON, email: ZWEIG_MAIL, position: 'Pflegekraft',
+    weeklyHours: 40, locationId: zweig.id,
+  })).body.employee
+check('Eine Person arbeitet dort', Boolean(fremder?.id), fremder?.name)
+
+await sende(gf, `/api/employees/${fremder.id}/payroll-profile`, 'PUT', {
+  lohnart: 'gehalt', monatsgehalt: 3000, steuerklasse: 1, konfession: 'keine',
+  bundesland: 'NW', krankenkasse: 'AOK', zusatzbeitrag: 1.7,
+  versicherungsart: 'gesetzlich', iban: ZWEIG_IBAN, kontoinhaber: ZWEIG_PERSON,
+})
+await sende(gf, '/api/payroll/vorbereiten', 'POST', { year: jahr, month: monat })
+const nachZweig = (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`)).body.entries ?? []
+for (const e of nachZweig) {
+  if (e.status !== 'approved') await sende(gf, '/api/payroll', 'PATCH', { id: e.id, status: 'approved' })
+}
+check('Die Abrechnung des zweiten Standorts liegt vor',
+  nachZweig.some(e => e.employeeId === fremder.id))
+
+const gfDatev = await (await fetch(
+  `${BASIS}/api/payroll/export?art=datev&year=${jahr}&month=${monat}`,
+  { headers: { cookie: gf } })).text()
+const leitungDatev = await (await fetch(
+  `${BASIS}/api/payroll/export?art=datev&year=${jahr}&month=${monat}`,
+  { headers: { cookie: leitung } })).text()
+
+check('Die Unternehmensebene sieht beide Standorte', gfDatev.includes(ZWEIG_PERSON))
+check('Die Standortleitung sieht den fremden Standort NICHT',
+  !leitungDatev.includes(ZWEIG_PERSON))
+
+const leitungSepa = await (await fetch(
+  `${BASIS}/api/payroll/export?art=sepa&year=${jahr}&month=${monat}`,
+  { headers: { cookie: leitung } })).text()
+check('Und die fremde Kontoverbindung steht nicht in ihrer Zahldatei',
+  !leitungSepa.includes(ZWEIG_IBAN))
+check('Ihre eigene Zahldatei bekommt sie weiterhin',
+  leitungSepa.includes('pain.001.001.03'))
 
 const sepaFremd = await fetch(`${BASIS}/api/payroll/export?art=sepa&year=${jahr}&month=${monat}&locationId=${locationId}`,
   { headers: { cookie: kita } })

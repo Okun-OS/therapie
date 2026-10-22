@@ -219,6 +219,16 @@ check('Ein zweiter Lauf zahlt sie NICHT ein zweites Mal aus',
 
 // ── Wirkung auf SEPA, DATEV und Beleg ──────────────────────────────────────
 console.log('\n=== Wirkung auf Datei und Beleg ===')
+// §217 Seit der Befund behoben ist, entsteht aus Entwürfen keine Zahldatei
+// mehr. Diese Prüfung stellt ihren Ausgangszustand deshalb selbst her: erst
+// freigeben, dann zahlen — und zwar NACH dem zweiten Lauf oben, weil ein
+// freigegebener Monat sich nicht noch einmal vorbereiten lässt.
+for (const e of (await hole(gf, `/api/payroll?year=${jahr}&month=${monat}`)).body.entries ?? []) {
+  if (e.status !== 'approved') {
+    await sende(gf, '/api/payroll', 'PATCH', { id: e.id, status: 'approved' })
+  }
+}
+
 const sepaR = await fetch(`${BASIS}/api/payroll/export?art=sepa&year=${jahr}&month=${monat}`,
   { headers: { cookie: gf } })
 const sepa = await sepaR.text()

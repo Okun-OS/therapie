@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { assertEmployeeAccess } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
+import { ibanGekuerzt } from '@/lib/lohn-export'
 
 export const dynamic = 'force-dynamic'
 
@@ -113,11 +115,48 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     notiz: text(body.notiz),
   }
 
+  // §217 Was vorher dastand — nur für den Vergleich der Bankverbindung.
+  const vorher = await prisma.employeePayrollProfile.findUnique({
+    where: { employeeId: params.id },
+    select: { iban: true, bic: true, kontoinhaber: true },
+  })
+
   const profil = await prisma.employeePayrollProfile.upsert({
     where: { employeeId: params.id },
     create: { employeeId: params.id, ...daten },
     update: daten,
     select: FELDER,
   })
+
+  /*
+   * §217 Eine geänderte Kontoverbindung hinterlässt eine Spur.
+   *
+   * Hier endet das Gehalt eines Menschen. Wer die IBAN tauscht, leitet seine
+   * nächste Zahlung um — und ohne Protokoll fiele das frühestens auf, wenn
+   * er sich meldet, dass nichts angekommen ist. Die IBAN steht gekürzt im
+   * Protokoll: genug, um die Änderung zu erkennen, zu wenig, um davon zu
+   * überweisen.
+   */
+  const geaendert = (['iban', 'bic', 'kontoinhaber'] as const)
+    .filter(f => String(vorher?.[f] ?? '') !== String(daten[f] ?? ''))
+  if (geaendert.length > 0) {
+    await logAudit({
+      userId: session.userId, userEmail: session.email, userRole: session.role,
+      action: 'update', entityType: 'Bankverbindung', entityId: params.id,
+      customerId: customerId ?? undefined,
+      details: {
+        wen: 'Mitarbeiter',
+        felder: geaendert,
+        ...(geaendert.includes('iban') ? {
+          ibanVorher: ibanGekuerzt(vorher?.iban),
+          ibanNachher: ibanGekuerzt(daten.iban),
+          // Neu angelegt ist etwas anderes als getauscht — nur das Tauschen
+          // ist das Alarmzeichen.
+          erstmalig: !vorher?.iban,
+        } : {}),
+      },
+    })
+  }
+
   return NextResponse.json({ profil })
 }

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgSettings, updateOrgSettings } from '@/lib/okun-platform-entities'
 import { requireRole, resolveCustomerId } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
+import { ibanGekuerzt } from '@/lib/lohn-export'
 
 export async function GET(req: NextRequest) {
   const session = requireRole(req)
@@ -73,6 +76,46 @@ export async function PATCH(req: NextRequest) {
     if (feld in eingang) updates[feld] = eingang[feld]
   }
 
+  /*
+   * §217 Eine geänderte Bankverbindung hinterlässt eine Spur.
+   *
+   * Bis hierher nicht: Die IBAN des Arbeitgebers ließ sich ändern, ohne dass
+   * irgendwo stand, wer das wann getan hat. Dabei ist sie das Konto, von dem
+   * alle Gehälter abgehen — und der häufigste Betrug in diesem Bereich ist
+   * nicht der gehackte Bankzugang, sondern die stillschweigend getauschte
+   * Kontonummer. Im Protokoll steht die IBAN nur gekürzt: genug, um die
+   * Änderung zu erkennen, zu wenig, um davon zu überweisen.
+   */
+  const bankFelder = ['iban', 'bic', 'kontoinhaber'] as const
+  const bankGeaendert = bankFelder.filter(f => f in updates)
+  const vorher = bankGeaendert.length > 0
+    ? await prisma.orgSettings.findUnique({
+      where: { customerId }, select: { iban: true, bic: true, kontoinhaber: true },
+    })
+    : null
+
   const settings = await updateOrgSettings(customerId, updates as never)
+
+  if (bankGeaendert.length > 0) {
+    const wirklich = bankGeaendert.filter(
+      f => String(vorher?.[f] ?? '') !== String(updates[f] ?? ''),
+    )
+    if (wirklich.length > 0) {
+      await logAudit({
+        userId: session.userId, userEmail: session.email, userRole: session.role,
+        action: 'update', entityType: 'Bankverbindung', entityId: customerId,
+        customerId,
+        details: {
+          wen: 'Unternehmen',
+          felder: wirklich,
+          ...(wirklich.includes('iban') ? {
+            ibanVorher: ibanGekuerzt(vorher?.iban),
+            ibanNachher: ibanGekuerzt(String(updates.iban ?? '')),
+          } : {}),
+        },
+      })
+    }
+  }
+
   return NextResponse.json({ settings })
 }

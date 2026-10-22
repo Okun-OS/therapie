@@ -1,236 +1,191 @@
-# EBICS-Anbindung — Ist-Stand, Befunde und Architekturvorschlag
+# EBICS-Anbindung — Ist-Stand, Behobenes und Architekturvorschlag
 
-> **Stand: 22.10.2026.** Untersuchung und Dokumentation. **Es wurde nichts
-> eingerichtet, nichts angebunden und keine Zahlung ausgelöst.** Es wurde auch
-> kein Code für EBICS geschrieben.
+> **Stand: 22.10.2026, zweite Fassung.** Die erste Fassung war eine reine
+> Untersuchung. Diese hier beschreibt den Stand **nach** der Behebung der vier
+> Befunde: Was behoben ist, steht mit Dateipfad und Nachweis da; was offen
+> bleibt, ebenfalls.
+
+> **Es wurde weiterhin keine Bankverbindung eingerichtet, keine Zahlung
+> ausgelöst und keine Zeile EBICS-Code geschrieben.**
 
 > **Keine Rechtsauskunft.** Dieses Papier behauptet **nicht**, dass der
 > vorgeschlagene Aufbau nach dem Zahlungsdiensteaufsichtsgesetz erlaubnisfrei
-> ist. Es sagt, welche Gestaltung dafür sprechen *könnte*, und welche Fragen
-> dafür beantwortet sein müssen — von einer Bank und von einem Anwalt, nicht
-> von uns.
+> ist. Es sagt, welche Gestaltung dafür sprechen könnte und welche Fragen
+> beantwortet sein müssen — von einer Bank und von einem Anwalt.
 
-**Ziel, auf das hingearbeitet wird:** Ein Arbeitgeber soll die Gehaltszahlung
-aus OKUN Workforce an seine Bank übermitteln und sie **selbst autorisieren**
-können. Nicht Ziel: dass OKUN Zahlungen auslöst, freigibt oder Geld bewegt.
-
----
-
-## 1 · Wie geprüft wurde
-
-Gelesen wurden `LOHN-ZERTIFIZIERUNG.md` (Abschnitt 7, „Tür C"),
-`AGENTENAUFTRAEGE.md` (Auftrag 2, Teil 3), `DEINE-LISTE.md` sowie der Code,
-der heute Zahlungsdateien erzeugt. Jede Aussage über den Ist-Stand unten
-nennt die Datei, aus der sie stammt.
-
-**Dreiteilung, die dieses Papier durchhält:**
-
-| | Bedeutung |
-|---|---|
-| **IST** | steht im Code, mit Dateipfad belegt |
-| **PLAN** | steht in unserer Dokumentation, ist aber nicht gebaut |
-| **OFFEN** | ist weder gebaut noch entschieden |
+**Ziel:** Ein Arbeitgeber soll die Gehaltszahlung aus OKUN Workforce an seine
+Bank übermitteln und sie **selbst autorisieren** können. Nicht Ziel: dass OKUN
+Zahlungen auslöst, freigibt oder Geld bewegt.
 
 ---
 
-## 2 · IST — was heute wirklich da ist
+## 1 · Was sich seit der ersten Fassung geändert hat
+
+Vier Befunde waren am bestehenden Code gefunden worden. **Drei sind
+vollständig behoben, einer zur Hälfte** — die Hälfte, die ohne neue Tabelle
+geht.
+
+| | Befund | Stand |
+|---|---|---|
+| 1 | Standortleitung konnte die Zahldatei des ganzen Unternehmens abrufen | ✅ behoben |
+| 2 | Kein Schutz gegen doppelte Zahlung | 🟡 halb: Kennung ist stabil, der Zahllauf als Vorgang fehlt |
+| 3 | Entwürfe waren auszahlbar | ✅ behoben |
+| 4 | Weder Zahldatei noch Bankverbindung hinterließen eine Spur | ✅ behoben |
+
+**Nachweis:** 1177 Modultests und die Prüfungen am laufenden System —
+`pruefungen/d-lohn.mjs` **53/53** (vorher 40), `d9-aufrollung.mjs` 42/42, dazu
+die übrigen Lohn-Prüfungen unverändert grün.
+
+---
+
+## 2 · IST — der Stand jetzt
 
 ### 2.1 Die SEPA-Datei
 
 **Gebaut.** `src/lib/lohn-export.ts`, Funktion `sepaXml()`.
 
-* Format **pain.001.001.03**, eine `PmtInf` je Lauf, `PmtMtd` `TRF`,
-  `BtchBookg true`, `SvcLvl` `SEPA`, `ChrgBr` `SLEV`.
-* Kopf mit `MsgId`, `CreDtTm`, `NbOfTxs`, `CtrlSum`, `InitgPty`.
-* Je Zahlung `EndToEndId`, Betrag in EUR, Empfängername, IBAN, optional BIC,
-  Verwendungszweck.
-* **IBAN-Prüfung** mit Prüfsumme nach ISO 7064 (Modulo 97) —
-  `ibanGueltig()`, gilt für Arbeitgeber und Beschäftigte.
-* **Zeichenersetzung** für den SEPA-Zeichensatz (`sepaZeichen()`), damit
-  Umlaute die Datei nicht scheitern lassen.
-* Geprüft durch Modultests in `src/lib/__tests__/lohn-export.test.ts`.
+* Format **pain.001.001.03**, `PmtMtd` `TRF`, `BtchBookg true`, `SvcLvl`
+  `SEPA`, `ChrgBr` `SLEV`.
+* **IBAN-Prüfsumme** nach ISO 7064 für Arbeitgeber und Beschäftigte
+  (`ibanGueltig()`).
+* **Zeichenersetzung** für den SEPA-Zeichensatz (`sepaZeichen()`).
+* Ausgeliefert über `src/app/api/payroll/export/route.ts` als Download mit
+  `Cache-Control: private, no-store`.
 
-**Ausgeliefert** wird sie über `src/app/api/payroll/export/route.ts`
-(`GET /api/payroll/export?art=sepa&year=&month=[&locationId=][&datum=]`) als
-Download mit `Cache-Control: private, no-store`.
+**Neu seit §217 — die Kennung wird aus dem Inhalt gerechnet.**
+`zahlungsKennung()` bildet die `MsgId` aus Mandant, Monat, Standortauswahl und
+der sortierten Liste aus Empfängerkonto und Betrag:
 
-**Ausführungsdatum:** ohne Angabe der übernächste Tag, Samstag und Sonntag
-übersprungen. **Feiertage werden nicht berücksichtigt** (`route.ts`, Z. 141 ff.).
+* **Derselbe Lauf, zweimal abgerufen → dieselbe Kennung.** Erst dadurch *kann*
+  eine Bank eine doppelt eingereichte Datei als Dublette erkennen. Vorher war
+  die Kennung `OKUN-${Date.now()}`, also bei jedem Abruf eine andere — für die
+  Bank zwei verschiedene Aufträge.
+* **Ein korrigierter Lauf → andere Kennung.** Ein starrer Wert je Monat hätte
+  die berechtigte Nachzahlung mit blockiert.
+* Format `OKUN-JJJJMM-XXXXXXXXXX`, 22 Zeichen (erlaubt sind 35). Sie steht
+  zusätzlich im Antwortkopf `X-Okun-Kennung`.
 
-**Nicht gespeichert.** Die Datei entsteht bei der Anfrage und wird
-ausgeliefert; sie wird **nirgends abgelegt** — kein `StoredFile`, keine
-Tabelle, kein Eintrag. Dasselbe gilt für die Tatsache, dass sie erzeugt wurde.
+**Weiterhin nicht gespeichert.** Die Datei entsteht bei der Anfrage und wird
+ausgeliefert. Gespeichert wird seit §217 die *Tatsache* (siehe 2.5), nicht der
+Inhalt.
 
-### 2.2 Bankverbindungen
+**Ausführungsdatum:** ohne Angabe der übernächste Tag, Wochenenden
+übersprungen. **Feiertage werden weiterhin nicht berücksichtigt.**
 
-**Gebaut**, als einfache Textspalten:
+### 2.2 Wer was exportieren darf
+
+**Behoben (Befund 1).** `locationFilter(session, locationId)` wird jetzt
+**immer** ausgewertet, nicht nur bei ausdrücklicher Standortangabe — und sein
+Ergebnis wird als Filter benutzt statt weggeworfen
+(`src/app/api/payroll/export/route.ts`).
+
+Dieselbe Lücke bestand schreibend im Belegweg: Ohne Standortangabe erzeugte
+eine Standortleitung die Entgeltabrechnungen des **ganzen** Trägers, legte sie
+in fremde Personalakten und benachrichtigte fremde Beschäftigte. Auch behoben
+(`src/app/api/payroll/beleg/route.ts`).
+
+**Nachgewiesen, nicht behauptet:** `pruefungen/d-lohn.mjs` legt dafür einen
+zweiten Standort mit einer Person an — im Seed hat jeder Träger nur einen —
+und prüft, dass die Unternehmensebene beide sieht und die Standortleitung den
+fremden Standort nicht, weder im DATEV- noch im SEPA-Export. **Gegengeprüft:**
+Mit entfernter Sperre steht der fremde Name in der Datei der Leitung.
+
+### 2.3 Entwürfe
+
+**Behoben (Befund 3).** Eine Zahldatei entsteht nur aus Abrechnungen im Stand
+`approved` oder `paid` (`ZAHLBAR` in `payroll/export/route.ts`). Sind nur
+Entwürfe da, antwortet die Schnittstelle mit 400 und sagt, woran es liegt —
+und nicht, es fehle eine Bankverbindung.
+
+`paid` bleibt zugelassen, damit eine bereits bezahlte Datei noch einmal
+heruntergeladen werden kann; sie trägt dann dieselbe Kennung, und die Bank
+erkennt die Dublette.
+
+### 2.4 Bankverbindungen
 
 * Arbeitgeber: `OrgSettings.iban`, `.bic`, `.kontoinhaber`
-  (`prisma/schema.prisma`, Z. 848 ff.)
 * Beschäftigte: `EmployeePayrollProfile.iban`, `.bic`, `.kontoinhaber`
-  (`prisma/schema.prisma`, Z. 1951 ff., Kommentar dort: „Grundlage fuer die
-  spaetere SEPA-Datei")
 
-**Keine Verschlüsselung auf Anwendungsebene.** Die Werte stehen im Klartext in
-der Datenbank. Wer die Datenbank lesen kann, liest alle Kontoverbindungen.
+**Weiterhin ohne Verschlüsselung auf Anwendungsebene** — Klartext in der
+Datenbank. Siehe offene Punkte, Abschnitt 5.
 
-### 2.3 EBICS-Bestandteile
+### 2.5 Protokollierung
 
-**Keine.** Eine Suche über das gesamte Projekt nach „ebics" findet
-ausschließlich **Dokumentation** (`LOHN-ZERTIFIZIERUNG.md`,
-`AGENTENAUFTRAEGE.md`, `DEINE-LISTE.md`). Es gibt:
+**Behoben (Befund 4).** Drei neue Spuren, alle über `logAudit`:
 
-* keine EBICS-Bibliothek in den Abhängigkeiten,
-* keinen Schlüsselspeicher, keine Schlüsselerzeugung, keinen INI-Brief,
-* keine Bankparameter je Mandant (Host-ID, Partner-ID, Benutzer-ID, URL),
-* keinen Übertragungsweg, keine Auftragsarten, keine Statusabfrage.
+| Vorgang | Datei | Was festgehalten wird |
+|---|---|---|
+| SEPA-Export | `payroll/export/route.ts` | Kennung, Jahr, Monat, Standort, Anzahl, **Summe**, Ausführungsdatum, übersprungene Entwürfe |
+| DATEV-Export | dieselbe | Jahr, Monat, Standort, Anzahl |
+| Bankverbindung geändert | `api/org-settings/route.ts`, `api/employees/[id]/payroll-profile/route.ts` | wer, welche Felder, IBAN **gekürzt** vorher/nachher, und ob sie erstmalig gesetzt oder **getauscht** wurde |
 
-**Der Ist-Stand der Auszahlung ist vollständig beschrieben mit einem Satz:
-Die Anlage erzeugt eine Datei, und ein Mensch lädt sie bei seiner Bank hoch.**
+Die IBAN steht im Protokoll nur als `DE89…3000` (`ibanGekuerzt()`): genug, um
+eine Änderung zu erkennen, zu wenig, um davon zu überweisen. Protokolliert
+wird nur, wenn sich wirklich etwas geändert hat — ein Speichern ohne Änderung
+erzeugt keinen Eintrag.
 
-### 2.4 Trennung von Übermittlung und Autorisierung
+**Warum das vor EBICS kommt und nicht danach:** Der häufigste Betrug bei
+Gehaltszahlungen ist nicht der gehackte Bankzugang, sondern die
+stillschweigend getauschte Kontonummer. Ohne diese Spur ist er unsichtbar.
 
-**Heute strukturell gegeben — weil es keine Übermittlung gibt.** Der Kunde
-lädt hoch und zeichnet in seinem Bankzugang. OKUN hat keinen Bankzugang,
-keinen Schlüssel und keine Möglichkeit, eine Zahlung auszulösen.
+### 2.6 EBICS-Bestandteile
 
-Die Absicht ist im Code festgehalten (`src/lib/lohn-export.ts`, Kopf):
-Zahlungsverkehr für andere sei erlaubnispflichtig, deshalb erzeuge man eine
-Datei, „die der Kunde bei SEINER Bank hochlädt und dort freigibt".
-
-### 2.5 Mandantentrennung, Berechtigungen, Protokoll
-
-* **Mandantentrennung:** über `resolveCustomerId(session)`; jede Abfrage ist
-  auf `customerId` eingeschränkt. Keine Auffälligkeit gefunden.
-* **Rollen:** `requireRole(req, ['admin', 'company', 'okun'])` — dabei ist
-  `admin` die **Standortleitung** (`src/lib/session.ts`, Z. 8 und 130).
-* **Protokollierung:** **keine.** Weder der Export (`payroll/export/route.ts`)
-  noch das Ändern der Bankverbindung des Unternehmens
-  (`api/org-settings/route.ts`) noch das Ändern der Kontoverbindung eines
-  Beschäftigten (`api/employees/[id]/payroll-profile/route.ts`) schreibt einen
-  Eintrag über `logAudit` — in allen drei Dateien kommt `logAudit` **null
-  Mal** vor.
-
-### 2.6 Schutz gegen doppelte Zahlung, Zahlungsstatus
-
-* **Kein Schutz.** Die `MsgId` wird als `OKUN-${Date.now()}` gebildet
-  (`lohn-export.ts`). Zwei Abrufe desselben Monats ergeben **zwei Dateien mit
-  verschiedenen Kennungen** — für die Bank sind das zwei verschiedene
-  Aufträge, und sie würde beide annehmen.
-* **Kein Status.** `PayrollEntry.status` kennt `draft`, `approved`, `paid`
-  (`src/app/api/payroll/route.ts`, Z. 220). Der Export **liest ihn nicht** und
-  **setzt ihn nicht**. Eine Abrechnung bleibt nach der Zahlung auf demselben
-  Stand wie davor.
-* **Keine Rückmeldung.** Ob die Bank den Auftrag angenommen, abgelehnt oder
-  ausgeführt hat, erfährt die Anlage nicht und speichert sie nicht.
+**Weiterhin keine.** Keine Bibliothek, kein Schlüsselspeicher, keine
+Bankparameter, kein Übertragungsweg, keine Statusabfrage. Der Ist-Stand der
+Auszahlung bleibt: **Die Anlage erzeugt eine Datei, und ein Mensch lädt sie bei
+seiner Bank hoch.**
 
 ---
 
-## 3 · Befunde
+## 3 · Was OKUN als Betreiber technisch könnte
 
-Vier Punkte, in der Reihenfolge, in der sie wehtun. Alle vier sind **heute**
-schon da und werden mit EBICS **größer**, weil dann ein Auftrag die Anlage
-verlässt, statt auf einem Bildschirm zu landen.
+**Zahlungen auslösen oder autorisieren: nein.** Es gibt keinen Bankzugang,
+keinen Schlüssel, keinen Übertragungsweg. Das ist keine Zusage, sondern eine
+Eigenschaft des Aufbaus.
 
-### Befund 1 — Die Standortleitung kann die Zahldatei des ganzen Unternehmens abrufen
+**Mit Datenbankzugang weiterhin möglich:** Kontoverbindungen und Beträge
+ändern, bevor eine Zahldatei entsteht. Die Datei wäre dann formal korrekt und
+vom Kunden freigegeben, und das Geld ginge an ein fremdes Konto.
 
-`payroll/export/route.ts` prüft den Standortbezug **nur, wenn `locationId`
-mitgegeben wird** (Z. 43–46). Ohne diesen Parameter lautet die Abfrage
-`{ customerId, year, month }` — also **alle Standorte**.
-
-Zum Vergleich: `payroll/aufrollen`, `payroll/einmalzahlung`,
-`payroll/jahresabschluss`, `payroll/vorbereiten`, `payroll/elstam` und
-`payroll` selbst rufen alle `allowedLocationScope(session)` auf und
-schränken damit ein. Der Export ist die Ausnahme — das spricht für ein
-Versehen, nicht für eine Entscheidung.
-
-**Wirkung:** Eine Standortleitung kann eine Datei herunterladen, die
-**Name, IBAN und Auszahlungsbetrag jeder beschäftigten Person des gesamten
-Trägers** enthält.
-
-**Status: offen. Bewusst nicht ohne Freigabe geändert**, weil es die
-Berechtigungen der Lohnabrechnung verschiebt.
-
-### Befund 2 — Es gibt keinen Schutz gegen die doppelte Zahlung
-
-Zweimal auf „SEPA-Datei" geklickt, zweimal hochgeladen, zweimal gezahlt. Der
-einzige Mechanismus, der das bankseitig verhindern könnte — eine über die
-Zeit stabile `MsgId` je Monat und Mandant —, ist nicht vorhanden.
-
-Mit EBICS wird daraus der Unterschied zwischen einem Fehlklick und einer
-doppelt ausgeführten Gehaltszahlung.
-
-### Befund 3 — Entwürfe sind auszahlbar
-
-Der Export filtert nicht auf `status`. Eine Abrechnung im Stand `draft` landet
-in der Zahldatei wie eine freigegebene. Die Regel „kein Lohn ohne
-freigegebenen Monat" (`src/lib/monatsfreigabe.ts`, §136) greift bei der
-Berechnung, **nicht beim Auszahlen**.
-
-### Befund 4 — Weder Zahldatei noch Bankverbindung hinterlassen eine Spur
-
-Kein Protokolleintrag beim Export, keiner beim Ändern einer IBAN. Für eine
-Datei mit allen Kontoverbindungen eines Betriebs ist das zu wenig — und für
-den Fall, dass eine Kontonummer stillschweigend getauscht wurde (der
-klassische Gehaltsbetrug), fehlt damit genau der Nachweis, der ihn
-aufdeckt.
+**Was sich daran seit §217 geändert hat:** Der Weg über die Oberfläche
+hinterlässt jetzt eine Spur — wer eine IBAN tauscht, steht im Protokoll, und
+die Summe jeder erzeugten Zahldatei ebenfalls. **Ein Eingriff direkt in der
+Datenbank umgeht das weiterhin.** Dagegen hilft keine Anwendungslogik, sondern
+nur die Trennung von Zugängen und ein Protokoll, das der Betreiber nicht
+selbst ändern kann — das ist ein eigenes Thema und steht hier als offener
+Punkt, nicht als gelöst.
 
 ---
 
-## 4 · Was OKUN als Betreiber heute technisch könnte
+## 4 · SOLL — Architekturvorschlag
 
-Unbequem, aber es gehört in dieses Papier.
-
-**OKUN kann heute keine Zahlung autorisieren und keine auslösen.** Es gibt
-keinen Bankzugang, keinen Schlüssel, keinen Übertragungsweg. Das ist keine
-Zusage, sondern eine Eigenschaft des Aufbaus: Was nicht da ist, kann nicht
-missbraucht werden.
-
-**Was OKUN mit Datenbankzugang sehr wohl könnte:**
-
-* **Kontoverbindungen lesen** — alle, im Klartext, von Arbeitgebern und
-  Beschäftigten.
-* **Kontoverbindungen ändern**, bevor eine Zahldatei erzeugt wird. Die Datei
-  wäre dann formal korrekt, von der richtigen Person freigegeben, und das
-  Geld ginge an ein fremdes Konto. **Ohne Protokoll (Befund 4) bliebe das
-  unsichtbar.**
-* **Beträge ändern**, mit derselben Folge.
-
-**Das heißt:** Die Trennung „der Kunde autorisiert" schützt heute davor, dass
-OKUN *eine Zahlung anstößt* — nicht davor, dass OKUN beeinflusst, *was* in der
-Zahlung steht. Mit EBICS ändert sich daran nichts; der Unterschied ist nur,
-dass der Weg kürzer wird. **Wer das ernst nimmt, löst Befund 4, bevor er EBICS
-baut.**
-
----
-
-## 5 · SOLL — Architekturvorschlag
-
-### 5.1 Der Grundsatz, aus dem alles folgt
+### 4.1 Der Grundsatz
 
 > **OKUN überträgt, der Kunde zeichnet.**
 > Es darf keinen technischen Weg geben, auf dem OKUN allein einen Auftrag
 > bankfachlich autorisiert. Nicht „wir tun es nicht" — **„wir können es
 > nicht."**
 
-Praktisch heißt das: OKUN tritt gegenüber der Bank allenfalls als Teilnehmer
-mit **Transportberechtigung** auf. Die bankfachliche Unterschrift (Einzel-
-oder Kollektivunterschrift) leistet der Kunde — im Zugang seiner Bank, in
-deren App oder in seinem eigenen EBICS-Client. Ob und wie eine Bank das
-einrichtet, ist Frage 1 in Abschnitt 6.
+OKUN tritt gegenüber der Bank allenfalls als Teilnehmer mit
+**Transportberechtigung** auf. Die bankfachliche Unterschrift leistet der
+Kunde — im Zugang seiner Bank, in deren App oder in seinem eigenen
+EBICS-Client.
 
-### 5.2 Bausteine
+### 4.2 Bausteine
 
-| Baustein | Aufgabe | Anmerkung |
+| Baustein | Aufgabe | Stand |
 |---|---|---|
-| **Zahllauf** (neue Tabelle) | Ein Auftrag je Mandant, Monat und Standortauswahl: Inhalt, Summe, Anzahl, Zustand | Das fehlende Stück. Heute existiert ein Zahllauf nur als Datei im Download-Ordner. |
-| **Zahldatei** | das erzeugte pain.001 | unverändert gespeichert, weil nachher niemand mehr rekonstruieren kann, was unterschrieben wurde |
-| **Bankzugang je Mandant** | Host-ID, Partner-ID, Benutzer-ID, Bank-URL, Zustand der Einrichtung | keine Geheimnisse in dieser Tabelle außer dem, was unten steht |
-| **Schlüsselmaterial** | die drei Schlüsselpaare des Teilnehmers | siehe 5.4 — der heikelste Teil |
-| **Übertragung** | EBICS-Client, Auftragsart für SEPA-Überweisung | eigene Bibliothek oder Dienst, siehe 6 |
-| **Rückmeldung** | Abholen des Verarbeitungsstatus bei der Bank | sonst endet jeder Lauf im Ungewissen |
+| **Zahllauf** (neue Tabelle) | Ein Auftrag je Mandant, Monat und Auswahl: Inhalt, Summe, Anzahl, Zustand | fehlt — das nächste Stück |
+| **Zahldatei** | das erzeugte pain.001, unverändert aufbewahrt | fehlt |
+| **Bankzugang je Mandant** | Host-ID, Partner-ID, Benutzer-ID, Bank-URL, Einrichtungsstand | fehlt |
+| **Schlüsselmaterial** | die drei Schlüsselpaare des Teilnehmers | fehlt, siehe 4.4 |
+| **Übertragung** | EBICS-Client, Auftragsart für SEPA-Überweisung | fehlt |
+| **Rückmeldung** | Verarbeitungsstatus bei der Bank abholen | fehlt |
+| **Kennung** | stabil, aus dem Inhalt gerechnet | ✅ da (§217) |
+| **Protokoll** | wer hat wann was erzeugt und geändert | ✅ da (§217) |
+| **Freigabe-Erfordernis** | keine Zahlung aus Entwürfen | ✅ da (§217) |
 
-### 5.3 Zustände eines Zahllaufs
+### 4.3 Zustände eines Zahllaufs
 
 ```
 entwurf ─► freigegeben ─► übertragen ─► angenommen ─► ausgeführt
@@ -239,66 +194,61 @@ entwurf ─► freigegeben ─► übertragen ─► angenommen ─► ausgefüh
                 └─► verworfen
 ```
 
-Zwei Regeln, die daran hängen:
+Daran hängen zwei Regeln. Die erste gilt bereits: **Übertragen wird nur, was
+freigegeben ist** (§217). Die zweite kommt mit der Tabelle: **Je Mandant,
+Monat und Auswahl gibt es nur einen nicht verworfenen Lauf** — damit ist der
+Doppelzahlungsschutz nicht mehr nur eine Höflichkeit gegenüber der Bank,
+sondern eine Regel der Anlage.
 
-1. **Übertragen wird nur ein freigegebener Lauf** — und freigegeben wird nur,
-   was aus Abrechnungen im Stand `approved` besteht (behebt Befund 3).
-2. **Je Mandant, Monat und Auswahl kann es nur einen nicht verworfenen Lauf
-   geben.** Das ist der Platz, an dem Befund 2 verschwindet: Die `MsgId` wird
-   aus der Kennung des Laufs gebildet und ist damit stabil. Eine zweite
-   Übertragung desselben Laufs trägt dieselbe Kennung, und die Bank erkennt
-   sie als Dublette.
-
-### 5.4 Schlüssel — die Stelle, an der es ernst wird
-
-Drei Wege, und sie unterscheiden sich darin, was OKUN im Ernstfall könnte:
+### 4.4 Schlüssel
 
 | Weg | Wo liegt der Unterschriftsschlüssel | Was OKUN könnte |
 |---|---|---|
 | **A — nur Transport** | Transportschlüssel bei OKUN, Unterschriftsschlüssel **ausschließlich beim Kunden** | übertragen, nicht zeichnen |
-| **B — Kunde hat eigenen Client** | alles beim Kunden, OKUN erzeugt nur die Datei | nichts (= heutiger Zustand mit Komfort) |
+| **B — Kunde hat eigenen Client** | alles beim Kunden | nichts (heutiger Zustand mit Komfort) |
 | **C — alle Schlüssel bei OKUN** | alles bei OKUN | **alles.** Kommt nicht in Frage. |
 
-**Vorschlag: Weg A**, mit zwei Auflagen. Erstens: Auch der Transportschlüssel
-ist ein Geheimnis und gehört nicht in eine Umgebungsvariable neben die
-übrigen — **der Vorfall vom 21.10.2026 bei unserem Hoster ist genau der
-Grund.** Zweitens: Vor der ersten echten Übertragung muss schriftlich
-feststehen, dass eine Transportunterschrift keine Zahlungsautorisierung ist
-und welche Rolle unser Teilnehmer bei der konkreten Bank hat.
+**Vorschlag: Weg A**, mit zwei Auflagen. Erstens gehört auch ein
+Transportschlüssel nicht in eine Umgebungsvariable neben die übrigen — **der
+Vorfall vom 21.10.2026 bei unserem Hoster ist genau der Grund.** Zweitens muss
+vor der ersten echten Übertragung schriftlich feststehen, dass eine
+Transportunterschrift keine Zahlungsautorisierung ist und welche Rolle unser
+Teilnehmer bei der konkreten Bank hat.
 
-### 5.5 Was zuerst kommt, auch wenn es nichts mit EBICS zu tun hat
+---
 
-Vor der ersten Zeile EBICS-Code: **Befund 4 beheben.** Jede Änderung einer
-IBAN — beim Unternehmen wie bei einer beschäftigten Person — gehört ins
-Protokoll, mit Zeitpunkt, Person und Vorher-Nachher (die IBAN selbst dabei
-gekürzt, nicht vollständig). Ebenso jede Erzeugung einer Zahldatei.
+## 5 · Was offen bleibt
 
-Begründung in einem Satz: Eine Zahlung, die niemand nachvollziehen kann, ist
-im Streitfall dasselbe wie keine Zahlung — und der häufigste Betrug in diesem
-Bereich ist nicht der gehackte Bankzugang, sondern die stillschweigend
-getauschte Kontonummer.
+* **Der Zahllauf als Vorgang** samt gespeicherter Datei und Zustandsfolge
+  (Stufe 1 unten). Ohne ihn weiß die Anlage weiterhin nicht, ob ein Monat
+  bezahlt wurde — `status: 'paid'` wird von keiner Stelle gesetzt, weil der
+  Download nicht weiß, ob der Mensch die Datei wirklich eingereicht hat.
+* **Verschlüsselung der Kontoverbindungen auf Anwendungsebene.** Heute
+  Klartext. Der Hoster-Vorfall hat gezeigt, was die Verschlüsselung der
+  Infrastruktur wert ist, wenn Zugangsdaten abfließen.
+* **Feiertage beim Ausführungsdatum.**
+* **Ein Protokoll, das der Betreiber nicht selbst ändern kann** (Abschnitt 3).
+* **Die gesamte EBICS-Strecke** (4.2).
 
 ---
 
 ## 6 · Offene Fragen an die Banken
 
-Zu stellen an **zwei bis drei** Institute, möglichst die der ersten Kunden —
-die Antworten unterscheiden sich von Haus zu Haus.
-
 1. Kann ein **Softwareanbieter als EBICS-Teilnehmer mit reiner
    Transportberechtigung** im Zugang eines Firmenkunden aufgenommen werden?
    Wie heißt diese Rolle bei Ihnen, und was darf sie?
 2. Wie gibt der Kunde einen so eingelieferten Auftrag frei — in Ihrem
-   Online-Banking, in einer App, nur in einem eigenen EBICS-Client? **Geht
-   die Freigabe ohne zusätzliche Software beim Kunden?**
+   Online-Banking, in einer App, nur in einem eigenen EBICS-Client? **Geht die
+   Freigabe ohne zusätzliche Software beim Kunden?**
 3. Welche **Auftragsarten** gelten bei Ihnen für SEPA-Überweisungen, und
    welche EBICS-Fassung setzen Sie voraus?
 4. Wie erkennt Ihr Haus eine **Dublette** — über `MsgId`, über `PmtInfId`,
-   über beides? Wie lange?
+   über beides? Wie lange? *(Wir liefern inzwischen eine stabile, aus dem
+   Inhalt gerechnete `MsgId` — siehe 2.1.)*
 5. Welche **Rückmeldungen** stellen Sie bereit, in welchem Format, und wie
    lange sind sie abrufbar?
-6. Welche Unterlagen braucht die Einrichtung (Teilnahmeerklärung,
-   INI-Brief), und wie lange dauert die Freischaltung?
+6. Welche Unterlagen braucht die Einrichtung (Teilnahmeerklärung, INI-Brief),
+   und wie lange dauert die Freischaltung?
 7. Fallen **Entgelte** an — je Zugang, je Teilnehmer, je Auftrag?
 8. Gibt es eine **Testumgebung**?
 
@@ -307,23 +257,21 @@ die Antworten unterscheiden sich von Haus zu Haus.
 ## 7 · Offene Fragen an die Rechtsberatung
 
 **Ausdrücklich ungeklärt: ob dieser Aufbau nach dem ZAG erlaubnisfrei ist.**
-Die Vermutung stützt sich auf das BaFin-Merkblatt zum ZAG in der Fassung vom
-Februar 2023 und die EBA-Auskunft 2021_6235, nach denen ein nur über EBICS
-genutztes Konto nicht als online zugänglich gilt — und auf den Umstand, dass
-eine Transportunterschrift keine Zahlungsautorisierung ist. **Beides ist
-gelesen, nicht bestätigt.** Die BaFin sagt zugleich ausdrücklich, dass eine
-Erlaubnispflicht nicht dadurch entfällt, dass die Tätigkeit nur eine
-Nebenleistung ist.
+Die Vermutung stützt sich auf das BaFin-Merkblatt zum ZAG (Fassung Februar
+2023) und die EBA-Auskunft 2021_6235, nach denen ein nur über EBICS genutztes
+Konto nicht als online zugänglich gilt — und darauf, dass eine
+Transportunterschrift keine Zahlungsautorisierung ist. **Beides ist gelesen,
+nicht bestätigt.** Die BaFin stellt zugleich klar, dass eine Erlaubnispflicht
+nicht dadurch entfällt, dass die Tätigkeit nur eine Nebenleistung ist.
 
-1. Ist der Aufbau aus 5.1/5.4 (Weg A) ein **Zahlungsauslösedienst** im Sinne
+1. Ist der Aufbau aus 4.1/4.4 (Weg A) ein **Zahlungsauslösedienst** im Sinne
    des ZAG — und wenn nein, woran genau hängt das?
-2. Ändert sich die Bewertung, wenn OKUN den Zeitpunkt der Übertragung
-   bestimmt, oder wenn der Auftrag ohne weiteres Zutun des Kunden erzeugt
-   wird?
-3. Was darf die Oberfläche dem Kunden anzeigen und anbieten, ohne dass daraus
-   eine „Veranlassung" durch uns wird?
-4. Welche Gestaltung wäre eindeutig erlaubnispflichtig, damit wir sie
-   ausschließen können? (Die Frage ist uns wichtiger als die erste.)
+2. Ändert sich die Bewertung, wenn OKUN den Zeitpunkt der Übertragung bestimmt
+   oder der Auftrag ohne weiteres Zutun des Kunden erzeugt wird?
+3. Was darf die Oberfläche anbieten, ohne dass daraus eine „Veranlassung"
+   durch uns wird?
+4. **Welche Gestaltung wäre eindeutig erlaubnispflichtig, damit wir sie
+   ausschließen können?** (Wichtiger als Frage 1.)
 5. Welche Pflichten träfen uns als **Auftragsverarbeiter** zusätzlich, wenn
    Kontoverbindungen über unsere Anlage an eine Bank übermittelt werden?
 6. Empfiehlt sich eine **Anfrage an die BaFin** zur Erlaubnisfreiheit, oder
@@ -331,23 +279,19 @@ Nebenleistung ist.
 
 ---
 
-## 8 · Schrittweiser Plan
+## 8 · Plan
 
-| Stufe | Inhalt | Abhängig von | Zustand |
-|---|---|---|---|
-| **0** | Befund 4 beheben: Protokoll für Zahldatei und jede IBAN-Änderung | nichts | kann sofort |
-| **0b** | Befund 1 und 3 beheben: Standortbezug beim Export, nur freigegebene Abrechnungen | Freigabe des Eigentümers (Berechtigungsfrage) | wartet |
-| **1** | **Zahllauf als Vorgang** mit Zuständen und stabiler `MsgId`; Datei wird gespeichert statt nur ausgeliefert. **Noch immer Download, kein EBICS** — behebt Befund 2 und macht die Zahlung nachvollziehbar | Stufe 0 | nächster Bauabschnitt |
-| **2** | Bankantworten auswerten (Abschnitt 6), Weg A oder B je Bank festlegen | Antworten | wartet auf Dritte |
-| **3** | Rechtliche Einschätzung einholen (Abschnitt 7) | — | läuft über `ANFRAGEN.md`, Abschnitt 5 |
-| **4** | EBICS-Einrichtung je Mandant: Zugangsdaten, Schlüsselerzeugung, INI-Brief, Zustandsanzeige — **gegen eine Testumgebung** | 2 und 3 | nicht vorher |
-| **5** | Übertragung eines freigegebenen Laufs, Kunde zeichnet bei seiner Bank | 4 | — |
-| **6** | Rückmeldungen abholen, Zustände fortschreiben, Fehlerfälle | 5 | — |
-
-**Stufe 1 ist der Punkt, an dem der größte Nutzen bei kleinstem Risiko
-entsteht**: Sie beseitigt die doppelte Zahlung und macht nachvollziehbar, was
-gezahlt wurde — ohne eine einzige Bankverbindung und ohne eine einzige offene
-Rechtsfrage.
+| Stufe | Inhalt | Stand |
+|---|---|---|
+| **0** | Protokoll für Zahldatei und jede IBAN-Änderung | ✅ **erledigt (§217)** |
+| **0b** | Standortbezug beim Export und beim Beleg; keine Zahlung aus Entwürfen | ✅ **erledigt (§217)** |
+| **0c** | Stabile, aus dem Inhalt gerechnete Zahlungskennung | ✅ **erledigt (§217)** |
+| **1** | **Zahllauf als Vorgang**: Tabelle, Zustände, gespeicherte Datei, `paid` wird gesetzt. Noch immer Download, kein EBICS | nächster Bauabschnitt |
+| **2** | Bankantworten auswerten (Abschnitt 6), Weg A oder B je Bank festlegen | wartet auf Dritte |
+| **3** | Rechtliche Einschätzung einholen (Abschnitt 7) | läuft über `ANFRAGEN.md`, Abschnitt 5 |
+| **4** | EBICS-Einrichtung je Mandant gegen eine **Testumgebung** | nach 2 und 3 |
+| **5** | Übertragung eines freigegebenen Laufs, Kunde zeichnet bei seiner Bank | nach 4 |
+| **6** | Rückmeldungen abholen, Zustände fortschreiben, Fehlerfälle | nach 5 |
 
 ---
 
@@ -356,5 +300,4 @@ Rechtsfrage.
 * Kein Konto von OKUN, über das Geld läuft. In keiner Stufe.
 * Keine Schlüssel, mit denen OKUN allein zeichnen könnte (Weg C).
 * Keine automatische Übertragung ohne vorherige Freigabe durch einen Menschen.
-* Kein Abruf von Kontoumsätzen. Für die Gehaltszahlung wird er nicht
-  gebraucht, und er wäre ein zweiter Grund, über Erlaubnispflichten zu reden.
+* Kein Abruf von Kontoumsätzen.

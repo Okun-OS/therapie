@@ -14,6 +14,8 @@
  *    ein Klick mehr, für uns der Unterschied zwischen Software und BaFin.
  */
 
+import { createHash } from 'crypto'
+
 // ── DATEV ───────────────────────────────────────────────────────────────────
 
 export interface DatevZeile {
@@ -178,6 +180,67 @@ export function datevZeilenAusAbrechnung(a: {
 }
 
 // ── SEPA ────────────────────────────────────────────────────────────────────
+
+/**
+ * §217 Eine IBAN so kürzen, dass sie ins Protokoll darf.
+ *
+ * Vier Stellen vorn, vier hinten. Das genügt, um zu erkennen, DASS sich eine
+ * Kontoverbindung geändert hat und in welche Richtung — und es ist zu wenig,
+ * um aus dem Protokoll heraus irgendwohin zu überweisen. Genau diese Abwägung
+ * ist der Grund, warum im Protokoll überhaupt etwas von der IBAN steht: Der
+ * häufigste Betrug mit Gehaltszahlungen ist nicht der gehackte Bankzugang,
+ * sondern die stillschweigend getauschte Kontonummer.
+ */
+export function ibanGekuerzt(roh: string | null | undefined): string | null {
+  const iban = String(roh ?? '').replace(/\s+/g, '').toUpperCase()
+  if (!iban) return null
+  if (iban.length <= 8) return `${iban.slice(0, 2)}…`
+  return `${iban.slice(0, 4)}…${iban.slice(-4)}`
+}
+
+/**
+ * §217 Die Kennung eines Zahlungslaufs — und warum sie nicht zufällig ist.
+ *
+ * WAS VORHER DASTAND UND WARUM ES FALSCH WAR
+ * Die Nachrichtenkennung war `OKUN-${Date.now()}`. Zwei Abrufe desselben
+ * Monats ergaben damit zwei verschiedene Kennungen — für eine Bank sind das
+ * zwei verschiedene Aufträge, und sie nimmt beide an. Wer zweimal
+ * herunterlädt und zweimal einreicht, zahlt die Gehälter zweimal. Die Anlage
+ * hatte dagegen keinerlei Schutz, und eine Bank konnte auch keinen bieten:
+ * Sie sah nie zweimal dasselbe.
+ *
+ * WIE ES JETZT GEHT
+ * Die Kennung wird aus dem Inhalt gerechnet: Mandant, Monat, Standortauswahl
+ * und die Liste aus Empfängerkonto und Betrag. Daraus folgen beide
+ * Eigenschaften, auf die es ankommt:
+ *
+ *   — Zweimal derselbe Lauf ergibt dieselbe Kennung. Die Bank erkennt die
+ *     Dublette und lehnt sie ab. **Das ist der Schutz.**
+ *   — Ein nachträglich korrigierter Lauf (ein Betrag anders, eine Person
+ *     mehr) ergibt eine ANDERE Kennung und wird angenommen. Ein starrer Wert
+ *     je Monat hätte die berechtigte Korrektur mit blockiert.
+ *
+ * Die Beträge werden vor dem Rechnen sortiert, damit die Reihenfolge der
+ * Abrechnungen die Kennung nicht ändert — sonst wäre derselbe Lauf je nach
+ * Sortierung ein anderer.
+ */
+export function zahlungsKennung(
+  merkmale: { customerId: string; jahr: number; monat: number; locationId?: string | null },
+  zahlungen: { iban: string; betrag: number }[],
+): string {
+  const monat = String(merkmale.monat).padStart(2, '0')
+  const kern = [
+    merkmale.customerId,
+    `${merkmale.jahr}-${monat}`,
+    merkmale.locationId ?? 'alle',
+    ...zahlungen
+      .map(z => `${z.iban.replace(/\s+/g, '').toUpperCase()}:${z.betrag.toFixed(2)}`)
+      .sort(),
+  ].join('|')
+  const abdruck = createHash('sha256').update(kern).digest('hex').slice(0, 10).toUpperCase()
+  // Höchstens 35 Zeichen sind in `MsgId` erlaubt; das hier sind 22.
+  return `OKUN-${merkmale.jahr}${monat}-${abdruck}`
+}
 
 export interface SepaZahlung {
   name: string

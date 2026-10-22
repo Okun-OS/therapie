@@ -3,11 +3,27 @@ import { requireRole, resolveCustomerId } from '@/lib/session'
 import { locationFilter } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 import {
-  datevCsv, datevZeilenAusAbrechnung, sepaXml, ibanGueltig,
+  datevCsv, datevZeilenAusAbrechnung, sepaXml, ibanGueltig, zahlungsKennung,
   type DatevZeile, type SepaZahlung,
 } from '@/lib/lohn-export'
+import { logAudit } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * §217 Welche Abrechnungen in eine Zahlung dürfen.
+ *
+ * `draft` ist ausgeschlossen, und das ist der ganze Punkt: Ein Entwurf ist
+ * eine Rechnung, die noch niemand bestätigt hat. Bis hierher konnte er
+ * ausgezahlt werden — die Regel „kein Lohn ohne freigegebenen Monat" (§136)
+ * greift beim Rechnen, nicht beim Überweisen.
+ *
+ * `paid` bleibt drin, damit eine bereits bezahlte Datei noch einmal
+ * heruntergeladen werden kann. Sie trägt dann dieselbe Kennung wie beim
+ * ersten Mal (siehe `zahlungsKennung`), die Bank erkennt sie als Dublette,
+ * und es wird nicht zweimal gezahlt.
+ */
+const ZAHLBAR = ['approved', 'paid']
 
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
@@ -40,13 +56,28 @@ export async function GET(req: NextRequest) {
   if (!year || !month || month < 1 || month > 12) {
     return NextResponse.json({ error: 'Jahr und Monat sind erforderlich' }, { status: 400 })
   }
-  if (locationId) {
-    const erlaubt = await locationFilter(session, locationId)
-    if (erlaubt instanceof NextResponse) return erlaubt
-  }
+  /*
+   * §217 Der Standortbezug gilt IMMER, nicht nur bei ausdrücklicher Angabe.
+   *
+   * Vorher wurde `locationFilter` nur aufgerufen, wenn ein Standort
+   * mitgegeben wurde — und sein Ergebnis dann weggeworfen. Ohne den
+   * Parameter lautete die Abfrage schlicht `{ customerId, year, month }`:
+   * Eine Standortleitung konnte damit eine Datei herunterladen, in der Name,
+   * IBAN und Auszahlungsbetrag JEDER beschäftigten Person des ganzen Trägers
+   * stehen. Sechs andere Wege der Lohnabrechnung schränken längst ein; dieser
+   * war die Ausnahme.
+   *
+   * Jetzt wird das Ergebnis benutzt: `undefined` heißt „keine Einschränkung"
+   * und kommt nur für die Rolle `okun` ohne Standortwunsch vor.
+   */
+  const erlaubteStandorte = await locationFilter(session, locationId)
+  if (erlaubteStandorte instanceof NextResponse) return erlaubteStandorte
+  const standortFilter = erlaubteStandorte
+    ? { locationId: { in: erlaubteStandorte } }
+    : {}
 
   const abrechnungen = await prisma.payrollEntry.findMany({
-    where: { customerId, year, month, ...(locationId ? { locationId } : {}) },
+    where: { customerId, year, month, ...standortFilter },
     orderBy: { employeeName: 'asc' },
   })
   if (abrechnungen.length === 0) {
@@ -89,6 +120,16 @@ export async function GET(req: NextRequest) {
       zeilen,
     )
     const name = `DATEV-Lohn-${year}-${String(month).padStart(2, '0')}.csv`
+    await logAudit({
+      userId: session.userId, userEmail: session.email, userRole: session.role,
+      action: 'export', entityType: 'LohnExport', entityId: `datev-${year}-${month}`,
+      customerId,
+      details: {
+        art: 'datev', jahr: year, monat: month,
+        standort: locationId ?? 'alle erlaubten',
+        abrechnungen: abrechnungen.length,
+      },
+    })
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
@@ -113,7 +154,9 @@ export async function GET(req: NextRequest) {
 
   const zahlungen: SepaZahlung[] = []
   const ohneBankverbindung: string[] = []
-  for (const a of abrechnungen) {
+  // §217 Entwürfe werden nicht ausgezahlt — siehe ZAHLBAR oben.
+  const entwuerfe = abrechnungen.filter(a => !ZAHLBAR.includes(a.status))
+  for (const a of abrechnungen.filter(a => ZAHLBAR.includes(a.status))) {
     const profil = profilVon.get(a.employeeId)
     const iban = profil?.iban?.replace(/\s+/g, '').toUpperCase()
     if (!iban) { ohneBankverbindung.push(`${a.employeeName ?? a.employeeId}: keine IBAN hinterlegt`); continue }
@@ -132,9 +175,16 @@ export async function GET(req: NextRequest) {
   }
 
   if (zahlungen.length === 0) {
+    // §217 Der häufigste Grund ist jetzt ein anderer als früher, und er
+    // gehört benannt: Wer nichts freigegeben hat, soll nicht nach einer
+    // fehlenden Bankverbindung suchen.
     return NextResponse.json({
-      error: 'Keine Zahlung möglich — bei keinem Mitarbeiter ist eine gültige Bankverbindung hinterlegt.',
+      error: entwuerfe.length === abrechnungen.length
+        ? `Für ${MONATE[month - 1]} ${year} ist keine Abrechnung freigegeben. `
+          + 'Entwürfe werden nicht ausgezahlt — erst freigeben, dann zahlen.'
+        : 'Keine Zahlung möglich — bei keinem Mitarbeiter ist eine gültige Bankverbindung hinterlegt.',
       details: ohneBankverbindung,
+      entwuerfe: entwuerfe.length,
     }, { status: 400 })
   }
 
@@ -149,10 +199,36 @@ export async function GET(req: NextRequest) {
     ausfuehrung = d.toISOString().slice(0, 10)
   }
 
+  // §217 Die Kennung wird aus dem Inhalt gerechnet und ist damit bei einem
+  // zweiten Abruf desselben Laufs dieselbe. Erst das gibt der Bank die
+  // Möglichkeit, eine doppelt eingereichte Datei als Dublette zu erkennen.
+  const kennung = zahlungsKennung(
+    { customerId, jahr: year, monat: month, locationId },
+    zahlungen,
+  )
+
   const xml = sepaXml(
     { name: orgSettings.kontoinhaber || mandantName, iban: orgSettings.iban, bic: orgSettings.bic },
-    zahlungen, ausfuehrung,
+    zahlungen, ausfuehrung, kennung,
   )
+
+  await logAudit({
+    userId: session.userId, userEmail: session.email, userRole: session.role,
+    action: 'export', entityType: 'Zahlungsdatei', entityId: kennung,
+    customerId,
+    details: {
+      art: 'sepa', jahr: year, monat: month,
+      standort: locationId ?? 'alle erlaubten',
+      zahlungen: zahlungen.length,
+      // Die Summe gehört ins Protokoll: Sie ist die eine Zahl, an der eine
+      // nachträglich veränderte Datei auffällt.
+      summe: Number(zahlungen.reduce((s, z) => s + z.betrag, 0).toFixed(2)),
+      ausfuehrung,
+      ohneBankverbindung: ohneBankverbindung.length,
+      entwuerfeUebersprungen: entwuerfe.length,
+    },
+  })
+
   const name = `SEPA-Gehalt-${year}-${String(month).padStart(2, '0')}.xml`
   return new NextResponse(xml, {
     headers: {
@@ -162,6 +238,8 @@ export async function GET(req: NextRequest) {
       // Damit die Oberfläche melden kann, wer fehlt, ohne die Datei zu öffnen
       'X-Okun-Zahlungen': String(zahlungen.length),
       'X-Okun-Uebersprungen': String(ohneBankverbindung.length),
+      'X-Okun-Entwuerfe': String(entwuerfe.length),
+      'X-Okun-Kennung': kennung,
     },
   })
 }

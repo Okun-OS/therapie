@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   ibanGueltig, sepaZeichen, sepaXml, datevCsv, datevZeilenAusAbrechnung,
+  zahlungsKennung, ibanGekuerzt,
 } from '../lohn-export'
 
 // §114 Diese Dateien gehen an eine Bank und an einen Steuerberater. Ein Fehler
@@ -193,5 +194,96 @@ describe('DATEV-Export', () => {
   it('nutzt Windows-Zeilenenden', () => {
     const csv = datevCsv({ jahr: 2026, monat: 9, mandantName: 'X' }, [])
     expect(csv).toContain('\r\n')
+  })
+})
+
+/**
+ * §217 Die Kennung des Zahlungslaufs.
+ *
+ * Vorher war sie `OKUN-${Date.now()}` — zwei Abrufe desselben Monats ergaben
+ * zwei verschiedene Aufträge, und eine Bank nimmt beide an. Diese Prüfungen
+ * halten beide Eigenschaften fest, auf die es ankommt: gleicher Lauf gleiche
+ * Kennung (sonst zahlt jemand doppelt), geänderter Lauf andere Kennung
+ * (sonst wird die berechtigte Korrektur als Dublette abgelehnt).
+ */
+describe('§217 Kennung des Zahlungslaufs', () => {
+  const lauf = { customerId: 'kunde-1', jahr: 2026, monat: 10, locationId: null }
+  const zahlungen = [
+    { iban: 'DE89370400440532013000', betrag: 1850.42 },
+    { iban: 'DE02120300000000202051', betrag: 2200.00 },
+  ]
+
+  it('ist bei gleichem Lauf dieselbe — das ist der Schutz vor Doppelzahlung', () => {
+    expect(zahlungsKennung(lauf, zahlungen)).toBe(zahlungsKennung(lauf, zahlungen))
+  })
+
+  it('hängt nicht an der Reihenfolge der Abrechnungen', () => {
+    // Sonst wäre derselbe Lauf je nach Sortierung ein anderer Auftrag.
+    expect(zahlungsKennung(lauf, [...zahlungen].reverse()))
+      .toBe(zahlungsKennung(lauf, zahlungen))
+  })
+
+  it('ändert sich, wenn ein Betrag korrigiert wurde', () => {
+    const korrigiert = [{ ...zahlungen[0], betrag: 1900 }, zahlungen[1]]
+    expect(zahlungsKennung(lauf, korrigiert)).not.toBe(zahlungsKennung(lauf, zahlungen))
+  })
+
+  it('ändert sich, wenn jemand dazukommt', () => {
+    const mehr = [...zahlungen, { iban: 'DE12500105170648489890', betrag: 900 }]
+    expect(zahlungsKennung(lauf, mehr)).not.toBe(zahlungsKennung(lauf, zahlungen))
+  })
+
+  it('ändert sich, wenn ein Empfängerkonto getauscht wurde', () => {
+    const getauscht = [{ ...zahlungen[0], iban: 'DE12500105170648489890' }, zahlungen[1]]
+    expect(zahlungsKennung(lauf, getauscht)).not.toBe(zahlungsKennung(lauf, zahlungen))
+  })
+
+  it('unterscheidet Monat, Mandant und Standortauswahl', () => {
+    const eine = zahlungsKennung(lauf, zahlungen)
+    expect(zahlungsKennung({ ...lauf, monat: 11 }, zahlungen)).not.toBe(eine)
+    expect(zahlungsKennung({ ...lauf, customerId: 'kunde-2' }, zahlungen)).not.toBe(eine)
+    expect(zahlungsKennung({ ...lauf, locationId: 'standort-1' }, zahlungen)).not.toBe(eine)
+  })
+
+  it('passt in das Feld, das SEPA dafür vorsieht', () => {
+    const k = zahlungsKennung(lauf, zahlungen)
+    expect(k.length).toBeLessThanOrEqual(35)
+    expect(k).toMatch(/^OKUN-202610-[0-9A-F]{10}$/)
+  })
+
+  it('steht wirklich in der erzeugten Datei', () => {
+    const k = zahlungsKennung(lauf, zahlungen)
+    const xml = sepaXml(
+      { name: 'Traeger', iban: 'DE89370400440532013000' },
+      zahlungen.map(z => ({ ...z, name: 'A', verwendungszweck: 'Gehalt' })),
+      '2026-10-28', k,
+    )
+    expect(xml).toContain(`<MsgId>${k}</MsgId>`)
+  })
+})
+
+describe('§217 Gekürzte IBAN fürs Protokoll', () => {
+  it('zeigt Anfang und Ende, nicht die Mitte', () => {
+    expect(ibanGekuerzt('DE89370400440532013000')).toBe('DE89…3000')
+  })
+
+  it('verträgt Leerzeichen und Kleinschreibung', () => {
+    expect(ibanGekuerzt('de89 3704 0044 0532 0130 00')).toBe('DE89…3000')
+  })
+
+  it('gibt ohne IBAN nichts zurück', () => {
+    expect(ibanGekuerzt(null)).toBeNull()
+    expect(ibanGekuerzt('')).toBeNull()
+  })
+
+  it('verrät auch bei einer kurzen Eingabe nicht zu viel', () => {
+    // Eine unvollständige Eingabe darf nicht versehentlich vollständig im
+    // Protokoll landen.
+    expect(ibanGekuerzt('DE8937')).toBe('DE…')
+  })
+
+  it('reicht nie die vollständige IBAN durch', () => {
+    const voll = 'DE89370400440532013000'
+    expect(ibanGekuerzt(voll)).not.toContain('370400440532')
   })
 })
