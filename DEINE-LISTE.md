@@ -225,6 +225,58 @@ bleibt in `DOMAIN.md` stehen — falls die Einträge einmal nachzusehen sind.
 > dass die nackte Domain ohne `app.` nicht gehe (sie geht), und dass dieser
 > Punkt noch offen sei (war er nicht).
 
+### 🟡 Google for Jobs schneller machen — zwei Variablen, kostenlos
+
+**Gebaut am 22.10. (§216).** Die Anlage kann Google jetzt von sich aus sagen,
+wenn eine Stelle online geht, sich ändert oder schließt. Das kostet nichts
+und ist die einzige Jobbörsen-Anbindung, die **ohne Vertrag und ohne
+Partnerprogramm** funktioniert — sie liegt nicht bei einem Anbieter, sondern
+bei uns.
+
+**Was nur du machen kannst** (vier Schritte, eine Viertelstunde):
+
+1. In der **Google Cloud Console** ein Projekt anlegen (oder ein vorhandenes
+   nehmen) und darin die **Indexing API** aktivieren.
+2. Ein **Dienstkonto** erstellen und dafür einen **JSON-Schlüssel**
+   herunterladen.
+3. In der **Google Search Console** die Property `okun-workforce.com`
+   bestätigen — und die **E-Mail-Adresse des Dienstkontos als Inhaber**
+   hinzufügen. *Das ist der Schritt, an dem es sonst scheitert:* Ohne
+   Inhaberschaft lehnt Google jede Meldung mit 401 ab.
+4. Zwei Variablen bei Railway setzen:
+   * `GOOGLE_INDEXING_EMAIL` — die Adresse des Dienstkontos (kein Geheimnis)
+   * `GOOGLE_INDEXING_SCHLUESSEL` — der Wert des Feldes `private_key` aus der
+     JSON-Datei, **nicht die ganze Datei**. Zeilenumbrüche dürfen als `\n`
+     drinstehen; die Anlage rechnet beides um und lehnt eine hineinkopierte
+     JSON-Datei ausdrücklich ab, statt still nichts zu tun.
+
+**Solange die beiden Variablen fehlen, passiert gar nichts** — kein Fehler,
+keine Anfrage, keine Last. Das ist Absicht: Der Weg ist eingebaut und
+schlafend.
+
+> **Jetzt gerade aber nicht.** Nach dem Railway-Vorfall gehört kein neuer
+> privater Schlüssel in die Umgebung, bevor der Vorfall abgeschlossen ist —
+> und solange die Deployments pausiert sind, würde er ohnehin nicht wirksam.
+> Also: Schritte 1 bis 3 kannst du machen, den Schlüssel legst du beiseite,
+> Schritt 4 kommt danach.
+
+> **Was es nicht ist:** eine Zusage, dass Google die Anzeige aufnimmt. Die
+> Meldung beschleunigt die Verarbeitung, mehr verspricht Google nicht — und
+> mehr verspreche ich dir auch nicht.
+
+### 🟡 Jobbörsen — Stand der Anfragen (22.10.)
+
+* **XING und Indeed:** Eingangsbestätigung liegt vor, Antwort steht aus.
+* **Stepstone und weitere:** angefragt, noch keine Rückmeldung.
+* **Bundesagentur für Arbeit: Korrektur meiner Einschätzung.** Ich hatte das
+  als „Tür 1, eine Kooperationsvereinbarung, kostenlos" geführt. Die BA hat
+  mitgeteilt, dass sie **kein zentrales Kooperationsmodell für ATS-Anbieter**
+  anbietet. Angefragt ist jetzt die Anbindung über **einzelne
+  Arbeitgeberzugänge** — das heißt, falls es so geht, braucht **jeder Kunde
+  sein eigenes BA-Arbeitgeberkonto**, und wir übermitteln in seinem Namen.
+  Kostenlos bleibt es damit wahrscheinlich, aber es ist ein Schritt bei der
+  Einrichtung jedes Kunden und keiner, den wir einmal für alle erledigen.
+
 ### 🟢 Die drei Agentenaufträge für ChatGPT — **`AGENTENAUFTRAEGE.md`**
 
 **Entschieden am 21.10.: Volllösung bei allen drei Punkten, selbst zertifiziert,

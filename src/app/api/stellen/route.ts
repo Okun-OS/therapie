@@ -4,8 +4,13 @@ import { requireRole, resolveCustomerId } from '@/lib/session'
 import { allowedLocationScope } from '@/lib/scope'
 import { logAudit } from '@/lib/audit'
 import {
-  freierSlug, fehltZumVeroeffentlichen, UMFAENGE, STELLEN_STAENDE,
+  freierSlug, fehltZumVeroeffentlichen, fehltZurKarriereseite,
+  UMFAENGE, STELLEN_STAENDE,
 } from '@/lib/recruiting'
+import {
+  indexierungEingerichtet, istOeffentlich, meldungFuer, nebenbeiMelden,
+  stellenAdresse,
+} from '@/lib/google-indexing'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,6 +65,48 @@ async function standortErlaubt(
     )
   }
   return null
+}
+
+/**
+ * §216 Google sagen, dass sich an dieser Anzeige etwas geändert hat.
+ *
+ * WARUM DIE ABFRAGE NUR LÄUFT, WENN ES EINGERICHTET IST
+ * Ohne Dienstkonto gibt es nichts zu melden — dann wäre die zusätzliche
+ * Abfrage der Karriereeinstellungen reine Last auf einem Weg, den jeder
+ * Betrieb mehrmals am Tag geht.
+ *
+ * WARUM DIE SICHTBARKEIT HIER NOCH EINMAL GERECHNET WIRD
+ * Weil eine Anzeige nicht öffentlich ist, nur weil sie „veröffentlicht"
+ * heißt: Die Karriereseite muss eingeschaltet sein und ein Impressum haben —
+ * dieselbe Regel wie in `karriere.ts`. Wer das hier großzügiger rechnete,
+ * meldete Google Adressen, die 404 liefern.
+ */
+async function googleSagen(
+  customerId: string,
+  stellenSlug: string,
+  vorherStatus: string,
+  nachherStatus: string,
+  inhaltGeaendert: boolean,
+): Promise<void> {
+  if (!indexierungEingerichtet()) return
+
+  const e = await prisma.orgSettings.findUnique({
+    where: { customerId },
+    select: { karriereSlug: true, karriereAktiv: true, karriereImpressum: true },
+  })
+  if (!e?.karriereSlug) return
+  const seiteOeffentlich = Boolean(e.karriereAktiv)
+    && fehltZurKarriereseite(e).length === 0
+
+  const art = meldungFuer(
+    istOeffentlich(vorherStatus, seiteOeffentlich),
+    istOeffentlich(nachherStatus, seiteOeffentlich),
+    inhaltGeaendert,
+  )
+  if (!art) return
+
+  const url = stellenAdresse(e.karriereSlug, stellenSlug)
+  if (url) nebenbeiMelden([{ url, art }])
 }
 
 function zahl(v: unknown): number | null {
@@ -279,6 +326,15 @@ export async function PATCH(req: NextRequest) {
     customerId, details: { status: daten.status ?? vorhanden.status },
   })
 
+  // §216 Als Inhaltsänderung zählt alles außer dem Stand selbst und den
+  // Datumsfeldern, die er mit sich bringt — ein Titel oder eine Beschreibung
+  // gehören in die Suchergebnisse, ein gesetztes `geschlossenAm` nicht.
+  const inhaltGeaendert = Object.keys(daten)
+    .some(f => !['status', 'veroeffentlichtAm', 'geschlossenAm'].includes(f))
+  await googleSagen(
+    customerId, vorhanden.slug, vorhanden.status, stelle.status, inhaltGeaendert,
+  )
+
   return NextResponse.json({ stelle })
 }
 
@@ -320,6 +376,11 @@ export async function DELETE(req: NextRequest) {
     )
   }
 
+  // §216 Hier wird Google NICHT benachrichtigt, und das ist kein Vergessen:
+  // Gelöscht werden darf nur, was nie veröffentlicht war (siehe die Prüfung
+  // darüber). Was Google nie kannte, muss ihm auch nicht abgemeldet werden —
+  // eine Meldung auf eine nie öffentliche Adresse wäre eine unnötige Anfrage
+  // aus dem gemeinsamen Tageskontingent.
   await prisma.stelle.delete({ where: { id } })
   await logAudit({
     userId: session.userId, userEmail: session.email, userRole: session.role,

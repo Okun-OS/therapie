@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { requireRole, resolveCustomerId } from '@/lib/session'
 import { logAudit } from '@/lib/audit'
 import { slugMachen, fehltZurKarriereseite } from '@/lib/recruiting'
+import {
+  indexierungEingerichtet, nebenbeiMelden, stellenAdresse, type Meldeart,
+} from '@/lib/google-indexing'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +29,67 @@ const FELDER = {
   karriereText: true, karriereEmail: true, karriereImpressum: true,
   karriereDatenschutz: true,
 } as const
+
+/**
+ * §216 Wenn die ganze Seite an- oder ausgeht, geht sie für Google mit.
+ *
+ * DREI ANLÄSSE, UND ALLE DREI SIND HIER
+ *  — die Seite wird eingeschaltet: Jede veröffentlichte Anzeige ist ab jetzt
+ *    erreichbar.
+ *  — die Seite wird ausgeschaltet (oder das Impressum entfernt): Alle
+ *    Adressen liefern ab jetzt 404 und gehören abgemeldet.
+ *  — die Adresse der Seite ändert sich: Das sind zwei Meldungen je Anzeige,
+ *    die alte Adresse ab und die neue an. Ohne das bliebe ein ganzer Satz
+ *    toter Adressen im Index stehen.
+ *
+ * WARUM NICHT EINFACH IMMER ALLES MELDEN
+ * Weil das Tageskontingent für alle Mandanten zusammen gilt (§216). Wer nur
+ * seinen Begrüßungstext ändert, löst hier nichts aus.
+ */
+async function googleSagen(
+  customerId: string,
+  vorher: { karriereSlug: string | null; karriereAktiv: boolean; karriereImpressum: string | null },
+  nachher: { karriereSlug: string | null; karriereAktiv: boolean; karriereImpressum: string | null },
+): Promise<void> {
+  if (!indexierungEingerichtet()) return
+
+  const offen = (e: typeof vorher) =>
+    Boolean(e.karriereAktiv) && Boolean(e.karriereSlug)
+    && fehltZurKarriereseite(e).length === 0
+
+  const warOffen = offen(vorher)
+  const istOffen = offen(nachher)
+  const adresseGewechselt = Boolean(vorher.karriereSlug)
+    && vorher.karriereSlug !== nachher.karriereSlug
+
+  if (warOffen === istOffen && !adresseGewechselt) return
+
+  const stellen = await prisma.stelle.findMany({
+    where: { customerId, status: 'veroeffentlicht' },
+    select: { slug: true },
+  })
+  if (stellen.length === 0) return
+
+  const meldungen: { url: string; art: Meldeart }[] = []
+  const sammeln = (seitenSlug: string | null, art: Meldeart) => {
+    if (!seitenSlug) return
+    for (const s of stellen) {
+      const url = stellenAdresse(seitenSlug, s.slug)
+      if (url) meldungen.push({ url, art })
+    }
+  }
+
+  // Erst abmelden, dann anmelden: Bei einem Adresswechsel ist das die
+  // Reihenfolge, in der die Wahrheit entsteht.
+  if (warOffen && (adresseGewechselt || !istOffen)) {
+    sammeln(vorher.karriereSlug, 'URL_DELETED')
+  }
+  if (istOffen && (adresseGewechselt || !warOffen)) {
+    sammeln(nachher.karriereSlug, 'URL_UPDATED')
+  }
+
+  nebenbeiMelden(meldungen)
+}
 
 export async function GET(req: NextRequest) {
   // Die Standortleitung darf mitlesen — sie braucht die Adresse der Seite,
@@ -136,6 +200,8 @@ export async function PATCH(req: NextRequest) {
       aktiv: einstellungen.karriereAktiv, adresse: einstellungen.karriereSlug,
     },
   })
+
+  await googleSagen(customerId, vorher, einstellungen)
 
   return NextResponse.json({
     einstellungen, fehlt: fehltZurKarriereseite(einstellungen),

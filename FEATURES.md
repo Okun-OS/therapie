@@ -4005,3 +4005,70 @@ besteht, ist kein Sicherheitsnetz.
 
 **Stand:** 1802/1802 in 48 Prüfungen, 1107 Modultests, Browser 8+31+12,
 tsc und Bauen sauber.
+
+## Block §216 (22.10.) — Google sagen, dass eine Stelle online ist
+
+**Was fehlte:** Seit §148 trägt jede Anzeige ein `JobPosting` im Quelltext —
+die Eintrittskarte zu Google for Jobs, der wirksamste kostenlose Kanal für
+einen kleinen Träger. Nur musste Google bisher von selbst vorbeikommen. Bei
+einer frisch eingerichteten Karriereseite ohne eingehende Links dauert das
+Tage, und eine Stelle, die in drei Tagen auffindbar wird, ist drei Tage lang
+unsichtbar.
+
+**Was jetzt passiert:** Beim Veröffentlichen meldet die Anlage die Adresse bei
+Googles Indexing API (`URL_UPDATED`), beim Schließen meldet sie sie ab
+(`URL_DELETED`). Dasselbe, wenn ein Betrieb seine ganze Karriereseite ein-
+oder ausschaltet oder ihre Adresse ändert.
+
+**Und was ausdrücklich nicht passiert:** eine Zusage auf Aufnahme. Die
+Schnittstelle meldet eine Änderung an; ob Google die Seite aufnimmt, bleibt
+Googles Entscheidung. Sie ist laut Google nur für Seiten mit `JobPosting`
+oder `BroadcastEvent` vorgesehen — für alles andere wäre die Benutzung ein
+Verstoß gegen die Bedingungen, und der Zugang kann entzogen werden.
+
+### Die vier Entscheidungen, die nicht offensichtlich sind
+
+**Ein Dienstkonto für alle Mandanten, und das geht nur, weil alle
+Karriereseiten auf unserer Domain liegen.** `okun-workforce.com/karriere/<kunde>`
+ist eine einzige Property in der Search Console; das Dienstkonto wird dort
+einmal als Inhaber eingetragen und deckt damit jeden Kunden ab. Gäbe es
+eigene Kundendomains, bräuchte jede ihre eigene Bestätigung — und die könnte
+nur der Kunde geben. Solange wir keine Kundendomains anbieten, ist das
+einfach; wenn wir sie je anbieten, ist es diese Stelle, die es merkt.
+
+**Das Tageskontingent gilt für alle Mandanten zusammen.** Google sieht je
+Projekt 200 Meldungen am Tag vor, zurückgesetzt um Mitternacht pazifischer
+Zeit. Deshalb zählt die Anlage mit, und deshalb gibt es zwei Grenzen: die
+Tagesgrenze und ein Deckel von 50 Meldungen je einzelner Handlung. Ein
+Betrieb, der seine Seite mit achtzig Anzeigen abschaltet, soll nicht das
+Kontingent aller anderen für diesen Tag aufbrauchen.
+
+**Ein Entwurf geht Google nichts an.** Die Entscheidung, ob überhaupt
+gemeldet wird, steht als eigene Funktion da und vergleicht zwei Zustände:
+Wer zehnmal an einem Entwurf schreibt, löst nichts aus; wer eine
+veröffentlichte Anzeige ändert, löst eine Meldung aus. Dieselbe
+Sichtbarkeitsregel wie in `karriere.ts` — Seite eingeschaltet, Impressum
+vorhanden, Anzeige veröffentlicht. Wer hier großzügiger rechnete, meldete
+Google Adressen, die 404 liefern, und das beschädigt den Ruf der Domain.
+
+**Gelöschte Entwürfe werden nicht abgemeldet.** Löschen darf man nur, was nie
+veröffentlicht war. Was Google nie kannte, muss ihm nicht abgemeldet werden.
+Das steht als Kommentar im Code, damit es niemand für ein Versehen hält.
+
+### Ohne fremdes Paket
+
+Wie bei §210: `googleapis` zieht Dutzende Pakete nach, gebraucht werden zwei
+Dinge — ein signiertes Token holen und eine Adresse melden. Der Weg über
+JWT-Bearer ist von Google festgelegt. Achtzig Zeilen, kein Paket.
+
+Nachweis: **32 Modultests**, darunter die eine, die wirklich zählt — das
+selbst gebaute JWT wird mit dem öffentlichen Schlüssel eines im Test
+erzeugten Schlüsselpaars **nachgeprüft**. Eine falsch gebaute Signatur meldet
+sich bei Google als „invalid_grant" ohne jeden Hinweis worauf. Dazu
+Gegenproben: ohne Zugangsdaten wird das Netz nicht einmal gefragt, bei
+erreichter Tagesgrenze erfolgt keine weitere Anfrage, und dieselbe Meldung
+zweimal hintereinander verbraucht nur eine Einheit.
+
+**Was von Hand geprüft werden muss:** dass Google die Signatur annimmt. Das
+braucht ein echtes Dienstkonto und die eingetragene Inhaberschaft — kein Test
+kann das ersetzen.
