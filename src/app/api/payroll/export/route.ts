@@ -7,6 +7,9 @@ import {
   type DatevZeile, type SepaZahlung,
 } from '@/lib/lohn-export'
 import { logAudit } from '@/lib/audit'
+import {
+  entscheideLauf, naechsterBankarbeitstag, pruefeAusfuehrung,
+} from '@/lib/zahllauf'
 
 export const dynamic = 'force-dynamic'
 
@@ -188,15 +191,36 @@ export async function GET(req: NextRequest) {
     }, { status: 400 })
   }
 
-  // Ausführung: übernächster Werktag, damit die Bank die Datei annimmt
+  /*
+   * §218 Das Ausführungsdatum kennt jetzt auch die Feiertage.
+   *
+   * Vorher wurden nur Samstag und Sonntag übersprungen. Am 1. Mai oder an
+   * Weihnachten stand damit ein Datum in der Datei, das die Bank zurückweist
+   * — und zwar erst beim Einreichen, also dann, wenn niemand mehr Zeit hat.
+   * Maßgeblich ist das Bundesland des Standorts: Fronleichnam ist in
+   * Nordrhein-Westfalen ein Feiertag und in Berlin nicht.
+   *
+   * Ein Wunschdatum wird NICHT stillschweigend verschoben, sondern abgelehnt.
+   * Wer einen Zahltag nennt, soll nicht an einem anderen zahlen.
+   */
+  const bundesland = (await prisma.location.findFirst({
+    where: { customerId, ...(locationId ? { id: locationId } : {}) },
+    select: { bundesland: true },
+  }))?.bundesland ?? null
+
   const wunsch = p.get('datum')
   let ausfuehrung: string
-  if (wunsch && /^\d{4}-\d{2}-\d{2}$/.test(wunsch)) {
+  if (wunsch) {
+    const geprueft = pruefeAusfuehrung(wunsch, bundesland)
+    if (!geprueft.ok) {
+      return NextResponse.json(
+        { error: `Als Ausführungstag geht der ${wunsch} nicht: ${geprueft.grund}` },
+        { status: 400 },
+      )
+    }
     ausfuehrung = wunsch
   } else {
-    const d = new Date(); d.setDate(d.getDate() + 2)
-    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1)
-    ausfuehrung = d.toISOString().slice(0, 10)
+    ausfuehrung = naechsterBankarbeitstag(new Date(), 2, bundesland)
   }
 
   // §217 Die Kennung wird aus dem Inhalt gerechnet und ist damit bei einem
@@ -207,14 +231,126 @@ export async function GET(req: NextRequest) {
     zahlungen,
   )
 
+  /*
+   * §218 Aus dem Download wird ein Vorgang.
+   *
+   * Bis hierher endete die Zahlung in einem Download, über den die Anlage
+   * nichts mehr wusste: nicht, ob er eingereicht wurde, nicht, was in ihm
+   * stand. Jetzt entscheidet `entscheideLauf`, was zu tun ist — und der
+   * wichtigste der vier Fälle ist der dritte: Ist schon ein Lauf bei der Bank
+   * eingereicht, entsteht keine zweite Datei.
+   */
+  const vorhandene = await prisma.zahllauf.findMany({
+    where: { customerId, jahr: year, monat: month, locationId: locationId ?? null },
+    select: { kennung: true, status: true },
+  })
+  const entscheidung = entscheideLauf(kennung, vorhandene)
+
+  if (entscheidung.art === 'blockiert') {
+    return NextResponse.json(
+      { error: entscheidung.grund, offenerLauf: entscheidung.kennung }, { status: 409 },
+    )
+  }
+
+  const name = `SEPA-Gehalt-${year}-${String(month).padStart(2, '0')}.xml`
+  const kopf = (zusatz: Record<string, string>) => ({
+    'Content-Type': 'application/xml; charset=utf-8',
+    'Content-Disposition': `attachment; filename="${name}"`,
+    'Cache-Control': 'private, no-store',
+    'X-Okun-Zahlungen': String(zahlungen.length),
+    'X-Okun-Uebersprungen': String(ohneBankverbindung.length),
+    'X-Okun-Entwuerfe': String(entwuerfe.length),
+    'X-Okun-Kennung': kennung,
+    ...zusatz,
+  })
+
+  if (entscheidung.art === 'wiederholung') {
+    // Die gespeicherte Datei erneut ausgeben statt eine neue zu erzeugen:
+    // Eine neu erzeugte trüge einen neuen Erstellungszeitpunkt und wäre Byte
+    // für Byte eine andere — wer zwei Dateien vergleicht, sähe Unterschiede,
+    // wo keine sind.
+    const alt = await prisma.zahllauf.findFirst({
+      where: { customerId, kennung }, select: { id: true, datei: true, status: true },
+    })
+    if (alt?.datei) {
+      await logAudit({
+        userId: session.userId, userEmail: session.email, userRole: session.role,
+        action: 'export', entityType: 'Zahllauf', entityId: kennung,
+        customerId, details: { art: 'sepa', wiederholung: true, stand: alt.status },
+      })
+      return new NextResponse(Buffer.from(alt.datei), {
+        headers: kopf({ 'X-Okun-Wiederholung': '1', 'X-Okun-Lauf': alt.id }),
+      })
+    }
+  }
+
   const xml = sepaXml(
     { name: orgSettings.kontoinhaber || mandantName, iban: orgSettings.iban, bic: orgSettings.bic },
     zahlungen, ausfuehrung, kennung,
   )
 
+  // Ein nur erzeugter, nie eingereichter Lauf wird abgelöst — heruntergeladen
+  // heißt nicht eingereicht, und der häufigste Fall ist: Fehler bemerkt,
+  // korrigiert, neu heruntergeladen.
+  if (entscheidung.art === 'abloesen') {
+    const alt = await prisma.zahllauf.findFirst({
+      where: { customerId, jahr: year, monat: month, locationId: locationId ?? null,
+        kennung: entscheidung.kennung },
+      select: { id: true },
+    })
+    if (alt) {
+      await prisma.zahllauf.update({
+        where: { id: alt.id },
+        data: {
+          status: 'verworfen', statusAm: new Date(),
+          notiz: `Abgelöst durch ${kennung}`,
+        },
+      })
+      await prisma.payrollEntry.updateMany({
+        where: { zahllaufId: alt.id }, data: { zahllaufId: null },
+      })
+    }
+  }
+
+  const bezahlte = abrechnungen
+    .filter(a => ZAHLBAR.includes(a.status))
+    .filter(a => {
+      const iban = profilVon.get(a.employeeId)?.iban?.replace(/\s+/g, '').toUpperCase()
+      return Boolean(iban) && ibanGueltig(iban!) && (a.auszahlungsbetrag || a.netto) > 0
+    })
+
+  /*
+   * §218 Angelegt oder wiederbelebt.
+   *
+   * Die Kennung ist je Mandant eindeutig — sie IST der Inhalt. Wurde ein Lauf
+   * mit genau diesem Inhalt einmal verworfen und entsteht er später erneut,
+   * ist das kein zweiter Auftrag, sondern derselbe noch einmal. Ein blindes
+   * `create` liefe hier in die Eindeutigkeitssperre und endete in einem
+   * Serverfehler — gefunden genau dadurch.
+   */
+  const laufDaten = {
+    locationId: locationId ?? null, jahr: year, monat: month,
+    anzahl: zahlungen.length,
+    summe: Number(zahlungen.reduce((s, z) => s + z.betrag, 0).toFixed(2)),
+    ausfuehrung,
+    datei: Buffer.from(xml, 'utf8'),
+    erzeugtVon: session.userId,
+    erzeugtVonName: session.name ?? session.email,
+  }
+  const lauf = await prisma.zahllauf.upsert({
+    where: { customerId_kennung: { customerId, kennung } },
+    create: { customerId, kennung, ...laufDaten },
+    update: { ...laufDaten, status: 'erzeugt', statusAm: new Date(), notiz: null },
+    select: { id: true },
+  })
+  await prisma.payrollEntry.updateMany({
+    where: { id: { in: bezahlte.map(a => a.id) } },
+    data: { zahllaufId: lauf.id },
+  })
+
   await logAudit({
     userId: session.userId, userEmail: session.email, userRole: session.role,
-    action: 'export', entityType: 'Zahlungsdatei', entityId: kennung,
+    action: 'export', entityType: 'Zahllauf', entityId: kennung,
     customerId,
     details: {
       art: 'sepa', jahr: year, monat: month,
@@ -229,17 +365,5 @@ export async function GET(req: NextRequest) {
     },
   })
 
-  const name = `SEPA-Gehalt-${year}-${String(month).padStart(2, '0')}.xml`
-  return new NextResponse(xml, {
-    headers: {
-      'Content-Type': 'application/xml; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${name}"`,
-      'Cache-Control': 'private, no-store',
-      // Damit die Oberfläche melden kann, wer fehlt, ohne die Datei zu öffnen
-      'X-Okun-Zahlungen': String(zahlungen.length),
-      'X-Okun-Uebersprungen': String(ohneBankverbindung.length),
-      'X-Okun-Entwuerfe': String(entwuerfe.length),
-      'X-Okun-Kennung': kennung,
-    },
-  })
+  return new NextResponse(xml, { headers: kopf({ 'X-Okun-Lauf': lauf.id }) })
 }

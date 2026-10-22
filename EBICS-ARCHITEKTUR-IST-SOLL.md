@@ -1,9 +1,10 @@
 # EBICS-Anbindung — Ist-Stand, Behobenes und Architekturvorschlag
 
-> **Stand: 22.10.2026, zweite Fassung.** Die erste Fassung war eine reine
-> Untersuchung. Diese hier beschreibt den Stand **nach** der Behebung der vier
-> Befunde: Was behoben ist, steht mit Dateipfad und Nachweis da; was offen
-> bleibt, ebenfalls.
+> **Stand: 22.10.2026, dritte Fassung.** Die erste war eine Untersuchung, die
+> zweite der Stand nach der Behebung von vier Befunden. Diese hier beschreibt
+> den Stand, nachdem auch der Zahlungslauf gebaut ist: **Was an uns liegt, ist
+> fertig.** Offen sind nur noch die Fragen, die Dritte beantworten müssen —
+> eine Bank und ein Anwalt.
 
 > **Es wurde weiterhin keine Bankverbindung eingerichtet, keine Zahlung
 > ausgelöst und keine Zeile EBICS-Code geschrieben.**
@@ -19,22 +20,26 @@ Zahlungen auslöst, freigibt oder Geld bewegt.
 
 ---
 
-## 1 · Was sich seit der ersten Fassung geändert hat
+## 1 · Was an uns liegt, ist fertig
 
-Vier Befunde waren am bestehenden Code gefunden worden. **Drei sind
-vollständig behoben, einer zur Hälfte** — die Hälfte, die ohne neue Tabelle
-geht.
+Vier Befunde waren am bestehenden Code gefunden worden, dazu drei offene
+Punkte aus der zweiten Fassung. **Alle sieben sind erledigt.**
 
-| | Befund | Stand |
+| | Punkt | Stand |
 |---|---|---|
-| 1 | Standortleitung konnte die Zahldatei des ganzen Unternehmens abrufen | ✅ behoben |
-| 2 | Kein Schutz gegen doppelte Zahlung | 🟡 halb: Kennung ist stabil, der Zahllauf als Vorgang fehlt |
-| 3 | Entwürfe waren auszahlbar | ✅ behoben |
-| 4 | Weder Zahldatei noch Bankverbindung hinterließen eine Spur | ✅ behoben |
+| 1 | Standortleitung konnte die Zahldatei des ganzen Unternehmens abrufen | ✅ behoben (§217) |
+| 2 | Kein Schutz gegen doppelte Zahlung | ✅ behoben (§217 Kennung, §218 Vorgang) |
+| 3 | Entwürfe waren auszahlbar | ✅ behoben (§217) |
+| 4 | Weder Zahldatei noch Bankverbindung hinterließen eine Spur | ✅ behoben (§217) |
+| 5 | Kein Zahlungslauf als Vorgang, `paid` wurde nie gesetzt | ✅ gebaut (§218) |
+| 6 | Die erzeugte Datei wurde nicht aufbewahrt | ✅ gebaut (§218) |
+| 7 | Ausführungsdatum kannte keine Feiertage | ✅ behoben (§218) |
 
-**Nachweis:** 1177 Modultests und die Prüfungen am laufenden System —
-`pruefungen/d-lohn.mjs` **53/53** (vorher 40), `d9-aufrollung.mjs` 42/42, dazu
-die übrigen Lohn-Prüfungen unverändert grün.
+**Nachweis:** **1204 Modultests** und die Prüfungen am laufenden System —
+die Lohn-Prüfungen **531/531 in 17 Dateien** (darunter die neue
+`d23-zahllauf.mjs` mit 33 Checks und `d-lohn.mjs` mit 53 statt vorher 40),
+dazu Mitarbeiter, Zugang, Abwesenheit, DSGVO, Nachweise und Lohnsiegel
+**491/491 in 11 Dateien**. tsc und Bauen sauber.
 
 ---
 
@@ -65,12 +70,19 @@ der sortierten Liste aus Empfängerkonto und Betrag:
 * Format `OKUN-JJJJMM-XXXXXXXXXX`, 22 Zeichen (erlaubt sind 35). Sie steht
   zusätzlich im Antwortkopf `X-Okun-Kennung`.
 
-**Weiterhin nicht gespeichert.** Die Datei entsteht bei der Anfrage und wird
-ausgeliefert. Gespeichert wird seit §217 die *Tatsache* (siehe 2.5), nicht der
-Inhalt.
+**Gespeichert (§218).** Die erzeugte Datei wird unverändert aufbewahrt. Wer
+dieselbe Zahlung ein zweites Mal abruft, bekommt **Byte für Byte dieselbe
+Datei** zurück — nicht eine neu erzeugte. Der Unterschied ist kein Detail:
+Eine neu erzeugte trüge einen neuen Erstellungszeitpunkt, und wer zwei
+Dateien vergleicht, sähe Unterschiede, wo keine sind.
 
-**Ausführungsdatum:** ohne Angabe der übernächste Tag, Wochenenden
-übersprungen. **Feiertage werden weiterhin nicht berücksichtigt.**
+**Ausführungsdatum (§218).** Ohne Angabe der nächste Bankarbeitstag mit zwei
+Tagen Vorlauf — Wochenenden **und gesetzliche Feiertage** übersprungen, nach
+dem Bundesland des Standorts. Ist dort keines hinterlegt, gilt jeder Tag als
+Feiertag, der irgendwo in Deutschland einer ist: Das kostet im schlimmsten
+Fall einen Tag und erspart eine zurückgewiesene Datei. Ein **gewünschtes**
+Datum wird dagegen nicht stillschweigend verschoben, sondern mit Begründung
+abgelehnt — wer einen Zahltag nennt, soll nicht an einem anderen zahlen.
 
 ### 2.2 Wer was exportieren darf
 
@@ -128,7 +140,55 @@ erzeugt keinen Eintrag.
 Gehaltszahlungen ist nicht der gehackte Bankzugang, sondern die
 stillschweigend getauschte Kontonummer. Ohne diese Spur ist er unsichtbar.
 
-### 2.6 EBICS-Bestandteile
+### 2.6 Der Zahlungslauf (§218)
+
+**Gebaut.** Eine Gehaltszahlung ist kein Download mehr, sondern ein Vorgang
+mit Zuständen:
+
+```
+erzeugt ─► eingereicht ─► ausgefuehrt
+   │            └─────────► abgelehnt
+   └─► verworfen
+```
+
+* **`erzeugt`** entsteht mit der Datei. Ein nur erzeugter Lauf darf von einem
+  neuen abgelöst werden — heruntergeladen heißt nicht eingereicht, und der
+  häufigste Fall ist: Fehler bemerkt, korrigiert, neu heruntergeladen.
+* **`eingereicht`** trägt die Unternehmensebene ein. Ab da gelten die
+  enthaltenen Abrechnungen als **bezahlt**, und **für denselben Zeitraum
+  entsteht keine zweite Datei mehr**, solange nicht feststeht, was aus dem
+  Lauf geworden ist. Das ist der eigentliche Schutz vor der doppelten
+  Gehaltszahlung — er wirkt in der Anlage und nicht erst bei der Bank.
+* **`ausgefuehrt`** und **`abgelehnt`** sind Endstände. Eine Ablehnung gibt
+  die Abrechnungen wieder frei. Was die Bank getan hat, nimmt die Software
+  nicht zurück.
+* **`verworfen`** gibt es nur aus `erzeugt`. Eine eingereichte Datei verwirft
+  man bei der Bank, nicht in der Software.
+
+**Wer was darf:** Lesen darf, wer auch den Export darf, auf seine Standorte
+beschränkt. Den Stand ändern darf nur die Unternehmensebene — „ich habe das
+bei der Bank eingereicht" ist eine Aussage über Geld, keine
+Standortangelegenheit.
+
+**Warum der Stand heute von Hand gepflegt wird:** Weil die Anlage keine
+Bankverbindung hat. Mit EBICS wandert genau dieser Schritt vom Menschen zur
+Anlage — die Übertragung trägt `eingereicht` ein, die Rückmeldung der Bank den
+nächsten Stand. **Die Zustände bleiben dieselben.** Deshalb stehen sie schon
+jetzt vollständig da und nicht erst, wenn die Bank antwortet.
+
+**Was in dieser Tabelle nicht steht:** keine Namen, keine Kontoverbindungen,
+keine Beträge je Person. Sie ist der Vorgang, nicht sein Inhalt. Der
+Personenbezug liegt an der einzelnen Abrechnung (`PayrollEntry.zahllaufId`)
+und verschwindet mit ihr — dort, wo das Löschkonzept (§128) ihn ohnehin führt.
+
+> **Eine Entscheidung, die ausdrücklich getroffen wurde:** Die gespeicherte
+> Zahldatei enthält Namen und Kontoverbindungen und steht trotzdem **nicht**
+> im personenbezogenen Löschkatalog. Ein Zahlungsauftrag ist ein **Sammelbeleg
+> des Arbeitgebers**; eine einzelne Zeile daraus zu entfernen zerstörte das
+> Dokument, das eine Betriebsprüfung sehen will. In der Auskunft nach Art. 15
+> taucht die Zugehörigkeit trotzdem auf — über die Abrechnung der Person.
+
+### 2.7 EBICS-Bestandteile
 
 **Weiterhin keine.** Keine Bibliothek, kein Schlüsselspeicher, keine
 Bankparameter, kein Übertragungsweg, keine Statusabfrage. Der Ist-Stand der
@@ -175,30 +235,26 @@ EBICS-Client.
 
 | Baustein | Aufgabe | Stand |
 |---|---|---|
-| **Zahllauf** (neue Tabelle) | Ein Auftrag je Mandant, Monat und Auswahl: Inhalt, Summe, Anzahl, Zustand | fehlt — das nächste Stück |
-| **Zahldatei** | das erzeugte pain.001, unverändert aufbewahrt | fehlt |
-| **Bankzugang je Mandant** | Host-ID, Partner-ID, Benutzer-ID, Bank-URL, Einrichtungsstand | fehlt |
-| **Schlüsselmaterial** | die drei Schlüsselpaare des Teilnehmers | fehlt, siehe 4.4 |
-| **Übertragung** | EBICS-Client, Auftragsart für SEPA-Überweisung | fehlt |
-| **Rückmeldung** | Verarbeitungsstatus bei der Bank abholen | fehlt |
+| **Zahllauf** | Ein Auftrag je Mandant, Monat und Auswahl: Summe, Anzahl, Zustand | ✅ da (§218) |
+| **Zahldatei** | das erzeugte pain.001, unverändert aufbewahrt | ✅ da (§218) |
+| **Bankzugang je Mandant** | Host-ID, Partner-ID, Benutzer-ID, Bank-URL, Einrichtungsstand | wartet auf die Bankantworten (6) |
+| **Schlüsselmaterial** | die drei Schlüsselpaare des Teilnehmers | wartet auf Bank und Rechtsrat, siehe 4.4 |
+| **Übertragung** | EBICS-Client, Auftragsart für SEPA-Überweisung | wartet auf die Auftragsarten der Bank |
+| **Rückmeldung** | Verarbeitungsstatus bei der Bank abholen | wartet auf das Format der Bank |
 | **Kennung** | stabil, aus dem Inhalt gerechnet | ✅ da (§217) |
 | **Protokoll** | wer hat wann was erzeugt und geändert | ✅ da (§217) |
 | **Freigabe-Erfordernis** | keine Zahlung aus Entwürfen | ✅ da (§217) |
 
 ### 4.3 Zustände eines Zahllaufs
 
-```
-entwurf ─► freigegeben ─► übertragen ─► angenommen ─► ausgeführt
-                │              │             └─► abgelehnt
-                │              └─► Übertragung fehlgeschlagen
-                └─► verworfen
-```
+Gebaut, siehe 2.6. Beide Regeln gelten: **Gezahlt wird nur, was freigegeben
+ist** (§217), und **solange ein Lauf eingereicht ist, entsteht für denselben
+Zeitraum keine zweite Datei** (§218). Der Doppelzahlungsschutz ist damit
+keine Höflichkeit gegenüber der Bank mehr, sondern eine Regel der Anlage.
 
-Daran hängen zwei Regeln. Die erste gilt bereits: **Übertragen wird nur, was
-freigegeben ist** (§217). Die zweite kommt mit der Tabelle: **Je Mandant,
-Monat und Auswahl gibt es nur einen nicht verworfenen Lauf** — damit ist der
-Doppelzahlungsschutz nicht mehr nur eine Höflichkeit gegenüber der Bank,
-sondern eine Regel der Anlage.
+**Was mit EBICS dazukommt**, sind zwei Übergänge und kein neuer Zustand: Die
+Übertragung setzt `eingereicht`, die abgeholte Rückmeldung setzt
+`ausgefuehrt` oder `abgelehnt`. Heute setzt beides ein Mensch.
 
 ### 4.4 Schlüssel
 
@@ -217,18 +273,24 @@ Teilnehmer bei der konkreten Bank hat.
 
 ---
 
-## 5 · Was offen bleibt
+## 5 · Was offen bleibt — und bei wem
 
-* **Der Zahllauf als Vorgang** samt gespeicherter Datei und Zustandsfolge
-  (Stufe 1 unten). Ohne ihn weiß die Anlage weiterhin nicht, ob ein Monat
-  bezahlt wurde — `status: 'paid'` wird von keiner Stelle gesetzt, weil der
-  Download nicht weiß, ob der Mensch die Datei wirklich eingereicht hat.
-* **Verschlüsselung der Kontoverbindungen auf Anwendungsebene.** Heute
-  Klartext. Der Hoster-Vorfall hat gezeigt, was die Verschlüsselung der
-  Infrastruktur wert ist, wenn Zugangsdaten abfließen.
-* **Feiertage beim Ausführungsdatum.**
-* **Ein Protokoll, das der Betreiber nicht selbst ändern kann** (Abschnitt 3).
-* **Die gesamte EBICS-Strecke** (4.2).
+**An uns liegt nichts mehr.** Was noch aussteht, hängt an Dritten oder ist
+eine bewusste Entscheidung mit Begründung:
+
+| Punkt | Bei wem | Anmerkung |
+|---|---|---|
+| Die EBICS-Strecke selbst (4.2) | wartet auf Bank und Rechtsrat | sinnlos, sie vor den Antworten zu bauen |
+| Verschlüsselung der Kontoverbindungen auf Anwendungsebene | **bewusst zurückgestellt** | siehe unten |
+| Ein Protokoll, das der Betreiber nicht selbst ändern kann | offen, eigenes Thema | Abschnitt 3 |
+
+**Zur Verschlüsselung, offen gesagt:** Sie würde einen Angreifer aufhalten,
+der nur die Datenbank erreicht — nicht den, der die Umgebung erreicht, denn
+dort läge der Schlüssel. Beim Vorfall am 21.10.2026 bei unserem Hoster sind
+genau die Umgebungsvariablen abgeflossen. Sie wäre also eine Verbesserung und
+keine Lösung, und sie gehört zusammen mit einem Schlüsselspeicher entschieden,
+der nicht neben den übrigen Variablen liegt. Das ist ein eigener
+Bauabschnitt, kein Nachtrag zu diesem hier.
 
 ---
 
@@ -286,7 +348,8 @@ nicht dadurch entfällt, dass die Tätigkeit nur eine Nebenleistung ist.
 | **0** | Protokoll für Zahldatei und jede IBAN-Änderung | ✅ **erledigt (§217)** |
 | **0b** | Standortbezug beim Export und beim Beleg; keine Zahlung aus Entwürfen | ✅ **erledigt (§217)** |
 | **0c** | Stabile, aus dem Inhalt gerechnete Zahlungskennung | ✅ **erledigt (§217)** |
-| **1** | **Zahllauf als Vorgang**: Tabelle, Zustände, gespeicherte Datei, `paid` wird gesetzt. Noch immer Download, kein EBICS | nächster Bauabschnitt |
+| **0d** | Ausführungsdatum mit Feiertagen, Wunschdatum wird geprüft statt verschoben | ✅ **erledigt (§218)** |
+| **1** | **Zahllauf als Vorgang**: Tabelle, Zustände, gespeicherte Datei, `paid` wird gesetzt. Noch immer Download, kein EBICS | ✅ **erledigt (§218)** |
 | **2** | Bankantworten auswerten (Abschnitt 6), Weg A oder B je Bank festlegen | wartet auf Dritte |
 | **3** | Rechtliche Einschätzung einholen (Abschnitt 7) | läuft über `ANFRAGEN.md`, Abschnitt 5 |
 | **4** | EBICS-Einrichtung je Mandant gegen eine **Testumgebung** | nach 2 und 3 |

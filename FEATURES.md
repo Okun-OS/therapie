@@ -4161,3 +4161,95 @@ Nachweis: **1177 Modultests** (13 neue für Kennung und gekürzte IBAN) und
 `pruefungen/d-lohn.mjs` **53/53** statt vorher 40 — darunter die Gegenprobe
 „Aus Entwürfen entsteht keine Zahldatei", die vor der Freigabe steht, weil sie
 nur dort etwas zeigt.
+
+## Block §218 (22.10.) — Die Gehaltszahlung als Vorgang
+
+Der Abschluss dessen, was §217 begonnen hat. Dort wurden vier Befunde am
+Zahlungsweg behoben; hier wird aus dem Download ein Vorgang, über den die
+Anlage Bescheid weiß.
+
+**Was vorher fehlte:** Nach einem Klick auf „SEPA-Datei" wusste das Programm
+nichts mehr. Nicht, ob die Datei eingereicht wurde. Nicht, was in ihr stand.
+Nicht, ob derselbe Monat schon einmal gezahlt worden war. `status: 'paid'`
+gab es im Datenmodell, gesetzt hat es nie jemand — ein Download weiß nicht,
+ob ein Mensch die Datei wirklich zur Bank getragen hat.
+
+### Der Vorgang
+
+```
+erzeugt ─► eingereicht ─► ausgefuehrt
+   │            └─────────► abgelehnt
+   └─► verworfen
+```
+
+**`eingereicht` ist der Punkt, an dem es ernst wird.** Ab da gelten die
+enthaltenen Abrechnungen als bezahlt, und für denselben Zeitraum entsteht
+**keine zweite Datei mehr**, solange nicht feststeht, was aus dem Lauf
+geworden ist. Das ist der eigentliche Schutz vor der doppelten
+Gehaltszahlung — er wirkt in der Anlage, nicht erst bei der Bank.
+
+### Vier Entscheidungen, die nicht offensichtlich sind
+
+**Ein nur erzeugter Lauf wird abgelöst, ein eingereichter blockiert.**
+Heruntergeladen heißt nicht eingereicht; der häufigste Fall ist: Fehler
+bemerkt, korrigiert, neu heruntergeladen. Das zu blockieren wäre Schikane.
+Eingereicht heißt dagegen: Geld ist unterwegs.
+
+**„Bezahlt" wird beim Einreichen gesetzt, nicht beim Ausführen.** Wer wartet,
+bis die Bank ausgeführt hat, lässt dazwischen ein Fenster offen, in dem
+dieselbe Abrechnung in einen zweiten Lauf geraten kann. Lehnt die Bank ab,
+wird es zurückgenommen — der seltenere und harmlosere Fall.
+
+**Die gespeicherte Datei wird erneut ausgegeben, nicht neu erzeugt.** Eine
+neu erzeugte trüge einen neuen Erstellungszeitpunkt und wäre Byte für Byte
+eine andere. Wer zwei Dateien vergleicht, sähe Unterschiede, wo keine sind.
+
+**Im Zahllauf stehen keine Personendaten.** Keine Namen, keine
+Kontoverbindungen, keine Beträge je Person — er ist der Vorgang, nicht sein
+Inhalt. Der Personenbezug hängt an der einzelnen Abrechnung
+(`PayrollEntry.zahllaufId`) und verschwindet mit ihr, dort wo das
+Löschkonzept (§128) ihn ohnehin führt. Die gespeicherte Zahldatei enthält
+Namen und Konten und steht trotzdem bewusst nicht im personenbezogenen
+Löschkatalog: Ein Zahlungsauftrag ist ein **Sammelbeleg des Arbeitgebers**,
+und eine einzelne Zeile daraus zu entfernen zerstörte das Dokument, das eine
+Betriebsprüfung sehen will.
+
+### Nebenbei: das Ausführungsdatum kennt jetzt die Feiertage
+
+Vorher wurden nur Samstag und Sonntag übersprungen. Am 1. Mai stand damit ein
+Datum in der Datei, das die Bank zurückweist — und zwar erst beim Einreichen.
+Maßgeblich ist das Bundesland des Standorts. **Ist dort keines hinterlegt —
+und das ist der Normalfall — gilt jeder Tag als Feiertag, der irgendwo in
+Deutschland einer ist.** Das kostet im schlimmsten Fall einen Tag und erspart
+eine zurückgewiesene Gehaltszahlung; von beiden Fehlern ist das der
+harmlosere. Ein **gewünschtes** Datum wird dagegen nicht stillschweigend
+verschoben, sondern mit Begründung abgelehnt.
+
+### Zwei Fehler, die erst die Prüfung gefunden hat
+
+**Ein Lauf ohne Standort war für die Unternehmensebene unsichtbar.** Der
+Filter `locationId IN (...)` schließt NULL aus — und ein unternehmensweiter
+Lauf hat genau das. Die Sichtbarkeit entscheidet jetzt die Rolle: Die
+Unternehmensebene sieht alles ihres Mandanten, eine Standortleitung nur Läufe
+ihrer Standorte.
+
+**Ein wiederbelebter Lauf lief in die Eindeutigkeitssperre.** Wurde ein Lauf
+verworfen und entstand später derselbe Inhalt erneut, scheiterte das Anlegen
+an `(Mandant, Kennung)` — Serverfehler. Es ist kein zweiter Auftrag, sondern
+derselbe noch einmal: Jetzt wird die Zeile wiederbelebt statt neu angelegt.
+
+Nachweis: **1204 Modultests** (27 neue für die Zustandsfolge, die
+Ablöse-Entscheidung und das Ausführungsdatum) und die neue Prüfung
+`pruefungen/d23-zahllauf.mjs` mit **33 Checks** am laufenden System — vom
+ersten Abruf über das Einreichen bis zur Ablehnung, einschließlich der
+Gegenproben: Eine Standortleitung darf nicht einreichen, ein eingereichter
+Lauf lässt sich nicht verwerfen, aus einer Ablehnung wird nachträglich keine
+Ausführung, und ein Mitarbeiter kommt an die Datei nicht heran.
+
+Die Prüfung musste zweimal umgebaut werden, bevor sie etwas wert war: Beim
+ersten Versuch war ihr Inhalt bei jedem Durchlauf derselbe — und damit bekam
+der zweite Durchgang die gespeicherte Datei des ersten zurückgereicht und
+prüfte etwas anderes als gedacht. Sie erzeugt sich ihren Inhalt jetzt selbst
+neu, über eine Einmalzahlung mit einem Betrag, den es so noch nie gab.
+
+**Gesamtstand der Lohn-Prüfungen: 531/531 in 17 Dateien.**

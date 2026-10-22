@@ -1577,10 +1577,70 @@ model PayrollEntry {
   approvedBy      String?
   approvedAt      String?
   notes           String?
+  /// §218 Zu welchem Zahlungslauf diese Abrechnung gehoert.
+  ///
+  /// Die Zugehoerigkeit steht hier und nicht als Liste im Zahllauf: Diese
+  /// Zeile traegt ohnehin Personenbezug und ist damit im Loeschkonzept
+  /// (§128) erfasst. Eine Kennungsliste im Zahllauf waere eine zweite
+  /// Stelle mit Personenbezug, die niemand loescht.
+  zahllaufId      String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@unique([employeeId, year, month])
+  @@index([zahllaufId])
+}
+
+/// §218 Ein Zahlungslauf: die Gehaltszahlung eines Monats als Vorgang.
+///
+/// WARUM ES DIESE TABELLE BRAUCHT
+/// Bis §218 war eine Gehaltszahlung ein Download. Niemand konnte hinterher
+/// sagen, ob ein Monat bezahlt wurde, was genau in der Datei stand oder ob
+/// sie zweimal eingereicht worden ist. Fuer eine Bankanbindung ist das zu
+/// wenig — und fuer eine Betriebspruefung auch.
+///
+/// WAS HIER BEWUSST NICHT STEHT
+/// Keine Namen, keine Kontoverbindungen, keine Betraege je Person. Diese
+/// Tabelle ist der VORGANG, nicht sein Inhalt. Der Inhalt liegt als Datei
+/// (StoredFile mit ownerType "zahllauf") und als Zugehoerigkeit an den
+/// einzelnen Abrechnungen. So bleibt der Personenbezug dort, wo das
+/// Loeschkonzept ihn ohnehin fuehrt.
+model Zahllauf {
+  id          String   @id @default(cuid())
+  customerId  String
+  /// Leer = alle Standorte, auf die der Erzeuger Zugriff hatte
+  locationId  String?
+  jahr        Int
+  monat       Int
+  /// Die Kennung aus der Datei (MsgId), aus dem Inhalt gerechnet
+  kennung     String
+  /// erzeugt | eingereicht | ausgefuehrt | abgelehnt | verworfen
+  status      String   @default("erzeugt")
+  statusAm    DateTime @default(now())
+  anzahl      Int
+  summe       Float
+  /// Gewuenschtes Ausfuehrungsdatum, wie es in der Datei steht
+  ausfuehrung String
+  /// Die erzeugte Datei, unveraendert. Damit spaeter nachvollziehbar bleibt,
+  /// was tatsaechlich eingereicht wurde — eine neu erzeugte Datei traegt
+  /// einen neuen Erstellungszeitpunkt und waere Byte fuer Byte eine andere.
+  ///
+  /// Sie enthaelt Namen und Kontoverbindungen und steht trotzdem NICHT im
+  /// personenbezogenen Loeschkatalog (§128): Ein Zahlungsauftrag ist ein
+  /// Sammelbeleg des Arbeitgebers. Eine einzelne Zeile daraus zu entfernen
+  /// zerstoerte das Dokument, das eine Betriebspruefung sehen will. Der Bezug
+  /// zur Person laeuft ueber `PayrollEntry.zahllaufId` und verschwindet mit
+  /// der Abrechnung.
+  datei       Bytes?
+  erzeugtVon     String
+  erzeugtVonName String?
+  notiz       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  /// Dieselbe Kennung zweimal waere derselbe Auftrag zweimal.
+  @@unique([customerId, kennung])
+  @@index([customerId, jahr, monat])
 }
 
 // ── SMS 2FA ───────────────────────────────────────────────────────────────────
