@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  abweichungBeimGehen, dauer, minuten, alsDauer, grundTaugt, TOLERANZ_MINUTEN,
+  abweichungBeimGehen, abweichungBeimKommen, dauer, minuten, alsDauer,
+  grundTaugt, TOLERANZ_MINUTEN, TOLERANZ_KOMMEN_MINUTEN, ABWEICHUNG_TEXT,
 } from '../stempelgrund'
 
 /**
@@ -120,5 +121,79 @@ describe('§203 Dauer für Menschen', () => {
     expect(alsDauer(45)).toBe('45 min')
     expect(alsDauer(60)).toBe('1 h')
     expect(alsDauer(135)).toBe('2 h 15 min')
+  })
+})
+
+/**
+ * §219 Die Rückfrage beim EINSTEMPELN.
+ *
+ * Vorher wurde beim Kommen nur gefragt, OB ein Dienst geplant ist. War einer
+ * geplant, ließ sich zu jeder Uhrzeit einstempeln — um 23 Uhr genauso wie um
+ * 07:15. Wer dann acht Stunden blieb, hatte eine tadellose Dauer und hatte
+ * trotzdem nicht den Dienst gearbeitet, der im Plan stand.
+ */
+describe('§219 Abweichung beim Einstempeln', () => {
+  const plan = { von: '07:15', bis: '15:45' }
+
+  it('fragt nicht, wer pünktlich anfängt', () => {
+    expect(abweichungBeimKommen(plan, '07:15')).toBeNull()
+  })
+
+  it('lässt kleine Abweichungen in Ruhe', () => {
+    expect(abweichungBeimKommen(plan, '07:12')).toBeNull()
+    expect(abweichungBeimKommen(plan, '07:20')).toBeNull()
+  })
+
+  it('fragt beim Einstempeln mitten in der Nacht', () => {
+    // Der Fall aus dem Betrieb: geplant 07:15, gestempelt um 23 Uhr. Vorher
+    // kam dazu keine einzige Frage.
+    const a = abweichungBeimKommen(plan, '23:00')
+    expect(a?.art).toBe('kommen-spaet')
+    expect(a?.minuten).toBe(945)
+  })
+
+  it('erkennt auch das zu frühe Anfangen', () => {
+    const a = abweichungBeimKommen(plan, '05:00')
+    expect(a?.art).toBe('kommen-frueh')
+    expect(a?.minuten).toBe(135)
+  })
+
+  it('rechnet über Mitternacht in die nähere Richtung', () => {
+    // Ein Dienst um 00:15, gestempelt um 23:50: 25 Minuten zu früh — nicht
+    // 23 Stunden und 35 Minuten zu spät.
+    const nacht = { von: '00:15', bis: '08:15' }
+    const a = abweichungBeimKommen(nacht, '23:50')
+    expect(a?.art).toBe('kommen-frueh')
+    expect(a?.minuten).toBe(25)
+  })
+
+  it('meldet ohne Plan weiterhin „ohne-dienst"', () => {
+    expect(abweichungBeimKommen(null, '09:00')?.art).toBe('ohne-dienst')
+  })
+
+  it('nimmt die Toleranz genau an der Grenze noch hin', () => {
+    const grenze = abweichungBeimKommen(plan, '07:20', TOLERANZ_KOMMEN_MINUTEN)
+    expect(grenze).toBeNull()
+    expect(abweichungBeimKommen(plan, '07:21', TOLERANZ_KOMMEN_MINUTEN)?.art)
+      .toBe('kommen-spaet')
+  })
+
+  it('verträgt eine unlesbare Uhrzeit, statt zu raten', () => {
+    expect(abweichungBeimKommen(plan, 'kaputt')).toBeNull()
+  })
+})
+
+describe('§219 Der Wortlaut sagt, worum es geht', () => {
+  it('spricht bei zu wenig Stunden von Stunden und nicht vom Gehen', () => {
+    // „früher gegangen als geplant" stand auch dann da, wenn jemand erst um
+    // 22:30 ging. Verglichen wird die Dauer.
+    expect(ABWEICHUNG_TEXT.frueher).toContain('Stunden')
+    expect(ABWEICHUNG_TEXT.frueher).not.toContain('gegangen')
+  })
+
+  it('hat für jede Abweichungsart einen Text', () => {
+    for (const art of ['ohne-dienst', 'kommen-frueh', 'kommen-spaet', 'frueher', 'laenger'] as const) {
+      expect(ABWEICHUNG_TEXT[art]?.length, art).toBeGreaterThan(5)
+    }
   })
 })

@@ -33,18 +33,50 @@
  */
 export const TOLERANZ_MINUTEN = 15
 
+/**
+ * §219 Wie weit der Beginn vom Plan abweichen darf, bevor gefragt wird.
+ *
+ * Fünf Minuten, und das ist bewusst viel strenger als die Viertelstunde für
+ * die Dauer. Der Grund ist ein anderer: Bei der Dauer geht es darum, ob die
+ * Stunden zusammenkommen — bei der Uhrzeit darum, ob überhaupt der geplante
+ * Dienst gearbeitet wurde. Wer um 23 Uhr einstempelt, während für ihn
+ * 07:15 eingeplant ist, arbeitet nicht seinen Dienst, sondern einen anderen.
+ * Das gehört im selben Moment gesagt und nicht am Monatsende gerätselt.
+ *
+ * Diese eine Zahl ist die Stellschraube: Wird die Rückfrage im Alltag als
+ * lästig empfunden, gehört sie hier höher gesetzt — und nirgendwo sonst.
+ */
+export const TOLERANZ_KOMMEN_MINUTEN = 5
+
 export type Abweichungsart =
   /** Für diesen Tag war gar kein Dienst geplant. */
   | 'ohne-dienst'
-  /** Deutlich früher gegangen als geplant. */
+  /** §219 Deutlich früher angefangen als geplant. */
+  | 'kommen-frueh'
+  /** §219 Deutlich später angefangen als geplant. */
+  | 'kommen-spaet'
+  /** Die gearbeitete Zeit bleibt deutlich hinter dem Plan zurück. */
   | 'frueher'
-  /** Deutlich länger geblieben als geplant. */
+  /** Deutlich länger gearbeitet als geplant. */
   | 'laenger'
 
+/**
+ * §219 Der Text, den die Standortleitung in der Liste liest.
+ *
+ * Bei `frueher` stand hier „früher gegangen als geplant". Das war falsch und
+ * verwirrend: Verglichen wird die DAUER. Wer um 14:00 anfängt und um 22:30
+ * geht, ist nicht „früher gegangen" — ihm fehlen Stunden. Genau so stand es
+ * dann auf dem Bildschirm, und niemand konnte es sich erklären.
+ *
+ * Die Kennung `frueher` bleibt, damit vorhandene Einträge weiter lesbar sind;
+ * geändert hat sich, was dort steht.
+ */
 export const ABWEICHUNG_TEXT: Record<Abweichungsart, string> = {
   'ohne-dienst': 'ohne geplanten Dienst gearbeitet',
-  frueher: 'früher gegangen als geplant',
-  laenger: 'länger geblieben als geplant',
+  'kommen-frueh': 'früher angefangen als geplant',
+  'kommen-spaet': 'später angefangen als geplant',
+  frueher: 'weniger Stunden als geplant',
+  laenger: 'mehr Stunden als geplant',
 }
 
 export interface Dienstzeit {
@@ -81,6 +113,61 @@ export function dauer(von: string, bis: string): number | null {
   const b = minuten(bis)
   if (a === null || b === null) return null
   return b >= a ? b - a : b + 24 * 60 - a
+}
+
+/**
+ * §219 Muss schon beim EINSTEMPELN nach einem Grund gefragt werden?
+ *
+ * WARUM DAS GEFEHLT HAT
+ * Bis hierher wurde beim Kommen nur eine einzige Frage gestellt: ob für den
+ * Tag überhaupt ein Dienst geplant ist. War einer geplant, ließ sich zu jeder
+ * beliebigen Uhrzeit einstempeln — um 23 Uhr genauso wie um 07:15. Die
+ * Abweichung fiel dann erst beim Gehen auf, und zwar als Dauer. Wer um 23 Uhr
+ * anfängt und acht Stunden bleibt, hat eine tadellose Dauer und trotzdem
+ * nicht den Dienst gearbeitet, der im Plan stand.
+ *
+ * WARUM NICHT GESPERRT, SONDERN GEFRAGT
+ * Dieselbe Begründung wie bei `ohne-dienst`: Es gibt den Einspringer, den
+ * Tausch, den Notfall. Wer dann nicht stempeln kann, arbeitet unbezahlt. Was
+ * fehlt, ist nicht die Erlaubnis, sondern die Erklärung.
+ */
+export function abweichungBeimKommen(
+  plan: Dienstzeit | null | undefined,
+  istVon: string,
+  toleranz: number = TOLERANZ_KOMMEN_MINUTEN,
+): Abweichung | null {
+  if (!plan) return { art: 'ohne-dienst', minuten: 0 }
+
+  const soll = minuten(plan.von)
+  const ist = minuten(istVon)
+  if (soll === null || ist === null) return null
+
+  /*
+   * Über Mitternacht hinweg — aber nur, wenn es wirklich Mitternacht ist.
+   *
+   * Ein Dienst um 00:15, gestempelt um 23:50, ist 25 Minuten zu früh und
+   * nicht 23 Stunden und 35 Minuten zu spät. Deshalb wird gefaltet.
+   *
+   * Gefaltet wird aber NUR, wenn dabei eine kleine Zahl herauskommt. Sonst
+   * würde aus „geplant 07:15, gestempelt um 23 Uhr" plötzlich „8 Stunden zu
+   * früh" — gemeint ist der Dienst von heute Morgen, und dafür ist 23 Uhr
+   * spät und nicht früh. Genau dieser Fall kam aus dem Betrieb.
+   */
+  const NACHTFENSTER = 2 * 60
+  let unterschied = ist - soll
+  if (unterschied > 12 * 60 && Math.abs(unterschied - 24 * 60) <= NACHTFENSTER) {
+    unterschied -= 24 * 60
+  } else if (unterschied < -12 * 60 && Math.abs(unterschied + 24 * 60) <= NACHTFENSTER) {
+    unterschied += 24 * 60
+  }
+
+  if (Math.abs(unterschied) <= toleranz) return null
+
+  return {
+    art: unterschied > 0 ? 'kommen-spaet' : 'kommen-frueh',
+    minuten: Math.abs(unterschied),
+    plan,
+  }
 }
 
 /**

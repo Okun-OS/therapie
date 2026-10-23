@@ -485,6 +485,57 @@ check('Und die Stunde mehr ist wirklich angekommen',
   nachKorrektur?.totalMinutes === eintrag.totalMinutes + 60,
   `${eintrag?.totalMinutes} → ${nachKorrektur?.totalMinutes}`)
 
+// ── B5.8 (§219) Die Uhrzeit beim Einstempeln ──────────────────────────────
+console.log('\n=== B5.8 Einstempeln zur falschen Zeit ===')
+
+/*
+ * Der Fall aus dem Betrieb: Für den Tag ist 07:15 geplant, eingestempelt wird
+ * um 23 Uhr — und es kam keine einzige Rückfrage. Gefragt wurde bis §219 nur,
+ * OB ein Dienst geplant ist, nicht ob DIESER gerade anfängt. Wer dann acht
+ * Stunden blieb, hatte obendrein eine tadellose Dauer.
+ */
+if ((await zustand())?.laeuft) await stempeln({ aktion: 'gehen' })
+
+const jetzt = new Date()
+const tagHeute = berlinTag(jetzt)
+tage.add(tagHeute)
+const langeHer = new Date(jetzt.getTime() - 6 * 60 * 60 * 1000)
+await dienstSetzen(tagHeute, berlinUhr(langeHer), plus(berlinUhr(langeHer), 120), shiftId)
+
+const zuSpaet = await stempeln({ aktion: 'kommen' })
+check('Sechs Stunden nach Dienstbeginn wird gefragt',
+  zuSpaet.status === 422 && zuSpaet.body?.code === 'GRUND_NOETIG',
+  `HTTP ${zuSpaet.status} · ${JSON.stringify(zuSpaet.body?.code ?? null)}`)
+check('Und zwar als „später angefangen", nicht als „ohne Dienst"',
+  zuSpaet.body?.frage?.art === 'kommen-spaet',
+  JSON.stringify(zuSpaet.body?.frage?.art ?? null))
+check('Die Frage nennt die geplante Zeit',
+  /\d{2}:\d{2}/.test(zuSpaet.body?.frage?.text ?? ''),
+  zuSpaet.body?.frage?.text?.slice(0, 90) ?? '')
+check('Ohne Grund ist niemand eingestempelt', (await zustand())?.laeuft === false)
+
+const spaetMitGrund = await stempeln({
+  aktion: 'kommen', grund: 'Dienst mit Melanie getauscht',
+})
+check('Mit Grund geht es', spaetMitGrund.status === 200,
+  `HTTP ${spaetMitGrund.status} · ${JSON.stringify(spaetMitGrund.body?.error ?? '')}`)
+check('Die Abweichung steht am Eintrag',
+  spaetMitGrund.body?.log?.abweichung === 'kommen-spaet',
+  JSON.stringify(spaetMitGrund.body?.log?.abweichung))
+check('Und der Grund dazu',
+  String(spaetMitGrund.body?.log?.grundKommen ?? '').includes('getauscht'),
+  JSON.stringify(spaetMitGrund.body?.log?.grundKommen))
+
+await stempeln({ aktion: 'gehen' })
+await dienstLoeschen(tagHeute)
+
+/*
+ * Die Gegenprobe steht schon in B5.4: Dort wird zum geplanten Beginn
+ * gestempelt, und es kommt keine Frage. Ohne sie wäre „es wird gefragt" auch
+ * dann grün, wenn das Programm bei JEDEM Einstempeln fragte — und eine
+ * Rückfrage ohne Anlass wird weggeklickt und ist dann überall wertlos.
+ */
+
 // ── Aufräumen ──────────────────────────────────────────────────────────────
 await wegraeumen()
 

@@ -7,7 +7,7 @@ import {
   type Stempelaktion,
 } from '@/lib/stempeluhr'
 import {
-  abweichungBeimGehen, grundTaugt, alsDauer, dauer,
+  abweichungBeimGehen, abweichungBeimKommen, grundTaugt, alsDauer, dauer,
   type Dienstzeit,
 } from '@/lib/stempelgrund'
 
@@ -128,16 +128,41 @@ export async function POST(req: NextRequest) {
      * das die Rückfrage überspringt, soll nicht die Lücke sein.
      */
     const plan = await geplanterDienst(employeeId, tag)
-    if (!plan && !grundTaugt(body.grund)) {
+    const jetztUhr = alsUhrzeit(zeit.zeitpunkt)
+    /*
+     * §219 Gefragt wird nicht nur, OB ein Dienst geplant ist, sondern auch,
+     * ob dies der geplante ist.
+     *
+     * Vorher reichte irgendein Dienst am Tag: Wer um 23 Uhr einstempelte,
+     * während 07:15 im Plan stand, wurde nichts gefragt. Die Abweichung fiel
+     * dann erst beim Gehen auf — und auch nur, wenn obendrein die Dauer nicht
+     * stimmte. Wer um 23 Uhr anfängt und acht Stunden bleibt, hat eine
+     * tadellose Dauer und trotzdem nicht den Dienst gearbeitet, der im Plan
+     * stand.
+     */
+    const abwKommen = abweichungBeimKommen(plan, jetztUhr)
+    if (abwKommen && !grundTaugt(body.grund)) {
+      const spaet = abwKommen.art === 'kommen-spaet'
       return NextResponse.json({
-        error: 'Für heute ist kein Dienst geplant. Bitte sag kurz, warum du '
-          + 'trotzdem arbeitest.',
+        error: abwKommen.art === 'ohne-dienst'
+          ? 'Für heute ist kein Dienst geplant. Bitte sag kurz, warum du '
+            + 'trotzdem arbeitest.'
+          : `Dein Dienst beginnt um ${abwKommen.plan!.von}. Bitte sag kurz, `
+            + 'warum du zu einer anderen Zeit anfängst.',
         code: 'GRUND_NOETIG',
         frage: {
-          art: 'ohne-dienst',
-          titel: 'Du hast heute keinen Dienst',
-          text: 'Trotzdem einstempeln? Dann schreib bitte kurz dazu, warum — '
-            + 'das spart deiner Leitung am Monatsende eine Rückfrage.',
+          art: abwKommen.art,
+          titel: abwKommen.art === 'ohne-dienst'
+            ? 'Du hast heute keinen Dienst'
+            : spaet ? 'Du fängst später an als geplant'
+              : 'Du fängst früher an als geplant',
+          text: abwKommen.art === 'ohne-dienst'
+            ? 'Trotzdem einstempeln? Dann schreib bitte kurz dazu, warum — '
+              + 'das spart deiner Leitung am Monatsende eine Rückfrage.'
+            : `Geplant ist ${abwKommen.plan!.von}–${abwKommen.plan!.bis}, `
+              + `jetzt ist es ${jetztUhr} — ${alsDauer(abwKommen.minuten)} `
+              + `${spaet ? 'später' : 'früher'}. Schreib bitte kurz dazu, `
+              + 'warum. Das spart deiner Leitung am Monatsende eine Rückfrage.',
         },
       }, { status: 422 })
     }
@@ -146,14 +171,17 @@ export async function POST(req: NextRequest) {
       data: {
         employeeId,
         date: tag,
-        clockIn: alsUhrzeit(zeit.zeitpunkt),
+        clockIn: jetztUhr,
         clockInAt: zeit.zeitpunkt,
         locationId: locationId!,
         quelle: zeit.quelle,
-        ...(plan ? {} : {
+        // §219 Der Grund gehört an den Eintrag, gleich welche der drei
+        // Abweichungen es war — sonst stünde später eine Begründung ohne
+        // Anlass oder ein Anlass ohne Begründung da.
+        ...(abwKommen ? {
           grundKommen: String(body.grund).trim().slice(0, 500),
-          abweichung: 'ohne-dienst',
-        }),
+          abweichung: abwKommen.art,
+        } : {}),
       },
     })
     // Die zweite Seite — sie trägt die Pünktlichkeitspunkte. Schlägt sie fehl,
@@ -192,6 +220,17 @@ export async function POST(req: NextRequest) {
     const abw = abweichungBeimGehen(
       plan, { von: laufenderLog!.clockIn, bis: ende })
 
+    /*
+     * §219 Eine beim Kommen vermerkte Abweichung wird nicht überschrieben.
+     *
+     * Wer um 23 Uhr angefangen und dafür einen Grund geschrieben hat, soll am
+     * Ende nicht als „ohne Dienst" oder „Stunden fehlen" dastehen, wenn das
+     * schon erklärt ist. Steht beim Gehen zusätzlich etwas Neues an — die
+     * Stunden stimmen nicht —, gewinnt das Neue, denn danach wird bezahlt.
+     */
+    const kommenVermerkt = laufenderLog!.abweichung
+      && String(laufenderLog!.abweichung).startsWith('kommen-')
+
     await prisma.timeLog.update({
       where: { id: laufenderLog!.id },
       data: {
@@ -200,7 +239,8 @@ export async function POST(req: NextRequest) {
         breakMinutes: pausenMinuten,
         breakStart: null,
         breakStartAt: null,
-        ...(abw ? { abweichung: abw.art } : {}),
+        ...(abw ? { abweichung: abw.art }
+          : kommenVermerkt ? {} : { abweichung: null }),
         ...(zeit.quelle === 'offline' ? { quelle: 'offline' } : {}),
       },
     })
@@ -212,10 +252,17 @@ export async function POST(req: NextRequest) {
         text: abw.art === 'ohne-dienst'
           ? `Du hast ${alsDauer(abw.minuten)} gearbeitet, ohne dass für heute `
             + 'ein Dienst geplant war.'
+          /*
+           * §219 Hier stand „Du bist früher gegangen". Das war falsch:
+           * Verglichen wird die DAUER, nicht die Uhrzeit. Wer um 14 Uhr
+           * anfängt und um 22:30 geht, ist nicht früher gegangen — ihm
+           * fehlen Stunden. Genau so stand es dann auf dem Bildschirm, und
+           * es war nicht zu erklären.
+           */
           : `Geplant war ${abw.plan!.von}–${abw.plan!.bis} `
             + `(${alsDauer(dauer(abw.plan!.von, abw.plan!.bis) ?? 0)}). `
-            + `Du hast ${alsDauer(abw.minuten)} `
-            + `${abw.art === 'laenger' ? 'länger gearbeitet' : 'weniger gearbeitet'}.`,
+            + `Gearbeitet hast du ${alsDauer(gesamt)} — `
+            + `${alsDauer(abw.minuten)} ${abw.art === 'laenger' ? 'mehr' : 'weniger'}.`,
       }
     }
     if (laufendeErfassung) {

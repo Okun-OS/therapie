@@ -5,6 +5,9 @@ import { Play, Square, Coffee, AlertTriangle, Loader2, CloudOff } from 'lucide-r
 import {
   einreihen, alle, zustandMitWarteschlange, type Uhrzustand,
 } from '@/lib/warteschlange'
+import {
+  abweichungBeimKommen, alsDauer,
+} from '@/lib/stempelgrund'
 import { OVERTIME_REASONS } from '@/lib/types'
 import { Modal } from '@/components/ui/Modal'
 import { schlangeGeaendert, SCHLANGE_EREIGNIS } from '@/components/offline/Warteschlange'
@@ -80,7 +83,11 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
 
   // §203 Die beiden Rückfragen: vor dem Einstempeln ohne Dienst, und nach dem
   // Ausstempeln, wenn die Zeit nicht zum Plan passt.
-  const [frageKommen, setFrageKommen] = useState(false)
+  // §219 Der Server entscheidet, WELCHE der drei Rückfragen es ist (kein
+  // Dienst, zu früh, zu spät) — und schickt den passenden Wortlaut mit. Ein
+  // fest eingebauter Text hier hätte bei zwei von drei Fällen danebengelegen.
+  const [frageKommen, setFrageKommen] =
+    useState<{ art: string; titel: string; text: string } | null>(null)
   const [nachfrage, setNachfrage] =
     useState<{ art: string; text: string; logId: string } | null>(null)
   const [grund, setGrund] = useState('')
@@ -145,7 +152,31 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
    * ein Gerät, das die Rückfrage überspringt, soll nicht die Lücke sein.
    */
   function kommen() {
-    if (!dienst) { setFrageKommen(true); setGrund(''); return }
+    /*
+     * §219 Gefragt wird auch, wenn der Dienst zwar geplant ist, aber zu einer
+     * anderen Zeit. Vorher reichte irgendein Dienst am Tag — wer um 23 Uhr
+     * einstempelte, während 07:15 im Plan stand, wurde nichts gefragt.
+     */
+    const jetztUhr = new Date().toTimeString().slice(0, 5)
+    const abw = abweichungBeimKommen(
+      dienst ? { von: dienst.von, bis: dienst.bis } : null, jetztUhr)
+    if (abw) {
+      const spaet = abw.art === 'kommen-spaet'
+      setFrageKommen({
+        art: abw.art,
+        titel: abw.art === 'ohne-dienst' ? 'Du hast heute keinen Dienst'
+          : spaet ? 'Du fängst später an als geplant'
+            : 'Du fängst früher an als geplant',
+        text: abw.art === 'ohne-dienst'
+          ? 'Trotzdem einstempeln? Schreib bitte kurz dazu, warum — das spart '
+            + 'deiner Leitung am Monatsende eine Rückfrage.'
+          : `Geplant ist ${abw.plan!.von}–${abw.plan!.bis}, jetzt ist es `
+            + `${jetztUhr} — ${alsDauer(abw.minuten)} ${spaet ? 'später' : 'früher'}. `
+            + 'Schreib bitte kurz dazu, warum.',
+      })
+      setGrund('')
+      return
+    }
     stempeln('kommen')
   }
 
@@ -174,7 +205,14 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
         // §203 Der Server hält den Dienstplan für maßgeblich, nicht die
         // Anzeige. Sagt er „ohne Dienst", wird gefragt — auch wenn oben ein
         // Dienst stand, der inzwischen abgesagt wurde.
-        if (d.code === 'GRUND_NOETIG') { setFrageKommen(true); setGrund(''); return }
+        if (d.code === 'GRUND_NOETIG') {
+          setFrageKommen(d.frage ?? {
+            art: 'ohne-dienst', titel: 'Du hast heute keinen Dienst',
+            text: 'Trotzdem einstempeln? Schreib bitte kurz dazu, warum.',
+          })
+          setGrund('')
+          return
+        }
         setFehler(d.error ?? 'Das hat nicht geklappt.')
         if (d.zustand) setZustand(d.zustand)
         return
@@ -362,27 +400,31 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
         </p>
       )}
 
-      {/* §203 Vor dem Einstempeln ohne geplanten Dienst */}
+      {/* §203/§219 Vor dem Einstempeln: kein Dienst, oder nicht zu dieser Zeit */}
       {frageKommen && (
         <Rueckfrage
-          titel="Du hast heute keinen Dienst"
-          text="Trotzdem einstempeln? Schreib bitte kurz dazu, warum — das spart
-                deiner Leitung am Monatsende eine Rückfrage."
-          platzhalter="z. B. für Melanie eingesprungen"
+          titel={frageKommen.titel}
+          text={frageKommen.text}
+          platzhalter={frageKommen.art === 'ohne-dienst'
+            ? 'z. B. für Melanie eingesprungen'
+            : 'z. B. Dienst mit Melanie getauscht'}
           grund={grund}
           setGrund={setGrund}
           laeuft={!!arbeitet}
           bestaetigen="Ja, einstempeln"
-          abbrechen={() => { setFrageKommen(false); setGrund('') }}
-          absenden={() => { setFrageKommen(false); stempeln('kommen', grund.trim()) }}
+          abbrechen={() => { setFrageKommen(null); setGrund('') }}
+          absenden={() => { setFrageKommen(null); stempeln('kommen', grund.trim()) }}
         />
       )}
 
       {/* §203 Nach dem Ausstempeln, wenn die Zeit nicht zum Plan passt */}
       {nachfrage && (
         <Rueckfrage
+          // §219 „Du bist früher gegangen" stand hier auch dann, wenn jemand
+          // um 22:30 ging — verglichen wird die Dauer, nicht die Uhrzeit.
+          // Gemeint war immer: Die Stunden kommen nicht zusammen.
           titel={nachfrage.art === 'laenger' ? 'Du warst länger da'
-            : nachfrage.art === 'frueher' ? 'Du bist früher gegangen'
+            : nachfrage.art === 'frueher' ? 'Deine Stunden stimmen nicht'
               : 'Heute war kein Dienst geplant'}
           text={`${nachfrage.text} Woran lag es?`}
           platzhalter="z. B. Übergabe hat länger gedauert"
@@ -437,8 +479,18 @@ function Rueckfrage({
   kategorie?: string
   setKategorie?: (w: string) => void
 }) {
-  // Der freie Text zählt, die Kategorie ist das Beiwerk. Umgekehrt stünde in
-  // der Übersicht der Leitung siebenmal „Personalmangel" und sonst nichts.
+  /*
+   * §219 Der Knopf sagt, warum er nicht geht.
+   *
+   * Vorher war er bei zu kurzem Text einfach ausgegraut — ohne ein Wort
+   * dazu. Wer eine Kategorie angetippt und nichts geschrieben hatte, sah
+   * einen toten Knopf und keinen Hinweis; genau diese Rückmeldung kam aus
+   * dem Betrieb. Jetzt steht darunter, was noch fehlt.
+   *
+   * Der freie Text zählt weiter, die Kategorie ist das Beiwerk: Umgekehrt
+   * stünde in der Übersicht der Leitung siebenmal „Personalmangel" und sonst
+   * nichts.
+   */
   const reicht = grund.trim().length >= 3
 
   /*
@@ -484,6 +536,14 @@ function Rueckfrage({
                    text-navy focus:outline-none focus:ring-2 focus:ring-teal-500/30
                    focus:border-teal-500 resize-none"
       />
+
+      {!reicht && (
+        <p className="text-xs text-gray-500 mt-2">
+          {grund.trim().length === 0
+            ? 'Schreib bitte kurz, woran es lag — ein paar Worte genügen.'
+            : 'Noch ein paar Zeichen, dann lässt es sich speichern.'}
+        </p>
+      )}
 
       <div className="flex gap-2.5 mt-4">
         <button
