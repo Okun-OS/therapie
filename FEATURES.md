@@ -4253,3 +4253,74 @@ prüfte etwas anderes als gedacht. Sie erzeugt sich ihren Inhalt jetzt selbst
 neu, über eine Einmalzahlung mit einem Betrag, den es so noch nie gab.
 
 **Gesamtstand der Lohn-Prüfungen: 531/531 in 17 Dateien.**
+
+## Block §221 (23.10.) — Dateien im Chat, und drei Arten zu löschen
+
+Zwei Meldungen aus dem Betrieb: „Im Chat kann man keine Bilder schicken —
+auch keine Dateien, Audios etc." und „Man kann keine Chats löschen."
+
+### Dateien
+
+Eine Nachricht konnte Text sein und sonst nichts. Wer ein Foto vom
+Dienstplan an der Wand schicken wollte, eine Sprachnachricht mit vollen
+Händen oder die PDF vom Träger, musste auf WhatsApp ausweichen — und **dort
+liegen Personaldaten dann wirklich falsch.** Genau deshalb ist das kein
+Schmuck, sondern Datenschutz.
+
+Jetzt: Bilder, Tonaufnahmen, Videos, PDF, Office-Dateien und Text, bis 25 MB.
+Bilder werden **gezeigt**, Ton und Video **abgespielt** — eine
+Sprachnachricht, die man erst herunterladen muss, hört niemand.
+
+**Eine eigene Liste erlaubter Dateitypen, nicht die der Personalakte.** Dort
+gehören Verträge und Bescheinigungen hin, und genau deshalb steht da kein Ton
+und kein Tabellenblatt: Eine Akte, in die alles darf, ist keine Akte. Im Chat
+ist es umgekehrt. Was in beiden nicht geht: alles Ausführbare und Archive.
+
+**Der Raum ist der Besitzer der Datei, nicht die Person.** Wer eine Gruppe
+verlässt, nimmt das Bild nicht mit, das er dort geteilt hat — sonst stünde
+bei den anderen eine Lücke im Verlauf. Und der Zugriff wird im Chat
+entschieden, nicht in `/api/files`: Dort gilt „die Akte gehört dieser
+Person", hier gilt „wer im Raum ist, sieht den Verlauf". Zwei Regeln an einer
+Tür sind eine Tür zu viel.
+
+### Löschen — drei Dinge, die oft verwechselt werden
+
+Der Eigentümer hat es genau beschrieben, und so ist es gebaut:
+
+| Weg | Wirkung |
+|---|---|
+| **Gespräch bei mir löschen** | Mein Verlauf ist weg, die andere Seite behält ihren |
+| **Nachricht bei mir wegräumen** | Nur bei mir weg — immer möglich |
+| **Nachricht zurückziehen** | Bei allen weg — **nur solange niemand sie gelesen hat** |
+
+**Warum nicht einfach „löschen".** Ein Gespräch gehört zwei Menschen. Es für
+beide zu entfernen, weil einer aufräumt, wäre ein Eingriff in fremde
+Unterlagen: Der andere verlöre seinen Verlauf, ohne gefragt worden zu sein.
+
+**Warum Zurückziehen vor dem Lesen endet.** Eine Nachricht, die niemand
+gesehen hat, spurlos zurückzunehmen ist ehrlich — sie hat nie gewirkt. Eine
+gelesene zurückzunehmen wäre das Gegenteil: Der andere hat sie, und das
+Programm täte so, als hätte es sie nie gegeben. Wer sich vertan hat, schreibt
+eine zweite Nachricht. Ob es noch geht, entscheidet der **Server** und sagt
+es der Oberfläche — der Browser kennt den Lesestand der anderen nicht und
+soll ihn nicht erraten müssen.
+
+**Ein gelöschtes Gespräch kommt zurück, wenn jemand schreibt.** Alles andere
+hieße, eine Nachricht stillschweigend zu verschlucken. Sichtbar ist dann nur,
+was nach dem Aufräumen kam.
+
+**Eine eigene Tabelle für „bei mir weggeräumt"** (`ChatVerborgen`) statt eines
+Feldes an der Nachricht: „Gelöscht" gilt hier nicht für alle, und ein Feld an
+der Nachricht könnte das gar nicht ausdrücken. Die Zeile verschwindet mit der
+Nachricht — wird sie später für alle zurückgezogen, bleibt kein Rest.
+
+Nachweis: `e5-chat.mjs` **106/106** (vorher 81). Darunter die Gegenproben, auf
+die es ankommt: Etwas Ausführbares wird abgelehnt, eine Fremde kommt an die
+Datei nicht heran (404), nach dem Lesen ist Zurückziehen vorbei (409), eine
+fremde Nachricht zieht niemand zurück (403) — und bei „nur bei mir" steht sie
+**beim anderen noch**, was der ganze Unterschied ist.
+
+Die Prüfung musste nachgebessert werden: Beim ersten Durchlauf ließ sie eine
+ungelesene Nachricht liegen, und beim zweiten scheiterte daran eine ganz
+andere Prüfung weiter oben — an Zustand aus dem vorigen Lauf, nicht am
+Programm. Sie räumt jetzt hinter sich auf.

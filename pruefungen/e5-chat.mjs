@@ -5,7 +5,7 @@
 // im Gespräch ist; die Leitung, die ein Gespräch zu zweit sehen will; der
 // andere Mandant; OKUN.
 
-import { pruefer, login, hole, sende } from './helfer.mjs'
+import { BASIS, pruefer, login, hole, sende } from './helfer.mjs'
 
 const { check, bilanz } = pruefer()
 
@@ -413,5 +413,151 @@ const fremdeAuswahl = (await hole(susi, '/api/chat/partner')).body
 check('Die Zahl endet am eigenen Mandanten',
   !(fremdeAuswahl.ohneZugang?.namen ?? []).some(n => namenMitZugang.has(n)),
   `${fremdeAuswahl.ohneZugang?.anzahl} beim anderen Kunden`)
+
+// ── §221 Dateien und Löschen ───────────────────────────────────────────────
+console.log('\n=== §221 Dateien im Gespräch ===')
+
+/*
+ * Der Ausgangszustand: ein frisches Gespräch zwischen Anna und Thomas. Es
+ * über eine vorhandene Unterhaltung zu legen hieße, auf deren Lesestand
+ * angewiesen zu sein — und genau der entscheidet hier über das Ergebnis.
+ */
+const raum221 = (await sende(anna, '/api/chat', 'POST',
+  { art: 'direkt', userId: mThomas.id })).body.raum
+check('Ein Gespräch für die Prüfung steht', Boolean(raum221?.id), String(raum221?.id))
+
+async function dateiSenden(cookie, raumId, name, typ, inhalt, text) {
+  const form = new FormData()
+  form.append('datei', new File([inhalt], name, { type: typ }))
+  if (text) form.append('text', text)
+  const r = await fetch(`${BASIS}/api/chat/${raumId}/datei`, {
+    method: 'POST', headers: { cookie }, body: form,
+  })
+  return { status: r.status, body: await r.json().catch(() => ({})) }
+}
+
+// Ein winziges PNG — echte Bytes, kein umbenannter Text.
+const png = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64')
+
+const bild = await dateiSenden(anna, raum221.id, 'dienstplan.png', 'image/png', png,
+  'Der Plan von der Wand')
+check('Ein Bild lässt sich schicken', bild.status === 200,
+  `HTTP ${bild.status} · ${JSON.stringify(bild.body?.error ?? '')}`)
+check('Es hängt als Datei an der Nachricht',
+  Boolean(bild.body?.nachricht?.dateiId) && bild.body?.nachricht?.art === 'datei',
+  JSON.stringify(bild.body?.nachricht?.art))
+
+const ton = await dateiSenden(anna, raum221.id, 'sprachnachricht.m4a', 'audio/mp4',
+  Buffer.from('nicht wirklich Ton, aber vom richtigen Typ'))
+check('Eine Tonaufnahme auch', ton.status === 200,
+  `HTTP ${ton.status} · ${JSON.stringify(ton.body?.error ?? '')}`)
+
+const boese = await dateiSenden(anna, raum221.id, 'programm.exe',
+  'application/x-msdownload', Buffer.from('MZ'))
+check('Etwas Ausführbares NICHT', boese.status === 400,
+  `HTTP ${boese.status} · ${String(boese.body?.error ?? '').slice(0, 60)}`)
+
+const dateiId = bild.body?.nachricht?.dateiId
+const holen = await fetch(`${BASIS}/api/chat/${raum221.id}/datei?id=${dateiId}`,
+  { headers: { cookie: thomas } })
+check('Der Empfänger kann sie holen', holen.status === 200, `HTTP ${holen.status}`)
+check('Und bekommt den richtigen Typ',
+  (holen.headers.get('content-type') ?? '').includes('image/png'),
+  holen.headers.get('content-type') ?? '')
+
+const fremdeDatei = await fetch(`${BASIS}/api/chat/${raum221.id}/datei?id=${dateiId}`,
+  { headers: { cookie: maria } })
+check('Eine Fremde kommt nicht an sie heran', fremdeDatei.status === 404,
+  `HTTP ${fremdeDatei.status}`)
+
+const verlauf221 = await hole(anna, `/api/chat/${raum221.id}`)
+const bildNachricht = (verlauf221.body.nachrichten ?? []).find(n => n.dateiId === dateiId)
+check('Der Verlauf nennt Name und Typ des Anhangs',
+  bildNachricht?.dateiName === 'dienstplan.png' && bildNachricht?.dateiTyp === 'image/png',
+  `${bildNachricht?.dateiName} · ${bildNachricht?.dateiTyp}`)
+
+console.log('\n=== §221 Löschen: bei mir, oder für alle ===')
+
+// Thomas hat noch nichts gelesen — jetzt lässt sich zurückziehen.
+const frisch = await sende(anna, `/api/chat/${raum221.id}`, 'POST',
+  { text: 'Vertippt, kommt gleich weg' })
+check('Eine ungelesene Nachricht gilt als zurückziehbar',
+  (await hole(anna, `/api/chat/${raum221.id}`)).body.nachrichten
+    ?.find(n => n.id === frisch.body?.nachricht?.id)?.zurueckziehbar === true)
+
+const zurueck = await fetch(
+  `${BASIS}/api/chat/${raum221.id}?nachricht=${frisch.body.nachricht.id}&fuerAlle=1`,
+  { method: 'DELETE', headers: { cookie: anna } })
+check('Zurückziehen gelingt vor dem Lesen', zurueck.status === 200, `HTTP ${zurueck.status}`)
+check('Und sie ist auch beim Empfänger fort',
+  !((await hole(thomas, `/api/chat/${raum221.id}`)).body.nachrichten ?? [])
+    .some(n => n.id === frisch.body.nachricht.id))
+
+// Jetzt liest Thomas — danach geht es nicht mehr.
+const bleibt = await sende(anna, `/api/chat/${raum221.id}`, 'POST',
+  { text: 'Diese bleibt stehen' })
+await sende(thomas, `/api/chat/${raum221.id}`, 'PATCH', { gelesen: true })
+
+const zuSpaet = await fetch(
+  `${BASIS}/api/chat/${raum221.id}?nachricht=${bleibt.body.nachricht.id}&fuerAlle=1`,
+  { method: 'DELETE', headers: { cookie: anna } })
+const zuSpaetGrund = await zuSpaet.json().catch(() => ({}))
+check('Nach dem Lesen geht Zurückziehen NICHT mehr', zuSpaet.status === 409,
+  `HTTP ${zuSpaet.status} · ${String(zuSpaetGrund.error ?? '').slice(0, 60)}`)
+check('Und die Begründung sagt, warum',
+  zuSpaetGrund.code === 'SCHON_GELESEN', String(zuSpaetGrund.code))
+
+const nurBeiMir = await fetch(
+  `${BASIS}/api/chat/${raum221.id}?nachricht=${bleibt.body.nachricht.id}`,
+  { method: 'DELETE', headers: { cookie: anna } })
+check('Bei mir wegräumen geht immer', nurBeiMir.status === 200, `HTTP ${nurBeiMir.status}`)
+check('Bei mir ist sie weg',
+  !((await hole(anna, `/api/chat/${raum221.id}`)).body.nachrichten ?? [])
+    .some(n => n.id === bleibt.body.nachricht.id))
+check('Beim anderen steht sie noch — das ist der Unterschied',
+  ((await hole(thomas, `/api/chat/${raum221.id}`)).body.nachrichten ?? [])
+    .some(n => n.id === bleibt.body.nachricht.id))
+
+const fremdeNachricht = await fetch(
+  `${BASIS}/api/chat/${raum221.id}?nachricht=${bleibt.body.nachricht.id}&fuerAlle=1`,
+  { method: 'DELETE', headers: { cookie: thomas } })
+check('Eine fremde Nachricht zieht niemand zurück',
+  fremdeNachricht.status === 403 || fremdeNachricht.status === 409,
+  `HTTP ${fremdeNachricht.status}`)
+
+console.log('\n=== §221 Das ganze Gespräch bei mir ===')
+
+const weg = await fetch(`${BASIS}/api/chat/${raum221.id}`,
+  { method: 'DELETE', headers: { cookie: anna } })
+check('Das Gespräch lässt sich bei mir löschen', weg.status === 200, `HTTP ${weg.status}`)
+check('Es steht nicht mehr in meiner Liste',
+  !((await hole(anna, '/api/chat')).body.raeume ?? []).some(r => r.id === raum221.id))
+check('Mein Verlauf ist leer',
+  ((await hole(anna, `/api/chat/${raum221.id}`)).body.nachrichten ?? []).length === 0)
+check('Beim anderen steht alles unverändert',
+  ((await hole(thomas, `/api/chat/${raum221.id}`)).body.nachrichten ?? []).length > 0,
+  `${((await hole(thomas, `/api/chat/${raum221.id}`)).body.nachrichten ?? []).length} Nachrichten`)
+
+await sende(thomas, `/api/chat/${raum221.id}`, 'POST', { text: 'Bist du noch da?' })
+const wiederDa = (await hole(anna, '/api/chat')).body.raeume ?? []
+check('Schreibt die andere Seite, taucht es wieder auf',
+  wiederDa.some(r => r.id === raum221.id))
+const nachWiederkehr = (await hole(anna, `/api/chat/${raum221.id}`)).body.nachrichten ?? []
+check('Aber nur mit dem, was danach kam',
+  nachWiederkehr.length === 1 && nachWiederkehr[0].text === 'Bist du noch da?',
+  `${nachWiederkehr.length} Nachrichten`)
+
+/*
+ * Aufräumen: Ohne diese Zeile bliebe die letzte Nachricht ungelesen liegen,
+ * und beim nächsten Durchlauf scheiterte weiter oben die Prüfung „Die eigene
+ * Nachricht zählt für einen selbst nicht als ungelesen" — an Zustand aus dem
+ * vorigen Lauf, nicht am Programm. Genau so ist es beim ersten Mal passiert.
+ */
+await sende(anna, `/api/chat/${raum221.id}`, 'PATCH', { gelesen: true })
+check('Die Prüfung lässt nichts Ungelesenes zurück',
+  ((await hole(anna, '/api/chat')).body.raeume ?? [])
+    .find(r => r.id === raum221.id)?.ungelesen === 0)
 
 process.exit(bilanz() > 0 ? 1 : 0)

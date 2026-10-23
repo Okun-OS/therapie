@@ -28,6 +28,69 @@ export const ERLAUBTE_TYPEN: Record<string, string> = {
   'image/webp': 'WebP-Bild',
 }
 
+/**
+ * §221 Was im Chat erlaubt ist — und warum das eine eigene Liste ist.
+ *
+ * `ERLAUBTE_TYPEN` oben gilt für die Personalakte. Dort gehören Verträge,
+ * Zeugnisse und Bescheinigungen hin, und genau deshalb steht da kein Ton und
+ * kein Tabellenblatt: Eine Akte, in die alles darf, ist keine Akte.
+ *
+ * Im Chat ist es umgekehrt. Dort wird ein Foto vom Dienstplan an der Wand
+ * geschickt, eine Sprachnachricht, wenn die Hände voll sind, und eine PDF vom
+ * Träger. Diese Liste zu verengen hieße, Menschen zurück auf WhatsApp zu
+ * schicken — und dort liegen die Daten dann wirklich falsch.
+ *
+ * Was NICHT drinsteht, ist ebenso bewusst: nichts Ausführbares, keine
+ * Archive. Eine Datei, die beim Öffnen etwas tut, gehört nicht in ein
+ * Postfach, das jeder im Betrieb erreicht.
+ */
+export const CHAT_TYPEN: Record<string, string> = {
+  'application/pdf': 'PDF',
+  'image/jpeg': 'JPEG-Bild',
+  'image/png': 'PNG-Bild',
+  'image/heic': 'HEIC-Bild',
+  'image/webp': 'WebP-Bild',
+  'image/gif': 'GIF-Bild',
+  'audio/mpeg': 'MP3-Aufnahme',
+  'audio/mp4': 'M4A-Aufnahme',
+  'audio/aac': 'AAC-Aufnahme',
+  'audio/ogg': 'OGG-Aufnahme',
+  'audio/webm': 'Sprachnachricht',
+  'audio/wav': 'WAV-Aufnahme',
+  'video/mp4': 'MP4-Video',
+  'video/quicktime': 'MOV-Video',
+  'text/plain': 'Textdatei',
+  'application/msword': 'Word-Dokument',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Word-Dokument',
+  'application/vnd.ms-excel': 'Excel-Tabelle',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Excel-Tabelle',
+}
+
+/** §221 Für Tondateien und Videos reichen zehn Megabyte nicht. */
+export const MAX_CHAT_BYTES = 25 * 1024 * 1024
+
+export function pruefeChatDatei(
+  dateiname: string, mimeType: string, groesse: number,
+): PruefErgebnis {
+  if (groesse <= 0) return { ok: false, fehler: 'Die Datei ist leer.' }
+  if (groesse > MAX_CHAT_BYTES) {
+    return {
+      ok: false,
+      fehler: `Die Datei ist ${(groesse / 1024 / 1024).toFixed(1)} MB groß. `
+        + `Im Chat sind höchstens ${MAX_CHAT_BYTES / 1024 / 1024} MB möglich.`,
+    }
+  }
+  if (!CHAT_TYPEN[mimeType]) {
+    return {
+      ok: false,
+      fehler: `Dateien dieser Art lassen sich hier nicht verschicken (${mimeType}). `
+        + 'Möglich sind Bilder, Tonaufnahmen, Videos, PDF und Office-Dateien.',
+    }
+  }
+  if (!dateiname.trim()) return { ok: false, fehler: 'Die Datei hat keinen Namen.' }
+  return { ok: true }
+}
+
 export const KATEGORIEN = {
   vertrag: 'Arbeitsvertrag',
   zeugnis: 'Zeugnis',
@@ -108,8 +171,18 @@ export function sichererDateiname(roh: string): string {
 }
 
 /** Datei ablegen. Der Treiber entscheidet, wohin der Inhalt geht. */
-export async function dateiSpeichern(eingang: DateiEingang) {
-  const pruefung = pruefeDatei(eingang.dateiname, eingang.mimeType, eingang.daten.length)
+export async function dateiSpeichern(eingang: DateiEingang & {
+  /**
+   * §221 Eine andere Prüfung als die der Personalakte.
+   *
+   * Der Chat lässt Ton, Video und Office-Dateien zu, die Akte nicht. Statt
+   * die eine Liste aufzuweichen — und damit beides zu erlauben, wo nur eines
+   * gemeint war — wird die Prüfung hier übergeben.
+   */
+  pruefen?: (name: string, typ: string, groesse: number) => PruefErgebnis
+}) {
+  const pruefer = eingang.pruefen ?? pruefeDatei
+  const pruefung = pruefer(eingang.dateiname, eingang.mimeType, eingang.daten.length)
   if (!pruefung.ok) throw new Error(pruefung.fehler)
 
   const sichtbar = eingang.sichtbarFuerMitarbeiter

@@ -525,12 +525,41 @@ model ChatMitglied {
   rolle         String    @default("mitglied")
   /// Bis wohin gelesen wurde; alles Spaetere ist ungelesen
   gelesenBis    DateTime?
+  /// §221 Ab wann dieses Gespraech aus MEINER Liste verschwunden ist.
+  ///
+  /// Ein Gespraech zu zweit gehoert zwei Menschen. Es fuer beide zu loeschen,
+  /// weil einer aufraeumt, waere ein Eingriff in fremde Unterlagen — der
+  /// andere verlaege seinen Verlauf, ohne gefragt worden zu sein. Deshalb
+  /// wird es nur fuer mich ausgeblendet. Kommt eine NEUERE Nachricht, taucht
+  /// es wieder auf: Sonst verpasste man stillschweigend, was danach kam.
+  ausgeblendetAb DateTime?
   beigetretenAm DateTime  @default(now())
 
   raum          ChatRaum  @relation(fields: [raumId], references: [id], onDelete: Cascade)
 
   @@unique([raumId, userId])
   @@index([employeeId])
+  @@index([userId])
+}
+
+/// §221 Eine Nachricht, die EIN Mensch fuer sich weggeraeumt hat.
+///
+/// WARUM EINE EIGENE TABELLE UND KEIN FELD AN DER NACHRICHT
+/// Weil „geloescht" hier nicht fuer alle gilt. Eine Nachricht gehoert allen,
+/// die sie sehen — wer sie bei sich wegraeumt, raeumt sie nicht bei den
+/// anderen weg. Ein Feld an der Nachricht koennte das gar nicht ausdruecken.
+///
+/// Die Zeile verschwindet mit der Nachricht (onDelete: Cascade): Wird sie
+/// spaeter fuer alle zurueckgezogen, bleibt kein Rest zurueck.
+model ChatVerborgen {
+  id          String        @id @default(cuid())
+  nachrichtId String
+  userId      String
+  createdAt   DateTime      @default(now())
+
+  nachricht   ChatNachricht @relation(fields: [nachrichtId], references: [id], onDelete: Cascade)
+
+  @@unique([nachrichtId, userId])
   @@index([userId])
 }
 
@@ -545,11 +574,19 @@ model ChatNachricht {
   /// alte Nachrichten nicht rueckwirkend umschreiben.
   absenderName String
   text         String
-  /// text | system — Systemhinweise ("ist beigetreten") sehen anders aus
+  /// text | system | datei — Systemhinweise und Anhaenge sehen anders aus
   art          String   @default("text")
+  /// §221 Der Anhang: Bild, Tondatei, Schriftstueck.
+  ///
+  /// Die Datei selbst liegt in `StoredFile` mit `ownerType = "chat"` und dem
+  /// Raum als Besitzer. Der Raum und nicht die Person: Wer eine Gruppe
+  /// verlaesst, nimmt das Bild nicht mit, das er dort geteilt hat — sonst
+  /// stuende bei den anderen eine Luecke im Verlauf.
+  dateiId      String?
   createdAt    DateTime @default(now())
 
   raum         ChatRaum @relation(fields: [raumId], references: [id], onDelete: Cascade)
+  verborgen    ChatVerborgen[]
 
   @@index([raumId, createdAt])
   @@index([employeeId])

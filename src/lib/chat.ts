@@ -220,7 +220,7 @@ export interface RaumDaten {
 export async function raumZugriff(session: SessionPayload, raumId: string): Promise<{
   grund: ZugriffsGrund
   raum?: RaumDaten
-  mitglied?: { id: string; rolle: string; gelesenBis: Date | null }
+  mitglied?: { id: string; rolle: string; gelesenBis: Date | null; ausgeblendetAb: Date | null }
 }> {
   const ich = eigeneKennung(session)
   if (!ich) return { grund: 'keinZugang' }
@@ -230,7 +230,7 @@ export async function raumZugriff(session: SessionPayload, raumId: string): Prom
 
   const mitglied = await prisma.chatMitglied.findUnique({
     where: { raumId_userId: { raumId, userId: ich } },
-    select: { id: true, rolle: true, gelesenBis: true },
+    select: { id: true, rolle: true, gelesenBis: true, ausgeblendetAb: true },
   })
   if (!mitglied) return { grund: 'keinMitglied', raum }
 
@@ -287,9 +287,36 @@ export async function raeumeFuer(session: SessionPayload): Promise<RaumListe[]> 
   const ich = eigeneKennung(session)
   if (!ich) return []
 
-  const mitgliedschaften = await prisma.chatMitglied.findMany({
+  const alleMitgliedschaften = await prisma.chatMitglied.findMany({
     where: { userId: ich },
-    select: { raumId: true, gelesenBis: true },
+    select: { raumId: true, gelesenBis: true, ausgeblendetAb: true },
+  })
+  if (alleMitgliedschaften.length === 0) return []
+
+  /*
+   * §221 Was ich bei mir gelöscht habe, steht nicht mehr in meiner Liste —
+   * bis etwas Neues kommt.
+   *
+   * Der Vergleich läuft über die letzte Aktivität des Raums: Liegt sie vor
+   * meinem Schnitt, ist dort seit dem Aufräumen nichts passiert und das
+   * Gespräch bleibt weg. Schreibt die andere Person wieder, taucht es mit
+   * der neuen Nachricht von selbst wieder auf — alles andere hieße, eine
+   * Nachricht stillschweigend zu verschlucken.
+   */
+  const schnitte = new Map(
+    alleMitgliedschaften.map(m => [m.raumId, m.ausgeblendetAb]),
+  )
+  const aktivitaet = new Map(
+    (await prisma.chatRaum.findMany({
+      where: { id: { in: alleMitgliedschaften.map(m => m.raumId) } },
+      select: { id: true, letzteAktivitaet: true },
+    })).map(r => [r.id, r.letzteAktivitaet]),
+  )
+  const mitgliedschaften = alleMitgliedschaften.filter(m => {
+    const schnitt = schnitte.get(m.raumId)
+    if (!schnitt) return true
+    const zuletzt = aktivitaet.get(m.raumId)
+    return Boolean(zuletzt && zuletzt > schnitt)
   })
   if (mitgliedschaften.length === 0) return []
   const raumIds = mitgliedschaften.map(m => m.raumId)
@@ -303,8 +330,20 @@ export async function raeumeFuer(session: SessionPayload): Promise<RaumListe[]> 
       where: { raumId: { in: raumIds } },
       select: { raumId: true, userId: true },
     }),
+    /*
+     * §221 Die Vorschau zeigt nicht, was ich weggeräumt habe — weder das,
+     * was vor meinem Schnitt liegt, noch eine einzeln verborgene Nachricht.
+     * Sonst stünde in der Liste ein Satz, den es für mich nicht mehr gibt.
+     */
     prisma.chatNachricht.findMany({
-      where: { raumId: { in: raumIds } },
+      where: {
+        raumId: { in: raumIds },
+        NOT: { verborgen: { some: { userId: ich } } },
+        OR: raumIds.map(id => ({
+          raumId: id,
+          ...(schnitte.get(id) ? { createdAt: { gt: schnitte.get(id)! } } : {}),
+        })),
+      },
       orderBy: { createdAt: 'desc' },
       distinct: ['raumId'],
       select: { raumId: true, text: true, absenderName: true, createdAt: true, art: true },

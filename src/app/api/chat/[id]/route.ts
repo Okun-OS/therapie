@@ -45,21 +45,49 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   //
   // Geholt wird absteigend und danach gedreht, damit die Anzeige wie gewohnt
   // von alt nach neu läuft.
-  const [neueste, mitglieder] = await Promise.all([
+  /*
+   * §221 Was ICH weggeräumt habe, sehe ich nicht mehr.
+   *
+   * Zwei Schnitte: `ausgeblendetAb` ist der Zeitpunkt, an dem ich das ganze
+   * Gespräch bei mir gelöscht habe — alles davor ist für mich weg. Dazu die
+   * einzelnen Nachrichten, die ich für mich weggeräumt habe.
+   *
+   * Beides gilt nur für mich. Die andere Person hat ihren Verlauf
+   * unverändert: Ein Gespräch zu zweit gehört zwei Menschen, und wer bei sich
+   * aufräumt, räumt nicht bei anderen auf.
+   */
+  const meinSchnitt = zugriff.mitglied!.ausgeblendetAb
+
+  const [neueste, mitglieder, verborgen] = await Promise.all([
     prisma.chatNachricht.findMany({
-      where: { raumId: raum.id },
+      where: {
+        raumId: raum.id,
+        ...(meinSchnitt ? { createdAt: { gt: meinSchnitt } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       take: 500,
     }),
     prisma.chatMitglied.findMany({ where: { raumId: raum.id } }),
+    prisma.chatVerborgen.findMany({
+      where: { userId: ich }, select: { nachrichtId: true },
+    }),
   ])
-  const nachrichten = neueste.reverse()
+  const weggeraeumt = new Set(verborgen.map(v => v.nachrichtId))
+  const nachrichten = neueste.reverse().filter(n => !weggeraeumt.has(n.id))
 
   const namen = new Map(
     (await prisma.user.findMany({
       where: { id: { in: mitglieder.map(m => m.userId) } },
       select: { id: true, name: true, role: true },
     })).map(u => [u.id, u]),
+  )
+
+  const dateiIds = nachrichten.map(n => n.dateiId).filter(Boolean) as string[]
+  const anhaenge = new Map(
+    (dateiIds.length === 0 ? [] : await prisma.storedFile.findMany({
+      where: { id: { in: dateiIds }, deletedAt: null },
+      select: { id: true, dateiname: true, mimeType: true, groesse: true },
+    })).map(d => [d.id, d]),
   )
 
   const gegenueber = raum.art === 'direkt'
@@ -89,6 +117,18 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       id: n.id, text: n.text, art: n.art,
       absenderName: n.absenderName,
       vonMir: n.userId === ich,
+      dateiId: n.dateiId,
+      dateiTyp: n.dateiId ? anhaenge.get(n.dateiId)?.mimeType ?? null : null,
+      dateiName: n.dateiId ? anhaenge.get(n.dateiId)?.dateiname ?? null : null,
+      dateiGroesse: n.dateiId ? anhaenge.get(n.dateiId)?.groesse ?? null : null,
+      /*
+       * §221 Zurückziehen geht nur, solange niemand sonst gelesen hat.
+       * Die Auskunft kommt vom Server: Der Browser kennt den Lesestand der
+       * anderen nicht — und soll ihn auch nicht erraten müssen.
+       */
+      zurueckziehbar: n.userId === ich && n.art !== 'system'
+        && mitglieder.every(m => m.userId === ich
+          || !m.gelesenBis || m.gelesenBis < n.createdAt),
       createdAt: n.createdAt.toISOString(),
     })),
   })
@@ -328,4 +368,108 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   return NextResponse.json({ error: 'Nichts zu ändern' }, { status: 400 })
+}
+
+/**
+ * §221 Löschen — und zwar drei verschiedene Dinge, die oft verwechselt werden.
+ *
+ *   DELETE /api/chat/<raum>                          das Gespräch bei MIR
+ *   DELETE /api/chat/<raum>?nachricht=<id>           eine Nachricht bei MIR
+ *   DELETE /api/chat/<raum>?nachricht=<id>&fuerAlle=1  zurückziehen
+ *
+ * WARUM NICHT EINFACH „LÖSCHEN"
+ * Weil ein Gespräch zwei Menschen gehört. Es für beide zu entfernen, weil
+ * einer aufräumt, wäre ein Eingriff in fremde Unterlagen: Der andere verlöre
+ * seinen Verlauf, ohne gefragt worden zu sein. Deshalb räumt der Normalfall
+ * nur bei mir auf.
+ *
+ * ZURÜCKZIEHEN GEHT NUR VOR DEM LESEN
+ * Eine Nachricht, die niemand gesehen hat, spurlos zurückzunehmen ist
+ * ehrlich — sie hat nie gewirkt. Eine gelesene Nachricht zurückzunehmen wäre
+ * das Gegenteil: Der andere hat sie, und das Programm täte so, als hätte es
+ * sie nie gegeben. Wer sich vertan hat, schreibt eine zweite Nachricht.
+ */
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = requireRole(req)
+  if (session instanceof NextResponse) return session
+
+  const zugriff = await raumZugriff(session, params.id)
+  if (zugriff.grund !== 'ok') return NICHT_DA
+  const raum = zugriff.raum!
+  const ich = eigeneKennung(session)!
+
+  const nachrichtId = req.nextUrl.searchParams.get('nachricht')
+  const fuerAlle = req.nextUrl.searchParams.get('fuerAlle') === '1'
+
+  // ── Das ganze Gespräch bei mir ──────────────────────────────────────────
+  if (!nachrichtId) {
+    await prisma.chatMitglied.update({
+      where: { raumId_userId: { raumId: raum.id, userId: ich } },
+      data: { ausgeblendetAb: new Date(), gelesenBis: new Date() },
+    })
+    return NextResponse.json({
+      ok: true,
+      hinweis: 'Das Gespräch ist bei dir weg. Schreibt die andere Person '
+        + 'wieder, taucht es mit der neuen Nachricht erneut auf.',
+    })
+  }
+
+  const nachricht = await prisma.chatNachricht.findFirst({
+    where: { id: nachrichtId, raumId: raum.id },
+    select: { id: true, userId: true, art: true, createdAt: true, dateiId: true },
+  })
+  if (!nachricht) return NICHT_DA
+
+  // ── Eine Nachricht bei mir ──────────────────────────────────────────────
+  if (!fuerAlle) {
+    await prisma.chatVerborgen.upsert({
+      where: { nachrichtId_userId: { nachrichtId: nachricht.id, userId: ich } },
+      create: { nachrichtId: nachricht.id, userId: ich },
+      update: {},
+    })
+    return NextResponse.json({ ok: true, umfang: 'nurIch' })
+  }
+
+  // ── Zurückziehen: nur die eigene, und nur vor dem Lesen ─────────────────
+  if (nachricht.userId !== ich) {
+    return NextResponse.json(
+      { error: 'Zurückziehen kann man nur, was man selbst geschrieben hat.' },
+      { status: 403 },
+    )
+  }
+  if (nachricht.art === 'system') {
+    return NextResponse.json(
+      { error: 'Hinweise des Programms lassen sich nicht zurückziehen.' },
+      { status: 400 },
+    )
+  }
+
+  const andere = await prisma.chatMitglied.findMany({
+    where: { raumId: raum.id, userId: { not: ich } },
+    select: { gelesenBis: true },
+  })
+  const schonGelesen = andere.some(
+    m => m.gelesenBis && m.gelesenBis >= nachricht.createdAt,
+  )
+  if (schonGelesen) {
+    return NextResponse.json({
+      error: 'Diese Nachricht ist schon gelesen worden — zurückziehen geht '
+        + 'jetzt nicht mehr. Du kannst sie bei dir wegräumen oder etwas '
+        + 'Klarstellendes schreiben.',
+      code: 'SCHON_GELESEN',
+    }, { status: 409 })
+  }
+
+  /*
+   * Spurlos, mit allem, was daran hängt: die Markierungen „bei mir
+   * weggeräumt" (über die Datenbank) und ein etwaiger Anhang. Eine Datei
+   * liegen zu lassen, deren Nachricht es nicht mehr gibt, wäre Datenhaltung
+   * ohne Zweck — und beim nächsten Export stünde sie wieder da.
+   */
+  if (nachricht.dateiId) {
+    await prisma.storedFile.deleteMany({ where: { id: nachricht.dateiId } })
+  }
+  await prisma.chatNachricht.delete({ where: { id: nachricht.id } })
+
+  return NextResponse.json({ ok: true, umfang: 'alle' })
 }

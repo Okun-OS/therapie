@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  MessageSquare, Users, Plus, Search, Send, Settings2, X, Check,
+  MessageSquare, Users, Plus, Search, Send, Settings2, X, Check, Paperclip,
+  Trash2, FileText, Download,
   AlertTriangle, Archive, LogOut, UserPlus, Lock, LifeBuoy, Sparkles,
 } from 'lucide-react'
 import { einreihen } from '@/lib/warteschlange'
@@ -62,6 +63,13 @@ interface Nachricht {
   absenderName: string
   vonMir: boolean
   createdAt: string
+  // §221 Anhang: Bild, Tonaufnahme, Video, Schriftstück
+  dateiId?: string | null
+  dateiTyp?: string | null
+  dateiName?: string | null
+  dateiGroesse?: number | null
+  /** Ob sie sich noch für alle zurückziehen lässt — entscheidet der Server. */
+  zurueckziehbar?: boolean
 }
 
 interface Gruppe {
@@ -109,6 +117,12 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
   const [gruppen, setGruppen] = useState<Gruppe[]>([])
 
   const ende = useRef<HTMLDivElement>(null)
+  const dateiFeld = useRef<HTMLInputElement>(null)
+  // §221 Welche Nachricht gerade weggeräumt werden soll — und ob „für alle"
+  // überhaupt noch zur Wahl steht.
+  const [loeschMaske, setLoeschMaske] =
+    useState<{ id: string; fuerAlle: boolean } | null>(null)
+  const [gespraechWeg, setGespraechWeg] = useState(false)
 
   const listeLaden = useCallback(async () => {
     try {
@@ -151,6 +165,79 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
   async function oeffnen(id: string) {
     setOffen(id); setNachrichten([]); setFehler(''); setMaske('keine')
     await raumLaden(id)
+  }
+
+  /*
+   * §221 Eine Datei schicken.
+   *
+   * Eigener Weg und nicht Teil von `senden`: Eine Datei geht als
+   * `multipart/form-data` hinaus, eine Nachricht als JSON. Beides in einen
+   * Aufruf zu pressen hieße, auf jeder Seite zu prüfen, was gerade gemeint
+   * ist — und bei Dateien ist das die Stelle, an der stillschweigend nichts
+   * ankommt.
+   *
+   * Die Warteschlange für Offline-Betrieb bekommt hier NICHTS: Sie merkt sich
+   * JSON im Speicher des Browsers, und eine Tonaufnahme von 20 MB gehört da
+   * nicht hinein.
+   */
+  async function dateiSenden(datei: File) {
+    if (!offen) return
+    setSendet(true); setFehler('')
+    try {
+      const daten = new FormData()
+      daten.append('datei', datei)
+      if (entwurf.trim()) daten.append('text', entwurf.trim())
+      const r = await fetch(`/api/chat/${offen}/datei`, { method: 'POST', body: daten })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setFehler(d.error ?? 'Die Datei ließ sich nicht senden.'); return }
+      setNachrichten(prev => [...prev, {
+        ...d.nachricht,
+        vonMir: true,
+        createdAt: d.nachricht.createdAt,
+        dateiTyp: d.nachricht.datei?.mimeType ?? null,
+        dateiName: d.nachricht.datei?.dateiname ?? null,
+        dateiGroesse: d.nachricht.datei?.groesse ?? null,
+        zurueckziehbar: true,
+      }])
+      setEntwurf('')
+      setTimeout(() => ende.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      listeLaden()
+    } catch {
+      setFehler('Keine Verbindung — die Datei ließ sich nicht senden.')
+    } finally {
+      setSendet(false)
+    }
+  }
+
+  /**
+   * §221 Eine Nachricht wegräumen — bei mir oder für alle.
+   *
+   * „Für alle" geht nur, solange niemand sonst gelesen hat; das entscheidet
+   * der Server und sagt es, wenn es zu spät ist.
+   */
+  async function nachrichtLoeschen(id: string, fuerAlle: boolean) {
+    if (!offen) return
+    const r = await fetch(
+      `/api/chat/${offen}?nachricht=${id}${fuerAlle ? '&fuerAlle=1' : ''}`,
+      { method: 'DELETE' },
+    ).catch(() => null)
+    if (!r || !r.ok) {
+      const d = await r?.json().catch(() => ({}))
+      setFehler(d?.error ?? 'Das hat nicht geklappt.')
+      return
+    }
+    setNachrichten(prev => prev.filter(n => n.id !== id))
+    listeLaden()
+  }
+
+  /** §221 Das ganze Gespräch bei mir löschen. */
+  async function gespraechLoeschen() {
+    if (!offen) return
+    const r = await fetch(`/api/chat/${offen}`, { method: 'DELETE' }).catch(() => null)
+    if (!r || !r.ok) { setFehler('Das Gespräch ließ sich nicht löschen.'); return }
+    setOffen(null)
+    setNachrichten([])
+    listeLaden()
   }
 
   async function senden() {
@@ -668,6 +755,12 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                   className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-gray-600 border border-gray-200 hover:bg-gray-50">
                   <LogOut size={13} /> Gruppe verlassen
                 </button>
+                {/* §221 Bei mir löschen — für Gruppen wie für Gespräche zu
+                    zweit. Die andere Seite behält ihren Verlauf. */}
+                <button onClick={() => setGespraechWeg(true)}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-red-600 border border-red-200 hover:bg-red-50">
+                  <Trash2 size={13} /> Bei mir löschen
+                </button>
               </div>
             </div>
           )}
@@ -711,10 +804,40 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                       {!n.vonMir && kopf.art === 'gruppe' && (
                         <p className="text-[10px] font-semibold opacity-70 mb-0.5">{n.absenderName}</p>
                       )}
-                      <p className="text-sm whitespace-pre-wrap break-words">{n.text}</p>
-                      <p className={`text-[10px] mt-0.5 ${n.vonMir ? 'text-white/70' : 'text-gray-400'}`}>
-                        {uhrzeit(n.createdAt)}
-                      </p>
+                      {/* §221 Der Anhang: Bild zeigen, Ton abspielen, alles
+                          andere zum Öffnen anbieten. */}
+                      {n.dateiId && (
+                        <Anhang
+                          raum={offen!}
+                          dateiId={n.dateiId}
+                          typ={n.dateiTyp ?? ''}
+                          name={n.dateiName ?? n.text}
+                          groesse={n.dateiGroesse ?? null}
+                          hell={n.vonMir}
+                        />
+                      )}
+                      {(!n.dateiId || n.text !== n.dateiName) && (
+                        <p className="text-sm whitespace-pre-wrap break-words">{n.text}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className={`text-[10px] ${n.vonMir ? 'text-white/70' : 'text-gray-400'}`}>
+                          {uhrzeit(n.createdAt)}
+                        </p>
+                        {/* §221 Wegräumen. „Für alle" steht nur da, solange
+                            es wirklich geht — ein Knopf, der mit einer
+                            Fehlermeldung antwortet, ist kein Knopf. */}
+                        <button
+                          onClick={() => setLoeschMaske({
+                            id: n.id, fuerAlle: Boolean(n.zurueckziehbar),
+                          })}
+                          aria-label="Nachricht löschen"
+                          className={`text-[10px] underline ${
+                            n.vonMir ? 'text-white/60 hover:text-white'
+                              : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                          löschen
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -727,6 +850,28 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                 </p>
               ) : (
                 <div className="flex items-end gap-2 px-3 py-3 border-t border-gray-100">
+                  {/* §221 Datei anhängen. Ein verstecktes Eingabefeld, weil
+                      der eigene Knopf überall gleich aussehen soll. */}
+                  <input
+                    ref={dateiFeld}
+                    type="file"
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) dateiSenden(f)
+                      e.target.value = ''
+                    }}
+                  />
+                  <button
+                    onClick={() => dateiFeld.current?.click()}
+                    disabled={sendet}
+                    aria-label="Datei anhängen"
+                    title="Bild, Tonaufnahme oder Datei anhängen"
+                    className="p-2.5 rounded-xl text-gray-500 hover:bg-gray-100
+                               disabled:opacity-40 shrink-0"
+                  >
+                    <Paperclip size={15} />
+                  </button>
                   <textarea
                     value={entwurf}
                     onChange={e => setEntwurf(e.target.value)}
@@ -748,6 +893,67 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
             </div>
           )}
 
+          {/* §221 Nachricht wegräumen */}
+          {loeschMaske && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
+              onClick={() => setLoeschMaske(null)}>
+              <div className="bg-white rounded-2xl p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                <p className="font-semibold text-navy text-sm">Nachricht löschen</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {loeschMaske.fuerAlle
+                    ? 'Noch hat sie niemand gelesen — du kannst sie ganz '
+                      + 'zurückziehen oder nur bei dir wegräumen.'
+                    : 'Sie ist schon gelesen worden. Zurückziehen geht jetzt '
+                      + 'nicht mehr; du kannst sie bei dir wegräumen.'}
+                </p>
+                <div className="flex flex-col gap-2 mt-4">
+                  {loeschMaske.fuerAlle && (
+                    <button
+                      onClick={() => { nachrichtLoeschen(loeschMaske.id, true); setLoeschMaske(null) }}
+                      className="h-11 rounded-xl bg-red-600 text-white font-semibold text-sm">
+                      Für alle zurückziehen
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { nachrichtLoeschen(loeschMaske.id, false); setLoeschMaske(null) }}
+                    className="h-11 rounded-xl bg-gray-100 text-gray-700 font-semibold text-sm">
+                    Nur bei mir löschen
+                  </button>
+                  <button onClick={() => setLoeschMaske(null)}
+                    className="h-11 rounded-xl text-gray-500 font-medium text-sm">
+                    Abbrechen
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* §221 Ganzes Gespräch wegräumen */}
+          {gespraechWeg && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
+              onClick={() => setGespraechWeg(false)}>
+              <div className="bg-white rounded-2xl p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                <p className="font-semibold text-navy text-sm">Gespräch bei dir löschen?</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Der Verlauf verschwindet aus deiner Liste. Die andere Seite
+                  behält ihn — ein Gespräch gehört beiden. Schreibt jemand
+                  wieder, taucht es mit der neuen Nachricht erneut auf.
+                </p>
+                <div className="flex gap-2 mt-4">
+                  <button onClick={() => setGespraechWeg(false)}
+                    className="flex-1 h-11 rounded-xl bg-gray-100 text-gray-700 font-semibold text-sm">
+                    Behalten
+                  </button>
+                  <button
+                    onClick={() => { gespraechLoeschen(); setGespraechWeg(false); setMaske('keine') }}
+                    className="flex-1 h-11 rounded-xl bg-red-600 text-white font-bold text-sm">
+                    Löschen
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {!offen && maske === 'keine' && (
             <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
               <p className="text-sm text-gray-400">
@@ -758,5 +964,74 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * §221 Ein Anhang im Verlauf.
+ *
+ * Bilder und Ton werden GEZEIGT und nicht nur verlinkt: Eine Sprachnachricht,
+ * die man erst herunterladen muss, hört niemand, und ein Foto vom Dienstplan,
+ * das als Datei danebensteht, sieht niemand an. Alles andere — PDF, Tabelle,
+ * Textdatei — bekommt eine Zeile zum Öffnen, mit Name und Größe.
+ */
+function Anhang({ raum, dateiId, typ, name, groesse, hell }: {
+  raum: string
+  dateiId: string
+  typ: string
+  name: string
+  groesse: number | null
+  hell: boolean
+}) {
+  const adresse = `/api/chat/${raum}/datei?id=${dateiId}`
+  const mb = groesse ? (groesse / 1024 / 1024) : 0
+  const grosse = mb >= 1 ? `${mb.toFixed(1)} MB`
+    : groesse ? `${Math.max(1, Math.round(groesse / 1024))} KB` : ''
+
+  if (typ.startsWith('image/')) {
+    return (
+      <a href={adresse} target="_blank" rel="noreferrer" className="block mb-1">
+        {/* Kein `next/image`: Die Datei liegt hinter einer Anmeldung und
+            wird nicht vom Bildoptimierer geholt. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={adresse}
+          alt={name}
+          className="rounded-xl max-h-64 w-auto object-contain bg-black/5"
+        />
+      </a>
+    )
+  }
+
+  if (typ.startsWith('audio/')) {
+    return (
+      <audio controls preload="none" src={adresse} className="mb-1 w-56 max-w-full">
+        Dein Browser kann diese Aufnahme nicht abspielen.
+      </audio>
+    )
+  }
+
+  if (typ.startsWith('video/')) {
+    return (
+      <video controls preload="metadata" src={adresse}
+        className="mb-1 rounded-xl max-h-64 w-auto bg-black/5" />
+    )
+  }
+
+  return (
+    <a
+      href={adresse}
+      target="_blank"
+      rel="noreferrer"
+      className={`flex items-center gap-2 mb-1 rounded-xl px-2.5 py-2 ${
+        hell ? 'bg-white/15 hover:bg-white/25' : 'bg-white hover:bg-gray-50 border border-gray-200'}`}
+    >
+      <FileText size={16} className="shrink-0 opacity-70" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs font-medium truncate">{name}</span>
+        {grosse && <span className="block text-[10px] opacity-60">{grosse}</span>}
+      </span>
+      <Download size={14} className="shrink-0 opacity-60" />
+    </a>
   )
 }
