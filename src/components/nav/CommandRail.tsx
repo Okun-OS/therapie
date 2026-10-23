@@ -149,6 +149,29 @@ export function CommandRail() {
     fetch(`/api/notifications/${id}/read`, { method: 'POST' }).catch(() => {})
   }
 
+  /*
+   * §222 Wegwischen — hier und nicht nur in `Header.tsx`.
+   *
+   * Es gibt ZWEI Glocken: die in der Kopfzeile und diese in der Leiste. §220
+   * hat nur die erste bekommen, und auf dem Telefon ist genau die andere zu
+   * sehen. Die Rückmeldung lautete deshalb zu Recht „geht immer noch nicht" —
+   * der Weg war gebaut, aber an der Stelle, an der niemand steht.
+   */
+  const wegwischen = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id))
+    fetch(`/api/notifications/${id}`, { method: 'DELETE' }).catch(() => {})
+  }
+
+  const alleGelesen = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+    fetch('/api/notifications', { method: 'POST' }).catch(() => {})
+  }
+
+  const gelesenAufraeumen = () => {
+    setNotifications(prev => prev.filter(n => !n.read))
+    fetch('/api/notifications', { method: 'DELETE' }).catch(() => {})
+  }
+
   const sendBroadcast = async () => {
     if (!broadcastTitle.trim() || !broadcastBody.trim()) return
     setBroadcastSending(true)
@@ -344,6 +367,22 @@ export function CommandRail() {
                     </button>
                   </div>
                 )}
+                {notifications.length > 0 && (
+                  <div className="flex gap-3 px-4 pb-2 pt-1 border-b border-gray-100">
+                    {unread > 0 && (
+                      <button onClick={alleGelesen}
+                        className="text-[11px] font-medium text-teal-700 hover:underline">
+                        Alle gelesen
+                      </button>
+                    )}
+                    {notifications.some(n => n.read) && (
+                      <button onClick={gelesenAufraeumen}
+                        className="text-[11px] font-medium text-gray-500 hover:underline">
+                        Gelesene aufräumen
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="divide-y divide-gray-50/80 max-h-72 overflow-y-auto">
                   {notifications.length === 0 && (
                     <p className="px-4 py-6 text-sm text-gray-400 text-center">Keine Benachrichtigungen</p>
@@ -358,10 +397,22 @@ export function CommandRail() {
                         className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
                         style={{ background: !n.read ? '#26C6C6' : 'transparent' }}
                       />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-medium text-gray-800 truncate">{n.title}</p>
                         <p className="text-[12px] text-gray-500 mt-0.5">{n.body}</p>
                       </div>
+                      {/* §222 Wegwischen. Der Klick darf den Eintrag nicht
+                          zugleich als gelesen markieren — deshalb hält er an.
+                          Auf dem Telefon ist das Ziel bewusst 32 Pixel groß. */}
+                      <button
+                        onClick={e => { e.stopPropagation(); wegwischen(n.id) }}
+                        aria-label="Benachrichtigung entfernen"
+                        className="shrink-0 w-8 h-8 -mt-1 -mr-1 rounded-full text-gray-300
+                                   hover:text-gray-600 hover:bg-gray-100 flex items-center
+                                   justify-center transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
                   ))}
                 </div>

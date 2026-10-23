@@ -6,6 +6,7 @@ import {
   Trash2, FileText, Download,
   AlertTriangle, Archive, LogOut, UserPlus, Lock, LifeBuoy, Sparkles,
 } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
 import { einreihen } from '@/lib/warteschlange'
 import { schlangeGeaendert } from '@/components/offline/Warteschlange'
 
@@ -779,6 +780,17 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                     {kopf.archiviert && ' · geschlossen'}
                   </p>
                 </div>
+                {/* §222 Löschen gehört in den Kopf JEDES Gesprächs.
+                    Vorher lag es in der Verwalten-Maske — und die gibt es nur
+                    für Gruppen. In einem Gespräch zu zweit führte damit kein
+                    Weg dorthin, obwohl genau das der häufigste Fall ist. */}
+                <button
+                  onClick={() => setGespraechWeg(true)}
+                  aria-label="Gespräch bei mir löschen"
+                  title="Gespräch bei mir löschen"
+                  className="p-2 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600">
+                  <Trash2 size={15} />
+                </button>
                 {kopf.art === 'gruppe' && (
                   <button onClick={() => { partnerLaden(); setMaske('verwalten') }}
                     className="p-2 rounded-xl hover:bg-gray-100">
@@ -893,13 +905,18 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
             </div>
           )}
 
-          {/* §221 Nachricht wegräumen */}
+          {/*
+            §222 Beide Rückfragen laufen über `Modal`.
+            Vorher war es ein eigenes `fixed inset-0` — und auf dem Telefon lag
+            der Knopf „Nur bei mir löschen" dann UNTER der schwebenden Leiste.
+            `Modal` kündigt sein Öffnen an (`modal:open`), worauf die Leiste
+            sich zurücknimmt; derselbe Fehler war schon bei der Stempeluhr
+            aufgetreten und dort so gelöst.
+          */}
           {loeschMaske && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
-              onClick={() => setLoeschMaske(null)}>
-              <div className="bg-white rounded-2xl p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                <p className="font-semibold text-navy text-sm">Nachricht löschen</p>
-                <p className="text-sm text-gray-600 mt-1">
+            <Modal open onClose={() => setLoeschMaske(null)} title="Nachricht löschen" size="sm">
+              <div>
+                <p className="text-sm text-gray-600">
                   {loeschMaske.fuerAlle
                     ? 'Noch hat sie niemand gelesen — du kannst sie ganz '
                       + 'zurückziehen oder nur bei dir wegräumen.'
@@ -925,16 +942,15 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                   </button>
                 </div>
               </div>
-            </div>
+            </Modal>
           )}
 
           {/* §221 Ganzes Gespräch wegräumen */}
           {gespraechWeg && (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
-              onClick={() => setGespraechWeg(false)}>
-              <div className="bg-white rounded-2xl p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                <p className="font-semibold text-navy text-sm">Gespräch bei dir löschen?</p>
-                <p className="text-sm text-gray-600 mt-1">
+            <Modal open onClose={() => setGespraechWeg(false)}
+              title="Gespräch bei dir löschen?" size="sm">
+              <div>
+                <p className="text-sm text-gray-600">
                   Der Verlauf verschwindet aus deiner Liste. Die andere Seite
                   behält ihn — ein Gespräch gehört beiden. Schreibt jemand
                   wieder, taucht es mit der neuen Nachricht erneut auf.
@@ -951,7 +967,7 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                   </button>
                 </div>
               </div>
-            </div>
+            </Modal>
           )}
 
           {!offen && maske === 'keine' && (

@@ -4324,3 +4324,56 @@ Die Prüfung musste nachgebessert werden: Beim ersten Durchlauf ließ sie eine
 ungelesene Nachricht liegen, und beim zweiten scheiterte daran eine ganz
 andere Prüfung weiter oben — an Zustand aus dem vorigen Lauf, nicht am
 Programm. Sie räumt jetzt hinter sich auf.
+
+## Block §222 (24.10.) — Drei Nachbesserungen, alle gemeldet
+
+Der Eigentümer hat §220 und §221 am Telefon ausprobiert. Drei Dinge gingen
+nicht, und zwei davon waren gebaut — nur an der falschen Stelle.
+
+### 1 · Es gibt zwei Glocken
+
+Wegwischen war in `Header.tsx` eingebaut. Auf dem Telefon ist aber die Glocke
+der Leiste zu sehen (`CommandRail.tsx`), und dort fehlte alles. Die
+Rückmeldung „geht immer noch nicht" war völlig richtig: **Der Weg war da, nur
+nicht dort, wo jemand steht.**
+
+Jetzt beide — X je Eintrag (auf dem Telefon mit 32 Pixel Zielfläche),
+„Alle gelesen", „Gelesene aufräumen".
+
+### 2 · Löschen lag hinter einer Tür, die es nur für Gruppen gibt
+
+„Bei mir löschen" stand in der Verwalten-Maske. Die öffnet ein Knopf, den es
+nur bei `art === 'gruppe'` gibt. In einem Gespräch zu zweit führte damit kein
+Weg dorthin — und das ist der häufigste Fall überhaupt.
+
+Der Löschknopf steht jetzt im Kopf **jedes** Gesprächs.
+
+### 3 · Die Rückfrage lag unter der schwebenden Leiste
+
+Sie war ein eigenes `fixed inset-0 z-50`. Auf dem Telefon verdeckte die
+schwebende Leiste den Knopf „Nur bei mir löschen" zur Hälfte.
+
+**Derselbe Fehler war schon einmal da** — bei der Stempeluhr (§203), und dort
+steht die Lösung als Kommentar im Code: Die Maske muss über `Modal` laufen.
+Das rendert über ein Portal am `body` und kündigt sein Öffnen an
+(`modal:open`), worauf die Leiste sich zurücknimmt. Beide Chat-Rückfragen
+laufen jetzt darüber.
+
+> Daraus eine Regel, die hier aufgeschrieben gehört: **Eine Maske in dieser
+> Anwendung wird nicht von Hand gebaut.** Es gibt `Modal`, und es gibt ihn
+> genau wegen dieser zwei Fallen — Stapelkontext und schwebende Leiste.
+
+### Nachgewiesen auf dem Telefon, nicht am Schreibtisch
+
+Neu: `pruefungen/browser/wegwischen-und-loeschen.mjs`, **9/9**, auf einem
+iPhone-Fenster. Sie klickt wirklich: Die Glocke hat zwei Einträge, einer wird
+weggewischt, danach ist einer übrig. Sie öffnet ausdrücklich ein Gespräch **zu
+zweit** — eine Prüfung, die irgendeines nähme, könnte eine Gruppe erwischen
+und wäre grün, ohne das Gemeldete berührt zu haben. Und sie rechnet die
+Überschneidung des Knopfes mit der Leiste aus: **0 px².** Das ist die
+Beschwerde, übersetzt in eine Zahl.
+
+Beim ersten Lauf fand sie null Knöpfe — Annas Postfach war leer, weil eine
+andere Prüfung vorher aufgeräumt hatte. Sie legt sich ihre Benachrichtigungen
+jetzt selbst an. Ein „kein Knopf gefunden" in einem leeren Postfach beweist
+nichts.
