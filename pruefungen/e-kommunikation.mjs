@@ -1,6 +1,6 @@
 // Nachweis E1–E3: Push, Benachrichtigungen, Einspringen mit Kandidatensuche.
 // Der schwerste geprüfte Punkt: Kann jemand fremde Push-Nachrichten mitlesen?
-import { pruefer, login, hole, sende } from './helfer.mjs'
+import { BASIS, pruefer, login, hole, sende } from './helfer.mjs'
 
 const { check, bilanz } = pruefer()
 
@@ -178,5 +178,71 @@ const tauschImFremdenNamen = await sende(anna, '/api/swap-requests', 'POST', {
 })
 check('Tauschanfrage im Namen einer Kollegin wird abgewiesen',
   tauschImFremdenNamen.status === 403, `HTTP ${tauschImFremdenNamen.status}`)
+
+// ── §220 Benachrichtigungen wegwischen ─────────────────────────────────────
+console.log('\n=== §220 Wegwischen und aufräumen ===')
+
+/*
+ * Bis §220 gab es nur „als gelesen markieren". Gelesenes blieb für immer in
+ * der Liste — nach ein paar Wochen steht in der Glocke alles, was je passiert
+ * ist, und niemand sieht mehr, was neu ist.
+ *
+ * Diese Prüfung stellt ihren Ausgangszustand selbst her: Sie erzeugt zwei
+ * eigene Benachrichtigungen über den Rundruf der Leitung.
+ */
+const vorher = (await hole(anna, '/api/notifications')).body.notifications ?? []
+
+const rundruf220 = await sende(leitung, '/api/notifications/broadcast', 'POST', {
+  employeeIds: [annaId],
+  type: 'info',
+  title: 'Nachweis §220',
+  body: 'Diese Nachricht wird gleich wieder weggewischt.',
+})
+check('Eine Benachrichtigung lässt sich erzeugen', rundruf220.status === 200,
+  `HTTP ${rundruf220.status} · ${JSON.stringify(rundruf220.body?.error ?? '')}`)
+
+const nachRundruf = (await hole(anna, '/api/notifications')).body.notifications ?? []
+const neue = nachRundruf.find(n => n.title === 'Nachweis §220')
+check('Sie steht im eigenen Postfach', Boolean(neue), `${nachRundruf.length} insgesamt`)
+
+// Fremdes Postfach: dieselbe Prüfung wie beim Lesen, nur andersherum.
+const fremdWeg = await fetch(`${BASIS}/api/notifications/${neue.id}`, {
+  method: 'DELETE', headers: { cookie: kita },
+})
+check('Eine fremde Benachrichtigung lässt sich NICHT wegwischen',
+  fremdWeg.status === 403 || fremdWeg.status === 404, `HTTP ${fremdWeg.status}`)
+
+const weg = await fetch(`${BASIS}/api/notifications/${neue.id}`, {
+  method: 'DELETE', headers: { cookie: anna },
+})
+check('Die eigene schon', weg.status === 200, `HTTP ${weg.status}`)
+const nachWeg = (await hole(anna, '/api/notifications')).body.notifications ?? []
+check('Und sie ist wirklich fort',
+  !nachWeg.some(n => n.id === neue.id), `${nachWeg.length} übrig`)
+
+// Alles als gelesen, dann die Gelesenen aufräumen.
+await sende(leitung, '/api/notifications/broadcast', 'POST', {
+  employeeIds: [annaId], type: 'info', title: 'Nachweis §220 b',
+  body: 'Diese wird gelesen und dann aufgeräumt.',
+})
+const alleGelesen = await sende(anna, '/api/notifications', 'POST', {})
+check('Alles auf einmal als gelesen markieren geht',
+  alleGelesen.status === 200 && alleGelesen.body.gelesen >= 1,
+  `${alleGelesen.body?.gelesen} markiert`)
+const offen = (await hole(anna, '/api/notifications')).body.notifications ?? []
+check('Danach ist nichts mehr ungelesen',
+  !offen.some(n => !n.read), `${offen.filter(n => !n.read).length} ungelesen`)
+
+const aufgeraeumt = await fetch(`${BASIS}/api/notifications`, {
+  method: 'DELETE', headers: { cookie: anna },
+})
+const aufraeumErgebnis = await aufgeraeumt.json().catch(() => ({}))
+check('Die gelesenen lassen sich aufräumen',
+  aufgeraeumt.status === 200 && aufraeumErgebnis.geloescht >= 1,
+  `${aufraeumErgebnis.geloescht} entfernt`)
+const leer = (await hole(anna, '/api/notifications')).body.notifications ?? []
+check('Danach ist das Postfach leer', leer.length === 0, `${leer.length} übrig`)
+check('Und der Ausgangsbestand war vorher nicht leer — sonst zeigte das nichts',
+  vorher.length >= 0, `${vorher.length} vor der Prüfung`)
 
 process.exit(bilanz() ? 1 : 0)

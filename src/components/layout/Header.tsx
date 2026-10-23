@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, LogOut, MessageSquare } from 'lucide-react'
+import { Bell, LogOut, MessageSquare, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
@@ -92,6 +92,33 @@ export function Header({ title, subtitle }: HeaderProps) {
     fetch(`/api/notifications/${id}/read`, { method: 'POST' }).catch(() => {})
   }
 
+  /*
+   * §220 Wegwischen und aufräumen.
+   *
+   * Vorher ließ sich eine Benachrichtigung nur als gelesen markieren — und
+   * blieb danach für immer stehen. Nach ein paar Wochen steht in der Glocke
+   * alles, was je passiert ist, und damit sieht niemand mehr, was neu ist.
+   *
+   * Die Anzeige geht in allen drei Fällen sofort voran und wartet nicht auf
+   * den Server: Wer wegwischt, will es weg sehen. Schlägt der Aufruf fehl,
+   * ist die Nachricht beim nächsten Öffnen wieder da — ärgerlich, aber
+   * ehrlich, und nichts ist verloren.
+   */
+  const wegwischen = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id))
+    fetch(`/api/notifications/${id}`, { method: 'DELETE' }).catch(() => {})
+  }
+
+  const alleGelesen = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+    fetch('/api/notifications', { method: 'POST' }).catch(() => {})
+  }
+
+  const gelesenAufraeumen = () => {
+    setNotifications(prev => prev.filter(n => !n.read))
+    fetch('/api/notifications', { method: 'DELETE' }).catch(() => {})
+  }
+
   return (
     <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-3">
@@ -135,10 +162,32 @@ export function Header({ title, subtitle }: HeaderProps) {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
               <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                  <p className="font-semibold text-navy text-sm">Benachrichtigungen</p>
-                  {unreadCount > 0 && (
-                    <span className="text-xs bg-brand text-navy font-bold px-2 py-0.5 rounded-full">{unreadCount} neu</span>
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-navy text-sm">Benachrichtigungen</p>
+                    {unreadCount > 0 && (
+                      <span className="text-xs bg-brand text-navy font-bold px-2 py-0.5 rounded-full">{unreadCount} neu</span>
+                    )}
+                  </div>
+                  {notifications.length > 0 && (
+                    <div className="flex gap-3 mt-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={alleGelesen}
+                          className="text-xs font-medium text-teal-700 hover:underline"
+                        >
+                          Alle gelesen
+                        </button>
+                      )}
+                      {notifications.some(n => n.read) && (
+                        <button
+                          onClick={gelesenAufraeumen}
+                          className="text-xs font-medium text-gray-500 hover:underline"
+                        >
+                          Gelesene aufräumen
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
@@ -154,11 +203,22 @@ export function Header({ title, subtitle }: HeaderProps) {
                       <div className="flex gap-3">
                         {!n.read && <div className="w-2 h-2 rounded-full bg-brand mt-1.5 flex-shrink-0" />}
                         {n.read && <div className="w-2 h-2 flex-shrink-0" />}
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm text-gray-800 font-medium">{n.title}</p>
                           <p className="text-sm text-gray-600">{n.body}</p>
                           <p className="text-xs text-gray-400 mt-0.5">{formatRelativeTime(new Date(n.createdAt))}</p>
                         </div>
+                        {/* §220 Wegwischen. Der Klick darf nicht zugleich den
+                            Eintrag öffnen — deshalb hält er hier an. */}
+                        <button
+                          onClick={e => { e.stopPropagation(); wegwischen(n.id) }}
+                          aria-label="Benachrichtigung entfernen"
+                          className="shrink-0 w-7 h-7 -mt-1 rounded-full text-gray-300
+                                     hover:text-gray-600 hover:bg-gray-100 flex items-center
+                                     justify-center transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
                     </div>
                   ))}
