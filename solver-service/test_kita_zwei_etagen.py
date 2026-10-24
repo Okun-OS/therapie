@@ -458,6 +458,7 @@ def test_ohne_muster_es_gibt_trotzdem_einen_plan(ohne_muster):
 
 @pytest.mark.parametrize("name,laenge", [
     ("Marin Berg", 480),       # 40 h auf 5 Tage → 8 Std.
+    ("Shelley Frei", 480),     # gemeldet: „hat 40 Stunden und nicht 38"
     ("Stephanie Lang", 420),   # 35 h auf 5 Tage → 7 Std.
     ("Juliane Roth", 420),     # der gemeldete Fall
 ])
@@ -474,6 +475,27 @@ def test_ohne_muster_gleich_lange_tage(ohne_muster, name, laenge):
         assert laengen == [laenge] * len(laengen), \
             f"{name} in {woche[0]}: {laengen} statt lauter {laenge}"
         assert len(laengen) == 5, f"{name}: {len(laengen)} Arbeitstage statt 5"
+
+
+@pytest.mark.parametrize("name,stunden", [
+    ("Shelley Frei", 40),      # gemeldet: der Plan gab ihr 38
+    ("Marin Berg", 40),
+    ("Juliane Roth", 35),
+])
+def test_ohne_muster_die_wochensumme_stimmt_auf_die_stunde(ohne_muster, name, stunden):
+    """
+    §227 Die gemeldete Zahl: „Shelley hat 40 Stunden und nicht 38."
+
+    Vor der Hausregel verteilte der Rechendienst die Wochenstunden frei, und
+    aus den vorhandenen Dienstlängen liess sich 40 nicht immer genau treffen —
+    38 war nah dran und falsch. Mit gleich langen Tagen geht die Woche auf die
+    Stunde auf, weil fünfmal acht nur 40 ergeben kann.
+    """
+    for woche in (WOCHE1, WOCHE2):
+        summe = sum(NETTO[ohne_muster.dienst(name, t)]
+                    for t in ohne_muster.tage(name, woche))
+        assert summe == stunden * 60, \
+            f"{name} in {woche[0]}: {summe / 60} statt {stunden} Wochenstunden"
 
 
 def test_ohne_muster_das_eigene_muster_schlaegt_die_hausregel():

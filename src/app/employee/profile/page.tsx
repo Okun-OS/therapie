@@ -195,7 +195,16 @@ export default function EmployeeProfile() {
   const isHumanContextDirty = JSON.stringify(humanContext) !== JSON.stringify(savedHumanContext)
 
   const [calendarSyncEnabled, setCalendarSyncEnabled] = useState(false)
-  const [calendarSyncToken, setCalendarSyncToken] = useState<string | null>(null)
+  /**
+   * §228 Die Abo-Adresse kommt vom Server, nicht aus dem Browserfenster.
+   *
+   * Vorher stand hier `window.location.origin` — also der Name, über den die
+   * Person gerade angemeldet war. Wer über die alte Railway-Adresse hereinkam,
+   * bekam ein Abo auf diesen Namen. Ein Kalender-Abo liegt Jahre im Telefon:
+   * Fällt der alte Name weg, hört der Dienstplan auf, sich zu aktualisieren,
+   * ohne Fehlermeldung — bis eine Schicht verpasst wird.
+   */
+  const [calendarFeedUrl, setCalendarFeedUrl] = useState('')
   const [calendarSyncLoading, setCalendarSyncLoading] = useState(false)
   const [calendarLinkCopied, setCalendarLinkCopied] = useState(false)
 
@@ -206,7 +215,7 @@ export default function EmployeeProfile() {
       .then(res => res.json())
       .then(data => {
         setCalendarSyncEnabled(data.enabled ?? false)
-        setCalendarSyncToken(data.token ?? null)
+        setCalendarFeedUrl(data.feedUrl ?? '')
       })
       .catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -223,15 +232,11 @@ export default function EmployeeProfile() {
       })
       const data = await res.json()
       setCalendarSyncEnabled(data.enabled ?? false)
-      setCalendarSyncToken(data.token ?? null)
+      setCalendarFeedUrl(data.feedUrl ?? '')
     } finally {
       setCalendarSyncLoading(false)
     }
   }
-
-  const calendarFeedUrl = calendarSyncToken && typeof window !== 'undefined'
-    ? `${window.location.origin}/api/calendar-feed/${calendarSyncToken}`
-    : ''
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {

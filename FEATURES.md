@@ -4669,3 +4669,64 @@ Stundenzahl der ganzen Belegschaft (HTTP 200, wo 403 hingehört):
 selbst legte ihre zweite Krankmeldung in denselben Monat wie die erste und
 zählte dann sechs Krankheitstage statt fünf — eine Prüfung, die sich selbst in
 die Rechnung stellt, prüft nicht mehr das Programm.
+
+## Block §228 (24.10.) — Die Abo-Adresse kam aus dem Browserfenster
+
+**Die Meldung:** „Dann hier bei dem Google Sync steht noch die alte Domain. Das
+muss geändert werden."
+
+### Warum das mehr ist als das falsche Logo
+
+Die Maske baute die Adresse des Kalender-Abos aus `window.location.origin` —
+also aus dem Fenster, in dem die Person gerade stand. Wer über
+`therapie-production.up.railway.app` angemeldet war, bekam ein Abo auf diesen
+Namen.
+
+**Ein Kalender-Abo liegt Jahre im Telefon.** Es wird einmal eingerichtet und
+nie wieder angesehen. Fällt der alte Name weg, hört der Dienstplan einfach auf,
+sich zu aktualisieren — ohne Fehlermeldung, ohne dass jemand es merkt, bis eine
+Schicht verpasst wird.
+
+Die Adresse kommt deshalb jetzt vom Server, aus `APP_URL` — derselben Quelle,
+aus der auch jeder Link in einer E-Mail kommt (`getAppOrigin`). Nachgemessen
+mit einem gefälschten `Host`-Kopf, wie ihn ein zweiter Domainname mitschickt:
+Die Adresse ändert sich nicht.
+
+### Der zweite Befund, gefunden beim Beheben des ersten
+
+**`/api/calendar-sync` hatte keine Zugriffsprüfung.** `requireRole(req)` ohne
+Rollenliste lässt jede angemeldete Person herein, und danach wurde die Kennung
+aus dem Abfrageteil ungeprüft benutzt.
+
+Der Token ist der **Schlüssel zum Dienstplan**: Wer ihn hat, liest über
+`/api/calendar-feed/<token>` **ohne Anmeldung**, wer wann wo arbeitet. Jede
+angemeldete Person konnte ihn für jede andere abrufen — und über `PATCH` sogar
+deren Abo ein- und ausschalten.
+
+Jetzt entscheidet `assertEmployeeAccess`: die eigene Person, und für die
+Leitung die des eigenen Standorts. Die Gegenprobe gehört dazu — „403 für alle"
+wäre grün und das Abo für niemanden einrichtbar, der Hilfe braucht.
+
+**Der rohe Schlüssel steht nicht mehr eigens in der Antwort.** Die Maske
+braucht ihn nicht; er steckt in der Adresse. Ein Feld, das niemand liest, ist
+bei einem Schlüssel kein harmloses Feld — es landet in jedem Protokoll, das
+Antworten mitschreibt.
+
+### Und die 38 Stunden
+
+**Gemeldet:** „Bei Shelley — hat 40 Stunden und nicht 38."
+
+Im ganzen Programm steht sie mit 40 Stunden und richtig geschrieben; die 38
+kamen aus dem Rechendienst, der die Wochenstunden frei verteilte und aus den
+vorhandenen Dienstlängen 40 nicht immer genau traf. **Die Hausregel aus §226
+behebt das**: Fünfmal acht kann nur 40 ergeben. Nachgewiesen auf ihren Namen —
+`test_ohne_muster_die_wochensumme_stimmt_auf_die_stunde` rechnet beide Wochen
+auf die Stunde nach.
+
+Steht sie im laufenden Betrieb noch mit 38 Stunden oder als „Shelly" in der
+Personalakte, ist das ein Eintrag und keine Programmsache: zwei Felder in der
+Personalakte. Einen Lohnwert in der Produktionsdatenbank ändere ich nicht von
+hier aus.
+
+Nachweis: `n-kalender-abo.mjs` **12/12**, Solver **173** Tests.
+Insgesamt **1935/1935** Prüfungen am laufenden System.
