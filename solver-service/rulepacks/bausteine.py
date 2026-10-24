@@ -600,6 +600,76 @@ def _muster_lesen(roh) -> dict[float, int]:
     return muster
 
 
+def tagesmuster_gleich_lange_tage(ctx: PlanKontext) -> None:
+    """
+    §226 Hausregel: Wer kein eigenes Muster hat, arbeitet gleich lange Tage.
+
+    WARUM DAS EINE BETRIEBSREGEL IST UND KEINE VERTRAGSANGABE
+    „In diesem Haus wird nicht irgendwie vierzig Stunden gearbeitet, sondern
+    fuenfmal acht" ist eine Aussage ueber den Betrieb — sie gilt weiter, wenn
+    die halbe Belegschaft wechselt. Das unterscheidet sie von „Stephanie
+    arbeitet dreimal acht und einmal sechs": DAS ist eine Vertragsangabe und
+    steht in der Personalakte.
+
+    WAS VORHER PASSIERT IST
+    `tagesmuster_aus_stammdaten` nimmt das Muster aus der Personalakte und
+    laesst den frei verplanen, der keines hat. Das war richtig gedacht und in
+    der Praxis unbrauchbar: In einem Haus mit sechzehn Kraeften haette jemand
+    sechzehnmal von Hand etwas nachtragen muessen, und bis dahin bekam eine
+    35-Stunden-Kraft 7:30–15:00, dann 7:00–15:30, dann 8:00–13:00. Die Woche
+    stimmte, der Plan war unbrauchbar.
+
+    DIE REIHENFOLGE ENTSCHEIDET
+    Diese Regel laeuft NACH `tagesmuster_aus_stammdaten` und fasst nur an,
+    wen jene nicht angefasst hat. Ein eingetragenes Muster schlaegt die
+    Hausregel immer — sonst waere die Individualisierung weg, die der Grund
+    fuer das Feld war.
+
+    WANN SIE SCHWEIGT
+    Wenn die Wochenstunden sich nicht in gleich lange Tage teilen lassen:
+    38 Stunden auf fuenf Tage sind 7,6 Stunden, und eine Dienstlaenge von
+    7,6 Stunden gibt es in keinem Dienstplan. Dann bleibt die Person frei
+    verplant, und der Hinweis sagt, dass hier ein eigenes Muster gehoert.
+    Ein krummes Muster zu erzwingen hiesse, einen Plan zu verhindern — und
+    zwar fuer das ganze Haus.
+    """
+    gesetzt, offen = 0, []
+    for ei, e in enumerate(ctx.employees):
+        if _muster_lesen(e.get("tagesmuster")):
+            continue  # Eigenes Muster schlaegt die Hausregel.
+
+        stunden = float(e.get("wochenstundenSoll", 0) or 0)
+        tage = int(e.get("arbeitstageProWoche", 5) or 5)
+        if stunden <= 0 or tage <= 0:
+            continue
+
+        pro_tag = stunden / tage
+        # Viertelstunden: Alles andere ist keine Dienstlaenge, sondern ein
+        # Rechenergebnis.
+        if abs(pro_tag * 4 - round(pro_tag * 4)) > 1e-6:
+            offen.append(e.get("name", "?"))
+            continue
+        if not ctx.dienste_mit_stunden(pro_tag):
+            # Es gibt im Haus keinen Dienst dieser Laenge. Die Regel zu
+            # setzen hiesse, dieser Person jeden Dienst zu verbieten.
+            offen.append(e.get("name", "?"))
+            continue
+
+        _tagesmuster_anwenden(ctx, ei, {pro_tag: tage})
+        gesetzt += 1
+
+    if gesetzt:
+        ctx.notiere(
+            f"{gesetzt} Personen ohne eigenes Muster arbeiten gleich lange Tage "
+            "(Hausregel)."
+        )
+    if offen:
+        ctx.notiere(
+            "Gleich lange Tage gehen nicht auf bei: " + ", ".join(sorted(offen))
+            + " — dort gehoert ein eigenes Tagesmuster in die Personalakte."
+        )
+
+
 def _tagesmuster_anwenden(ctx: PlanKontext, ei: int, muster: dict[float, int]) -> None:
     """Der gemeinsame Kern von `tagesmuster` und `tagesmuster_aus_stammdaten`."""
     person = ctx.employees[ei].get("name", "?")

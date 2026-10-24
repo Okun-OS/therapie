@@ -144,6 +144,20 @@ def apply(ctx) -> None:
     # als „an diesem Tag nicht verfügbar".
     b.versuche(ctx, b.tagesmuster_aus_stammdaten)
 
+    # §226 Und danach die Hausregel fuer alle, die kein eigenes Muster haben.
+    #
+    # Oben steht seit §181: „Wer keines hinterlegt hat, wird wie bisher frei
+    # verplant." Das war richtig gedacht und in der Praxis unbrauchbar — in
+    # einem Haus mit sechzehn Kraeften haette jemand sechzehnmal von Hand
+    # etwas nachtragen muessen, und bis dahin bekam eine 35-Stunden-Kraft
+    # 7:30–15:00, dann 7:00–15:30, dann 8:00–13:00.
+    #
+    # Dass hier gleich lange Tage gearbeitet werden, steht im Regelwerk des
+    # Kunden und ist eine Aussage ueber das HAUS. Sie gehoert damit genau
+    # hierher. Was in der Personalakte steht, schlaegt sie weiterhin: Die
+    # Reihenfolge der beiden Zeilen ist die Individualisierung.
+    b.versuche(ctx, b.tagesmuster_gleich_lange_tage)
+
     # Die Sollzeit exakt treffen, nicht ungefähr. Der Rechendienst bestraft
     # Abweichungen sonst nur und nimmt sie in Kauf, wenn es anderswo mehr
     # spart — hier soll die Planung weder Über- noch Minusstunden erzeugen.

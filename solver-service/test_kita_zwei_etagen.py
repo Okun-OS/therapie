@@ -433,6 +433,67 @@ def test_leer_heike_genau_drei_mal_acht_und_einmal_sechs(leer):
         assert laengen == [360, 480, 480, 480], laengen
 
 
+@pytest.fixture(scope="module")
+def ohne_muster() -> Plan:
+    """
+    §226 Der gemeldete Fall: Niemand hat ein Tagesmuster in der Personalakte.
+
+    So sieht es bei einem Kunden aus, dessen Belegschaft nicht ueber den
+    Import kam — das Feld liess sich bis §225 gar nicht ausfuellen. Vor der
+    Hausregel bekam eine 35-Stunden-Kraft dann 7:30–15:00, am naechsten Tag
+    7:00–15:30 und danach 8:00–13:00: Die Woche stimmte, der Plan war
+    unbrauchbar.
+    """
+    modell = regelmodell()
+    for emp in modell["mitarbeiter"]:
+        emp.pop("tagesmuster", None)
+    p = Plan(rechne(modell))
+    abnehmen(p, "Ohne Tagesmuster in den Stammdaten")
+    return p
+
+
+def test_ohne_muster_es_gibt_trotzdem_einen_plan(ohne_muster):
+    assert ohne_muster.eintrag, "Ohne Tagesmuster kam gar kein Plan heraus"
+
+
+@pytest.mark.parametrize("name,laenge", [
+    ("Marin Berg", 480),       # 40 h auf 5 Tage → 8 Std.
+    ("Stephanie Lang", 420),   # 35 h auf 5 Tage → 7 Std.
+    ("Juliane Roth", 420),     # der gemeldete Fall
+])
+def test_ohne_muster_gleich_lange_tage(ohne_muster, name, laenge):
+    """
+    Die Hausregel greift fuer alle, die kein eigenes Muster haben.
+
+    Geprueft wird die EINZELNE Dienstlaenge, nicht die Wochensumme: Genau
+    darin bestand der Fehler — die Summe stimmte ja.
+    """
+    for woche in (WOCHE1, WOCHE2):
+        laengen = sorted(NETTO[ohne_muster.dienst(name, t)]
+                         for t in ohne_muster.tage(name, woche))
+        assert laengen == [laenge] * len(laengen), \
+            f"{name} in {woche[0]}: {laengen} statt lauter {laenge}"
+        assert len(laengen) == 5, f"{name}: {len(laengen)} Arbeitstage statt 5"
+
+
+def test_ohne_muster_das_eigene_muster_schlaegt_die_hausregel():
+    """
+    §226 Die Individualisierung bleibt — sie ist der Grund fuer das Feld.
+
+    Heike arbeitet dreimal acht und einmal sechs. Das sind keine gleich
+    langen Tage, und die Hausregel darf es ihr nicht wegnehmen.
+    """
+    modell = regelmodell()
+    for emp in modell["mitarbeiter"]:
+        if emp["name"] != "Heike Stein":
+            emp.pop("tagesmuster", None)
+    p = Plan(rechne(modell))
+    for woche in (WOCHE1, WOCHE2):
+        laengen = sorted(NETTO[p.dienst("Heike Stein", t)]
+                         for t in p.tage("Heike Stein", woche))
+        assert laengen == [360, 480, 480, 480], laengen
+
+
 def test_leer_niemand_bekommt_eine_fremde_dienstlaenge(leer):
     """Eine 35-Stunden-Kraft arbeitet nie acht Stunden an einem Tag."""
     erlaubt = {"Marin Berg": {480}, "Stephanie Lang": {420},

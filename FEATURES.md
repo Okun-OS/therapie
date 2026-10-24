@@ -4512,3 +4512,47 @@ Nachweis: `zugang-und-planungsprofil.mjs` **21/21** (vorher 16). Nachgemessen
 an der Schnittstelle: `5 × 7` wird für eine 35-Stunden-Kraft gespeichert,
 `5 × 8` mit „Das Muster ergibt 40 Wochenstunden, geplant werden 35" abgelehnt,
 `4 × 8 + 1 × 3` gespeichert und unverändert wieder gelesen.
+
+## Block §226 (24.10.) — Gleich lange Tage als Hausregel, nicht als Handarbeit
+
+**Die Rückmeldung auf §225:** „Aber ich finde das kacke. Wollten wir das nicht
+so machen, dass es einfach mit dem Regelpaket festgelegt wird? Das ist mir
+wieder zu viel Unsicherheit. Vor allem müsste ich das jetzt bei allen
+Mitarbeitern irgendwie nachtragen. Das einzige Negative wäre natürlich, dass
+es schwer individualisierbar ist."
+
+Beides stimmt, und beides ist derselbe Satz: Eine Maske, die jeder ausfüllen
+**muss**, ist eine Maske, die irgendwann jemand vergisst — und dann schwankt
+der Dienst wieder. §225 hat das Feld nachgeliefert, das in der Datenbank schon
+lange auf etwas wartete. Es hat aber nichts daran geändert, dass 16 leere
+Felder genau 16 Gelegenheiten für den alten Fehler sind.
+
+### Die Regel
+
+Wer **kein** eigenes Muster hinterlegt hat, bekommt gleich lange Tage:
+Wochenstunden geteilt durch Arbeitstage, jeden Tag dieselbe Länge.
+
+| Vertrag | ergibt | vorher |
+|---|---|---|
+| 35 Std., 5 Tage | `5 × 7 Std.` | 7:30–15:00, dann 7:00–15:30, dann 8:00–13:00 |
+| 40 Std., 5 Tage | `5 × 8 Std.` | stimmte meist von allein |
+| 30 Std., 4 Tage | `4 × 7,5 Std.` | frei verplant |
+
+`tagesmuster_gleich_lange_tage` in `bausteine.py`, aufgerufen **nach**
+`tagesmuster_aus_stammdaten`. **Die Reihenfolge ist die Individualisierung:**
+Wer ein Muster in der Akte hat, hat es schon angewandt, bevor die Hausregel
+überhaupt hinsieht — sie überschreibt nichts, sie füllt nur Lücken. Heike
+arbeitet weiter dreimal acht und einmal sechs, ohne dass dafür jemand etwas
+abschalten muss.
+
+**Wo die Regel schweigt, statt zu raten:** 38 Stunden auf 5 Tage sind 7,6
+Stunden am Tag — keine Viertelstunde, und damit kein Dienst, den es gibt.
+Ebenso, wenn die passende Länge im Dienstkatalog fehlt. In beiden Fällen bleibt
+die Person frei verplant, und der Plan trägt eine Notiz mit ihrem Namen. Ein
+stilles Aufrunden auf acht wäre eine halbe Stunde unbezahlte Mehrarbeit pro
+Tag — als Voreinstellung, für niemanden sichtbar.
+
+Nachweis: `test_kita_zwei_etagen.py` **169/169** (vorher 164). Die fünf neuen
+messen die **einzelne Dienstlänge**, nicht die Wochensumme — genau darin
+bestand der Fehler, die Summe stimmte ja. Gegenprobe inbegriffen: Mit
+entferntem Muster bei allen **außer** Heike behält Heike ihre 6/8/8/8.
