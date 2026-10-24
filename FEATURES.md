@@ -4931,3 +4931,90 @@ laufenden System.
 Mitgeprüft wird, dass die alte Schnittstelle **nicht mehr antwortet** und dass
 die Monatsknöpfe aus der Maske verschwunden sind — eine entfernte
 Schnittstelle, die weiter antwortet, ist eine, die noch jemand benutzt.
+
+## Block §232 (24.10.) — Das „Persönliche" versprach etwas, das es nicht hielt
+
+**Die Frage:** „Bei den Bildern 2, 3, 4 und 5 siehst du mal so Sachen, wo ich
+mich frage, brauchen wir das noch?"
+
+### Vier Befunde, und zwei davon sind schwer
+
+**1. Zwei Felder für dieselbe Antwort.** Unter „Persönliches" standen
+„Bevorzugte Gruppen / Bereiche" und „Schicht-Vorlieben" als Freitext. Beides
+gab es ein zweites Mal an einer Stelle, die den Plan **wirklich** ändert: die
+Gruppe am Mitarbeiter und `EmployeePlanningProfile.shiftPreference`. Wer
+„lieber Frühdienst" in das freiwillige Feld schrieb, hatte es gesagt und nichts
+erreicht — und wusste es nicht. §229 hat gezeigt, was ein Schattenfeld kostet;
+dies hier war der zweite Fall in derselben Woche. Beide Felder sind entfallen,
+der Weg zum richtigen steht jetzt als Hinweis daneben.
+
+**2. Die Maske versprach das Gegenteil der Wahrheit.** Dort stand:
+
+> „Sie helfen der KI, faire und menschlichere Dienstpläne zu erstellen."
+
+Und der Chat war angewiesen zu sagen: *„Damit die Dienstplanung darauf
+Rücksicht nehmen kann, frage ich…"*
+
+**Keines dieser Felder erreicht den Rechendienst.** `rule-model-service.ts`
+lädt sie nicht einmal. Das ist die schlechteste Art, eine freiwillige Angabe
+einzusammeln: Sie kostet Vertrauen und bringt nichts. Wer seine
+Lebenssituation erzählt, weil er einen Plan erwartet, der darauf Rücksicht
+nimmt, wird enttäuscht, ohne es je zu erfahren.
+
+Jetzt steht da, was geschieht: Die Leitung sieht es in der Personalakte, und
+der OKUN-Assistent kann es auf Frage heranziehen. **Nachgeprüft am
+aufgezeichneten Regelmodell eines echten Rechenlaufs** — Stärken,
+Lebenssituation und Absprache stehen nicht darin, die Dienstvorliebe schon.
+
+**3. Das Lesen war offen — und ohne Kennung gab es alles.** `GET` hatte keine
+Zugriffsprüfung. Fehlte `employeeId`, kam **die Tabelle vollständig** zurück:
+über alle Standorte und alle Kunden hinweg. Nachgemessen: HTTP 200 für die
+Angaben einer Kollegin, HTTP 200 für die Leitung eines **fremden Kunden**.
+
+Was dort steht, ist nicht harmlos. „Lebenssituation" meint alleinerziehend,
+Pflege von Angehörigen, gesundheitliche Einschränkungen, regelmäßige
+Arzttermine — danach fragt der Chat ausdrücklich. Das sind Gesundheits- und
+Familiendaten nach **Art. 9 DSGVO**, freiwillig gegeben, und sie lagen für
+jeden angemeldeten Menschen offen.
+
+**4. Die eigene Maske konnte nicht speichern.** `PATCH` verlangte
+`['admin', 'company', 'okun']`. Im Mitarbeiterportal steht aber genau diese
+Maske, mit Speicherknopf. Wer dort etwas eintrug, bekam 403. Über den KI-Chat
+ging es, über die Maske daneben nicht — dieselbe Angabe, zwei Wege, einer
+davon tot.
+
+### Was noch dazugehörte
+
+Der KI-Chat (`/api/ai/human-context-chat`) schreibt in dieselbe Akte und hatte
+dieselbe Lücke: Jede angemeldete Person konnte ein Gespräch über eine fremde
+Kennung führen. **Der Umweg über ein Sprachmodell macht aus einem fremden
+Schreibzugriff keinen eigenen.**
+
+Und dort wurde der **API-Schlüssel vor dem Zugriff geprüft**. Ein Aufrufer, der
+an diese Akte gar nicht darf, erfuhr als erstes, ob der Betrieb einen
+KI-Schlüssel hinterlegt hat. In der Prüfung verdeckte der 500er sogar den
+403er, den es zu messen galt — aufgefallen ist es genau daran.
+
+### Nebenbefund zu den Tätigkeiten
+
+Beim Nachsehen fiel eine ganze Kette auf, die stillsteht:
+
+| Teil | Zustand |
+|---|---|
+| `/admin/tasks` — Tätigkeiten anlegen und Leuten zuordnen | funktioniert, speichert |
+| `Employee.allowedTasks` | wird geschrieben, von keinem Rechenkern gelesen |
+| `aufgaben` an Einheiten und Diensten | immer `[]`, und `solver.py` liest das Feld nie |
+| `taskBlocks` am Dienstplan-Eintrag | wird in zwei Ansichten **angezeigt** und von nichts geschrieben |
+
+Eine Seite zum Zuordnen, eine Anzeige für das Ergebnis — und zwischen beiden
+nichts. Das ist eine Entscheidung und kein Befund: entweder der Rechendienst
+beachtet Tätigkeiten, oder die Seite sagt, dass sie Dokumentation ist. Steht
+offen.
+
+Nachweis: `o-persoenliches.mjs` **21/21**. Insgesamt **1963/1963** Prüfungen am
+laufenden System und **1245** Modultests.
+
+Die Gegenproben gehören dazu: Die vier verbliebenen Felder lassen sich weiter
+speichern und lesen („alles weg" wäre auch grün), die Dienstvorliebe hat weiter
+ihr eigenes Feld, und die eigene Leitung darf die Angaben sehen — „403 für
+alle" wäre kein Zugriffsschutz, sondern ein kaputtes Feld.

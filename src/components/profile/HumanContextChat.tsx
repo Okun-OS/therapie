@@ -7,13 +7,25 @@ import { AiChatPanel, type ChatMessage } from '@/components/ui/AiChatPanel'
 interface HumanContext {
   strengths: string[]
   lifeCircumstances: string[]
-  preferredGroups: string[]
   preferredActivities: string[]
-  shiftPreferences: string[]
   agreements: string | null
 }
 
-const OPENING_MESSAGE = 'Hallo! Ich helfe dir, ein paar persönliche Dinge für die Dienstplanung festzuhalten – ganz freiwillig, du kannst jederzeit aufhören. Magst du mir erzählen, wo deine Stärken im Arbeitsalltag liegen?'
+/*
+ * §232 Der erste Satz sagt jetzt, wohin die Angaben gehen.
+ *
+ * Vorher stand hier „ein paar persönliche Dinge FÜR DIE DIENSTPLANUNG
+ * festzuhalten". Keines dieser Felder erreicht den Rechendienst — nachgemessen
+ * in `rule-model-service.ts`, das sie nicht einmal lädt. Wer darauf vertraut
+ * und seine Lebenssituation erzählt, erwartet danach einen Plan, der darauf
+ * Rücksicht nimmt. Den gibt es nicht; es gibt eine Leitung, die es liest.
+ */
+const OPENING_MESSAGE = 'Hallo! Ich helfe dir, ein paar persönliche Dinge festzuhalten – '
+  + 'deine Leitung sieht sie dann in deiner Personalakte, und ich kann sie '
+  + 'heranziehen, wenn jemand mich etwas dazu fragt. In die Berechnung des '
+  + 'Dienstplans gehen sie nicht ein; dafür gibt es die Dienstpräferenzen. '
+  + 'Alles hier ist freiwillig, du kannst jederzeit aufhören. Magst du mir '
+  + 'erzählen, wo deine Stärken im Arbeitsalltag liegen?'
 
 export function HumanContextChat({
   open,

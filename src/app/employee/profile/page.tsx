@@ -185,7 +185,7 @@ export default function EmployeeProfile() {
     setTimeout(() => setShiftPrefSaved(false), 2000)
   }
 
-  const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], preferredGroups: [] as string[], preferredActivities: [] as string[], shiftPreferences: [] as string[], agreements: '' }
+  const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], preferredActivities: [] as string[], agreements: '' }
   const [humanContext, setHumanContext] = useState(initialHumanContext)
   const [savedHumanContext, setSavedHumanContext] = useState(initialHumanContext)
   const [humanContextSaved, setHumanContextSaved] = useState(false)
@@ -248,9 +248,7 @@ export default function EmployeeProfile() {
         const loaded = {
           strengths: ctx?.strengths ?? [],
           lifeCircumstances: ctx?.lifeCircumstances ?? [],
-          preferredGroups: ctx?.preferredGroups ?? [],
           preferredActivities: ctx?.preferredActivities ?? [],
-          shiftPreferences: ctx?.shiftPreferences ?? [],
           agreements: ctx?.agreements ?? '',
         }
         setHumanContext(loaded)
@@ -261,11 +259,11 @@ export default function EmployeeProfile() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.id])
 
-  const addTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups' | 'preferredActivities' | 'shiftPreferences', value: string) => {
+  const addTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredActivities', value: string) => {
     setHumanContext(p => (p[field].includes(value) ? p : { ...p, [field]: [...p[field], value] }))
   }
 
-  const removeTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredGroups' | 'preferredActivities' | 'shiftPreferences', value: string) => {
+  const removeTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredActivities', value: string) => {
     setHumanContext(p => ({ ...p, [field]: p[field].filter(v => v !== value) }))
   }
 
@@ -283,7 +281,7 @@ export default function EmployeeProfile() {
 
   const handleClearHumanContext = async () => {
     if (!employee) return
-    const cleared = { strengths: [], lifeCircumstances: [], preferredGroups: [], preferredActivities: [], shiftPreferences: [], agreements: '' }
+    const cleared = { strengths: [], lifeCircumstances: [], preferredActivities: [], agreements: '' }
     await fetch('/api/employee-human-context', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -606,10 +604,28 @@ export default function EmployeeProfile() {
           <div className="space-y-4">
             <div className="flex items-start gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
               <Lock size={14} className="flex-shrink-0 mt-0.5 text-gray-400" />
+              {/*
+                §232 Was hier stand, war nicht wahr.
+
+                „Sie helfen der KI, faire und menschlichere Dienstpläne zu
+                erstellen." Keines dieser Felder erreicht den Rechendienst —
+                `rule-model-service.ts` lädt sie nicht einmal. Wer seine
+                Lebenssituation erzählt, weil er einen Plan erwartet, der
+                darauf Rücksicht nimmt, wird enttäuscht, ohne es zu erfahren.
+                Und das ist die schlechteste Art, eine freiwillige Angabe
+                einzusammeln: Sie kostet Vertrauen und bringt nichts.
+
+                Was WIRKLICH geschieht, steht jetzt da — und wo die Dinge
+                hingehören, die den Plan ändern.
+              */}
               <span>
-                Diese Angaben sind freiwillig, jederzeit änderbar oder löschbar und nur für die Leitung sichtbar.
-                Sie helfen der KI, faire und menschlichere Dienstpläne zu erstellen – die KI entscheidet aber
-                niemals ausschließlich aufgrund dieser persönlichen Informationen.
+                Diese Angaben sind freiwillig, jederzeit änderbar oder löschbar und nur für
+                die Leitung sichtbar. Deine Leitung sieht sie in deiner Personalakte, und der
+                OKUN&#8209;Assistent kann sie heranziehen, wenn ihn jemand etwas dazu fragt.
+                <strong className="font-semibold"> In die Berechnung des Dienstplans gehen sie
+                nicht ein.</strong> Was den Plan ändert, steht in den Dienstpräferenzen
+                (Frühdienst oder Spätdienst), bei deinen festen freien Tagen und in deinem
+                Tagesmuster — das pflegt die Leitung mit dir.
               </span>
             </div>
 
@@ -644,14 +660,6 @@ export default function EmployeeProfile() {
             />
 
             <TagInputSection
-              label="Bevorzugte Gruppen / Bereiche"
-              items={humanContext.preferredGroups}
-              onAdd={v => addTag('preferredGroups', v)}
-              onRemove={v => removeTag('preferredGroups', v)}
-              placeholder="z.B. Krippe, Gruppe Sonnenblume…"
-            />
-
-            <TagInputSection
               label="Bevorzugte Tätigkeiten"
               items={humanContext.preferredActivities}
               onAdd={v => addTag('preferredActivities', v)}
@@ -659,13 +667,14 @@ export default function EmployeeProfile() {
               placeholder="z.B. Dokumentation, Elternarbeit…"
             />
 
-            <TagInputSection
-              label="Schicht-Vorlieben"
-              items={humanContext.shiftPreferences}
-              onAdd={v => addTag('shiftPreferences', v)}
-              onRemove={v => removeTag('shiftPreferences', v)}
-              placeholder="z.B. Lieber Frühdienst, wenig Wochenenddienste…"
-            />
+            {/*
+              §232 Hier standen „Bevorzugte Gruppen / Bereiche" und
+              „Schicht-Vorlieben". Beide gab es ein zweites Mal — als Gruppe in
+              den Stammdaten und als Dienstpräferenz —, und nur die dort
+              wirkten. Wer „lieber Frühdienst" in dieses Feld schrieb, hatte es
+              gesagt und nichts erreicht. Der Weg dorthin steht jetzt unten als
+              Hinweis.
+            */}
 
             <Textarea
               label="Besondere Absprachen"
@@ -715,9 +724,7 @@ export default function EmployeeProfile() {
             const next = {
               strengths: ctx.strengths,
               lifeCircumstances: ctx.lifeCircumstances,
-              preferredGroups: ctx.preferredGroups,
               preferredActivities: ctx.preferredActivities,
-              shiftPreferences: ctx.shiftPreferences,
               agreements: ctx.agreements ?? '',
             }
             setHumanContext(next)
