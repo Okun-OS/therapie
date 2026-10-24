@@ -4422,3 +4422,36 @@ nach: **0 px Überhang, 0 px nach einem Scrollversuch**, Verlauf endet über der
 Leiste. Dazu die Gegenprobe am Schreibtisch: Dort steht die Liste weiter
 daneben, die Kopfzeile bleibt, und einen Zurück-Pfeil gibt es nicht. Ohne sie
 wäre „die Liste ist weg" auch dann grün, wenn sie überall verschwände.
+
+## Block §224 (24.10.) — Der Absendeknopf lag unter dem Hilfeknopf
+
+**Die Meldung, mit Bildschirmfoto:** „Der Absendeknopf ist genau da, wo das
+Fragezeichen ist. Darunter."
+
+Gemessen stimmte das aufs Pixel. Auf einem iPhone 13:
+
+| | links | rechts | oben | unten |
+|---|---|---|---|---|
+| Absenden | 326 | 361 | 510 | 545 |
+| Hilfeknopf | 326 | 374 | 504 | 552 |
+
+Der Hilfeknopf schwebt (`fixed`, z-40), die Eingabezeile steht im normalen
+Fluss — er gewinnt. **Vom Absenden war nichts zu sehen; es sah aus, als gäbe
+es keinen.** Geschrieben hat man trotzdem senden können, mit der
+Eingabetaste — nur wusste das niemand.
+
+**Behoben mit 64 px Innenabstand rechts**, nur auf dem Telefon: Der
+Absendeknopf rückt auf x 274–309, der Hilfeknopf beginnt bei 326 — siebzehn
+Pixel Luft. Am Schreibtisch ist der Hilfeknopf weit weg, dort bleibt der
+schmale Rand.
+
+### Warum nicht den Hilfeknopf verschieben
+
+Weil er überall gleich stehen muss. Ein Knopf, der je nach Seite woanders
+sitzt, ist kein Anker mehr — und gesucht wird er genau dann, wenn etwas nicht
+klappt. Die Seite, die ihm im Weg steht, macht Platz, nicht umgekehrt.
+
+Nachweis: in `chat-auf-dem-telefon.mjs`, jetzt **15/15**. Die Prüfung rechnet
+die Überschneidung der beiden Rechtecke aus — 0 px². **Gegengeprüft:** Mit
+entferntem Abstand wird sie rot. Eine Prüfung, die den alten Zustand nicht
+anzeigt, wäre keine.

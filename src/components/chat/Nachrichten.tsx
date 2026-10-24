@@ -908,7 +908,22 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                   Diese Gruppe ist geschlossen. Der Verlauf bleibt lesbar.
                 </p>
               ) : (
-                <div className="flex items-end gap-2 px-3 py-3 border-t border-gray-100">
+                <div
+                  /*
+                   * §224 Rechts bleibt Platz für den Hilfeknopf.
+                   *
+                   * Gemessen auf einem iPhone 13: Der Absendeknopf lag bei
+                   * x 326–361, der schwebende Hilfeknopf bei x 326–374 — also
+                   * genau darunter, und weil er `fixed` mit z-40 ist, gewinnt
+                   * er. Auf dem Bildschirm war vom Absenden nichts mehr zu
+                   * sehen; es sah aus, als gäbe es keinen.
+                   *
+                   * 64 px Innenabstand rücken ihn auf x ~309 und damit frei.
+                   * Am Schreibtisch ist der Hilfeknopf weit weg, dort bleibt
+                   * es beim schmalen Rand.
+                   */
+                  className="flex items-end gap-2 pl-3 pr-16 lg:pr-3 py-3
+                             border-t border-gray-100">
                   {/* §221 Datei anhängen. Ein verstecktes Eingabefeld, weil
                       der eigene Knopf überall gleich aussehen soll. */}
                   <input

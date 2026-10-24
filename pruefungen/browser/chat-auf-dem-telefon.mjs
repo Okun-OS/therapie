@@ -101,6 +101,42 @@ check('Der Verlauf endet über der schwebenden Leiste',
     && mass.karteUnten <= mass.leisteOben,
   `Verlauf bis ${mass.karteUnten} px, Leiste ab ${mass.leisteOben} px`)
 
+/*
+ * §224 Der Absendeknopf darf nicht unter dem Hilfeknopf liegen.
+ *
+ * Gemeldet: „Der Absendeknopf ist genau da, wo das Fragezeichen ist.
+ * Darunter." Gemessen stimmte das aufs Pixel — Absenden bei x 326–361, der
+ * schwebende Hilfeknopf bei x 326–374. Weil der `fixed` mit z-40 ist, gewinnt
+ * er, und vom Absenden war nichts mehr zu sehen.
+ *
+ * Gerechnet wird die Überschneidung der beiden Rechtecke. Das ist die
+ * Beschwerde, übersetzt in eine Zahl — und sie fängt den Fehler auch dann,
+ * wenn später jemand am Rand oder am Hilfeknopf schraubt.
+ */
+const knoepfe = await telefon.evaluate(() => {
+  const kasten = el => {
+    const b = el?.getBoundingClientRect()
+    return b ? { x: b.x, y: b.y, r: b.right, u: b.bottom } : null
+  }
+  const senden = kasten(document.querySelector('button[aria-label="Nachricht senden"]'))
+  const schwebend = [...document.querySelectorAll('div')]
+    .filter(d => getComputedStyle(d).position === 'fixed' && getComputedStyle(d).zIndex === '40')
+    .map(kasten)
+    .filter(k => k && k.r - k.x < 100)
+  const hilfe = schwebend[0] ?? null
+  if (!senden || !hilfe) return { senden, hilfe, ueberschneidung: null }
+  const breite = Math.max(0, Math.min(senden.r, hilfe.r) - Math.max(senden.x, hilfe.x))
+  const hoehe = Math.max(0, Math.min(senden.u, hilfe.u) - Math.max(senden.y, hilfe.y))
+  return { senden, hilfe, ueberschneidung: Math.round(breite * hoehe) }
+})
+
+check('Der Absendeknopf ist überhaupt da', knoepfe.senden !== null)
+check('Und der Hilfeknopf schwebt wie vorgesehen', knoepfe.hilfe !== null)
+check('Sie überdecken sich nicht', knoepfe.ueberschneidung === 0,
+  knoepfe.ueberschneidung === null
+    ? 'einer der beiden wurde nicht gefunden'
+    : `Überschneidung ${knoepfe.ueberschneidung} px²`)
+
 await telefon.locator('button[aria-label="Zurück zur Übersicht"]').click()
 await telefon.waitForTimeout(1500)
 check('Zurück führt wieder zur Übersicht',
