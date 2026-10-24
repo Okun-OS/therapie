@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   MessageSquare, Users, Plus, Search, Send, Settings2, X, Check, Paperclip,
-  Trash2, FileText, Download,
+  Trash2, FileText, Download, ChevronLeft,
   AlertTriangle, Archive, LogOut, UserPlus, Lock, LifeBuoy, Sparkles,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
@@ -165,6 +165,15 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
 
   async function oeffnen(id: string) {
     setOffen(id); setNachrichten([]); setFehler(''); setMaske('keine')
+    /*
+     * §223 Auf dem Telefon oben anfangen.
+     *
+     * Wer weit unten in der Liste auf ein Gespräch tippt, bleibt sonst auf
+     * derselben Scrollhöhe stehen — und sieht als Erstes die Mitte des
+     * Verlaufs, mit weißem Rand darüber. Der Sprung ist das, was den
+     * Wechsel zu einer eigenen Seite überhaupt als Wechsel erkennbar macht.
+     */
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 })
     await raumLaden(id)
   }
 
@@ -378,8 +387,16 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-4">
-      <div className="flex items-start gap-3 flex-wrap">
+    <div className={`p-4 sm:p-6 space-y-4 ${offen ? '-mb-44 lg:mb-0' : ''}`}>
+      {/*
+        §223 Auf dem Telefon ist ein Gespräch eine EIGENE Seite.
+        Vorher stand beides untereinander: oben die Liste aller Gespräche,
+        darunter das offene. Wer im Verlauf nach oben wischte, landete wieder
+        in der Liste — und wusste nicht mehr, wo er war. Auf einem Bildschirm
+        mit Platz bleiben beide nebeneinander; das ist dort kein Durcheinander,
+        sondern eine Übersicht.
+      */}
+      <div className={`${offen ? 'hidden lg:flex' : 'flex'} items-start gap-3 flex-wrap`}>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-navy flex items-center gap-2">
             <MessageSquare size={20} className="text-teal-600" /> Nachrichten
@@ -421,7 +438,8 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
         {/* ── Gesprächsliste ──────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-2 h-fit">
+        <div className={`bg-white rounded-2xl border border-gray-100 p-2 h-fit ${
+          offen ? 'hidden lg:block' : ''}`}>
           {laedt ? (
             <div className="flex justify-center py-10">
               <div className="w-7 h-7 border-4 border-gray-200 border-t-teal-500 rounded-full animate-spin" />
@@ -768,8 +786,37 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
 
           {/* Der Verlauf */}
           {offen && kopf && maske === 'keine' && (
-            <div className="bg-white rounded-2xl border border-gray-100 flex flex-col h-[62vh]">
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+            <div
+              /*
+               * §223 Die Höhe ist gemessen, nicht geschätzt.
+               *
+               * Das Gerüst hält unter jeder Seite 176 px für die schwebende
+               * Leiste frei (`main` mit `pb-44`), obwohl die Leiste nur rund
+               * 90 px hoch ist. Auf dem Telefon waren damit 86 px mehr Seite
+               * da als Bildschirm — und beim Wischen rutschte das ganze
+               * Gespräch mit, statt nur der Verlauf. Deshalb nimmt die Seite
+               * sich diesen Platzhalter zurück (`-mb-44`), solange ein
+               * Gespräch offen ist, und NUR auf dem Telefon.
+               *
+               * Auf einem iPhone 13 (664 px) liegt die Karte bei 102 px, die
+               * schwebende Leiste beginnt bei 574 px — bleiben 464 px. Mit
+               * `100dvh - 13rem` sind es 456, also ein Finger breit Luft über
+               * der Leiste. Vorher waren es 11rem, und genau diese 118 px zu
+               * viel machten die Seite scrollbar: Beim Wischen nach oben
+               * rutschte das ganze Gespräch mit, statt nur der Verlauf.
+               */
+              className="bg-white rounded-2xl border border-gray-100 flex flex-col
+                         h-[calc(100dvh-13rem)] lg:h-[62vh]">
+              <div className="flex items-center gap-2 px-3 py-3 border-b border-gray-100">
+                {/* §223 Zurück zur Liste — nur auf dem Telefon. Am
+                    Schreibtisch steht die Liste daneben; ein Pfeil, der sie
+                    „zurückholt", wäre dort sinnlos. */}
+                <button
+                  onClick={() => setOffen(null)}
+                  aria-label="Zurück zur Übersicht"
+                  className="lg:hidden p-2 -ml-1 rounded-xl hover:bg-gray-100 text-gray-500 shrink-0">
+                  <ChevronLeft size={18} />
+                </button>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-navy truncate">{kopf.titel}</p>
                   <p className="text-[11px] text-gray-400 truncate">

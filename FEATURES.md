@@ -4377,3 +4377,48 @@ Beim ersten Lauf fand sie null Knöpfe — Annas Postfach war leer, weil eine
 andere Prüfung vorher aufgeräumt hatte. Sie legt sich ihre Benachrichtigungen
 jetzt selbst an. Ein „kein Knopf gefunden" in einem leeren Postfach beweist
 nichts.
+
+## Block §223 (24.10.) — Ein Gespräch ist auf dem Telefon eine eigene Seite
+
+**Die Meldung:** „Wenn ich auf der Übersicht von allen Chats bin und auf einen
+Chat gehe, will ich nur auf dem Chat sein. Sonst ist es so unaufgeräumt. Und
+dann scroll ich nach oben, dann bin ich wieder bei den ganz vielen Chats, dann
+wieder bei dem Chat, wo ich gerade schreibe — das ist alles so
+unübersichtlich."
+
+### Zwei Ursachen, und die zweite war die unsichtbare
+
+**Erstens** standen Liste und Verlauf untereinander. Auf einem Bildschirm mit
+Platz ist das eine Übersicht; auf einem Telefon ist es ein Stapel. Jetzt gilt
+auf dem Telefon: Liste **oder** Gespräch, mit einem Pfeil zurück. Am
+Schreibtisch bleibt das Nebeneinander — dort ist es kein Durcheinander,
+sondern der Grund, warum man schneller arbeitet.
+
+**Zweitens — und das war das eigentliche Rutschen:** Das Gerüst hält unter
+jeder Seite **176 px** für die schwebende Leiste frei (`main` mit `pb-44`),
+obwohl die Leiste nur rund **90 px** hoch ist. Auf einem iPhone 13 waren damit
+**86 px mehr Seite da als Bildschirm**. Beim Wischen ging deshalb die ganze
+Seite mit, und das Gespräch rutschte unter dem Daumen weg. Solange ein
+Gespräch offen ist, nimmt die Seite sich diesen Platzhalter jetzt zurück
+(`-mb-44 lg:mb-0`) — und ist damit exakt so hoch wie der Bildschirm.
+
+### Gemessen, nicht geschätzt
+
+Die Höhe des Verlaufs steht nicht aus dem Gefühl da. Auf dem iPhone 13
+(664 px) beginnt die Karte bei 102 px, die Leiste bei 574 px — bleiben 472.
+`100dvh - 13rem` ergibt 456, also ein Finger breit Luft. Nachgemessen endet
+der Verlauf bei 558 px, die Leiste beginnt bei 574.
+
+**Ein Umweg, der verworfen wurde:** Erst hatte ich das Scrollen der Seite
+gesperrt (`overflow: hidden` auf `html` und `body`). Das behandelte das
+Symptom und half nicht einmal zuverlässig — die Seite war weiterhin zu hoch.
+Die Ursache war der Platzhalter. Eine Sperre, die eine falsche Höhe verdeckt,
+ist schlechter als keine: Sie macht das Problem unsichtbar, statt es zu
+beheben.
+
+Nachweis: `pruefungen/browser/chat-auf-dem-telefon.mjs`, **12/12**. Sie prüft
+auf dem Telefon, dass die Liste verschwindet, dass es zurückgeht — und rechnet
+nach: **0 px Überhang, 0 px nach einem Scrollversuch**, Verlauf endet über der
+Leiste. Dazu die Gegenprobe am Schreibtisch: Dort steht die Liste weiter
+daneben, die Kopfzeile bleibt, und einen Zurück-Pfeil gibt es nicht. Ohne sie
+wäre „die Liste ist weg" auch dann grün, wenn sie überall verschwände.
