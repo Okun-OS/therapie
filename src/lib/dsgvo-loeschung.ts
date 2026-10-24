@@ -218,10 +218,6 @@ const ZUGRIFF: Record<string, Zugriff> = {
     zaehlen: (db, k) => db.wishSubmission.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.wishSubmission.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
   },
-  VacationPlanPreference: {
-    zaehlen: (db, k) => db.vacationPlanPreference.count({ where: { employeeId: k.employeeId } }),
-    loeschen: (db, k) => db.vacationPlanPreference.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
-  },
   EmployeePlanningProfile: {
     zaehlen: (db, k) => db.employeePlanningProfile.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.employeePlanningProfile.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),

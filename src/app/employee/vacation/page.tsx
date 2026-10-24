@@ -10,13 +10,13 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Select } from '@/components/ui/Select'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, Send, Baby } from 'lucide-react'
+import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, CalendarClock } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate } from '@/lib/utils'
 import { countWorkdays } from '@/lib/workdays'
 import { einreihen } from '@/lib/warteschlange'
 import { schlangeGeaendert } from '@/components/offline/Warteschlange'
-import type { Employee, Location, VacationRequest, VacationPlanPreference } from '@/lib/types'
+import type { Employee, Location, VacationRequest } from '@/lib/types'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 const PRIORITY_LABEL: Record<string, string> = { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' }
@@ -46,54 +46,37 @@ export default function EmployeeVacation() {
   const myRequests = VACATION_REQUESTS.filter(v => v.employeeId === user?.employeeId)
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
 
-  const [existingPref, setExistingPref] = useState<VacationPlanPreference | null>(null)
-  const [wishMonths, setWishMonths] = useState<number[]>([])
-  const [wishPeriod, setWishPeriod] = useState('')
-  const [wishNotes, setWishNotes] = useState('')
-  const [wishPriority, setWishPriority] = useState<'low' | 'medium' | 'high'>('medium')
-  const [wishSchoolPriority, setWishSchoolPriority] = useState<'low' | 'medium' | 'high'>('medium')
-  const [wishSaved, setWishSaved] = useState(false)
+  /**
+   * §231 Die Frist statt der Wunschmonate.
+   *
+   * Hier stand eine zweite Maske: bevorzugte Monate, ein Freitextzeitraum, eine
+   * selbst gesetzte Priorität und eine Notiz. Gefragt wurde: „Ist es doppelt
+   * gemoppelt, wenn wir Urlaubsanträge haben und dann Wünsche für den Urlaub?"
+   *
+   * Der Befund war schärfer als die Frage. Sagen drei Leute „Juli", weiß die
+   * Leitung nicht, ob sie kollidieren — und genau das zu sehen ist der Zweck
+   * der Jahresplanung. Dazu bewertete jede Person ihre eigenen Wünsche selbst;
+   * als Rangfolge bei Streit taugt das nicht.
+   *
+   * Jetzt gibt es einen Weg: den Antrag, mit Datum. Und eine Frist, bis zu der
+   * alle Anträge für das kommende Jahr da sein sollen — damit nicht der
+   * schnellste Antrag den besten Zeitraum bekommt, sondern gemeinsam geplant
+   * wird.
+   */
+  const [frist, setFrist] = useState<{ datum: string; jahr: number | null } | null>(null)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!user?.employeeId) return
-    fetch(`/api/vacation-preferences?employeeId=${user.employeeId}`)
-      .then(r => r.json())
-      .then(d => {
-        const pref: VacationPlanPreference | null = d.preference ?? null
-        setExistingPref(pref)
-        setWishMonths(pref?.preferredMonths ?? [])
-        setWishPeriod(pref?.preferredPeriod ?? '')
-        setWishNotes(pref?.notes ?? '')
-        setWishPriority(pref?.priority ?? 'medium')
-        setWishSchoolPriority(pref?.schoolHolidayPriority ?? 'medium')
-      })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id])
+    if (!employee?.locationId) return
+    fetch(`/api/vacation-rules?locationId=${employee.locationId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setFrist(d?.rules?.antragsfrist
+        ? { datum: d.rules.antragsfrist, jahr: d.rules.antragsfristJahr ?? null }
+        : null))
+      .catch(() => undefined)
+  }, [employee?.locationId])
 
-  const toggleWishMonth = (month: number) => {
-    setWishMonths(prev => prev.includes(month) ? prev.filter(m => m !== month) : [...prev, month])
-  }
-
-  const handleSaveWishes = async () => {
-    if (!employee) return
-    await fetch('/api/vacation-preferences', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        employeeId: employee.id,
-        hasChildren: employee.hasChildren ?? false,
-        schoolHolidayPriority: employee.hasChildren ? wishSchoolPriority : undefined,
-        preferredMonths: wishMonths,
-        preferredPeriod: wishPeriod,
-        notes: wishNotes,
-        priority: wishPriority,
-      }),
-    })
-    setWishSaved(true)
-    showToast('Urlaubswünsche gespeichert')
-    setTimeout(() => setWishSaved(false), 3000)
-  }
+  // Eine Frist aus dem letzten Jahr ist keine offene Frist.
+  const fristOffen = !!frist && frist.datum >= new Date().toISOString().slice(0, 10)
 
   const vacationTotal = employee?.vacationDaysTotal || 30
   const vacationUsed = employee?.vacationDaysUsed || 0
@@ -242,86 +225,40 @@ export default function EmployeeVacation() {
           </div>
         </div>
 
-        {/* Vacation wishes for annual planning */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Meine Urlaubswünsche</CardTitle>
-          </CardHeader>
-          <p className="text-xs text-gray-500 mb-4">
-            Trage hier deine Wünsche für die nächste Jahresurlaubsplanung ein – z.B. Sommerurlaub oder Schulferien. Die Teamleitung berücksichtigt sie automatisch bei der Planung.
-          </p>
+        {/*
+          §231 Die Frist zur Jahresplanung.
 
-          {wishSaved && (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl p-3 mb-4">
-              <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-              <p className="text-sm text-green-700">Wünsche gespeichert</p>
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 mb-1.5">Bevorzugte Monate</p>
-              <div className="flex flex-wrap gap-1.5">
-                {MONTH_NAMES.map((name, i) => {
-                  const month = i + 1
-                  const selected = wishMonths.includes(month)
-                  return (
-                    <button
-                      key={month}
-                      type="button"
-                      onClick={() => toggleWishMonth(month)}
-                      className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-all ${selected ? 'bg-navy text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-                    >
-                      {name}
-                    </button>
-                  )
-                })}
+          Keine zweite Maske mehr, nur der Hinweis — und der Knopf führt
+          dorthin, wo der Urlaub wirklich beantragt wird.
+        */}
+        {frist && (
+          <Card>
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                fristOffen ? 'bg-amber-100' : 'bg-gray-100'}`}>
+                <CalendarClock size={18} className={fristOffen ? 'text-amber-600' : 'text-gray-400'} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-navy">
+                  {fristOffen
+                    ? `Urlaub für ${frist.jahr ?? 'das kommende Jahr'}: bitte bis ${formatDate(frist.datum)} beantragen`
+                    : `Die Frist für ${frist.jahr ?? 'die Jahresplanung'} ist am ${formatDate(frist.datum)} abgelaufen`}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {fristOffen
+                    ? 'Alles, was bis dahin eingereicht ist, wird gemeinsam geplant — nicht '
+                      + 'nach Reihenfolge des Eingangs. Danach gilt: wer zuerst kommt.'
+                    : 'Anträge gehen weiter, werden aber einzeln entschieden.'}
+                </p>
+                {fristOffen && (
+                  <Button size="sm" onClick={() => setModal(true)} className="gap-1 mt-3">
+                    <Plus size={14} />Urlaub beantragen
+                  </Button>
+                )}
               </div>
             </div>
-
-            <Input
-              label="Konkreter Wunschzeitraum (optional)"
-              value={wishPeriod}
-              onChange={e => setWishPeriod(e.target.value)}
-              placeholder="z.B. Sommerferien Juli/August"
-            />
-
-            <div className="flex items-center gap-3 flex-wrap">
-              <Select
-                label="Priorität"
-                value={wishPriority}
-                onChange={e => setWishPriority(e.target.value as 'low' | 'medium' | 'high')}
-              >
-                {Object.entries(PRIORITY_LABEL).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-              </Select>
-              {employee?.hasChildren && (
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 block mb-1.5 flex items-center gap-1">
-                    <Baby size={12} className="text-blue-400" />Priorität Schulferien
-                  </label>
-                  <Select
-                    value={wishSchoolPriority}
-                    onChange={e => setWishSchoolPriority(e.target.value as 'low' | 'medium' | 'high')}
-                  >
-                    {Object.entries(PRIORITY_LABEL).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-                  </Select>
-                </div>
-              )}
-            </div>
-
-            <Textarea
-              label="Notiz (optional)"
-              value={wishNotes}
-              onChange={e => setWishNotes(e.target.value)}
-              rows={2}
-              placeholder="z.B. besondere Gründe für deinen Wunschzeitraum"
-            />
-
-            <Button onClick={handleSaveWishes} className="gap-2">
-              <Send size={14} />Wünsche speichern
-            </Button>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {/* Request List */}
         <Card>

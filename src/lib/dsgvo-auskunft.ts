@@ -136,7 +136,6 @@ const ABFRAGEN: Record<string, (employeeId: string) => Promise<unknown[]>> = {
   }),
   EmployeeRequest: id => prisma.employeeRequest.findMany({ where: { employeeId: id } }),
   WishSubmission: id => prisma.wishSubmission.findMany({ where: { employeeId: id } }),
-  VacationPlanPreference: id => prisma.vacationPlanPreference.findMany({ where: { employeeId: id } }),
   EmployeePlanningProfile: id => prisma.employeePlanningProfile.findMany({ where: { employeeId: id } }),
   EmployeeHumanContext: id => prisma.employeeHumanContext.findMany({ where: { employeeId: id } }),
   EmployeeProfile: id => prisma.employeeProfile.findMany({ where: { employeeId: id } }),

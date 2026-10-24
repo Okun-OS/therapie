@@ -1,9 +1,13 @@
-// Echte Postgres-Persistenz für Urlaub (ersetzt VACATION_REQUESTS,
-// VACATION_PREFERENCES und VACATION_RULES aus mock-data.ts). Server-only.
+// Echte Postgres-Persistenz für Urlaub (ersetzt VACATION_REQUESTS und
+// VACATION_RULES aus mock-data.ts). Server-only.
+//
+// §231 Die Urlaubswünsche (Monate plus selbst gesetzte Wichtigkeit) sind
+// entfallen. Die Jahresplanung arbeitet mit den Anträgen und einer Frist —
+// siehe `prisma/schema.prisma`.
 import { prisma } from './prisma'
 import { countWorkdays } from './workdays'
 import { getEmployeesByLocation, getLocationById } from './entities'
-import type { VacationRequest, VacationPlanPreference, VacationRules, VacationPlanEntry, Employee, ClosurePeriod } from './types'
+import type { VacationRequest, VacationRules, VacationPlanEntry, Employee, ClosurePeriod } from './types'
 
 function toVacationRequest(row: any): VacationRequest {
   return {
@@ -23,24 +27,14 @@ function toVacationRequest(row: any): VacationRequest {
   }
 }
 
-function toVacationPreference(row: any): VacationPlanPreference {
-  return {
-    employeeId: row.employeeId,
-    hasChildren: row.hasChildren,
-    schoolHolidayPriority: (row.schoolHolidayPriority as VacationPlanPreference['schoolHolidayPriority']) ?? undefined,
-    preferredMonths: row.preferredMonths,
-    preferredPeriod: row.preferredPeriod ?? undefined,
-    notes: row.notes ?? undefined,
-    priority: row.priority,
-  }
-}
-
 function toVacationRules(row: any): VacationRules {
   return {
     facilityDescription: row.facilityDescription,
     maxConcurrent: row.maxConcurrent,
     customRules: row.customRules,
     schoolHolidayPriorityMode: row.schoolHolidayPriorityMode,
+    antragsfrist: row.antragsfrist ?? null,
+    antragsfristJahr: row.antragsfristJahr ?? null,
   }
 }
 
@@ -114,31 +108,19 @@ export async function getVacationRules(locationId: string): Promise<VacationRule
   return row ? toVacationRules(row) : null
 }
 
-export async function setVacationRules(locationId: string, rules: VacationRules): Promise<void> {
-  await prisma.vacationRules.upsert({
+export async function setVacationRules(
+  locationId: string, rules: VacationRules,
+): Promise<VacationRules> {
+  // §231 Gibt das Gespeicherte zurück. Die Route antwortete mit
+  // `{ rules: undefined }`, weil hier `void` stand — der Aufrufer bekam auf
+  // eine erfolgreiche Speicherung hin nichts und musste seinem eigenen
+  // Entwurf glauben.
+  const row = await prisma.vacationRules.upsert({
     where: { locationId },
     create: { locationId, ...rules },
     update: { ...rules },
   })
-}
-
-export async function listAllVacationPreferences(): Promise<VacationPlanPreference[]> {
-  const rows = await prisma.vacationPlanPreference.findMany()
-  return rows.map(toVacationPreference)
-}
-
-export async function getVacationPreference(employeeId: string): Promise<VacationPlanPreference | null> {
-  const row = await prisma.vacationPlanPreference.findUnique({ where: { employeeId } })
-  return row ? toVacationPreference(row) : null
-}
-
-export async function setVacationPreference(pref: VacationPlanPreference): Promise<void> {
-  const { employeeId, ...data } = pref
-  await prisma.vacationPlanPreference.upsert({
-    where: { employeeId },
-    create: { employeeId, ...data },
-    update: data,
-  })
+  return toVacationRules(row)
 }
 
 // Schritt 6 "Freigabe": macht aus einem generierten Jahresplan echte, bereits

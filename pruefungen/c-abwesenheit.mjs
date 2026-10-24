@@ -99,18 +99,51 @@ const fremdSammeln = await sende(kita, '/api/vacation-plan/collect-wishes', 'POS
 check('Fremde Leitung kann hier keine Wunschsammlung starten',
   fremdSammeln.status === 403, `HTTP ${fremdSammeln.status}`)
 
-const praeferenz = await sende(anna, '/api/vacation-preferences', 'PUT', {
-  employeeId: annaId, hasChildren: true, preferredMonths: [7, 8],
-  preferredPeriod: 'Sommerferien', priority: 'high',
+/*
+ * §231 Die Urlaubswünsche sind entfallen; an ihrer Stelle steht die
+ * Antragsfrist. Geprüft wird jetzt, dass die Frist bei den Regeln ankommt und
+ * zurückkommt — und dass eine fremde Leitung sie nicht setzen kann.
+ *
+ * Die alte Prüfung sprach mit `/api/vacation-preferences`. Dass es diese
+ * Route nicht mehr gibt, steht gleich mit dabei: Eine entfernte Schnittstelle,
+ * die weiter antwortet, ist eine Schnittstelle, die noch jemand benutzt.
+ */
+const frist = `${jahr}-11-30`
+const fristSetzen = await sende(leitung, '/api/vacation-rules', 'PUT', {
+  locationId,
+  rules: {
+    facilityDescription: 'Nachweis §231',
+    maxConcurrent: 2,
+    customRules: [],
+    schoolHolidayPriorityMode: 'slight',
+    antragsfrist: frist,
+    antragsfristJahr: jahr,
+  },
 })
-check('Mitarbeiter kann Urlaubswünsche hinterlegen',
-  praeferenz.status === 200 || praeferenz.status === 201, praeferenz.body.error ?? 'gespeichert')
+check('Die Leitung kann eine Antragsfrist setzen', fristSetzen.status === 200,
+  fristSetzen.body.error ?? `bis ${fristSetzen.body.rules?.antragsfrist}`)
+check('Und bekommt die gespeicherten Regeln zurück',
+  fristSetzen.body.rules?.antragsfrist === frist
+  && fristSetzen.body.rules?.antragsfristJahr === jahr,
+  JSON.stringify(fristSetzen.body.rules ?? null))
 
-const fremdPraeferenz = await sende(anna, '/api/vacation-preferences', 'PUT', {
-  employeeId: kollege.id, hasChildren: true, preferredMonths: [7],
+const fristLesen = await hole(anna, `/api/vacation-rules?locationId=${locationId}`)
+check('Ein Mitarbeiter kann die Frist lesen — sie gilt für ihn',
+  fristLesen.status === 200 && fristLesen.body.rules?.antragsfrist === frist,
+  `HTTP ${fristLesen.status}, Frist ${fristLesen.body.rules?.antragsfrist}`)
+
+const fremdeFrist = await sende(kita, '/api/vacation-rules', 'PUT', {
+  locationId,
+  rules: { facilityDescription: 'fremd', maxConcurrent: 9, customRules: [], antragsfrist: '2099-01-01' },
 })
-check('Mitarbeiter kann KEINE Wünsche für Kollegen hinterlegen',
-  fremdPraeferenz.status === 403, `HTTP ${fremdPraeferenz.status}`)
+check('Eine fremde Leitung kann die Frist NICHT setzen',
+  fremdeFrist.status === 403, `HTTP ${fremdeFrist.status}`)
+
+const alteRoute = await sende(anna, '/api/vacation-preferences', 'PUT', {
+  employeeId: annaId, preferredMonths: [7, 8],
+})
+check('Die alte Wunsch-Schnittstelle gibt es nicht mehr',
+  alteRoute.status === 404 || alteRoute.status === 405, `HTTP ${alteRoute.status}`)
 
 // ── C4 Abwesenheiten ───────────────────────────────────────────────────────
 console.log('\n=== C4 Abwesenheiten ===')

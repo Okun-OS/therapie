@@ -812,16 +812,14 @@ model WishSubmission {
   conflictInfo       Json?
 }
 
-model VacationPlanPreference {
-  employeeId            String   @id
-  hasChildren           Boolean  @default(false)
-  schoolHolidayPriority String?
-  preferredMonths       Int[]    @default([])
-  preferredPeriod       String?
-  notes                 String?
-  priority              String   @default("medium")
-  updatedAt             DateTime @updatedAt
-}
+/// §231 `VacationPlanPreference` ist entfallen.
+///
+/// Darin stand, in welchen MONATEN jemand gern Urlaub haette — und dazu eine
+/// selbst gesetzte Wichtigkeit. Gemeldet: "Ist es doppelt gemoppelt, wenn wir
+/// Urlaubsantraege haben und dann Wuensche fuer den Urlaub?" Der Befund war
+/// schaerfer: Sagen drei Leute "Juli", weiss die Leitung nicht, ob sie
+/// kollidieren — und genau das ist der Zweck der Jahresplanung. Die
+/// Jahresplanung arbeitet jetzt mit den Antraegen, die ohnehin Datum tragen.
 
 model VacationRules {
   locationId                String   @id
@@ -829,6 +827,18 @@ model VacationRules {
   maxConcurrent             Int
   customRules               String[] @default([])
   schoolHolidayPriorityMode String   @default("none")
+  /// §231 Bis wann Urlaubsantraege fuer die Jahresplanung eingereicht sein
+  /// muessen (`YYYY-MM-DD`).
+  ///
+  /// Die Frist ist das, was die Monatswuensche ersetzt: Vorher sammelte die
+  /// Leitung unverbindliche Monate ein und plante daraus. Jetzt sagt sie "bis
+  /// zum 30.11. einreichen" — und was bis dahin da ist, wird gemeinsam
+  /// geplant, ohne dass der frueheste Antrag den besten Zeitraum bekommt.
+  antragsfrist              String?
+  /// §231 Fuer welches Jahr die Frist gilt. Ohne das waere nach dem
+  /// Jahreswechsel nicht zu erkennen, ob eine Frist in der Vergangenheit
+  /// abgelaufen oder nur alt ist.
+  antragsfristJahr          Int?
   updatedAt                 DateTime @updatedAt
 }
 

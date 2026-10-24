@@ -430,15 +430,10 @@ export interface DashboardStats {
 
 // ─── Vacation Planning ────────────────────────────────────────────────────────
 
-export interface VacationPlanPreference {
-  employeeId: string
-  hasChildren: boolean
-  schoolHolidayPriority?: 'low' | 'medium' | 'high'  // only meaningful when hasChildren is true
-  preferredMonths: number[]  // 1–12
-  preferredPeriod?: string   // free text
-  notes?: string
-  priority: 'low' | 'medium' | 'high'
-}
+/*
+ * §231 `VacationPlanPreference` ist entfallen — siehe `prisma/schema.prisma`.
+ * Die Jahresplanung arbeitet mit den Urlaubsanträgen und einer Frist.
+ */
 
 export interface VacationRules {
   facilityDescription: string
@@ -446,6 +441,10 @@ export interface VacationRules {
   customRules: string[]
   // Ferienregelung für Mitarbeiter mit schulpflichtigen Kindern (facility-weit, nicht pro Mitarbeiter)
   schoolHolidayPriorityMode: 'always' | 'slight' | 'none'
+  /** §231 Bis wann Anträge für die Jahresplanung da sein müssen (`YYYY-MM-DD`). */
+  antragsfrist?: string | null
+  /** §231 Für welches Jahr diese Frist gilt. */
+  antragsfristJahr?: number | null
 }
 
 export interface SchoolHoliday {

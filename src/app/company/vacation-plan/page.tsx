@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Select } from '@/components/ui/Select'
 import { SCHOOL_HOLIDAYS_2026 } from '@/lib/school-holidays'
-import { Employee, Location, VacationRequest, VacationPlanPreference } from '@/lib/types'
+import { Employee, Location, VacationRequest } from '@/lib/types'
 import { Palmtree, Building2, Filter, CalendarDays } from 'lucide-react'
 
 export default function CompanyVacationPlan() {
@@ -13,13 +13,11 @@ export default function CompanyVacationPlan() {
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
   const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
-  const [VACATION_PREFERENCES, setVACATION_PREFERENCES] = useState<VacationPlanPreference[]>([])
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
     fetch('/api/vacation-requests').then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests))
-    fetch('/api/vacation-preferences').then(r => r.json()).then(d => setVACATION_PREFERENCES(d.preferences))
   }, [])
 
   const employees = EMPLOYEES.filter(e => e.role === 'employee' && (locationFilter === 'all' || e.locationId === locationFilter))
@@ -28,7 +26,15 @@ export default function CompanyVacationPlan() {
   const approvedDays = requests.filter(v => v.status === 'approved').reduce((s, v) => s + v.days, 0)
   const pendingRequests = requests.filter(v => v.status === 'pending')
   const totalRemaining = employees.reduce((s, e) => s + (e.vacationDaysTotal - e.vacationDaysUsed), 0)
-  const withChildrenPriority = VACATION_PREFERENCES.filter(p => p.hasChildren && employees.some(e => e.id === p.employeeId)).length
+  /*
+   * §231 Gezählt wird jetzt am Feld, in dem es steht.
+   *
+   * Vorher kam die Zahl aus den Urlaubswünschen: „hat Kinder" stand dort als
+   * Kopie, und gezählt wurden nur die, die überhaupt einen Wunsch eingetragen
+   * hatten. Wer Kinder hat und nie etwas eintrug, fehlte in der Kachel —
+   * obwohl die Schulferienregelung für ihn genauso gilt.
+   */
+  const mitKindern = employees.filter(e => e.hasChildren).length
 
   const locationStats = LOCATIONS.map(loc => {
     const locReqs = VACATION_REQUESTS.filter(v => v.locationId === loc.id)
@@ -78,8 +84,8 @@ export default function CompanyVacationPlan() {
             <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center mb-3">
               <CalendarDays size={18} className="text-blue-600" />
             </div>
-            <p className="text-xl font-bold text-navy">{withChildrenPriority}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Mit Schulferien-Priorität</p>
+            <p className="text-xl font-bold text-navy">{mitKindern}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Mit schulpflichtigen Kindern</p>
           </div>
         </div>
 

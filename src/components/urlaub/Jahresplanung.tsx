@@ -13,7 +13,7 @@ import { VacationRulesChat } from '@/components/vacation/VacationRulesChat'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SCHOOL_HOLIDAYS_2026 } from '@/lib/school-holidays'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
-import type { VacationPlanEntry, VacationPlanSummary, VacationPlanConflict, VacationRules, VacationPlanPreference, Employee, Location } from '@/lib/types'
+import type { VacationPlanEntry, VacationPlanSummary, VacationPlanConflict, VacationRules, VacationRequest, Employee, Location } from '@/lib/types'
 import type { VacationRulesDraft } from '@/lib/vacation-rules-draft'
 import {
   Sparkles, Loader, CheckCircle, AlertTriangle, Baby, Palmtree,
@@ -35,17 +35,26 @@ const SCHOOL_HOLIDAY_MODE_LABEL: Record<VacationRules['schoolHolidayPriorityMode
 
 const GERMAN_STATES = ['Berlin', 'Bayern', 'Hamburg', 'Baden-Württemberg', 'Nordrhein-Westfalen', 'Hessen', 'Niedersachsen', 'Sachsen']
 const MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
-const PRIORITY_LABEL: Record<string, string> = { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' }
-const PRIORITY_COLOR: Record<string, string> = { high: 'bg-red-100 text-red-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-gray-100 text-gray-500' }
 
-interface PrefRow {
+/**
+ * §231 Ein eingereichter Antrag, so wie die Planung ihn braucht.
+ *
+ * Hier stand `PrefRow`: bevorzugte Monate, ein Freitextzeitraum, eine selbst
+ * gesetzte Priorität, eine Notiz. Gefragt wurde, ob das nicht doppelt
+ * gemoppelt sei neben den Anträgen. Der Befund war schärfer: Sagen drei Leute
+ * „Juli", weiß die Leitung nicht, ob sie kollidieren — und genau das zu sehen
+ * ist der Zweck dieser Seite. Ein Antrag trägt Datum, also kann er es.
+ */
+interface AntragZeile {
+  id: string
   employeeId: string
-  hasChildren: boolean
-  schoolHolidayPriority: 'low' | 'medium' | 'high'
-  preferredMonths: number[]
-  preferredPeriod: string
-  notes: string
-  priority: 'low' | 'medium' | 'high'
+  name: string
+  startDate: string
+  endDate: string
+  days: number
+  reason?: string
+  status: string
+  submittedAt: string
 }
 
 const AI_STEPS = [
@@ -101,6 +110,34 @@ export function Jahresplanung() {
     showToast('Urlaubsregeln gespeichert – gelten für alle künftigen Planungen')
   }
 
+  /**
+   * §231 Die Frist zum Einreichen — sie ersetzt die Wunschmonate.
+   *
+   * Das Jahr wird mitgeschrieben: Ohne es wäre nach dem Jahreswechsel nicht
+   * zu erkennen, ob eine Frist in der Vergangenheit abgelaufen oder nur alt
+   * ist — und die Maske würde jedes Jahr „abgelaufen" melden.
+   */
+  const handleFristChange = (datum: string) => {
+    const next: VacationRules = {
+      ...rules,
+      antragsfrist: datum || null,
+      antragsfristJahr: datum ? Number(datum.slice(0, 4)) : null,
+    }
+    setRules(next)
+    fetch('/api/vacation-rules', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locationId, rules: next }),
+    })
+      .then(() => showToast(datum
+        ? `Frist gespeichert — Anträge bis ${formatDate(datum)}`
+        : 'Frist entfernt'))
+      .catch(() => showToast('Die Frist konnte nicht gespeichert werden', 'error'))
+  }
+
+  const fristOffen = !!rules.antragsfrist
+    && rules.antragsfrist >= new Date().toISOString().slice(0, 10)
+
   const handleSchoolHolidayModeChange = (mode: VacationRules['schoolHolidayPriorityMode']) => {
     const next = { ...rules, schoolHolidayPriorityMode: mode }
     setRules(next)
@@ -134,32 +171,77 @@ export function Jahresplanung() {
   const [planningEnd, setPlanningEnd] = useState('2026-09-30')
   const [selectedState, setSelectedState] = useState(location?.state ?? 'Berlin')
 
-  const [vacationPreferences, setVacationPreferences] = useState<VacationPlanPreference[]>([])
+  const [antraege, setAntraege] = useState<VacationRequest[]>([])
 
   useEffect(() => {
-    fetch('/api/vacation-preferences')
+    if (!locationId) return
+    fetch(`/api/vacation-requests?locationId=${locationId}`)
       .then(r => r.json())
-      .then(d => setVacationPreferences(d.preferences ?? []))
-      .catch(() => setVacationPreferences([]))
-  }, [])
+      .then(d => setAntraege(d.requests ?? []))
+      .catch(() => setAntraege([]))
+  }, [locationId])
 
-  const [prefs, setPrefs] = useState<PrefRow[]>([])
+  /**
+   * §231 Die Anträge, die in den Planungszeitraum fallen.
+   *
+   * Abgelehnte bleiben draußen — über die ist entschieden. Bereits genehmigte
+   * bleiben DRIN: Sie stehen und belegen Platz, und ein Plan, der sie
+   * übersieht, plant über sie hinweg.
+   */
+  const zeilen = useMemo<AntragZeile[]>(() => antraege
+    .filter(a => a.status !== 'denied')
+    .filter(a => a.startDate <= planningEnd && a.endDate >= planningStart)
+    .filter(a => employees.some(e => e.id === a.employeeId))
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+    .map(a => ({
+      id: a.id,
+      employeeId: a.employeeId,
+      name: a.employeeName,
+      startDate: a.startDate,
+      endDate: a.endDate,
+      days: a.days,
+      reason: a.reason,
+      status: a.status,
+      submittedAt: a.submittedAt,
+    })),
+    [antraege, planningStart, planningEnd, employees])
 
-  useEffect(() => {
-    setPrefs(employees.map(emp => {
-      const pref = vacationPreferences.find(p => p.employeeId === emp.id)
-      return {
-        employeeId: emp.id,
-        hasChildren: emp.hasChildren ?? false,
-        schoolHolidayPriority: pref?.schoolHolidayPriority ?? 'medium',
-        preferredMonths: pref?.preferredMonths ?? [7, 8],
-        preferredPeriod: pref?.preferredPeriod ?? '',
-        notes: pref?.notes ?? '',
-        priority: pref?.priority ?? 'medium',
+  /**
+   * §231 Wo sich Anträge überschneiden — die Frage, für die es diese Seite gibt.
+   *
+   * Gezählt wird Tag für Tag, wie viele Menschen gleichzeitig weg wären, und
+   * verglichen mit `maxConcurrent`. Vorher ließ sich das nicht ausrechnen: Aus
+   * „Juli" und „Juli" folgt keine Überschneidung, nur ein Verdacht.
+   */
+  const engstellen = useMemo(() => {
+    const belegung = new Map<string, string[]>()
+    for (const z of zeilen) {
+      for (let t = Date.parse(`${z.startDate}T00:00:00Z`);
+        t <= Date.parse(`${z.endDate}T00:00:00Z`); t += 86400000) {
+        const tag = new Date(t).toISOString().slice(0, 10)
+        if (tag < planningStart || tag > planningEnd) continue
+        belegung.set(tag, [...(belegung.get(tag) ?? []), z.name])
       }
-    }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employees.length, vacationPreferences])
+    }
+    // Zusammenhängende Tage über der Grenze zu einem Zeitraum zusammenfassen —
+    // „12.–19.07., drei gleichzeitig" liest sich, acht Einzelzeilen nicht.
+    const ueber = Array.from(belegung.entries())
+      .filter(([, namen]) => namen.length > rules.maxConcurrent)
+      .sort(([a], [b]) => a.localeCompare(b))
+    const bloecke: { von: string; bis: string; namen: string[] }[] = []
+    for (const [tag, namen] of ueber) {
+      const letzter = bloecke[bloecke.length - 1]
+      const anschluss = letzter
+        && Date.parse(`${tag}T00:00:00Z`) - Date.parse(`${letzter.bis}T00:00:00Z`) === 86400000
+      if (anschluss) {
+        letzter.bis = tag
+        letzter.namen = Array.from(new Set(letzter.namen.concat(namen)))
+      } else {
+        bloecke.push({ von: tag, bis: tag, namen: Array.from(new Set(namen)) })
+      }
+    }
+    return bloecke
+  }, [zeilen, rules.maxConcurrent, planningStart, planningEnd])
 
   const [aiRunning, setAiRunning] = useState(false)
   const [aiStep, setAiStep] = useState(0)
@@ -176,20 +258,6 @@ export function Jahresplanung() {
     () => SCHOOL_HOLIDAYS_2026.filter(h => h.state === selectedState),
     [selectedState]
   )
-
-  const updatePref = (empId: string, field: keyof PrefRow, value: unknown) => {
-    setPrefs(prev => prev.map(p => p.employeeId === empId ? { ...p, [field]: value } : p))
-  }
-
-  const toggleMonth = (empId: string, month: number) => {
-    setPrefs(prev => prev.map(p => {
-      if (p.employeeId !== empId) return p
-      const months = p.preferredMonths.includes(month)
-        ? p.preferredMonths.filter(m => m !== month)
-        : [...p.preferredMonths, month]
-      return { ...p, preferredMonths: months }
-    }))
-  }
 
   const runAI = async () => {
     setAiRunning(true)
@@ -217,20 +285,28 @@ export function Jahresplanung() {
         maxConcurrent: rules.maxConcurrent,
         schoolHolidayPriorityMode: rules.schoolHolidayPriorityMode,
         state: selectedState,
-        employees: prefs.map(p => {
-          const emp = employees.find(e => e.id === p.employeeId)!
-          return {
-            id: emp.id,
-            name: emp.name,
-            hasChildren: p.hasChildren,
-            schoolHolidayPriority: p.hasChildren ? p.schoolHolidayPriority : undefined,
-            remainingDays: emp.vacationDaysTotal - emp.vacationDaysUsed,
-            preferredMonths: p.preferredMonths,
-            preferredPeriod: p.preferredPeriod,
-            notes: p.notes,
-            priority: p.priority,
-          }
-        }),
+        /*
+         * §231 Jede Person mit ihren EINGEREICHTEN Anträgen.
+         *
+         * Vorher gingen bevorzugte Monate und eine selbst gesetzte Priorität
+         * hinaus. Die Monate konnten keine Überschneidung zeigen, und wer die
+         * eigenen Wünsche selbst bewertet, taugt nicht als Rangfolge bei
+         * Streit. Jetzt bekommt die Planung Datumsbereiche und den Zeitpunkt
+         * der Einreichung — daran lässt sich beides entscheiden.
+         */
+        antragsfrist: rules.antragsfrist ?? null,
+        employees: employees.map(emp => ({
+          id: emp.id,
+          name: emp.name,
+          hasChildren: emp.hasChildren ?? false,
+          remainingDays: emp.vacationDaysTotal - emp.vacationDaysUsed,
+          antraege: zeilen
+            .filter(z => z.employeeId === emp.id)
+            .map(z => ({
+              startDate: z.startDate, endDate: z.endDate, days: z.days,
+              grund: z.reason, status: z.status, eingereichtAm: z.submittedAt,
+            })),
+        })),
         schoolHolidays,
       }
 
@@ -419,102 +495,128 @@ export function Jahresplanung() {
           </div>
         </Card>
 
-        {/* ── MITARBEITER-WÜNSCHE ────────────────────────────────────── */}
+        {/* ── EINGEREICHTE ANTRÄGE ───────────────────────────────────── */}
         <Card>
           <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
             <p className="text-sm font-bold text-navy flex items-center gap-2">
               <Palmtree size={15} className="text-green-500" />
-              Wünsche der Mitarbeiter
+              Eingereichte Anträge im Zeitraum
             </p>
-            <Button variant="ghost" size="sm" loading={collectingWishes} onClick={handleCollectWishes} className="gap-1.5 text-green-700 border border-gray-200">
-              <Send size={14} />Wünsche einsammeln
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" loading={collectingWishes}
+                onClick={handleCollectWishes}
+                className="gap-1.5 text-green-700 border border-gray-200">
+                <Send size={14} />Zum Einreichen auffordern
+              </Button>
+            </div>
           </div>
-          <p className="text-xs text-gray-400 mb-3">
-            Mitarbeiter werden benachrichtigt und tragen ihre Wünsche selbst im Mitarbeiterportal ein. Du kannst die Angaben hier bei Bedarf anpassen.
-          </p>
-          <div className="space-y-4">
-            {prefs.map(pref => {
-              const emp = employees.find(e => e.id === pref.employeeId)!
-              return (
-                <div key={pref.employeeId} className="border border-gray-100 rounded-xl p-3 space-y-3">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-navy flex items-center justify-center text-brand text-xs font-bold flex-shrink-0">
-                        {emp.name.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-navy flex items-center gap-1">
-                          {emp.name}
-                          {pref.hasChildren && <Baby size={12} className="text-blue-400" />}
-                        </p>
-                        <p className="text-xs text-gray-400">{emp.weeklyHours}h/Wo · {emp.vacationDaysTotal - emp.vacationDaysUsed} Tage Resturlaub</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <div
-                          onClick={() => updatePref(pref.employeeId, 'hasChildren', !pref.hasChildren)}
-                          className={`relative w-8 h-4 rounded-full transition-colors ${pref.hasChildren ? 'bg-blue-400' : 'bg-gray-300'}`}
-                        >
-                          <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${pref.hasChildren ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                        </div>
-                        <span className="text-xs text-gray-500">Hat Kinder</span>
-                      </label>
-                      <Select
-                        value={pref.priority}
-                        onChange={e => updatePref(pref.employeeId, 'priority', e.target.value)}
-                      >
-                        <option value="high">Prio: Hoch</option>
-                        <option value="medium">Prio: Mittel</option>
-                        <option value="low">Prio: Niedrig</option>
-                      </Select>
-                    </div>
-                  </div>
 
-                  {pref.hasChildren && (
-                    <div>
-                      <Select
-                        label="Priorität Schulferien:"
-                        value={pref.schoolHolidayPriority}
-                        onChange={e => updatePref(pref.employeeId, 'schoolHolidayPriority', e.target.value)}
-                      >
-                        <option value="high">Hoch</option>
-                        <option value="medium">Mittel</option>
-                        <option value="low">Niedrig</option>
-                      </Select>
-                    </div>
-                  )}
+          {/*
+            §231 Die Frist.
 
-                  {/* Month preference */}
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1.5">Bevorzugte Monate:</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {MONTH_NAMES.map((name, i) => {
-                        const month = i + 1
-                        const selected = pref.preferredMonths.includes(month)
-                        return (
-                          <button
-                            key={month}
-                            onClick={() => toggleMonth(pref.employeeId, month)}
-                            className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-all ${selected ? 'bg-navy text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-                          >
-                            {name}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+            Sie ersetzt die Wunschmonate: Vorher sammelte die Leitung
+            unverbindliche Monate ein und plante daraus. Jetzt setzt sie ein
+            Datum — und was bis dahin da ist, wird gemeinsam geplant, statt
+            dass der schnellste Antrag den besten Zeitraum bekommt.
+          */}
+          <div className="flex flex-wrap items-end gap-3 mt-3 mb-4">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">
+                Anträge einreichen bis
+              </label>
+              <Input
+                type="date"
+                data-test="antragsfrist"
+                value={rules.antragsfrist ?? ''}
+                onChange={e => handleFristChange(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-gray-500 max-w-md pb-2">
+              {rules.antragsfrist
+                ? fristOffen
+                  ? `Bis zum ${formatDate(rules.antragsfrist)} eingereichte Anträge werden `
+                    + 'gemeinsam geplant. Danach gilt: wer zuerst kommt.'
+                  : `Die Frist ist am ${formatDate(rules.antragsfrist)} abgelaufen — `
+                    + `${zeilen.length} ${zeilen.length === 1 ? 'Antrag liegt' : 'Anträge liegen'} vor.`
+                : 'Ohne Frist entscheidet die Reihenfolge des Eingangs. Mit Frist wird '
+                  + 'gemeinsam geplant.'}
+            </p>
+          </div>
 
-                  <Input
-                    value={pref.notes}
-                    onChange={e => updatePref(pref.employeeId, 'notes', e.target.value)}
-                    placeholder="Notiz / Begründung (optional)"
-                  />
+          {/*
+            §231 Die Engstellen — die Frage, für die es diese Seite gibt.
+
+            Aus „Juli" und „Juli" folgt keine Überschneidung, nur ein Verdacht.
+            Aus zwei Datumsbereichen folgt eine Zahl.
+          */}
+          {engstellen.length > 0 && (
+            <div data-test="engstellen" className="space-y-1.5 mb-4">
+              {engstellen.map(b => (
+                <div key={b.von} className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                  <AlertTriangle size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-900">
+                    <span className="font-semibold">
+                      {b.von === b.bis ? formatDate(b.von) : `${formatDate(b.von)} – ${formatDate(b.bis)}`}
+                    </span>
+                    {' '}· {b.namen.length} gleichzeitig abwesend, erlaubt sind {rules.maxConcurrent}
+                    <span className="text-amber-700"> ({b.namen.join(', ')})</span>
+                  </p>
                 </div>
-              )
-            })}
-          </div>
+              ))}
+            </div>
+          )}
+
+          {zeilen.length === 0 ? (
+            <EmptyState
+              icon={Palmtree}
+              title="Noch keine Anträge für diesen Zeitraum"
+              description={'Sobald Urlaub beantragt wird, steht er hier — mit Datum, Tagen '
+                + 'und dem Zeitpunkt der Einreichung. Über „Zum Einreichen auffordern" '
+                + 'bekommt das Team eine Nachricht.'}
+            />
+          ) : (
+            <div data-test="antragsliste" className="space-y-2">
+              {zeilen.map(z => {
+                const emp = employees.find(e => e.id === z.employeeId)
+                const nachFrist = !!rules.antragsfrist
+                  && z.submittedAt.slice(0, 10) > rules.antragsfrist
+                return (
+                  <div key={z.id} className="flex items-center gap-3 border border-gray-100 rounded-xl p-3">
+                    <div className="w-8 h-8 rounded-lg bg-navy flex items-center justify-center text-brand text-xs font-bold flex-shrink-0">
+                      {z.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-navy">{z.name}</p>
+                        {emp?.hasChildren && (
+                          <span title="Hat schulpflichtige Kinder">
+                            <Baby size={12} className="text-blue-400" />
+                          </span>
+                        )}
+                        <Badge variant={z.status === 'approved' ? 'success' : 'default'}>
+                          {z.status === 'approved' ? 'Genehmigt' : 'Offen'}
+                        </Badge>
+                        {nachFrist && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"
+                            title="Nach Ablauf der Frist eingereicht">
+                            nach Frist
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {formatDate(z.startDate)} – {formatDate(z.endDate)} · {z.days}{' '}
+                        {z.days === 1 ? 'Tag' : 'Tage'}
+                        {z.reason ? ` · ${z.reason}` : ''}
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-gray-400 flex-shrink-0 text-right">
+                      eingereicht<br />{formatDate(z.submittedAt.slice(0, 10))}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </Card>
 
         {/* ── AI PANEL ──────────────────────────────────────────────── */}
@@ -639,7 +741,6 @@ export function Jahresplanung() {
             <div className="space-y-3">
               {generatedPlan.map(entry => {
                 const emp = employees.find(e => e.id === entry.employeeId)
-                const pref = prefs.find(p => p.employeeId === entry.employeeId)
                 const totalDays = entry.slots.reduce((s, sl) => s + sl.days, 0)
                 return (
                   <div key={entry.employeeId} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
@@ -651,17 +752,12 @@ export function Jahresplanung() {
                         <div>
                           <p className="font-semibold text-navy flex items-center gap-1.5">
                             {entry.employeeName}
-                            {pref?.hasChildren && <Baby size={12} className="text-blue-400" />}
+                            {emp?.hasChildren && <Baby size={12} className="text-blue-400" />}
                           </p>
                           <p className="text-xs text-gray-400">{emp?.position} · {emp?.weeklyHours}h/Wo</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {pref && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${PRIORITY_COLOR[pref.priority]}`}>
-                            Prio: {PRIORITY_LABEL[pref.priority]}
-                          </span>
-                        )}
                         <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2.5 py-1 rounded-lg flex items-center gap-1">
                           <Palmtree size={11} />{totalDays} Tage gesamt
                         </span>

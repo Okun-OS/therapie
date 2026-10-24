@@ -181,10 +181,12 @@ export const DATENARTEN: Datenart[] = [
     id: 'wuensche',
     bezeichnung: 'Wünsche und Vorlieben',
     beschreibung:
-      'Ihre Dienstwünsche, Urlaubswünsche, Schichtvorlieben und alles, was Sie '
-      + 'freiwillig über sich hinterlegt haben.',
+      'Ihre Dienstwünsche, Schichtvorlieben und alles, was Sie freiwillig über '
+      + 'sich hinterlegt haben.',
+    // §231 `VacationPlanPreference` ist entfallen: Die Jahresplanung arbeitet
+    // mit den Urlaubsanträgen, und die stehen unter „Anträge und Abwesenheiten".
     modelle: [
-      'EmployeeRequest', 'WishSubmission', 'VacationPlanPreference',
+      'EmployeeRequest', 'WishSubmission',
       'EmployeePlanningProfile', 'EmployeeHumanContext', 'EmployeeProfile',
     ],
     behandlung: 'loeschen',

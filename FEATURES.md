@@ -4853,3 +4853,81 @@ der Dienst seine Zelle ÜBERNIMMT und nicht zusätzlich dasteht: vier
 Fehlzeit-Zellen plus eine Markierung sind die fünf Tage der Woche.
 
 Insgesamt **1939/1939** Prüfungen am laufenden System.
+
+## Block §231 (24.10.) — Die Urlaubswünsche konnten nicht zeigen, was sie zeigen sollten
+
+**Die Frage:** „Bei der Urlaubsplanung kann man angeben, in welchem Monat man
+gerne Urlaub haben möchte, aber nicht an welchem Tag. Ist es doppelt gemoppelt,
+wenn wir Urlaubsanträge haben und dann Wünsche für den Urlaub?"
+
+**Die Entscheidung:** „Ganz weg, denn dafür hat man ja die Anträge. Man könnte
+es so machen, dass anhand der Anträge der Urlaubsplan erstellt wird; man kann
+ja als Leitung eine Frist setzen zum Einreichen."
+
+### Der Befund war schärfer als die Frage
+
+Doppelt gemoppelt waren sie nicht — der Wunsch kam vor dem Jahr und war
+unverbindlich, der Antrag ist der verbindliche mit Datum. **Nur taugte der
+Wunsch in dieser Form nicht für seinen Zweck.**
+
+Sagen drei Leute „Juli", weiß die Leitung nicht, ob sie kollidieren. Und das
+zu sehen ist der ganze Grund, warum es eine Jahresplanung gibt. Aus zwei
+Monatsangaben folgt keine Überschneidung, nur ein Verdacht.
+
+Dazu bewertete jede Person ihre eigenen Wünsche selbst — „Priorität: hoch". Das
+ging als Rangfolge in die Planung ein. Als Kriterium bei Streit ist eine
+Selbsteinschätzung kein Kriterium.
+
+### Was an ihre Stelle tritt
+
+**Die Frist.** Die Leitung setzt ein Datum: „Anträge einreichen bis 30.11."
+Alles, was bis dahin da ist, wird gemeinsam geplant — nicht nach Reihenfolge
+des Eingangs. Danach gilt: wer zuerst kommt. Das ist, was die Monatswünsche
+leisten sollten: Zeit zum Überlegen, ohne dass der schnellste Antrag den
+besten Zeitraum bekommt.
+
+**Die Engstellen.** Die Seite rechnet Tag für Tag, wie viele Menschen
+gleichzeitig weg wären, und vergleicht mit der erlaubten Zahl. Zusammenhängende
+Tage werden zu einem Zeitraum gefasst:
+
+> **13.07.2028 – 17.07.2028** · 3 gleichzeitig abwesend, erlaubt sind 2
+> (Maria Schneider, Thomas Weber, Michael Braun)
+
+Nachgemessen mit drei Anträgen, von denen zwei vom 6.–17. und einer vom
+13.–24. gehen: Die Engstelle nennt **13.–17.**, nicht den ganzen Juli.
+
+**Die Planung entscheidet über Anträge statt über Monate.** Die Rangfolge bei
+Konflikten ist jetzt: fristgerecht vor nachträglich, dann wer mehr Resturlaub
+offen hat, dann die Ferienregelung, und erst zuletzt der Zeitpunkt der
+Einreichung. Bereits genehmigte Anträge stehen fest und werden nicht
+verschoben. Wo ein Antrag nicht gehen kann, schlägt die Planung einen nahen
+Zeitraum vor und sagt, wie weit verschoben wurde.
+
+### Was dabei sonst noch auffiel
+
+**`setVacationRules` gab `void` zurück**, und die Route antwortete darauf mit
+`{ rules: undefined }`. Wer speicherte, bekam nichts zurück und musste seinem
+eigenen Entwurf glauben.
+
+**Die Kachel „Mit Schulferien-Priorität"** zählte aus den Urlaubswünschen —
+also nur die, die überhaupt einen Wunsch eingetragen hatten. Wer Kinder hat und
+nie etwas eintrug, fehlte in der Zahl, obwohl die Ferienregelung für ihn
+genauso gilt. Gezählt wird jetzt am Feld, in dem es steht.
+
+### Was mit den Daten geschieht
+
+`VacationPlanPreference` ist gelöscht. Darin standen unverbindliche
+Monatsangaben für eine Planung, die es in dieser Form nicht mehr gibt; in einen
+Antrag lassen sie sich nicht übersetzen, weil ihnen das Datum fehlt. Die
+verbindlichen Angaben — die Urlaubsanträge — liegen in `VacationRequest` und
+bleiben unberührt. Der Eintrag im DSGVO-Verzeichnis, die Auskunft und die
+Löschroutine sind im selben Schritt mitgegangen; eine Tabelle, die nur in einem
+der drei fehlt, ist schlimmer als eine, die überall steht.
+
+Nachweis: `c-abwesenheit.mjs` **30/30**, `browser/urlaub-aus-antraegen.mjs`
+**15/15**, DSGVO **63/63** und **66/66**. Insgesamt **1942/1942** Prüfungen am
+laufenden System.
+
+Mitgeprüft wird, dass die alte Schnittstelle **nicht mehr antwortet** und dass
+die Monatsknöpfe aus der Maske verschwunden sind — eine entfernte
+Schnittstelle, die weiter antwortet, ist eine, die noch jemand benutzt.
