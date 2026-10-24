@@ -98,6 +98,41 @@ try {
     check(`„${weg}" ist entfernt`, !dialog.includes(weg))
   }
 
+  /*
+   * §225 Das Tagesmuster — bis hierher gab es dafür kein Eingabefeld.
+   *
+   * Das Feld stand in der Datenbank, die Prüfung in `tagesmuster.ts`, der
+   * Rechendienst las es — nur konnte es niemand ausfüllen. Das Regelpaket
+   * der Kita sagt ausdrücklich: „Wer keines hinterlegt hat, wird wie bisher
+   * frei verplant." Genau das ist beim Kunden passiert: Eine
+   * 35-Stunden-Kraft bekam 7:30–15:00, dann 7:00–15:30, dann 8:00–13:00.
+   * Die Woche stimmte, der Plan war unbrauchbar.
+   */
+  check('Das Tagesmuster lässt sich eintragen', /Tagesmuster/.test(dialog))
+
+  const zeilenVorher = await seite.locator('[data-test="muster-stunden"]').count()
+  await seite.getByRole('button', { name: /Dienstlänge/ }).click()
+  await seite.waitForTimeout(300)
+  check('Eine Dienstlänge lässt sich hinzufügen',
+    await seite.locator('[data-test="muster-stunden"]').count() === zeilenVorher + 1)
+
+  // Beliebige Längen, nicht nur eine Handvoll fester Fälle: Eine
+  // 30-Stunden-Kraft mit einem Sechsstundentag muss sich genauso eintragen
+  // lassen wie „fünfmal sieben".
+  const auswahl = await seite.locator('[data-test="muster-stunden"]').last()
+    .locator('option').allInnerTexts()
+  check('Die Dienstlängen gehen in Viertelstunden',
+    auswahl.includes('6 Std.') && auswahl.includes('7,5 Std.') && auswahl.includes('8 Std.'),
+    `${auswahl.length} Längen zur Wahl`)
+
+  await seite.locator('[data-test="muster-tage"]').last().selectOption('1')
+  await seite.locator('[data-test="muster-stunden"]').last().selectOption('6')
+  await seite.waitForTimeout(400)
+  const rueckmeldung = await seite.locator('body').innerText()
+  check('Die Maske rechnet mit und sagt, was herauskommt',
+    /Std\. auf \d+ Tagen|Das Muster ergibt|Das Muster belegt/.test(rueckmeldung),
+    (rueckmeldung.match(/Das Muster [^\n]+|[\d,]+ Std\. auf \d+ Tagen/) ?? ['—'])[0].slice(0, 80))
+
   await seite.request.patch(`${BASIS}/api/employees/${id}`, { data: { active: false } })
   await ctx.close()
 

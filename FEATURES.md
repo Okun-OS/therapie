@@ -4455,3 +4455,60 @@ Nachweis: in `chat-auf-dem-telefon.mjs`, jetzt **15/15**. Die Prüfung rechnet
 die Überschneidung der beiden Rechtecke aus — 0 px². **Gegengeprüft:** Mit
 entferntem Abstand wird sie rot. Eine Prüfung, die den alten Zustand nicht
 anzeigt, wäre keine.
+
+## Block §225 (24.10.) — Das Tagesmuster ließ sich nirgends eintragen
+
+**Die Meldung:** „Bei Juliane war es die ersten drei Tage richtig — 7:30 bis
+15:00. Und dann 7:00 bis 15:30, was ja eine Achtstundenschicht ist. Und dann
+dafür 8:00 bis 13:00, also wieder kürzer. Dadurch kommt es auf die 35 Stunden,
+aber das kann nicht sein. Bei 35 Stunden muss es starr fünfmal sieben sein."
+
+### Der Befund war ein anderer als vermutet
+
+Das Regelpaket der Kita ist in Ordnung. Es sagt wörtlich: *„Die Muster kommen
+aus den Stammdaten, nicht von hier. Wer keines hinterlegt hat, wird wie bisher
+frei verplant."*
+
+Das Feld `tagesmuster` gab es in der Datenbank. Die Prüfung dazu gab es in
+`tagesmuster.ts` — mit Fehlertexten, Grenzen und Abgleich gegen die
+Stundenzahl. Die Schnittstelle schrieb es. Der Rechendienst las es.
+
+**Nur gab es keine einzige Stelle im Programm, an der man es ausfüllen
+konnte.** Setzen ließ es sich allein beim Belegschafts-Import. Wer danach
+jemanden anlegte oder die Stunden änderte, bekam einen Menschen ohne Muster —
+und der Rechendienst tat genau das, was der Kommentar ankündigt.
+
+Dass es bei den Vollzeitkräften stimmte, passt dazu: Bei 40 Stunden und den
+vorhandenen Diensten fällt fünfmal acht fast von allein heraus.
+
+### Die Maske
+
+Angeklickt statt getippt — **und trotzdem frei.** Je Zeile eine Dienstlänge
+und wie oft sie vorkommt, beides aus einer Liste; bis zu vier verschiedene
+Längen nebeneinander, in Viertelstunden von 1 bis 12.
+
+| | |
+|---|---|
+| „fünfmal sieben" | `5 × 7 Std.` |
+| „einmal sechs, dreimal acht, ein fester freier Tag" | `1 × 6 Std.` + `3 × 8 Std.` |
+
+**Warum kein Freitext:** „Dreimal acht und einmal sechs" ist für einen
+Menschen eindeutig und für ein Programm nicht. Ein falsch geratenes Muster
+erzeugt keinen schlechteren Plan, sondern gar keinen — CP-SAT INFEASIBLE, und
+die Fehlermeldung nennt dann Urlaube und Ruhezeiten, von denen keine zutrifft.
+
+**Warum keine feste Auswahl aus „5×7" und „5×8":** Weil die Wirklichkeit nicht
+aus zwei Fällen besteht.
+
+**„Gleichmäßig verteilen"** rechnet aus Stunden und verfügbaren Tagen das
+naheliegende Muster — ein Vorschlag, keine Festlegung.
+
+Die Rückmeldung unter der Maske kommt aus **derselben Funktion**, die auf dem
+Server entscheidet. Zwei Prüfungen mit eigenen Grenzen laufen auseinander, und
+dann lehnt die Maske etwas ab, was gespeichert würde — oder schlimmer:
+umgekehrt.
+
+Nachweis: `zugang-und-planungsprofil.mjs` **21/21** (vorher 16). Nachgemessen
+an der Schnittstelle: `5 × 7` wird für eine 35-Stunden-Kraft gespeichert,
+`5 × 8` mit „Das Muster ergibt 40 Wochenstunden, geplant werden 35" abgelehnt,
+`4 × 8 + 1 × 3` gespeichert und unverändert wieder gelesen.

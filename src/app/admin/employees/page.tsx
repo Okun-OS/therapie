@@ -8,12 +8,15 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
+import {
+  pruefeTagesmuster, musterText, moeglicheArbeitstage, type Tagesmuster,
+} from '@/lib/tagesmuster'
 import { FeatureIntro } from '@/components/onboarding/FeatureIntro'
 import { EmployeeCreationChat } from '@/components/employees/EmployeeCreationChat'
 import { EmployeeCreationForm } from '@/components/employees/EmployeeCreationForm'
 import { ZugangVerwalten } from '@/components/employees/ZugangVerwalten'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Users, Plus, Search, Clock, TrendingUp, Palmtree, ChevronRight, MessageCircle, Sparkles, ListChecks, AlertTriangle } from 'lucide-react'
+import { Users, Plus, Search, Clock, TrendingUp, Palmtree, ChevronRight, MessageCircle, Sparkles, ListChecks, AlertTriangle, X } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import type { Employee, OvertimeRequest, Absence } from '@/lib/types'
 import type { EmployeeDraft } from '@/lib/employee-draft'
@@ -51,6 +54,8 @@ interface PlanningProfile {
   /** §171 leer = Vertragsstunden aus den Stammdaten */
   planungsStundenSoll: number | null
   surchargeMode: string
+  /** §225 Wie sich die Wochenstunden auf die Tage verteilen */
+  tagesmuster?: Array<{ stunden: number; tage: number }> | null
 }
 
 export default function AdminEmployees() {
@@ -666,6 +671,35 @@ export default function AdminEmployees() {
                     </p>
                   </div>
 
+                  {/*
+                    §225 Das Tagesmuster — bis hierher gab es dafür KEIN
+                    Eingabefeld.
+
+                    Das Regelpaket der Kita sagt ausdrücklich: „Die Muster
+                    kommen aus den Stammdaten. Wer keines hinterlegt hat, wird
+                    wie bisher frei verplant." Genau das ist passiert — eine
+                    35-Stunden-Kraft bekam 7:30–15:00, dann 7:00–15:30, dann
+                    8:00–13:00. Die Woche stimmte, der Plan war unbrauchbar.
+                    Das Feld gab es in der Datenbank und in der Prüfung, nur
+                    nirgends eine Stelle, an der man es ausfüllen konnte.
+
+                    Angeklickt statt getippt, und trotzdem frei: beliebige
+                    Dienstlängen in Viertelstunden, bis zu vier verschiedene
+                    nebeneinander. „Einmal sechs, dreimal acht, ein fester
+                    freier Tag" lässt sich damit genauso abbilden wie
+                    „fünfmal sieben".
+                  */}
+                  <Tagesmusterfeld
+                    muster={planningProfileDraft.tagesmuster ?? null}
+                    setzen={m => setPlanningProfileDraft(d => d ? { ...d, tagesmuster: m } : d)}
+                    sollStunden={planningProfileDraft.planungsStundenSoll
+                      ?? selectedEmployee?.weeklyHours ?? null}
+                    moeglicheTage={moeglicheArbeitstage(
+                      selectedEmployee?.workDaysPerWeek,
+                      selectedEmployee?.fixedOffDays,
+                    )}
+                  />
+
                   {/* Zuschlagsregelung */}
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Zuschlagsregelung</label>
@@ -764,5 +798,149 @@ export default function AdminEmployees() {
         employeeName={editFormEmployee?.name}
       />
     </>
+  )
+}
+
+/**
+ * §225 Das Tagesmuster eintragen — angeklickt, nicht getippt.
+ *
+ * WARUM NICHT EINFACH EIN TEXTFELD
+ * „Dreimal acht und einmal sechs" ist für einen Menschen eindeutig und für
+ * ein Programm nicht. Jede Schreibweise, die jemand sich ausdenkt, müsste
+ * geraten werden — und ein falsch geratenes Muster erzeugt keinen schlechten
+ * Plan, sondern gar keinen (CP-SAT INFEASIBLE, siehe `tagesmuster.ts`).
+ *
+ * WARUM NICHT EINFACH EINE AUSWAHL „5 × 7" / „5 × 8"
+ * Weil die Wirklichkeit nicht aus zwei Fällen besteht. Eine 30-Stunden-Kraft
+ * mit einem Sechsstundentag, drei Achtstundentagen und einem festen freien
+ * Tag muss sich genauso eintragen lassen wie „fünfmal sieben".
+ *
+ * Deshalb Zeilen: je Zeile eine Dienstlänge und wie oft sie vorkommt, beides
+ * aus einer Liste gewählt. Darunter steht, was dabei herauskommt, und ob es
+ * zu den Stunden und den freien Tagen passt — mit genau der Prüfung, die
+ * nachher auch der Server anwendet.
+ */
+function Tagesmusterfeld({ muster, setzen, sollStunden, moeglicheTage }: {
+  muster: Tagesmuster | null
+  setzen: (m: Tagesmuster | null) => void
+  sollStunden: number | null
+  moeglicheTage: number
+}) {
+  const zeilen = muster ?? []
+  const pruefung = pruefeTagesmuster(
+    zeilen.length > 0 ? zeilen : null, sollStunden, moeglicheTage)
+
+  // Viertelstunden von 1 bis 12 — die Grenzen aus `tagesmuster.ts`.
+  const laengen: number[] = []
+  for (let h = 1; h <= 12; h += 0.25) laengen.push(Math.round(h * 100) / 100)
+
+  const aendern = (i: number, feld: 'stunden' | 'tage', wert: number) => {
+    const neu = zeilen.map((z, k) => k === i ? { ...z, [feld]: wert } : z)
+    setzen(neu)
+  }
+
+  /*
+   * „Gleichmäßig verteilen" rechnet aus den Stunden und den verfügbaren
+   * Tagen das naheliegende Muster: 35 Stunden auf 5 Tage sind fünfmal
+   * sieben. Es ist ein Vorschlag und keine Festlegung — wer es anders
+   * braucht, ändert die Zeilen danach.
+   */
+  function gleichmaessig() {
+    if (!sollStunden || moeglicheTage <= 0) return
+    const proTag = Math.round((sollStunden / moeglicheTage) * 4) / 4
+    setzen([{ stunden: proTag, tage: moeglicheTage }])
+  }
+
+  return (
+    <div>
+      <label className="text-xs text-gray-500 mb-1 block">
+        Tagesmuster — wie sich die Wochenstunden verteilen
+      </label>
+
+      {zeilen.length === 0 ? (
+        <p className="text-[11px] text-gray-400 mb-2">
+          Kein festes Muster: Der Dienstplan verteilt die Stunden frei über die
+          Woche. Für Verträge mit festen Tageslängen hier eintragen.
+        </p>
+      ) : (
+        <div className="space-y-1.5 mb-2">
+          {zeilen.map((z, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <select
+                value={z.tage}
+                onChange={e => aendern(i, 'tage', Number(e.target.value))}
+                data-test="muster-tage"
+                className="text-sm border border-gray-200 rounded-lg px-2 py-1.5"
+              >
+                {[1, 2, 3, 4, 5, 6, 7].map(t => (
+                  <option key={t} value={t}>{t} ×</option>
+                ))}
+              </select>
+              <select
+                value={z.stunden}
+                onChange={e => aendern(i, 'stunden', Number(e.target.value))}
+                data-test="muster-stunden"
+                className="text-sm border border-gray-200 rounded-lg px-2 py-1.5"
+              >
+                {laengen.map(h => (
+                  <option key={h} value={h}>
+                    {String(h).replace('.', ',')} Std.
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => setzen(zeilen.filter((_, k) => k !== i))}
+                aria-label="Zeile entfernen"
+                className="p-1.5 rounded-lg text-gray-300 hover:text-red-600 hover:bg-red-50"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-1.5">
+        {zeilen.length < 4 && (
+          <button
+            onClick={() => setzen([...zeilen, { stunden: 8, tage: 1 }])}
+            data-test="muster-zeile-dazu"
+            className="text-[11px] font-medium px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+          >
+            + Dienstlänge
+          </button>
+        )}
+        {sollStunden && moeglicheTage > 0 && (
+          <button
+            onClick={gleichmaessig}
+            className="text-[11px] font-medium px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+          >
+            Gleichmäßig verteilen
+          </button>
+        )}
+        {zeilen.length > 0 && (
+          <button
+            onClick={() => setzen(null)}
+            className="text-[11px] font-medium px-2 py-1 rounded-lg text-gray-400 hover:text-gray-600"
+          >
+            Muster entfernen
+          </button>
+        )}
+      </div>
+
+      {/*
+        Die Rückmeldung kommt aus derselben Funktion, die nachher auf dem
+        Server entscheidet. Zwei Prüfungen mit eigenen Grenzen laufen
+        auseinander — und dann lehnt die Maske etwas ab, was gespeichert
+        würde, oder schlimmer: umgekehrt.
+      */}
+      {zeilen.length > 0 && (
+        <p className={`text-[11px] mt-1.5 ${pruefung.fehler ? 'text-red-600' : 'text-green-700'}`}>
+          {pruefung.fehler
+            ?? `${musterText(pruefung.muster)} — ${String(pruefung.wochenstunden).replace('.', ',')} `
+              + `Std. auf ${pruefung.arbeitstage} Tagen.`}
+        </p>
+      )}
+    </div>
   )
 }
