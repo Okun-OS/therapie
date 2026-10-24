@@ -1766,10 +1766,22 @@ export default function AdminSchedule() {
                                   {week.map((day, i) => {
                                     const dateStr = toDateString(day)
                                     const assignment = getDisplayAssignment(emp.id, dateStr)
-                                    // §227 Nur fragen, wenn kein Dienst steht: Ein Dienst
-                                    // trotz Krankmeldung ist ein eigener Fall, und den
-                                    // soll die Leitung sehen, nicht überdeckt bekommen.
-                                    const ausfall = assignment ? null : ausfallAmTag(emp.id, dateStr)
+                                    /*
+                                     * §227/§230 Zwei verschiedene Fälle, zwei Darstellungen.
+                                     *
+                                     * Steht kein Dienst, ist die Zelle die Fehlzeit selbst —
+                                     * „Krank" mit den gutgeschriebenen Stunden (§227).
+                                     *
+                                     * Steht ein Dienst UND eine Fehlzeit, ist das der
+                                     * gefährlichere Fall: Im Plan steht jemand, der nicht
+                                     * kommt. §230 — eine Krankmeldung nimmt keinen
+                                     * veröffentlichten Dienst von selbst aus dem Plan, und
+                                     * das soll sie auch nicht. Aber die Leitung muss es
+                                     * sehen, sonst hält sie die Schicht für besetzt.
+                                     */
+                                    const fehlzeitHeute = ausfallAmTag(emp.id, dateStr)
+                                    const ausfall = assignment ? null : fehlzeitHeute
+                                    const unbesetzt = assignment ? fehlzeitHeute : null
                                     // Fix 1b: hide cells outside location work days or period bounds
                                     const isNonWorkDay2 = !isLocationWorkDay(day)
                                     const isOutsidePeriod2 = dateStr < periodStart || dateStr > periodEnd
@@ -1796,6 +1808,17 @@ export default function AdminSchedule() {
                                             )}
                                             <Icon size={12} style={{ color: farbe!.color }} />
                                             <span className="text-[10px] font-semibold" style={{ color: farbe!.color }}>{assignment.startTime}–{assignment.endTime}</span>
+                                            {unbesetzt && (
+                                              <span
+                                                data-test="plan-unbesetzt"
+                                                data-art={unbesetzt.art}
+                                                className="text-[9px] font-bold leading-tight px-1 rounded bg-red-600 text-white"
+                                                title={`${unbesetzt.text} — dieser Dienst ist im Plan noch besetzt. `
+                                                  + 'Über „fällt aus" eine Vertretung suchen.'}
+                                              >
+                                                {unbesetzt.text.toUpperCase()} — nicht da
+                                              </span>
+                                            )}
                                             {assignment.gruppe && (
                                               <span className="text-[9px] leading-tight truncate max-w-full" style={{ color: farbe!.color, opacity: 0.8 }}>{unitNameById.get(assignment.gruppe) ?? assignment.gruppe}</span>
                                             )}

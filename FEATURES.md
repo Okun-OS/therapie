@@ -4803,3 +4803,53 @@ vor dem Jahr und ist unverbindlich, der Antrag ist der verbindliche mit Datum.
 Verschiedene Zwecke — nur taugt der Wunsch in dieser Form kaum für seinen.
 
 Nachweis: Solver **176** Tests (vorher 173), `f`-Prüfungen **211/211**.
+
+## Block §230 (24.10.) — Im Plan stand jemand, der nicht kommt
+
+**Die Bitte:** „Dann müssen wir uns auch nochmal die Logik von unseren
+Ausfällen angucken."
+
+### Der Befund
+
+Für einen Dienst, der ausfällt, gibt es den Weg: im Plan anklicken, „fällt
+aus", Empfänger wählen. Der Dienst verschwindet aus dem Plan, eine
+Vertretungsanfrage entsteht, die Betroffenen werden benachrichtigt (§101).
+
+**Eine Krankmeldung löste davon nichts aus.** Wer am Montagmorgen im
+veröffentlichten Plan steht und sich krankmeldet, bleibt dort stehen. Niemand
+wird gefragt, nichts wird markiert — die Leitung sieht eine besetzte Schicht.
+
+### Warum der Dienst trotzdem stehen bleibt
+
+Ihn automatisch zu löschen wäre schlimmer. „Voraussichtlich bis" ist eine
+Schätzung: Wer sich für zwei Wochen krankmeldet und nach vier Tagen
+zurückkommt, hätte dann einen leeren Plan, aus dem seine Dienste
+unwiederbringlich verschwunden sind. Und eine Meldung für den nächsten Monat
+würde Dienste löschen, die noch stattfinden.
+
+**Also sichtbar machen, nicht entscheiden.** Die Zelle trägt eine rote
+Markierung „KRANK — nicht da" am Dienst, der noch besetzt ist, und der Weg
+„fällt aus" liegt daneben wie immer. Die Entscheidung bleibt bei der Leitung;
+nur die Grundlage dafür war vorher nicht da.
+
+**Und die Zahl steht in der Benachrichtigung:** „Anna Fischer hat sich am
+08.06. krankgemeldet. Ein geplanter Dienst ist betroffen und im Plan noch
+besetzt." Das ist der Unterschied zwischen „gute Besserung" und „heute fehlen
+drei Leute".
+
+### Drei Zustände, drei Darstellungen
+
+| Lage | Zelle |
+|---|---|
+| Dienst, keine Fehlzeit | der Dienst, wie immer |
+| Fehlzeit, kein Dienst | „Krank" mit den gutgeschriebenen Stunden (§227) |
+| **beides** | der Dienst **plus** „KRANK — nicht da" |
+
+Nachweis: `c3-krankmeldung.mjs` **22/22** (vorher 18),
+`browser/krank-im-plan.mjs` **16/16** (vorher 12). Mit Gegenprobe: Ohne
+Krankmeldung trägt derselbe Dienst keine Markierung — sonst wäre „ist
+markiert" grün, weil die Seite jeden Dienst markiert. Und nachgerechnet, dass
+der Dienst seine Zelle ÜBERNIMMT und nicht zusätzlich dasteht: vier
+Fehlzeit-Zellen plus eine Markierung sind die fünf Tage der Woche.
+
+Insgesamt **1939/1939** Prüfungen am laufenden System.

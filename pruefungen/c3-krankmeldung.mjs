@@ -28,6 +28,9 @@
 // Ein Wochenendtag und ein fester freier Tag dürfen NICHTS gutschreiben.
 
 import { pruefer, login, hole, sende } from './helfer.mjs'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 const { check, bilanz } = pruefer()
 
@@ -169,6 +172,68 @@ check('Die Krankwoche zählt FÜNF Arbeitstage, nicht sieben',
   konto.body.summary?.sickDays === 5,
   `${konto.body.summary?.sickDays} Tage (gemeldet waren 7 Kalendertage)`)
 
+// ── §230 Ein veröffentlichter Dienst bleibt stehen — und wird gemeldet ────
+console.log('\n=== §230 Krank, aber im Plan noch besetzt ===')
+
+/*
+ * Der gefährlichere Fall: Die Person ist im veröffentlichten Plan eingeteilt
+ * und meldet sich krank. Der Dienst bleibt stehen — das ist richtig, denn
+ * „voraussichtlich bis" ist eine Schätzung, und eine Meldung für nächsten
+ * Monat darf keine Dienste löschen, die noch stattfinden. Aber die Leitung
+ * muss die ZAHL kennen, sonst hält sie die Schichten für besetzt.
+ */
+const planTag = tagePlus(montag, 1)   // ein Dienstag mitten in der Krankwoche
+const dienste = (await hole(leitung, `/api/shifts?locationId=${locationId}`)).body.shifts ?? []
+const dienst = dienste[0]
+
+const vorherPostZwei = (await hole(leitung, `/api/notifications?employeeId=${leitungId}`))
+  .body.notifications ?? []
+
+/*
+ * Der Dienst wird direkt in die Datenbank geschrieben, nicht über
+ * `/api/schedule-entries/save-week`: Dieser Weg ERSETZT die ganze Woche und
+ * würde die Dienste aller anderen an diesem Tag löschen — und damit die
+ * Ausgangszustände der Dienstplan-Prüfungen.
+ */
+await prisma.scheduleEntry.deleteMany({ where: { employeeId: annaId, date: planTag } })
+await prisma.scheduleEntry.create({
+  data: {
+    employeeId: annaId, locationId, date: planTag,
+    shiftId: dienst?.id, status: 'confirmed',
+  },
+})
+const eingeteilt = (await hole(leitung, `/api/schedule-entries?locationId=${locationId}`))
+  .body.entries ?? []
+check('Ein Dienst steht für den Krankheitstag im Plan',
+  eingeteilt.some(e => e.employeeId === annaId && e.date === planTag),
+  `${dienst?.name} am ${planTag}`)
+
+const zweite = await sende(anna, '/api/absences', 'POST', {
+  employeeId: annaId, employeeName: meAnna.name, locationId,
+  type: 'krankheit', startDate: planTag, endDate: planTag, days: 1,
+})
+check('Die zweite Krankmeldung ist gespeichert', zweite.status === 200,
+  zweite.body.error ?? 'gespeichert')
+
+const neuePost = ((await hole(leitung, `/api/notifications?employeeId=${leitungId}`))
+  .body.notifications ?? []).filter(n => !vorherPostZwei.some(v => v.id === n.id))
+const meldung2 = neuePost.find(n => n.requestId === zweite.body.absence?.id)
+check('Die Nachricht nennt den betroffenen geplanten Dienst',
+  /geplanter Dienst ist betroffen|geplante Dienste sind betroffen/.test(meldung2?.body ?? ''),
+  meldung2?.body ?? '—')
+
+/*
+ * Die Gegenprobe: Der Dienst muss NOCH DA sein. Eine Krankmeldung, die
+ * veröffentlichte Dienste stillschweigend löscht, nimmt der Leitung die
+ * Entscheidung aus der Hand — und bei einer Meldung für nächsten Monat auch
+ * die Dienste, die dann doch stattfinden.
+ */
+const nachMeldung = (await hole(leitung, `/api/schedule-entries?locationId=${locationId}`))
+  .body.entries ?? []
+check('Der eingeteilte Dienst steht weiterhin im Plan',
+  nachMeldung.some(e => e.employeeId === annaId && e.date === planTag),
+  `${nachMeldung.filter(e => e.employeeId === annaId).length} Dienste für Anna`)
+
 // ── §227 Im Dienstplan ────────────────────────────────────────────────────
 console.log('\n=== §227 Die Fehlzeit steht im Plan ===')
 
@@ -209,6 +274,8 @@ check('Die Krankmeldungen einer Kollegin sind NICHT abrufbar',
 for (const a of (await hole(leitung, `/api/absences?employeeId=${annaId}`)).body.absences ?? []) {
   await sende(leitung, `/api/absences/${a.id}`, 'DELETE', {})
 }
+await prisma.scheduleEntry.deleteMany({ where: { employeeId: annaId, date: planTag } })
+await prisma.$disconnect()
 for (const n of (await hole(leitung, `/api/notifications?employeeId=${leitungId}`))
   .body.notifications ?? []) {
   if (n.type === 'sick_leave_reported' || n.type === 'absence_reported') {

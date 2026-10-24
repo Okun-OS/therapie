@@ -141,12 +141,31 @@ async function meldeDerLeitung(
     ? `am ${datumKurz(startDate)}`
     : `vom ${datumKurz(startDate)} bis ${datumKurz(endDate)}`
 
+  /*
+   * §230 Wie viele geplante Dienste davon betroffen sind.
+   *
+   * Eine Krankmeldung nimmt keinen veröffentlichten Dienst von selbst aus dem
+   * Plan — das wäre falsch: „voraussichtlich bis" ist eine Schätzung, und eine
+   * Meldung für nächsten Monat würde sonst Dienste löschen, die noch
+   * stattfinden. Aber die Leitung muss die Zahl KENNEN, sonst hält sie die
+   * Schichten für besetzt. Die Zahl ist der Unterschied zwischen „gute
+   * Besserung" und „heute fehlen drei Leute".
+   */
+  const betroffen = await prisma.scheduleEntry.count({
+    where: { employeeId, date: { gte: startDate, lte: endDate } },
+  })
+  const dienstHinweis = betroffen === 1
+    ? ' Ein geplanter Dienst ist betroffen und im Plan noch besetzt.'
+    : betroffen > 1
+      ? ` ${betroffen} geplante Dienste sind betroffen und im Plan noch besetzt.`
+      : ''
+
   await Promise.all(leitungen.map(l => notifyEmployee(l.id, {
     type: krank ? 'sick_leave_reported' : 'absence_reported',
     title: krank ? 'Krankmeldung' : 'Abwesenheit gemeldet',
-    body: krank
+    body: (krank
       ? `${name} hat sich ${zeitraum} krankgemeldet.`
-      : `${name} ist ${zeitraum} abwesend.`,
+      : `${name} ist ${zeitraum} abwesend.`) + dienstHinweis,
     requestId: absence.id,
     url: '/admin/schedule',
     // §227 Eine Krankmeldung kommt morgens um halb sechs und ändert den Plan

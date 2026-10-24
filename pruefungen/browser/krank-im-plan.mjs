@@ -116,6 +116,10 @@ async function zeileLesen() {
       zuweisKnoepfe: zeile
         ? [...zeile.querySelectorAll('button[title="Schicht manuell zuweisen"]')].length
         : 0,
+      // §230 Die Markierung an einem Dienst, der noch besetzt ist, obwohl die
+      // Person krankgemeldet ist.
+      unbesetztMarken: [...(zeile?.querySelectorAll('[data-test="plan-unbesetzt"]') ?? [])]
+        .map(m => m.textContent?.trim() ?? ''),
     }
   }, tim.id)
 }
@@ -166,6 +170,71 @@ check('Jeder Tag schreibt sieben Stunden gut',
 check('Und die Woche steht bei 35 von 35, nicht bei 16',
   Number(nachher.ist) === 35 && Number(nachher.soll) === 35,
   `${nachher.ist} / ${nachher.soll}`)
+
+// ── §230 Ein Dienst, der noch besetzt ist ─────────────────────────────────
+console.log('\n=== §230 Krank, aber im Plan noch besetzt ===')
+
+/*
+ * Der gefährlichere Fall. Eine Krankmeldung nimmt keinen veröffentlichten
+ * Dienst von selbst aus dem Plan — „voraussichtlich bis" ist eine Schätzung,
+ * und eine Meldung für nächsten Monat darf keine Dienste löschen, die noch
+ * stattfinden. Aber dann steht im Plan jemand, der nicht kommt, und ohne
+ * Markierung hält die Leitung die Schicht für besetzt.
+ *
+ * Geschrieben wird direkt in die Datenbank: `save-week` ersetzt die ganze
+ * Woche und würde die Dienste aller anderen an diesem Tag löschen.
+ */
+const { PrismaClient } = await import('@prisma/client')
+const prisma = new PrismaClient()
+const dienste = (await hole(leitung, `/api/shifts?locationId=${locationId}`)).body.shifts ?? []
+const planTag = iso(montag)
+
+await prisma.scheduleEntry.deleteMany({ where: { employeeId: tim.id, date: planTag } })
+await prisma.scheduleEntry.create({
+  data: {
+    employeeId: tim.id, locationId, date: planTag,
+    shiftId: dienste[0]?.id, status: 'confirmed',
+  },
+})
+await sende(leitung, '/api/absences', 'POST', {
+  employeeId: tim.id, employeeName: tim.name, locationId,
+  type: 'krankheit', startDate: planTag, endDate: planTag, days: 1,
+})
+
+const besetzt = await zeileLesen()
+/*
+ * Die Krankwoche von oben läuft noch. Der Montag trägt jetzt einen Dienst,
+ * die vier übrigen Tage bleiben Fehlzeit-Zellen — zusammen die fünf Tage der
+ * Woche. Genau diese Rechnung zeigt, dass der Dienst die Zelle übernimmt und
+ * nicht zusätzlich dasteht.
+ */
+check('Der Dienst übernimmt seine Zelle, die anderen Tage bleiben Fehlzeit',
+  besetzt.ausfallZellen === 4 && besetzt.unbesetztMarken.length === 1,
+  `${besetzt.ausfallZellen} Fehlzeit-Zellen + ${besetzt.unbesetztMarken.length} Markierung`)
+check('Aber er ist als unbesetzt markiert', besetzt.unbesetztMarken.length === 1,
+  `${besetzt.unbesetztMarken.length} Markierungen`)
+check('Und die Markierung sagt, dass die Person nicht da ist',
+  /KRANK/.test(besetzt.unbesetztMarken[0] ?? '')
+  && /nicht da/.test(besetzt.unbesetztMarken[0] ?? ''),
+  besetzt.unbesetztMarken[0] ?? '—')
+
+/*
+ * Die Gegenprobe: Ohne Krankmeldung darf an demselben Dienst keine
+ * Markierung stehen. Sonst wäre „ist markiert" grün, weil die Seite jeden
+ * Dienst markiert.
+ */
+for (const a of (await hole(leitung, `/api/absences?employeeId=${tim.id}`)).body.absences ?? []) {
+  if (a.startDate <= planTag && a.endDate >= planTag) {
+    await sende(leitung, `/api/absences/${a.id}`, 'DELETE', {})
+  }
+}
+const ohneMeldung = await zeileLesen()
+check('Ohne Krankmeldung ist derselbe Dienst nicht markiert',
+  ohneMeldung.unbesetztMarken.length === 0,
+  `${ohneMeldung.unbesetztMarken.length} Markierungen`)
+
+await prisma.scheduleEntry.deleteMany({ where: { employeeId: tim.id, date: planTag } })
+await prisma.$disconnect()
 
 // ── Und wieder zurück ─────────────────────────────────────────────────────
 console.log('\n=== §227 Gegenprobe: zurückgenommen ===')
