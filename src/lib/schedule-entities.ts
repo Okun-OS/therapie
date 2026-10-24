@@ -49,6 +49,7 @@ function toShift(row: any): Shift {
     bgColor: row.bgColor,
     minStaff: row.minStaff,
     locationId: row.locationId,
+    requiredTasks: row.requiredTasks ?? [],
   }
 }
 
@@ -131,6 +132,8 @@ export async function addShift(input: {
   bgColor: string
   minStaff: number
   locationId: string
+  /** §233 Tätigkeiten, die dieser Dienst verlangt. */
+  requiredTasks?: string[]
 }): Promise<Shift> {
   const row = await prisma.shift.create({ data: input })
   return toShift(row)

@@ -68,6 +68,8 @@ export async function einrichtungAnwenden(
           data: {
             locationId, name: d.name, type: art, startTime: d.von, endTime: d.bis,
             minStaff: d.mindestbesetzung ?? 0, ...FARBEN[art],
+            // §233 Was dieser Dienst an Tätigkeiten verlangt.
+            requiredTasks: d.taetigkeiten ?? [],
           },
         })
         dienstzeitenAngelegt++

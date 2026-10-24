@@ -93,6 +93,14 @@ export interface Shift {
   bgColor: string
   minStaff: number
   locationId: string
+  /**
+   * §233 Tätigkeiten, die dieser Dienst verlangt.
+   *
+   * Wer eine davon nicht zugeordnet hat, bekommt den Dienst nicht. Leer heißt
+   * „verlangt nichts" — und das ist die Voreinstellung, damit ein Betrieb, der
+   * die Seite „Aufgaben" nie benutzt hat, unverändert weiterplant.
+   */
+  requiredTasks?: string[]
 }
 
 export interface PlanningUnit {
@@ -166,6 +174,20 @@ export interface ScheduleEntry {
   funktion?: string
   isSubstitution?: boolean
   substitutionFor?: string
+  /**
+   * §233 Tätigkeitsblöcke INNERHALB eines Dienstes — zwei Ansichten zeigen
+   * sie, und bis heute schreibt sie nichts.
+   *
+   * Nicht zu verwechseln mit `Shift.requiredTasks`: Das ist „dieser Dienst
+   * verlangt diese Tätigkeit", und danach plant der Rechendienst seit §233.
+   * Hier geht es um „von 9 bis 11 Dokumentation, danach Gruppe" — eine
+   * Aufteilung innerhalb der Schicht. Dafür müsste der Rechendienst die Zeit
+   * im Dienst auflösen; `solver.py` tut das nicht und liefert keine Blöcke.
+   *
+   * Die Anzeige bleibt stehen, weil sie bei leerer Liste nichts zeichnet und
+   * eine spätere Umsetzung sie wieder bräuchte. Wer hier Daten erwartet, findet
+   * keine — das steht hier, damit niemand danach sucht.
+   */
   taskBlocks?: TaskBlock[]
 }
 

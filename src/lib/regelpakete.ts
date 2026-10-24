@@ -46,6 +46,15 @@ export interface PaketEinrichtung {
     von: string
     bis: string
     mindestbesetzung?: number
+    /**
+     * §233 Tätigkeiten, die dieser Dienst verlangt.
+     *
+     * Wer eine davon nicht darf, bekommt den Dienst nicht. Zugeordnet werden
+     * die Tätigkeiten von der Leitung unter „Aufgaben"; welcher Dienst welche
+     * verlangt, steht im Paket — dasselbe Gefälle wie bei allem anderen der
+     * Einrichtung (§202).
+     */
+    taetigkeiten?: string[]
   }>
   struktur: Array<{
     name: string

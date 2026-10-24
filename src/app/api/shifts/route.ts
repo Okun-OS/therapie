@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const body = await req.json()
-  const { name, type, startTime, endTime, color, bgColor, minStaff, locationId } = body
+  const { name, type, startTime, endTime, color, bgColor, minStaff, locationId, requiredTasks } = body
   if (!name?.trim() || !type || !startTime || !endTime || !locationId) {
     return NextResponse.json({ error: 'name, type, startTime, endTime und locationId sind erforderlich' }, { status: 400 })
   }
@@ -58,6 +58,13 @@ export async function POST(req: NextRequest) {
     color: color ?? fallback.color,
     bgColor: bgColor ?? fallback.bgColor,
     minStaff: minStaff ?? 1, locationId,
+    // §233 Tätigkeiten, die dieser Dienst verlangt. Nur Zeichenketten, und
+    // leere fliegen weg: Ein Dienst, der „ " verlangt, wäre für niemanden
+    // besetzbar und die Ursache stünde nirgends.
+    requiredTasks: Array.isArray(requiredTasks)
+      ? requiredTasks.filter((t: unknown): t is string => typeof t === 'string' && !!t.trim())
+        .map((t: string) => t.trim())
+      : [],
   })
   return NextResponse.json({ shift })
 }

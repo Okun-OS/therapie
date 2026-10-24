@@ -242,7 +242,15 @@ export async function buildRuleModel(
     bis: s.endTime,
     uebernacht: s.endTime < s.startTime,
     minBesetzungGesamt: s.minStaff,
-    aufgaben: [],
+    /*
+     * §233 Die Tätigkeiten, die dieser Dienst verlangt.
+     *
+     * Hier stand `[]`. Damit war die Kette stillgelegt: `/admin/tasks` ordnete
+     * Tätigkeiten zu, `Employee.allowedTasks` wurde geschrieben, und der
+     * Rechendienst bekam nichts — eine Seite zum Zuordnen, eine Anzeige für
+     * das Ergebnis, und zwischen beiden keine Leitung.
+     */
+    aufgaben: s.requiredTasks ?? [],
     erforderlicheQualifikationen: s.requiredQualifications ?? [],
   }))
 
@@ -582,6 +590,8 @@ export async function buildRuleModel(
       // Angabe, nicht als Wunschliste.
       ...(persistentPref !== 'keine' ? { vorliebe: persistentPref } : {}),
       qualifikationen: emp.qualifications,
+      // §233 Was dieser Mensch übernehmen darf — aus „Aufgaben".
+      erlaubteAufgaben: emp.allowedTasks ?? [],
       nichtVerfuegbarAn: nichtVerfuegbar,
       urlaubAn,
       wuensche: empWishes,

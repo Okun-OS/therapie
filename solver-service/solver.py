@@ -511,6 +511,28 @@ def solve(rule_model: dict) -> dict:
                 for di in range(n_days):
                     model.add(X[ei, di, si] == 0)
 
+    # H8b: Taetigkeiten — wer eine verlangte Taetigkeit nicht darf, bekommt den
+    # Dienst nicht.
+    for si, shift in enumerate(shifts):
+        verlangt: list[str] = shift.get("aufgaben") or []
+        if not verlangt:
+            # §233 Nur Dienste, die ausdruecklich etwas verlangen, schraenken
+            # ein. Ein Betrieb, der die Seite "Aufgaben" nie benutzt hat, plant
+            # unveraendert weiter — sonst haette er nach dieser Aenderung
+            # keinen Plan mehr, ohne etwas geaendert zu haben.
+            continue
+        for ei, emp in enumerate(employees):
+            erlaubt: set[str] = set(emp.get("erlaubteAufgaben") or [])
+            if not all(a in erlaubt for a in verlangt):
+                """
+                §233 Eine LEERE Liste heisst "nichts zugeordnet", nicht "darf
+                alles". Die andere Lesart waere bequemer und falsch: Dann
+                bekaeme genau der Mensch den Dienst, bei dem noch niemand
+                geprueft hat, ob er die Taetigkeit darf.
+                """
+                for di in range(n_days):
+                    model.add(X[ei, di, si] == 0)
+
     # H9: Frozen dates — lock existing assignments on frozen days
     for ei, emp in enumerate(employees):
         for di, day in enumerate(days):
@@ -1253,6 +1275,36 @@ def _diagnose_infeasibility(
     n_emp = len(employees)
 
     issues: list[str] = []
+
+    """
+    §233 Zuerst nachsehen, ob ein Dienst eine Taetigkeit oder Qualifikation
+    verlangt, die NIEMAND hat.
+
+    Das steht vor allen anderen Pruefungen, weil es die Ursache ist, die sich
+    mit Sicherheit benennen laesst — und weil die Alternative der teuerste
+    Fehler dieser Datei waere. §181 hat das vorgefuehrt: Dort nannte die
+    Meldung Urlaube, Ruhezeiten und das Stundenlimit, also drei Ursachen, von
+    denen keine zutraf, und niemand kam auf das Tagesmuster. Wer eine
+    Taetigkeit an einen Dienst haengt und sie keinem Menschen zuordnet, soll
+    genau das lesen.
+    """
+    for shift in shifts:
+        for feld, erlaubt_feld, wort in (
+            ("aufgaben", "erlaubteAufgaben", "Taetigkeit"),
+            ("erforderlicheQualifikationen", "qualifikationen", "Qualifikation"),
+        ):
+            for verlangt in shift.get(feld) or []:
+                koennen = [e.get("name", "?") for e in employees
+                           if verlangt in set(e.get(erlaubt_feld) or [])]
+                if not koennen:
+                    name = shift.get("name") or shift.get("id") or "?"
+                    issues.append(
+                        f"Der Dienst „{name}“ verlangt die {wort} "
+                        f"„{verlangt}“, und niemand in der Belegschaft hat sie "
+                        "zugeordnet."
+                    )
+    if issues:
+        return " ".join(issues)
 
     # Check per-day availability vs. required staffing
     critical_days: list[str] = []

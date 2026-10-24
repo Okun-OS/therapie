@@ -5018,3 +5018,91 @@ Die Gegenproben gehören dazu: Die vier verbliebenen Felder lassen sich weiter
 speichern und lesen („alles weg" wäre auch grün), die Dienstvorliebe hat weiter
 ihr eigenes Feld, und die eigene Leitung darf die Angaben sehen — „403 für
 alle" wäre kein Zugriffsschutz, sondern ein kaputtes Feld.
+
+## Block §233 (24.10.) — Die Tätigkeiten erreichen den Plan
+
+**Die Entscheidung auf §232:** „Der Plan soll sie beachten: Wer eine Tätigkeit
+nicht darf, bekommt den Dienst nicht, der sie verlangt."
+
+### Was stillstand
+
+| Teil | vorher |
+|---|---|
+| `/admin/tasks` legt Tätigkeiten an und ordnet sie zu | funktionierte, speicherte |
+| `Employee.allowedTasks` | wurde geschrieben, von keinem Rechenkern gelesen |
+| `aufgaben` an Diensten und Einheiten | immer `[]` — und `solver.py` las das Feld nie |
+
+Eine Seite zum Zuordnen, eine Anzeige für das Ergebnis, und zwischen beiden
+keine Leitung.
+
+### Jetzt
+
+Ein Dienst kann Tätigkeiten **verlangen** (`Shift.requiredTasks`), und wer eine
+davon nicht zugeordnet hat, bekommt ihn nicht — als harte Regel im
+Rechendienst, in derselben Form wie die Qualifikationen (H8b neben H8).
+
+Das Gefälle bleibt wie bei allem anderen der Einrichtung (§202): **Welcher
+Dienst was verlangt, steht im Regelpaket** und kommt mit ihm an den Standort;
+**wer was darf, ordnet die Leitung zu.** Nachgewiesen: Die Leitung bekommt beim
+Versuch, die Anforderung zu ändern, HTTP 403.
+
+**Warum eine leere Liste „verlangt nichts" heißt.** Jeder bestehende Standort
+plant unverändert weiter. Die Umkehrung — ein Dienst verlangt im Zweifel alles
+— hätte jedem Betrieb, der die Seite nie benutzt hat, über Nacht den Plan
+genommen.
+
+**Und warum eine leere Zuordnung nicht „darf alles" heißt.** Das ist die
+Gegenprobe, die zählt: Sonst bekäme genau der Mensch den Dienst, bei dem noch
+niemand geprüft hat, ob er die Tätigkeit überhaupt darf.
+
+### Die Fehlermeldung nennt jetzt die Ursache
+
+> Der Dienst „Frühdienst 7" verlangt die Tätigkeit „Erste Hilfe", und niemand
+> in der Belegschaft hat sie zugeordnet.
+
+Diese Prüfung steht **vor** allen anderen in der Diagnose, weil sie die einzige
+ist, die sich mit Sicherheit benennen lässt. §181 hat vorgeführt, was sonst
+passiert: Dort nannte die Meldung Urlaube, Ruhezeiten und das Stundenlimit —
+drei Ursachen, von denen keine zutraf — und niemand kam auf das Tagesmuster.
+Für Qualifikationen gilt sie mit; die waren schon hart geprüft, nur ohne
+Diagnose.
+
+Dasselbe steht auch **in der Maske**, bevor überhaupt gerechnet wird: Verlangt
+ein Dienst eine Tätigkeit, die niemandem zugeordnet ist, sagt
+`/admin/tasks` es rot, samt der Namen der betroffenen Dienste.
+
+### Was beim Prüfen auffiel
+
+Der Nachweis zur Fehlermeldung läuft **gegen die Funktion**, nicht gegen einen
+ganzen Lauf — und das ist nachgemessen begründet. Dreimal versucht, diesen Plan
+unlösbar zu machen: erst ein gesperrter Frühdienst (der Plan wich auf einen
+anderen aus), dann alle Frühdienste (die Etagenregel des Pakets ist weich und
+wird mit Abzug übergangen), dann zusätzlich eine Mindestbesetzung am Dienst —
+die ist in `solver.py` ebenfalls weich, und **mit Regelpaket wird sie ganz
+übergangen**. Dreimal 160 Einträge und keine Meldung. Das ist die Bauart des
+Pakets: Es gibt lieber einen Plan mit Abzug als keinen.
+
+Und zwei eigene Fehler im Nachweis, beide derselbe Fehlertyp — gegen den
+falschen Stand gemessen. Erst zählte er Dienstplan-Einträge, die ein Rechenlauf
+gar nicht schreibt: „0 Dienste im Zeitraum, davon 0 ohne Recht", grün und
+nichtssagend. Dann verglich er mit der Belegschaftsliste von **vor** der
+Zuordnung und meldete alle zehn Zuteilungen als unberechtigt, obwohl sie
+sämtlich an die berechtigte Person gingen. Gemessen wird jetzt am Modell des
+Laufs selbst.
+
+### Ein offenes Ende, ausdrücklich benannt
+
+`ScheduleEntry.taskBlocks` — Tätigkeiten **innerhalb** eines Dienstes („von 9
+bis 11 Dokumentation") — wird in zwei Ansichten gezeigt und von nichts
+geschrieben. Dafür müsste der Rechendienst die Zeit im Dienst auflösen; das tut
+er nicht. Die Anzeige bleibt (sie zeichnet bei leerer Liste nichts), und am
+Feld steht jetzt, dass dort keine Daten zu erwarten sind — damit niemand
+danach sucht. Das ist etwas anderes als `Shift.requiredTasks`, und nur das
+zweite plant.
+
+Nachweis: `p-taetigkeiten.mjs` **15/15**, Solver **182** Tests (vorher 176).
+Insgesamt **1978/1978** Prüfungen am laufenden System und **1245** Modultests.
+
+Die Gegenprobe, die den Unterschied zeigt: Solange der Dienst nichts verlangte,
+gingen **972** Zuteilungen an andere als die berechtigte Person. Danach keine
+mehr.

@@ -239,6 +239,19 @@ export interface PlanungsMitarbeiter {
    */
   vorliebe?: string
   qualifikationen: string[]
+  /**
+   * §233 Welche Tätigkeiten dieser Mensch übernehmen darf.
+   *
+   * Aus `Employee.allowedTasks`, gepflegt unter „Aufgaben". Verlangt ein
+   * Dienst eine Tätigkeit, die hier fehlt, darf er nicht zugeteilt werden —
+   * dieselbe Form wie bei den Qualifikationen.
+   *
+   * Eine LEERE Liste heißt „nichts zugeordnet", nicht „darf alles". Deshalb
+   * greift die Regel nur an Diensten, die ausdrücklich etwas verlangen: Sonst
+   * hätte ein Betrieb, der die Seite nie benutzt hat, über Nacht keinen Plan
+   * mehr.
+   */
+  erlaubteAufgaben?: string[]
   nichtVerfuegbarAn: string[]
   urlaubAn: string[]
   wuensche: PlanungsWunsch[]

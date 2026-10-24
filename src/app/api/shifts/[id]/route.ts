@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (guard.error) return guard.error
 
   const body = await req.json()
-  const { name, type, startTime, endTime, color, bgColor, minStaff } = body
+  const { name, type, startTime, endTime, color, bgColor, minStaff, requiredTasks } = body
 
   if (Object.keys(body).length === 1 && typeof minStaff === 'number') {
     await setShiftMinStaff(params.id, minStaff)
@@ -43,6 +43,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (typeof color === 'string') fields.color = color
   if (typeof bgColor === 'string') fields.bgColor = bgColor
   if (typeof minStaff === 'number') fields.minStaff = minStaff
+  // §233 Eine leere Liste ist eine gültige Angabe: „verlangt nichts mehr".
+  if (Array.isArray(requiredTasks)) {
+    fields.requiredTasks = requiredTasks
+      .filter((t: unknown): t is string => typeof t === 'string' && !!t.trim())
+      .map((t: string) => t.trim())
+  }
 
   if (Object.keys(fields).length === 0) {
     return NextResponse.json({ error: 'Keine gültigen Felder zum Aktualisieren' }, { status: 400 })

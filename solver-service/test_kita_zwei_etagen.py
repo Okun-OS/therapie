@@ -588,6 +588,167 @@ def test_wunsch_nach_einem_bestimmten_dienst_bleibt_an_der_kennung():
     assert alt == 0, f"Ein Wunsch auf s8 zählte {alt}-mal als erfüllt"
 
 
+def _modell_mit_taetigkeit(dienst_id: str, taetigkeit: str,
+                           duerfen: tuple[str, ...]) -> dict:
+    """
+    Ein Regelmodell, in dem ein Dienst eine Tätigkeit verlangt.
+
+    `duerfen` sind die Vornamen, denen sie zugeordnet ist — genau so, wie die
+    Leitung es unter „Aufgaben" einträgt.
+    """
+    modell = regelmodell()
+    for sch in modell["schichten"]:
+        if sch["id"] == dienst_id:
+            sch["aufgaben"] = [taetigkeit]
+    for emp in modell["mitarbeiter"]:
+        vorname = emp["name"].split()[0]
+        emp["erlaubteAufgaben"] = [taetigkeit] if vorname in duerfen else []
+    return modell
+
+
+def test_taetigkeit_nur_wer_sie_darf_bekommt_den_dienst():
+    """
+    §233 „Der Plan soll sie beachten."
+
+    Bis §232 stand die Kette still: `/admin/tasks` ordnete Tätigkeiten zu, und
+    der Rechendienst bekam eine leere Liste, deren Feld er ohnehin nie las.
+    Eine Seite zum Zuordnen, eine Anzeige für das Ergebnis, und zwischen beiden
+    nichts.
+
+    Hier verlangt der Tagdienst 7 die Dokumentation, und nur drei Menschen
+    dürfen sie. Geprüft wird, dass genau diese drei ihn bekommen — und niemand
+    sonst.
+    """
+    duerfen = ("Juliane", "Stephanie", "Marin")
+    p = Plan(rechne(_modell_mit_taetigkeit("t7", "Dokumentation", duerfen)))
+    abnehmen(p, "Tagdienst 7 verlangt Dokumentation")
+
+    hatten = set()
+    for name, *_ in BELEGSCHAFT:
+        for tag in p.tage(name):
+            if p.dienst(name, tag) == "t7":
+                hatten.add(name.split()[0])
+    assert hatten, "Den Dienst bekam niemand — dann sagt der Test nichts"
+    fremde = hatten - set(duerfen)
+    assert not fremde, f"Ohne die Tätigkeit zugeteilt: {sorted(fremde)}"
+
+
+def test_taetigkeit_ohne_anforderung_bleibt_alles_wie_vorher():
+    """
+    Die erste Gegenprobe: Ein Dienst, der nichts verlangt, schränkt niemanden
+    ein.
+
+    Ohne sie wäre „nur die Berechtigten bekommen ihn" auch dann grün, wenn die
+    Regel ALLE Dienste gesperrt hätte. Und sie ist die Zusage an jeden Betrieb,
+    der die Seite „Aufgaben" nie benutzt hat: Für ihn ändert sich nichts.
+    """
+    modell = regelmodell()
+    for emp in modell["mitarbeiter"]:
+        emp["erlaubteAufgaben"] = []          # niemand darf irgendetwas
+    p = Plan(rechne(modell))
+    assert p.eintrag, "Ohne Anforderung kam kein Plan heraus"
+
+    mit_t7 = {name for name, *_ in BELEGSCHAFT
+              for tag in p.tage(name) if p.dienst(name, tag) == "t7"}
+    assert mit_t7, "Der Tagdienst 7 wurde niemandem zugeteilt"
+
+
+def test_taetigkeit_leere_zuordnung_heisst_nicht_darf_alles():
+    """
+    Die zweite Gegenprobe, und die wichtigere.
+
+    Eine leere Liste heißt „nichts zugeordnet", nicht „darf alles". Die andere
+    Lesart wäre bequemer und falsch: Dann bekäme genau der Mensch den Dienst,
+    bei dem noch niemand geprüft hat, ob er die Tätigkeit überhaupt darf.
+    """
+    modell = _modell_mit_taetigkeit("t7", "Dokumentation", ("Juliane",))
+    p = Plan(rechne(modell))
+    for name, *_ in BELEGSCHAFT:
+        if name.split()[0] == "Juliane":
+            continue
+        for tag in p.tage(name):
+            assert p.dienst(name, tag) != "t7", \
+                f"{name} hat keine Zuordnung und bekam den Dienst trotzdem"
+
+
+def test_taetigkeit_die_niemand_darf_wird_beim_namen_genannt():
+    """
+    §233 Die Fehlermeldung muss die Ursache nennen.
+
+    §181 hat vorgeführt, was sonst passiert: Dort nannte die Meldung Urlaube,
+    Ruhezeiten und das Stundenlimit — drei Ursachen, von denen keine zutraf —,
+    und niemand kam auf das Tagesmuster. Wer eine Tätigkeit an einen Dienst
+    hängt und sie keinem Menschen zuordnet, soll genau das lesen.
+
+    GEPRÜFT WIRD AN DER FUNKTION, NICHT AM GANZEN LAUF — UND ZWAR BEGRÜNDET
+    Nachgemessen am 24.10.2026: Ein ganzer Lauf dieses Pakets lässt sich auf
+    diesem Weg gar nicht unlösbar machen. Erst war nur „Frühdienst 7" gesperrt,
+    da wich der Plan auf „Frühdienst 8" aus. Dann alle Frühdienste — auch das
+    blieb lösbar, weil die Etagenregel des Pakets weich ist. Dann zusätzlich
+    eine Mindestbesetzung am Dienst — die ist in `solver.py` ebenfalls weich
+    (eine Fehlmenge mit Abzug), und mit Regelpaket wird sie ganz übergangen
+    (`besetzung_aus_paket`). In allen drei Fällen kamen 160 Einträge heraus und
+    gar keine Meldung.
+
+    Das ist kein Mangel des Pakets, sondern seine Bauart: Es entscheidet die
+    Besetzung selbst und gibt lieber einen Plan mit Abzug als keinen. Die
+    Meldung gehört deshalb dort geprüft, wo sie entsteht.
+    """
+    from solver import _diagnose_infeasibility
+
+    belegschaft = [
+        {"name": "Juliane Roth", "erlaubteAufgaben": ["Dokumentation"], "qualifikationen": []},
+        {"name": "Marin Berg", "erlaubteAufgaben": [], "qualifikationen": []},
+    ]
+    dienste = [{"id": "f7", "name": "Frühdienst 7", "von": "06:00", "bis": "13:30",
+                "minBesetzungGesamt": 1, "aufgaben": ["Erste Hilfe"]}]
+
+    text = _diagnose_infeasibility(belegschaft, dienste, ["2026-10-05"], 5, 11, 40)
+    assert "Erste Hilfe" in text, text
+    assert "Frühdienst 7" in text, text
+    assert "niemand" in text.lower(), text
+
+
+def test_taetigkeit_meldung_schweigt_wenn_jemand_sie_darf():
+    """
+    Die Gegenprobe: Gibt es jemanden mit der Tätigkeit, ist das NICHT die
+    Ursache — und dann darf die Meldung sie auch nicht nennen.
+
+    Ohne diese Zeile wäre „nennt die Tätigkeit" auch dann grün, wenn die
+    Meldung sie immer nennte. Das wäre genau der Fehler aus §181, nur mit einem
+    anderen falschen Grund.
+    """
+    from solver import _diagnose_infeasibility
+
+    belegschaft = [
+        {"name": "Juliane Roth", "erlaubteAufgaben": ["Erste Hilfe"], "qualifikationen": []},
+    ]
+    dienste = [{"id": "f7", "name": "Frühdienst 7", "von": "06:00", "bis": "13:30",
+                "minBesetzungGesamt": 1, "aufgaben": ["Erste Hilfe"]}]
+
+    text = _diagnose_infeasibility(belegschaft, dienste, ["2026-10-05"], 5, 11, 40)
+    assert "Erste Hilfe" not in text, text
+
+
+def test_fehlende_qualifikation_wird_genauso_benannt():
+    """
+    §233 Dieselbe Prüfung greift für Qualifikationen.
+
+    Die gab es als harte Regel schon (H8), nur ohne Diagnose: Verlangte ein
+    Dienst eine Qualifikation, die niemand hat, war der Plan unlösbar und die
+    Meldung sprach über Urlaube.
+    """
+    from solver import _diagnose_infeasibility
+
+    belegschaft = [{"name": "Marin Berg", "erlaubteAufgaben": [], "qualifikationen": ["Erzieher"]}]
+    dienste = [{"id": "n1", "name": "Nachtdienst", "von": "21:00", "bis": "06:00",
+                "minBesetzungGesamt": 1, "erforderlicheQualifikationen": ["Fachkraft Nacht"]}]
+
+    text = _diagnose_infeasibility(belegschaft, dienste, ["2026-10-05"], 5, 11, 40)
+    assert "Fachkraft Nacht" in text, text
+    assert "Qualifikation" in text, text
+
+
 def test_leer_niemand_bekommt_eine_fremde_dienstlaenge(leer):
     """Eine 35-Stunden-Kraft arbeitet nie acht Stunden an einem Tag."""
     erlaubt = {"Marin Berg": {480}, "Stephanie Lang": {420},

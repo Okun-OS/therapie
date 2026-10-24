@@ -686,6 +686,14 @@ model Shift {
   minStaff               Int      @default(1)
   locationId             String
   requiredQualifications String[] @default([])
+  /// §233 Taetigkeiten, die dieser Dienst verlangt — aus dem Katalog unter
+  /// „Aufgaben" (`/admin/tasks`).
+  ///
+  /// Wer eine davon nicht darf, bekommt den Dienst nicht. Bis §232 war die
+  /// Kette stillgelegt: Die Seite ordnete Taetigkeiten zu, `allowedTasks`
+  /// wurde geschrieben, und der Rechendienst bekam eine leere Liste —
+  /// zwischen Zuordnen und Planen lag nichts.
+  requiredTasks          String[] @default([])
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }

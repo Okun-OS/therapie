@@ -7,7 +7,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import type { Employee } from '@/lib/types'
+import type { Employee, Shift } from '@/lib/types'
 import { ListChecks, Plus, Trash2, ChevronDown, ChevronUp, Check, AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
@@ -26,6 +26,24 @@ export default function AdminTasks() {
   useEffect(() => {
     fetch('/api/task-types').then(r => r.json()).then(d => setTASK_CATALOG(d.taskTypes ?? []))
   }, [])
+
+  /**
+   * §233 Welche Dienste diese Tätigkeit verlangen.
+   *
+   * Ohne das ist die Seite wieder blind: Die Leitung ordnet zu, und warum
+   * jemand einen Dienst nicht bekommt, steht nirgends. Hier steht es — und
+   * hier fällt auch auf, wenn ein Dienst eine Tätigkeit verlangt, die noch
+   * niemandem zugeordnet ist. Dann gibt es nämlich keinen Plan, und die
+   * Fehlermeldung kommt erst beim Rechnen.
+   */
+  const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
+
+  useEffect(() => {
+    if (!locationId) return
+    fetch(`/api/shifts?locationId=${locationId}`)
+      .then(r => r.json()).then(d => setSHIFTS(d.shifts ?? []))
+      .catch(() => undefined)
+  }, [locationId])
 
   const [expanded, setExpanded] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
@@ -99,6 +117,11 @@ export default function AdminTasks() {
           )}
           {TASK_CATALOG.map(task => {
             const assignedCount = employees.filter(e => e.allowedTasks?.includes(task)).length
+            const verlangtVon = SHIFTS.filter(sh => (sh.requiredTasks ?? []).includes(task))
+            // §233 Ein Dienst verlangt sie, und niemand darf sie: Dafür gibt es
+            // keinen Plan. Das muss HIER stehen und nicht erst in der
+            // Fehlermeldung des Rechendienstes.
+            const unbesetzbar = verlangtVon.length > 0 && assignedCount === 0
             const isOpen = expanded === task
             return (
               <Card key={task}>
@@ -109,7 +132,22 @@ export default function AdminTasks() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-navy">{task}</p>
-                      <p className="text-xs text-gray-500">{assignedCount} von {employees.length} Mitarbeitern zugewiesen</p>
+                      <p className="text-xs text-gray-500">
+                        {assignedCount} von {employees.length} Mitarbeitern zugewiesen
+                        {verlangtVon.length > 0 && (
+                          <span data-test="verlangt-von">
+                            {' '}· verlangt von: {verlangtVon.map(sh => sh.name).join(', ')}
+                          </span>
+                        )}
+                      </p>
+                      {unbesetzbar && (
+                        <p data-test="unbesetzbar"
+                          className="text-xs text-red-600 font-semibold flex items-center gap-1 mt-0.5">
+                          <AlertTriangle size={11} />
+                          {verlangtVon.length === 1 ? 'Ein Dienst verlangt sie' : `${verlangtVon.length} Dienste verlangen sie`}
+                          {' '}und niemand darf sie — dafür entsteht kein Plan.
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
