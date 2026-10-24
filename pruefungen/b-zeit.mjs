@@ -55,6 +55,20 @@ const doppeltEin = await sende(anna, '/api/time-tracking/clock-in', 'POST',
   { employeeId: annaId, date: heute, locationId })
 check('Doppeltes Einstempeln wird verhindert', doppeltEin.status >= 400,
   doppeltEin.status < 400 ? 'Zweite laufende Erfassung wurde angelegt!' : doppeltEin.body.error)
+/*
+ * §234 Und die Person liest den SATZ DES PROGRAMMS, nicht „hat nicht geklappt".
+ *
+ * Seit §234 geht nur noch durch, was ausdrücklich für Menschen gedacht ist
+ * (`Fachfehler`); alles andere wird zu einem festen Satz, damit beim nächsten
+ * Datenbankausfall nicht die Serveradresse auf dem Bildschirm einer
+ * Pflegekraft steht. Diese Prüfung ist die Gegenprobe dazu: Die Umstellung
+ * darf den eigenen Satz nicht mitverschlucken.
+ */
+check('Und sie erfährt den Grund, nicht nur dass es nicht ging',
+  /ausstempeln/i.test(doppeltEin.body.error ?? ''), doppeltEin.body.error ?? '—')
+check('Der Satz nennt keine technischen Innereien',
+  !/prisma|127\.0\.0\.1|database|at .*:\d+|Error:/i.test(doppeltEin.body.error ?? ''),
+  doppeltEin.body.error ?? '—')
 
 // ── Schutz: für andere stempeln ────────────────────────────────────────────
 console.log('\n=== Schutz der Zeiterfassung ===')

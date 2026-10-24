@@ -14,6 +14,7 @@ import {
   type WorkforceLevel,
 } from './workforce-score-constants'
 import type { SubstitutionRequest, SubstitutionCandidate } from '@prisma/client'
+import { Fachfehler } from './fachfehler'
 
 function timeStringToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number)
@@ -53,7 +54,7 @@ export async function recordClockIn(employeeId: string, date: string, locationId
     orderBy: { clockIn: 'desc' },
   })
   if (laufend) {
-    throw new Error('Es läuft bereits eine Zeiterfassung. Bitte zuerst ausstempeln.')
+    throw new Fachfehler('Es läuft bereits eine Zeiterfassung. Bitte zuerst ausstempeln.')
   }
 
   const created = await prisma.timeClockEntry.create({

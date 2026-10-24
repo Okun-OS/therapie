@@ -5,6 +5,7 @@ import { notifyEmployee } from './notify'
 import { getLocationById } from './entities'
 import { awardSubstitutionAcceptance } from './workforce-score-service'
 import type { SubstitutionRequest } from '@prisma/client'
+import { Fachfehler } from './fachfehler'
 
 function nextStage(stage: EscalationStage): EscalationStage | null {
   const idx = ESCALATION_ORDER.indexOf(stage)
@@ -73,10 +74,10 @@ export async function createSubstitutionRequest(input: CreateSubstitutionInput) 
 
 export async function escalateRequest(requestId: string) {
   const request = await prisma.substitutionRequest.findUnique({ where: { id: requestId } })
-  if (!request || request.status !== 'open') throw new Error('Anfrage ist nicht mehr offen')
+  if (!request || request.status !== 'open') throw new Fachfehler('Anfrage ist nicht mehr offen')
 
   const next = nextStage(request.escalationStage as EscalationStage)
-  if (!next) throw new Error('Bereits auf höchster Eskalationsstufe (Springerpool)')
+  if (!next) throw new Fachfehler('Bereits auf höchster Eskalationsstufe (Springerpool)')
 
   await prisma.substitutionCandidate.updateMany({
     where: { requestId, responseStatus: 'pending' },
@@ -90,7 +91,7 @@ export async function respondToCandidate(requestId: string, employeeId: string, 
   const candidate = await prisma.substitutionCandidate.findUnique({
     where: { requestId_employeeId: { requestId, employeeId } },
   })
-  if (!candidate || candidate.responseStatus !== 'pending') throw new Error('Diese Anfrage ist nicht mehr gültig')
+  if (!candidate || candidate.responseStatus !== 'pending') throw new Fachfehler('Diese Anfrage ist nicht mehr gültig')
 
   if (action === 'accept') {
     await prisma.$transaction([

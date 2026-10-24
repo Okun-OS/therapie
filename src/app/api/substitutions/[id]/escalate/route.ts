@@ -3,6 +3,7 @@ import { escalateRequest } from '@/lib/substitution-service'
 import { requireRole } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { locationFilter } from '@/lib/scope'
+import { nutzerText, nutzerStatus } from '@/lib/fachfehler'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = requireRole(req, ['admin', 'company'])
@@ -20,6 +21,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const request = await escalateRequest(params.id)
     return NextResponse.json({ request })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Fehler bei der Eskalation' }, { status: 400 })
+    return NextResponse.json(
+      { error: nutzerText(err, 'Die Anfrage konnte nicht weitergegeben werden.') },
+      { status: nutzerStatus(err) },
+    )
   }
 }

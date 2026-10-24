@@ -3,6 +3,7 @@ import { recordClockOut } from '@/lib/workforce-score-service'
 import { requireRole } from '@/lib/session'
 import { assertEmployeeAccess } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
+import { nutzerText, nutzerStatus } from '@/lib/fachfehler'
 
 export async function POST(req: NextRequest) {
   const session = requireRole(req)
@@ -29,6 +30,9 @@ export async function POST(req: NextRequest) {
     const entry = await recordClockOut(timeClockEntryId, new Date())
     return NextResponse.json({ entry })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Fehler beim Ausstempeln' }, { status: 400 })
+    return NextResponse.json(
+      { error: nutzerText(err, 'Das Ausstempeln hat nicht geklappt. Bitte noch einmal versuchen.') },
+      { status: nutzerStatus(err) },
+    )
   }
 }

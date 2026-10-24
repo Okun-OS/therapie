@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/session'
 import { allowedLocationScope } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 import { dienstAnfragen, dienstBesetzen } from '@/lib/ausfall-service'
+import { nutzerText } from '@/lib/fachfehler'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json(ergebnis)
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Aktion fehlgeschlagen' },
+      { error: nutzerText(err, 'Die Anfrage konnte nicht gestellt werden.') },
       { status: 400 },
     )
   }

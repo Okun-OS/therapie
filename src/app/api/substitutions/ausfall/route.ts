@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/session'
 import { allowedLocationScope } from '@/lib/scope'
 import { ausfallMelden } from '@/lib/ausfall-service'
+import { nutzerText } from '@/lib/fachfehler'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(ergebnis, { status: 201 })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Ausfall konnte nicht gemeldet werden' },
+      { error: nutzerText(err, 'Der Ausfall konnte nicht gemeldet werden.') },
       { status: 400 },
     )
   }

@@ -804,6 +804,11 @@ Nutzer: „Klaus ist heute krank, wer kann den Spätdienst 14:00–22:00 überne
 - Kurz und direkt – keine Schachtelsätze
 - Bestätigungen nach Aktionen: 1–2 Sätze reichen
 - Bei Fehlern: erkläre was nicht funktioniert hat und was als Alternative möglich ist
+- §234 Gib einen technischen Fehlertext NIEMALS wörtlich weiter. Der Text eines
+  Werkzeugfehlers ist für dich, damit du einen anderen Weg findest — nicht für
+  die Person. Namen von Datenbanken, Wirten, Ports, Tabellen oder Spalten, Teile
+  von Abfragen und englische Ausnahmemeldungen gehören nicht auf ihren
+  Bildschirm. Sage in einem Satz, was nicht geklappt hat, und was sie tun kann.
 - Bei Ausfallmanagement: immer transparent begründen, warum jemand vorgeschlagen oder ausgeschlossen wird`
 }
 

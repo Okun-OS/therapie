@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordClockIn } from '@/lib/workforce-score-service'
 import { requireRole } from '@/lib/session'
 import { assertEmployeeAccess } from '@/lib/scope'
+import { nutzerText, nutzerStatus } from '@/lib/fachfehler'
 
 export async function POST(req: NextRequest) {
   const session = requireRole(req)
@@ -21,6 +22,11 @@ export async function POST(req: NextRequest) {
     const entry = await recordClockIn(employeeId, date, locationId, new Date())
     return NextResponse.json({ entry })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Fehler beim Einstempeln' }, { status: 400 })
+    // §234 Nur die eigenen Sätze des Programms gehen hinaus — alles andere
+    // würde die Datenbankadresse auf den Bildschirm einer Pflegekraft schreiben.
+    return NextResponse.json(
+      { error: nutzerText(err, 'Das Einstempeln hat nicht geklappt. Bitte noch einmal versuchen.') },
+      { status: nutzerStatus(err) },
+    )
   }
 }

@@ -11,6 +11,7 @@
 
 import { prisma } from './prisma'
 import { notifyEmployee } from './notify'
+import { Fachfehler } from './fachfehler'
 
 export interface AusfallEingang {
   scheduleEntryId?: string | null
@@ -125,16 +126,16 @@ async function empfaengerBestimmen(eingang: AusfallEingang) {
  */
 export async function dienstAnfragen(requestId: string, employeeId: string) {
   const anfrage = await prisma.substitutionRequest.findUnique({ where: { id: requestId } })
-  if (!anfrage) throw new Error('Vertretungsanfrage nicht gefunden')
-  if (anfrage.status === 'filled') throw new Error('Dieser Dienst ist bereits besetzt')
+  if (!anfrage) throw new Fachfehler('Vertretungsanfrage nicht gefunden')
+  if (anfrage.status === 'filled') throw new Fachfehler('Dieser Dienst ist bereits besetzt')
 
   const person = await prisma.employee.findUnique({
     where: { id: employeeId },
     select: { id: true, name: true, locationId: true },
   })
-  if (!person) throw new Error('Mitarbeiter nicht gefunden')
+  if (!person) throw new Fachfehler('Mitarbeiter nicht gefunden')
   if (person.locationId !== anfrage.locationId) {
-    throw new Error('Diese Person gehört nicht zu diesem Standort')
+    throw new Fachfehler('Diese Person gehört nicht zu diesem Standort')
   }
 
   await prisma.substitutionCandidate.upsert({
@@ -165,17 +166,17 @@ export async function dienstAnfragen(requestId: string, employeeId: string) {
  */
 export async function dienstBesetzen(requestId: string, employeeId: string) {
   const anfrage = await prisma.substitutionRequest.findUnique({ where: { id: requestId } })
-  if (!anfrage) throw new Error('Vertretungsanfrage nicht gefunden')
-  if (anfrage.status === 'filled') throw new Error('Dieser Dienst ist bereits besetzt')
-  if (!anfrage.shiftId) throw new Error('Zu dieser Anfrage ist kein Dienst hinterlegt')
+  if (!anfrage) throw new Fachfehler('Vertretungsanfrage nicht gefunden')
+  if (anfrage.status === 'filled') throw new Fachfehler('Dieser Dienst ist bereits besetzt')
+  if (!anfrage.shiftId) throw new Fachfehler('Zu dieser Anfrage ist kein Dienst hinterlegt')
 
   const person = await prisma.employee.findUnique({
     where: { id: employeeId },
     select: { id: true, name: true, locationId: true },
   })
-  if (!person) throw new Error('Mitarbeiter nicht gefunden')
+  if (!person) throw new Fachfehler('Mitarbeiter nicht gefunden')
   if (person.locationId !== anfrage.locationId) {
-    throw new Error('Diese Person gehört nicht zu diesem Standort')
+    throw new Fachfehler('Diese Person gehört nicht zu diesem Standort')
   }
 
   // Doppelbelegung verhindern: an einem Tag nur ein Dienst
@@ -183,7 +184,7 @@ export async function dienstBesetzen(requestId: string, employeeId: string) {
     where: { employeeId, date: anfrage.date },
     select: { id: true },
   })
-  if (schonImDienst) throw new Error(`${person.name} hat an diesem Tag bereits einen Dienst`)
+  if (schonImDienst) throw new Fachfehler(`${person.name} hat an diesem Tag bereits einen Dienst`)
 
   const eintrag = await prisma.scheduleEntry.create({
     data: {

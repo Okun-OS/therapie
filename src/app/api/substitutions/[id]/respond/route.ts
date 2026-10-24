@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { respondToCandidate } from '@/lib/substitution-service'
 import { requireRole } from '@/lib/session'
 import { assertEmployeeAccess } from '@/lib/scope'
+import { nutzerText, nutzerStatus } from '@/lib/fachfehler'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = requireRole(req)
@@ -21,6 +22,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const request = await respondToCandidate(params.id, employeeId, action)
     return NextResponse.json({ request })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Fehler bei der Antwort' }, { status: 400 })
+    return NextResponse.json(
+      { error: nutzerText(err, 'Die Antwort konnte nicht gespeichert werden.') },
+      { status: nutzerStatus(err) },
+    )
   }
 }

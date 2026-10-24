@@ -5106,3 +5106,101 @@ Insgesamt **1978/1978** Prüfungen am laufenden System und **1245** Modultests.
 Die Gegenprobe, die den Unterschied zeigt: Solange der Dienst nichts verlangte,
 gingen **972** Zuteilungen an andere als die berechtigte Person. Danach keine
 mehr.
+
+## Block §234 (24.10.) — Die Fehlermeldungen, ohne die Bilder zu haben
+
+**Die Frage:** „Und die anderen ganzen Fehlermeldungen hast du auch gemacht,
+was ich dir geschickt habe mit den ganzen Bildern?"
+
+### Erst die ehrliche Auskunft
+
+Die Bilder liegen nicht mehr vor — nur die Notizen dazu. Was darin **benannt**
+war, ist abgearbeitet und steht oben:
+
+| aus den Bildern | erledigt in |
+|---|---|
+| Urlaubsplanung kennt nur Monate, keine Tage | §231 |
+| „Brauchen wir das noch?" — Dienstwünsche | §229 |
+| „Brauchen wir das noch?" — „Persönliches" | §232 |
+| „Brauchen wir das noch?" — Tätigkeiten | §233 |
+| Google-Kalender zeigt die alte Domain | §228 |
+| „Werden die Dienstwünsche richtig beachtet?" | §229 |
+
+Ob auf den Bildern **zusätzlich** rote Meldungen standen, lässt sich nicht
+nachsehen. Also wurde nicht geraten, sondern gesucht.
+
+### Der Durchgang
+
+`browser/alle-seiten-ohne-fehler.mjs` öffnet **54 Seiten in vier Rollen** und
+meldet, was nach Panne aussieht: die Fehlerseite des Gerüsts, verdächtigen
+Text, eine Ausnahme im Browser, eine eigene Schnittstelle mit 5xx.
+
+Ergebnis: **keine einzige.** Alle 54 Seiten öffnen sauber, in allen vier
+Rollen.
+
+**Was ausdrücklich nicht als Fehler gilt:** leere Listen, „noch keine Daten",
+fehlende Berechtigung. Eine Seite ohne Inhalt ist kein Fehler, und eine 403 auf
+eine fremde Kennung ist der gewünschte Zustand. Ohne diese Unterscheidung wäre
+die Prüfung ein Rauschmelder und würde nach dem dritten Fehlalarm nicht mehr
+gelesen. Und sie trägt ihre eigene Gegenprobe: Sie ruft eine Seite auf, die es
+nicht gibt, und muss den Fehler dort **finden** — sonst bewiese ein grüner Lauf
+nur, dass sie nichts sucht.
+
+### Was die Gegenprobe gefunden hat
+
+Genau dort stand eine Fehlermeldung, nach der niemand gefragt hatte:
+
+> 404 — This page could not be found.
+
+**Englisch, ohne Logo, ohne Weg zurück.** Next.js zeigt diese Vorlage, solange
+es keine eigene `not-found.tsx` gibt — und es gab keine. Mitten in einem
+Programm, das sonst durchgehend Deutsch spricht. Wer dort landet, weiß nicht,
+ob er sich vertippt hat oder ob das Programm kaputt ist.
+
+Jetzt: „Diese Seite gibt es nicht. Die Adresse führt ins Leere — vielleicht ein
+Tippfehler oder ein alter Link." Mit einem Knopf zur Startseite. Und
+ausdrücklich **nicht** mit „etwas ist schiefgelaufen": Eine falsche Adresse ist
+keine Panne, und der Satz soll das sagen, ohne jemanden zu beunruhigen.
+
+### Und der Befund, der schwerer wiegt
+
+Sechs Schnittstellen gaben im Fehlerfall `err.message` ungeprüft heraus:
+
+```
+catch (err) {
+  return NextResponse.json(
+    { error: err instanceof Error ? err.message : 'Fehler beim Einstempeln' },
+    { status: 400 })
+}
+```
+
+Für die eigenen Fehler des Programms war das richtig — „Es läuft bereits eine
+Zeiterfassung. Bitte zuerst ausstempeln." ist genau der Satz, den die Person
+lesen soll. Für alles andere war es auf zwei Weisen gleichzeitig falsch:
+
+**Die Person liest Kauderwelsch.** Fällt die Datenbank aus, steht beim
+Einstempeln „Can't reach database server at 127.0.0.1:5432". Nachgemessen in
+dieser Sitzung: Genau diese Meldung kam zweimal vor, als Postgres im Container
+stehen blieb.
+
+**Und es ist eine Auskunft über die Anlage.** Wirtsname, Port, Tabellen- und
+Spaltennamen, bei einem Prisma-Fehler auch der gescheiterte Teil der Abfrage.
+Das gehört nicht auf den Bildschirm einer Pflegekraft — und erst recht nicht in
+einen Screenshot, der danach in einem Chat landet.
+
+**`Fachfehler` dreht die Richtung um.** Wer eine Meldung für einen Menschen
+wirft, zeichnet sie aus; alles andere wird nach außen ein fester Satz und innen
+protokolliert. Vorher musste man an jeder Fundstelle daran denken, das
+Technische abzufangen — jetzt muss man daran denken, den eigenen Satz
+auszuzeichnen, und das merkt man sofort, weil er sonst nicht ankommt.
+`ZugangKonflikt` machte das seit Langem so, nur ohne gemeinsame Grundlage.
+
+**Der KI-Assistent bekommt den technischen Text weiter** — er braucht ihn, um
+einen anderen Weg zu finden. Nur darf er ihn nicht wörtlich weitergeben; das
+steht jetzt als Regel in seinem Systemtext.
+
+Nachweise: `browser/alle-seiten-ohne-fehler.mjs` **60/60**,
+`fachfehler.test.ts` **10**, und in `b-zeit.mjs` die Gegenprobe, dass der
+eigene Satz weiterhin durchkommt: „Es läuft bereits eine Zeiterfassung. Bitte
+zuerst ausstempeln." — ohne jede technische Innerei. Die Umstellung durfte den
+eigenen Satz nicht mitverschlucken, und das ist der Test dafür.

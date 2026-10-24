@@ -6,6 +6,7 @@ import { nettoSumme, zuSpeicherndeMinuten } from './arbeitszeit'
 import { arbeitstageDerFehlzeit, stundenProAusfalltag } from './ausfallstunden'
 import { AU_ARTEN } from './bem'
 import type { TimeLog, OvertimeRequest, Absence, HoursAccountSummary, MonthlyClosing } from './types'
+import { Fachfehler } from './fachfehler'
 
 function toTimeLog(row: any): TimeLog {
   return {
@@ -400,7 +401,7 @@ export async function correctMonthlyClosingTimeLog(
   const log = await prisma.timeLog.findUnique({ where: { id: timeLogId } })
   if (!closing || !log) return
   if (closing.status === 'freigegeben') {
-    throw new Error('Monat ist bereits freigegeben – keine Korrektur mehr möglich')
+    throw new Fachfehler('Monat ist bereits freigegeben – keine Korrektur mehr möglich')
   }
 
   const logUpdates: any = { ...updates }
@@ -462,7 +463,7 @@ export async function backfillTimeLog(
   const month = Number(input.date.slice(5, 7))
   const closing = await prisma.monthlyClosing.findUnique({ where: { employeeId_year_month: { employeeId: input.employeeId, year, month } } })
   if (closing?.status === 'freigegeben') {
-    throw new Error('Monat ist bereits freigegeben – keine Nacherfassung mehr möglich')
+    throw new Fachfehler('Monat ist bereits freigegeben – keine Nacherfassung mehr möglich')
   }
 
   /*
