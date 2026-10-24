@@ -3,6 +3,8 @@
 import { prisma } from './prisma'
 import { uhrzeitIn } from './zeitzone'
 import { nettoSumme, zuSpeicherndeMinuten } from './arbeitszeit'
+import { arbeitstageDerFehlzeit, stundenProAusfalltag } from './ausfallstunden'
+import { AU_ARTEN } from './bem'
 import type { TimeLog, OvertimeRequest, Absence, HoursAccountSummary, MonthlyClosing } from './types'
 
 function toTimeLog(row: any): TimeLog {
@@ -260,17 +262,62 @@ export async function getHoursAccountSummary(employeeId: string, year: number, m
   const overtimeMinutes = overtimeRequests.reduce((s, o) => s + (o.approvedMinutes ?? 0), 0)
 
   const absences = await prisma.absence.findMany({ where: { employeeId, startDate: { startsWith: prefix } } })
-  const sickDays = absences.filter(a => a.type === 'krankheit').reduce((s, a) => s + a.days, 0)
-  const otherAbsenceDays = absences.filter(a => a.type !== 'krankheit').reduce((s, a) => s + a.days, 0)
+
+  /*
+   * §227 Arbeitstage zählen, nicht Kalendertage.
+   *
+   * Die Maske zum Krankmelden fragt „seit wann, voraussichtlich bis wann" und
+   * schickt die KALENDERTAGE mit: Wer von Montag bis Sonntag krank ist, meldet
+   * sieben. Hier wurde damit das Monatssoll gekürzt — eine Woche Krankheit
+   * nahm sieben Arbeitstage weg, obwohl es nur fünf gab. Das Stundenkonto
+   * stand danach um zwei Tagesschichten im Plus, für jede Krankmeldung über
+   * ein Wochenende neu.
+   *
+   * Gezählt wird gegen die Arbeitstage DIESER Person: Wer dienstags fest frei
+   * hat, verliert an einem kranken Dienstag nichts.
+   */
+  const person = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { workDaysPerWeek: true, fixedOffDays: true, weeklyHours: true },
+  })
+  const profil = await prisma.employeePlanningProfile.findUnique({
+    where: { employeeId }, select: { planungsStundenSoll: true, tagesmuster: true },
+  })
+  const ausfallPerson = {
+    weeklyHours: person?.weeklyHours ?? weeklyHours,
+    planungsStundenSoll: profil?.planungsStundenSoll ?? null,
+    tagesmuster: profil?.tagesmuster,
+    workDaysPerWeek: person?.workDaysPerWeek ?? null,
+    fixedOffDays: person?.fixedOffDays ?? null,
+  }
+  const arbeitstage = (a: { startDate: string; endDate: string }) =>
+    arbeitstageDerFehlzeit(ausfallPerson, a.startDate, a.endDate)
+
+  const sickDays = absences.filter(a => AU_ARTEN.includes(a.type))
+    .reduce((s, a) => s + arbeitstage(a), 0)
+  const otherAbsenceDays = absences.filter(a => !AU_ARTEN.includes(a.type))
+    .reduce((s, a) => s + arbeitstage(a), 0)
 
   const vacationRequests = await prisma.vacationRequest.findMany({
     where: { employeeId, status: 'approved', startDate: { startsWith: prefix } },
   })
   const vacationDays = vacationRequests.reduce((s, v) => s + v.days, 0)
 
-  // Soll-Arbeitstage abzüglich Urlaub/Krankheit/sonstiger Abwesenheit (bereits als reine Arbeitstage erfasst)
+  // Soll-Arbeitstage abzüglich Urlaub/Krankheit/sonstiger Abwesenheit (jetzt als reine Arbeitstage gezählt)
   const sollDays = Math.max(0, workdaysInMonth(year, month) - vacationDays - sickDays - otherAbsenceDays)
-  const sollMinutes = sollDays * standardDailyMinutes(weeklyHours)
+  /*
+   * §227 Der Tagessatz kommt aus `ausfallstunden.ts`, nicht aus
+   * `standardDailyMinutes(weeklyHours)`.
+   *
+   * Letzteres teilt immer durch fünf. Für Heike — 30 Stunden auf vier Tage —
+   * ergab das ein Tagessoll von sechs Stunden, obwohl sie siebeneinhalb
+   * arbeitet. Ihr Konto wuchs damit an jedem gearbeiteten Tag um anderthalb
+   * Stunden, die niemand genehmigt hatte.
+   */
+  const tagesStunden = stundenProAusfalltag(ausfallPerson)
+  const sollMinutes = tagesStunden > 0
+    ? Math.round(sollDays * tagesStunden * 60)
+    : sollDays * standardDailyMinutes(weeklyHours)
   const undertimeMinutes = Math.max(0, sollMinutes - istMinutes)
 
   return { employeeId, year, month, sollMinutes, istMinutes, breakMinutes, overtimeMinutes, undertimeMinutes, vacationDays, sickDays, otherAbsenceDays }

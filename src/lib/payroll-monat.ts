@@ -20,10 +20,24 @@ import {
   computeWithRules, DEFAULT_SURCHARGE_RULES,
   type ConfiguredSurchargeRule,
 } from './surcharge-engine'
+import {
+  ausfallStundenAmTag, arbeitstageDerFehlzeit, tageVonBis, BEZAHLTE_AUSFALLARTEN,
+} from './ausfallstunden'
+import { AU_ARTEN } from './bem'
+import { getPublicHolidayName } from './holidays'
 
 export interface MonatsGrundlage {
   regularHours: number
   overtimeHours: number
+  /**
+   * §227 Stunden aus bezahlten Fehlzeiten, die in `regularHours` mit
+   * enthalten sind.
+   *
+   * Getrennt geführt, weil die Abrechnung auf dem Lohnzettel auseinanderhalten
+   * muss, was gearbeitet und was fortgezahlt wurde — und weil sonst niemand
+   * nachrechnen kann, wie die Stundenzahl zustande kam.
+   */
+  ausfallHours: number
   nightHours: number
   saturdayHours: number
   sundayHours: number
@@ -53,7 +67,7 @@ export interface MonatsGrundlage {
 }
 
 const leer = (): MonatsGrundlage => ({
-  regularHours: 0, overtimeHours: 0,
+  regularHours: 0, overtimeHours: 0, ausfallHours: 0,
   nightHours: 0, saturdayHours: 0, sundayHours: 0, holidayHours: 0,
   vacationDays: 0, sickDays: 0,
   nightSurcharge: 0, saturdaySurcharge: 0, sundaySurcharge: 0,
@@ -184,14 +198,30 @@ export async function monatsGrundlagen(
     }),
   ])
 
-  const [zeiten, abwesenheiten] = await Promise.all([
+  const [zeiten, abwesenheiten, stammdaten, planProfile] = await Promise.all([
     prisma.timeLog.findMany({
       where: { employeeId: { in: ids }, date: { gte: von, lte: bis }, clockOut: { not: null } },
     }),
     prisma.absence.findMany({
       where: { employeeId: { in: ids }, startDate: { lte: bis }, endDate: { gte: von } },
     }),
+    /*
+     * §227 Arbeitstage und Tagesmuster — für die Entgeltfortzahlung.
+     *
+     * Ohne diese beiden Felder lässt sich nicht sagen, was ein Krankheitstag
+     * gekostet hat: `weeklyHours / 5` stimmt nur für die Fünf-Tage-Woche.
+     */
+    prisma.employee.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, workDaysPerWeek: true, fixedOffDays: true },
+    }),
+    prisma.employeePlanningProfile.findMany({
+      where: { employeeId: { in: ids } },
+      select: { employeeId: true, planungsStundenSoll: true, tagesmuster: true },
+    }),
   ])
+  const stammJeId = new Map(stammdaten.map(e => [e.id, e]))
+  const profilJeId = new Map(planProfile.map(p => [p.employeeId, p]))
 
   // Regelwerke je Standort nur einmal laden
   const regelnJeStandort = new Map<string, ConfiguredSurchargeRule[]>()
@@ -269,8 +299,51 @@ export async function monatsGrundlagen(
       }
     }
 
+    /*
+     * §227 Entgeltfortzahlung: Ein Krankheitstag zählt mit seinen Stunden.
+     *
+     * WAS VORHER PASSIERTE
+     * `regularHours` kam allein aus der gestempelten Zeit. Bei einem
+     * Monatsgehalt fiel das nicht auf — da rechnet die Abrechnung mit dem
+     * Gehalt. Bei STUNDENLOHN ist `regularPay = stundenlohn × Stunden`, und
+     * damit war eine Woche Krankheit eine Woche ohne Geld. Das ist kein
+     * Rundungsfehler, sondern ein Verstoß gegen §3 EntgFG.
+     *
+     * WARUM TAG FÜR TAG UND NICHT ÜBER DIE SUMME
+     * Wer sich für den Nachmittag krankmeldet, hat am selben Tag gestempelt.
+     * Würde der Tag zusätzlich voll gutgeschrieben, bekäme er ihn doppelt
+     * bezahlt. Ein Tag mit gestempelter Zeit wird deshalb übersprungen — die
+     * tatsächliche Zeit gewinnt.
+     */
+    const stamm = stammJeId.get(m.employeeId)
+    const profil = profilJeId.get(m.employeeId)
+    const ausfallPerson = {
+      weeklyHours: m.weeklyHours,
+      planungsStundenSoll: profil?.planungsStundenSoll ?? null,
+      tagesmuster: profil?.tagesmuster,
+      workDaysPerWeek: stamm?.workDaysPerWeek ?? null,
+      fixedOffDays: stamm?.fixedOffDays ?? null,
+    }
+    const gestempelteTage = new Set(
+      (zeitenJeMitarbeiter.get(m.employeeId) ?? []).filter(z => z.clockOut).map(z => z.date),
+    )
+    let ausfallStunden = 0
+    for (const a of abwesenheiten.filter(x => x.employeeId === m.employeeId)) {
+      if (!BEZAHLTE_AUSFALLARTEN.includes(a.type)) continue
+      for (const tag of tageVonBis(
+        a.startDate > von ? a.startDate : von,
+        a.endDate < bis ? a.endDate : bis,
+      )) {
+        if (gestempelteTage.has(tag)) continue
+        ausfallStunden += ausfallStundenAmTag(ausfallPerson, tag, {
+          feiertag: !!getPublicHolidayName(tag, m.bundesland ?? undefined),
+        })
+      }
+    }
+    g.ausfallHours = Math.round(ausfallStunden * 100) / 100
+
     // Sollstunden aus dem Vertrag; alles darüber sind Überstunden.
-    const gearbeitet = minuten / 60
+    const gearbeitet = minuten / 60 + ausfallStunden
     const soll = m.weeklyHours > 0 ? m.weeklyHours * (13 / 3) : gearbeitet
     g.regularHours = Math.round(Math.min(gearbeitet, soll) * 100) / 100
     g.overtimeHours = Math.round(Math.max(0, gearbeitet - soll) * 100) / 100
@@ -284,31 +357,34 @@ export async function monatsGrundlagen(
     }
   }
 
-  // Urlaub und Krankheit: die Arbeitstage, die in diesen Monat fallen
+  /*
+   * Urlaub und Krankheit: die Arbeitstage, die in diesen Monat fallen.
+   *
+   * §227 Gezählt gegen die Arbeitstage DIESER Person. Vorher nahm die
+   * Zählung Montag bis Freitag für jeden — wer mittwochs fest frei hat,
+   * bekam damit einen Krankheitstag angerechnet, den es nicht gab.
+   */
   for (const a of abwesenheiten) {
     const g = ergebnis.get(a.employeeId)
     if (!g) continue
-    const tage = arbeitstageImZeitraum(
+    const stamm = stammJeId.get(a.employeeId)
+    const profil = profilJeId.get(a.employeeId)
+    const tage = arbeitstageDerFehlzeit(
+      {
+        weeklyHours: mitarbeiter.find(m => m.employeeId === a.employeeId)?.weeklyHours ?? 0,
+        planungsStundenSoll: profil?.planungsStundenSoll ?? null,
+        tagesmuster: profil?.tagesmuster,
+        workDaysPerWeek: stamm?.workDaysPerWeek ?? null,
+        fixedOffDays: stamm?.fixedOffDays ?? null,
+      },
       a.startDate > von ? a.startDate : von,
       a.endDate < bis ? a.endDate : bis,
     )
     if (a.type === 'urlaub') g.vacationDays += tage
-    else if (a.type === 'krank' || a.type === 'krankheit') g.sickDays += tage
+    else if (AU_ARTEN.includes(a.type)) g.sickDays += tage
   }
 
   return ergebnis
-}
-
-/** Montag bis Freitag im Zeitraum — die übliche Zählweise für Urlaubs- und Krankheitstage. */
-function arbeitstageImZeitraum(von: string, bis: string): number {
-  const start = new Date(von + 'T00:00:00Z')
-  const ende = new Date(bis + 'T00:00:00Z')
-  let tage = 0
-  for (const d = new Date(start); d <= ende; d.setUTCDate(d.getUTCDate() + 1)) {
-    const wt = d.getUTCDay()
-    if (wt !== 0 && wt !== 6) tage++
-  }
-  return tage
 }
 
 export interface AbrechnungsStammdaten {
@@ -433,6 +509,8 @@ export function abrechnungsFelder(g: MonatsGrundlage, r: PayrollResult) {
   return {
     regularHours: g.regularHours,
     overtimeHours: g.overtimeHours,
+    // §227 Der fortgezahlte Teil, getrennt ausgewiesen.
+    ausfallHours: g.ausfallHours,
     nightHours: g.nightHours,
     sundayHours: g.sundayHours,
     holidayHours: g.holidayHours,

@@ -4556,3 +4556,116 @@ Nachweis: `test_kita_zwei_etagen.py` **169/169** (vorher 164). Die fünf neuen
 messen die **einzelne Dienstlänge**, nicht die Wochensumme — genau darin
 bestand der Fehler, die Summe stimmte ja. Gegenprobe inbegriffen: Mit
 entferntem Muster bei allen **außer** Heike behält Heike ihre 6/8/8/8.
+
+## Block §227 (24.10.) — Eine Krankmeldung verschwand im Nichts
+
+**Die Meldung:** „Dann habe ich mal Juliane krank gemeldet. Da steht auch nicht
+krank, und dadurch hat sie halt nur 16 von 35 Stunden. Bei ihr steht dann drin
+frei und nicht krank. Und ich habe hier auch als Standortleitung nirgendwo die
+Nachricht bekommen, dass sie sich krank gemeldet hat. Ich muss dann auch
+irgendwie einen Bereich mit meinen Krankmeldungen haben, wenn ich auf
+Krankmelden klicke."
+
+### Fünf Befunde an einer Meldung
+
+**1. Der Plan wusste es und zeigte es nicht.** Die Fehlzeiten waren geladen,
+und die eine Zeile, die sie in eine Liste umrechnete, wurde nirgends benutzt —
+nachgemessen mit einer einzigen Fundstelle im ganzen Modul, ihrer eigenen
+Zuweisung. Die Zelle fragte nur nach einem Dienst und zeichnete sonst den Knopf
+zum Zuweisen. Eine krankgemeldete Person sah aus wie eine, für die noch niemand
+geplant hat.
+
+**2. Ein Krankheitstag zahlte null.** Bei Monatsgehalt fiel das nicht auf. Bei
+**Stundenlohn** ist `regularPay = stundenlohn × Stunden`, und die Stunden kamen
+allein aus der Stempeluhr. Eine Woche Krankheit war eine Woche ohne Geld. Das
+ist kein Rundungsfehler, sondern ein Verstoß gegen §3 EntgFG.
+
+**3. Niemand erfuhr davon.** Es gab eine Route dafür
+(`/api/time-tracking/notify-admin`) — nur rief die niemand auf: Das Krankmelden
+vom Telefon schreibt direkt an `/api/absences`. Und sie nahm `find()`, also die
+erste Leitung des Standorts; wo zwei die Leitung teilen, erfuhr es immer
+dieselbe.
+
+**4. Das Monatssoll wurde um Kalendertage gekürzt.** Die Maske fragt „seit
+wann, voraussichtlich bis wann" und schickt **sieben** für Montag bis Sonntag.
+Das Stundenkonto nahm sieben Arbeitstage weg, obwohl es fünf gab — zwei
+Tagesschichten im Plus, für jede Krankmeldung über ein Wochenende neu.
+
+**5. Das Tagessoll teilte immer durch fünf.** Für eine 30-Stunden-Kraft an vier
+Tagen ergab das sechs Stunden statt siebeneinhalb. Ihr Konto wuchs an jedem
+gearbeiteten Tag um anderthalb Stunden, die niemand genehmigt hatte.
+
+### Eine Stelle, die die Frage beantwortet
+
+`src/lib/ausfallstunden.ts`. Dieselbe Rechnung für den Dienstplan, die
+Mitarbeitersicht, das Stundenkonto und die Lohnabrechnung — zwei Rechnungen für
+dieselbe Gutschrift laufen auseinander, und dann stimmt entweder der Plan oder
+der Lohnzettel.
+
+| Fall | gutgeschrieben |
+|---|---|
+| 35 Std., 5 Tage | **7,0** je Tag — aus „16 von 35" wird „35,0 / 35" |
+| 40 Std., 5 Tage | **8,0** je Tag — die Zahl aus der Meldung |
+| 3 × 8 + 1 × 6 (30 Std.) | **7,5** je Tag |
+| Samstag, Sonntag, fester freier Tag | **0** |
+| Feiertag | **0** — der ist schon bezahlt |
+| Tag mit Dienst im Plan | dessen Länge, nicht der Durchschnitt |
+
+**Warum der Durchschnitt und nicht „der Tag, der war":** Ein Muster aus dreimal
+acht und einmal sechs sagt nicht, WELCHER Wochentag der sechsstündige ist. Das
+hat niemand aufgeschrieben, und es zu raten heißt, mal acht gutzuschreiben, wo
+sechs zustanden.
+
+**Warum ein gestempelter Tag die Gutschrift schlägt:** Wer sich für den
+Nachmittag krankmeldet, hat am selben Tag gestempelt. Sonst bekäme er ihn
+doppelt bezahlt.
+
+### Nebenbefund: Ein Feld bedeutete an zwei Stellen Verschiedenes
+
+`workDaysPerWeek` wird vom Belegschafts-Import **netto** geschrieben (Heike: `4`
++ `['Fr']`, und „fünf Arbeitstage, freitags frei" lehnt er ausdrücklich ab) und
+von der Maske **brutto** (`5` + `['Fr']`). Die Differenz zu bilden war deshalb
+für die eine Hälfte der Datensätze richtig und für die andere falsch —
+nachgemessen: Bei `4` + `['Fr']` kam „Das Muster belegt 4 Arbeitstage, zur
+Verfügung stehen 3" heraus. **Heikes Muster, genau wie es im Vertrag steht,
+ließ sich nicht speichern.** Jetzt das Kleinere von „so viele Arbeitstage hat
+der Vertrag" und „so viele Tage sind offen und nicht fest frei": unter beiden
+Lesarten richtig, ohne Datenwanderung.
+
+### Was sonst noch dazugehört
+
+**Die Leitung bekommt die Nachricht** — alle Leitungen des Standorts, nicht die
+erste. Mit Name und Zeitraum und **ohne die Notiz aus der Meldung:** Was
+jemandem fehlt, ist ein Gesundheitsdatum nach Art. 9 DSGVO und gehört nicht auf
+einen Sperrbildschirm.
+
+**„Meine Krankmeldungen"** unter dem Formular: Zeitraum, Tage, und ob eine
+Bescheinigung fehlt — aus `nachweisLage`, derselben Rechnung, die auch direkt
+nach dem Melden antwortet. Mit einem Knopf zum Nachreichen.
+
+**Im eigenen Plan steht „Krankgemeldet"**, nicht „Frei". Wer sich selbst
+gemeldet hat und am nächsten Tag „Frei" liest, weiß nicht, ob es angekommen
+ist.
+
+**Auf dem Lohnzettel steht „davon Entgeltfortzahlung"** als eigene Zeile. Ein
+Beleg, der 35 Stunden zahlt, wo 16 gestempelt wurden, ist ohne sie nicht
+nachrechenbar — am wenigsten für die Person, um deren Lohn es geht. Und die
+Erstattung nach dem AAG (U1) betrifft genau diesen Teil.
+
+### Nachweise
+
+`ausfallstunden.test.ts` **28**, `c3-krankmeldung.mjs` **18**,
+`d24-entgeltfortzahlung.mts` **9**, `browser/krank-im-plan.mjs` **12**.
+Insgesamt **1923/1923** Prüfungen am laufenden System und **1245** Modultests.
+
+Gemessen wird der Betrag, nicht die Absicht: Eine Woche krank bei 20 €/Std.
+ergibt **800 €** statt null. Mit beiden Gegenproben — ohne Krankmeldung bleibt
+dasselbe Monat bei null, und ein halb gearbeiteter Tag ergibt 720 € statt 800.
+
+**Zwei eigene Fehler, die die Prüfung gefunden hat.** Die Liste aller
+Planungsprofile eines Standorts gab zuerst jedem angemeldeten Mitarbeiter die
+Stundenzahl der ganzen Belegschaft (HTTP 200, wo 403 hingehört):
+`locationFilter` ist ein Standortfilter und kein Rollenschloss. Und die Prüfung
+selbst legte ihre zweite Krankmeldung in denselben Monat wie die erste und
+zählte dann sechs Krankheitstage statt fünf — eine Prüfung, die sich selbst in
+die Rechnung stellt, prüft nicht mehr das Programm.

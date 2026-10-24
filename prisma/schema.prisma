@@ -1525,6 +1525,13 @@ model PayrollEntry {
   // Labour hours
   regularHours    Float    @default(0)
   overtimeHours   Float    @default(0)
+  /// §227 Stunden aus bezahlten Fehlzeiten (Entgeltfortzahlung), die in
+  /// `regularHours` mit enthalten sind.
+  ///
+  /// Getrennt gefuehrt, weil ein Lohnzettel, der 35 Stunden zahlt, obwohl nur
+  /// 16 gestempelt wurden, ohne diese Zeile nicht nachrechenbar ist. Und weil
+  /// die Erstattung nach dem AAG (U1) genau diesen Teil betrifft.
+  ausfallHours    Float    @default(0)
   nightHours      Float    @default(0)
   sundayHours     Float    @default(0)
   holidayHours    Float    @default(0)

@@ -19,6 +19,8 @@ import { useToast } from '@/lib/toast-context'
 import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import { getPublicHolidayName } from '@/lib/holidays'
+import { ausfallStundenAmTag } from '@/lib/ausfallstunden'
+import { AU_ARTEN } from '@/lib/bem'
 import { displayColors, SHIFT_PALETTE } from '@/lib/shift-colors'
 import { AusfallDialog, type AusfallDaten } from '@/components/schedule/AusfallDialog'
 import { MassnahmenPanel } from '@/components/schedule/MassnahmenPanel'
@@ -30,6 +32,21 @@ import {
   CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle, LayoutGrid, Users, Plus, Trash2,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
+
+/**
+ * §227 Wie eine Abwesenheit in der Zelle heißt.
+ *
+ * „Abwesend" steht dort, wo die Art nichts Genaueres sagt — besser als ein
+ * Datenbankwort wie „unentschuldigt" in Großbuchstaben mitten im Plan.
+ */
+const ABWESENHEIT_TEXT: Record<string, string> = {
+  krankheit: 'Krank',
+  krank: 'Krank',
+  fortbildung: 'Fortbildung',
+  unentschuldigt: 'Fehlt',
+  entschuldigt: 'Abwesend',
+  sonstige: 'Abwesend',
+}
 
 type PeriodMode = 'week' | 'twoWeeks' | 'month' | 'custom'
 
@@ -173,6 +190,12 @@ export default function AdminSchedule() {
   const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
   const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
   const [ABSENCES, setABSENCES] = useState<Absence[]>([])
+  /**
+   * §227 Stundenzahl und Tagesmuster je Mensch — für die Gutschrift an einem
+   * Ausfalltag. Eine Abfrage für den ganzen Standort, nicht eine je Zeile.
+   */
+  const [planProfile, setPlanProfile] = useState<
+    Record<string, { planungsStundenSoll: number | null; tagesmuster: unknown }>>({})
   const [allHistoricalEntries, setAllHistoricalEntries] = useState<ScheduleEntry[]>([])
   const [wishSubmissions, setWishSubmissions] = useState<WishSubmission[]>([])
   const [planningUnits, setPlanningUnits] = useState<PlanningUnit[]>([])
@@ -198,6 +221,12 @@ export default function AdminSchedule() {
       .finally(() => setDiensteGeladen(true))
     fetch(`/api/vacation-requests?locationId=${locationId}`).then(r => r.json()).then(d => setVACATION_REQUESTS(d.requests ?? []))
     fetch(`/api/absences?locationId=${locationId}`).then(r => r.json()).then(d => setABSENCES(d.absences ?? []))
+    fetch(`/api/employee-planning-profile?locationId=${locationId}`).then(r => r.json())
+      .then(d => setPlanProfile(Object.fromEntries(
+        (d.profile_liste ?? []).map((p: { employeeId: string; planungsStundenSoll: number | null; tagesmuster: unknown }) =>
+          [p.employeeId, { planungsStundenSoll: p.planungsStundenSoll, tagesmuster: p.tagesmuster }]),
+      )))
+      .catch(() => undefined)
     fetch(`/api/wish-submissions?locationId=${locationId}`).then(r => r.json()).then(d => setWishSubmissions(d.submissions ?? []))
     fetch(`/api/planning-units?locationId=${locationId}`).then(r => r.json()).then(d => setPlanningUnits(d.units ?? []))
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -498,6 +527,69 @@ export default function AdminSchedule() {
   const reportedAbsences = ABSENCES
     .filter(a => a.locationId === locationId && a.verificationStatus !== 'abgelehnt' && a.startDate <= periodEnd && a.endDate >= periodStart)
     .map(a => ({ employeeId: a.employeeId, employeeName: a.employeeName, startDate: a.startDate, endDate: a.endDate, type: a.type }))
+
+  /**
+   * §227 Was an diesem Tag anstelle eines Dienstes steht — und mit wie vielen
+   * Stunden.
+   *
+   * DIE MELDUNG
+   * „Dann habe ich mal Juliane krank gemeldet. Da steht auch nicht krank, und
+   * dadurch hat sie halt nur 16 von 35 Stunden. Bei ihr steht dann drin frei
+   * und nicht krank."
+   *
+   * Beide Hälften stimmten. Die Fehlzeiten waren geladen (`ABSENCES`), und die
+   * eine Zeile, die sie in eine Liste umrechnete, wurde nirgends benutzt — die
+   * Zelle fragte nur nach einem Dienst und zeichnete sonst den Knopf zum
+   * Zuweisen. Eine krankgemeldete Person sah damit aus wie eine, für die noch
+   * niemand geplant hat.
+   *
+   * Die Stunden kommen aus `ausfallstunden.ts`, derselben Stelle, aus der auch
+   * die Lohnabrechnung sie nimmt. Zwei Rechnungen für dieselbe Gutschrift
+   * würden irgendwann auseinanderlaufen, und dann stimmt entweder der Plan
+   * oder der Lohnzettel.
+   */
+  const ausfallAmTag = useCallback((empId: string, dateStr: string): {
+    art: 'krank' | 'urlaub' | 'abwesend'; text: string; stunden: number
+  } | null => {
+    const emp = EMPLOYEES.find(e => e.id === empId)
+    if (!emp) return null
+
+    const profil = planProfile[empId]
+    const person = {
+      weeklyHours: emp.weeklyHours,
+      planungsStundenSoll: profil?.planungsStundenSoll ?? null,
+      tagesmuster: profil?.tagesmuster,
+      workDaysPerWeek: emp.workDaysPerWeek,
+      fixedOffDays: emp.fixedOffDays,
+    }
+    const stunden = () => ausfallStundenAmTag(person, dateStr, {
+      betriebsTage: locationArbeitstage,
+      // Ein Feiertag ist ohnehin bezahlt. Würde er zusätzlich als
+      // Krankheitsstunde zählen, stünde die Woche über dem Soll.
+      feiertag: !!getPublicHolidayName(dateStr),
+    })
+
+    const fehlzeit = ABSENCES.find(a => a.employeeId === empId
+      && a.verificationStatus !== 'abgelehnt'
+      && a.startDate <= dateStr && a.endDate >= dateStr)
+    if (fehlzeit) {
+      // §227 Die Schreibweisen stehen in `bem.ts` — ältere Datensätze haben
+      // „krank", die Oberfläche schreibt „krankheit". Eine zweite Liste hier
+      // wäre eine zweite Gelegenheit, eine davon zu vergessen.
+      const krank = AU_ARTEN.includes(fehlzeit.type)
+      return {
+        art: krank ? 'krank' : 'abwesend',
+        text: krank ? 'Krank' : ABWESENHEIT_TEXT[fehlzeit.type] ?? 'Abwesend',
+        stunden: stunden(),
+      }
+    }
+
+    const urlaub = VACATION_REQUESTS.find(v => v.employeeId === empId
+      && v.status === 'approved' && v.startDate <= dateStr && v.endDate >= dateStr)
+    if (urlaub) return { art: 'urlaub', text: 'Urlaub', stunden: stunden() }
+
+    return null
+  }, [EMPLOYEES, planProfile, ABSENCES, VACATION_REQUESTS, locationArbeitstage])
 
   // §60: per-entry wish fulfillment map for schedule grid ✓/✕ indicators
   const wishFulfillmentMap = useMemo(() => {
@@ -1674,6 +1766,10 @@ export default function AdminSchedule() {
                                   {week.map((day, i) => {
                                     const dateStr = toDateString(day)
                                     const assignment = getDisplayAssignment(emp.id, dateStr)
+                                    // §227 Nur fragen, wenn kein Dienst steht: Ein Dienst
+                                    // trotz Krankmeldung ist ein eigener Fall, und den
+                                    // soll die Leitung sehen, nicht überdeckt bekommen.
+                                    const ausfall = assignment ? null : ausfallAmTag(emp.id, dateStr)
                                     // Fix 1b: hide cells outside location work days or period bounds
                                     const isNonWorkDay2 = !isLocationWorkDay(day)
                                     const isOutsidePeriod2 = dateStr < periodStart || dateStr > periodEnd
@@ -1712,6 +1808,41 @@ export default function AdminSchedule() {
                                               </span>
                                             )}
                                           </div>
+                                        ) : ausfall ? (
+                                          /*
+                                           * §227 Eine Fehlzeit ist keine freie Zelle.
+                                           *
+                                           * Sie bekommt kein Zuweisen-Feld: Wer krank
+                                           * ist, soll nicht aus Versehen einen Dienst
+                                           * bekommen. Die Stunden stehen daneben, damit
+                                           * die Spalte rechts nachvollziehbar bleibt.
+                                           */
+                                          <div
+                                            data-test="plan-ausfall"
+                                            data-art={ausfall.art}
+                                            data-stunden={ausfall.stunden}
+                                            className={`w-full flex flex-col items-center justify-center h-9 rounded-lg border ${
+                                              ausfall.art === 'krank'
+                                                ? 'bg-red-50 border-red-100'
+                                                : ausfall.art === 'urlaub'
+                                                  ? 'bg-amber-50 border-amber-100'
+                                                  : 'bg-gray-50 border-gray-100'}`}
+                                            title={`${ausfall.text} — ${ausfall.stunden.toFixed(1).replace('.', ',')} Std. gutgeschrieben`}
+                                          >
+                                            <span className={`text-[10px] font-bold leading-none ${
+                                              ausfall.art === 'krank'
+                                                ? 'text-red-600'
+                                                : ausfall.art === 'urlaub'
+                                                  ? 'text-amber-700'
+                                                  : 'text-gray-500'}`}>
+                                              {ausfall.text}
+                                            </span>
+                                            {ausfall.stunden > 0 && (
+                                              <span className="text-[9px] leading-tight text-gray-400">
+                                                {ausfall.stunden.toFixed(1).replace('.', ',')} Std.
+                                              </span>
+                                            )}
+                                          </div>
                                         ) : (
                                           <button
                                             onClick={() => setManualPickerCell({ empId: emp.id, dateStr })}
@@ -1734,14 +1865,33 @@ export default function AdminSchedule() {
                                     const ds = toDateString(d)
                                     return isLocationWorkDay(d) && ds >= periodStart && ds <= periodEnd
                                   })
+                                  /*
+                                   * §227 Ein Dienst zählt mit seiner Länge, ein
+                                   * Ausfalltag mit den Stunden, die er gekostet hat.
+                                   *
+                                   * Die Reihenfolge ist wichtig: Stand für den Tag ein
+                                   * Dienst, zählt NUR der. Sonst stünde eine
+                                   * krankgemeldete Person, deren Dienst noch im Plan
+                                   * steht, mit doppelten Stunden da.
+                                   */
                                   const ist = visibleDays.reduce((sum, d) => {
-                                    const a = getDisplayAssignment(emp.id, toDateString(d))
-                                    return a ? sum + calcShiftHours(a.startTime, a.endTime, planningRules.breakThresholdMinutes, planningRules.breakDeductionMinutes) : sum
+                                    const ds = toDateString(d)
+                                    const a = getDisplayAssignment(emp.id, ds)
+                                    if (a) {
+                                      return sum + calcShiftHours(a.startTime, a.endTime, planningRules.breakThresholdMinutes, planningRules.breakDeductionMinutes)
+                                    }
+                                    return sum + (ausfallAmTag(emp.id, ds)?.stunden ?? 0)
                                   }, 0)
                                   const soll = emp.weeklyHours
                                   const pct = soll > 0 ? ist / soll : 0
                                   return (
-                                    <div className="text-xs font-mono whitespace-nowrap leading-tight">
+                                    <div
+                                      data-test="plan-stunden"
+                                      data-emp={emp.id}
+                                      data-ist={ist.toFixed(1)}
+                                      data-soll={soll}
+                                      className="text-xs font-mono whitespace-nowrap leading-tight"
+                                    >
                                       <span className={pct > 1.05 ? 'text-red-600 font-bold' : pct >= 0.9 ? 'text-green-600' : 'text-blue-500'}>
                                         {ist.toFixed(1)}
                                       </span>

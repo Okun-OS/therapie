@@ -8,6 +8,8 @@ import {
 import { einreihen } from '@/lib/warteschlange'
 import { schlangeGeaendert } from '@/components/offline/Warteschlange'
 import { istApp, kameraFoto } from '@/lib/nativ'
+import type { NachweisLageDaten } from '@/lib/types'
+import { AU_ARTEN } from '@/lib/bem'
 
 /**
  * §137 Krankmelden vom Telefon.
@@ -25,6 +27,22 @@ import { istApp, kameraFoto } from '@/lib/nativ'
  * Arbeitsvertrag (der Betrieb darf sie früher verlangen) — beides muss niemand
  * im Kopf haben, der gerade krank ist.
  */
+
+interface Krankmeldung {
+  id: string
+  type: string
+  startDate: string
+  endDate: string
+  days: number
+  verificationStatus?: string
+  nachweisLage?: NachweisLageDaten
+}
+
+/** „19.10." — in einer Liste reicht Tag und Monat, das Jahr steht am Ende. */
+const datumKurz = (iso: string) => {
+  const [j, m, t] = iso.split('-')
+  return t && m ? `${t}.${m}.${j}` : iso
+}
 
 const heuteStr = () => {
   const d = new Date()
@@ -55,6 +73,19 @@ export default function Krankmelden() {
   const [laedtHoch, setLaedtHoch] = useState(false)
   const [eingereicht, setEingereicht] = useState(false)
   const [locationId, setLocationId] = useState<string | null>(null)
+  /**
+   * §227 Die eigenen Krankmeldungen.
+   *
+   * GEMELDET
+   * „Ich muss dann auch irgendwie einen Bereich mit meinen [Krankmeldungen]
+   * haben, wenn ich auf Krankmelden klicke."
+   *
+   * Es gab keinen. Wer sich gemeldet hatte, sah danach ein grünes Häkchen und
+   * beim nächsten Öffnen wieder ein leeres Formular — ob die Meldung
+   * angekommen war, stand nirgends. Und wer die Bescheinigung später
+   * nachreichen wollte, fand die Krankmeldung nicht mehr, zu der sie gehört.
+   */
+  const [meine, setMeine] = useState<Krankmeldung[] | null>(null)
   const dateiFeld = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -67,6 +98,22 @@ export default function Krankmelden() {
       })
       .catch(() => setLocationId(user.locationId ?? null))
   }, [user?.employeeId, user?.locationId])
+
+  const meineLaden = useCallback(() => {
+    if (!user?.employeeId) return
+    fetch(`/api/absences?employeeId=${user.employeeId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setMeine(
+        ((d?.absences ?? []) as Krankmeldung[])
+          .filter(a => AU_ARTEN.includes(a.type))
+          .sort((a, b) => b.startDate.localeCompare(a.startDate)),
+      ))
+      // Kein Netz heißt nicht „keine Meldungen" — eine leere Liste wäre hier
+      // eine Lüge, und zwar eine beruhigende.
+      .catch(() => setMeine(null))
+  }, [user?.employeeId])
+
+  useEffect(() => { meineLaden() }, [meineLaden])
 
   const tage = kalendertage(von, bis)
 
@@ -111,6 +158,9 @@ export default function Krankmelden() {
         pflichtig: lage?.lage?.pflicht?.pflichtig ?? tage >= 4,
         text: lage?.lage?.pflicht?.begruendung ?? '',
       })
+      // §227 Damit die Liste beim Zurückgehen die neue Meldung enthält und
+      // nicht den Stand von vorher zeigt.
+      meineLaden()
     } catch {
       // §138 Kein Netz: merken statt verlieren. Eine Krankmeldung, die im
       // Funkloch verpufft, kostet die Person am Monatsende Lohn — und die
@@ -134,7 +184,7 @@ export default function Krankmelden() {
             + 'Sobald die Meldung übertragen ist, sagt dir die App verbindlich Bescheid.',
       })
     } finally { setSendet(false) }
-  }, [user, locationId, von, bis, tage, notiz])
+  }, [user, locationId, von, bis, tage, notiz, meineLaden])
 
   /**
    * §139 In der App die richtige Kamera, im Browser das Dateifeld.
@@ -176,6 +226,7 @@ export default function Krankmelden() {
         return
       }
       setEingereicht(true)
+      meineLaden()
     } catch {
       setFehler('Keine Verbindung. Das Bild wurde nicht übertragen.')
     } finally {
@@ -331,6 +382,71 @@ export default function Krankmelden() {
           Krankmeldung abschicken
         </button>
       </div>
+
+      {/*
+        §227 Meine Krankmeldungen.
+
+        Was hier steht, ist genau das, was man wissen will, wenn man sich schon
+        gemeldet hat: Ist sie angekommen, ist eine Bescheinigung fällig, und
+        fehlt sie noch. Die Antwort auf die dritte Frage kommt aus derselben
+        Rechnung wie die Pflicht nach der Meldung (`nachweisLage`) — eine
+        zweite Zählung hier würde irgendwann etwas anderes sagen.
+      */}
+      {meine && meine.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+          <p className="text-sm font-semibold text-navy">Meine Krankmeldungen</p>
+          <div className="divide-y divide-gray-100">
+            {meine.map(m => {
+              // „Offen" heißt: Es ist eine Bescheinigung fällig und sie
+              // deckt die Fehlzeit nicht ab. `deckung` kennt dafür vier
+              // Zustände; nur zwei davon sind ein Grund zum Nachreichen.
+              const offen = m.nachweisLage?.deckung === 'keine'
+                || m.nachweisLage?.deckung === 'teilweise'
+              return (
+                <div key={m.id} className="py-2.5 flex items-start gap-3">
+                  <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                    m.verificationStatus === 'abgelehnt' ? 'bg-red-400'
+                      : offen ? 'bg-amber-400' : 'bg-green-500'}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-navy">
+                      {m.startDate === m.endDate
+                        ? datumKurz(m.startDate)
+                        : `${datumKurz(m.startDate)} – ${datumKurz(m.endDate)}`}
+                      <span className="text-gray-400">
+                        {' '}· {m.days} {m.days === 1 ? 'Tag' : 'Tage'}
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      {m.verificationStatus === 'abgelehnt'
+                        ? 'Von der Leitung zurückgewiesen — bitte nachfragen.'
+                        : m.nachweisLage?.text ?? 'Die Meldung ist bei der Leitung.'}
+                    </p>
+                  </div>
+                  {offen && (
+                    <button
+                      onClick={() => {
+                        // Die bestehende Meldung ist der Besitzer des Bildes.
+                        // Deshalb wird sie als „fertig" gesetzt — derselbe
+                        // Weg wie direkt nach dem Melden, nur später.
+                        setVon(m.startDate); setBis(m.endDate)
+                        setEingereicht(false)
+                        setFertig({
+                          id: m.id, pflichtig: true,
+                          text: m.nachweisLage?.text
+                            ?? 'Die Bescheinigung fehlt noch zu dieser Krankmeldung.',
+                        })
+                      }}
+                      className="text-[11px] font-semibold text-purple-700 underline shrink-0"
+                    >
+                      Nachreichen
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

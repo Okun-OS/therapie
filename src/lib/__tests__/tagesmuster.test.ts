@@ -93,15 +93,45 @@ describe('Tagesmuster lesen und prüfen', () => {
     expect(moeglicheArbeitstage(5, ['Do', 'Fr'])).toBe(3)
     expect(moeglicheArbeitstage(5, [])).toBe(5)
     expect(moeglicheArbeitstage(null, null)).toBe(5)
-    // Mehr freie Tage als Arbeitstage ergibt null, nicht eine negative Zahl.
-    expect(moeglicheArbeitstage(2, ['Mo', 'Di', 'Mi'])).toBe(0)
+  })
+
+  /*
+   * §227 Derselbe Mensch, zwei Schreibweisen — und beide müssen durchgehen.
+   *
+   * Der Belegschafts-Import schreibt Heike als „4 Arbeitstage, Fr frei", die
+   * Demo-Daten und die Maske als „5 Arbeitstage, Fr frei". Gemeint ist beide
+   * Male eine Vier-Tage-Kraft. Vorher wurde die Differenz gebildet: Die erste
+   * Schreibweise ergab 3 mögliche Tage, und Heikes Muster — genau wie es im
+   * Vertrag steht — ließ sich nicht speichern.
+   */
+  it('liest beide Schreibweisen einer Vier-Tage-Kraft als vier Tage', () => {
+    expect(moeglicheArbeitstage(4, ['Fr'])).toBe(4)
+    expect(moeglicheArbeitstage(5, ['Fr'])).toBe(4)
   })
 
   it('passt für eine Vier-Tage-Kraft mit festem freien Freitag', () => {
-    const r = pruefeTagesmuster(
-      [{ stunden: 8, tage: 3 }, { stunden: 6, tage: 1 }], 30, moeglicheArbeitstage(5, ['Fr']),
-    )
-    expect(r.fehler).toBeNull()
+    for (const tage of [4, 5]) {
+      const r = pruefeTagesmuster(
+        [{ stunden: 8, tage: 3 }, { stunden: 6, tage: 1 }], 30,
+        moeglicheArbeitstage(tage, ['Fr']),
+      )
+      expect(r.fehler, `workDaysPerWeek=${tage}`).toBeNull()
+    }
+  })
+
+  it('zählt bei mehr freien Tagen als Arbeitstagen die offenen Tage', () => {
+    // Zwei Arbeitstage laut Vertrag, Mo/Di/Mi fest frei: Do und Fr bleiben,
+    // also zwei. Die Differenz hätte hier null ergeben — und damit jedes
+    // Muster abgelehnt, obwohl zwei Tage offenstehen.
+    expect(moeglicheArbeitstage(2, ['Mo', 'Di', 'Mi'])).toBe(2)
+    // Bleibt kein Tag übrig, ist auch kein Muster planbar.
+    expect(moeglicheArbeitstage(2, ['Mo', 'Di', 'Mi', 'Do', 'Fr'])).toBe(0)
+  })
+
+  it('weitet sich auf einen Betrieb mit mehr Öffnungstagen aus', () => {
+    // Eine Pflegeeinrichtung ist sieben Tage offen; eine Sechs-Tage-Kraft mit
+    // freiem Sonntag hat dort sechs mögliche Tage, nicht fünf.
+    expect(moeglicheArbeitstage(6, ['So'], 7)).toBe(6)
   })
 
   // ── Kaputte Eingaben ─────────────────────────────────────────────────

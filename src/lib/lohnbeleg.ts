@@ -89,6 +89,14 @@ export interface BelegAbrechnung {
   svBrutto?: number
   regularHours: number
   overtimeHours: number
+  /**
+   * §227 Der fortgezahlte Teil der Stunden (Krankheit, Urlaub).
+   *
+   * Steht als eigene Zeile auf dem Beleg. Ohne sie zahlt ein Beleg 35 Stunden
+   * aus, wo 16 gestempelt wurden, und niemand kann die Zahl nachrechnen — am
+   * wenigsten die Person, um deren Lohn es geht.
+   */
+  ausfallHours?: number
   lohnsteuer: number
   kirchensteuer: number
   soli: number
@@ -255,6 +263,12 @@ export async function erzeugeLohnbeleg(
     if (steuerfrei > 0) posten.push(['davon steuerfrei (§3b EStG)', steuerfrei])
   }
   if (abrechnung.overtimeHours > 0) posten.push(['davon Überstunden', 0, `${euro(abrechnung.overtimeHours)} Std.`])
+  // §227 Entgeltfortzahlung nach §3 EntgFG und bezahlter Urlaub stehen im
+  // Grundentgelt. Als eigene Zeile, damit die Stundenzahl aufgeht: gestempelte
+  // Zeit plus fortgezahlte Zeit ergibt genau das, was bezahlt wird.
+  if ((abrechnung.ausfallHours ?? 0) > 0) {
+    posten.push(['davon Entgeltfortzahlung', 0, `${euro(abrechnung.ausfallHours!)} Std.`])
+  }
   // §120 Einmalzahlungen als eigene Zeile — sie werden anders besteuert, und
   // der Mitarbeiter muss sehen, dass davon mehr Steuer abgeht als sonst.
   if ((abrechnung.sonstigeBezuege ?? 0) > 0) {

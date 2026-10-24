@@ -205,6 +205,7 @@ export async function POST(req: NextRequest) {
           pauschsteuerAG: a.pauschsteuerAG,
           steuerBrutto: a.steuerBrutto, svBrutto: a.svBrutto,
           regularHours: a.regularHours, overtimeHours: a.overtimeHours,
+          ausfallHours: a.ausfallHours,
           lohnsteuer: a.lohnsteuer, kirchensteuer: a.kirchensteuer, soli: a.soli,
           rvAN: a.rvAN, kvAN: a.kvAN, pvAN: a.pvAN, avAN: a.avAN,
           totalDeductions: a.totalDeductions, netto: a.netto,

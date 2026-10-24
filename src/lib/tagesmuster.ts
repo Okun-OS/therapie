@@ -200,12 +200,40 @@ export function musterText(muster: Tagesmuster | null): string {
  * sein Muster nur auf die übrigen Tage verteilen. Ohne diese Rechnung ließe
  * sich ein Muster speichern, das rechnerisch aufgeht und trotzdem nie
  * planbar ist.
+ *
+ * §227 WARUM DAS KLEINERE VON ZWEIEN UND NICHT DIE DIFFERENZ
+ * Das Feld `workDaysPerWeek` wird an zwei Stellen geschrieben, und die beiden
+ * meinten Verschiedenes:
+ *
+ *   Der Belegschafts-Import zählt NETTO. Er lehnt „fünf Arbeitstage, freitags
+ *   frei" ausdrücklich ab — das wären sechs Tage in einer Woche mit fünf
+ *   Betriebstagen. Heike mit vier Arbeitstagen und freiem Freitag steht dort
+ *   als `4` + `['Fr']`.
+ *
+ *   Die Demo-Daten und die Maske zählen BRUTTO: `5` für alle, und die freien
+ *   Tage daneben. Dieselbe Heike steht dort als `5` + `['Fr']`.
+ *
+ * Die Differenz zu bilden war deshalb für die eine Hälfte der Datensätze
+ * richtig und für die andere falsch — nachgemessen am 24.10.2026: Bei `4` +
+ * `['Fr']` kam „Das Muster belegt 4 Arbeitstage, zur Verfügung stehen 3"
+ * heraus. Heikes Muster, genau wie es im Vertrag steht, ließ sich nicht
+ * speichern.
+ *
+ * Das Kleinere von „so viele Arbeitstage hat der Vertrag" und „so viele Tage
+ * sind überhaupt offen und nicht fest frei" ist unter BEIDEN Lesarten richtig
+ * und braucht keine Datenwanderung.
+ *
+ * `wocheTage` ist die Zahl der Wochentage, an denen der Betrieb geöffnet ist.
+ * Fünf, wo nichts anderes gesagt wird — Montag bis Freitag ist der Normalfall,
+ * und die Rechnung darf nicht daran scheitern, dass der Aufrufer den
+ * Betriebstyp nicht zur Hand hat.
  */
 export function moeglicheArbeitstage(
   arbeitstageProWoche: number | null | undefined,
   festeFreieTage: string[] | null | undefined,
+  wocheTage: number = 5,
 ): number {
-  const basis = arbeitstageProWoche && arbeitstageProWoche > 0 ? arbeitstageProWoche : 5
-  const frei = (festeFreieTage ?? []).length
-  return Math.max(0, basis - frei)
+  const vertrag = arbeitstageProWoche && arbeitstageProWoche > 0 ? arbeitstageProWoche : wocheTage
+  const offen = Math.max(0, wocheTage - (festeFreieTage ?? []).length)
+  return Math.max(0, Math.min(vertrag, offen))
 }

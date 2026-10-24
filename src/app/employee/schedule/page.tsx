@@ -18,14 +18,16 @@ import { googleCalendarLink, appleCalendarDownload } from '@/lib/calendar-export
 import {
   ChevronLeft, ChevronRight, Sun, Moon, Briefcase, MessageSquare,
   CalendarPlus, ArrowLeftRight, Info, CheckCircle, XCircle, Clock,
-  Download, ExternalLink, Apple, AlertTriangle,
+  Download, ExternalLink, Apple, AlertTriangle, Stethoscope,
 } from 'lucide-react'
 import {
   getWeekDays, toDateString, formatDateShort, formatDate,
   getDayName, isToday,
 } from '@/lib/utils'
 import { getPublicHolidayName } from '@/lib/holidays'
-import type { ScheduleEntry } from '@/lib/types'
+import type { ScheduleEntry, Absence } from '@/lib/types'
+import { ausfallStundenAmTag } from '@/lib/ausfallstunden'
+import { AU_ARTEN } from '@/lib/bem'
 
 const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase }
 
@@ -74,6 +76,17 @@ export default function EmployeeSchedule() {
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
   const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
   const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
+  /**
+   * §227 Die eigenen Fehlzeiten — damit im eigenen Plan „Krank" steht und
+   * nicht „Frei".
+   *
+   * Gemeldet wurde es aus der Leitungssicht. Hier ist es aber schlimmer: Wer
+   * sich selbst krankgemeldet hat und am nächsten Tag „Frei" liest, weiß
+   * nicht, ob die Meldung angekommen ist.
+   */
+  const [meineFehlzeiten, setMeineFehlzeiten] = useState<Absence[]>([])
+  const [meinProfil, setMeinProfil] = useState<
+    { planungsStundenSoll: number | null; tagesmuster: unknown } | null>(null)
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
@@ -88,8 +101,20 @@ export default function EmployeeSchedule() {
     // §61: load persistent planning profile
     fetch(`/api/employee-planning-profile?employeeId=${user.employeeId}`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.profile) setPlanningProfile({ shiftPreference: d.profile.shiftPreference ?? 'keine' }) })
+      .then(d => {
+        if (d?.profile) setPlanningProfile({ shiftPreference: d.profile.shiftPreference ?? 'keine' })
+        if (d?.profile) {
+          setMeinProfil({
+            planungsStundenSoll: d.profile.planungsStundenSoll ?? null,
+            tagesmuster: d.profile.tagesmuster,
+          })
+        }
+      })
       .catch(() => {})
+    fetch(`/api/absences?employeeId=${user.employeeId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setMeineFehlzeiten(d?.absences ?? []))
+      .catch(() => undefined)
   }, [user?.employeeId])
 
   const employee = EMPLOYEES.find(e => e.id === user?.employeeId)
@@ -101,6 +126,32 @@ export default function EmployeeSchedule() {
   }, [employee?.locationId])
 
   const myEntries = SCHEDULE_ENTRIES.filter(s => s.employeeId === user?.employeeId)
+
+  /**
+   * §227 Was an diesem Tag anstelle eines Dienstes stand.
+   *
+   * Dieselbe Rechnung wie im Leitungsplan (`ausfallstunden.ts`). Stünde hier
+   * eine eigene, könnte dieselbe Krankheit in zwei Ansichten zwei
+   * verschiedene Stundenzahlen ergeben — und beide würden geglaubt.
+   */
+  const ausfallAmTag = (dateStr: string): { text: string; krank: boolean; stunden: number } | null => {
+    const fehlzeit = meineFehlzeiten.find(a => a.verificationStatus !== 'abgelehnt'
+      && a.startDate <= dateStr && a.endDate >= dateStr)
+    if (!fehlzeit || !employee) return null
+    const stunden = ausfallStundenAmTag({
+      weeklyHours: employee.weeklyHours,
+      planungsStundenSoll: meinProfil?.planungsStundenSoll ?? null,
+      tagesmuster: meinProfil?.tagesmuster,
+      workDaysPerWeek: employee.workDaysPerWeek,
+      fixedOffDays: employee.fixedOffDays,
+    }, dateStr, { feiertag: !!getPublicHolidayName(dateStr, location?.bundesland) })
+    const krank = AU_ARTEN.includes(fehlzeit.type)
+    return {
+      text: krank ? 'Krankgemeldet' : 'Abwesend',
+      krank,
+      stunden,
+    }
+  }
 
   const weekDays = getWeekDays(currentDate)
   const weekStart = toDateString(weekDays[0])
@@ -507,6 +558,7 @@ export default function EmployeeSchedule() {
                 const isPast = day < new Date(new Date().setHours(0, 0, 0, 0))
                 const Icon = shift ? SHIFT_ICONS[shift.type] : null
                 const holiday = getPublicHolidayName(dateStr, location?.bundesland)
+                const ausfall = entry ? null : ausfallAmTag(dateStr)
 
                 return (
                   <div
@@ -553,6 +605,23 @@ export default function EmployeeSchedule() {
                           >
                             <ArrowLeftRight size={14} className="text-blue-500" />
                           </button>
+                        </div>
+                      </div>
+                    ) : ausfall ? (
+                      <div className="flex-1 flex items-center gap-3 min-w-0">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          ausfall.krank ? 'bg-red-100' : 'bg-gray-100'}`}>
+                          <Stethoscope size={18} className={ausfall.krank ? 'text-red-600' : 'text-gray-500'} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-semibold ${ausfall.krank ? 'text-red-700' : 'text-navy'}`}>
+                            {ausfall.text}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {ausfall.stunden > 0
+                              ? `${ausfall.stunden.toFixed(1).replace('.', ',')} Std. gutgeschrieben`
+                              : 'An diesem Tag stand kein Dienst an'}
+                          </p>
                         </div>
                       </div>
                     ) : (
