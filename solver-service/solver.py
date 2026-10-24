@@ -689,8 +689,31 @@ def solve(rule_model: dict) -> dict:
             if day in blocked:
                 continue
             di = day_idx.get(day)
-            si = shift_idx.get(w.get("schichtId", ""))
-            if di is not None and si is not None:
+            if di is None:
+                continue
+            """
+            §229 Ein Wunsch nach einer Dienstart zaehlt fuer JEDEN Dienst
+            dieser Art.
+
+            Vorher traf ein Wunsch genau eine Dienstkennung. Die dauerhafte
+            Vorliebe "ich mag Fruehdienste" wurde in der App auf den ersten
+            gefundenen Fruehdienst uebersetzt — hier im Paket der Kita also auf
+            "Fruehdienst 8". Wer ein Tagesmuster von sieben Stunden hat, kann
+            den nie bekommen: Der Wunsch war strukturell unerfuellbar, und in
+            der Zelle stand jeden Tag ein rotes Kreuz.
+
+            Mehr als ein Dienst am Tag ist ohnehin verboten (H1). Der Bonus
+            laesst sich also nicht mehrfach einsammeln, auch wenn er an
+            mehreren Diensten haengt.
+            """
+            typ_gewuenscht = w.get("schichtTyp")
+            if typ_gewuenscht:
+                ziele = [i for i, sh in enumerate(shifts)
+                         if sh.get("typ") == typ_gewuenscht]
+            else:
+                si = shift_idx.get(w.get("schichtId", ""))
+                ziele = [si] if si is not None else []
+            for si in ziele:
                 wish_tuples.append({
                     "ei": ei, "di": di, "si": si,
                     "prio": int(w.get("prioritaet", 3)),
@@ -921,11 +944,17 @@ def solve(rule_model: dict) -> dict:
 
     if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         # Build wish lookup for per-assignment explanations (§68)
+        # §229 Zur Erklaerung gehoert auch die gewuenschte ART, sonst meldet
+        # der Bericht "Wunsch nicht erfuellt", wo ein Dienst derselben Art
+        # zugeteilt wurde.
         wish_lookup: dict[tuple[int, str], str] = {}  # (ei, day) → schichtId
+        wish_typ_lookup: dict[tuple[int, str], str] = {}  # (ei, day) → Dienstart
         for ei, emp in enumerate(employees):
             for w in emp.get("wuensche", []):
                 if w.get("typ") == "wunsch":
                     wish_lookup[(ei, w["datum"])] = w.get("schichtId", "")
+                    if w.get("schichtTyp"):
+                        wish_typ_lookup[(ei, w["datum"])] = w["schichtTyp"]
 
         for ei, emp in enumerate(employees):
             unit_id_default = (emp.get("einheiten") or [None])[0]
@@ -962,7 +991,10 @@ def solve(rule_model: dict) -> dict:
                     if springer_note:
                         why_parts.append(springer_note)
                     wished_shift_id = wish_lookup.get((ei, day))
-                    if wished_shift_id == shift["id"]:
+                    wished_typ = wish_typ_lookup.get((ei, day))
+                    if wished_shift_id == shift["id"] or (
+                        wished_typ and shift.get("typ") == wished_typ
+                    ):
                         why_parts.append("Wunschdienst erfüllt")
                     target_mins = int(emp.get("wochenstundenSoll", 40) * 60)
                     if target_mins > 0:

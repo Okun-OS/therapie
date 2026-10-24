@@ -4730,3 +4730,76 @@ hier aus.
 
 Nachweis: `n-kalender-abo.mjs` **12/12**, Solver **173** Tests.
 Insgesamt **1935/1935** Prüfungen am laufenden System.
+
+## Block §229 (24.10.) — Der Dienstwunsch zeigte auf einen Dienst, den man nicht haben darf
+
+**Die Frage:** „Fließt es denn überhaupt ein, was du da als deine Wünsche und
+Präferenzen für Dienste angibst?"
+
+### Die Antwort war: ja — und für die meisten ins Leere
+
+Die dauerhafte Vorliebe („ich mag Frühdienste") wurde für jeden Planungstag in
+einen Wunsch übersetzt. Nur wurde daraus **ein bestimmter Dienst**:
+`schichten.find(s => s.typ === 'frueh')`, also der erste gefundene. Im Paket
+der Kita gibt es drei Frühdienste — mit acht, sieben und sechs Stunden —, und
+`find` liefert den achtstündigen.
+
+Juliane arbeitet fünfmal sieben Stunden. **Den Achtstundendienst darf sie nicht
+bekommen.** Ihr Wunsch war damit strukturell unerfüllbar, und in der Zelle
+stand jeden Tag ein rotes Kreuz, ohne dass irgendwo stand, warum. Seit §226 die
+Tageslängen festhält, trifft das jeden, dessen Tag nicht der längste ist.
+
+Die Oberfläche hat dabei **immer schon über die Art geurteilt**
+(`shift.type === w.preferredShiftType`). Nur der Rechendienst bekam eine
+einzelne Kennung. Zwei Lesarten derselben Angabe — und die eine, die zählt,
+war die engere.
+
+### Gemessen, nicht behauptet
+
+| | erfüllte Wünsche |
+|---|---|
+| vorher (Wunsch auf eine Kennung) | **0** |
+| jetzt (Wunsch auf die Dienstart) | **2** |
+
+Gezählt wird die Begründung des Rechendienstes selbst („Wunschdienst erfüllt"),
+nicht die Anzahl bestimmter Dienstarten.
+
+**Warum nicht einfach zwei Pläne vergleichen:** Der Rechendienst hat für dieses
+Paket mehrere gleich gute Lösungen und wählt zwischen zwei Läufen verschieden.
+Nachgemessen am 24.10.2026: Zweimal „ohne Wunsch" ergab einmal 0 und einmal 2
+Frühdienste für dieselbe Person. Ein Vergleich zweier Einzelpläne hätte das
+Rauschen gemessen und nicht die Wirkung.
+
+**Zwei Gegenproben gehören dazu.** Eine Vorliebe ist ein Wunsch und keine
+Erlaubnis: Juliane bekommt weiter nur Siebenstundendienste, sonst wäre der
+erfüllte Wunsch eine Stunde unbezahlte Mehrarbeit am Tag. Und ein Wunsch nach
+einem **bestimmten** Dienst bleibt einer — wer „am Freitag den Spätdienst 8"
+beantragt, meint den und nicht irgendeinen.
+
+### Der Feldbestand, nach dem gefragt wurde
+
+„Bei den Bildern 2, 3, 4 und 5 siehst du mal so Sachen, wo ich mich frage,
+brauchen wir das noch?"
+
+| Angabe | wer liest sie |
+|---|---|
+| Dienstvorliebe (`shiftPreference`) | **der Rechendienst** — seit §229 erfüllbar |
+| Feste freie Wochentage | **der Rechendienst**, als Nichtverfügbarkeit |
+| Tagesmuster | **der Rechendienst** (§181), und die Ausfallstunden (§227) |
+| Wunschfrei und Tageswünsche | **der Rechendienst**, mit Vorrang nach Priorität |
+| „Persönliches" (Stärken, Lebensumstände) | nur der **KI-Assistent** und die Maske — **nicht** der Rechendienst |
+| Urlaubswünsche (`preferredMonths`) | nur **Menschen**, in der Jahresplanung |
+
+Zwei davon sind offene Fragen und keine Befunde, deshalb stehen sie hier und
+nicht im Code:
+
+**Die Urlaubswünsche kennen nur Monate.** `preferredMonths` ist eine Liste von
+Monatszahlen. Sagen drei Leute „Juli", weiß die Leitung nicht, ob sie
+kollidieren — und genau dafür ist die Jahresplanung da. Ein Zeitraum statt
+eines Monats würde das lösen; das ist eine Erweiterung und keine Behebung.
+
+**Doppelt gemoppelt mit den Urlaubsanträgen sind sie nicht:** Der Wunsch kommt
+vor dem Jahr und ist unverbindlich, der Antrag ist der verbindliche mit Datum.
+Verschiedene Zwecke — nur taugt der Wunsch in dieser Form kaum für seinen.
+
+Nachweis: Solver **176** Tests (vorher 173), `f`-Prüfungen **211/211**.

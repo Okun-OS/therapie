@@ -445,7 +445,19 @@ export async function buildRuleModel(
         const explicitDays = new Set(explicitWishes.map(w => w.datum))
         for (const day of arbeitstage) {
           if (!explicitDays.has(day)) {
-            persistentWishes.push({ datum: day, schichtId: prefSchicht.id, typ: 'wunsch', prioritaet: 3 })
+            /*
+             * §229 Die Dienstart mitgeben, nicht nur einen Dienst.
+             *
+             * `find()` liefert den ersten Dienst dieser Art — im Paket der
+             * Kita „Frühdienst 8" von drei Frühdiensten (8, 7 und 6 Stunden).
+             * Wessen Tagesmuster sieben Stunden sagt, bekam damit einen
+             * Wunsch, den der Rechendienst nicht erfüllen DARF. Die Kennung
+             * bleibt als Rückfalllinie für einen älteren Rechendienst stehen.
+             */
+            persistentWishes.push({
+              datum: day, schichtId: prefSchicht.id, schichtTyp: persistentPref as SchichtTyp,
+              typ: 'wunsch', prioritaet: 3,
+            })
           }
         }
       }

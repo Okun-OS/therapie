@@ -173,6 +173,22 @@ export interface LocationModel extends StandortModell {
 export interface PlanungsWunsch {
   datum: string
   schichtId: string
+  /**
+   * §229 Die gewünschte DIENSTART, wenn es um eine Art geht und nicht um
+   * einen bestimmten Dienst.
+   *
+   * Die dauerhafte Vorliebe („ich mag Frühdienste") meint jeden Frühdienst.
+   * Übersetzt wurde sie in den ERSTEN gefundenen — im Paket der Kita also in
+   * „Frühdienst 8". Wer ein Tagesmuster von sieben Stunden hat, kann den nie
+   * bekommen: Der Wunsch war strukturell unerfüllbar, und in der Zelle stand
+   * jeden Tag ein rotes Kreuz. Die Oberfläche hat schon immer über die ART
+   * geurteilt (`shift.type === w.preferredShiftType`) — nur der Rechendienst
+   * bekam eine einzelne Kennung.
+   *
+   * Ein Wunsch für einen bestimmten Tag bleibt eine Kennung: Wer „am Freitag
+   * den Spätdienst" beantragt, meint den und nicht irgendeinen.
+   */
+  schichtTyp?: SchichtTyp
   typ: 'wunsch' | 'wunschfrei'
   prioritaet: 1 | 2 | 3
   // §73 first-come tie-break: ISO timestamp of submission — among equal-priority

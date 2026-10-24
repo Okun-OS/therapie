@@ -516,6 +516,78 @@ def test_ohne_muster_das_eigene_muster_schlaegt_die_hausregel():
         assert laengen == [360, 480, 480, 480], laengen
 
 
+def _wunsch_bilanz(wunschtyp: str, mit_dienstart: bool) -> tuple[int, list[str]]:
+    """
+    Wie viele Wünsche von Juliane erfüllt der Plan — und mit welchen Diensten?
+
+    Gezählt wird die Begründung des Rechendienstes selbst
+    („Wunschdienst erfüllt"), nicht die Anzahl bestimmter Dienstarten. Das ist
+    der Unterschied zwischen Messen und Raten: Der Rechendienst hat für dieses
+    Paket mehrere gleich gute Lösungen und wählt zwischen zwei Läufen
+    verschieden. Zwei Einzelpläne zu vergleichen misst deshalb das Rauschen,
+    nicht die Wirkung des Wunsches — nachgemessen am 24.10.2026 mit zweimal
+    „ohne Wunsch", die 0 und 2 Frühdienste ergaben.
+    """
+    wunsch = [{"datum": t, "schichtId": wunschtyp[0] + "8",
+               **({"schichtTyp": wunschtyp} if mit_dienstart else {}),
+               "typ": "wunsch", "prioritaet": 3} for t in TAGE]
+    erg = rechne(regelmodell(wuensche={"Juliane": wunsch}))
+    jid = ID_VON["Juliane Roth"]
+    meine = [e for e in erg.get("eintraege", []) if e.get("mitarbeiterId") == jid]
+    erfuellt = [e["schichtId"] for e in meine
+                if "Wunschdienst erfüllt" in (e.get("whyAssigned") or "")]
+    return len(erfuellt), erfuellt
+
+
+def test_dauerhafte_vorliebe_war_unerfuellbar_und_ist_es_nicht_mehr():
+    """
+    §229 „Fließt es denn überhaupt ein, was man als Wünsche angibt?"
+
+    Es floss ein — und war für die meisten unerfüllbar. Die dauerhafte
+    Vorliebe „ich mag Frühdienste" übersetzte `rule-model-service.ts` in den
+    ERSTEN gefundenen Frühdienst, hier „Frühdienst 8". Juliane arbeitet
+    fünfmal sieben Stunden: Den Achtstundendienst DARF sie nicht bekommen. Ihr
+    Wunsch war damit jeden Tag rot, ohne dass irgendwo stand, warum.
+
+    Beide Zustände in einem Test, weil erst der Vergleich etwas sagt: ohne die
+    Dienstart null erfüllte Wünsche, mit ihr zwei.
+    """
+    alt, _ = _wunsch_bilanz("frueh", mit_dienstart=False)
+    neu, dienste = _wunsch_bilanz("frueh", mit_dienstart=True)
+
+    assert alt == 0, f"Der alte Zustand erfüllte {alt} Wünsche — dann war er kein Fehler"
+    assert neu >= 2, f"Mit Dienstart nur {neu} erfüllte Wünsche"
+    # Erfüllt wird mit dem SIEBENSTUNDEN-Frühdienst, nicht mit dem gewünschten f8.
+    assert all(d == "f7" for d in dienste), dienste
+
+
+def test_dauerhafte_vorliebe_hebt_das_tagesmuster_nicht_auf():
+    """
+    Die erste Gegenprobe: Eine Vorliebe ist ein Wunsch und keine Erlaubnis.
+
+    Ohne sie wäre „der Wunsch wird erfüllt" auch dann grün, wenn der
+    Rechendienst ihr dafür einen Achtstundendienst gäbe — und damit eine
+    Stunde unbezahlte Mehrarbeit am Tag.
+    """
+    wunsch = [{"datum": t, "schichtId": "f8", "schichtTyp": "frueh",
+               "typ": "wunsch", "prioritaet": 3} for t in TAGE]
+    p = Plan(rechne(regelmodell(wuensche={"Juliane": wunsch})))
+    dienste = [p.dienst("Juliane Roth", t) for t in p.tage("Juliane Roth")]
+    assert dienste, "Juliane wurde gar nicht verplant"
+    assert all(NETTO[d] == 420 for d in dienste), [NETTO[d] for d in dienste]
+
+
+def test_wunsch_nach_einem_bestimmten_dienst_bleibt_an_der_kennung():
+    """
+    Die zweite Gegenprobe: Wer „am Freitag den Spätdienst 8" beantragt, meint
+    den und nicht irgendeinen. Ohne `schichtTyp` darf die neue Lesart nicht
+    greifen — sonst wäre jeder Tageswunsch stillschweigend zu einem Artwunsch
+    geworden, und ein abgelehnter Dienst zählte als erfüllt.
+    """
+    alt, _ = _wunsch_bilanz("spaet", mit_dienstart=False)
+    assert alt == 0, f"Ein Wunsch auf s8 zählte {alt}-mal als erfüllt"
+
+
 def test_leer_niemand_bekommt_eine_fremde_dienstlaenge(leer):
     """Eine 35-Stunden-Kraft arbeitet nie acht Stunden an einem Tag."""
     erlaubt = {"Marin Berg": {480}, "Stephanie Lang": {420},
