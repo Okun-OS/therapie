@@ -4,6 +4,29 @@ import { listEmployees, listLocations } from './entities'
 import { prisma } from './prisma'
 import { toDateString } from './utils'
 
+/** §235 Wochentagskürzel zu Nummer — dieselbe Abbildung wie im Rechendienst. */
+const KUERZEL_ZU_TAG: Record<string, number> = {
+  Mo: 1, Di: 2, Mi: 3, Do: 4, Fr: 5, Sa: 6, So: 0,
+}
+
+/**
+ * §235 Hat diese Person an diesem Wochentag fest frei?
+ *
+ * `fixedOffDays` ist die Quelle; `preferences.unavailableDays` wird nur
+ * gelesen, solange `fixedOffDays` leer ist — für Datensätze aus der Zeit, als
+ * es beide Felder gab.
+ */
+function istFesterFreierTag(
+  emp: { fixedOffDays?: string[]; preferences?: { unavailableDays?: number[] } },
+  dow: number,
+): boolean {
+  const fest = (emp.fixedOffDays ?? [])
+    .map(t => KUERZEL_ZU_TAG[t] ?? (Number.isFinite(Number(t)) ? Number(t) : undefined))
+    .filter((n): n is number => n !== undefined)
+  if (fest.length > 0) return fest.includes(dow)
+  return emp.preferences?.unavailableDays?.includes(dow) ?? false
+}
+
 // ─── Core Fairness Calculation ───────────────────────────────────────────────
 
 export interface PlanningRuleLimits {
@@ -339,8 +362,11 @@ export function generateFairSchedule(
           const fd = fairnessData.find(f => f.employeeId === emp.id)
           // Skip if already assigned this day
           if (result[emp.id][dateStr]) return false
-          // Skip unavailable days
-          if (emp.preferences?.unavailableDays?.includes(dow)) return false
+          // §235 Feste freie Wochentage aus `fixedOffDays` — dasselbe Feld,
+          // nach dem auch der Rechendienst plant. `preferences.unavailableDays`
+          // war die zweite Quelle für dieselbe Aussage und wird nur noch für
+          // ältere Datensätze gelesen.
+          if (istFesterFreierTag(emp, dow)) return false
           // Skip Friday-late cap
           if (isFriday && shift.type === 'late' && fd && fd.fridayLateCnt >= fridayLateMax) return false
           // Skip Monday-early cap

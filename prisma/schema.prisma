@@ -53,22 +53,19 @@ model EmployeeProfile {
 // Voluntary, employee-controlled soft signals for fairer/more human scheduling.
 // Kept separate from EmployeeProfile (which serves substitution matching) so
 // the two audiences/purposes never get entangled.
-/// §232 Freiwillige persoenliche Angaben. Sie erreichen die LEITUNG und den
-/// OKUN-Assistenten — nicht den Rechendienst.
+/// §235 `EmployeeHumanContext` ist entfallen.
 ///
-/// `preferredGroups` und `shiftPreferences` sind entfallen. Beide standen ein
-/// zweites Mal da, wo es schon ein Feld gab, das wirklich plant: die Gruppe am
-/// Mitarbeiter und `EmployeePlanningProfile.shiftPreference`. §229 hat gezeigt,
-/// was ein Schattenfeld kostet — wer "mag Fruehdienst" in das falsche von zwei
-/// Feldern schreibt, hat nichts getan und merkt es nicht.
-model EmployeeHumanContext {
-  employeeId          String   @id
-  strengths           String[] @default([])
-  lifeCircumstances   String[] @default([])
-  preferredActivities String[] @default([])
-  agreements          String?
-  updatedAt           DateTime @updatedAt
-}
+/// Darin standen Staerken, Lebenssituation, bevorzugte Taetigkeiten und
+/// besondere Absprachen — freiwillig gegeben. Gemeldet: "Das mit den
+/// persoenlichen, mit den Staerken und Schwaechen, das kann auch raus, es
+/// braucht kein Mensch mehr. Das hat doch nie Sinn gemacht."
+///
+/// §232 hatte schon die beiden Felder entfernt, die es anderswo ein zweites
+/// Mal gab, und den Satz korrigiert, der behauptete, die Angaben huelfen bei
+/// der Planung. Uebrig blieb eine Erhebung, die den Rechendienst nicht
+/// erreicht — fuer den Aufwand, Gesundheits- und Familiendaten nach Art. 9
+/// DSGVO zu schuetzen, zu wenig. Mit der Maske entfaellt der Grund, sie
+/// ueberhaupt zu erheben.
 
 model EmployeePlanningProfile {
   employeeId         String   @id

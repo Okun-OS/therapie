@@ -222,10 +222,6 @@ const ZUGRIFF: Record<string, Zugriff> = {
     zaehlen: (db, k) => db.employeePlanningProfile.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.employeePlanningProfile.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
   },
-  EmployeeHumanContext: {
-    zaehlen: (db, k) => db.employeeHumanContext.count({ where: { employeeId: k.employeeId } }),
-    loeschen: (db, k) => db.employeeHumanContext.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),
-  },
   EmployeeProfile: {
     zaehlen: (db, k) => db.employeeProfile.count({ where: { employeeId: k.employeeId } }),
     loeschen: (db, k) => db.employeeProfile.deleteMany({ where: { employeeId: k.employeeId } }).then(zahl),

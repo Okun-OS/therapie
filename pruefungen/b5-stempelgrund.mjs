@@ -407,8 +407,23 @@ console.log('\n=== B5.7 Pause, Summen und die Korrektur ===')
  * Schreibwege am selben Eintrag, und beide müssen dieselbe Zahl ergeben.
  */
 
-const vorDrei = new Date(Date.now() - 3 * 60 * 60 * 1000)
-const vorEins = new Date(Date.now() - 1 * 60 * 60 * 1000)
+/*
+ * §235 Auch hier ein Bezugszeitpunkt mitten am Tag — und ein ausdrückliches
+ * Ende.
+ *
+ * Vorher hing alles an `Date.now()`: Kommen drei Stunden vorher, Pause eine
+ * Stunde vorher, und das Gehen ohne Zeitangabe, also JETZT. Läuft die Prüfung
+ * nachts, liegt der Beginn vor Mitternacht und das Ende danach — die
+ * Anwesenheit rechnet sich dann über den Tageswechsel, und „gearbeitet +
+ * Pause = Anwesenheit" geht nicht mehr auf. Gemessen: 150 + 30 ergab 180,
+ * die Anwesenheit stand bei 120.
+ *
+ * Der Bezugspunkt ist derselbe wie weiter unten: der letzte 14-Uhr-Zeitpunkt,
+ * der vorbei ist. Dann liegen Kommen, Pause und Gehen garantiert an einem Tag.
+ */
+const bezug = letzterMittag()
+const vorDrei = new Date(bezug.getTime() - 3 * 60 * 60 * 1000)
+const vorEins = new Date(bezug.getTime() - 1 * 60 * 60 * 1000)
 const tagP = berlinTag(vorDrei)
 tage.add(tagP)
 await dienstSetzen(tagP, berlinUhr(vorDrei), plus(berlinUhr(vorDrei), 180), shiftId)
@@ -416,8 +431,11 @@ await dienstSetzen(tagP, berlinUhr(vorDrei), plus(berlinUhr(vorDrei), 180), shif
 const kommenP = await stempeln({ aktion: 'kommen', zeitpunkt: vorDrei.toISOString() })
 // Eine Stunde Pause, nachgereicht wie aus dem Funkloch.
 await stempeln({ aktion: 'pause-start', zeitpunkt: vorEins.toISOString() })
-await stempeln({ aktion: 'pause-ende', zeitpunkt: new Date(Date.now() - 30 * 60 * 1000).toISOString() })
-await stempeln({ aktion: 'gehen' })
+await stempeln({
+  aktion: 'pause-ende',
+  zeitpunkt: new Date(bezug.getTime() - 30 * 60 * 1000).toISOString(),
+})
+await stempeln({ aktion: 'gehen', zeitpunkt: bezug.toISOString() })
 
 /*
  * §206 Die Buchung über ihre KENNUNG wiederfinden, nicht über das Datum.
@@ -496,13 +514,53 @@ console.log('\n=== B5.8 Einstempeln zur falschen Zeit ===')
  */
 if ((await zustand())?.laeuft) await stempeln({ aktion: 'gehen' })
 
-const jetzt = new Date()
+/*
+ * §235 Ein Bezugszeitpunkt MITTEN AM TAG, nicht „jetzt".
+ *
+ * Hier stand `new Date()`, und der Dienst wurde auf sechs Stunden davor
+ * gelegt — am selben Tag. Zwischen Mitternacht und sechs Uhr früh geht das
+ * nicht auf: Um 02:30 Uhr ist „sechs Stunden vorher" 20:30, und die Prüfung
+ * trug das als Dienst HEUTE ABEND ein, also in der Zukunft. Die Stempeluhr
+ * sah daraufhin „sechs Stunden zu früh gekommen" statt „zu spät", und die
+ * Prüfung war rot — nachgemessen in der Nacht zum 25.10.2026, dreimal in
+ * Folge und tagsüber nie.
+ *
+ * Eine Prüfung, die zu bestimmten Tageszeiten falsch anschlägt, ist schlimmer
+ * als keine: Beim ersten roten Nachtlauf sucht jemand eine Stunde lang nach
+ * einem Fehler, den es nicht gibt, und beim zweiten glaubt er ihr nicht mehr.
+ *
+ * Gewählt wird deshalb der letzte 14-Uhr-Zeitpunkt, der schon vorbei ist —
+ * heute, wenn es nach 14 Uhr ist, sonst gestern. Dann liegen Dienstbeginn und
+ * Stempelzeit garantiert am selben Tag, egal wann die Prüfung läuft. Die
+ * Stempeluhr nimmt einen mitgeschickten Zeitpunkt an, solange er nicht in der
+ * Zukunft liegt (`bestimmeZeitpunkt`).
+ */
+function letzterMittag() {
+  const d = new Date()
+  const berlin = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }))
+  if (berlin.getHours() < 15) d.setTime(d.getTime() - 24 * 60 * 60 * 1000)
+  // 14:00 Berlin als echten Zeitpunkt: über den Versatz zwischen lokaler
+  // Darstellung und UTC, damit es auch in einem Container mit anderer Zone
+  // stimmt.
+  const tag = berlinTag(d)
+  return new Date(`${tag}T14:00:00${berlinVersatz(d)}`)
+}
+
+/** Der Zeitzonenversatz Berlins an diesem Tag, als „+01:00" oder „+02:00". */
+function berlinVersatz(d) {
+  const teil = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Berlin', timeZoneName: 'longOffset',
+  }).formatToParts(d).find(t => t.type === 'timeZoneName')?.value ?? 'GMT+01:00'
+  return teil.replace('GMT', '') || '+01:00'
+}
+
+const jetzt = letzterMittag()
 const tagHeute = berlinTag(jetzt)
 tage.add(tagHeute)
 const langeHer = new Date(jetzt.getTime() - 6 * 60 * 60 * 1000)
 await dienstSetzen(tagHeute, berlinUhr(langeHer), plus(berlinUhr(langeHer), 120), shiftId)
 
-const zuSpaet = await stempeln({ aktion: 'kommen' })
+const zuSpaet = await stempeln({ aktion: 'kommen', zeitpunkt: jetzt.toISOString() })
 check('Sechs Stunden nach Dienstbeginn wird gefragt',
   zuSpaet.status === 422 && zuSpaet.body?.code === 'GRUND_NOETIG',
   `HTTP ${zuSpaet.status} · ${JSON.stringify(zuSpaet.body?.code ?? null)}`)
@@ -516,6 +574,7 @@ check('Ohne Grund ist niemand eingestempelt', (await zustand())?.laeuft === fals
 
 const spaetMitGrund = await stempeln({
   aktion: 'kommen', grund: 'Dienst mit Melanie getauscht',
+  zeitpunkt: jetzt.toISOString(),
 })
 check('Mit Grund geht es', spaetMitGrund.status === 200,
   `HTTP ${spaetMitGrund.status} · ${JSON.stringify(spaetMitGrund.body?.error ?? '')}`)

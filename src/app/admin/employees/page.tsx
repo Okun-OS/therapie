@@ -23,13 +23,6 @@ import type { EmployeeDraft } from '@/lib/employee-draft'
 import { Personalakte } from '@/components/employees/Personalakte'
 import { LohnStammdaten } from '@/components/employees/LohnStammdaten'
 
-interface EmployeeHumanContext {
-  strengths: string[]
-  lifeCircumstances: string[]
-  preferredActivities: string[]
-  agreements: string | null
-}
-
 /*
  * §200 Kinder-Abholzeiten, Wochenend-Vereinbarung, maximale Folgetage je
  * Person und die dauerhafte Planungsnotiz sind hier entfernt.
@@ -70,7 +63,6 @@ export default function AdminEmployees() {
   const [editChatDraft, setEditChatDraft] = useState<EmployeeDraft | null>(null)
   const [editFormEmployee, setEditFormEmployee] = useState<Employee | null>(null)
   const [editFormDraft, setEditFormDraft] = useState<EmployeeDraft | null>(null)
-  const [humanContext, setHumanContext] = useState<EmployeeHumanContext | null>(null)
   const [allEmployees, setAllEmployees] = useState<Employee[]>([])
   const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([])
   const [absences, setAbsences] = useState<Absence[]>([])
@@ -97,7 +89,7 @@ export default function AdminEmployees() {
       .catch(() => setAbsences([]))
   }, [selectedEmployee])
 
-  function employeeToDraft(emp: Employee, ctx: EmployeeHumanContext | null): EmployeeDraft {
+  function employeeToDraft(emp: Employee): EmployeeDraft {
     return {
       name: emp.name,
       email: emp.email,
@@ -116,23 +108,16 @@ export default function AdminEmployees() {
       fixedLocations: emp.fixedLocations,
       qualifications: emp.qualifications,
       allowedTasks: emp.allowedTasks,
-      besonderheiten: ctx?.lifeCircumstances,
-      absprachen: ctx?.agreements ?? undefined,
     }
   }
 
   useEffect(() => {
     if (!selectedEmployee) {
-      setHumanContext(null)
       setPlanningProfile(null)
       setPlanningProfileOpen(false)
       setPlanningProfileDraft(null)
       return
     }
-    fetch(`/api/employee-human-context?employeeId=${selectedEmployee.id}`)
-      .then(res => res.json())
-      .then(data => setHumanContext(data.contexts?.[0] ?? null))
-      .catch(() => setHumanContext(null))
     fetch(`/api/employees/${selectedEmployee.id}/planning-profile`)
       .then(r => r.json())
       .then(d => setPlanningProfile(d.profile ?? null))
@@ -168,23 +153,6 @@ export default function AdminEmployees() {
       ...(draft.allowedTasks !== undefined && { allowedTasks: draft.allowedTasks }),
       ...(draft.contractVacationDays !== undefined && { vacationDaysTotal: draft.contractVacationDays }),
       ...(draft.hoursBalanceOffset !== undefined && { hoursBalance: draft.hoursBalanceOffset }),
-    }
-  }
-
-  async function saveHumanContextFromDraft(employeeId: string, draft: EmployeeDraft) {
-    if (!((draft.besonderheiten && draft.besonderheiten.length > 0) || draft.absprachen)) return
-    try {
-      await fetch('/api/employee-human-context', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeId,
-          lifeCircumstances: draft.besonderheiten,
-          agreements: draft.absprachen,
-        }),
-      })
-    } catch {
-      // Mitarbeiter ist bereits angelegt; die Besonderheiten können später im Profil ergänzt werden.
     }
   }
 
@@ -295,8 +263,6 @@ export default function AdminEmployees() {
       setAllEmployees(prev => [...prev, employee])
     }
 
-    await saveHumanContextFromDraft(employee.id, draft)
-
     if (emailSent) {
       showToast('Mitarbeiter gespeichert · Einladung versendet', 'success')
     } else {
@@ -312,7 +278,6 @@ export default function AdminEmployees() {
       body: JSON.stringify(patchFieldsFromDraft(draft)),
     }))
     setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
-    await saveHumanContextFromDraft(editChatEmployee.id, draft)
     showToast('Profil aktualisiert', 'success')
     setEditChatEmployee(null)
     setSelectedEmployee(prev => prev && prev.id === editChatEmployee.id ? { ...prev, ...draft } as Employee : prev)
@@ -328,7 +293,6 @@ export default function AdminEmployees() {
     const kopie = antwort.clone()
     const updated = await parseEmployeeResponse(antwort)
     setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
-    await saveHumanContextFromDraft(editFormEmployee.id, draft)
     // §200 Eine geänderte Adresse lädt neu ein — das soll die Leitung lesen,
     // nicht nur „aktualisiert".
     const { zugang } = await kopie.json().catch(() => ({})) as { zugang?: { email: string; emailSent: boolean } }
@@ -585,24 +549,6 @@ export default function AdminEmployees() {
               </div>
             )}
 
-            {humanContext && (humanContext.strengths.length > 0 || humanContext.lifeCircumstances.length > 0 || humanContext.preferredActivities.length > 0 || humanContext.agreements) && (
-              <div className="bg-purple-50 rounded-xl p-3 space-y-1.5">
-                <p className="text-xs font-semibold text-purple-700">Persönliches (freiwillig angegeben)</p>
-                {humanContext.strengths.length > 0 && (
-                  <p className="text-sm text-purple-700"><span className="font-medium">Stärken:</span> {humanContext.strengths.join(', ')}</p>
-                )}
-                {humanContext.lifeCircumstances.length > 0 && (
-                  <p className="text-sm text-purple-700"><span className="font-medium">Lebenssituation:</span> {humanContext.lifeCircumstances.join(', ')}</p>
-                )}
-                {humanContext.preferredActivities.length > 0 && (
-                  <p className="text-sm text-purple-700"><span className="font-medium">Bevorzugte Tätigkeiten:</span> {humanContext.preferredActivities.join(', ')}</p>
-                )}
-                {humanContext.agreements && (
-                  <p className="text-xs text-purple-600 italic">{humanContext.agreements}</p>
-                )}
-              </div>
-            )}
-
             {/* Planungsprofil (Schicht 2) */}
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               <button
@@ -737,7 +683,7 @@ export default function AdminEmployees() {
               <Button
                 variant="ghost"
                 className="gap-2 border border-gray-200"
-                onClick={() => { setEditChatDraft(employeeToDraft(selectedEmployee, humanContext)); setEditChatEmployee(selectedEmployee); setSelectedEmployee(null) }}
+                onClick={() => { setEditChatDraft(employeeToDraft(selectedEmployee)); setEditChatEmployee(selectedEmployee); setSelectedEmployee(null) }}
               >
                 <MessageCircle size={16} />
                 Per KI-Chat
@@ -745,7 +691,7 @@ export default function AdminEmployees() {
               <Button
                 variant="ghost"
                 className="gap-2 border border-gray-200"
-                onClick={() => { setEditFormDraft(employeeToDraft(selectedEmployee, humanContext)); setEditFormEmployee(selectedEmployee); setSelectedEmployee(null) }}
+                onClick={() => { setEditFormDraft(employeeToDraft(selectedEmployee)); setEditFormEmployee(selectedEmployee); setSelectedEmployee(null) }}
               >
                 <ListChecks size={16} />
                 Klassisch bearbeiten

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { kanonischesZiel } from '@/lib/kanonische-domain'
 
 /**
  * §201 Wer angemeldet ist, sieht die Verkaufsseite gar nicht erst.
@@ -98,7 +99,42 @@ async function rolleAus(marke: string | undefined): Promise<string | null> {
   }
 }
 
+/**
+ * §235 Jeder landet auf der richtigen Adresse — egal, über welche er kommt.
+ *
+ * Die Entscheidung selbst steht in `kanonische-domain.ts`, damit die Prüfung
+ * sie liest statt sie nachzubauen. Hier wird nur die Anfrage übersetzt.
+ */
+function kanonischeWeiterleitung(req: NextRequest): NextResponse | null {
+  const ziel = kanonischesZiel(
+    {
+      method: req.method,
+      host: req.headers.get('host'),
+      pfad: req.nextUrl.pathname,
+      suche: req.nextUrl.search,
+    },
+    process.env.APP_URL,
+  )
+  // 308: dauerhaft, und die Methode bleibt erhalten — anders als bei 301,
+  // das manche Browser zu einem GET machen.
+  return ziel ? NextResponse.redirect(ziel, 308) : null
+}
+
 export async function middleware(req: NextRequest) {
+  const umzug = kanonischeWeiterleitung(req)
+  if (umzug) return umzug
+
+  /*
+   * §235 Die Rollenweiterleitung gilt NUR für die Startseite.
+   *
+   * Bis §235 sagte das der Matcher (`['/']`). Seit die Weiterleitung auf die
+   * richtige Domain überall greifen muss, läuft diese Funktion auf jedem
+   * Pfad — und ohne diese Zeile schickte sie eine angemeldete Person von
+   * `/employee/schedule` zurück auf `/employee`. Die Einschränkung ist mit dem
+   * Matcher aus der Konfiguration hierher gewandert, nicht verschwunden.
+   */
+  if (req.nextUrl.pathname !== '/') return NextResponse.next()
+
   const rolle = await rolleAus(req.cookies.get(KEKS)?.value)
   const ziel = rolle ? ZIELE[rolle] : null
   if (!ziel) return NextResponse.next()
@@ -106,11 +142,19 @@ export async function middleware(req: NextRequest) {
 }
 
 /**
- * Nur die Startseite.
+ * Die Startseite — und seit §235 jede Seite.
  *
- * `/funktionen` und `/kontakt` bleiben absichtlich draußen: Auch wer
- * angemeldet ist, darf nachlesen, was das Programm kann, oder das
- * Kontaktformular benutzen. Umgeleitet wird nur der eine Fall, um den es
- * geht — jemand tippt die Adresse ein oder öffnet das Programm.
+ * Für die Rollenweiterleitung gilt weiter nur `/`: `/funktionen` und
+ * `/kontakt` bleiben absichtlich draußen, auch wer angemeldet ist, darf
+ * nachlesen, was das Programm kann. Das entscheidet die Funktion selbst.
+ *
+ * §235 Die Weiterleitung auf die richtige Domain muss dagegen überall
+ * greifen. Wer die App unter dem alten Namen installiert hat, öffnet sie auf
+ * `/employee` — und bliebe sonst für immer dort.
+ *
+ * Ausgenommen sind die Pfade, die Next.js selbst ausliefert, und die Dateien
+ * im öffentlichen Ordner: Für sie kostet die Prüfung nur Zeit.
  */
-export const config = { matcher: ['/'] }
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|brand|icons|hintergrund|sw.js|manifest.json).*)'],
+}

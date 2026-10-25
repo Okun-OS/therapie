@@ -106,7 +106,7 @@ const TOOLS: Anthropic.Messages.Tool[] = [
   },
   {
     name: 'get_employee_details',
-    description: 'Ruft vollständige Daten eines einzelnen Mitarbeiters ab, inkl. persönlicher Kontextdaten (HumanContext).',
+    description: 'Ruft vollständige Daten eines einzelnen Mitarbeiters ab.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -381,8 +381,9 @@ async function executeToolCall(name: string, input: Record<string, any>, ctx: To
         e => e.id === nameOrId || e.name.toLowerCase().includes(nameOrId.toLowerCase())
       )
       if (!emp) return { error: `Kein Mitarbeiter gefunden: ${nameOrId}` }
-      const humanContext = await prisma.employeeHumanContext.findUnique({ where: { employeeId: emp.id } }).catch(() => null)
-      return { employee: emp, humanContext }
+      // §235 Die freiwilligen persönlichen Angaben sind entfallen; der
+      // Assistent sieht nur noch die Stammdaten.
+      return { employee: emp }
     }
 
     case 'assign_shift': {

@@ -7,69 +7,15 @@ import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { useAuth } from '@/lib/auth-context'
-import { HumanContextChat } from '@/components/profile/HumanContextChat'
 import { Personalakte } from '@/components/employees/Personalakte'
 import { useLohnsiegel, Siegelkarte, Freigabeleiste } from '@/components/employee/Lohnfreigabe'
-import { User, MapPin, Clock, Sun, Moon, Briefcase, Save, Bell, Shield, AlertCircle, Heart, Lock, Sparkles, X, Trash2, ListChecks, FileText, History, Calendar, Copy, Check } from 'lucide-react'
+import { MapPin, Clock, Save, Bell, Shield, ListChecks, FileText, History, Calendar, Copy, Check } from 'lucide-react'
 import { formatDate, toDateString } from '@/lib/utils'
-import type { Employee, Location, ScheduleEntry, Shift, OvertimeRequest, Absence, MonthlyClosing } from '@/lib/types'
+import type { Employee, Location, ScheduleEntry, Shift, OvertimeRequest, Absence, MonthlyClosing, VacationRequest } from '@/lib/types'
+import { urlaubskonto } from '@/lib/urlaubskonto'
 
-const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 const CLOSING_STATUS_LABEL: Record<string, string> = { offen: 'Offen', geprueft: 'Geprüft', freigegeben: 'Freigegeben' }
-
-function TagInputSection({
-  label,
-  items,
-  onAdd,
-  onRemove,
-  placeholder,
-}: {
-  label: string
-  items: string[]
-  onAdd: (value: string) => void
-  onRemove: (value: string) => void
-  placeholder: string
-}) {
-  const [value, setValue] = useState('')
-  const handleAdd = () => {
-    const v = value.trim()
-    if (!v) return
-    onAdd(v)
-    setValue('')
-  }
-  return (
-    <div>
-      <p className="text-sm font-semibold text-navy mb-2">{label}</p>
-      <div className="flex gap-2 flex-wrap mb-2">
-        {items.map(item => (
-          <span
-            key={item}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border-2 bg-purple-50 border-purple-300 text-purple-700"
-          >
-            {item}
-            <button onClick={() => onRemove(item)} aria-label={`${item} entfernen`}>
-              <X size={12} />
-            </button>
-          </span>
-        ))}
-        {items.length === 0 && (
-          <span className="text-xs text-gray-400">Noch keine Angabe – am einfachsten über den KI-Assistenten</span>
-        )}
-      </div>
-      <div className="flex gap-2">
-        <Input
-          containerClassName="flex-1"
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
-          placeholder={placeholder}
-        />
-        <Button onClick={handleAdd} size="md" variant="secondary">Hinzufügen</Button>
-      </div>
-    </div>
-  )
-}
 
 export default function EmployeeProfile() {
   const { user } = useAuth()
@@ -104,6 +50,12 @@ export default function EmployeeProfile() {
     fetch(`/api/schedule-entries?employeeId=${employee.id}`).then(r => r.json()).then(d => setScheduleEntries(d.entries))
     fetch(`/api/overtime-requests?employeeId=${employee.id}`).then(r => r.json()).then(d => setOvertimeRequests(d.requests))
     fetch(`/api/absences?employeeId=${employee.id}`).then(r => r.json()).then(d => setAbsences(d.absences))
+    // §235 Für die Resturlaubs-Kachel: ohne die Anträge rechnet sie anders als
+    // die Urlaubsseite.
+    fetch(`/api/vacation-requests?employeeId=${employee.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setMeineUrlaubsantraege(d?.requests ?? []))
+      .catch(() => undefined)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.id])
 
@@ -140,21 +92,16 @@ export default function EmployeeProfile() {
         .slice(0, 6)
     : []
 
-  const initialPrefs = {
-    preferEarly: employee?.preferences?.preferredShifts?.includes('early') ?? true,
-    preferLate: employee?.preferences?.preferredShifts?.includes('late') ?? false,
-    preferMid: employee?.preferences?.preferredShifts?.includes('mid') ?? true,
-    noEarlyAfterLate: employee?.preferences?.noEarlyAfterLate ?? true,
-    unavailableDays: employee?.preferences?.unavailableDays ?? [0, 6],
-    maxConsecutive: employee?.preferences?.maxConsecutiveDays ?? 5,
-    notes: employee?.preferences?.notes ?? '',
-  }
-
-  const [prefs, setPrefs] = useState(initialPrefs)
-  const [savedPrefs, setSavedPrefs] = useState(initialPrefs)
-  const [saved, setSaved] = useState(false)
-
-  const isDirty = JSON.stringify(prefs) !== JSON.stringify(savedPrefs)
+  /**
+   * §235 Die eigenen Urlaubsanträge — für dieselbe Zahl wie auf der
+   * Urlaubsseite.
+   *
+   * Ohne sie rechnete diese Maske `Anspruch − genommen` und kam auf eine
+   * andere Zahl als die Urlaubsseite daneben. Eine Kachel, die „Resturlaub"
+   * sagt und etwas anderes meint als die Kachel nebenan, ist schlimmer als
+   * keine Kachel.
+   */
+  const [meineUrlaubsantraege, setMeineUrlaubsantraege] = useState<VacationRequest[]>([])
 
   // ── Dauerhafter Planungs-Wunsch (shiftPreference) ────────────────────────────
   const [shiftPref, setShiftPref] = useState<'frueh' | 'spaet' | 'nacht' | 'keine'>('keine')
@@ -184,15 +131,6 @@ export default function EmployeeProfile() {
     setShiftPrefSaved(true)
     setTimeout(() => setShiftPrefSaved(false), 2000)
   }
-
-  const initialHumanContext = { strengths: [] as string[], lifeCircumstances: [] as string[], preferredActivities: [] as string[], agreements: '' }
-  const [humanContext, setHumanContext] = useState(initialHumanContext)
-  const [savedHumanContext, setSavedHumanContext] = useState(initialHumanContext)
-  const [humanContextSaved, setHumanContextSaved] = useState(false)
-  const [humanContextLoaded, setHumanContextLoaded] = useState(false)
-  const [chatOpen, setChatOpen] = useState(false)
-
-  const isHumanContextDirty = JSON.stringify(humanContext) !== JSON.stringify(savedHumanContext)
 
   const [calendarSyncEnabled, setCalendarSyncEnabled] = useState(false)
   /**
@@ -238,93 +176,8 @@ export default function EmployeeProfile() {
     }
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!employee) return
-    fetch(`/api/employee-human-context?employeeId=${employee.id}`)
-      .then(res => res.json())
-      .then(data => {
-        const ctx = data.contexts?.[0]
-        const loaded = {
-          strengths: ctx?.strengths ?? [],
-          lifeCircumstances: ctx?.lifeCircumstances ?? [],
-          preferredActivities: ctx?.preferredActivities ?? [],
-          agreements: ctx?.agreements ?? '',
-        }
-        setHumanContext(loaded)
-        setSavedHumanContext(loaded)
-        setHumanContextLoaded(true)
-      })
-      .catch(() => setHumanContextLoaded(true))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employee?.id])
-
-  const addTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredActivities', value: string) => {
-    setHumanContext(p => (p[field].includes(value) ? p : { ...p, [field]: [...p[field], value] }))
-  }
-
-  const removeTag = (field: 'strengths' | 'lifeCircumstances' | 'preferredActivities', value: string) => {
-    setHumanContext(p => ({ ...p, [field]: p[field].filter(v => v !== value) }))
-  }
-
-  const handleSaveHumanContext = async () => {
-    if (!employee) return
-    await fetch('/api/employee-human-context', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeId: employee.id, ...humanContext }),
-    })
-    setSavedHumanContext(humanContext)
-    setHumanContextSaved(true)
-    setTimeout(() => setHumanContextSaved(false), 2000)
-  }
-
-  const handleClearHumanContext = async () => {
-    if (!employee) return
-    const cleared = { strengths: [], lifeCircumstances: [], preferredActivities: [], agreements: '' }
-    await fetch('/api/employee-human-context', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeId: employee.id, ...cleared, agreements: null }),
-    })
-    setHumanContext(cleared)
-    setSavedHumanContext(cleared)
-  }
-
-  const toggleDay = (day: number) => {
-    setPrefs(p => ({
-      ...p,
-      unavailableDays: p.unavailableDays.includes(day)
-        ? p.unavailableDays.filter(d => d !== day)
-        : [...p.unavailableDays, day],
-    }))
-  }
-
-  const handleSave = async () => {
-    if (employee) {
-      const updated = await fetch(`/api/employees/${employee.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          preferences: {
-            preferredShifts: [
-              ...(prefs.preferEarly ? ['early' as const] : []),
-              ...(prefs.preferLate ? ['late' as const] : []),
-              ...(prefs.preferMid ? ['mid' as const] : []),
-            ],
-            unavailableDays: prefs.unavailableDays,
-            maxConsecutiveDays: prefs.maxConsecutive,
-            noEarlyAfterLate: prefs.noEarlyAfterLate,
-            notes: prefs.notes,
-          },
-        }),
-      }).then(r => r.json()).then(d => d.employee)
-      setAllEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
-    }
-    setSavedPrefs(prefs)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
+  // §235 Dieselbe Rechnung wie auf der Urlaubsseite.
+  const konto = urlaubskonto(employee ?? {}, meineUrlaubsantraege)
 
   if (!employee) return null
 
@@ -356,7 +209,21 @@ export default function EmployeeProfile() {
           </div>
           <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-3">
             <div className="text-center">
-              <p className="text-lg font-bold text-navy">{employee.vacationDaysTotal - employee.vacationDaysUsed}</p>
+              {/*
+                §235 Dieselbe Zahl wie auf der Urlaubsseite.
+
+                Hier stand `vacationDaysTotal - vacationDaysUsed` — also der
+                Jahresanspruch ohne Abzug der offenen Anträge. Bei Juliane
+                ergab das 16, während die Urlaubsseite 12 zeigte; beide
+                Kacheln hießen „Resturlaub". Vier Tage Unterschied, und das
+                waren genau die vier, über die noch niemand entschieden hatte.
+
+                Gezeigt wird jetzt, was noch BEANTRAGT werden kann — die Zahl,
+                nach der jemand handelt.
+              */}
+              <p className="text-lg font-bold text-navy" data-test="resturlaub">
+                {konto.verfuegbar}
+              </p>
               <p className="text-xs text-gray-500">Resturlaub</p>
             </div>
             <div className="text-center">
@@ -455,105 +322,38 @@ export default function EmployeeProfile() {
           </Card>
         )}
 
-        {/* Shift Preferences */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Dienstpräferenzen</CardTitle>
-            <Badge variant="info">wird bei KI berücksichtigt</Badge>
-          </CardHeader>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-semibold text-navy mb-2">Bevorzugte Dienste</p>
-              <div className="flex gap-3 flex-wrap">
-                {[
-                  { key: 'preferEarly', label: 'Frühdienst', icon: Sun, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
-                  { key: 'preferLate', label: 'Spätdienst', icon: Moon, color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200' },
-                  { key: 'preferMid', label: 'Mitteldienst', icon: Briefcase, color: 'text-green-600', bg: 'bg-green-50 border-green-200' },
-                ].map(({ key, label, icon: Icon, color, bg }) => (
-                  <button
-                    key={key}
-                    onClick={() => setPrefs(p => ({ ...p, [key]: !p[key as keyof typeof prefs] }))}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${prefs[key as keyof typeof prefs] ? `${bg} border-current ${color}` : 'bg-gray-50 border-gray-200 text-gray-400'}`}
-                  >
-                    <Icon size={16} />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/*
+          §235 Hier stand „Dienstpräferenzen" — mit dem Abzeichen
+          „wird bei KI berücksichtigt".
 
-            <div>
-              <p className="text-sm font-semibold text-navy mb-2">Nicht verfügbar an</p>
-              <div className="flex gap-2 flex-wrap">
-                {DAYS.map((day, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => toggleDay(idx)}
-                    className={`w-10 h-10 rounded-xl text-sm font-semibold border-2 transition-all ${prefs.unavailableDays.includes(idx) ? 'bg-navy border-navy text-white' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                  >
-                    {day}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-gray-400 mt-1.5">Dunkel = nicht verfügbar</p>
-            </div>
+          Gemeldet: „Diese Dienstpräferenzen, diese ganzen Dienstwünsche,
+          welche Schicht am liebsten, dann diese Präferenzen und sowas alles
+          — ist doch gar nicht mehr relevant, seitdem wir das Regelpaket
+          haben."
 
-            <div>
-              <p className="text-sm font-semibold text-navy mb-2">Einschränkungen</p>
-              <div className="space-y-2">
-                <label className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      className="sr-only"
-                      checked={prefs.noEarlyAfterLate}
-                      onChange={e => setPrefs(p => ({ ...p, noEarlyAfterLate: e.target.checked }))}
-                    />
-                    <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${prefs.noEarlyAfterLate ? 'bg-brand border-brand-dark' : 'border-gray-300'}`}>
-                      {prefs.noEarlyAfterLate && <svg className="w-3 h-3 text-navy" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                    </div>
-                  </div>
-                  <span className="text-sm text-navy">Kein Frühdienst nach Spätdienst</span>
-                </label>
-              </div>
-            </div>
+          Nachgemessen stimmte das, und das Abzeichen war falsch. Der Block
+          speicherte fünf Felder nach `Employee.preferences`, und
+          `rule-model-service.ts` liest dieses Feld an keiner Stelle:
 
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-1.5">Maximale Folgetage</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min={1}
-                  max={7}
-                  value={prefs.maxConsecutive}
-                  onChange={e => setPrefs(p => ({ ...p, maxConsecutive: Number(e.target.value) }))}
-                  className="flex-1 accent-brand"
-                />
-                <span className="text-sm font-bold text-navy w-12 text-center">{prefs.maxConsecutive} Tage</span>
-              </div>
-            </div>
+            Bevorzugte Dienste        → gab es ein zweites Mal als
+                                        „Mein Dienstwunsch", und NUR der plant
+            Einschränkungen           → „Kein Frühdienst nach Spätdienst" ist
+                                        die Ruhezeit, und die steht als
+                                        Betriebsregel im Regelpaket
+            Maximale Folgetage        → ebenfalls Regelpaket (`maxFolgetage`)
+            Sonstige Notizen          → Freitext, den kein Rechenkern liest;
+                                        §200 hat dasselbe Feld an anderer
+                                        Stelle schon entfernt
+            Nicht verfügbar an        → gab es ein zweites Mal als
+                                        `fixedOffDays`, und NUR das plant
 
-            <Textarea
-              label="Sonstige Notizen"
-              value={prefs.notes}
-              onChange={e => setPrefs(p => ({ ...p, notes: e.target.value }))}
-              rows={3}
-              placeholder="z.B. Nur jede zweite Woche Frühdienst, keine langen Blöcke..."
-            />
-
-            {isDirty && !saved && (
-              <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                <AlertCircle size={14} />
-                Ungespeicherte Änderungen
-              </div>
-            )}
-
-            <Button onClick={handleSave} size="lg" className={`w-full gap-2 transition-all ${saved ? 'bg-green-500 hover:bg-green-600' : ''}`}>
-              <Save size={18} />
-              {saved ? 'Gespeichert!' : 'Präferenzen speichern'}
-            </Button>
-          </div>
-        </Card>
+          Das letzte war das gefährlichste: Wer hier Samstag und Sonntag
+          abwählte, bekam seinen Urlaub anders gezählt (`workdays.ts` las
+          dieses Feld), während der Dienstplan ihn weiter einplante. Zwei
+          Felder für „an diesem Wochentag bin ich nicht da", und nur eines
+          davon hat je geplant. Seit §235 lesen auch `workdays.ts` und
+          `fairness.ts` `fixedOffDays`.
+        */}
 
         {/* Dauerhafter Dienstwunsch — fließt direkt in den Solver */}
         <Card>
@@ -595,142 +395,24 @@ export default function EmployeeProfile() {
           </div>
         </Card>
 
-        {/* Human Context (Module 8: Menschliche Dienstplanung) */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Persönliches</CardTitle>
-            <Badge variant="purple">freiwillig</Badge>
-          </CardHeader>
-          <div className="space-y-4">
-            <div className="flex items-start gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
-              <Lock size={14} className="flex-shrink-0 mt-0.5 text-gray-400" />
-              {/*
-                §232 Was hier stand, war nicht wahr.
+        {/*
+          §235 Hier stand „Persönliches" — Stärken, Lebenssituation,
+          bevorzugte Tätigkeiten, besondere Absprachen.
 
-                „Sie helfen der KI, faire und menschlichere Dienstpläne zu
-                erstellen." Keines dieser Felder erreicht den Rechendienst —
-                `rule-model-service.ts` lädt sie nicht einmal. Wer seine
-                Lebenssituation erzählt, weil er einen Plan erwartet, der
-                darauf Rücksicht nimmt, wird enttäuscht, ohne es zu erfahren.
-                Und das ist die schlechteste Art, eine freiwillige Angabe
-                einzusammeln: Sie kostet Vertrauen und bringt nichts.
+          Gemeldet: „Das mit den persönlichen, mit den Stärken und Schwächen,
+          das kann auch raus, es braucht kein Mensch mehr. Das hat doch nie
+          Sinn gemacht."
 
-                Was WIRKLICH geschieht, steht jetzt da — und wo die Dinge
-                hingehören, die den Plan ändern.
-              */}
-              <span>
-                Diese Angaben sind freiwillig, jederzeit änderbar oder löschbar und nur für
-                die Leitung sichtbar. Deine Leitung sieht sie in deiner Personalakte, und der
-                OKUN&#8209;Assistent kann sie heranziehen, wenn ihn jemand etwas dazu fragt.
-                <strong className="font-semibold"> In die Berechnung des Dienstplans gehen sie
-                nicht ein.</strong> Was den Plan ändert, steht in den Dienstpräferenzen
-                (Frühdienst oder Spätdienst), bei deinen festen freien Tagen und in deinem
-                Tagesmuster — das pflegt die Leitung mit dir.
-              </span>
-            </div>
-
-            <Button
-              onClick={() => setChatOpen(true)}
-              size="lg"
-              className="w-full gap-2"
-            >
-              <Sparkles size={18} />
-              Im Gespräch mit der KI erzählen
-            </Button>
-            <p className="text-xs text-gray-400 -mt-2">
-              Am einfachsten erzählst du der KI im Chat frei, was sie wissen soll. Sie versteht deine Antworten
-              und trägt sie automatisch ein. Hier siehst du, was bereits erfasst ist, und kannst es bei Bedarf
-              direkt korrigieren.
-            </p>
-
-            <TagInputSection
-              label="Stärken"
-              items={humanContext.strengths}
-              onAdd={v => addTag('strengths', v)}
-              onRemove={v => removeTag('strengths', v)}
-              placeholder="z.B. Elternkommunikation, Dokumentation…"
-            />
-
-            <TagInputSection
-              label="Lebenssituation"
-              items={humanContext.lifeCircumstances}
-              onAdd={v => addTag('lifeCircumstances', v)}
-              onRemove={v => removeTag('lifeCircumstances', v)}
-              placeholder="z.B. Alleinerziehend, lange Anfahrt…"
-            />
-
-            <TagInputSection
-              label="Bevorzugte Tätigkeiten"
-              items={humanContext.preferredActivities}
-              onAdd={v => addTag('preferredActivities', v)}
-              onRemove={v => removeTag('preferredActivities', v)}
-              placeholder="z.B. Dokumentation, Elternarbeit…"
-            />
-
-            {/*
-              §232 Hier standen „Bevorzugte Gruppen / Bereiche" und
-              „Schicht-Vorlieben". Beide gab es ein zweites Mal — als Gruppe in
-              den Stammdaten und als Dienstpräferenz —, und nur die dort
-              wirkten. Wer „lieber Frühdienst" in dieses Feld schrieb, hatte es
-              gesagt und nichts erreicht. Der Weg dorthin steht jetzt unten als
-              Hinweis.
-            */}
-
-            <Textarea
-              label="Besondere Absprachen"
-              value={humanContext.agreements}
-              onChange={e => setHumanContext(p => ({ ...p, agreements: e.target.value }))}
-              rows={3}
-              placeholder="z.B. individuelle Absprachen mit der Leitung..."
-            />
-
-            {isHumanContextDirty && !humanContextSaved && (
-              <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                <AlertCircle size={14} />
-                Ungespeicherte Änderungen
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSaveHumanContext}
-                size="lg"
-                variant="secondary"
-                disabled={!humanContextLoaded}
-                className={`flex-1 gap-2 transition-all ${humanContextSaved ? 'bg-green-500 hover:bg-green-600 text-white' : ''}`}
-              >
-                <Heart size={18} />
-                {humanContextSaved ? 'Gespeichert!' : 'Persönliches speichern'}
-              </Button>
-              <Button
-                onClick={handleClearHumanContext}
-                size="lg"
-                variant="ghost"
-                disabled={!humanContextLoaded}
-                className="gap-2 text-gray-400 hover:text-red-500"
-              >
-                <Trash2 size={18} />
-                Alle löschen
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        <HumanContextChat
-          open={chatOpen}
-          onClose={() => setChatOpen(false)}
-          employeeId={employee.id}
-          onContextUpdate={ctx => {
-            const next = {
-              strengths: ctx.strengths,
-              lifeCircumstances: ctx.lifeCircumstances,
-              preferredActivities: ctx.preferredActivities,
-              agreements: ctx.agreements ?? '',
-            }
-            setHumanContext(next)
-            setSavedHumanContext(next)
-          }}
-        />
+          §232 hatte schon die beiden Felder entfernt, die es anderswo ein
+          zweites Mal gab, und den Satz korrigiert, der behauptete, die
+          Angaben hülfen bei der Planung. Übrig blieb eine Maske, die
+          freiwillige Angaben einsammelt, welche die Planung nicht erreichen —
+          die Leitung sieht sie in der Personalakte, und der Assistent kann
+          sie auf Frage heranziehen. Für den Aufwand, Gesundheits- und
+          Familiendaten nach Art. 9 DSGVO zu erheben und zu schützen, ist das
+          zu wenig. Mit der Maske ist auch der Grund entfallen, sie überhaupt
+          zu erheben.
+        */}
 
         {/* §100 Meine Unterlagen: Vertrag, Abrechnungen, eigene Krankmeldungen */}
         {employee && (

@@ -163,7 +163,20 @@ export default function CompanyReports() {
                   <td className="py-3 text-center text-sm font-bold text-navy">{totalVacationDays}T</td>
                   <td className="py-3 text-center text-sm font-bold text-navy">{totalSickDays}T</td>
                   <td className="py-3 text-center text-sm font-bold text-navy">
-                    {(employees.reduce((s, e) => s + e.hoursBalance, 0) / employees.length).toFixed(1)}h
+                    {/*
+                      §235 Ohne Mitarbeiter keine Division.
+
+                      Hier stand `reduce(...) / employees.length`. Bei einem
+                      Unternehmen ohne Mitarbeiter — ein frisch angelegtes, ein
+                      Standortfilter, der nichts trifft — ist das 0/0, und in
+                      der Zeile „Gesamt" stand „NaNh". Die beiden Zeilen
+                      darüber (38 und 60) prüfen den Nenner seit jeher; nur
+                      diese eine nicht, und sie steht in der Summenzeile, wo es
+                      am meisten auffällt.
+                    */}
+                    {employees.length > 0
+                      ? `${(employees.reduce((s, e) => s + e.hoursBalance, 0) / employees.length).toFixed(1)}h`
+                      : '—'}
                   </td>
                 </tr>
               </tbody>

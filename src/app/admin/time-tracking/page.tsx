@@ -35,6 +35,32 @@ const CLOSING_STATUS_LABEL: Record<string, { label: string; variant: 'warning' |
   freigegeben: { label: 'Freigegeben', variant: 'success' },
 }
 
+/**
+ * §235 Ein unbekannter Status nimmt nicht die ganze Seite mit.
+ *
+ * Hier stand `CLOSING_STATUS_LABEL[closing.status].variant` — und beim
+ * Seitendurchgang stürzte `/admin/time-tracking` mit „Cannot read properties
+ * of undefined (reading 'variant')" ab; statt der Seite stand da „Etwas ist
+ * schiefgelaufen".
+ *
+ * Welcher Datensatz es auslöste, ließ sich nicht festmachen: Über die
+ * Schnittstelle kamen nur bekannte Werte zurück. Das ändert nichts daran,
+ * dass die Zeile falsch war. Ein Nachschlagen ohne Rückfall ist eine Wette
+ * darauf, dass die Datenbank nie einen Wert enthält, den diese Datei nicht
+ * kennt — und solche Wetten verliert man beim nächsten neuen Status, nach dem
+ * niemand diese Maske durchsucht hat.
+ *
+ * Der unbekannte Wert wird jetzt ANGEZEIGT statt verschwiegen. Dann sieht
+ * man beim nächsten Mal, welcher es war.
+ */
+function statusAnzeige<T extends { label: string; variant: string }>(
+  tabelle: Record<string, T>, wert: string | undefined | null,
+): { label: string; variant: 'warning' | 'success' | 'info' | 'danger' | 'default' } {
+  const treffer = wert ? tabelle[wert] : undefined
+  if (treffer) return treffer as never
+  return { label: wert ? `Unbekannt (${wert})` : 'Ohne Status', variant: 'default' }
+}
+
 type Tab = 'overtime' | 'absences' | 'closings'
 
 export default function AdminTimeTracking() {
@@ -331,12 +357,12 @@ export default function AdminTimeTracking() {
                 <EmptyState icon={Clock} title="Keine Überstundenanträge" />
               ) : (
                 overtimeRequests.map(req => {
-                  const statusCfg = {
+                  const statusCfg = statusAnzeige({
                     pending: { label: 'Ausstehend', variant: 'warning' as const },
                     approved: { label: 'Genehmigt', variant: 'success' as const },
                     denied: { label: 'Abgelehnt', variant: 'danger' as const },
                     partial: { label: 'Teilweise genehmigt', variant: 'info' as const },
-                  }[req.status]
+                  }, req.status)
                   return (
                     <div
                       key={req.id}
@@ -372,11 +398,11 @@ export default function AdminTimeTracking() {
                 <EmptyState icon={Stethoscope} title="Keine Meldungen" />
               ) : (
                 absences.map(absence => {
-                  const statusCfg = {
+                  const statusCfg = statusAnzeige({
                     offen: { label: 'Offen', variant: 'warning' as const },
                     geprueft: { label: 'Geprüft', variant: 'success' as const },
                     abgelehnt: { label: 'Abgelehnt', variant: 'danger' as const },
-                  }[absence.verificationStatus]
+                  }, absence.verificationStatus)
                   return (
                     <div
                       key={absence.id}
@@ -436,7 +462,7 @@ export default function AdminTimeTracking() {
               {closings.map(closing => {
                 const key = closing.id
                 const isOpen = expandedClosing === key
-                const status = CLOSING_STATUS_LABEL[closing.status]
+                const status = statusAnzeige(CLOSING_STATUS_LABEL, closing.status)
                 return (
                   <div key={closing.id} className="rounded-xl bg-gray-50 overflow-hidden">
                     <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => setExpandedClosing(isOpen ? null : key)}>

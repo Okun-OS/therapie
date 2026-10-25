@@ -130,7 +130,25 @@ for (const rolle of ROLLEN) {
   // trotzdem im Hintergrund kaputt sein.
   const ausnahmen = []
   const serverfehler = []
-  seite.on('pageerror', e => ausnahmen.push(String(e.message).slice(0, 160)))
+  /*
+   * „Failed to fetch" wird NICHT gezählt.
+   *
+   * Beim Weiterblättern bricht der Browser die noch laufenden Anfragen der
+   * verlassenen Seite ab, und jede davon wirft diesen Satz. Nachgemessen
+   * wanderte er zwischen den Läufen von `/admin/time-tracking` zu
+   * `/admin/urlaub` — er gehört also zur Prüfung, nicht zur Anwendung.
+   *
+   * Ein echter Netzwerkfehler bliebe trotzdem nicht unbemerkt: Was der Server
+   * ablehnt, fängt die 5xx-Erfassung darunter, und was die Seite kaputt
+   * macht, steht als Fehlerseite im Text. Diesen einen Satz mitzuzählen hätte
+   * die Prüfung dagegen zum Rauschmelder gemacht — und das verbietet ihr
+   * eigener Kopf.
+   */
+  seite.on('pageerror', e => {
+    const text = String(e.message)
+    if (/Failed to fetch|NetworkError|The operation was aborted/i.test(text)) return
+    ausnahmen.push(text.slice(0, 160))
+  })
   seite.on('response', r => {
     if (r.status() >= 500 && r.url().includes('/api/')) {
       serverfehler.push(`${r.status()} ${r.url().replace(BASIS, '')}`.slice(0, 160))

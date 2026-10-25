@@ -9,8 +9,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const session = requireRole(req, ['admin', 'company'])
   if (session instanceof NextResponse) return session
 
-  const { status, respondedBy, approvedMinutes, adminComment } = await req.json()
-  if (!status || !respondedBy) {
+  const { status: rohStatus, respondedBy, approvedMinutes, adminComment } = await req.json()
+  if (!rohStatus || !respondedBy) {
     return NextResponse.json({ error: 'status und respondedBy sind erforderlich' }, { status: 400 })
   }
 
@@ -21,10 +21,39 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     select: { employeeId: true },
   })
   if (!antrag) return NextResponse.json({ error: 'Antrag nicht gefunden' }, { status: 404 })
+
+  /*
+   * §235 Der Status wird geprüft, bevor er in die Datenbank geht.
+   *
+   * Hier wurde genommen, was kam. In der Datenbank standen daraufhin 67
+   * Überstundenanträge mit „rejected" — ein Wort, das es im Typ gar nicht
+   * gibt (`'pending' | 'approved' | 'denied' | 'partial'`). Die Maske
+   * schlug es nach, bekam `undefined` und nahm beim Zugriff auf `.variant`
+   * die ganze Seite mit: Statt der Zeiterfassung stand „Etwas ist
+   * schiefgelaufen". Gefunden beim Seitendurchgang (§234).
+   *
+   * „rejected" wird übersetzt statt abgewiesen: Es kam aus dem eigenen Haus,
+   * und eine Maske, die jahrelang so geschrieben hat, soll nicht ab heute
+   * Fehler bekommen. Alles andere wird abgelehnt — mit einem Satz, der die
+   * erlaubten Werte nennt, statt still etwas zu speichern, das später eine
+   * Seite zerlegt.
+   */
+  const UEBERSETZUNG: Record<string, string> = { rejected: 'denied', abgelehnt: 'denied' }
+  const status = UEBERSETZUNG[String(rohStatus)] ?? String(rohStatus)
+  const ERLAUBT = ['approved', 'denied', 'partial']
+  if (!ERLAUBT.includes(status)) {
+    return NextResponse.json(
+      { error: `„${rohStatus}" ist keine gültige Entscheidung. Erlaubt: ${ERLAUBT.join(', ')}.` },
+      { status: 400 },
+    )
+  }
   const verweigert = await assertEmployeeAccess(session, antrag.employeeId)
   if (verweigert) return verweigert
 
-  await respondToOvertimeRequest(params.id, status, respondedBy, approvedMinutes, adminComment)
+  await respondToOvertimeRequest(
+    params.id, status as 'approved' | 'denied' | 'partial',
+    respondedBy, approvedMinutes, adminComment,
+  )
   return NextResponse.json({ success: true })
 }
 

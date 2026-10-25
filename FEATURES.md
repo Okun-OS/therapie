@@ -5204,3 +5204,140 @@ Nachweise: `browser/alle-seiten-ohne-fehler.mjs` **60/60**,
 eigene Satz weiterhin durchkommt: „Es läuft bereits eine Zeiterfassung. Bitte
 zuerst ausstempeln." — ohne jede technische Innerei. Die Umstellung durfte den
 eigenen Satz nicht mitverschlucken, und das ist der Test dafür.
+
+## Block §235 (25.10.) — Zwei Zahlen für denselben Resturlaub, und zwei Masken ohne Wirkung
+
+Vier Meldungen aus einer Bilderstrecke.
+
+### 1. Die Urlaubstage stimmten nicht überein
+
+**„Bei Bild 1 und 2 stimmen die Urlaubstage nicht überein. Bei dem einen steht
+die eine Zahl, bei dem anderen die andere. Das ist sehr schlecht."**
+
+Nachgemessen bei Juliane Saul:
+
+| | |
+|---|---|
+| Urlaubsseite | „Resturlaub 2026: **12** von 30 Tagen" |
+| Profilseite | „**16** Resturlaub" |
+
+Beide rechneten für sich richtig. Die Urlaubsseite zog die offenen Anträge ab
+(30 − 14 − 4), das Profil nicht (30 − 14). **Der Fehler war nicht die Rechnung,
+sondern dass beide Zahlen „Resturlaub" hießen** — und der Unterschied waren
+genau die vier Tage, über die noch niemand entschieden hatte.
+
+`urlaubskonto.ts` rechnet jetzt beides und **benennt es**: `verfuegbar` ist,
+was noch beantragt werden kann; `offen`, was dieses Jahr noch zusteht. Beide
+Masken zeigen dieselbe Zahl — die, nach der jemand handelt.
+
+**Warum nicht einfach eine Zahl:** Die Maske zum Beantragen braucht die eine
+(sonst beantragt jemand Tage, die schon weg sind), der Jahresüberblick die
+andere (sonst sieht ein abgelehnter Antrag aus wie verbrauchter Urlaub). Eine
+für beides wäre an einer Stelle falsch — und zwar still.
+
+Dabei gefunden: `Number(null)` ist 0 und nicht NaN. Ein Mensch ohne gesetzten
+Anspruch hätte „0 von 0 Tagen" gelesen und geglaubt, er habe seinen Urlaub
+verbraucht.
+
+### 2. „Dienstpräferenzen" — das Abzeichen war falsch
+
+**„Diese Dienstpräferenzen, diese ganzen Dienstwünsche … ist doch gar nicht
+mehr relevant, seitdem wir das Regelpaket haben. Das heißt, es könnte raus."**
+
+Der Block trug das Abzeichen **„wird bei KI berücksichtigt"** und speicherte
+fünf Felder nach `Employee.preferences` — ein Feld, das
+`rule-model-service.ts` an **keiner** Stelle liest.
+
+| Feld | wo es wirklich steht |
+|---|---|
+| Bevorzugte Dienste | „Mein Dienstwunsch" — und nur der plant (§229) |
+| Kein Frühdienst nach Spätdienst | die Ruhezeit, als Betriebsregel im Regelpaket |
+| Maximale Folgetage | ebenfalls Regelpaket (`maxFolgetage`) |
+| Sonstige Notizen | Freitext, den kein Rechenkern liest — §200 hat dasselbe Feld anderswo schon entfernt |
+| Nicht verfügbar an | `fixedOffDays` — und nur das plant |
+
+**Das letzte war das gefährlichste.** Wer hier Samstag und Sonntag abwählte,
+bekam seinen Urlaub anders gezählt (`workdays.ts` las dieses Feld), während der
+Dienstplan ihn weiter einplante. Zwei Felder für „an diesem Wochentag bin ich
+nicht da", und nur eines davon hat je geplant. `workdays.ts` und `fairness.ts`
+lesen jetzt `fixedOffDays`; die alte Angabe bleibt als Rückfall, solange
+`fixedOffDays` leer ist — **ohne das bekäme ein bestehender Urlaubsantrag über
+Nacht eine andere Tagezahl als gestern.**
+
+Was NICHT entfernt wurde: „Mein Dienstwunsch". Der trägt das Abzeichen „fließt
+in Planung ein", und das stimmt seit §229 — dort ist nachgemessen, dass er von
+0 auf 2 erfüllte Wünsche kam.
+
+### 3. „Persönliches" — ganz weg
+
+**„Das mit den Stärken und Schwächen, das kann auch raus, es braucht kein
+Mensch mehr. Das hat doch nie Sinn gemacht."**
+
+§232 hatte schon die Schattenfelder entfernt und den Satz korrigiert, der
+behauptete, die Angaben hülfen bei der Planung. Übrig blieb eine Erhebung, die
+den Rechendienst nicht erreicht.
+
+Jetzt ganz weg: Maske, Tabelle, beide Routen, der KI-Chat, die Anzeige in
+Personalakte und Unternehmenssicht, die Einträge in DSGVO-Verzeichnis, Auskunft
+und Löschroutine.
+
+**Warum gelöscht und nicht ausgeblendet:** „Lebenssituation" meint
+alleinerziehend, Pflege von Angehörigen, gesundheitliche Einschränkungen —
+Art. 9 DSGVO. Wer solche Daten nicht mehr braucht, darf sie nicht aufbewahren.
+Eine ausgeblendete Tabelle wäre weiterhin eine Verarbeitung, nur eine
+unsichtbare — und unsichtbare Verarbeitung ist die, die in einer Auskunft
+vergessen wird.
+
+### 4. Die alte Domain in den Push-Nachrichten
+
+**„Bei dieser Google-Synchronisation steht noch die alte Railway-Domain. Und
+die steht auch bei den Pop-Up-Nachrichten, die ich aufs Handy bekomme."**
+
+§228 hat die Abo-Adresse auf `APP_URL` umgestellt. Das war richtig und reichte
+nicht: **Die Push-Meldung zeigt die Adresse, unter der die App installiert
+wurde** — das entscheidet der Browser, nicht die Nutzlast. Im Code steht die
+alte Domain nirgends; sie steckt in der Installation.
+
+Solange der alte Name beide Seiten ausliefert, bleibt jede dort installierte
+App darauf. Eine Weiterleitung ist der einzige Ort, an dem sich das beheben
+lässt. **Nicht umgeleitet wird** ohne `APP_URL`, bei POST (eine Weiterleitung
+verliert den Rumpf — ein abgeschickter Urlaubsantrag wäre still weg), für
+`/api` und lokal.
+
+Dabei ein eigener Fehler: Die Rollenweiterleitung galt über den Matcher nur für
+`/`. Mit dem neuen, weiten Matcher hätte sie jeden angemeldeten Menschen von
+`/employee/schedule` zurück auf `/employee` geschickt. Die Einschränkung ist in
+die Funktion gewandert, nicht verschwunden.
+
+### Was der Seitendurchgang dabei fand
+
+**`/admin/time-tracking` stürzte ab** — „Cannot read properties of undefined
+(reading 'variant')", statt der Seite stand „Etwas ist schiefgelaufen".
+
+Die Ursache war zwei Ebenen tiefer: In `OvertimeRequest.status` standen **67
+Datensätze mit „rejected"** — ein Wort, das der Typ gar nicht kennt
+(`'pending' | 'approved' | 'denied' | 'partial'`) und das `VacationRequest`
+daneben als „denied" schreibt. **Die Schnittstelle nahm den Status ungeprüft
+entgegen**; was eine Maske schickte, landete in der Datenbank.
+
+Drei Dinge behoben: Die Schnittstelle prüft jetzt (und übersetzt „rejected",
+damit eine Maske, die jahrelang so geschrieben hat, nicht ab heute Fehler
+bekommt), die Bestandsdaten sind vereinheitlicht, und die Masken zeigen einen
+unbekannten Status **an** statt die Seite mitzunehmen — dann sieht man beim
+nächsten Mal, welcher es war.
+
+**`/company/reports` zeigte „NaNh"** in der Summenzeile: `reduce(...) /
+employees.length` bei leerer Liste. Die beiden Zeilen darüber prüfen den Nenner
+seit jeher; nur diese eine nicht, und sie steht dort, wo es am meisten
+auffällt.
+
+**Und ein Fehler in der Prüfung selbst:** „Failed to fetch" wanderte zwischen
+den Läufen von einer Seite zur anderen — der Browser bricht beim Weiterblättern
+die laufenden Anfragen ab. Das gehört zur Prüfung, nicht zur Anwendung, und
+wird jetzt ausgenommen. Mitgezählt hätte es sie zum Rauschmelder gemacht, und
+das verbietet ihr eigener Kopf.
+
+Nachweise: `urlaubskonto.test.ts` **9**, `kanonische-domain.test.ts` **11**,
+`browser/urlaubstage-stimmen-ueberein.mjs` **9/9**, `o-persoenliches.mjs`
+**11/11** (misst jetzt das Gegenteil: dass es weg ist),
+`browser/alle-seiten-ohne-fehler.mjs` **60/60**.

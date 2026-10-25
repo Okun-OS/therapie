@@ -14,6 +14,7 @@ import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, CalendarClock } 
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate } from '@/lib/utils'
 import { countWorkdays } from '@/lib/workdays'
+import { urlaubskonto } from '@/lib/urlaubskonto'
 import { einreihen } from '@/lib/warteschlange'
 import { schlangeGeaendert } from '@/components/offline/Warteschlange'
 import type { Employee, Location, VacationRequest } from '@/lib/types'
@@ -78,16 +79,19 @@ export default function EmployeeVacation() {
   // Eine Frist aus dem letzten Jahr ist keine offene Frist.
   const fristOffen = !!frist && frist.datum >= new Date().toISOString().slice(0, 10)
 
-  const vacationTotal = employee?.vacationDaysTotal || 30
-  const vacationUsed = employee?.vacationDaysUsed || 0
-  const pendingDays = myRequests
-    .filter(r => r.status === 'pending')
-    .reduce((s, r) => s + r.days, 0)
-  const approvedDays = myRequests
-    .filter(r => r.status === 'approved')
-    .reduce((s, r) => s + r.days, 0)
-  // Tage, die noch frei beantragt werden koennen: Gesamt minus bereits genutzt minus offene Antraege
-  const vacationRemaining = vacationTotal - vacationUsed - pendingDays
+  /*
+   * §235 Eine Rechnung für beide Masken.
+   *
+   * Hier stand dieselbe Arithmetik ein zweites Mal — und im Profil daneben
+   * eine dritte, die anders rechnete. Gemeldet: „Bei Bild 1 und 2 stimmen die
+   * Urlaubstage nicht überein." Jetzt kommt beides aus `urlaubskonto.ts`.
+   */
+  const konto = urlaubskonto(employee ?? {}, myRequests)
+  const vacationTotal = konto.gesamt
+  const vacationUsed = konto.genommen
+  const pendingDays = konto.beantragt
+  const approvedDays = konto.genehmigt
+  const vacationRemaining = konto.verfuegbar
 
   const requestDays = form.startDate && form.endDate
     ? countWorkdays(form.startDate, form.endDate, employee, location?.state)
