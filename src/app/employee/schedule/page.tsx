@@ -66,7 +66,6 @@ export default function EmployeeSchedule() {
   const [swapEntry, setSwapEntry] = useState<ScheduleEntry | null>(null)
   const [wishModal, setWishModal] = useState(false)
   const [wish, setWish] = useState({ type: '', date: '', dateFrom: '', dateTo: '', reason: '', importance: 'normal', mode: 'single' as 'single' | 'range' })
-  const [planningProfile, setPlanningProfile] = useState<{ shiftPreference: string } | null>(null)
   const [prefSaving, setPrefSaving] = useState(false)
   const [calendarModal, setCalendarModal] = useState(false)
   const [calView, setCalView] = useState<CalView>('week')
@@ -98,11 +97,11 @@ export default function EmployeeSchedule() {
     if (!user?.employeeId) return
     fetch(`/api/swap-requests?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setSwaps(d.requests))
     fetch(`/api/wish-submissions?employeeId=${user.employeeId}`).then(r => r.json()).then(d => setMyWishes(d.wishes))
-    // §61: load persistent planning profile
+    // §227 Planstunden und Tagesmuster — für die Ausfallstunden.
+    // §236 Die Schichtvorliebe wird nicht mehr geladen; es gibt sie nicht mehr.
     fetch(`/api/employee-planning-profile?employeeId=${user.employeeId}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (d?.profile) setPlanningProfile({ shiftPreference: d.profile.shiftPreference ?? 'keine' })
         if (d?.profile) {
           setMeinProfil({
             planungsStundenSoll: d.profile.planungsStundenSoll ?? null,
@@ -269,22 +268,6 @@ export default function EmployeeSchedule() {
     setWishModal(false)
     setWish({ type: '', date: '', dateFrom: '', dateTo: '', reason: '', importance: 'normal', mode: 'single' })
     setMyWishes(prev => [submission, ...prev])
-  }
-
-  const handleSavePref = async (shiftPreference: string) => {
-    if (!user?.employeeId || prefSaving) return
-    setPrefSaving(true)
-    try {
-      await fetch('/api/employee-planning-profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId: user.employeeId, shiftPreference }),
-      })
-      setPlanningProfile(p => p ? { ...p, shiftPreference } : { shiftPreference })
-      showToast('Präferenz gespeichert', 'success')
-    } finally {
-      setPrefSaving(false)
-    }
   }
 
   // §73: wish-conflict actions — contact the colleague / request a swap
@@ -770,30 +753,19 @@ export default function EmployeeSchedule() {
         {/* ── WISHES TAB ───────────────────────────────────────── */}
         {tab === 'wishes' && (
           <>
-          {/* §61: Persistent shift preference */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Dauerhafte Schichtpräferenz</CardTitle>
-            </CardHeader>
-            <p className="text-xs text-gray-500 mb-3">Diese Präferenz gilt für alle zukünftigen Planungsläufe als weicher Wunsch (Priorität: niedrig).</p>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { value: 'keine', label: 'Keine' },
-                { value: 'frueh', label: 'Frühdienst' },
-                { value: 'spaet', label: 'Spätdienst' },
-                { value: 'nacht', label: 'Nachtdienst' },
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => handleSavePref(opt.value)}
-                  disabled={prefSaving}
-                  className={`py-2.5 rounded-xl text-xs font-semibold border-2 transition-all ${(planningProfile?.shiftPreference ?? 'keine') === opt.value ? 'bg-navy text-white border-navy' : 'border-gray-100 text-gray-500 hover:bg-gray-50'}`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </Card>
+          {/*
+            §236 Hier stand „Dauerhafte Schichtpräferenz" — dieselbe Angabe
+            wie im Profil, nur zweimal bedienbar.
+
+            Gemeldet: „Ich möchte nicht, dass dann auf einmal jemand dauernd
+            Spätdienste bekommt, obwohl das dann halt nicht mehr mit der
+            Fairness kollidiert. Es gibt ja Regeln." Ein Wunsch, der an jedem
+            Tag gilt, verschiebt die Verteilung über Monate — und genau die
+            regeln Regelpaket und Fairness.
+
+            Die Dienstwünsche darunter bleiben: Sie gelten für EINEN Tag und
+            konkurrieren mit anderen Wünschen desselben Tages.
+          */}
 
           <Card>
             <CardHeader>

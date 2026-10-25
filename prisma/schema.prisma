@@ -69,8 +69,6 @@ model EmployeeProfile {
 
 model EmployeePlanningProfile {
   employeeId         String   @id
-  // Schicht-Präferenz für den Solver
-  shiftPreference    String   @default("keine") // frueh | spaet | nacht | keine
   // Kinder-Abholzeiten: [{day:"Mo", beforeTime:"15:30"}, ...]
   childPickupTimes   Json     @default("[]")
   // Maximale aufeinanderfolgende Arbeitstage (0 = Unternehmensregel gilt)

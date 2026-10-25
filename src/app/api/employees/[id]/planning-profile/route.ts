@@ -37,7 +37,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   // Regelpaket hat sie je gelesen (siehe admin/employees). Was davon in der
   // Datenbank steht, bleibt unberührt — es wird hier nur nicht mehr gesetzt,
   // auch nicht auf leer.
-  const { shiftPreference, surchargeMode, surchargeOverrides } = body
+  // §236 `shiftPreference` wird nicht mehr angenommen — siehe unten.
+  const { surchargeMode, surchargeOverrides } = body
 
   // §171 Wie viele Wochenstunden dieser Mensch IM DIENSTPLAN belegt.
   //
@@ -87,7 +88,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   const werte = {
-    shiftPreference: shiftPreference ?? 'keine',
     planungsStundenSoll,
     // Prisma kennt für ein JSON-Feld nur sein eigenes Eingabeformat; eine
     // Liste von Objekten passt erst nach dieser Umdeutung hinein. Geprüft ist

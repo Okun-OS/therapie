@@ -273,21 +273,30 @@ export function lesen(
       continue
     }
 
-    let vorliebe: BelegschaftZeile['vorliebe'] = null
-    if (vorliebeRoh.trim()) {
-      const v = vorliebeRoh.trim().toLowerCase().replace('ü', 'ue')
-      const treffer = VORLIEBEN.find(x => x === v || x.startsWith(v.slice(0, 4)))
-      if (!treffer) {
-        melde(`„${vorliebeRoh.trim()}" ist keine Schichtvorliebe. `
-          + `Erlaubt sind: ${VORLIEBEN.join(', ')}.`)
-        continue
-      }
-      vorliebe = treffer
-    }
+    /*
+     * §236 Die Spalte „Vorliebe" wird noch GELESEN, aber nicht mehr benutzt.
+     *
+     * Die dauerhafte Schichtvorliebe ist entfallen: Ein Wunsch, der an jedem
+     * Tag gilt, verschiebt die Verteilung über Monate, und genau die soll die
+     * Fairness regeln.
+     *
+     * Warum die Spalte trotzdem gelesen wird: Eine Betriebsliste mit acht
+     * Spalten darf nicht ab heute einen Fehler werfen, nur weil die letzte
+     * nicht mehr gebraucht wird. Sie wird eingelesen und verworfen.
+     *
+     * WAS HIER FEHLT, UND WARUM ES SO BLEIBT
+     * Wer die Spalte ausfüllt, erfährt nicht, dass sie wirkungslos ist. Der
+     * Einlesebericht kennt nur `fehler` — ein Hinweis dort stünde unter
+     * „Fehler" und verwürfe in der Maske womöglich die ganze Datei. Eine
+     * eigene Hinweisliste wäre der richtige Ort; sie anzulegen ist eine
+     * Änderung am Bericht und gehört nicht in denselben Schritt wie das
+     * Entfernen einer Planungsregel.
+     */
+    void vorliebeRoh
 
     zeilen.push({
       name, stunden, tageProWoche, gruppe, funktion,
-      muster: geprueft.muster, freieTage, vorliebe, zeile: nummer,
+      muster: geprueft.muster, freieTage, vorliebe: null, zeile: nummer,
     })
   }
 

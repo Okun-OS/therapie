@@ -158,7 +158,6 @@ export async function POST(req: NextRequest) {
       ...(emp.workDays.length > 0 && { arbeitstage: emp.workDays }),
       ...(emp.workDaysPerWeek && { tage_pro_woche: emp.workDaysPerWeek }),
       ...(emp.qualifications.length > 0 && { qualifikationen: emp.qualifications }),
-      ...(profile?.shiftPreference && profile.shiftPreference !== 'keine' && { schichtpraeferenz: profile.shiftPreference }),
       // §200 Wochenend-Vereinbarung, Folgetage und Planungsnotiz gehen nicht
       // mehr mit: Sie sind aus der Maske entfernt. Was noch in der Datenbank
       // steht, sähe niemand mehr — und würde den Chat trotzdem lenken.

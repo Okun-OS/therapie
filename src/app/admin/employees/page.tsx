@@ -34,14 +34,13 @@ import { LohnStammdaten } from '@/components/employees/LohnStammdaten'
  * annehmen, der Plan richte sich danach. Er tat es nie. Was ein Betrieb
  * wirklich braucht, steht heute im Regelpaket des Standorts.
  *
- * GEBLIEBEN, und warum: die Schichtvorliebe liest das Regelpaket der Kita
- * (`vorlieben_aus_stammdaten`, §181), die Planstunden der Rechendienst
+ * GEBLIEBEN, und warum: die Planstunden liest der Rechendienst
+ * (§236: die Schichtvorliebe ist entfallen)
  * (§171), die Zuschlagsregelung die Lohnabrechnung. Die Spalten der
  * entfernten Felder stehen noch in der Datenbank — sie zu löschen ist ein
  * eigener Schritt, der Produktionsdaten berührt.
  */
 interface PlanningProfile {
-  shiftPreference: string
   /** §171 leer = Vertragsstunden aus den Stammdaten */
   planungsStundenSoll: number | null
   surchargeMode: string
@@ -557,7 +556,6 @@ export default function AdminEmployees() {
                   setPlanningProfileOpen(o => !o)
                   if (!planningProfileDraft) {
                     setPlanningProfileDraft(planningProfile ?? {
-                      shiftPreference: 'keine',
                       planungsStundenSoll: null,
                       surchargeMode: 'unternehmensregel',
                     })
@@ -570,20 +568,13 @@ export default function AdminEmployees() {
 
               {planningProfileOpen && planningProfileDraft && (
                 <div className="px-3 pb-3 pt-1 space-y-3 border-t border-gray-100">
-                  {/* Schicht-Präferenz */}
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Schicht-Präferenz</label>
-                    <select
-                      value={planningProfileDraft.shiftPreference}
-                      onChange={e => setPlanningProfileDraft(d => d ? { ...d, shiftPreference: e.target.value } : d)}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="keine">Keine Präferenz</option>
-                      <option value="frueh">Frühschicht bevorzugt</option>
-                      <option value="spaet">Spätschicht bevorzugt</option>
-                      <option value="nacht">Nachtschicht bevorzugt</option>
-                    </select>
-                  </div>
+                  {/*
+                    §236 Hier stand „Schicht-Präferenz" — Früh, Spät, Nacht
+                    oder keine. Sie ist entfallen: Eine dauerhafte Vorliebe
+                    wirkt an jedem Tag in dieselbe Richtung und verschiebt die
+                    Verteilung über Monate, und genau die soll die Fairness
+                    regeln. Ein Wunsch für einen einzelnen Tag bleibt möglich.
+                  */}
 
                   {/* §171 Planstunden */}
                   <div>

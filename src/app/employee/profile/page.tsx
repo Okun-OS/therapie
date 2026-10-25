@@ -116,35 +116,6 @@ export default function EmployeeProfile() {
    */
   const [antraegeGeladen, setAntraegeGeladen] = useState(false)
 
-  // ── Dauerhafter Planungs-Wunsch (shiftPreference) ────────────────────────────
-  const [shiftPref, setShiftPref] = useState<'frueh' | 'spaet' | 'nacht' | 'keine'>('keine')
-  const [shiftPrefSaved, setShiftPrefSaved] = useState(false)
-  const [shiftPrefDirty, setShiftPrefDirty] = useState(false)
-  const [shiftPrefOriginal, setShiftPrefOriginal] = useState<'frueh' | 'spaet' | 'nacht' | 'keine'>('keine')
-
-  useEffect(() => {
-    fetch('/api/employee/preferences')
-      .then(r => r.json())
-      .then(d => {
-        const v = (d.shiftPreference ?? 'keine') as typeof shiftPref
-        setShiftPref(v)
-        setShiftPrefOriginal(v)
-      })
-      .catch(() => {})
-  }, [])
-
-  const saveShiftPref = async () => {
-    await fetch('/api/employee/preferences', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shiftPreference: shiftPref }),
-    })
-    setShiftPrefOriginal(shiftPref)
-    setShiftPrefDirty(false)
-    setShiftPrefSaved(true)
-    setTimeout(() => setShiftPrefSaved(false), 2000)
-  }
-
   const [calendarSyncEnabled, setCalendarSyncEnabled] = useState(false)
   /**
    * §228 Die Abo-Adresse kommt vom Server, nicht aus dem Browserfenster.
@@ -368,45 +339,27 @@ export default function EmployeeProfile() {
           `fairness.ts` `fixedOffDays`.
         */}
 
-        {/* Dauerhafter Dienstwunsch — fließt direkt in den Solver */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Mein Dienstwunsch</CardTitle>
-            <Badge variant="info">fließt in Planung ein</Badge>
-          </CardHeader>
-          <div className="space-y-4">
-            <p className="text-xs text-gray-500">
-              Teile uns deinen generellen Wunsch mit. Der Solver berücksichtigt dies als
-              dauerhafte Präferenz — falls es mit anderen Anforderungen vereinbar ist.
-            </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {([
-                { value: 'frueh',  label: 'Frühdienst',   icon: '🌅' },
-                { value: 'spaet',  label: 'Spätdienst',   icon: '🌆' },
-                { value: 'nacht',  label: 'Nachtdienst',  icon: '🌙' },
-                { value: 'keine',  label: 'Egal',          icon: '🔄' },
-              ] as const).map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => { setShiftPref(opt.value); setShiftPrefDirty(opt.value !== shiftPrefOriginal) }}
-                  className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 text-xs font-semibold transition-all ${shiftPref === opt.value ? 'bg-navy text-white border-navy' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                >
-                  <span className="text-lg">{opt.icon}</span>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <Button
-              onClick={saveShiftPref}
-              size="sm"
-              disabled={!shiftPrefDirty}
-              className={`w-full gap-2 transition-all ${shiftPrefSaved ? 'bg-green-500 hover:bg-green-600' : ''}`}
-            >
-              <Save size={16} />
-              {shiftPrefSaved ? 'Gespeichert!' : 'Wunsch speichern'}
-            </Button>
-          </div>
-        </Card>
+        {/*
+          §236 Hier stand „Mein Dienstwunsch“ — Früh-, Spät-, Nachtdienst
+          oder egal, mit dem Abzeichen „fließt in Planung ein“.
+
+          Gemeldet: „Ich möchte, dass diese Dienstpräferenz rausfliegt, weil
+          ich nicht möchte, dass dann auf einmal jemand dauernd Spätdienste
+          bekommt, obwohl das dann halt nicht mehr mit der Fairness
+          kollidiert. Es gibt ja Regeln.“
+
+          Das Abzeichen stimmte — §229 hat den Wunsch erst erfüllbar gemacht,
+          nachgemessen von 0 auf 2 erfüllte Wünsche. Genau das ist der Grund,
+          warum er jetzt geht: Ein DAUERHAFTER Wunsch, der wirkt, verschiebt
+          die Verteilung an den Fairness-Regeln vorbei. Wer dauerhaft
+          Frühdienst wünscht, bekommt dauerhaft Frühdienst — und jemand
+          anderes bekommt dauerhaft den Rest.
+
+          Was den Plan jetzt bestimmt: das Regelpaket, das Tagesmuster, die
+          festen freien Tage und die Fairness über den Zeitraum. Ein Wunsch
+          für einen EINZELNEN Tag bleibt möglich — der konkurriert mit anderen
+          Wünschen desselben Tages und nicht mit der Verteilung über Monate.
+        */}
 
         {/*
           §235 Hier stand „Persönliches" — Stärken, Lebenssituation,

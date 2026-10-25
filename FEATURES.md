@@ -5367,3 +5367,78 @@ Nachweise: `urlaubskonto.test.ts` **9**, `kanonische-domain.test.ts` **11**,
 **11/11** (misst jetzt das Gegenteil: dass es weg ist),
 `browser/alle-seiten-ohne-fehler.mjs` **60/60**. Insgesamt **1970/1970**
 Prüfungen am laufenden System und **1275** Modultests.
+
+## Block §236 (25.10.) — Die dauerhafte Dienstvorliebe entfällt
+
+**Die Meldung:** „Ich möchte, dass diese Dienstpräferenz rausfliegt, weil ich
+nicht möchte, dass dann auf einmal jemand dauernd Spätdienste bekommt, obwohl
+das dann halt nicht mehr mit der Fairness kollidiert. Es gibt ja Regeln."
+
+### Der Einwand ist besser als meine Verteidigung
+
+In §235 hatte ich „Mein Dienstwunsch" stehen lassen und nachgefragt — mit dem
+Argument, das Abzeichen „fließt in Planung ein" stimme, §229 habe ihn
+nachweislich von 0 auf 2 erfüllte Wünsche gebracht.
+
+Das stimmte und war der Grund, ihn zu entfernen, nicht ihn zu behalten.
+
+Ein Wunsch für **einen Tag** konkurriert mit anderen Wünschen desselben Tages.
+Ein Wunsch, der an **jedem** Tag gilt, konkurriert mit nichts — er schiebt die
+Verteilung über Monate in eine Richtung. Wer dauerhaft Frühdienst wünscht,
+bekommt dauerhaft Frühdienst; was dabei bei den anderen ankommt, stand in
+keinem Feld. Das Gewicht lag bewusst unter dem der Fairness, und das half
+nicht: Es wirkte eben jeden Tag.
+
+### Was entfernt wurde
+
+| | |
+|---|---|
+| „Mein Dienstwunsch" im Profil | entfällt |
+| „Dauerhafte Schichtpräferenz" im Dienstplan-Reiter | entfällt — dieselbe Angabe, zweimal bedienbar |
+| „Schicht-Präferenz" in der Personalakte | entfällt |
+| `/api/employee/preferences` | entfällt |
+| `PUT /api/employee-planning-profile` | entfällt — danach hätte sie nichts mehr geschrieben |
+| `EmployeePlanningProfile.shiftPreference` | gelöscht |
+| Übersetzung in Tageswünsche (`rule-model-service`) | entfällt |
+| `vorliebe` im Regelmodell | wird nicht mehr geschickt |
+| `vorlieben_aus_stammdaten` im Regelpaket | tut nichts mehr |
+
+**Was den Plan jetzt bestimmt:** das Regelpaket, das Tagesmuster, die festen
+freien Tage und die Fairness über den Zeitraum. Wünsche für einzelne Tage
+bleiben.
+
+### Zwei Entscheidungen, die nicht offensichtlich sind
+
+**Der Baustein im Regelpaket bleibt stehen und tut nichts.** Die Pakete rufen
+ihn auf; ein fehlender Baustein ließe einen Rechenlauf scheitern, und dann
+stünde ein ganzer Standort ohne Dienstplan da — wegen einer Regel, die
+abgeschafft wurde. Er notiert jetzt im Bericht, dass es ihn nicht mehr gibt.
+
+**Die Spalte „Vorliebe" im Belegschafts-Import wird weiter gelesen und
+verworfen.** Eine Betriebsliste mit acht Spalten darf nicht ab heute einen
+Fehler werfen, nur weil die letzte nicht mehr gebraucht wird. Vorher war
+„mittags" dort ein Fehler, der die ganze Datei verwarf — eine Spalte, die
+niemand mehr liest, darf das nicht mehr können.
+
+**Und was dabei fehlt, ausdrücklich:** Wer die Spalte ausfüllt, erfährt nicht,
+dass sie wirkungslos ist. Der Einlesebericht kennt nur `fehler`; ein Hinweis
+dort stünde unter „Fehler" und verwürfe womöglich die Datei. Eine eigene
+Hinweisliste wäre der richtige Ort — sie anzulegen ist eine Änderung am
+Bericht und gehört nicht in denselben Schritt wie das Entfernen einer
+Planungsregel.
+
+### Nachweise
+
+Solver **183** Tests. Der Test, der vorher „Vorlieben werden beachtet" hieß,
+misst jetzt das Gegenteil — und zwar am **Bericht** des Regelpakets, nicht am
+einzelnen Plan: Bei zwölf Diensten und sechzehn Menschen erfüllt ein Plan eine
+Vorliebe auch zufällig; die Zusage ist, dass sie nicht mehr bevorzugt erfüllt
+wird. Dazu die Gegenprobe, dass überhaupt noch ein Plan entsteht — ein
+Baustein, der nichts mehr tut, darf den Rechenlauf nicht anhalten.
+
+`a-mitarbeiter` **35/35**, `f7-durchstich` **33/33**, `f9-belegschaft`
+**37/37**, `o-persoenliches` **13/13**, **1276** Modultests.
+
+In `f7-durchstich` ist die Zusage dabei stärker geworden, nicht schwächer:
+Vorher „eine Kollegin darf ein fremdes Profil nicht überschreiben" (403), jetzt
+„überschreiben kann sie es gar nicht — die Route gibt es nicht mehr".

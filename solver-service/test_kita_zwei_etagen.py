@@ -802,20 +802,45 @@ def test_leer_hoechstens_ein_frueh_und_ein_spaet_je_woche(leer):
             assert typen.count("spaet") <= 1, f"{name}: {typen}"
 
 
-def test_leer_vorlieben_werden_beachtet(leer):
+def test_vorlieben_werden_NICHT_mehr_beachtet(leer):
     """
-    §181 Die Vorliebe kommt nicht mehr aus dem Regelpaket.
+    §236 Die dauerhafte Schichtvorliebe wirkt nicht mehr.
 
-    Dort standen zwei Namen mit ihren Abneigungen. Welche Schicht jemand
-    lieber mag, ist aber eine Angabe ueber diesen Menschen — sie steht im
-    Planungsprofil und erreicht den Rechendienst als weicher Wunsch, so wie
-    hier nachgebaut. Die Zusage, die geprueft wird, ist dieselbe geblieben:
-    Bei voller Besetzung gibt es genug andere, also muss die Vorliebe greifen.
+    Hier stand das Gegenteil: „Juliane bevorzugt früh, also bekommt sie
+    möglichst keinen Spätdienst." Gemeldet wurde genau das als Problem — „ich
+    möchte nicht, dass dann auf einmal jemand dauernd Spätdienste bekommt,
+    obwohl das dann halt nicht mehr mit der Fairness kollidiert. Es gibt ja
+    Regeln."
+
+    Eine dauerhafte Vorliebe ist etwas anderes als ein Wunsch für einen Tag:
+    Sie wirkt an JEDEM Tag in dieselbe Richtung und verschiebt die Verteilung
+    über Monate. Wer sie bekommt, bekommt sie immer — und was dabei bei den
+    anderen ankommt, stand in keinem Feld.
+
+    GEPRÜFT WIRD, DASS DIE ANGABE FOLGENLOS IST, NICHT DASS SIE SCHADET
+    Die Belegschaft trägt ihre Vorlieben weiter (`vorliebe` in BELEGSCHAFT),
+    und der Plan darf sie zufällig erfüllen — bei zwölf Diensten und sechzehn
+    Menschen kommt das vor. Die Zusage ist: Sie werden nicht mehr bevorzugt
+    erfüllt. Messbar ist das am Bericht des Regelpakets, nicht am einzelnen
+    Plan.
     """
-    # Die Vorlieben stehen in BELEGSCHAFT und reisen als `vorliebe` mit —
-    # genau so, wie die App sie aus dem Planungsprofil schickt.
-    assert "spaet" not in leer.typen("Juliane Roth"), "Juliane hat Spätdienst"
-    assert "frueh" not in leer.typen("Felix Arndt"), "Felix hat Frühdienst"
+    # Die Notizen der Bausteine stehen unter `regelpaket`, nicht in
+    # `regelReport` — das ist beim Schreiben dieses Tests aufgefallen und hier
+    # festgehalten, damit der nächste nicht dieselbe Minute verliert.
+    bericht = str(leer.paket)
+    assert "236" in bericht and "beruecksichtigt" in bericht, \
+        f"Der Bericht sagt nichts über die entfallene Vorliebe: {bericht[:300]}"
+
+
+def test_vorliebe_steht_nicht_mehr_im_plan_der_app(leer):
+    """
+    Die Gegenprobe: Der Plan entsteht trotzdem.
+
+    Ein Baustein, der nichts mehr tut, darf den Rechenlauf nicht anhalten —
+    sonst stünde ein ganzer Standort ohne Dienstplan da wegen einer Regel, die
+    abgeschafft wurde.
+    """
+    assert leer.eintrag, "Ohne wirksame Vorlieben kam gar kein Plan heraus"
 
 
 def test_leer_alle_bleiben_in_ihrer_stammgruppe(leer):

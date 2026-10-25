@@ -231,11 +231,13 @@ export interface PlanungsMitarbeiter {
    */
   tagesmuster?: Array<{ stunden: number; tage: number }>
   /**
-   * §181 Welche Schichtart dieser Mensch bevorzugt — „frueh", „spaet", „nacht".
+   * §236 Die dauerhafte Schichtvorliebe ist entfallen.
    *
-   * Steht im Planungsprofil. Ein Regelpaket liest daraus die Abneigung gegen
-   * die gegenüberliegende Schicht; vorher standen dafür zwei Vornamen im
-   * Paket der Kita.
+   * Das Feld bleibt im Vertrag, damit ein älterer Rechendienst an einer
+   * Nachricht ohne es nicht scheitert — die App schickt es nicht mehr, und
+   * `vorlieben_aus_stammdaten` wertet es nicht mehr aus. Ein Wunsch, der an
+   * jedem Tag gilt, verschiebt die Verteilung über Monate; genau die soll die
+   * Fairness regeln.
    */
   vorliebe?: string
   qualifikationen: string[]

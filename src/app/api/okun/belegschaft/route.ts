@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
 
   const profile = await prisma.employeePlanningProfile.findMany({
     where: { employeeId: { in: personen.map(p => p.id) } },
-    select: { employeeId: true, tagesmuster: true, shiftPreference: true },
+    select: { employeeId: true, tagesmuster: true },
   })
   const profilZu = new Map(profile.map(p => [p.employeeId, p]))
 
@@ -80,7 +80,6 @@ export async function GET(req: NextRequest) {
       // Das gehört sichtbar gemacht, nicht erschlossen.
       ohneAdresse: istPlatzhalter(p.email),
       tagesmuster: profilZu.get(p.id)?.tagesmuster ?? null,
-      vorliebe: profilZu.get(p.id)?.shiftPreference ?? 'keine',
     })),
   })
 }
@@ -174,7 +173,6 @@ export async function POST(req: NextRequest) {
       tagesmuster: z.muster
         ? (z.muster as unknown as Prisma.InputJsonValue)
         : Prisma.DbNull,
-      ...(z.vorliebe ? { shiftPreference: z.vorliebe } : {}),
     }
     await prisma.employeePlanningProfile.upsert({
       where: { employeeId: person.id },

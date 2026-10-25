@@ -940,44 +940,35 @@ def moeglichst_nicht(ctx: PlanKontext, name: str, dienst_typ: str,
 
 def vorlieben_aus_stammdaten(ctx: PlanKontext, gewicht: int = 2_000) -> None:
     """
-    §181 Schichtvorlieben aus dem Planungsprofil — statt Namen im Regelpaket.
+    §236 Dieser Baustein tut nichts mehr — mit Absicht.
 
-    WAS HIER VORHER IM PAKET STAND
-    Zwei Zeilen mit zwei Vornamen: die eine moeglichst nicht in den
-    Spaetdienst, der andere moeglichst nicht in den Fruehdienst. Auch das ist
-    keine Betriebsregel, sondern eine Angabe ueber zwei Menschen — und beim
-    naechsten Personalwechsel stand sie fuer die Falschen da.
+    WAS ER TAT
+    Er las aus den Stammdaten, welche Schichtart jemand bevorzugt, und
+    bestrafte die gegenueberliegende: Wer frueh bevorzugte, bekam moeglichst
+    keinen Spaetdienst.
 
-    DIE LESART, UND WARUM SIE AUSGESCHRIEBEN GEHOERT
-    In den Stammdaten steht, welche Schichtart jemand BEVORZUGT. Diese Regel
-    liest daraus die Abneigung gegen die gegenueberliegende: Wer frueh
-    bevorzugt, bekommt moeglichst keinen Spaetdienst, und umgekehrt. Der
-    Mitteldienst bleibt davon unberuehrt — er ist fuer niemanden die
-    unangenehme Schicht, und wer ihn ausschloesse, haette aus einer Vorliebe
-    eine Dienstplansperre gemacht.
+    WARUM ER GEHT
+    Gemeldet: "Ich moechte nicht, dass dann auf einmal jemand dauernd
+    Spaetdienste bekommt, obwohl das dann halt nicht mehr mit der Fairness
+    kollidiert. Es gibt ja Regeln."
 
-    Ausdruecklich eine Vorliebe, kein Verbot. Das Gewicht liegt unter dem einer
-    unbesetzten Stelle (10 000) und unter der Fairness ueber die Wochen — sonst
-    truege die Vorliebe des einen dauerhaft jemand anderes.
+    Das Gewicht lag bewusst unter dem der Fairness — trotzdem wirkte es an
+    JEDEM Tag in eine Richtung. Eine dauerhafte Vorliebe ist etwas anderes als
+    ein Wunsch fuer einen Tag: Sie verschiebt die Verteilung ueber Monate, und
+    wer sie bekommt, bekommt sie immer. Was dabei bei den anderen ankommt,
+    steht in keinem Feld.
+
+    WARUM DER BAUSTEIN STEHEN BLEIBT, STATT GELOESCHT ZU WERDEN
+    Die Regelpakete rufen ihn auf. Ein fehlender Baustein liesse einen
+    Rechenlauf scheitern, und dann stuende ein ganzer Standort ohne Plan da —
+    wegen einer Regel, die nichts mehr tun soll. Er notiert jetzt, dass es ihn
+    nicht mehr gibt, damit es im Bericht steht und nicht nur hier.
     """
-    GEGENTEIL = {"frueh": "spaet", "spaet": "frueh"}
-    beachtet = 0
-    for ei, e in enumerate(ctx.employees):
-        vorliebe = str(e.get("vorliebe") or "").strip().lower()
-        unerwuenscht = GEGENTEIL.get(vorliebe)
-        if not unerwuenscht:
-            continue
-        si_liste = ctx.dienste_vom_typ(unerwuenscht)
-        if not si_liste:
-            continue
-        treffer = sum(ctx.X[ei, di, si] for di in range(ctx.n_days) for si in si_liste)
-        ctx.strafe(gewicht, treffer)
-        beachtet += 1
-        ctx.notiere(
-            f'{e.get("name", "?")} bevorzugt {vorliebe} — moeglichst kein {unerwuenscht}.'
-        )
-    if beachtet == 0:
-        ctx.notiere("Keine Schichtvorlieben in den Stammdaten hinterlegt.")
+    del gewicht
+    ctx.notiere(
+        "Schichtvorlieben werden nicht mehr beruecksichtigt (§236) — geplant "
+        "wird nach Regelpaket, Tagesmuster, festen freien Tagen und Fairness."
+    )
 
 
 def nur_im_notfall(ctx: PlanKontext, name: str, gewicht: int = 9_000) -> None:

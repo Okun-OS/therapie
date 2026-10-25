@@ -36,7 +36,9 @@ interface Antwort {
   error?: string
 }
 
-const BEISPIEL = `# Name; Stunden; Tage/Woche; Gruppe; Funktion; Muster; Frei; Vorliebe
+// §236 Die Spalte „Vorliebe" steht nicht mehr im Beispiel. Eine Datei, die
+// sie noch hat, wird weiter angenommen — die Spalte bleibt dann ohne Wirkung.
+const BEISPIEL = `# Name; Stunden; Tage/Woche; Gruppe; Funktion; Muster; Frei
 Marin Berg; 40; 5; Gruppe 1; Erzieher; 5x8
 Heike Stein; 30; 4; Gruppe 5; Erzieher; 3x8+1x6; Fr
 Nicole Sprung; 25; 5; ; Springer; 5x5
@@ -173,7 +175,7 @@ export function BelegschaftEinspielen({ locationId, standortName, gruppen }: Pro
               <table className="w-full text-[11px]">
                 <thead className="bg-gray-50 text-gray-500">
                   <tr>
-                    {['Name', 'Std.', 'Tage', 'Gruppe', 'Funktion', 'Muster', 'Frei', 'Vorliebe']
+                    {['Name', 'Std.', 'Tage', 'Gruppe', 'Funktion', 'Muster', 'Frei']
                       .map(h => <th key={h} className="px-2 py-1.5 text-left font-medium">{h}</th>)}
                   </tr>
                 </thead>
@@ -191,7 +193,6 @@ export function BelegschaftEinspielen({ locationId, standortName, gruppen }: Pro
                           : '—'}
                       </td>
                       <td className="px-2 py-1.5">{z.freieTage.join(', ') || '—'}</td>
-                      <td className="px-2 py-1.5">{z.vorliebe ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>

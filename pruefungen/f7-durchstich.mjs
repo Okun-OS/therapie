@@ -175,9 +175,22 @@ const fremdesProfil = await hole(kollegenZugang,
 check('Eine Kollegin liest ein fremdes Planungsprofil NICHT',
   fremdesProfil.status === 403, `HTTP ${fremdesProfil.status}`)
 
+/*
+ * §236 Geschrieben werden kann hier gar nichts mehr.
+ *
+ * Vorher prüfte diese Zeile, dass eine Kollegin ein fremdes Profil nicht
+ * ÜBERSCHREIBEN darf (403). Mit der Dienstvorliebe ist die Schreibroute
+ * entfallen — sie hätte danach nichts mehr geschrieben, und eine
+ * Schnittstelle, die nichts tut, ist kein Platzhalter, sondern eine Tür, die
+ * offensteht.
+ *
+ * Die Zusage ist damit stärker geworden, nicht schwächer: Nicht „darf nicht",
+ * sondern „gibt es nicht".
+ */
 const fremdSchreiben = await sende(kollegenZugang, '/api/employee-planning-profile', 'PUT',
-  { employeeId: steffi.id, planningNote: 'von der Kollegin eingetragen' })
-check('Und überschreibt es erst recht nicht', fremdSchreiben.status === 403,
+  { employeeId: steffi.id, planungsStundenSoll: 0 })
+check('Und überschreiben kann sie es gar nicht — die Route gibt es nicht mehr',
+  fremdSchreiben.status === 404 || fremdSchreiben.status === 405,
   `HTTP ${fremdSchreiben.status}`)
 
 const eigenes = await hole(kollegenZugang,

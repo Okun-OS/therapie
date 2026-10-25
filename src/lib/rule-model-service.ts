@@ -442,34 +442,22 @@ export async function buildRuleModel(
         }),
     ]
 
-    // Translate persistent shiftPreference into low-priority soft wishes (priority 3)
-    // for each planning day, unless the employee already has an explicit wish that day.
-    const empProfile = profileByEmp.get(emp.id)
-    const persistentPref = empProfile?.shiftPreference ?? 'keine'
+    /*
+     * §236 Die dauerhafte Dienstvorliebe ist entfallen.
+     *
+     * Hier wurde sie in einen Wunsch je Planungstag übersetzt (§229 hat sie
+     * erst erfüllbar gemacht). Gemeldet: „Ich möchte nicht, dass dann auf
+     * einmal jemand dauernd Spätdienste bekommt, obwohl das dann halt nicht
+     * mehr mit der Fairness kollidiert. Es gibt ja Regeln."
+     *
+     * Das ist der Punkt: Ein Wunsch, der an JEDEM Tag gilt, verschiebt die
+     * Verteilung über Monate — und genau die soll die Fairness regeln. Ein
+     * Wunsch für einen einzelnen Tag bleibt; der konkurriert mit anderen
+     * Wünschen desselben Tages.
+     */
     const persistentWishes: PlanungsWunsch[] = []
-    if (persistentPref !== 'keine') {
-      const prefSchicht = schichten.find(s => s.typ === persistentPref)
-      if (prefSchicht) {
-        const explicitDays = new Set(explicitWishes.map(w => w.datum))
-        for (const day of arbeitstage) {
-          if (!explicitDays.has(day)) {
-            /*
-             * §229 Die Dienstart mitgeben, nicht nur einen Dienst.
-             *
-             * `find()` liefert den ersten Dienst dieser Art — im Paket der
-             * Kita „Frühdienst 8" von drei Frühdiensten (8, 7 und 6 Stunden).
-             * Wessen Tagesmuster sieben Stunden sagt, bekam damit einen
-             * Wunsch, den der Rechendienst nicht erfüllen DARF. Die Kennung
-             * bleibt als Rückfalllinie für einen älteren Rechendienst stehen.
-             */
-            persistentWishes.push({
-              datum: day, schichtId: prefSchicht.id, schichtTyp: persistentPref as SchichtTyp,
-              typ: 'wunsch', prioritaet: 3,
-            })
-          }
-        }
-      }
-    }
+
+    const empProfile = profileByEmp.get(emp.id)
 
     const empWishes = [...explicitWishes, ...persistentWishes]
 
@@ -530,9 +518,8 @@ export async function buildRuleModel(
     // §200 Hier standen auch Wochenend-Vereinbarung, Planungsnotiz und
     // Kinder-Abholzeiten. Sie gingen nur in diesen Freitext, und den liest der
     // Rechendienst nicht — geplant wurde nie danach. Mit der Maske entfernt.
-    const profileText = empProfile && empProfile.shiftPreference !== 'keine'
-      ? `bevorzugt ${empProfile.shiftPreference}`
-      : null
+    // §236 Und die Dienstvorliebe steht jetzt auch nicht mehr darin.
+    const profileText = null
 
     // §171 Planstunden schlagen Vertragsstunden. Leer heißt: es gibt keinen
     // Unterschied. Eine ausdrückliche 0 ist ein gültiger Wert — „diese Person
@@ -584,11 +571,9 @@ export async function buildRuleModel(
       wochenstundenSoll,
       arbeitstageProWoche: emp.workDaysPerWeek ?? 5,
       ...(tagesmuster ? { tagesmuster } : {}),
-      // §181 Die dauerhafte Schichtvorliebe. Sie wird oben schon in weiche
-      // Wünsche je Tag übersetzt — die wiegen aber zu leicht, um eine Zusage
-      // zu sein. Ein Regelpaket, das sie ernst nehmen soll, braucht sie als
-      // Angabe, nicht als Wunschliste.
-      ...(persistentPref !== 'keine' ? { vorliebe: persistentPref } : {}),
+      // §236 Hier stand `vorliebe` — die dauerhafte Schichtvorliebe. Sie ist
+      // entfallen: Ein Wunsch, der an jedem Tag gilt, verschiebt die
+      // Verteilung über Monate, und genau die soll die Fairness regeln.
       qualifikationen: emp.qualifications,
       // §233 Was dieser Mensch übernehmen darf — aus „Aufgaben".
       erlaubteAufgaben: emp.allowedTasks ?? [],

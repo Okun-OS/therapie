@@ -131,16 +131,25 @@ console.log('\n=== §235 Was an seine Stelle tritt ===')
 
 /*
  * Die Gegenprobe zum Löschen: Was WIRKLICH plant, muss weiter da sein. Ohne
- * sie wäre „alles weg" grün, auch wenn versehentlich die Dienstvorliebe
- * mitgegangen wäre — und die ist seit §229 die eine Angabe, die der
- * Rechendienst beachtet.
+ * sie wäre „alles weg" grün, auch wenn versehentlich das Tagesmuster oder die
+ * festen freien Tage mitgegangen wären.
+ *
+ * §236 Hier stand die Dienstvorliebe — sie ist inzwischen selbst entfallen,
+ * und die Schreibroute dazu auch.
  */
-const vorliebe = await sende(leitung, '/api/employee-planning-profile', 'PUT', {
+const schreibweg = await sende(leitung, '/api/employee-planning-profile', 'PUT', {
   employeeId: annaId, shiftPreference: 'frueh',
 })
-check('Die Dienstvorliebe gibt es weiter — sie plant',
-  vorliebe.status === 200 && vorliebe.body.profile?.shiftPreference === 'frueh',
-  vorliebe.body.error ?? vorliebe.body.profile?.shiftPreference)
+check('Die Schreibroute für die Dienstvorliebe gibt es nicht mehr',
+  schreibweg.status === 404 || schreibweg.status === 405,
+  `HTTP ${schreibweg.status}`)
+
+const profil = await hole(leitung, `/api/employee-planning-profile?employeeId=${annaId}`)
+check('Das Planungsprofil ist weiter lesbar — Tagesmuster und Planstunden',
+  profil.status === 200, `HTTP ${profil.status}`)
+check('Und trägt keine Dienstvorliebe mehr',
+  profil.body.profile?.shiftPreference === undefined,
+  JSON.stringify(Object.keys(profil.body.profile ?? {})))
 
 const stammdaten = ((await hole(leitung, '/api/employees')).body.employees ?? [])
   .find(e => e.id === annaId)
@@ -149,9 +158,6 @@ check('Und die festen freien Tage stehen an den Stammdaten',
   JSON.stringify(stammdaten?.fixedOffDays ?? null))
 
 // ── Aufräumen ─────────────────────────────────────────────────────────────
-await sende(leitung, '/api/employee-planning-profile', 'PUT', {
-  employeeId: annaId, shiftPreference: 'keine',
-})
 await prisma.$disconnect()
 void locationId
 

@@ -145,13 +145,13 @@ check('Prüfprotokoll ist abrufbar', protokoll.status === 200 || protokoll.statu
 //
 // Diese Route prüfte lange nur die Rolle und nicht den Standort: Jede Leitung
 // konnte damit das Planungsprofil JEDES Mitarbeiters lesen und überschreiben,
-// auch beim Wettbewerber. Schichtvorliebe, Wochenendvereinbarung,
-// Kinderabholzeiten und die dauerhafte Planungsnotiz sind dabei nicht
-// harmlos — aus ihnen lassen sich Familienverhältnisse ablesen.
+// auch beim Wettbewerber. Die Angaben sind nicht harmlos: Planstunden und
+// Tagesmuster sagen, wie viel und wann jemand arbeitet.
+// §236 Die Schichtvorliebe gehörte auch dazu und ist entfallen.
 console.log('\n=== Planungsprofil: nur am eigenen Standort ===')
 
 const profilSchreiben = await sende(leitung, `/api/employees/${neuId}/planning-profile`, 'PUT', {
-  shiftPreference: 'frueh', maxConsecutiveDays: 4, planungsStundenSoll: 0,
+  planungsStundenSoll: 0,
 })
 check('Die eigene Leitung pflegt das Planungsprofil',
   profilSchreiben.status === 200, `HTTP ${profilSchreiben.status}`)
@@ -172,15 +172,15 @@ check('Eine fremde Leitung liest das Planungsprofil NICHT',
   profilFremdLesen.status === 403, `HTTP ${profilFremdLesen.status}`)
 
 const profilFremdSchreiben = await sende(kita, `/api/employees/${neuId}/planning-profile`, 'PUT', {
-  shiftPreference: 'nacht', planningNote: 'fremd geschrieben',
+  planungsStundenSoll: 99,
 })
 check('Und überschreibt es auch NICHT',
   profilFremdSchreiben.status === 403, `HTTP ${profilFremdSchreiben.status}`)
 
 const unveraendert = await hole(leitung, `/api/employees/${neuId}/planning-profile`)
 check('Das Profil steht unverändert da',
-  unveraendert.body.profile?.shiftPreference === 'frueh',
-  unveraendert.body.profile?.shiftPreference)
+  unveraendert.body.profile?.planungsStundenSoll === 0,
+  JSON.stringify(unveraendert.body.profile?.planungsStundenSoll))
 
 const unsinn = await sende(leitung, `/api/employees/${neuId}/planning-profile`, 'PUT', {
   planungsStundenSoll: 200,

@@ -155,14 +155,34 @@ describe('Eine Belegschaftsliste einlesen', () => {
     expect(lesen('A B; 40; 5; ; Kraft; 5x8; Fx', []).fehler[0].text).toContain('Wochentag')
   })
 
-  it('lehnt eine erfundene Schichtvorliebe ab', () => {
-    expect(lesen('A B; 40; 5; ; Kraft; 5x8; ; mittags', []).fehler[0].text)
-      .toContain('Schichtvorliebe')
+  /*
+   * §236 Hier stand das Gegenteil: „liest die Schichtvorliebe" und „lehnt
+   * eine erfundene ab". Die dauerhafte Vorliebe ist entfallen — ein Wunsch,
+   * der an jedem Tag gilt, verschiebt die Verteilung über Monate, und genau
+   * die soll die Fairness regeln.
+   *
+   * Geprüft wird jetzt, dass eine BESTEHENDE Liste mit acht Spalten weiter
+   * durchgeht. Das ist die eigentliche Zusage an jeden Betrieb, der seine
+   * Datei schon hat: Sie darf nicht ab heute einen Fehler werfen, nur weil
+   * die letzte Spalte nicht mehr gebraucht wird.
+   */
+  it('nimmt eine Liste mit der alten Vorlieben-Spalte weiter an', () => {
+    const ergebnis = lesen('A B; 40; 5; ; Kraft; 5x8; ; spaet', [])
+    expect(ergebnis.fehler).toHaveLength(0)
+    expect(ergebnis.zeilen).toHaveLength(1)
+    expect(ergebnis.zeilen[0].name).toBe('A B')
   })
 
-  it('liest die Schichtvorliebe', () => {
-    expect(lesen('A B; 40; 5; ; Kraft; 5x8; ; spaet', []).zeilen[0].vorliebe).toBe('spaet')
-    expect(lesen('A B; 40; 5; ; Kraft; 5x8; ; früh', []).zeilen[0].vorliebe).toBe('frueh')
+  it('auch dann, wenn dort etwas Erfundenes steht', () => {
+    // Vorher war „mittags" ein Fehler, der die ganze Datei verwarf. Eine
+    // Spalte, die niemand mehr liest, darf das nicht mehr können.
+    const ergebnis = lesen('A B; 40; 5; ; Kraft; 5x8; ; mittags', [])
+    expect(ergebnis.fehler).toHaveLength(0)
+    expect(ergebnis.zeilen).toHaveLength(1)
+  })
+
+  it('und die Angabe wirkt nicht mehr', () => {
+    expect(lesen('A B; 40; 5; ; Kraft; 5x8; ; spaet', []).zeilen[0].vorliebe).toBeNull()
   })
 
   it('meldet eine leere Liste als Fehler statt stillschweigend nichts zu tun', () => {

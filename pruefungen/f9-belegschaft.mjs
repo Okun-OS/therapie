@@ -156,7 +156,13 @@ check('Mit ihrem Tagesmuster',
 check('Mit ihrem festen freien Tag',
   JSON.stringify(beta?.fixedOffDays) === JSON.stringify(['Fr']),
   JSON.stringify(beta?.fixedOffDays))
-check('Und mit ihrer Schichtvorliebe', beta?.vorliebe === 'frueh', beta?.vorliebe)
+/*
+ * §236 Die Schichtvorliebe wird nicht mehr übernommen. Geprüft wird jetzt,
+ * dass eine Liste mit der alten Spalte trotzdem durchgeht — das ist die
+ * Zusage an jeden Betrieb, der seine Datei schon hat.
+ */
+check('Die alte Vorlieben-Spalte bricht den Import nicht',
+  !!beta, beta ? `${beta.name} angelegt` : 'nicht angelegt')
 
 // ── F9.5 Die Adresse, die noch keine ist ───────────────────────────────────
 console.log('\n=== F9.5 Ohne Adresse keine Einladung ===')

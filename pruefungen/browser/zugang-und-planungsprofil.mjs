@@ -92,7 +92,18 @@ try {
   const dialog = await seite.locator('[role="dialog"]').last().innerText().catch(async () =>
     seite.locator('body').innerText())
   check('Gegenprobe: die Planstunden sind da', await seite.locator('[data-test="planstunden"]').count() === 1)
-  check('Gegenprobe: die Schicht-Präferenz ist da — das Kita-Paket liest sie', /Schicht-Präferenz/.test(dialog))
+  /*
+   * §236 Hier stand das Gegenteil: „die Schicht-Präferenz ist da — das
+   * Kita-Paket liest sie". Sie ist entfallen. Ein Wunsch, der an jedem Tag
+   * gilt, verschiebt die Verteilung über Monate, und genau die soll die
+   * Fairness regeln.
+   *
+   * Die Gegenprobe wandert damit auf die Angaben, die wirklich planen:
+   * Planstunden (oben) und Tagesmuster (unten). Dass die Maske überhaupt
+   * noch Felder zeigt, ist die eigentliche Zusage — „alles weg" wäre auch
+   * grün, wenn das Planungsprofil leer wäre.
+   */
+  check('Die Schicht-Präferenz ist entfernt', !/Schicht-Präferenz/.test(dialog))
   check('Gegenprobe: die Zuschlagsregelung ist da', /Zuschlagsregelung/.test(dialog))
   for (const weg of ['Kinder-Abholzeiten', 'Wochenend-Vereinbarung', 'Max. aufeinanderfolgende Tage', 'Dauerhafte Planungsnotiz']) {
     check(`„${weg}" ist entfernt`, !dialog.includes(weg))

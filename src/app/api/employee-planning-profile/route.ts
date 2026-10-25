@@ -83,44 +83,15 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ profile })
 }
 
-// PUT /api/employee-planning-profile  { employeeId, shiftPreference, ... }
-export async function PUT(req: NextRequest) {
-  const session = requireRole(req, ['admin', 'company', 'employee'])
-  if (session instanceof NextResponse) return session
-
-  const body = await req.json()
-  // §200 Nur noch die Schichtvorliebe. Abholzeiten, Wochenend-Vereinbarung,
-  // Folgetage und Planungsnotiz hat kein Rechenkern gelesen; sie sind aus der
-  // Maske entfernt und werden auch hier nicht mehr angenommen.
-  const { employeeId, shiftPreference } = body
-
-  if (!employeeId) {
-    return NextResponse.json({ error: 'employeeId ist erforderlich' }, { status: 400 })
-  }
-
-  // §181 Die Schreibrichtung war die gefährlichere von beiden: Ohne diese
-  // Zeile konnte jede angemeldete Person in das Planungsprofil jedes anderen
-  // Menschen hineinschreiben — Kinderabholzeiten, Wochenendvereinbarung,
-  // Planungsnotiz. Beim Durchstich stand der Lesezugriff schon geschützt da
-  // und der Schreibzugriff noch offen.
-  const verwehrt = await assertEmployeeAccess(session, employeeId)
-  if (verwehrt) return verwehrt
-
-  // §181 Das Tagesmuster steht hier bewusst nicht in der Liste. Es ist eine
-  // Angabe aus dem Arbeitsvertrag, keine Vorliebe — wer seine eigenen
-  // Dienstlängen setzen dürfte, könnte sich eine Vier-Tage-Woche eintragen.
-  // Geändert wird es über `/api/employees/[id]/planning-profile`, und zwar
-  // nur von der Leitung und nur zusammen mit der Stundenzahl.
-  const profile = await prisma.employeePlanningProfile.upsert({
-    where: { employeeId },
-    create: {
-      employeeId,
-      shiftPreference: shiftPreference ?? 'keine',
-    },
-    update: {
-      ...(shiftPreference !== undefined && { shiftPreference }),
-    },
-  })
-
-  return NextResponse.json({ profile })
-}
+/**
+ * §236 Die Schreibrichtung ist entfallen.
+ *
+ * Über sie wurde nur noch die dauerhafte Schichtvorliebe gesetzt — §200 hatte
+ * alles andere schon entfernt. Mit der Vorliebe fällt die Route weg: Eine
+ * Schnittstelle, die nichts mehr schreibt, ist kein Platzhalter für später,
+ * sondern eine Tür, die noch offensteht.
+ *
+ * Das Tagesmuster und die Planstunden werden weiterhin über
+ * `/api/employees/[id]/planning-profile` gepflegt — von der Leitung, und
+ * zusammen mit der Stundenzahl.
+ */
