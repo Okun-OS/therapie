@@ -92,10 +92,24 @@ async function imProfil() {
   await seite.waitForTimeout(3000)
   // `textContent` ist eine Eigenschaft, kein Attribut — `getAttribute` gibt
   // dafür null zurück, und der Vergleich wäre still gescheitert.
+  /*
+   * Gewartet wird, bis die Kachel eine ZAHL zeigt.
+   *
+   * Sie steht auf einem Strich, solange die Anträge noch unterwegs sind —
+   * absichtlich, damit niemand eine Zahl sieht, die sich gleich ändert
+   * (§235). Ohne dieses Warten misst die Prüfung den Zwischenzustand: Auf
+   * warmem Cache ging es gut, auf kaltem las sie „–" und meldete einen
+   * Fehler, den es nicht gab.
+   */
   const treffer = seite.locator('[data-test="resturlaub"]')
-  if (await treffer.count() === 0) return null
-  const wert = (await treffer.first().textContent())?.trim()
-  return wert ? Number(wert) : null
+  for (let versuch = 0; versuch < 40; versuch++) {
+    if (await treffer.count() > 0) {
+      const wert = (await treffer.first().textContent())?.trim()
+      if (wert && /^\d+$/.test(wert)) return Number(wert)
+    }
+    await seite.waitForTimeout(250)
+  }
+  return null
 }
 
 // ── §235 Ohne offenen Antrag ──────────────────────────────────────────────

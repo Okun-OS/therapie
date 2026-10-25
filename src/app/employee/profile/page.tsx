@@ -55,7 +55,9 @@ export default function EmployeeProfile() {
     fetch(`/api/vacation-requests?employeeId=${employee.id}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => setMeineUrlaubsantraege(d?.requests ?? []))
-      .catch(() => undefined)
+      // Auch im Fehlerfall „geladen": Sonst stünde dort für immer ein Strich,
+      // und niemand wüsste, ob gerechnet wird oder etwas kaputt ist.
+      .finally(() => setAntraegeGeladen(true))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.id])
 
@@ -102,6 +104,17 @@ export default function EmployeeProfile() {
    * keine Kachel.
    */
   const [meineUrlaubsantraege, setMeineUrlaubsantraege] = useState<VacationRequest[]>([])
+  /**
+   * §235 Solange die Anträge nicht da sind, zeigt die Kachel KEINE Zahl.
+   *
+   * Ohne das stand dort zuerst 16 und nach dem Laden 13 — die Rechnung ist
+   * dieselbe, nur fehlten ihr anfangs die offenen Anträge. Nachgemessen auf
+   * kaltem Cache: Beim ersten Aufruf sah man eine Sekunde lang die falsche
+   * Zahl, und das ausgerechnet an der Kachel, deren falsche Zahl gemeldet
+   * wurde. Ein Strich, der zur richtigen Zahl wird, ist ehrlich; eine Zahl,
+   * die sich nachträglich ändert, ist es nicht.
+   */
+  const [antraegeGeladen, setAntraegeGeladen] = useState(false)
 
   // ── Dauerhafter Planungs-Wunsch (shiftPreference) ────────────────────────────
   const [shiftPref, setShiftPref] = useState<'frueh' | 'spaet' | 'nacht' | 'keine'>('keine')
@@ -222,7 +235,7 @@ export default function EmployeeProfile() {
                 nach der jemand handelt.
               */}
               <p className="text-lg font-bold text-navy" data-test="resturlaub">
-                {konto.verfuegbar}
+                {antraegeGeladen ? konto.verfuegbar : '–'}
               </p>
               <p className="text-xs text-gray-500">Resturlaub</p>
             </div>

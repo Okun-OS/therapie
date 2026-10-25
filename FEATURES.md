@@ -5337,7 +5337,33 @@ die laufenden Anfragen ab. Das gehört zur Prüfung, nicht zur Anwendung, und
 wird jetzt ausgenommen. Mitgezählt hätte es sie zum Rauschmelder gemacht, und
 das verbietet ihr eigener Kopf.
 
+### Noch ein Befund, den erst der kalte Cache zeigte
+
+Die Resturlaubs-Kachel im Profil stand beim ersten Aufruf **eine Sekunde lang
+auf 16 und danach auf 13**. Die Rechnung war dieselbe — ihr fehlten nur
+anfangs die offenen Anträge, die asynchron nachkommen. Auf warmem Cache war es
+nie zu sehen.
+
+Ausgerechnet an der Kachel, deren falsche Zahl gemeldet wurde. Sie zeigt jetzt
+einen Strich, bis die Anträge da sind: **Ein Strich, der zur richtigen Zahl
+wird, ist ehrlich; eine Zahl, die sich nachträglich ändert, ist es nicht.**
+Auch im Fehlerfall gilt „geladen" — sonst stünde dort für immer ein Strich, und
+niemand wüsste, ob gerechnet wird oder etwas kaputt ist.
+
+Die Prüfung wartet entsprechend auf eine Zahl statt auf das Element. Ohne das
+maß sie den Zwischenzustand und meldete einen Fehler, den es nicht gab.
+
+### Und zwei rote Prüfungen, die keine waren
+
+`j-recruiting` und `k-website` schlugen im Gesamtlauf fehl — HTTP 500 auf den
+öffentlichen Karriereseiten. Ursache war ein zerschossener Build-Cache
+(`Cannot find module './vendor-chunks/@swc.js'`), weil in dieser Sitzung
+`npm run build` und `npm run dev` abwechselnd dasselbe `.next` benutzt haben.
+Genau davor warnt die Projektregel. Nach `rm -rf .next`: **78/78** und
+**114/114**.
+
 Nachweise: `urlaubskonto.test.ts` **9**, `kanonische-domain.test.ts` **11**,
 `browser/urlaubstage-stimmen-ueberein.mjs` **9/9**, `o-persoenliches.mjs`
 **11/11** (misst jetzt das Gegenteil: dass es weg ist),
-`browser/alle-seiten-ohne-fehler.mjs` **60/60**.
+`browser/alle-seiten-ohne-fehler.mjs` **60/60**. Insgesamt **1970/1970**
+Prüfungen am laufenden System und **1275** Modultests.
