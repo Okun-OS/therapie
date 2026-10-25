@@ -5661,3 +5661,76 @@ oder Länge, klickt den Dialog auf und sichert zu, dass er offen ist.
 
 `alle-seiten-ohne-fehler` **60/60**, `o-persoenliches` **13/13**,
 `a-mitarbeiter` **35/35**, `p-taetigkeiten` **15/15**.
+
+## Block §237 (Nachtrag) — Drei Reste, die die Typprüfung nicht sehen konnte
+
+Beim Durchsehen, ob von der Dienstvorliebe wirklich nichts übrig ist,
+aufgefallen. Keiner der drei Punkte war gemeldet, und keinen hätte `tsc`
+gefunden.
+
+### Das Demo-Seed war kaputt
+
+`prisma/seed-kita-demo.ts` schrieb weiter `shiftPreference` — die Spalte, die
+§236 gelöscht hat. Nachgemessen bricht Prisma ab:
+
+    Invalid `prisma.employeePlanningProfile.upsert()` invocation:
+    Unknown argument `shiftPreference`. Available options are marked with ?.
+
+**Warum die Typprüfung das nicht sah.** Die Werte gehen über eine
+Zwischenvariable (`const werte = {...}`), und die Prüfung überzähliger
+Eigenschaften greift nur bei einem Objekt, das direkt übergeben wird. Für
+`tsc` war alles in Ordnung; aufgefallen wäre es erst dem, der ein neues
+Demo-System aufsetzt.
+
+Dabei lag noch `mag: 'frueh'` bei zwei Menschen in den Seed-Daten — ab jetzt
+Angaben, die nirgends mehr ankommen. Sie sind mit raus: Daten, die aussehen wie
+Absicht und keine sind, führen den nächsten Leser in die Irre.
+
+### Dem Sprachmodell wurde gesagt, es kenne Dinge, die es nicht bekommt
+
+Die Anweisung an `/api/ai/schedule-edit-chat` lautete:
+
+> „Du erhältst alle relevanten Planungsdaten pro Mitarbeiter: … Qualifikationen,
+> **Schichtpräferenzen und Planungsnotizen**. **Du HAST Zugriff auf alle diese
+> Daten.**"
+
+Geschickt werden aber nur Name, Wochenstunden, Beschäftigungsart, feste freie
+Tage, Arbeitstage, Tage pro Woche und Qualifikationen. Planungsnotiz und
+Wochenend-Vereinbarung hat §200 entfernt, die Schichtvorliebe §236 — die
+Anweisung blieb stehen.
+
+Das ist der schädlichste der drei Reste. Ein Modell, dem man ausdrücklich
+versichert, es kenne etwas, das es nicht bekommt, denkt sich etwas aus — und
+zwar über Menschen. Die Anweisung nennt jetzt genau die sieben Felder, die
+mitgehen, und sagt dazu, dass alles andere unbekannt ist.
+
+### Eine Abfrage über die ganze Belegschaft, deren Ergebnis niemand liest
+
+Dieselbe Route holte bei **jeder** Chat-Anfrage alle Planungsprofile des
+Standorts und legte sie in eine Zuordnung, aus der seit §200 nichts mehr
+entnommen wird (`const profile = profileByEmpId.get(emp.id)` — zugewiesen,
+nicht verwendet). Entfernt.
+
+### Nachweise
+
+**1282** Modultests, `wer-plant-den-dienstplan` **19/19**,
+`alle-seiten-ohne-fehler` **60/60**, `e5-chat` **106/106**. Das gültige
+Schreiben ins Planungsprofil mit Gegenprobe am echten Prisma nachgemessen:
+vorher „Unknown argument", jetzt angelegt und wieder entfernt.
+
+### Und was am laufenden System angekommen ist
+
+Nach dem Ausrollen von §237 dort gemessen, nicht an `localhost`:
+
+| | |
+|---|---|
+| `okun-workforce.com/` | **200** (vorher 308 auf den alten Namen) |
+| `okun-workforce.com/employee/vacation` | 200 |
+| `okun-workforce.com/api/health` | 200 |
+| `/api/employee-human-context` | 404 — §235 ist da |
+| `/api/employee/preferences` | 404 — §236 ist da |
+| `/api/vacation-preferences` | 404 — §231 ist da |
+
+**Offen bleibt `APP_URL` in Railway.** Bis dort die eigene Domain steht, tragen
+E-Mail-Links, Kalender-Abo und Stellenmeldung weiterhin den erzeugten Namen.
+Das ist eine Einstellung, keine Codeänderung.

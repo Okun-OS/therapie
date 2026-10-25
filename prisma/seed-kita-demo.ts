@@ -98,7 +98,6 @@ interface Kraft {
   /** Feste freie Wochentage. */
   frei?: string[]
   /** Dauerhafte Schichtvorliebe — früher zwei `moeglichst_nicht` im Regelpaket. */
-  mag?: 'frueh' | 'spaet' | 'nacht'
 }
 
 const BELEGSCHAFT: Kraft[] = [
@@ -107,7 +106,7 @@ const BELEGSCHAFT: Kraft[] = [
   { name: 'Shelley Frei',   stunden: 40, gruppe: 'demo-g1', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }] },
   { name: 'Stephanie Lang', stunden: 35, gruppe: 'demo-g2', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }] },
   { name: 'Christina Weiß', stunden: 35, gruppe: 'demo-g2', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }] },
-  { name: 'Juliane Roth',   stunden: 35, gruppe: 'demo-g3', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }], mag: 'frueh' },
+  { name: 'Juliane Roth',   stunden: 35, gruppe: 'demo-g3', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }] },
   { name: 'Kristine Mai',   stunden: 40, gruppe: 'demo-g3', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }] },
   { name: 'Tim Sommer',     stunden: 40, gruppe: 'demo-g4', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }] },
   { name: 'Sophia Klein',   stunden: 35, gruppe: 'demo-g4', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }] },
@@ -123,7 +122,7 @@ const BELEGSCHAFT: Kraft[] = [
   { name: 'Katrin K Nolte', stunden: 32, gruppe: 'demo-g7', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 4 }], frei: ['Di'] },
   { name: 'Daniel Fuchs',   stunden: 35, gruppe: 'demo-g7', funktion: 'Erzieher', muster: [{ stunden: 7, tage: 5 }] },
   { name: 'Annika Peters',  stunden: 24, gruppe: 'demo-g7', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 3 }], frei: ['Do', 'Fr'] },
-  { name: 'Felix Arndt',    stunden: 40, gruppe: 'demo-g8', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }], mag: 'spaet' },
+  { name: 'Felix Arndt',    stunden: 40, gruppe: 'demo-g8', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 5 }] },
   { name: 'Katrin Ulrich',  stunden: 32, gruppe: 'demo-g8', funktion: 'Erzieher', muster: [{ stunden: 8, tage: 4 }], frei: ['Mi'] },
   // Springerin und Leitung werden über ihre FUNKTION gefunden, nicht über
   // ihren Namen — deshalb steht sie hier und nicht mehr im Regelpaket.
@@ -269,13 +268,20 @@ async function main() {
       update: gemeinsam,
     })
 
-    // §181 Das Tagesmuster und die Schichtvorliebe ins Planungsprofil. Beides
-    // stand vorher im Regelpaket — beides ist eine Angabe über diesen
-    // Menschen, nicht über diesen Betrieb.
-    if (kraft.muster || kraft.mag) {
+    /*
+     * §181 Das Tagesmuster ins Planungsprofil — eine Angabe über diesen
+     * Menschen, nicht über diesen Betrieb.
+     *
+     * §237 Die Schichtvorliebe stand hier noch, und §236 hatte die Spalte
+     * gelöscht. Gemeldet hätte das erst der Lauf: Nachgemessen antwortet
+     * Prisma mit „Unknown argument `shiftPreference`" und bricht ab — das
+     * Demo-Seed war also kaputt. Die Typprüfung sah es nicht, weil die Werte
+     * über eine Zwischenvariable gehen und die Prüfung überzähliger
+     * Eigenschaften dann nicht greift.
+     */
+    if (kraft.muster) {
       const werte = {
         ...(kraft.muster ? { tagesmuster: kraft.muster } : {}),
-        ...(kraft.mag ? { shiftPreference: kraft.mag } : {}),
       }
       await prisma.employeePlanningProfile.upsert({
         where: { employeeId: person.id },

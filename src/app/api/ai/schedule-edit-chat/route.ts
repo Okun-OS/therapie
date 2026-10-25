@@ -33,7 +33,7 @@ Die Leitung beschreibt dir in EINER Nachricht, was am Dienstplan geändert werde
 Du erhältst den vollständigen Stand der Standort-Konfiguration (Onboarding, individuelle Regeln, Planungsregeln). Du HAST Zugriff auf diese Daten.
 
 ## Mitarbeiterstammdaten und Einschränkungen
-Du erhältst alle relevanten Planungsdaten pro Mitarbeiter: feste freie Tage (Feld "feste_freie_tage"), Arbeitstage, Qualifikationen, Schichtpräferenzen und Planungsnotizen. Du HAST Zugriff auf alle diese Daten. Schlage niemanden an einem festen freien Tag ein.
+Du erhältst pro Mitarbeiter: feste freie Tage (Feld "feste_freie_tage"), Arbeitstage, Tage pro Woche, Wochenstunden, Beschäftigungsart und Qualifikationen. Schlage niemanden an einem festen freien Tag ein. Was nicht in den Daten steht, weißt du nicht — erfinde keine Angaben über Menschen und sage, wenn dir etwas fehlt.
 
 ## Urlaub, Abwesenheiten und Wünsche
 Du erhältst alle eingetragenen Urlaubs- und Abwesenheitstage. Schlage niemanden an diesen Tagen ein.
@@ -133,12 +133,17 @@ export async function POST(req: NextRequest) {
     fairness_punktzahl: fd.fairnessScore,
   }))
 
-  // Fetch planning profiles for all employees
-  const empIds = (dbEmployees as { id: string }[]).map(e => e.id)
-  const planningProfiles = empIds.length > 0
-    ? await prisma.employeePlanningProfile.findMany({ where: { employeeId: { in: empIds } } })
-    : []
-  const profileByEmpId = new Map(planningProfiles.map(p => [p.employeeId, p]))
+  /*
+   * §237 Hier wurden die Planungsprofile geholt — bei jeder Chat-Anfrage,
+   * für die ganze Belegschaft, und niemand las das Ergebnis.
+   *
+   * §200 hatte Wochenend-Vereinbarung, Folgetage und Planungsnotiz aus der
+   * Nutzlast entfernt, §236 die Schichtvorliebe. Übrig blieb die Abfrage.
+   * Dass die Anweisung an das Sprachmodell weiter von „Schichtpräferenzen und
+   * Planungsnotizen" sprach und ihm versicherte, es habe Zugriff darauf, war
+   * der zweite Teil desselben Rests — und der schädlichere: Ein Modell, dem
+   * man sagt, es kenne etwas, das es nicht bekommt, denkt sich etwas aus.
+   */
 
   // Build comprehensive per-employee constraints map
   type EmpDb = {
@@ -148,7 +153,6 @@ export async function POST(req: NextRequest) {
   }
   const empNames = new Map((dbEmployees as EmpDb[]).map(e => [e.id, e.name]))
   const empConstraints = (dbEmployees as EmpDb[]).map(emp => {
-    const profile = profileByEmpId.get(emp.id)
     return {
       id: emp.id,
       name: emp.name,
