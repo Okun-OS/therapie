@@ -78,6 +78,49 @@ describe('Wann NICHT umgeleitet wird', () => {
     expect(sollUmleiten({ appUrl: BETRIEB, method: 'GET', pfad: '/api/employees', host: ALT })).toBeNull()
   })
 
+  /*
+   * §236 Die Lücke, die drei Ausrollungen gekostet hat.
+   *
+   * §235 hat an alles gedacht, was ein Mensch tut — POST, `/api`, localhost.
+   * Nicht gedacht war an den, der als Erster anklopft: Railway prüft nach
+   * jedem Ausrollen, ob die neue Fassung lebt, und ruft dafür `/` mit
+   * `Host: healthcheck.railway.app` auf. Es bekam 308 statt 200, wertete das
+   * als „antwortet nicht" und verwarf die Fassung — achtmal in Folge, bei
+   * drei Ausrollungen hintereinander.
+   *
+   * Von außen sah es aus, als sei nichts angekommen. In Wahrheit kam alles an
+   * und wurde jedes Mal wieder weggeworfen, während Build und Migration
+   * sauber durchliefen.
+   */
+  it('niemals für den Prüfer der Anlage — das war der Fehler aus §235', () => {
+    expect(sollUmleiten({ appUrl: BETRIEB, method: 'GET', pfad: '/', host: 'healthcheck.railway.app' }))
+      .toBeNull()
+  })
+
+  it('auch nicht mit Port und in anderer Schreibweise', () => {
+    expect(sollUmleiten({ appUrl: BETRIEB, method: 'GET', pfad: '/', host: 'healthcheck.railway.app:8080' }))
+      .toBeNull()
+    expect(sollUmleiten({ appUrl: BETRIEB, method: 'GET', pfad: '/', host: 'HEALTHCHECK.RAILWAY.APP' }))
+      .toBeNull()
+  })
+
+  it('und nicht für die interne Vernetzung zwischen den Diensten', () => {
+    expect(sollUmleiten({ appUrl: BETRIEB, method: 'GET', pfad: '/', host: 'therapie.railway.internal' }))
+      .toBeNull()
+    expect(sollUmleiten({ appUrl: BETRIEB, method: 'GET', pfad: '/', host: 'solver.railway.internal:8080' }))
+      .toBeNull()
+  })
+
+  /*
+   * Die Gegenprobe, ohne die das Obige zu viel ausnähme: Der ALTE öffentliche
+   * Name liegt auch unter `railway.app` — und genau von dem soll weggeleitet
+   * werden. „Alles unter railway.app ausnehmen" wäre deshalb falsch gewesen.
+   */
+  it('aber sehr wohl für die alte öffentliche Railway-Adresse', () => {
+    expect(sollUmleiten({ appUrl: BETRIEB, method: 'GET', pfad: '/', host: ALT }))
+      .toBe('https://okun-workforce.com/')
+  })
+
   it('nicht in der Entwicklung — dort ist APP_URL localhost', () => {
     expect(sollUmleiten({ appUrl: 'http://localhost:3000', method: 'GET', pfad: '/', host: 'localhost:3000' }))
       .toBeNull()

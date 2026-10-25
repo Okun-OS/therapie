@@ -33,6 +33,36 @@ export interface Anfrage {
 }
 
 /**
+ * §236 Hosts, die zur Anlage gehören und niemals umgeleitet werden dürfen.
+ *
+ * DAS HAT DREI AUSROLLUNGEN GEKOSTET
+ * §235 hat die Weiterleitung eingebaut und an alles gedacht, was ein Mensch
+ * tut — POST, `/api`, localhost. Nicht gedacht war an den, der als Erster
+ * anklopft: Railway prüft nach jedem Ausrollen, ob die neue Fassung lebt, und
+ * ruft dafür `/` mit `Host: healthcheck.railway.app` auf. Die Weiterleitung
+ * antwortete mit 308 statt 200. Railway wertete das als „Anwendung antwortet
+ * nicht", verwarf die Fassung und ließ die alte stehen — achtmal in Folge, und
+ * das bei drei Ausrollungen hintereinander.
+ *
+ * Im Protokoll stand „Healthcheck failure", während Build und Migration
+ * sauber durchliefen. Von außen sah es aus, als sei nichts angekommen; in
+ * Wahrheit kam alles an und wurde jedes Mal wieder weggeworfen.
+ *
+ * WARUM EINE LISTE UND KEINE REGEL
+ * „Alles unter railway.app ausnehmen" ginge nicht: `…up.railway.app` ist
+ * genau der alte Name, von dem weggeleitet werden SOLL. Es bleibt also die
+ * Aufzählung — und sie ist der Grund, warum darunter zusätzlich der Pfad
+ * ausgenommen wird. Ändert Railway den Namen seines Prüfers, hält die
+ * zweite Absicherung.
+ */
+const INFRASTRUKTUR = [
+  'healthcheck.railway.app',
+]
+
+/** §236 Hosts der internen Vernetzung — Dienst zu Dienst im selben Projekt. */
+const INTERN = /\.railway\.internal(:\d+)?$/i
+
+/**
  * Wohin umgeleitet werden soll — oder `null`, wenn nicht.
  *
  * WANN NICHT UMGELEITET WIRD
@@ -44,6 +74,8 @@ export interface Anfrage {
  *   für `/api`         — eine laufende App, die nach dem Umzug noch mit dem
  *                        alten Namen spricht, soll Antworten bekommen
  *   lokal und intern   — Entwicklung und Aufrufe aus dem eigenen Container
+ *   §236 Healthcheck   — der Prüfer der Anlage muss die Anwendung sehen,
+ *                        nicht eine Weiterleitung auf sie
  */
 export function kanonischesZiel(anfrage: Anfrage, appUrl?: string | null): string | null {
   const erwartet = appUrl?.replace(/\/+$/, '')
@@ -62,6 +94,11 @@ export function kanonischesZiel(anfrage: Anfrage, appUrl?: string | null): strin
   const host = anfrage.host
   if (!host || host === ziel.host) return null
   if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host)) return null
+
+  // §236 Der Prüfer der Anlage und die interne Vernetzung bleiben unberührt.
+  const ohnePort = host.replace(/:\d+$/, '').toLowerCase()
+  if (INFRASTRUKTUR.includes(ohnePort)) return null
+  if (INTERN.test(host)) return null
 
   return new URL(anfrage.pfad + (anfrage.suche ?? ''), erwartet).toString()
 }

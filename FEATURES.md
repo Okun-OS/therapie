@@ -5442,3 +5442,84 @@ Baustein, der nichts mehr tut, darf den Rechenlauf nicht anhalten.
 In `f7-durchstich` ist die Zusage dabei stärker geworden, nicht schwächer:
 Vorher „eine Kollegin darf ein fremdes Profil nicht überschreiben" (403), jetzt
 „überschreiben kann sie es gar nicht — die Route gibt es nicht mehr".
+
+## Block §236 (Nachtrag, 25.10.) — Warum drei Ausrollungen verworfen wurden
+
+**Die Meldung:** „Du hast ja nichts gemacht von all dem, was ich gesagt habe."
+Dann, nach meinem Fehlschluss: „Ich glaube ehrlich gesagt, dass da was falsch
+ist, weil da steht jetzt ja auch, wird die KI berücksichtigt — das stand da
+vorher nicht da. Das heißt, es scheint da angekommen zu sein, du hast es falsch
+gemacht." Und schließlich, mit den Bildern aus Railway: „Die letzten drei sind
+alle wegen Health-Check-Failure gescheitert."
+
+### Was wirklich passiert war
+
+Nichts von §235 war im Betrieb angekommen — aber nicht, weil es nicht gebaut
+wurde. Build und Migration liefen jedes Mal sauber durch. Danach prüft Railway,
+ob die neue Fassung antwortet, und ruft dafür `/` auf, mit `Host:
+healthcheck.railway.app`.
+
+Die Weiterleitung aus §235 antwortete darauf mit **308**. Railway wertet alles
+außer einer Antwort der Anwendung als „antwortet nicht", versuchte es achtmal,
+verwarf die Fassung und ließ die alte stehen. Dreimal in Folge.
+
+Das heißt: Die Änderung, die unsichtbar blieb, war genau die Änderung, die sich
+selbst unsichtbar machte. Sie hat sich und alles danach aus dem Betrieb
+gehalten.
+
+### Mein zweiter Fehler war der Umgang damit
+
+Auf „du hast ja nichts gemacht" habe ich zuerst auf eine nicht zusammengeführte
+Änderung und auf CI getippt. Falsch. Korrigiert hat mich der Hinweis, dass auf
+der Seite ein Satz stand, den ich erst eingebaut hatte — also **war** etwas
+angekommen, und meine Diagnose konnte nicht stimmen.
+
+Dahinter steckt ein Arbeitsfehler, der benannt gehört: Ich habe stundenlang
+gegen `localhost` gemessen, während der Blick aufs laufende System ging. Alle
+Prüfungen waren grün und alle am falschen Ort. Eine Zusage über den Betrieb
+lässt sich in der Entwicklung nicht einlösen.
+
+### Was jetzt gilt — zwei Absicherungen, nicht eine
+
+| | |
+|---|---|
+| `healthcheck.railway.app` | wird nie umgeleitet (Ausnahme in `kanonische-domain.ts`) |
+| `*.railway.internal` | wird nie umgeleitet — Dienst zu Dienst im Projekt |
+| `healthcheckPath` | `/api/health` statt `/` |
+| `GET /api/health` | neu, antwortet `{"status":"ok"}` |
+
+**Warum beides.** Die Ausnahmeliste ist die naheliegende Lösung und die
+schwächere: Benennt Railway seinen Prüfer eines Tages anders, veraltet sie
+still. Der Pfad hält unabhängig davon, denn unter `/api` greift die
+Weiterleitung grundsätzlich nicht. Nachgemessen, beide einzeln: `/` mit dem
+Prüfer-Host gibt 200, `/api/health` gibt 200.
+
+**Warum „alles unter railway.app ausnehmen" nicht geht.** Der alte öffentliche
+Name liegt selbst unter `railway.app` — das ist genau der, von dem weggeleitet
+werden soll. Darum eine Aufzählung und kein Muster, und darum die Gegenprobe:
+`therapie-production.up.railway.app` muss weiter 308 bekommen.
+
+**Warum das Lebenszeichen die Datenbank nicht anfragt.** Es beantwortet „läuft
+der Dienst", nicht „ist alles in Ordnung". Hinge es an der Datenbank, nähme
+eine kurze Störung dort die laufende Fassung mit — Railway verwürfe sie und
+startete eine neue, die dieselbe Datenbank genauso nicht erreicht.
+
+### Nachweise
+
+**1280** Modultests. Vier davon sind neu in `kanonische-domain.test.ts` und
+messen genau die Lücke: der Prüfer-Host wird nicht umgeleitet, auch nicht mit
+Port und in anderer Schreibweise, die interne Vernetzung auch nicht — und als
+Gegenprobe, ohne die die Ausnahme zu weit griffe, dass die alte öffentliche
+Railway-Adresse weiterhin umgeleitet wird.
+
+Dazu fünf Proben gegen eine echte gebaute Fassung mit `APP_URL` wie im Betrieb,
+weil die Funktion allein genau das nicht gezeigt hätte, was schiefging — die
+Weiterleitung sitzt in der Middleware, nicht in der Funktion:
+
+| Anfrage | Erwartet | Gemessen |
+|---|---|---|
+| `/api/health` mit Prüfer-Host | 200 | 200 `{"status":"ok"}` |
+| `/` mit Prüfer-Host | 200 | 200 |
+| `/` mit alter Railway-Adresse | 308 | 308 → `okun-workforce.com` |
+| `/` mit kanonischer Adresse | 200 | 200 |
+| `/` mit `*.railway.internal` | 200 | 200 |

@@ -1,0 +1,31 @@
+import { NextResponse } from 'next/server'
+
+/**
+ * §236 Der Lebenszeichen-Pfad für die Anlage.
+ *
+ * WARUM ES IHN GIBT
+ * Railway prüft nach jedem Ausrollen, ob die neue Fassung antwortet. Bis
+ * hierher prüfte es `/` — die Startseite, die durch die Middleware läuft. Das
+ * ging gut, bis §235 eine Weiterleitung auf die kanonische Domain einbaute:
+ * Der Prüfer kommt mit `Host: healthcheck.railway.app`, bekam ein 308 statt
+ * eines 200 und wertete das als „antwortet nicht". Drei Ausrollungen wurden so
+ * verworfen, obwohl Build und Migration sauber durchliefen.
+ *
+ * Die Ausnahme für diesen Host steht in `kanonische-domain.ts`. Dieser Pfad
+ * ist die zweite Absicherung, und zwar die haltbarere: Er liegt unter `/api`,
+ * und damit greift die Weiterleitung hier NIE — auch dann nicht, wenn Railway
+ * seinen Prüfer eines Tages anders nennt. Eine Ausnahmeliste, die jemand
+ * pflegen muss, ist eine Ausnahmeliste, die irgendwann veraltet.
+ *
+ * WAS ER NICHT TUT
+ * Keine Datenbankabfrage. Ein Lebenszeichen beantwortet „läuft der Dienst",
+ * nicht „ist alles in Ordnung". Hinge es an der Datenbank, nähme eine kurze
+ * Störung dort die ganze Anwendung mit — Railway würde die laufende Fassung
+ * verwerfen und eine neue starten, die genau dieselbe Datenbank nicht
+ * erreicht.
+ */
+export const dynamic = 'force-dynamic'
+
+export function GET() {
+  return NextResponse.json({ status: 'ok' })
+}
