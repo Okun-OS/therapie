@@ -29,7 +29,7 @@ export function FairnessEngineDashboard({ fetchUrl }: { fetchUrl: string }) {
         <div>
           <p className="text-sm font-semibold text-blue-800">Gedächtnis der Fairness Engine</p>
           <p className="text-xs text-blue-700 mt-0.5">
-            Die Engine merkt sich die letzten 4 Wochen an Dienstplänen (inkl. Wochenenden) und berücksichtigt diese Historie automatisch bei jeder neuen KI-Planung – u. a. bei der Verteilung von Wochenend- und Freitag-Frühdiensten.
+            Die Engine merkt sich die letzten 4 Wochen an Dienstplänen (inkl. Wochenenden) und berücksichtigt diese Historie automatisch bei jedem neuen Planungslauf – u. a. bei der Verteilung von Wochenend- und Freitag-Frühdiensten.
           </p>
         </div>
       </div>

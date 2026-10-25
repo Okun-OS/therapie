@@ -238,7 +238,7 @@ export function EmployeeCreationForm({
           Kann in mehreren Gruppen eingesetzt werden
         </label>
 
-        <Input label="Feste Einsatzorte" value={draft.fixedLocations ?? ''} onChange={e => update('fixedLocations', e.target.value)} hint="Falls die Person nur an bestimmten Standorten eingesetzt werden kann" />
+        <Input label="Feste Einsatzorte" value={draft.fixedLocations ?? ''} onChange={e => update('fixedLocations', e.target.value)} hint="Notiz für die Leitung. Eingeplant wird ohnehin nur am eigenen Standort — der Plan wird je Standort gerechnet." />
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -369,15 +369,16 @@ export function EmployeeCreationForm({
           label="Persönliche Besonderheiten"
           value={toFreeText(draft.besonderheiten)}
           onChange={e => update('besonderheiten', fromFreeText(e.target.value))}
-          placeholder="z.B. Alleinerziehend, kein Führerschein, Wunsch nach Frühdiensten, gesundheitliche Einschränkungen, Sprachen, ..."
-          hint="Freitext – beliebig ausführlich. Die KI berücksichtigt diese Angaben bei der Dienstplanung."
+          placeholder="z.B. Alleinerziehend, kein Führerschein, Sprachen, ..."
+          hint="Freitext für die Leitung – fließt NICHT in den Dienstplan ein. Was den Plan binden soll, gehört in „Feste freie Tage“, „Erlaubte Aufgaben“ oder die Qualifikationen."
           rows={4}
         />
         <Textarea
           label="Individuelle Absprachen"
           value={draft.absprachen ?? ''}
           onChange={e => update('absprachen', e.target.value || undefined)}
-          placeholder="z.B. feste Bürozeit montags, nie Spätdienst am Freitag"
+          placeholder="z.B. Fortbildung einmal im Quartal, Zuständigkeit für die Materialbestellung"
+          hint="Freitext für die Leitung – bindet den Dienstplan nicht. Ein „nie Spätdienst am Freitag“ gehört in „Feste freie Tage“, sonst plant der Lauf darüber hinweg."
         />
 
         {/* ── Vertrag & Stundenstand ─────────────────────────────── */}

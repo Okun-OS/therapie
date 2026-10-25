@@ -99,6 +99,34 @@ async function rolleAus(marke: string | undefined): Promise<string | null> {
   }
 }
 
+/*
+ * §237 Eine falsche `APP_URL` soll nicht noch einmal still sein.
+ *
+ * Nach §236 lief die Weiterleitung rückwärts, weil in Railway der erzeugte
+ * Name stand. `kanonische-domain.ts` lehnt das jetzt ab — aber damit ist die
+ * Einstellung nur unschädlich, nicht richtig. An `APP_URL` hängen außerdem
+ * alle Links in E-Mails (Registrierung, Passwort zurücksetzen), das
+ * Kalender-Abo und die Stellenmeldung an Google. Alle vier zeigten auf den
+ * alten Namen, und nichts davon hat sich beschwert.
+ *
+ * Diese Zeilen laufen einmal beim Laden des Moduls, also einmal je Fassung,
+ * und schreiben es in das Protokoll, in das nach jedem Ausrollen ohnehin
+ * jemand schaut. Nicht geworfen wird: Eine falsche Adresse ist kein Grund,
+ * niemanden mehr hereinzulassen.
+ */
+if (process.env.NODE_ENV === 'production') {
+  const gesetzt = process.env.APP_URL
+  if (!gesetzt) {
+    console.warn('[APP_URL] nicht gesetzt — E-Mail-Links, Kalender-Abo und '
+      + 'Stellenmeldung fallen auf die Adresse der Anfrage zurück.')
+  } else if (/\.up\.railway\.app\/?$/i.test(gesetzt)) {
+    console.warn(`[APP_URL] steht auf dem von Railway erzeugten Namen (${gesetzt}). `
+      + 'Erwartet wird die eigene Domain. Solange das so ist, tragen E-Mail-Links, '
+      + 'Kalender-Abo und Stellenmeldung den erzeugten Namen, und die '
+      + 'Weiterleitung auf die richtige Domain bleibt aus (§237).')
+  }
+}
+
 /**
  * §235 Jeder landet auf der richtigen Adresse — egal, über welche er kommt.
  *

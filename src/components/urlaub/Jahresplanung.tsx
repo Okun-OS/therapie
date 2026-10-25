@@ -60,7 +60,7 @@ interface AntragZeile {
 const AI_STEPS = [
   'Analysiere Standortregeln...',
   'Prüfe Schulferienzeiten...',
-  'Berücksichtige Mitarbeiter-Wünsche...',
+  'Lese die eingereichten Anträge...',
   'Berechne Mindestbesetzung...',
   'Optimiere Fairness...',
   'Finalisiere Urlaubsplan...',
@@ -159,7 +159,7 @@ export function Jahresplanung() {
         body: JSON.stringify({ locationId }),
       })
       const data = await res.json()
-      showToast(`${data.notified ?? employees.length} Mitarbeiter wurden benachrichtigt, ihre Urlaubswünsche einzutragen`)
+      showToast(`${data.notified ?? employees.length} Mitarbeiter wurden benachrichtigt, ihren Urlaub zu beantragen`)
     } catch {
       showToast('Benachrichtigung konnte nicht versendet werden', 'error')
     } finally {
@@ -628,7 +628,7 @@ export function Jahresplanung() {
                   <Sparkles size={18} className="text-purple-600" />
                   <p className="font-bold text-navy">KI-Urlaubsplan erstellen</p>
                 </div>
-                <p className="text-sm text-gray-600">Die KI plant fair und regelkonform – unter Berücksichtigung deiner Standortregeln und aller Mitarbeiterwünsche.</p>
+                <p className="text-sm text-gray-600">Die KI plant fair und regelkonform – nach deinen Standortregeln, der Antragsfrist und allen eingereichten Anträgen.</p>
               </div>
               <Button onClick={runAI} size="lg" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500 whitespace-nowrap">
                 <Sparkles size={18} />
@@ -697,7 +697,7 @@ export function Jahresplanung() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-navy">Qualitätsprüfung</p>
-                  <p className="text-xs text-gray-500">{summary.fulfilledCount} von {summary.totalCount} Wünschen vollständig erfüllt.</p>
+                  <p className="text-xs text-gray-500">{summary.fulfilledCount} von {summary.totalCount} Anträgen unverändert eingeplant.</p>
                 </div>
               </div>
             )}

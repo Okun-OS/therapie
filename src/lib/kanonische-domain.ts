@@ -63,6 +63,34 @@ const INFRASTRUKTUR = [
 const INTERN = /\.railway\.internal(:\d+)?$/i
 
 /**
+ * §237 Der von Railway erzeugte Name — das Ziel, von dem WEG geleitet wird.
+ *
+ * NACHGEMESSEN AM LAUFENDEN SYSTEM, 25.10.
+ * Nach dem Ausrollen von §236 lief die Weiterleitung rückwärts:
+ *
+ *     okun-workforce.com/            308 → therapie-production.up.railway.app/
+ *     therapie-production.up.…/      200
+ *
+ * Also genau umgekehrt. Der Grund steht nicht im Code: `APP_URL` in Railway
+ * trägt den alten erzeugten Namen. Die Weiterleitung hat getreu getan, was
+ * dort stand — und damit jeden Besucher vom richtigen Namen auf den alten
+ * geschoben. Damit installiert die App dort, und in der Push-Meldung sowie im
+ * Kalender-Abo steht wieder der alte Name. Das war die ursprüngliche Meldung.
+ *
+ * WARUM DER CODE DAS ABLEHNEN DARF, OHNE DIE EINSTELLUNG ZU KENNEN
+ * Der einzige Zweck dieser Weiterleitung ist, Menschen VOM erzeugten Namen
+ * wegzubringen. Eine Einstellung, die ihn zum ZIEL macht, widerspricht dem
+ * Zweck der Regel selbst — die muss man nicht nachschlagen, um sie als falsch
+ * zu erkennen. Steht dort der erzeugte Name, wird nicht umgeleitet: Dann
+ * antwortet jeder Name einfach selbst, und das ist der Zustand von vor §235,
+ * nicht ein schlimmerer.
+ *
+ * Die Einstellung selbst kann der Code nicht richtigstellen; sie gehört nach
+ * Railway. Was er kann, ist aufhören, aus ihr Schaden zu machen.
+ */
+const ERZEUGT = /\.up\.railway\.app(:\d+)?$/i
+
+/**
  * Wohin umgeleitet werden soll — oder `null`, wenn nicht.
  *
  * WANN NICHT UMGELEITET WIRD
@@ -76,6 +104,8 @@ const INTERN = /\.railway\.internal(:\d+)?$/i
  *   lokal und intern   — Entwicklung und Aufrufe aus dem eigenen Container
  *   §236 Healthcheck   — der Prüfer der Anlage muss die Anwendung sehen,
  *                        nicht eine Weiterleitung auf sie
+ *   §237 falsches Ziel  — zeigt `APP_URL` auf den erzeugten Railway-Namen,
+ *                        wäre die Weiterleitung ihr eigenes Gegenteil
  */
 export function kanonischesZiel(anfrage: Anfrage, appUrl?: string | null): string | null {
   const erwartet = appUrl?.replace(/\/+$/, '')
@@ -90,6 +120,9 @@ export function kanonischesZiel(anfrage: Anfrage, appUrl?: string | null): strin
     // Eine kaputte `APP_URL` darf den Betrieb nicht anhalten.
     return null
   }
+
+  // §237 Niemals AUF den erzeugten Railway-Namen leiten — siehe `ERZEUGT`.
+  if (ERZEUGT.test(ziel.host)) return null
 
   const host = anfrage.host
   if (!host || host === ziel.host) return null

@@ -1308,7 +1308,7 @@ export default function AdminSchedule() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Sparkles size={18} className="text-purple-600" />
-                    <p className="font-bold text-navy">KI-Dienstplan erstellen</p>
+                    <p className="font-bold text-navy">Dienstplan erstellen</p>
                   </div>
                   <div>
                     <Textarea
@@ -2122,7 +2122,7 @@ export default function AdminSchedule() {
             <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 flex gap-3">
               <Scale size={18} className="text-purple-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-bold text-purple-800">Konfliktstrategie der KI</p>
+                <p className="text-sm font-bold text-purple-800">So entscheidet der Planungslauf bei Konflikten</p>
                 <ol className="text-xs text-purple-700 mt-1 space-y-1 list-decimal list-inside">
                   <li>Höchste Dringlichkeit gewinnt (Dringend &gt; Wichtig &gt; Normal)</li>
                   <li>Wer diese Schichtart seltener hatte (Fairness-Schuld)</li>

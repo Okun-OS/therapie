@@ -1117,7 +1117,7 @@ export default function EmployeeSchedule() {
           <div className="bg-blue-50 rounded-xl p-3 flex gap-2">
             <Info size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-blue-700">
-              Bei Konflikten entscheidet die KI anhand Priorität, Einreichzeit und bisheriger Schichtverteilung. Du wirst informiert wenn dein Wunsch nicht erfüllt werden kann.
+              Bei Konflikten entscheidet der Planungslauf anhand Priorität, Einreichzeit und bisheriger Schichtverteilung. Du wirst informiert wenn dein Wunsch nicht erfüllt werden kann.
             </p>
           </div>
           <div className="flex gap-2">

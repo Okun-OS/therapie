@@ -5523,3 +5523,141 @@ Weiterleitung sitzt in der Middleware, nicht in der Funktion:
 | `/` mit alter Railway-Adresse | 308 | 308 → `okun-workforce.com` |
 | `/` mit kanonischer Adresse | 200 | 200 |
 | `/` mit `*.railway.internal` | 200 | 200 |
+
+## Block §237 (25.10.) — Die Weiterleitung lief rückwärts, und wer wirklich plant
+
+### Teil 1: `APP_URL` zeigt auf den alten Namen
+
+Nach dem Ausrollen von §236 habe ich am laufenden System gemessen statt an
+`localhost` — und genau das hat es gefunden:
+
+| Anfrage | Erwartet | Gemessen |
+|---|---|---|
+| `okun-workforce.com/` | 200 | **308 → therapie-production.up.railway.app/** |
+| `therapie-production.up.railway.app/` | 308 | **200** |
+
+Genau umgekehrt. Die Weiterleitung schob jeden Besucher **vom richtigen Namen
+auf den alten**. Der Grund steht nicht im Code: In Railway trägt `APP_URL` den
+von Railway erzeugten Namen, und die Weiterleitung hat getreu getan, was dort
+stand.
+
+**Das ist die Wurzel der ursprünglichen Meldung.** Gemeldet war: „Bei dieser
+Google-Synchronisation steht noch die alte generierte Railway-Domain. Und die
+steht auch bei den Pop-Up-Nachrichten, die ich aufs Handy bekomme." §228 hatte
+richtig auf `APP_URL` umgestellt — aber `APP_URL` selbst trägt den alten Namen.
+Daran hängt mehr als vermutet:
+
+| | |
+|---|---|
+| Kalender-Abo | `calendar-sync` baut die Abo-Adresse daraus |
+| **Alle Links in E-Mails** | Registrierung, Passwort zurücksetzen (`email.ts`) |
+| Stellenmeldung an Google | `google-indexing.ts` |
+| Push-Meldung auf dem Telefon | mittelbar: zeigt die Adresse, unter der die App installiert wurde — und die Weiterleitung führte dorthin |
+
+**Was der Code jetzt tut, und was er nicht kann.** Er lehnt diese Einstellung
+ab: Wird auf den erzeugten Railway-Namen gezeigt, wird nicht umgeleitet. Das
+ist zulässig, ohne die Einstellung zu kennen — der einzige Zweck dieser
+Weiterleitung ist, Menschen VOM erzeugten Namen wegzubringen; eine
+Konfiguration, die ihn zum Ziel macht, widerspricht der Regel selbst. Damit
+antwortet wieder jeder Name selbst, also der Zustand von vor §235 und nicht ein
+schlimmerer.
+
+Richtigstellen kann der Code die Einstellung nicht. Dazu muss in Railway
+`APP_URL` auf `https://okun-workforce.com` stehen. Solange das nicht geschieht,
+tragen E-Mail-Links, Kalender-Abo und Stellenmeldung weiterhin den alten Namen
+— und die Push-Meldung auch. **Das ist der offene Punkt dieses Blocks, und er
+liegt nicht im Code.**
+
+Damit es nicht wieder still bleibt, schreibt die Middleware beim Start eine
+Warnung ins Protokoll, wenn `APP_URL` fehlt oder den erzeugten Namen trägt.
+Geworfen wird nichts: Eine falsche Adresse ist kein Grund, niemanden mehr
+hereinzulassen.
+
+### Teil 2: Es plant keine KI — aber es gibt KI
+
+**Die Meldung:** „Auch mit diesen anderen, wo steht bei KI berücksichtigt, aber
+es gibt ja gar keine KI mehr, die das plant. Weil es macht jetzt ja der Solver,
+das heißt, es muss auch raus."
+
+Richtig. Nachgesehen stand es an elf Stellen, und dabei fiel ein Muster auf:
+Die **Texte** waren schon korrigiert („Der Rechendienst plant mit dem
+Regelpaket"), die **Überschriften** darüber nicht — „KI plant für dich",
+„Ersten KI-Dienstplan erstellen". Ein halb gemachter Durchgang sieht von weitem
+aus wie keiner.
+
+| vorher | jetzt |
+|---|---|
+| „Dienstplan KI" (Schnellzugriff) | „Dienstplan" |
+| „KI-Dienstplan erstellen" | „Dienstplan erstellen" |
+| „Konfliktstrategie der KI" | „So entscheidet der Planungslauf bei Konflikten" |
+| „wie die KI das Konto berücksichtigen soll" | „wie der Planungslauf …" |
+| „die KI plant entsprechend mehr oder weniger Dienste" | „der Planungslauf verteilt …" |
+| „KI plant für dich" | „Dienstpläne nach euren Regeln" |
+| „die KI braucht diese Daten für die Planung" | „der Planungslauf braucht diese Daten" |
+| „bei jeder neuen KI-Planung" | „bei jedem neuen Planungslauf" |
+| „Bei Konflikten entscheidet die KI …" | „… entscheidet der Planungslauf …" |
+
+**Was bewusst BLEIBT, und warum das die wichtigere Hälfte ist.** Es gibt
+sieben Stellen mit echter KI, und die müssen weiter so heißen: der Urlaubsplan
+(`/api/ai/vacation`), die Antragsempfehlung, das Ändern des Plans per Satz, das
+Anlegen per Chat, die Controlling-Fragen, die Zuschlags-Einrichtung, der
+Assistent. „KI überall löschen" wäre durch Suchen-und-Ersetzen erfüllbar
+gewesen und hätte diese sieben kaputt gemacht — grün gemeldet.
+
+Inhaltlich war der Satz zur Rangfolge übrigens richtig: Der Rechendienst wertet
+Dringlichkeit, Fairness-Schuld und Einreichzeit (`solver.py:695-699`). Falsch
+war allein der Akteur.
+
+### Teil 3: Drei Felder, die etwas versprachen, das nirgends ankommt
+
+Beim Nachsehen aufgefallen, nicht gemeldet. Am Formular stand:
+
+> „Freitext – beliebig ausführlich. **Die KI berücksichtigt diese Angaben bei
+> der Dienstplanung.**"
+
+Nachgemessen trifft daran nichts zu. `rule-model-service.ts` baut sein Feld
+`besonderheiten` aus `fixedLocations` und der Planungsnotiz — nicht aus diesem
+Formularfeld. Und der Rechendienst liest `besonderheiten` an **keiner** Stelle;
+mit Gegenprobe geprüft, denn `erlaubteAufgaben` liest er sehr wohl.
+
+| Feld | versprach | trifft zu |
+|---|---|---|
+| Persönliche Besonderheiten | KI beachtet es bei der Planung | nein, dreifach nicht |
+| Individuelle Absprachen | durch Beispiel „nie Spätdienst am Freitag" | nein |
+| Feste Einsatzorte | „nur an bestimmten Standorten einsetzbar" | gegenstandslos — der Plan wird je Standort gerechnet, eingeplant wird ohnehin nur die eigene Belegschaft |
+
+Die Felder bleiben, denn eine Leitung liest sie. Die Hinweise sagen jetzt, was
+sie sind — Notizen für Menschen — und wohin eine echte Bindung gehört: feste
+freie Tage, erlaubte Aufgaben, Qualifikationen.
+
+### Teil 4: Die Jahresplanung sprach noch von Wünschen
+
+§231 hat die Wunschmonate durch Anträge ersetzt. Vier Stellen hatten das nicht
+mitbekommen, und eine widersprach sich selbst: Die Benachrichtigung forderte
+auf, **Urlaub zu beantragen** — die Erfolgsmeldung danach sagte, die Leute seien
+aufgefordert worden, „ihre Urlaubswünsche einzutragen".
+
+Ebenso „{n} von {m} **Wünschen** erfüllt", wo die Schnittstelle Anträge zählt,
+und der Ladeschritt „Berücksichtige Mitarbeiter-Wünsche…".
+
+### Nachweise
+
+**1282** Modultests (zwei neu: die Weiterleitung niemals AUF den erzeugten
+Namen, mit Gegenprobe, dass sie mit richtiger `APP_URL` weiterhin weg­leitet —
+ohne die hätte die Absicherung §235 stillgelegt).
+
+Neu: `pruefungen/browser/wer-plant-den-dienstplan.mjs` **19/19**. Sie misst
+beide Richtungen, und die zweite ist die eigentliche: Beim Dienstplan darf
+keine KI genannt werden, bei den sieben echten Stellen **muss** sie weiter
+genannt werden.
+
+**Zweimal musste ich diese Prüfung reparieren, und beide Male war sie grün.**
+Zuerst las sie den Satz gar nicht — er steht im Dialog „Dienstwunsch abgeben",
+der erst beim Klicken erscheint; gemessen wurden 607 Zeichen, und die alte
+Fassung hätte genauso bestanden. Dann hielt eine Längenschwelle dieselben 607
+Zeichen für einen Ladezustand, obwohl sie der volle Inhalt sind — die Seite ist
+einfach kompakt. Jetzt wartet sie je Seite auf ein **Merkmal** statt auf Uhr
+oder Länge, klickt den Dialog auf und sichert zu, dass er offen ist.
+
+`alle-seiten-ohne-fehler` **60/60**, `o-persoenliches` **13/13**,
+`a-mitarbeiter` **35/35**, `p-taetigkeiten` **15/15**.

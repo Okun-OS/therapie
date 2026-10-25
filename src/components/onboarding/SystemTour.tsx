@@ -178,15 +178,15 @@ const ADMIN_STEPS: TourStep[] = [
   {
     emoji: '👥',
     title: 'Team anlegen',
-    body: 'Trage jetzt deine Mitarbeitenden ein.\n\nWochenstunden, Gruppe, Bereich – die KI braucht diese Daten für die Planung.',
+    body: 'Trage jetzt deine Mitarbeitenden ein.\n\nWochenstunden, Gruppe, Bereich – der Planungslauf braucht diese Daten.',
     path: '/admin/employees',
     spotlightSelector: '[data-tour="add-employee"]',
     tryCta: 'Probier es aus: Mitarbeiter hinzufügen',
     tryPath: '/admin/employees',
   },
   {
-    emoji: '🤖',
-    title: 'Ersten KI-Dienstplan erstellen',
+    emoji: '⚙️',
+    title: 'Ersten Dienstplan erstellen',
     body: 'Jetzt das Herzstück von OKUN.\n\nDer Rechendienst plant mit dem Regelpaket, das OKUN für euch gebaut hat — mit euren Diensten, Gruppen und Regeln — und allen Mitarbeitenden, und erstellt einen vollständigen, fairen Wochenplan. Du kannst danach jeden Eintrag manuell anpassen.',
     path: '/admin/schedule',
     spotlightSelector: '[data-tour="create-plan"]',
@@ -250,7 +250,7 @@ const EMPLOYEE_STEPS: TourStep[] = [
   {
     emoji: '🔄',
     title: 'Tauschbörse & Dienstwünsche',
-    body: '🔄 Tauschbörse: Du kannst eine Schicht direkt mit Kolleg·innen tauschen – ganz ohne Leitungsumweg.\n\n💭 Wünsche: Trage ein, welche Dienste du nicht möchtest. Die KI berücksichtigt das bei der Planung.',
+    body: '🔄 Tauschbörse: Du kannst eine Schicht direkt mit Kolleg·innen tauschen – ganz ohne Leitungsumweg.\n\n💭 Wünsche: Trage ein, welche Dienste du nicht möchtest. Der Planungslauf berücksichtigt das.',
     path: '/employee/schedule',
     spotlightSelector: '[data-tour="schedule-tabs"]',
     tryCta: 'Probier es aus: Tausch starten',

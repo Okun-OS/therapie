@@ -52,7 +52,7 @@ export function PlanungslaufPanel({ locationId, onConfirm, onCancel }: Planungsl
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-600">
-        Stundenkonto-Check vor dem Planungslauf. Wähle pro Mitarbeiter, wie die KI das Konto berücksichtigen soll.
+        Stundenkonto-Check vor dem Planungslauf. Wähle pro Mitarbeiter, wie der Planungslauf das Konto berücksichtigen soll.
       </p>
 
       {loading ? (
@@ -153,7 +153,7 @@ export function PlanungslaufPanel({ locationId, onConfirm, onCancel }: Planungsl
 
       {!loading && adjustCount > 0 && (
         <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-          {adjustCount} {adjustCount === 1 ? 'Mitarbeiter wird' : 'Mitarbeiter werden'} angepasst — die KI plant entsprechend mehr oder weniger Dienste.
+          {adjustCount} {adjustCount === 1 ? 'Mitarbeiter wird' : 'Mitarbeiter werden'} angepasst — der Planungslauf verteilt entsprechend mehr oder weniger Dienste.
         </p>
       )}
 

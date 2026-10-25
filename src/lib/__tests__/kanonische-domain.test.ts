@@ -121,6 +121,38 @@ describe('Wann NICHT umgeleitet wird', () => {
       .toBe('https://okun-workforce.com/')
   })
 
+  /*
+   * §237 Der Fall, der am laufenden System auftrat.
+   *
+   * `APP_URL` trug in Railway den erzeugten Namen. Die Weiterleitung lief
+   * damit rückwärts und schob jeden Besucher vom richtigen Namen auf den
+   * alten — nachgemessen am 25.10.:
+   *
+   *     okun-workforce.com/   308 → therapie-production.up.railway.app/
+   *
+   * Der einzige Zweck dieser Regel ist, Menschen vom erzeugten Namen
+   * WEGzubringen. Ist er das Ziel, wird nicht umgeleitet.
+   */
+  it('niemals AUF den erzeugten Railway-Namen, egal wer anklopft', () => {
+    const falsch = `https://${ALT}`
+    expect(sollUmleiten({ appUrl: falsch, method: 'GET', pfad: '/', host: 'okun-workforce.com' }))
+      .toBeNull()
+    expect(sollUmleiten({ appUrl: falsch, method: 'GET', pfad: '/employee/vacation', host: 'okun-workforce.com' }))
+      .toBeNull()
+    expect(sollUmleiten({ appUrl: falsch, method: 'GET', pfad: '/', host: 'www.okun-workforce.com' }))
+      .toBeNull()
+  })
+
+  /*
+   * Die Gegenprobe, ohne die die Ausnahme zu weit griffe: Steht in `APP_URL`
+   * der RICHTIGE Name, muss weiterhin umgeleitet werden — und zwar genau vom
+   * erzeugten Namen weg. Sonst hätte diese Absicherung §235 stillgelegt.
+   */
+  it('aber mit richtiger APP_URL wird weiterhin weggeleitet', () => {
+    expect(sollUmleiten({ appUrl: BETRIEB, method: 'GET', pfad: '/', host: ALT }))
+      .toBe('https://okun-workforce.com/')
+  })
+
   it('nicht in der Entwicklung — dort ist APP_URL localhost', () => {
     expect(sollUmleiten({ appUrl: 'http://localhost:3000', method: 'GET', pfad: '/', host: 'localhost:3000' }))
       .toBeNull()

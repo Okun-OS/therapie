@@ -40,7 +40,7 @@ const ADMIN_BANNERS: Record<string, BannerConfig> = {
     cta: 'Verstanden',
   },
   '/admin/schedule': {
-    title: 'KI plant für dich',
+    title: 'Dienstpläne nach euren Regeln',
     text: 'Der Rechendienst erstellt faire Dienstpläne nach dem Regelpaket, das OKUN für euren Standort gebaut hat. Nutze „Plan erstellen" für einen neuen Plan oder „Dienstplan bearbeiten" für manuelle Änderungen.',
     cta: 'Plan erstellen',
   },

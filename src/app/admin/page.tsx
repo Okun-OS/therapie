@@ -221,7 +221,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { href: '/admin/employees', icon: Users, label: 'Mitarbeiter', color: 'bg-blue-50 text-blue-600' },
-              { href: '/admin/schedule', icon: Calendar, label: 'Dienstplan KI', color: 'bg-purple-50 text-purple-600' },
+              { href: '/admin/schedule', icon: Calendar, label: 'Dienstplan', color: 'bg-purple-50 text-purple-600' },
               { href: '/admin/urlaub', icon: Palmtree, label: 'Urlaub prüfen', color: 'bg-amber-50 text-amber-600' },
               { href: '/admin/reports', icon: TrendingUp, label: 'Berichte', color: 'bg-green-50 text-green-600' },
             ].map(({ href, icon: Icon, label, color }) => (
