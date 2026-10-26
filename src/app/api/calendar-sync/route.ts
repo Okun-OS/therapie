@@ -85,10 +85,14 @@ export async function PATCH(req: NextRequest) {
 /**
  * Die Adresse, unter der der Kalender liegt.
  *
- * `getAppOrigin` nimmt `APP_URL` und fällt nur dort auf die Adresse der
- * Anfrage zurück, wo die Variable nicht gesetzt ist — in der lokalen
- * Entwicklung. Auf Railway ist sie gesetzt, und damit steht hier
- * `okun-workforce.com`, egal über welchen Namen jemand hereinkommt.
+ * §238 Hier stand: „Auf Railway ist sie gesetzt, und damit steht hier
+ * `okun-workforce.com`." Genau diese Annahme war falsch — gesetzt war sie,
+ * aber auf den von Railway erzeugten Namen, und der stand dann in jeder
+ * Abo-Adresse. Dreimal gemeldet, bis es nachgemessen wurde.
+ *
+ * `getAppOrigin` fragt jetzt `kanonischeBasis`, und die nimmt `APP_URL` nur,
+ * wenn dort auch eine eigene Adresse steht. Die Adresse der Anfrage bleibt
+ * der Rückfall für die Entwicklung.
  */
 function feedAdresse(req: NextRequest, token: string): string {
   return `${getAppOrigin(req)}/api/calendar-feed/${token}`

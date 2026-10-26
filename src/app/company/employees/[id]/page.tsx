@@ -14,6 +14,7 @@ import {
   CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { nettoSumme, nettoMinuten } from '@/lib/arbeitszeit'
+import { restUrlaub, restUrlaubSumme } from '@/lib/urlaubskonto'
 
 type Tab = 'overview' | 'timelogs' | 'shifts' | 'vacation'
 
@@ -90,7 +91,7 @@ export default function EmployeeDetailPage() {
   }
 
   const balanceColor = employee.hoursBalance < 0 ? 'text-red-500' : 'text-green-600'
-  const remainingVacation = employee.vacationDaysTotal - employee.vacationDaysUsed
+  const remainingVacation = restUrlaub(employee)
   const monthTotalMin = nettoSumme(monthLogs)  // §206
   const expectedMonthMin = Math.round((employee.weeklyHours / 5) * 8 * 60 * monthLogs.length)
 
@@ -238,7 +239,7 @@ export default function EmployeeDetailPage() {
                 { label: 'Stundenkonto', value: `${employee.hoursBalance >= 0 ? '+' : ''}${employee.hoursBalance}h`, color: balanceColor, icon: TrendingUp },
                 { label: 'Wochenstunden', value: `${employee.weeklyHours}h / Woche`, color: 'text-navy', icon: Clock },
                 { label: 'Urlaub genommen', value: `${employee.vacationDaysUsed} / ${employee.vacationDaysTotal} Tage`, color: 'text-navy', icon: Palmtree },
-                { label: 'Resturlaub', value: `${remainingVacation} Tage`, color: remainingVacation < 5 ? 'text-amber-600' : 'text-green-600', icon: Calendar },
+                { label: 'Resturlaub', value: `${remainingVacation ?? '–'} Tage`, color: (remainingVacation ?? 99) < 5 ? 'text-amber-600' : 'text-green-600', icon: Calendar },
               ].map(({ label, value, color, icon: Icon }) => (
                 <div key={label} className="bg-white border border-gray-100 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-1">
@@ -457,7 +458,7 @@ export default function EmployeeDetailPage() {
               {[
                 { label: 'Urlaubsanspruch', value: `${employee.vacationDaysTotal}d`, color: 'text-navy' },
                 { label: 'Genommen', value: `${employee.vacationDaysUsed}d`, color: 'text-navy' },
-                { label: 'Resturlaub', value: `${remainingVacation}d`, color: remainingVacation < 5 ? 'text-amber-600' : 'text-green-600' },
+                { label: 'Resturlaub', value: `${remainingVacation ?? '–'}d`, color: (remainingVacation ?? 99) < 5 ? 'text-amber-600' : 'text-green-600' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="bg-white border border-gray-100 rounded-2xl p-3 text-center">
                   <p className={`text-xl font-bold ${color}`}>{value}</p>

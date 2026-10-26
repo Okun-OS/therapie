@@ -5734,3 +5734,133 @@ Nach dem Ausrollen von §237 dort gemessen, nicht an `localhost`:
 **Offen bleibt `APP_URL` in Railway.** Bis dort die eigene Domain steht, tragen
 E-Mail-Links, Kalender-Abo und Stellenmeldung weiterhin den erzeugten Namen.
 Das ist eine Einstellung, keine Codeänderung.
+
+## Block §238 (26.10.) — Eine Zahl, eine Adresse, und was ich dreimal übersehen habe
+
+**Die Meldung:** „Bei zwei Sachen stimmt jetzt die Urlaubszahl überein, aber
+einem steht trotzdem noch 16. Das macht keinen Sinn. Bitte auch mal checken, ob
+die Zeiten wenigstens alle überall stimmen. Und Urlaubsdings muss jetzt endlich
+mal gefixt werden. Und bei dieser Google-Kalender-Synchronisation steht immer
+noch diese Therapie-Domain. … Das muss auf okun-workforce.com gesetzt werden."
+
+### Teil 1: Der Urlaub — warum zwei Anläufe nicht gereicht haben
+
+§235 hat Urlaubsseite und Profil auf eine gemeinsame Rechnung gebracht. Das war
+richtig und hat nicht gereicht, weil es die **dritte** Maske gab:
+
+| | |
+|---|---|
+| Mein Tag | **16** |
+| Mein Profil | 12 |
+| Urlaub | 12 von 30 |
+
+Beim Nachsehen lagen hinter dieser dritten noch **elf weitere** Stellen, die
+`vacationDaysTotal − vacationDaysUsed` selbst rechnen: die Belegschaftsliste der
+Leitung, die Berichte, die Unternehmensübersicht, der Urlaubsplan — und zweimal
+das, was einem Sprachmodell über einen Menschen erzählt wird.
+
+**Warum eine gemeinsame Funktion das nicht löst.** Sie hilft nur den Stellen,
+die sie aufrufen. Solange die Zahl im Mitarbeiterdatensatz nicht dabeisteht,
+rechnet jede Maske, die sie braucht, wieder selbst — und jede neue fängt wieder
+von vorn an. Das ist kein Versehen einzelner Entwickler, das ist die Bauform.
+
+Darum liefert **`/api/employees` das Urlaubskonto jetzt mit**. Zwei Zahlen, weil
+es zwei Fragen sind:
+
+| | |
+|---|---|
+| `verfuegbar` | was noch **beantragt** werden kann (offene Anträge abgezogen) |
+| `offen` | was dieses Jahr noch **zusteht** (die rechtliche Zahl) |
+
+Alle zwölf Stellen lesen jetzt eine davon. Fehlt das Konto, steht ein Strich —
+nie eine 0, denn „0 Urlaub übrig" ist die eine falsche Antwort, die niemand
+nachprüft.
+
+**Die zwei Stellen für das Sprachmodell bekommen `offen`, nicht `verfuegbar`.**
+Der Antrag, über den geurteilt werden soll, ist selbst ein offener und in
+`verfuegbar` schon abgezogen — das Modell sähe weniger Tage, als die Person hat,
+und zwar genau um den Antrag, um den es geht.
+
+**Und die Sperre von §108 gilt weiter.** Das gerechnete Konto geht eine Kollegin
+so wenig an wie die Zahlen, aus denen es entsteht. Ohne diese Zeile hätte die
+neue Angabe die Sperre von hinten wieder aufgemacht — mit Gegenprobe geprüft,
+dass es am **eigenen** Datensatz sehr wohl ankommt.
+
+### Teil 2: Die Zeiten — die Zahlen stimmten, ein Wort nicht
+
+Nachgemessen über vier Messpunkte, zwei Rollen und zwei Schreibweisen („Mein
+Tag" zeigt `+7:30`, alle anderen `+7.5h` — derselbe Wert): **Das Stundenkonto
+stimmt überall überein.** Alle Masken lesen dasselbe Feld.
+
+Zwei Dinge waren trotzdem nicht in Ordnung, beide an der Beschriftung:
+
+**„8 Krankheitstage" neben „0 Fehlzeiten".** Das liest sich als Widerspruch, und
+zu Recht — Krankheitstage *sind* Fehlzeiten. Gezählt wurde `type !== 'krankheit'`,
+also alles andere. Die Zahl stimmte, das Wort nicht. Heißt jetzt „Andere
+Fehlzeiten".
+
+**„+0h Stundenkonto" neben „1,6h Überstunden 2026".** Auch das stimmt: Das Konto
+wird an genau einer Stelle fortgeschrieben, beim Freigeben eines
+Monatsabschlusses (`release-closing`). Stehen alle Monate auf „Offen", ist +0
+richtig. Von außen ist das nicht zu erraten, darum steht es jetzt dort: „zählt
+freigegebene Monate".
+
+### Teil 3: Die Domain — der Code braucht die Einstellung nicht mehr
+
+§237 hatte gefunden, dass `APP_URL` in Railway den erzeugten Namen trägt, und
+die Weiterleitung dagegen abgesichert. Das machte die Einstellung unschädlich —
+richtig wurde sie nicht, und vier Stellen trugen weiter den falschen Namen:
+Kalender-Abo, **alle Links in E-Mails**, Stellenmeldung an Google und mittelbar
+die Push-Meldung.
+
+`kanonische-basis.ts` entscheidet das jetzt an einer Stelle. **`APP_URL` behält
+den Vorrang** und greift, wo eine eigene Adresse darin steht; nur wenn dort
+nichts steht oder der erzeugte Name, springt die Betriebsadresse ein.
+
+Nachgemessen gegen eine echte gebaute Fassung mit **genau der Einstellung aus
+Railway**:
+
+| | |
+|---|---|
+| Kalender-Abo | `https://okun-workforce.com/api/calendar-feed/…` |
+| alter Name `/` | 308 → `https://okun-workforce.com/` |
+| `okun-workforce.com/` | 200 |
+| Healthcheck | 200 |
+| Protokoll beim Start | `[APP_URL] steht auf dem von Railway erzeugten Namen … bitte richtigstellen` |
+
+**Offen gesagt, der Preis:** Eine Testumgebung, die `APP_URL` nicht setzt,
+verschickt Links auf den Betrieb. Vorher wären es Links auf den erzeugten Namen
+gewesen — auch falsch, nur stiller. Die Warnung beim Start ist dafür da.
+
+Und §216 bleibt gewahrt: An Google wird weiterhin **nichts** gemeldet, wenn nur
+eine `localhost`-Adresse zur Verfügung steht. Ohne diese Zeile hätte mein Umbau
+die Zusage von §216 stillschweigend aufgehoben.
+
+### Was ich an meinen eigenen Prüfungen gelernt habe
+
+**Die Urlaubsprüfung war grün, während die Zahl falsch war.** Sie las die zwei
+Masken, die auf den Bildern waren, und fragte nicht, ob es weitere gibt. Eine
+Prüfung, die nur das misst, was gemeldet wurde, bestätigt den Bericht und nicht
+die Sache. Sie liest jetzt **vier** Stellen über zwei Rollen, und für jede gibt
+es die Gegenprobe, dass sie sich auch wirklich bewegt.
+
+**Ein Prüfpunkt im Durchstich war seit §236 falsch und zweimal grün.** „Die
+Vorliebe aus der Personalakte wirkt im Plan" misst eine Regel, die §236
+abgeschafft hat. Bestanden hat er, weil ein Plan die Vorliebe auch zufällig
+erfüllt — bei zwölf Diensten und sechzehn Menschen keine seltene Ziehung. Heute
+fiel die Münze andersherum. Entfallen; dass die Vorliebe nicht mehr bevorzugt
+wird, steht dort, wo es sich messen lässt: im Bericht des Regelpakets.
+
+### Nachweise
+
+**1294** Modultests (zwölf neu: `kanonische-basis` in beiden Richtungen, und die
+Gegenprobe, dass eine eigene `APP_URL` den Vorrang behält).
+
+| | |
+|---|---|
+| `urlaubstage-stimmen-ueberein` | **13/13** — vier Stellen, zwei Rollen |
+| `zeiten-stimmen-ueberein` (neu) | **13/13** — zwei Schreibweisen, positiv und negativ |
+| `a-mitarbeiter` | **37/37** — darin §108 für das neue Feld |
+| `f7-durchstich` | **32/32**, dreimal hintereinander stabil |
+| `f9-belegschaft` | 37/37 · `o-persoenliches` 13/13 · `n-kalender-abo` 12/12 |
+| `alle-seiten-ohne-fehler` | **60/60** · `urlaub-aus-antraegen` 15/15 |

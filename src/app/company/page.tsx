@@ -17,6 +17,7 @@ import Link from 'next/link'
 import type { Employee, Location, VacationRequest, TimeLog } from '@/lib/types'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { nettoSumme } from '@/lib/arbeitszeit'
+import { restUrlaub, restUrlaubSumme } from '@/lib/urlaubskonto'
 
 type Tab = 'overview' | 'employees' | 'locations'
 
@@ -230,7 +231,7 @@ export default function CompanyDashboard() {
               {[
                 { label: 'Mitarbeiter', value: filteredEmployees.length, color: 'text-navy' },
                 { label: 'Positives Konto', value: filteredEmployees.filter(e => e.hoursBalance >= 0).length, color: 'text-green-600' },
-                { label: 'Resturlaub ges.', value: filteredEmployees.reduce((s, e) => s + e.vacationDaysTotal - e.vacationDaysUsed, 0), color: 'text-amber-600' },
+                { label: 'Resturlaub ges.', value: restUrlaubSumme(filteredEmployees) ?? '–', color: 'text-amber-600' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="bg-white rounded-2xl border border-gray-100 p-3 text-center">
                   <p className={`text-xl font-bold ${color}`}>{value}</p>
@@ -262,7 +263,7 @@ export default function CompanyDashboard() {
                           <TrendingUp size={10} />{emp.hoursBalance >= 0 ? '+' : ''}{emp.hoursBalance}h
                         </span>
                         <span className="text-xs text-gray-500 flex items-center gap-1">
-                          <Palmtree size={10} />{emp.vacationDaysTotal - emp.vacationDaysUsed} Urlaubstage
+                          <Palmtree size={10} />{restUrlaub(emp) ?? '–'} Urlaubstage
                         </span>
                       </div>
                     </div>

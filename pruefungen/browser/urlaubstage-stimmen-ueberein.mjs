@@ -18,9 +18,24 @@
 //
 // WAS DIESE PRÜFUNG MISST
 // Nicht, ob eine der Zahlen „richtig" ist — das war keine von beiden allein.
-// Sie liest BEIDE Kacheln und vergleicht sie. Mit Gegenprobe: Ein offener
+// Sie liest ALLE Kacheln und vergleicht sie. Mit Gegenprobe: Ein offener
 // Antrag muss die Zahl überhaupt bewegen, sonst wäre „gleich" auch dann grün,
-// wenn beide Seiten dieselbe falsche Zahl zeigten.
+// wenn alle Seiten dieselbe falsche Zahl zeigten.
+//
+// §238 ES WAREN DREI, NICHT ZWEI
+// Diese Prüfung war grün, und trotzdem stand auf „Mein Tag" weiter 16:
+//
+//     Mein Tag     16        ← las diese Prüfung nicht
+//     Mein Profil  12
+//     Urlaub       12 von 30
+//
+// Gemeldet: „Bei zwei Sachen stimmt jetzt die Urlaubszahl überein, aber einem
+// steht trotzdem noch 16. Das macht keinen Sinn."
+//
+// Die Prüfung hatte die zwei Masken genommen, die auf den Bildern waren, und
+// nicht gefragt, ob es weitere gibt. Eine Prüfung, die nur das misst, was
+// gemeldet wurde, bestätigt den Bericht und nicht die Sache. Darum steht die
+// Liste der Masken jetzt oben, an einer Stelle, und jede neue gehört dazu.
 
 import { chromium, devices } from '/opt/node22/lib/node_modules/playwright/index.mjs'
 import { login, hole, sende } from '../helfer.mjs'
@@ -75,6 +90,23 @@ await seite.fill('input[type="password"]', 'Test1234!')
 await seite.click('button[type="submit"]')
 await seite.waitForTimeout(5000)
 
+/*
+ * §238 Eine zweite Sitzung als Leitung — für die vierte Stelle.
+ */
+const ctxLeitung = await browser.newContext({ viewport: { width: 1500, height: 1000 } })
+await ctxLeitung.addInitScript(() => {
+  localStorage.setItem('okun_whats_new_v2_location_model', '1')
+  for (const r of ['employee', 'admin', 'company', 'okun']) {
+    localStorage.setItem(`okun_tour_done_v6:${r}`, '1')
+  }
+})
+const seiteLeitung = await ctxLeitung.newPage()
+await seiteLeitung.goto(`${BASIS}/login`)
+await seiteLeitung.fill('input[type="email"]', 'leitung@rheinblick-reha.de')
+await seiteLeitung.fill('input[type="password"]', 'Test1234!')
+await seiteLeitung.click('button[type="submit"]')
+await seiteLeitung.waitForTimeout(5000)
+
 /** Die große Zahl auf der Urlaubsseite. */
 async function aufDerUrlaubsseite() {
   await seite.goto(`${BASIS}/employee/vacation`)
@@ -84,6 +116,52 @@ async function aufDerUrlaubsseite() {
     const treffer = text.match(/Resturlaub\s*\d{4}\s*(\d+)\s*von\s*(\d+)\s*Tagen/)
     return treffer ? { rest: Number(treffer[1]), gesamt: Number(treffer[2]) } : null
   })
+}
+
+/**
+ * §238 Die Zahl in der Belegschaftsliste der LEITUNG.
+ *
+ * Die unangenehmste der vier: Sah die Leitung 16 und die Person 12, dann
+ * sprachen bei der Frage „geht der Urlaub noch?" zwei Leute über zwei Zahlen.
+ *
+ * Gelesen wird in einer zweiten Sitzung, weil dafür eine andere Rolle nötig
+ * ist — und genau deshalb ist diese Stelle beim ersten Mal durchgerutscht.
+ */
+async function beiDerLeitung(seiteLeitung, name) {
+  await seiteLeitung.goto(`${BASIS}/admin/employees`, { waitUntil: 'domcontentloaded' })
+  for (let versuch = 0; versuch < 60; versuch++) {
+    const wert = await seiteLeitung.evaluate((gesucht) => {
+      for (const feld of Array.from(document.querySelectorAll('[data-test="rest-urlaub"]'))) {
+        const karte = feld.closest('div[class*="rounded"]')
+        if (karte && (karte.textContent ?? '').includes(gesucht)) {
+          return (feld.textContent ?? '').trim()
+        }
+      }
+      return null
+    }, name)
+    if (wert && /^\d+$/.test(wert)) return Number(wert)
+    await seiteLeitung.waitForTimeout(250)
+  }
+  return null
+}
+
+/**
+ * §238 Die Kachel „Urlaubstage übrig" auf „Mein Tag".
+ *
+ * Die erste Zahl, die jemand nach dem Anmelden sieht — und die, die als
+ * letzte umgestellt wurde.
+ */
+async function aufMeinTag() {
+  await seite.goto(`${BASIS}/employee/ich`)
+  const treffer = seite.locator('[data-test="urlaubstage-uebrig"]')
+  for (let versuch = 0; versuch < 40; versuch++) {
+    if (await treffer.count() > 0) {
+      const wert = (await treffer.first().textContent())?.trim()
+      if (wert && /^\d+$/.test(wert)) return Number(wert)
+    }
+    await seite.waitForTimeout(250)
+  }
+  return null
 }
 
 /** Die Kachel „Resturlaub" im Profil. */
@@ -117,9 +195,15 @@ console.log('\n=== §235 Ohne offenen Antrag ===')
 
 const u1 = await aufDerUrlaubsseite()
 const p1 = await imProfil()
+const m1 = await aufMeinTag()
+const l1 = await beiDerLeitung(seiteLeitung, me.name)
 check('Die Urlaubsseite nennt eine Zahl', u1 !== null, JSON.stringify(u1))
 check('Das Profil auch', p1 !== null, `${p1}`)
-check('Und beide sind gleich', u1?.rest === p1, `Urlaubsseite ${u1?.rest} · Profil ${p1}`)
+check('Und „Mein Tag" auch', m1 !== null, `${m1}`)
+check('Und die Leitung sieht auch eine Zahl', l1 !== null, `${l1}`)
+check('Und alle vier sind gleich',
+  u1?.rest === p1 && p1 === m1 && m1 === l1,
+  `Urlaubsseite ${u1?.rest} · Profil ${p1} · Mein Tag ${m1} · Leitung ${l1}`)
 check('Nämlich Anspruch minus genommen', u1?.rest === 16, `${u1?.rest} (30 − 14)`)
 
 // ── §235 Mit offenem Antrag — der gemeldete Fall ──────────────────────────
@@ -143,6 +227,8 @@ check('Und der Server nennt die Zahl der Arbeitstage', beantragt > 0, `${beantra
 
 const u2 = await aufDerUrlaubsseite()
 const p2 = await imProfil()
+const m2 = await aufMeinTag()
+const l2 = await beiDerLeitung(seiteLeitung, me.name)
 
 /*
  * Die Gegenprobe zuerst: Der Antrag MUSS die Zahl bewegen. Sonst wäre
@@ -151,8 +237,23 @@ const p2 = await imProfil()
  */
 check('Der offene Antrag bewegt die Zahl', u2?.rest === (u1?.rest ?? 0) - beantragt,
   `${u1?.rest} → ${u2?.rest} bei ${beantragt} beantragten Tagen`)
-check('Und beide Kacheln zeigen weiterhin dasselbe', u2?.rest === p2,
-  `Urlaubsseite ${u2?.rest} · Profil ${p2}`)
+check('Und alle vier Stellen zeigen weiterhin dasselbe',
+  u2?.rest === p2 && p2 === m2 && m2 === l2,
+  `Urlaubsseite ${u2?.rest} · Profil ${p2} · Mein Tag ${m2} · Leitung ${l2}`)
+/*
+ * §238 Die Gegenprobe für die Leitungsansicht: Auch SIE muss sich bewegen.
+ * Eine Maske, die stur dieselbe Zahl zeigt, bestünde „alle gleich" sonst
+ * genau an dem Tag, an dem sie zufällig passt.
+ */
+check('Und die Leitungsansicht hat sich dabei bewegt', l1 !== l2,
+  `vorher ${l1}, nachher ${l2}`)
+/*
+ * §238 Die Gegenprobe eigens für die dritte Maske: Sie muss sich BEWEGT
+ * haben. Ohne sie wäre „alle gleich" auch dann grün, wenn „Mein Tag" die
+ * Zahl gar nicht neu berechnet, sondern zufällig dieselbe zeigt.
+ */
+check('Und „Mein Tag" hat sich dabei wirklich bewegt', m1 !== m2,
+  `vorher ${m1}, nachher ${m2}`)
 check('Der Unterschied zu vorher sind genau die beantragten Tage',
   (u1?.rest ?? 0) - (u2?.rest ?? 0) === beantragt,
   `${(u1?.rest ?? 0) - (u2?.rest ?? 0)} von ${beantragt} Tagen`)

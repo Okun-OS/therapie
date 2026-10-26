@@ -1,4 +1,5 @@
 import { createSign } from 'crypto'
+import { kanonischeBasis } from './kanonische-basis'
 
 /**
  * §216 Google sagen, dass sich eine Stellenanzeige geändert hat.
@@ -86,10 +87,21 @@ export function indexierungEingerichtet(): boolean {
  * abweichendem Schrägstrich oder fehlendem `https` wird abgelehnt.
  */
 export function stellenAdresse(
-  kundeSlug: string, stellenSlug: string, basis = process.env.APP_URL,
+  kundeSlug: string, stellenSlug: string, basis = kanonischeBasis(),
 ): string | null {
   const wurzel = String(basis ?? '').trim().replace(/\/+$/, '')
   if (!wurzel || !kundeSlug || !stellenSlug) return null
+  /*
+   * §238 Eine nicht öffentliche Adresse ist so gut wie keine.
+   *
+   * Vorher stand als Vorgabe `process.env.APP_URL`, und ohne sie kam `null`
+   * heraus — das war die Absicht von §216: Google soll nichts bekommen, bevor
+   * die öffentliche Adresse feststeht. `kanonischeBasis` liefert in der
+   * Entwicklung aber immer etwas, nämlich `localhost`. Ohne diese Zeile hätte
+   * mein Umbau die Zusage von §216 stillschweigend aufgehoben und Google
+   * Adressen gemeldet, die nur auf diesem Rechner existieren.
+   */
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(wurzel)) return null
   return `${wurzel}/karriere/${encodeURIComponent(kundeSlug)}`
     + `/${encodeURIComponent(stellenSlug)}`
 }

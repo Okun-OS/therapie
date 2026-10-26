@@ -19,6 +19,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Users, Plus, Search, Clock, TrendingUp, Palmtree, ChevronRight, MessageCircle, Sparkles, ListChecks, AlertTriangle, X } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import type { Employee, OvertimeRequest, Absence } from '@/lib/types'
+import { restUrlaub, restUrlaubSumme } from '@/lib/urlaubskonto'
 import type { EmployeeDraft } from '@/lib/employee-draft'
 import { Personalakte } from '@/components/employees/Personalakte'
 import { LohnStammdaten } from '@/components/employees/LohnStammdaten'
@@ -69,6 +70,20 @@ export default function AdminEmployees() {
   const [planningProfileOpen, setPlanningProfileOpen] = useState(false)
   const [planningProfileSaving, setPlanningProfileSaving] = useState(false)
   const [planningProfileDraft, setPlanningProfileDraft] = useState<PlanningProfile | null>(null)
+
+  /*
+   * §238 Hier stand die VIERTE Stelle, die den Resturlaub selbst rechnete —
+   * `vacationDaysTotal − vacationDaysUsed`, ohne die offenen Anträge. Die
+   * unangenehmste von allen, weil hier die LEITUNG hinschaut: Sie sah 16, die
+   * Person sah 12, und bei der Frage, ob noch Urlaub geht, hätten beide
+   * dieselbe Zahl gebraucht.
+   *
+   * Zuerst habe ich hier die Anträge des Standorts nachgeladen. Das stimmte
+   * und war der falsche Ort: Es gab noch zehn weitere Masken mit derselben
+   * Handrechnung, und jede hätte ihre eigene Abfrage bekommen. Jetzt liefert
+   * `/api/employees` das Konto mit, und keine Maske hat mehr einen Grund, es
+   * herzuleiten.
+   */
 
   useEffect(() => {
     fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
@@ -399,7 +414,7 @@ export default function AdminEmployees() {
           </div>
           <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
             <p className="text-xl font-bold text-amber-600">
-              {employees.reduce((s, e) => s + e.vacationDaysTotal - e.vacationDaysUsed, 0)}
+              {restUrlaubSumme(employees) ?? '–'}
             </p>
             <p className="text-xs text-gray-500">Resturlaub gesamt</p>
           </div>
@@ -428,11 +443,15 @@ export default function AdminEmployees() {
                   </div>
                   <div className={`flex items-center gap-1 text-xs font-semibold ${getBalanceColor(emp.hoursBalance)}`}>
                     <TrendingUp size={11} />
-                    {emp.hoursBalance >= 0 ? '+' : ''}{emp.hoursBalance}h Konto
+                    <span data-test="stundenkonto">
+                      {emp.hoursBalance >= 0 ? '+' : ''}{emp.hoursBalance}h
+                    </span> Konto
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <Palmtree size={11} />
-                    {emp.vacationDaysTotal - emp.vacationDaysUsed} Urlaub
+                    <span data-test="rest-urlaub">
+                      {restUrlaub(emp) ?? '–'}
+                    </span> Urlaub
                   </div>
                 </div>
               </div>
@@ -477,7 +496,7 @@ export default function AdminEmployees() {
               {[
                 { label: 'Stundenkonto', value: `${selectedEmployee.hoursBalance >= 0 ? '+' : ''}${selectedEmployee.hoursBalance}h`, color: getBalanceColor(selectedEmployee.hoursBalance) },
                 { label: 'Wochenstunden', value: `${selectedEmployee.weeklyHours}h`, color: 'text-navy' },
-                { label: 'Resturlaub', value: `${selectedEmployee.vacationDaysTotal - selectedEmployee.vacationDaysUsed} Tage`, color: 'text-navy' },
+                { label: 'Resturlaub', value: `${restUrlaub(selectedEmployee) ?? '–'} Tage`, color: 'text-navy' },
                 { label: 'Dabei seit', value: new Date(selectedEmployee.joinedAt).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }), color: 'text-navy' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="bg-gray-50 rounded-xl p-3">

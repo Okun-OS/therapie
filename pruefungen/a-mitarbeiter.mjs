@@ -86,6 +86,23 @@ check('Kollegen-Stundenkonto ist NICHT sichtbar',
   `geprüft an ${kollegen.length} Kollegen`)
 check('Kollegen-Urlaubsanspruch ist NICHT sichtbar',
   kollegen.every(e => e.vacationDaysTotal === undefined && e.vacationDaysUsed === undefined))
+/*
+ * §238 Seit `/api/employees` das GERECHNETE Urlaubskonto mitliefert, braucht
+ * es diese Zeile: Die Rohzahlen zu sperren und das Ergebnis daraus
+ * mitzuschicken wäre dieselbe Auskunft, nur bequemer.
+ */
+check('Und auch das gerechnete Urlaubskonto nicht',
+  kollegen.every(e => e.urlaub === undefined),
+  `geprüft an ${kollegen.length} Kollegen`)
+/*
+ * Die Gegenprobe, ohne die das Obige nichts aussagt: Beim EIGENEN Datensatz
+ * muss das Konto da sein. Sonst wäre „nirgends sichtbar" auch dann grün, wenn
+ * die Schnittstelle es überhaupt nicht mehr liefert — und dann stünde in allen
+ * vier Masken ein Strich.
+ */
+check('Beim eigenen Datensatz ist es da — sonst zeigt jede Maske einen Strich',
+  eigen?.urlaub != null && typeof eigen.urlaub.verfuegbar === 'number',
+  JSON.stringify(eigen?.urlaub ?? null))
 check('Kollegen-Wochenstunden sind NICHT sichtbar',
   kollegen.every(e => e.weeklyHours === undefined))
 check('Name und Funktion der Kollegen bleiben sichtbar',

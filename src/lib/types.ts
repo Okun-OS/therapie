@@ -43,6 +43,14 @@ export interface Bereich {
 }
 
 export interface Employee {
+  /**
+   * §238 Das gerechnete Urlaubskonto, vom Server mitgeliefert.
+   *
+   * Optional, weil nicht jede Antwort aus `/api/employees` kommt — und weil
+   * eine Kollegin es nach §108 nicht bekommt. Eine Maske, die es nicht hat,
+   * zeigt einen Strich und rechnet NICHT selbst nach.
+   */
+  urlaub?: import('./urlaubskonto').Urlaubskonto
   id: string
   customerId?: string
   name: string

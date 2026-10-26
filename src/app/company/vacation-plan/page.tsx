@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/Select'
 import { SCHOOL_HOLIDAYS_2026 } from '@/lib/school-holidays'
 import { Employee, Location, VacationRequest } from '@/lib/types'
 import { Palmtree, Building2, Filter, CalendarDays } from 'lucide-react'
+import { restUrlaub, restUrlaubSumme } from '@/lib/urlaubskonto'
 
 export default function CompanyVacationPlan() {
   const [locationFilter, setLocationFilter] = useState('all')
@@ -25,7 +26,7 @@ export default function CompanyVacationPlan() {
 
   const approvedDays = requests.filter(v => v.status === 'approved').reduce((s, v) => s + v.days, 0)
   const pendingRequests = requests.filter(v => v.status === 'pending')
-  const totalRemaining = employees.reduce((s, e) => s + (e.vacationDaysTotal - e.vacationDaysUsed), 0)
+  const totalRemaining = restUrlaubSumme(employees)
   /*
    * §231 Gezählt wird jetzt am Feld, in dem es steht.
    *

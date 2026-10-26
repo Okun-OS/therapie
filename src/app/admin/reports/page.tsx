@@ -9,6 +9,7 @@ import { Employee, TimeLog, Absence, OvertimeRequest } from '@/lib/types'
 import { Download, BarChart3, TrendingUp, Clock, Users, Calendar, Stethoscope, AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { nettoSumme } from '@/lib/arbeitszeit'
+import { restUrlaub, restUrlaubSumme } from '@/lib/urlaubskonto'
 
 export default function AdminReports() {
   const { user } = useAuth()
@@ -224,7 +225,7 @@ export default function AdminReports() {
                     <td className="py-3 text-center text-sm text-gray-600">{emp.vacationDaysTotal}</td>
                     <td className="py-3 text-center text-sm text-gray-600">{emp.vacationDaysUsed}</td>
                     <td className="py-3 text-center">
-                      <span className="text-sm font-bold text-navy">{emp.vacationDaysTotal - emp.vacationDaysUsed}</span>
+                      <span className="text-sm font-bold text-navy">{restUrlaub(emp) ?? '–'}</span>
                     </td>
                     <td className="py-3 text-center">
                       <Badge variant={emp.hoursBalance >= 0 ? 'success' : 'danger'}>

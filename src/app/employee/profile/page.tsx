@@ -211,10 +211,23 @@ export default function EmployeeProfile() {
               <p className="text-xs text-gray-500">Resturlaub</p>
             </div>
             <div className="text-center">
-              <p className={`text-lg font-bold ${employee.hoursBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+              <p className={`text-lg font-bold ${employee.hoursBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}
+                data-test="stundenkonto">
                 {employee.hoursBalance >= 0 ? '+' : ''}{employee.hoursBalance}h
               </p>
+              {/*
+                §238 „+0h" neben „1,6h Überstunden 2026" liest sich wie ein
+                Widerspruch, und man kann es von außen nicht auflösen.
+                Nachgesehen: Das Stundenkonto wird an genau EINER Stelle
+                fortgeschrieben — beim Freigeben eines Monatsabschlusses
+                (`release-closing`). Stehen alle Monate auf „Offen", ist +0
+                richtig, und die Überstunden warten darauf, dort einzugehen.
+                Die Zahl stimmte; es fehlte der Satz dazu.
+              */}
               <p className="text-xs text-gray-500">Stundenkonto</p>
+              <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">
+                zählt freigegebene Monate
+              </p>
             </div>
             <div className="text-center">
               <p className="text-lg font-bold text-navy">{employee.weeklyHours}h</p>
@@ -227,12 +240,19 @@ export default function EmployeeProfile() {
               <p className="text-xs text-gray-500">Überstunden {currentYear}</p>
             </div>
             <div className="text-center">
-              <p className="text-lg font-bold text-navy">{sickDaysThisYear}</p>
+              <p className="text-lg font-bold text-navy" data-test="krankheitstage">{sickDaysThisYear}</p>
               <p className="text-xs text-gray-500">Krankheitstage {currentYear}</p>
             </div>
             <div className="text-center">
-              <p className="text-lg font-bold text-navy">{otherAbsenceDaysThisYear}</p>
-              <p className="text-xs text-gray-500">Fehlzeiten {currentYear}</p>
+              {/*
+                §238 Hier stand „Fehlzeiten". Daneben stand „8 Krankheitstage",
+                und darunter eine 0 — gelesen wie ein Widerspruch, und zu Recht:
+                Krankheitstage SIND Fehlzeiten. Gezählt wird hier aber
+                `type !== 'krankheit'`, also alles andere. Die Zahl stimmte, das
+                Wort nicht.
+              */}
+              <p className="text-lg font-bold text-navy" data-test="andere-fehlzeiten">{otherAbsenceDaysThisYear}</p>
+              <p className="text-xs text-gray-500">Andere Fehlzeiten {currentYear}</p>
             </div>
           </div>
         </Card>

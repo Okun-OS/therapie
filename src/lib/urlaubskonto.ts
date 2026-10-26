@@ -105,3 +105,47 @@ function zahl(wert: unknown, ersatz: number): number {
   const n = typeof wert === 'number' ? wert : Number(wert)
   return Number.isFinite(n) ? n : ersatz
 }
+
+/**
+ * §238 Was eine Maske anzeigt, ohne selbst zu rechnen.
+ *
+ * `/api/employees` liefert das Konto mit (§238). Diese beiden Helfer sind der
+ * Grund, warum eine Maske es nicht mehr herleiten muss — und `null` statt
+ * einer Null ist dabei die ganze Pointe: Fehlt das Konto, steht ein Strich.
+ * Eine 0 sähe aus wie „kein Urlaub mehr übrig" und wäre die eine Antwort, die
+ * niemand nachprüft.
+ */
+export function restUrlaub(person: { urlaub?: Urlaubskonto }): number | null {
+  return person.urlaub ? person.urlaub.verfuegbar : null
+}
+
+/**
+ * Die Summe über mehrere Menschen — oder `null`, wenn bei einem das Konto
+ * fehlt.
+ *
+ * Teilsummen sind hier gefährlicher als gar keine Zahl: „Resturlaub gesamt"
+ * über eine Belegschaft, bei der drei Leute fehlen, ist keine Schätzung,
+ * sondern eine falsche Zahl mit richtigem Etikett.
+ */
+export function restUrlaubSumme(liste: { urlaub?: Urlaubskonto }[]): number | null {
+  if (liste.length === 0) return 0
+  if (!liste.every(p => p.urlaub)) return null
+  return liste.reduce((s, p) => s + (p.urlaub as Urlaubskonto).verfuegbar, 0)
+}
+
+/**
+ * §238 Was dieses Jahr noch ZUSTEHT — die rechtliche Zahl.
+ *
+ * Für die beiden Stellen, an denen ein Sprachmodell über Anträge urteilt.
+ * Dort wäre `verfuegbar` falsch: Der Antrag, um den es gerade geht, ist selbst
+ * ein offener und darin schon abgezogen. Das Modell bekäme weniger Tage zu
+ * sehen, als die Person hat, und zwar genau um den Antrag, den es beurteilen
+ * soll.
+ *
+ * Rechnerisch ist das `gesamt − genommen`, also das, was dort vorher von Hand
+ * stand. Der Unterschied liegt in den Rändern, die `urlaubskonto` mitbringt:
+ * ein fehlender Anspruch wird zu 30 statt zu 0, und negativ wird es nie.
+ */
+export function offenerUrlaub(person: { urlaub?: Urlaubskonto }): number | null {
+  return person.urlaub ? person.urlaub.offen : null
+}

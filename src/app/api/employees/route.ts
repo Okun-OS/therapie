@@ -4,8 +4,60 @@ import { addEmployeeWithInvitation, LocationCustomerMismatchError } from '@/lib/
 import { requireRole, resolveCustomerId, resolveBereichIds } from '@/lib/session'
 import { getAppOrigin } from '@/lib/app-url'
 import { logAudit } from '@/lib/audit'
+import { prisma } from '@/lib/prisma'
+import { urlaubskonto, type Urlaubskonto } from '@/lib/urlaubskonto'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * §238 Das Urlaubskonto kommt vom Server — und zwar für ALLE Masken.
+ *
+ * DER WEG BIS HIERHER, UND WARUM ER ZU KURZ WAR
+ * §235 hat Urlaubsseite und Profil auf `urlaubskonto.ts` gebracht. Das war
+ * richtig und hat nicht gereicht: Gemeldet kam zurück, dass auf „Mein Tag"
+ * weiter 16 stand. §238 hat auch die umgestellt — und beim Nachsehen lagen
+ * noch VIERZEHN weitere Stellen da, die `vacationDaysTotal − vacationDaysUsed`
+ * selbst rechnen. In der Belegschaftsliste, in den Berichten, in der
+ * Unternehmensansicht, und zweimal in dem, was einem Sprachmodell über einen
+ * Menschen erzählt wird.
+ *
+ * Eine gemeinsame Funktion hilft nur den Stellen, die sie aufrufen. Solange
+ * die Zahl im Mitarbeiterdatensatz NICHT dabeisteht, rechnet jede Maske, die
+ * sie braucht, wieder selbst — und jede neue Maske fängt wieder von vorn an.
+ * Darum steht sie jetzt an der Antwort: Wer `/api/employees` liest, bekommt
+ * sie mitgeliefert und hat keinen Grund mehr, sie herzuleiten.
+ *
+ * ZWEI ZAHLEN, WEIL ES ZWEI FRAGEN SIND
+ *   verfuegbar  was noch BEANTRAGT werden kann (offene Anträge abgezogen)
+ *   offen       was dieses Jahr noch ZUSTEHT (die rechtliche Zahl)
+ * Welche eine Maske zeigt, entscheidet sie — aber herleiten muss sie keine
+ * mehr.
+ *
+ * EINE Abfrage für alle, nicht eine je Person: Bei sechzehn Menschen wären
+ * das sechzehn Gelegenheiten, dass eine nicht ankommt.
+ */
+async function mitUrlaubskonto<T extends { id: string }>(
+  employees: T[],
+): Promise<(T & { urlaub: Urlaubskonto })[]> {
+  if (employees.length === 0) return []
+  const antraege = await prisma.vacationRequest.findMany({
+    where: { employeeId: { in: employees.map(e => e.id) } },
+    select: { employeeId: true, status: true, days: true },
+  })
+  const jeMensch = new Map<string, { status: string; days: number }[]>()
+  for (const a of antraege) {
+    const liste = jeMensch.get(a.employeeId) ?? []
+    liste.push({ status: a.status, days: a.days })
+    jeMensch.set(a.employeeId, liste)
+  }
+  return employees.map(e => ({
+    ...e,
+    urlaub: urlaubskonto(
+      e as { vacationDaysTotal?: number | null; vacationDaysUsed?: number | null },
+      jeMensch.get(e.id) ?? [],
+    ),
+  }))
+}
 
 export async function GET(req: NextRequest) {
   const session = requireRole(req)
@@ -16,7 +68,7 @@ export async function GET(req: NextRequest) {
   if (session.role === 'okun') {
     // OKUN-Admins dürfen plattformweit lesen, aber immer auf locationId eingrenzen wenn angegeben
     const employees = await listEmployees(undefined, locationId)
-    return NextResponse.json({ employees })
+    return NextResponse.json({ employees: await mitUrlaubskonto(employees) })
   }
 
   const customerId = await resolveCustomerId(session)
@@ -40,14 +92,16 @@ export async function GET(req: NextRequest) {
   //
   // Die eigenen Daten bleiben vollständig — die Mitarbeiter-App zeigt darüber
   // das eigene Stundenkonto und den Resturlaub an.
+  const mitKonto = await mitUrlaubskonto(employees)
+
   if (session.role === 'employee') {
-    const gefiltert = employees.map(e =>
+    const gefiltert = mitKonto.map(e =>
       e.id === session.employeeId ? e : kollegenSicht(e),
     )
     return NextResponse.json({ employees: gefiltert })
   }
 
-  return NextResponse.json({ employees })
+  return NextResponse.json({ employees: mitKonto })
 }
 
 /**
@@ -60,6 +114,10 @@ function kollegenSicht(e: unknown): Record<string, unknown> {
     hoursBalance: _hb,
     vacationDaysTotal: _vt,
     vacationDaysUsed: _vu,
+    // §238 Das gerechnete Konto geht eine Kollegin genauso wenig an wie die
+    // Zahlen, aus denen es entsteht. Ohne diese Zeile hätte die neue Angabe
+    // die Sperre von §108 von hinten wieder aufgemacht.
+    urlaub: _uk,
     weeklyHours: _wh,
     workDaysPerWeek: _wd,
     preferences: _p,

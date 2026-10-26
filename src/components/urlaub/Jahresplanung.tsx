@@ -15,6 +15,7 @@ import { SCHOOL_HOLIDAYS_2026 } from '@/lib/school-holidays'
 import { formatDate, sanitizeAiText } from '@/lib/utils'
 import type { VacationPlanEntry, VacationPlanSummary, VacationPlanConflict, VacationRules, VacationRequest, Employee, Location } from '@/lib/types'
 import type { VacationRulesDraft } from '@/lib/vacation-rules-draft'
+import { offenerUrlaub } from '@/lib/urlaubskonto'
 import {
   Sparkles, Loader, CheckCircle, AlertTriangle, Baby, Palmtree,
   Calendar, Info, Download, Clock, MessageCircle, Send, PartyPopper,
@@ -299,7 +300,8 @@ export function Jahresplanung() {
           id: emp.id,
           name: emp.name,
           hasChildren: emp.hasChildren ?? false,
-          remainingDays: emp.vacationDaysTotal - emp.vacationDaysUsed,
+          // §238 Die Anträge stehen daneben; abgezogen wird hier nichts.
+          remainingDays: offenerUrlaub(emp),
           antraege: zeilen
             .filter(z => z.employeeId === emp.id)
             .map(z => ({

@@ -1,8 +1,12 @@
 import { Resend } from 'resend'
+import { kanonischeBasis } from './kanonische-basis'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
-const APP_ORIGIN = process.env.APP_URL?.replace(/\/+$/, '') || 'http://localhost:3000'
+// §238 Jeder Link in jeder E-Mail — Einladung, Passwort zurücksetzen —
+// hing an `APP_URL`, und die trug am laufenden System den von Railway
+// erzeugten Namen. Siehe `kanonische-basis.ts`.
+const APP_ORIGIN = kanonischeBasis()
 
 interface SendEmailOptions {
   ctaLabel?: string

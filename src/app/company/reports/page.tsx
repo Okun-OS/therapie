@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select'
 import { Employee, Location, TimeLog, VacationRequest, Absence } from '@/lib/types'
 import { Download, BarChart3, TrendingUp, Users, Clock, Palmtree, Building2, Filter, Stethoscope } from 'lucide-react'
 import { nettoSumme } from '@/lib/arbeitszeit'
+import { restUrlaub, restUrlaubSumme } from '@/lib/urlaubskonto'
 
 export default function CompanyReports() {
   const [locationFilter, setLocationFilter] = useState('all')
@@ -37,7 +38,7 @@ export default function CompanyReports() {
   const totalHours = nettoSumme(logs)  // §206
   const avgHoursPerEmp = employees.length > 0 ? Math.round(totalHours / employees.length / 60) : 0
   const totalVacationDays = employees.reduce((s, e) => s + e.vacationDaysUsed, 0)
-  const totalVacationRemaining = employees.reduce((s, e) => s + (e.vacationDaysTotal - e.vacationDaysUsed), 0)
+  const totalVacationRemaining = restUrlaubSumme(employees)
 
   const currentYear = new Date().getFullYear()
   const employeeAbsences = employees.map(e => ({
@@ -225,7 +226,7 @@ export default function CompanyReports() {
                     <p className={`text-sm font-bold ${emp.hoursBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                       {emp.hoursBalance >= 0 ? '+' : ''}{emp.hoursBalance}h
                     </p>
-                    <p className="text-xs text-gray-400">{emp.vacationDaysTotal - emp.vacationDaysUsed}T Urlaub</p>
+                    <p className="text-xs text-gray-400">{restUrlaub(emp) ?? '–'}T Urlaub</p>
                   </div>
                 </div>
               )

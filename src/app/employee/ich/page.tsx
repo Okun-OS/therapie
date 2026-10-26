@@ -7,8 +7,9 @@ import {
   Receipt, Palmtree, Stethoscope, Clock, FolderOpen, User, TrendingUp,
   ChevronRight, LogOut, Shield, ShieldCheck,
 } from 'lucide-react'
-import type { Employee } from '@/lib/types'
+import type { Employee, VacationRequest } from '@/lib/types'
 import { AppEinstellungen } from '@/components/app/AppEinstellungen'
+import { urlaubskonto } from '@/lib/urlaubskonto'
 
 /**
  * §137 „Ich" — alles, was einen selbst betrifft.
@@ -26,6 +27,27 @@ export default function Ich() {
   const { user, logout } = useAuth()
   const [mich, setMich] = useState<Employee | null>(null)
   const [offeneNachweise, setOffeneNachweise] = useState(0)
+  /**
+   * §238 Die DRITTE Kachel mit derselben Zahl.
+   *
+   * §235 hat Urlaubsseite und Profil auf eine Rechnung gebracht. Diese hier
+   * ist mir entgangen — und sie ist die erste, die jemand sieht:
+   *
+   *     Mein Tag     „16 Urlaubstage übrig"
+   *     Mein Profil  „12 Resturlaub"
+   *     Urlaub       „12 von 30 Tagen"
+   *
+   * Gemeldet: „Bei zwei Sachen stimmt jetzt die Urlaubszahl überein, aber
+   * einem steht trotzdem noch 16. Das macht keinen Sinn."
+   *
+   * Der Grund war derselbe wie beim ersten Mal: Hier stand die Rechnung
+   * `gesamt − genommen` von Hand im Bauteil, ohne die offenen Anträge. Dass
+   * §235 eine gemeinsame Datei angelegt hat, half nichts, solange eine Stelle
+   * sie nicht benutzt. Zwei von drei Masken umzustellen ist kein halber
+   * Erfolg — für den, der die dritte zuerst aufschlägt, ist es gar keiner.
+   */
+  const [meineAntraege, setMeineAntraege] = useState<VacationRequest[]>([])
+  const [antraegeGeladen, setAntraegeGeladen] = useState(false)
 
   useEffect(() => {
     if (!user?.employeeId) return
@@ -46,11 +68,18 @@ export default function Ich() {
       setOffeneNachweise(
         (z?.offen ?? 0) + (z?.rueckfrage ?? 0) + (b?.offen ?? 0))
     })
+    // §238 Die Anträge gehören zur Zahl — ohne sie zählt die Kachel Tage mit,
+    // die schon vergeben sind.
+    fetch(`/api/vacation-requests?employeeId=${user.employeeId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setMeineAntraege(d?.requests ?? []))
+      // Auch im Fehlerfall „geladen": Sonst stünde dort für immer ein Strich,
+      // und niemand wüsste, ob gerechnet wird oder etwas kaputt ist.
+      .finally(() => setAntraegeGeladen(true))
   }, [user?.employeeId])
 
-  const resturlaub = mich
-    ? (mich.vacationDaysTotal ?? 0) - (mich.vacationDaysUsed ?? 0)
-    : null
+  // §238 Dieselbe Rechnung wie auf Urlaubsseite und Profil.
+  const konto = urlaubskonto(mich ?? {}, meineAntraege)
 
   /**
    * §151 Das Stundenkonto ist der LAUFENDE Saldo, nicht der des Monats.
@@ -78,15 +107,22 @@ export default function Ich() {
       <div className="grid grid-cols-2 gap-2.5">
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
           <Palmtree size={18} className="text-teal-600 mb-2" />
-          <p className="text-2xl font-bold text-navy tabular-nums">
-            {resturlaub ?? '—'}
+          {/*
+            §238 Ein Strich, bis die Anträge da sind — wie im Profil.
+            Eine Zahl, die sich eine Sekunde später ändert, ist schlimmer als
+            keine: Sie sieht aus, als stünde sie fest.
+          */}
+          <p className="text-2xl font-bold text-navy tabular-nums"
+            data-test="urlaubstage-uebrig">
+            {mich && antraegeGeladen ? konto.verfuegbar : '—'}
           </p>
           <p className="text-xs text-gray-400">Urlaubstage übrig</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
           <Clock size={18} className="text-navy mb-2" />
           <p className={`text-2xl font-bold tabular-nums ${
-            (saldo ?? 0) < 0 ? 'text-amber-700' : 'text-navy'}`}>
+            (saldo ?? 0) < 0 ? 'text-amber-700' : 'text-navy'}`}
+            data-test="stundenkonto">
             {saldoText}
           </p>
           <p className="text-xs text-gray-400">Stundenkonto</p>

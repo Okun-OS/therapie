@@ -119,6 +119,36 @@ describe('§216 Die Adresse der Anzeige', () => {
     expect(stellenAdresse('a', 'b', undefined)).toBeNull()
   })
 
+  /*
+   * §238 Die Gegenprobe zur Sperre darüber.
+   *
+   * Sie darf nicht ALLES abweisen: Steht in `APP_URL` der von Railway
+   * erzeugte Name, springt `kanonischeBasis` mit der Betriebsadresse ein, und
+   * dann MUSS eine Adresse herauskommen. Ohne diesen Fall wäre „gibt nichts
+   * zurück" auch dann grün, wenn die Funktion nie wieder etwas zurückgibt.
+   */
+  it('aber mit dem erzeugten Railway-Namen die Betriebsadresse', () => {
+    process.env.APP_URL = 'https://therapie-production.up.railway.app'
+    // Der Rückfall auf die Betriebsadresse gilt nur im Betrieb — im Testlauf
+    // bliebe es sonst bei `localhost`, und das wäre richtig so.
+    const vorher = process.env.NODE_ENV
+    Object.defineProperty(process.env, 'NODE_ENV',
+      { value: 'production', configurable: true, writable: true, enumerable: true })
+    try {
+      expect(stellenAdresse('kita', 'erzieher'))
+        .toBe('https://okun-workforce.com/karriere/kita/erzieher')
+    } finally {
+      Object.defineProperty(process.env, 'NODE_ENV',
+        { value: vorher, configurable: true, writable: true, enumerable: true })
+    }
+  })
+
+  it('und eine eigene Adresse bleibt natürlich die eigene', () => {
+    process.env.APP_URL = 'https://okun-workforce.com'
+    expect(stellenAdresse('kita', 'erzieher'))
+      .toBe('https://okun-workforce.com/karriere/kita/erzieher')
+  })
+
   it('kodiert, was kodiert gehört', () => {
     expect(stellenAdresse('träger', 'stelle nr 2'))
       .toBe('https://okun-workforce.com/karriere/tr%C3%A4ger/stelle%20nr%202')

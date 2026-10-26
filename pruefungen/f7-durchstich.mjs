@@ -144,19 +144,35 @@ const ohneAnmeldung = await fetch(`${BASIS}/api/schedule-entries?employeeId=${st
 check('Und ohne Anmeldung erst recht nicht', ohneAnmeldung.status === 401,
   `HTTP ${ohneAnmeldung.status}`)
 
-// §181 Was das Regelpaket seit heute NICHT mehr selbst weiß: wer welche
-// Schicht lieber mag und wer an welchen Tagen fest frei hat. Beides steht in
-// den Personalakten. Wenn es trotzdem im Plan ankommt, ist die Verschiebung
-// mehr als eine Umsortierung.
-const julianeId = belegschaft.find(e => e.email === 'juliane.roth@kita-regenbogen.de')?.id
+// §181 Was das Regelpaket seit damals NICHT mehr selbst weiß: wer an welchen
+// Tagen fest frei hat und wie sein Tagesmuster aussieht. Beides steht in den
+// Personalakten. Wenn es trotzdem im Plan ankommt, ist die Verschiebung mehr
+// als eine Umsortierung.
 const heikeId = belegschaft.find(e => e.email === 'heike.stein@kita-regenbogen.de')?.id
-const schichten = (await hole(leitung, '/api/shifts')).body.shifts ?? []
-const typVon = new Map(schichten.map(s => [s.id, s.type]))
 
-check('Die Vorliebe aus der Personalakte wirkt im Plan',
-  lauf.dienste(julianeId).every(d => typVon.get(d.schichtId) !== 'late'),
-  lauf.dienste(julianeId).map(d => `${d.datum} ${d.name}`).join(', '))
-check('Und ein fester freier Tag aus der Personalakte auch',
+/*
+ * §238 Hier stand: „Die Vorliebe aus der Personalakte wirkt im Plan" —
+ * nachgewiesen daran, dass Juliane Roth keinen Spätdienst bekommt.
+ *
+ * Der Punkt ist entfallen, und zwar aus zwei Gründen.
+ *
+ * ERSTENS misst er eine Regel, die es nicht mehr gibt. §236 hat die dauerhafte
+ * Dienstvorliebe abgeschafft — gemeldet mit „ich möchte nicht, dass dann auf
+ * einmal jemand dauernd Spätdienste bekommt, obwohl das nicht mehr mit der
+ * Fairness kollidiert". §237 hat die letzte Spur davon aus dem Demo-Seed
+ * entfernt.
+ *
+ * ZWEITENS, und das ist das Lehrreichere: Er war nach §236 noch zweimal grün.
+ * Nicht weil die Vorliebe wirkte, sondern weil ein Plan sie auch zufällig
+ * erfüllt — bei zwölf Diensten und sechzehn Menschen ist „kein Spätdienst für
+ * diese eine Person" keine seltene Ziehung. Heute fiel die Münze andersherum.
+ * Eine Zusage, die ein Würfel erfüllt, ist keine Zusage.
+ *
+ * Dass die Vorliebe NICHT mehr bevorzugt wird, steht dort, wo es sich messen
+ * lässt: im Bericht des Regelpakets (`test_rulepacks.py`), nicht an einem
+ * einzelnen Plan.
+ */
+check('Ein fester freier Tag aus der Personalakte wirkt im Plan',
   lauf.dienste(heikeId).every(d => new Date(d.datum).getDay() !== 5),
   lauf.dienste(heikeId).map(d => `${d.datum} ${d.name}`).join(', '))
 check('Ihr Tagesmuster steht ebenfalls dort — vier Tage, einer davon kürzer',

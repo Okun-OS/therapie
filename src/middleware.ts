@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { kanonischesZiel } from '@/lib/kanonische-domain'
+import { kanonischeBasis } from '@/lib/kanonische-basis'
 
 /**
  * §201 Wer angemeldet ist, sieht die Verkaufsseite gar nicht erst.
@@ -120,10 +121,14 @@ if (process.env.NODE_ENV === 'production') {
     console.warn('[APP_URL] nicht gesetzt — E-Mail-Links, Kalender-Abo und '
       + 'Stellenmeldung fallen auf die Adresse der Anfrage zurück.')
   } else if (/\.up\.railway\.app\/?$/i.test(gesetzt)) {
+    // §238 Die Folgen sind inzwischen abgefangen — `kanonischeBasis` nimmt
+    // stattdessen die Betriebsadresse. Die Warnung bleibt trotzdem: Ein
+    // Rückfall, der stillschweigend einspringt, ist ein Rückfall, den
+    // niemand mehr abstellt.
     console.warn(`[APP_URL] steht auf dem von Railway erzeugten Namen (${gesetzt}). `
-      + 'Erwartet wird die eigene Domain. Solange das so ist, tragen E-Mail-Links, '
-      + 'Kalender-Abo und Stellenmeldung den erzeugten Namen, und die '
-      + 'Weiterleitung auf die richtige Domain bleibt aus (§237).')
+      + 'Erwartet wird die eigene Domain. E-Mail-Links, Kalender-Abo, '
+      + 'Stellenmeldung und die Weiterleitung benutzen ersatzweise die fest '
+      + 'hinterlegte Betriebsadresse (§238) — bitte APP_URL richtigstellen.')
   }
 }
 
@@ -141,7 +146,10 @@ function kanonischeWeiterleitung(req: NextRequest): NextResponse | null {
       pfad: req.nextUrl.pathname,
       suche: req.nextUrl.search,
     },
-    process.env.APP_URL,
+    // §238 Nicht mehr `process.env.APP_URL` roh: Trägt die den von Railway
+    // erzeugten Namen, liefert `kanonischeBasis` die richtige Adresse, und
+    // die Weiterleitung führt wieder dorthin statt von dort weg.
+    kanonischeBasis(),
   )
   // 308: dauerhaft, und die Methode bleibt erhalten — anders als bei 301,
   // das manche Browser zu einem GET machen.

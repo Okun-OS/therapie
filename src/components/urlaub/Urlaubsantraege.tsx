@@ -12,6 +12,7 @@ import { CheckCircle, XCircle, Clock, Palmtree, Calendar, Sparkles, Loader2, Ale
 import { formatDate, sanitizeAiText } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { VacationRequest, RequestStatus, VacationRecommendation, VacationRules, Employee } from '@/lib/types'
+import { offenerUrlaub } from '@/lib/urlaubskonto'
 
 const STANCE_CONFIG: Record<VacationRecommendation['stance'], { label: string; color: string; bg: string }> = {
   empfehlung_genehmigen: { label: 'Empfehlung: Genehmigen', color: 'text-green-700', bg: 'bg-green-50 border-green-100' },
@@ -89,7 +90,9 @@ export function Urlaubsantraege() {
           endDate: selected.endDate,
           days: selected.days,
           reason: selected.reason,
-          remainingDays: emp ? emp.vacationDaysTotal - emp.vacationDaysUsed : 0,
+          // §238 `offen`, nicht `verfuegbar`: Dieser Antrag ist selbst ein
+          // offener und in `verfuegbar` schon abgezogen.
+          remainingDays: emp ? offenerUrlaub(emp) : null,
         },
         overlapping,
       }),
