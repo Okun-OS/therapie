@@ -301,7 +301,10 @@ export function Jahresplanung() {
           name: emp.name,
           hasChildren: emp.hasChildren ?? false,
           // §238 Die Anträge stehen daneben; abgezogen wird hier nichts.
-          remainingDays: offenerUrlaub(emp),
+          // Fehlt das Konto, geht das Feld gar nicht mit — siehe
+          // `Urlaubsantraege.tsx`.
+          ...(offenerUrlaub(emp) !== null
+            ? { remainingDays: offenerUrlaub(emp) as number } : {}),
           antraege: zeilen
             .filter(z => z.employeeId === emp.id)
             .map(z => ({

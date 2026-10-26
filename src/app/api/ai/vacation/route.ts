@@ -76,7 +76,8 @@ interface VacationRequest {
     id: string
     name: string
     hasChildren: boolean
-    remainingDays: number
+    /** §238 Wahlfrei: Fehlt das Urlaubskonto, kommt das Feld nicht mit. */
+    remainingDays?: number
     antraege: {
       startDate: string
       endDate: string
@@ -145,6 +146,7 @@ ${antragsfrist
 ${JSON.stringify(employees, null, 2)}
 
 Hinweis: "remainingDays" = noch zu verplanende Urlaubstage im angegebenen Zeitraum.
+Fehlt das Feld bei einer Person, ist ihr Rest UNBEKANNT — behandle das nicht als 0 und nicht als unbegrenzt, sondern erwähne es im Feld "warnings".
 Hinweis: Ein Antrag mit "status": "approved" ist bereits genehmigt und steht fest.
 Wer gar keinen Antrag eingereicht hat, bekommt in diesem Plan keinen Urlaub — das ist richtig und keine Lücke; erwähne es im Feld "warnings", wenn dadurch Resturlaub offen bleibt.
 ${schoolHolidayPriorityMode !== 'none' ? 'Mitarbeiter mit schulpflichtigen Kindern haben in Schulferienzeiten Vorrang gemäß obiger Ferienregelung.' : ''}

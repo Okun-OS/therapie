@@ -92,7 +92,13 @@ export function Urlaubsantraege() {
           reason: selected.reason,
           // §238 `offen`, nicht `verfuegbar`: Dieser Antrag ist selbst ein
           // offener und in `verfuegbar` schon abgezogen.
-          remainingDays: emp ? offenerUrlaub(emp) : null,
+          //
+          // Fehlt das Konto, geht das Feld GAR NICHT mit. `null` wäre im
+          // Rumpf gelandet und dort je nach Lesart eine Null — und „noch 0
+          // Tage übrig" ist die eine Auskunft, die ein Modell ohne
+          // Rückfrage gegen den Antrag verwendet.
+          ...(emp && offenerUrlaub(emp) !== null
+            ? { remainingDays: offenerUrlaub(emp) as number } : {}),
         },
         overlapping,
       }),

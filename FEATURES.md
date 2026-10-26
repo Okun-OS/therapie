@@ -5864,3 +5864,38 @@ Gegenprobe, dass eine eigene `APP_URL` den Vorrang behält).
 | `f7-durchstich` | **32/32**, dreimal hintereinander stabil |
 | `f9-belegschaft` | 37/37 · `o-persoenliches` 13/13 · `n-kalender-abo` 12/12 |
 | `alle-seiten-ohne-fehler` | **60/60** · `urlaub-aus-antraegen` 15/15 |
+
+### §238 Nachtrag — ein fehlendes Urlaubskonto wird nicht zur Null
+
+Beim Durchsehen der eigenen Änderung aufgefallen: Die zwei Stellen, die einem
+Sprachmodell den Resturlaub nennen, schickten `null`, wenn das Konto fehlt.
+Beide Schnittstellen erwarten eine Zahl — im Rumpf wäre `"remainingDays": null`
+gelandet, und „noch 0 Tage übrig" ist die eine Auskunft, die ein Modell ohne
+Rückfrage gegen einen Antrag verwendet.
+
+Jetzt geht das Feld **gar nicht mit**, wenn das Konto fehlt, und beide
+Anweisungen sagen, was das bedeutet: unbekannt, nicht 0, nicht unbegrenzt — und
+dann wird eine Empfehlung nicht mit dem Resturlaub begründet.
+
+Dazu steht in der Anweisung zur Antragsempfehlung jetzt ausdrücklich, dass die
+Tage **dieses** Antrags in der Zahl noch nicht abgezogen sind. Ohne diesen Satz
+hätte das Modell sie womöglich ein zweites Mal abgezogen.
+
+### §238 Am laufenden System gemessen
+
+Nach dem Ausrollen dort nachgemessen, nicht an `localhost`:
+
+| | |
+|---|---|
+| `therapie-production.up.railway.app/` | **308 → `https://okun-workforce.com/`** |
+| `…/employee/vacation` | 308 → `https://okun-workforce.com/employee/vacation` (Pfad bleibt) |
+| `okun-workforce.com/` | 200 |
+| `okun-workforce.com/api/health` | 200 |
+
+Die Richtung stimmt damit wieder, und zwar ohne dass `APP_URL` in Railway
+angefasst wurde. Dass die **Kalender-Adresse** dasselbe Ziel trägt, folgt
+daraus unmittelbar: Das `Location:` dieser Weiterleitung und die Abo-Adresse
+werden aus derselben `kanonischeBasis()` gebaut. Gemessen ist das `Location:`;
+die Abo-Adresse selbst ist gegen eine gebaute Fassung mit genau der
+Railway-Einstellung geprüft (`https://okun-workforce.com/api/calendar-feed/…`),
+weil dafür eine Anmeldung nötig ist und im Betrieb keine stattfinden soll.

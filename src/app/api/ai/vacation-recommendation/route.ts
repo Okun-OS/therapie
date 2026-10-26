@@ -30,7 +30,8 @@ interface RecommendationRequest {
     endDate: string
     days: number
     reason?: string
-    remainingDays: number
+    /** §238 Wahlfrei: Fehlt das Urlaubskonto, kommt das Feld nicht mit. */
+    remainingDays?: number
   }
   overlapping: {
     employeeName: string
@@ -68,6 +69,7 @@ ${customRules && customRules.length > 0 ? customRules.map(r => `- ${r}`).join('\
 
 ## Zu bewertender Antrag
 ${JSON.stringify(request, null, 2)}
+Hinweis: "remainingDays" = Urlaubstage, die dieser Person dieses Jahr noch zustehen; die Tage DIESES Antrags sind darin NICHT abgezogen. Fehlt das Feld, ist der Rest unbekannt — behandle das nicht als 0 und begründe eine Empfehlung dann nicht mit dem Resturlaub.
 
 ## Bereits genehmigte, überlappende Abwesenheiten im selben Zeitraum
 ${overlapping.length > 0 ? JSON.stringify(overlapping, null, 2) : 'Keine.'}
