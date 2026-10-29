@@ -6677,3 +6677,53 @@ Gegenproben: dass ein leerer Wert nicht zu `abc123..r2…` führt (ein Punkt zu
 viel wäre wieder ein Wirtsname, den es nicht gibt), und dass sich die Signatur
 mit der Adresse ändert. Täte sie das nicht, wäre die Umstellung wirkungslos
 und der Fehler bliebe unerklärlich.
+
+## Block §257 (29.10.) — Der Speicher kann jetzt auch beschrieben werden
+
+Vorbereitung für den Umzug der Dateien. `r2.ts` konnte bisher nur **lesen** —
+ausgestellte Download-Adressen für die Programmdateien (§210). Zum Hochladen
+fehlte alles.
+
+### Was dazugekommen ist
+
+| | |
+|---|---|
+| `uploadAdresse` | eine zeitlich begrenzte Adresse zum **Schreiben**, fünf Minuten gültig |
+| `loeschAdresse` | zum Aufräumen, wenn ein halber Upload eine Leiche hinterlässt |
+
+**Warum das die ganze Sache ändert:** Heute geht jede Datei durch die
+Anwendung — das Telefon lädt zum Server, der Server liest sie vollständig in
+den Arbeitsspeicher und schreibt sie in die Datenbank. Drei Stationen, an
+denen etwas schiefgehen kann, und drei Runden Fehlersuche haben genau das
+gezeigt. Mit einer ausgestellten Adresse lädt das Telefon **direkt** zum
+Speicher; die Anwendung sagt nur, wohin.
+
+### Zwei Entscheidungen, die nicht offensichtlich sind
+
+**Der Dateityp wird mitsigniert.** Ohne ihn könnte jemand mit einer Adresse
+für ein Bild eine ausführbare Datei ablegen. So steht der Typ in der
+Signatur, und wer beim Hochladen einen anderen angibt, bekommt die Absage von
+Cloudflare — nicht von uns, und damit auch dann, wenn unsere eigene Prüfung
+einmal danebenliegt.
+
+**Eine gemeinsame Rechenvorschrift, keine zweite Abschrift.** Die Signatur für
+`PUT` ein zweites Mal hinzuschreiben wäre die Art Dublette, die in §229, §232
+und §235 dreimal als Fehler aufgefallen ist. Zwei Abschriften laufen
+auseinander, und der Unterschied meldet sich als `SignatureDoesNotMatch` ohne
+Hinweis worauf.
+
+### Nachweise
+
+**1355** Modultests. Die **21 bestehenden Tests zum Lesen laufen unverändert
+durch** — das ist der eigentliche Nachweis, dass die Verallgemeinerung nichts
+kaputt gemacht hat.
+
+Acht neu, darunter die Gegenprobe, die zählt: Dieselbe Datei, dieselbe Zeit,
+andere Methode muss eine **andere** Signatur ergeben. Täte sie das nicht, wäre
+eine Leseadresse zugleich eine Schreibadresse.
+
+### Was noch fehlt
+
+Die Zugangsdaten. Ohne sie lässt sich nicht prüfen, ob Cloudflare die Signatur
+annimmt — das geht nur gegen den echten Speicher und wird von Hand gemacht,
+bevor irgendetwas umgestellt wird.

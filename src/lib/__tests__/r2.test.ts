@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { downloadAdresse, r2Eingerichtet } from '../r2'
+import { downloadAdresse, uploadAdresse, loeschAdresse, r2Eingerichtet } from '../r2'
 
 /**
  * §210 Die ausgestellte Download-Adresse.
@@ -198,5 +198,78 @@ describe('§256 Der Rechtsraum', () => {
     const mit = downloadAdresse('latest.yml', 300, JETZT)
     const sig = (a: string | null) => new URL(a!).searchParams.get('X-Amz-Signature')
     expect(sig(ohne)).not.toBe(sig(mit))
+  })
+})
+
+/**
+ * §257 Die Adressen zum Schreiben.
+ *
+ * Sie sind der Kern des Umzugs: Mit ihnen lädt das Telefon DIREKT zum
+ * Speicher, und die Anwendung sieht die Datei nie. Was hier falsch ist,
+ * meldet sich bei Cloudflare als „SignatureDoesNotMatch" — ohne Hinweis
+ * worauf. Genau deshalb steht es hier.
+ */
+describe('§257 Hochladen und Löschen', () => {
+  it('stellt eine Adresse zum Hochladen aus', () => {
+    const a = uploadAdresse('chat/raum1/foto.jpg', 'image/jpeg', 300, JETZT)
+    expect(a).toContain('abc123.r2.cloudflarestorage.com')
+    expect(a).toContain('/okun-programm/chat/raum1/foto.jpg')
+    expect(a).toContain('X-Amz-Signature=')
+  })
+
+  /*
+   * Der Typ wird mitsigniert. Ohne ihn könnte jemand mit einer Adresse für
+   * ein Bild eine ausführbare Datei ablegen.
+   */
+  it('und signiert den Dateityp mit', () => {
+    const a = new URL(uploadAdresse('x.jpg', 'image/jpeg', 300, JETZT)!)
+    expect(a.searchParams.get('X-Amz-SignedHeaders')).toBe('content-type;host')
+  })
+
+  it('ein anderer Typ ergibt eine andere Signatur', () => {
+    const sig = (t: string) =>
+      new URL(uploadAdresse('x.jpg', t, 300, JETZT)!).searchParams.get('X-Amz-Signature')
+    expect(sig('image/jpeg')).not.toBe(sig('application/pdf'))
+  })
+
+  /*
+   * Die Gegenprobe zum Lesen: Dieselbe Datei, dieselbe Zeit, andere Methode —
+   * das MUSS eine andere Signatur ergeben. Täte es das nicht, wäre eine
+   * Leseadresse zugleich eine Schreibadresse.
+   */
+  it('Lesen und Schreiben sind nicht dieselbe Adresse', () => {
+    const lesen = new URL(downloadAdresse('x.jpg', 300, JETZT)!)
+    const schreiben = new URL(uploadAdresse('x.jpg', 'image/jpeg', 300, JETZT)!)
+    expect(lesen.searchParams.get('X-Amz-Signature'))
+      .not.toBe(schreiben.searchParams.get('X-Amz-Signature'))
+    expect(lesen.searchParams.get('X-Amz-SignedHeaders')).toBe('host')
+  })
+
+  it('löschen geht auch — für die Leiche nach einem halben Upload', () => {
+    const a = loeschAdresse('chat/raum1/foto.jpg', 300, JETZT)
+    expect(a).toContain('X-Amz-Signature=')
+    expect(new URL(a!).searchParams.get('X-Amz-SignedHeaders')).toBe('host')
+    expect(new URL(a!).searchParams.get('X-Amz-Signature'))
+      .not.toBe(new URL(downloadAdresse('chat/raum1/foto.jpg', 300, JETZT)!)
+        .searchParams.get('X-Amz-Signature'))
+  })
+
+  it('ohne eingerichteten Speicher gibt es keine Adresse', () => {
+    delete process.env.R2_SCHLUESSEL
+    expect(uploadAdresse('x.jpg', 'image/jpeg', 300, JETZT)).toBeNull()
+    expect(loeschAdresse('x.jpg', 300, JETZT)).toBeNull()
+  })
+
+  it('und im EU-Eimer zeigt auch die Schreibadresse dorthin', () => {
+    process.env.R2_BEREICH = 'eu'
+    expect(uploadAdresse('x.jpg', 'image/jpeg', 300, JETZT))
+      .toContain('abc123.eu.r2.cloudflarestorage.com')
+  })
+
+  it('die Gültigkeit steht in der Adresse und ist kurz', () => {
+    // Eine Schreibadresse ist ein Schreibrecht. Landet sie in einem
+    // Protokoll, soll sie dort nichts mehr wert sein.
+    expect(new URL(uploadAdresse('x.jpg', 'image/jpeg', undefined, JETZT)!)
+      .searchParams.get('X-Amz-Expires')).toBe('300')
   })
 })

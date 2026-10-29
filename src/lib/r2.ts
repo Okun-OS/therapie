@@ -128,6 +128,73 @@ export function downloadAdresse(
   gueltigSekunden = 900,
   jetzt: Date = new Date(),
 ): string | null {
+  return ausgestellteAdresse('GET', schluesselPfad, gueltigSekunden, jetzt)
+}
+
+/**
+ * §257 Eine zeitlich begrenzte Adresse zum HOCHLADEN.
+ *
+ * WARUM DAS DIE GANZE SACHE ÄNDERT
+ * Heute geht jede Datei durch die Anwendung: Das Telefon lädt zum Server, der
+ * Server liest sie vollständig in den Arbeitsspeicher und schreibt sie in die
+ * Datenbank. Jede dieser drei Stationen ist eine Stelle, an der etwas
+ * schiefgehen kann — und drei Runden Fehlersuche haben genau das gezeigt.
+ *
+ * Mit dieser Adresse lädt das Telefon DIREKT zum Speicher. Die Anwendung sagt
+ * nur, wohin. Sie sieht die Datei nie, hält keinen Arbeitsspeicher dafür vor
+ * und belegt keine Datenbankverbindung.
+ *
+ * WARUM DER TYP MITSIGNIERT WIRD
+ * Ohne ihn könnte jemand mit einer Adresse für ein Bild eine ausführbare
+ * Datei ablegen. Der Typ steht in der Signatur; wer beim Hochladen einen
+ * anderen angibt, bekommt von Cloudflare eine Absage — nicht von uns, und
+ * damit auch dann, wenn unsere Prüfung einmal danebenliegt.
+ *
+ * WARUM DIE ADRESSE KURZ GILT
+ * Sie ist ein Schreibrecht auf einen Platz im Speicher. Fünf Minuten reichen
+ * für jeden Upload; eine Adresse, die in einem Protokoll landet, ist danach
+ * wertlos.
+ */
+export function uploadAdresse(
+  schluesselPfad: string,
+  mimeType: string,
+  gueltigSekunden = 300,
+  jetzt: Date = new Date(),
+): string | null {
+  return ausgestellteAdresse('PUT', schluesselPfad, gueltigSekunden, jetzt, mimeType)
+}
+
+/**
+ * §257 Eine zeitlich begrenzte Adresse zum LÖSCHEN.
+ *
+ * Gebraucht für den Fall, der sonst eine Leiche hinterlässt: Das Telefon hat
+ * hochgeladen, aber der Eintrag in der Datenbank scheitert. Dann liegt eine
+ * Datei im Speicher, von der niemand mehr weiß. Diese Adresse räumt sie weg.
+ */
+export function loeschAdresse(
+  schluesselPfad: string,
+  gueltigSekunden = 300,
+  jetzt: Date = new Date(),
+): string | null {
+  return ausgestellteAdresse('DELETE', schluesselPfad, gueltigSekunden, jetzt)
+}
+
+/**
+ * Die gemeinsame Rechenvorschrift für alle ausgestellten Adressen.
+ *
+ * §257 Vorher stand sie einmal für `GET` da. Sie ein zweites Mal für `PUT`
+ * hinzuschreiben wäre die Art Dublette, die in §229, §232 und §235 dreimal
+ * als Fehler aufgefallen ist: Zwei Abschriften derselben Vorschrift laufen
+ * auseinander, und der Unterschied meldet sich als „SignatureDoesNotMatch",
+ * ohne Hinweis worauf.
+ */
+function ausgestellteAdresse(
+  methode: 'GET' | 'PUT' | 'DELETE',
+  schluesselPfad: string,
+  gueltigSekunden: number,
+  jetzt: Date,
+  mimeType?: string,
+): string | null {
   const z = zugang()
   if (!z) return null
 
@@ -136,12 +203,22 @@ export function downloadAdresse(
   const pfad = `/${pfadKodieren(z.bucket)}/${pfadKodieren(schluesselPfad)}`
 
   // Die Reihenfolge der Parameter ist Teil der Signatur — alphabetisch.
+  /*
+   * §257 Beim Hochladen wird der Typ mitsigniert. Die Köpfe müssen
+   * alphabetisch stehen — `content-type` vor `host` —, sonst stimmt die
+   * Signatur nicht, und die Meldung dazu nennt den Grund nicht.
+   */
+  const koepfe: Array<[string, string]> = mimeType
+    ? [['content-type', mimeType], ['host', wirt(z)]]
+    : [['host', wirt(z)]]
+  const signierteKoepfe = koepfe.map(([k]) => k).join(';')
+
   const parameter: Array<[string, string]> = [
     ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
     ['X-Amz-Credential', `${z.schluessel}/${bereich}`],
     ['X-Amz-Date', lang],
     ['X-Amz-Expires', String(gueltigSekunden)],
-    ['X-Amz-SignedHeaders', 'host'],
+    ['X-Amz-SignedHeaders', signierteKoepfe],
   ]
   const abfrage = parameter
     .map(([k, v]) => `${kodieren(k)}=${kodieren(v)}`)
@@ -149,14 +226,14 @@ export function downloadAdresse(
     .join('&')
 
   const anfrage = [
-    'GET',
+    methode,
     pfad,
     abfrage,
-    `host:${wirt(z)}`,
+    ...koepfe.map(([k, v]) => `${k}:${v}`),
     '',
-    'host',
+    signierteKoepfe,
     // Bei einer ausgestellten Adresse wird der Inhalt nicht mitsigniert —
-    // es gibt ja keinen.
+    // beim Ausstellen gibt es ihn noch gar nicht.
     'UNSIGNED-PAYLOAD',
   ].join('\n')
 
