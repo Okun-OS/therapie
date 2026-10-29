@@ -1,7 +1,8 @@
 // §239 Von v4 auf v5: Die alte Fassung hatte die VERKAUFSSEITE vorgespeichert.
-// Ohne Erhöhung bliebe sie auf jedem Gerät liegen, das die App schon hat — und
-// genau sie war das, was beim Öffnen erschien.
-const CACHE_VERSION = 'okun-v5'
+// §251 Von v5 auf v6: Sie landete trotzdem im Speicher — siehe unten bei der
+// Behandlung von `/`. Ohne Erhöhung bliebe die gespeicherte Kopie auf jedem
+// Gerät liegen, das die App schon hat.
+const CACHE_VERSION = 'okun-v6'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`
 
@@ -131,6 +132,38 @@ self.addEventListener('fetch', event => {
         })
       })
     )
+    return
+  }
+
+  /*
+   * §251 Die Startseite wird NIE gespeichert und NIE aus dem Speicher
+   * ausgeliefert.
+   *
+   * GEMELDET, DREIMAL
+   * „Ich sehe immer noch, wenn ich auf die App gehe, erstmal für eine Sekunde
+   * die Website und dann erst werde ich in die App geschickt."
+   *
+   * §239 hat `'/'` aus der Vorspeicherung genommen. Das reichte nicht: Die
+   * Regel darunter speichert JEDE erfolgreiche Seitenantwort — und wer
+   * abgemeldet auf `/` geht, bekommt die Verkaufsseite mit HTTP 200. Damit
+   * liegt sie wieder im Speicher.
+   *
+   * Angemeldet antwortet der Server auf `/` mit einer Weiterleitung. Ist das
+   * Netz aber langsam oder bricht die Anfrage ab, greift der Rückfall unten —
+   * und liefert die gespeicherte Verkaufsseite aus. Dann läuft keine
+   * Middleware, und erst der Browser schiebt die Weiterleitung nach. Genau
+   * eine Sekunde.
+   *
+   * Nachgemessen trägt die Startseite im Betrieb `s-maxage=31536000` und
+   * kommt aus dem Zwischenspeicher des Gerüsts (`x-nextjs-cache: HIT`) —
+   * sie ist also eine Seite, die sehr gerne irgendwo liegen bleibt.
+   *
+   * Für `/` gibt es deshalb kein Zwischenspeichern und keinen Rückfall auf
+   * eine Kopie. Ohne Netz erscheint die Offline-Seite; die sagt wenigstens
+   * die Wahrheit.
+   */
+  if (url.pathname === '/') {
+    event.respondWith(fetch(request).catch(() => caches.match('/offline')))
     return
   }
 

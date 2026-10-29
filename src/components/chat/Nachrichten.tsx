@@ -9,6 +9,7 @@ import {
 import { Modal } from '@/components/ui/Modal'
 import { einreihen } from '@/lib/warteschlange'
 import { schlangeGeaendert } from '@/components/offline/Warteschlange'
+import { bildVerkleinern } from '@/lib/bild-verkleinern'
 
 /**
  * §129 Nachrichten.
@@ -283,16 +284,39 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
    * JSON im Speicher des Browsers, und eine Tonaufnahme von 20 MB gehört da
    * nicht hinein.
    */
-  async function dateiSenden(datei: File) {
+  async function dateiSenden(eingang: File) {
     if (!offen) return
     setSendet(true); setFehler('')
     try {
+      /*
+       * §249 Fotos werden vor dem Senden verkleinert.
+       *
+       * Ein Bild aus einer Telefonkamera sind drei bis fünf Megabyte; danach
+       * sind es ein paar hundert Kilobyte. Das ist der Unterschied zwischen
+       * „geht durch eine mobile Verbindung" und „bricht irgendwo davor ab" —
+       * und bei HEIC zugleich die Umwandlung in ein Format, das überall
+       * angenommen wird. Scheitert das Verkleinern, geht die Datei
+       * unverändert hinaus.
+       */
+      const datei = await bildVerkleinern(eingang)
       const daten = new FormData()
       daten.append('datei', datei)
       if (entwurf.trim()) daten.append('text', entwurf.trim())
       const r = await fetch(`/api/chat/${offen}/datei`, { method: 'POST', body: daten })
       const d = await r.json().catch(() => ({}))
-      if (!r.ok) { setFehler(d.error ?? 'Die Datei ließ sich nicht senden.'); return }
+      /*
+       * §249 Die Nummer mit in die Meldung.
+       *
+       * Ohne sie sieht eine Abweisung durch die Vermittlungsschicht genauso
+       * aus wie eine durch die Anwendung — und dann ist nicht herauszufinden,
+       * woran es lag. Genau das ist bei dieser Meldung dreimal passiert.
+       */
+      if (!r.ok) {
+        setFehler(d.error
+          ?? `Die Datei ließ sich nicht senden (Fehler ${r.status}, `
+            + `${Math.round(datei.size / 1024)} kB).`)
+        return
+      }
       setNachrichten(prev => [...prev, {
         ...d.nachricht,
         vonMir: true,

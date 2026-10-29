@@ -62,43 +62,71 @@ export async function GET(req: NextRequest) {
 
   const freigegebenMinuten = Math.round((person.hoursBalance ?? 0) * 60)
 
-  /*
-   * Ab wann gerechnet wird: der Monat NACH dem letzten freigegebenen
-   * Abschluss. Was darin steckt, ist bereits im Stundenkonto enthalten — es
-   * noch einmal zu zählen hieße, den Saldo zu verdoppeln.
-   */
-  const letzter = await prisma.monthlyClosing.findFirst({
-    where: { employeeId, releasedAt: { not: null } },
-    orderBy: [{ year: 'desc' }, { month: 'desc' }],
-    select: { year: true, month: true },
-  })
-
   const heute = new Date()
   const bis = { jahr: heute.getFullYear(), monat: heute.getMonth() + 1 }
 
-  let ab = letzter
-    ? naechsterMonat(letzter.year, letzter.month)
-    : eintrittOderGrenze(person.joinedAt, bis)
-
-  // Nie weiter zurück als die Grenze — und nie in die Zukunft.
+  /*
+   * §250 Der Anfang ist NICHT „nach dem letzten freigegebenen Abschluss".
+   *
+   * So stand es zuerst da, und es hatte eine stille Lücke: Wird der Oktober
+   * freigegeben, der August aber nicht, dann beginnt die Rechnung im November
+   * — und der offene August fällt heraus, ohne dass irgendwo etwas fehlt.
+   * Abschlüsse werden nicht zwingend der Reihe nach freigegeben.
+   *
+   * Darum: ein fester Zeitraum, und darin wird jeder Monat übersprungen, für
+   * den ein freigegebener Abschluss vorliegt. Was freigegeben ist, steckt
+   * bereits im abgerechneten Stand; es noch einmal zu zählen hieße, den Saldo
+   * zu verdoppeln.
+   */
+  let ab = eintrittOderGrenze(person.joinedAt, bis)
   const grenze = vorMonaten(bis, HOECHSTENS_MONATE - 1)
   const abgeschnitten = vergleiche(ab, grenze) < 0
   if (abgeschnitten) ab = grenze
   if (vergleiche(ab, bis) > 0) ab = bis
 
+  // Alle freigegebenen Abschlüsse des Zeitraums auf einmal — nicht je Monat
+  // eine eigene Abfrage.
+  const freigegebene = await prisma.monthlyClosing.findMany({
+    where: { employeeId, releasedAt: { not: null } },
+    select: { year: true, month: true },
+  })
+  const istFreigegeben = new Set(freigegebene.map(c => `${c.year}-${c.month}`))
+
+  /*
+   * §250 Gezählt wird nur, WO ÜBERHAUPT GEMESSEN WURDE.
+   *
+   * Ohne diese Einschränkung summierte die Rechnung achtzehn Monate zu rund
+   * −2700 Stunden auf — bei einem Menschen, der die Stempeluhr schlicht nicht
+   * benutzt. Nachgemessen am 29.10. mit der Prüfung `r-stundenkonto`.
+   *
+   * Das ist keine Messung, sondern ein Vorwurf. Ein Monat ohne eine einzige
+   * Buchung sagt nicht „es wurde nicht gearbeitet", sondern „es wurde nicht
+   * erfasst". Das Soll dagegenzurechnen behauptet etwas, das niemand weiß.
+   *
+   * Wurde in einem Monat auch nur einmal gestempelt, war die Uhr in Gebrauch
+   * — dann ist der Vergleich von Soll und Ist eine Aussage, und der Monat
+   * zählt vollständig. Wer aufhört zu stempeln, fällt also nicht heraus: Der
+   * laufende Monat zählt weiter, solange darin gebucht wurde.
+   *
+   * Welche Monate das sind, kommt aus EINER Abfrage: die Datumsangaben aller
+   * Buchungen des Zeitraums, daraus die Monate.
+   */
+  const vonTag = `${ab.jahr}-${String(ab.monat).padStart(2, '0')}-01`
+  const buchungen = await prisma.timeLog.findMany({
+    where: { employeeId, date: { gte: vonTag } },
+    select: { date: true },
+  })
+  const mitBuchung = new Set(buchungen.map(b => b.date.slice(0, 7)))
+
   let offenMinuten = 0
+  let ohneErfassung = 0
   const monate: { jahr: number; monat: number; minuten: number }[] = []
   for (let m = ab; vergleiche(m, bis) <= 0; m = naechsterMonat(m.jahr, m.monat)) {
-    /*
-     * Ein Monat, für den es bereits einen FREIGEGEBENEN Abschluss gibt, wird
-     * übersprungen — auch wenn er nach dem letzten liegt. Abschlüsse müssen
-     * nicht lückenlos in der Reihenfolge freigegeben worden sein.
-     */
-    const schonDrin = await prisma.monthlyClosing.findFirst({
-      where: { employeeId, year: m.jahr, month: m.monat, releasedAt: { not: null } },
-      select: { id: true },
-    })
-    if (schonDrin) continue
+    if (istFreigegeben.has(`${m.jahr}-${m.monat}`)) continue
+    if (!mitBuchung.has(`${m.jahr}-${String(m.monat).padStart(2, '0')}`)) {
+      ohneErfassung += 1
+      continue
+    }
 
     const s = await getHoursAccountSummary(
       employeeId, m.jahr, m.monat, person.weeklyHours ?? undefined, heute)
@@ -115,6 +143,8 @@ export async function GET(req: NextRequest) {
       abJahr: ab.jahr,
       abMonat: ab.monat,
       abgeschnitten,
+      /** §250 Monate im Zeitraum, in denen gar nicht gestempelt wurde. */
+      ohneErfassung,
       monate,
     },
   })

@@ -6322,3 +6322,137 @@ Zeiterfassung eine Abweichung aus, darf das Konto nicht null sein.
 brauchbaren Typ und ohne bekannte Endung stand als Quelle „endung", obwohl
 nichts ausgewertet wurde. Der Typ stimmte, die Auskunft darüber nicht — und die
 entscheidet über die Fehlermeldung.
+
+## Block §249–§251 (29.10.) — Das Foto, die Zahl und der hartnäckige Aufblitzer
+
+Drei Meldungen zum dritten Mal. Diesmal mit Messwerten statt Vermutungen.
+
+### §249 Warum die Bilder nicht ankamen
+
+**Die Meldung:** „Die Bilder funktionieren immer noch nicht."
+
+§241 und §246 haben zwei echte Fehler behoben, und beide sind nachweisbar weg:
+Durch die **echte Oberfläche**, im Browser, angemeldet, geht ein JPEG wie ein
+PNG mit HTTP 200 durch, ohne Fehlermeldung. Auch fünf Megabyte gehen örtlich in
+anderthalb Sekunden durch.
+
+Der Fehler saß also nicht mehr in der Prüfung. Und die Meldung, die dabei
+erscheint, ist die **allgemeine** — sie steht nur da, wenn die Antwort
+überhaupt kein JSON enthält, also wenn nicht die Anwendung abgelehnt hat,
+sondern etwas davor.
+
+**Im Code stand die Antwort bereits.** §139 hatte das Problem für die App-Hülle
+gelöst und dabei genau benannt:
+
+> „Ein Krankenschein aus einer Telefonkamera sind sonst fünf Megabyte — die
+> überträgt sich mit einem Balken Empfang nicht, und genau da steht die Person,
+> wenn sie den Schein beim Arzt abfotografiert."
+
+Für die Hülle. **Wer die App im Browser benutzt, bekam weiterhin das volle Bild
+auf die Leitung** — und das ist die Mehrheit.
+
+Fotos werden jetzt im Browser verkleinert, bevor überhaupt etwas losgeschickt
+wird. Nachgemessen an einem echten Kamerafoto:
+
+| | |
+|---|---|
+| vorher | 4032 × 3024, **6923 kB** |
+| nachher | 2000 × 1500, **864 kB** |
+
+Das löst drei Dinge auf einmal: die Größe, die Umwandlung von HEIC nach JPEG
+(Safari kann HEIC zeichnen, und die Leinwand gibt immer JPEG aus), und die
+Drehung nach der Lageangabe der Kamera — ohne die liegen Hochformatfotos beim
+Empfänger auf der Seite.
+
+**Was es nicht tut:** Es rührt nichts an, was kein Bild ist, und wenn etwas
+daran scheitert, geht die Datei unverändert hinaus. Eine Verbesserung, die beim
+Scheitern das Senden verhindert, wäre schlimmer als das Problem. Das greift
+auch, wenn das Ergebnis größer wäre als das Original — nachgemessen bei einem
+künstlichen Bild, das sich als PNG besser komprimiert.
+
+Und die Fehlermeldung nennt jetzt **Nummer und Größe**. Ohne sie sieht eine
+Abweisung durch die Vermittlungsschicht genauso aus wie eine durch die
+Anwendung — dreimal wurde „geht nicht" gemeldet, und dreimal war daraus nicht
+abzulesen, woran es lag.
+
+### §250 Die Zahl im Stundenkonto — nachgerechnet
+
+**Die Frage:** „Kannst du prüfen, ob da jetzt die richtige geprüfte Zahl steht
+und nicht irgendwie alles irgendwie berücksichtigt."
+
+Berechtigt. `pruefungen/r-stundenkonto.mjs` stellt einen bekannten Zustand her
+und rechnet die Zahl aus denselben Bausteinen nach, die die Zeiterfassung
+anzeigt. **Die Prüfung hat beim ersten Lauf zwei echte Fehler gefunden.**
+
+**Erstens wurde zu viel gezählt.** Die Rechnung summierte achtzehn Monate zu
+rund **−2700 Stunden** auf — bei einem Menschen, der die Stempeluhr schlicht
+nicht benutzt. Das ist keine Messung, sondern ein Vorwurf: Ein Monat ohne eine
+einzige Buchung sagt nicht „es wurde nicht gearbeitet", sondern „es wurde nicht
+erfasst". Gezählt wird jetzt nur, **wo überhaupt gemessen wurde**. Wurde in
+einem Monat auch nur einmal gestempelt, war die Uhr in Gebrauch — dann zählt er
+vollständig. Wer aufhört zu stempeln, fällt also nicht heraus.
+
+Dieselbe Zahl: **vorher −2737 Stunden, jetzt −147.**
+
+**Zweitens konnte etwas verschwinden.** Die Rechnung begann „nach dem letzten
+freigegebenen Abschluss". Wird der Oktober freigegeben, der August aber nicht,
+fing sie im November an — und der offene August fiel heraus, ohne dass irgendwo
+etwas fehlte. Abschlüsse werden nicht zwingend der Reihe nach freigegeben.
+Jetzt wird ein fester Zeitraum durchgegangen und darin jeder freigegebene Monat
+übersprungen.
+
+Die Prüfung misst beide Richtungen: dass ein freigegebener Monat **nicht**
+doppelt zählt, und dass ein offener Monat **sehr wohl** zählt — sonst wäre
+„nichts doppelt" trivial dadurch zu erfüllen, dass nichts gezählt wird.
+
+### §251 Der Aufblitzer — drei neue Messwerte
+
+**Die Meldung, zum dritten Mal.** Diesmal habe ich die Kopfzeilen im Betrieb
+angesehen, und dort stand etwas:
+
+```
+GET /        cache-control: s-maxage=31536000, stale-while-revalidate
+             x-nextjs-cache: HIT
+GET /sw.js   cache-control: public, max-age=0
+```
+
+Drei Befunde daraus:
+
+**Der Dienst-Arbeiter speicherte die Startseite doch.** §239 hat `'/'` aus der
+Vorspeicherung genommen — aber die Regel darunter speichert **jede**
+erfolgreiche Seitenantwort. Wer abgemeldet auf `/` geht, bekommt die
+Verkaufsseite mit HTTP 200, und damit liegt sie wieder im Speicher. Ist das
+Netz dann langsam, greift der Rückfall und liefert sie aus. **Dann läuft keine
+Middleware.** Für `/` gibt es jetzt weder Speichern noch Rückfall auf eine
+Kopie; ohne Netz erscheint die Offline-Seite.
+
+**Die Startseite durfte im Browser liegen bleiben.** `s-maxage` gilt nur für
+gemeinsame Zwischenspeicher — ein Browser sucht sich ohne `max-age` seine
+eigene Regel. Liegt die Seite dort, wird der Server gar nicht erst gefragt.
+Sie trägt jetzt `private, no-cache, must-revalidate`: nicht „nicht speichern",
+sondern „vor jeder Benutzung nachfragen".
+
+**Und der Dienst-Arbeiter selbst durfte es auch.** Er trägt die Regeln, nach
+denen alles andere gespeichert wird — eine alte Fassung, die hängenbleibt, hält
+alle alten Regeln am Leben. Das kann erklären, warum eine Korrektur am
+Zwischenspeicher ein Gerät tagelang nicht erreicht. Jetzt `no-store`.
+
+**Nebenbei gefunden:** Neben `next.config.js` lag eine **leere**
+`next.config.mjs`. Next.js nimmt `.js` zuerst, sie hatte also keine Wirkung —
+aber wäre die `.js` je umbenannt worden, hätte still eine Konfiguration ohne
+Inhalt übernommen. Entfernt.
+
+### Nachweise
+
+**1334** Modultests. Neu `r-stundenkonto` **11/11**, `widersprueche` 17/17,
+`zeiten-stimmen-ueberein` 13/13, `alle-seiten-ohne-fehler` 60/60,
+`q-glocke-und-anhaenge` 23/23, `e5-chat` 106/106.
+
+Das Verkleinern ist **durch die echte Oberfläche** nachgemessen, nicht nur an
+der Schnittstelle: Foto auswählen, senden, und am Server kommen 864 statt 6923
+Kilobyte an.
+
+**Offen gesagt:** Ein Lauf der Modultests meldete einen Fehlschlag, den ich in
+acht weiteren Läufen nicht reproduzieren konnte — vermutlich eine
+Überschneidung mit dem gleichzeitig startenden Rechendienst. Ich weiß nicht,
+welcher Test es war.

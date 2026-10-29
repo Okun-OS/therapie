@@ -11,6 +11,7 @@ import { istApp, kameraFoto } from '@/lib/nativ'
 import type { NachweisLageDaten } from '@/lib/types'
 import { AU_ARTEN } from '@/lib/bem'
 import { NACHWEIS_AB_TAG_STANDARD } from '@/lib/krankmeldung-regel'
+import { bildVerkleinern } from '@/lib/bild-verkleinern'
 
 /**
  * §137 Krankmelden vom Telefon.
@@ -245,10 +246,20 @@ export default function Krankmelden() {
     dateiFeld.current?.click()
   }
 
-  async function hochladen(datei: File) {
+  async function hochladen(eingang: File) {
     if (!fertig?.id || !user?.employeeId) return
     setLaedtHoch(true); setFehler('')
     try {
+      /*
+       * §249 Auch im BROWSER verkleinern, nicht nur in der App-Hülle.
+       *
+       * §139 oben hat das Problem genau benannt — „ein Krankenschein aus
+       * einer Telefonkamera sind sonst fünf Megabyte, die überträgt sich mit
+       * einem Balken Empfang nicht" — und für die Hülle gelöst. Wer die App
+       * im Browser benutzt, bekam weiterhin das volle Bild auf die Leitung.
+       * Das ist die Mehrheit.
+       */
+      const datei = await bildVerkleinern(eingang)
       const form = new FormData()
       form.append('datei', datei)
       form.append('ownerType', 'employee')
@@ -262,7 +273,17 @@ export default function Krankmelden() {
       const r = await fetch('/api/files', { method: 'POST', body: form })
       if (!r.ok) {
         const d = await r.json().catch(() => ({}))
-        setFehler(d.error ?? 'Das Bild konnte nicht übertragen werden.')
+        /*
+         * §249 Die Nummer und die Größe mit in die Meldung.
+         *
+         * Ohne sie sieht eine Abweisung durch die Vermittlungsschicht genauso
+         * aus wie eine durch die Anwendung. Dreimal wurde „geht nicht"
+         * gemeldet, und dreimal konnte ich daraus nicht ablesen, woran es
+         * lag.
+         */
+        setFehler(d.error
+          ?? `Das Bild konnte nicht übertragen werden (Fehler ${r.status}, `
+            + `${Math.round(datei.size / 1024)} kB).`)
         return
       }
       setEingereicht(true)
