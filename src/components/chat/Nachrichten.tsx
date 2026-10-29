@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/Modal'
 import { einreihen } from '@/lib/warteschlange'
 import { schlangeGeaendert } from '@/components/offline/Warteschlange'
 import { bildVerkleinern } from '@/lib/bild-verkleinern'
+import { direktHochladen } from '@/lib/datei-direkt'
 
 /**
  * §129 Nachrichten.
@@ -284,6 +285,33 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
    * JSON im Speicher des Browsers, und eine Tonaufnahme von 20 MB gehört da
    * nicht hinein.
    */
+  /**
+   * §260 Eine gesendete Datei in die Liste übernehmen.
+   *
+   * Beide Wege enden hier — der direkte in den Objektspeicher und der alte
+   * durch die Anwendung. Zwei Abschriften davon liefen auseinander, und
+   * auffallen würde das zuerst daran, dass bei einem der beiden die Vorschau
+   * fehlt oder die Liste links nicht nachzieht.
+   */
+  function uebernehmen(d: {
+    nachricht: Nachricht & {
+      datei?: { mimeType?: string; dateiname?: string; groesse?: number } | null
+    }
+  }) {
+    const n = d.nachricht
+    setNachrichten(prev => [...prev, {
+      ...n,
+      vonMir: true,
+      dateiTyp: n.datei?.mimeType ?? null,
+      dateiName: n.datei?.dateiname ?? null,
+      dateiGroesse: n.datei?.groesse ?? null,
+      zurueckziehbar: true,
+    }])
+    setEntwurf('')
+    setTimeout(() => ende.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    listeLaden()
+  }
+
   async function dateiSenden(eingang: File) {
     if (!offen) return
     setSendet(true); setFehler('')
@@ -299,9 +327,34 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
        * unverändert hinaus.
        */
       const datei = await bildVerkleinern(eingang)
+      const text = entwurf.trim()
+
+      /*
+       * §260 Zuerst der direkte Weg: Die Datei geht vom Telefon unmittelbar in
+       * den Objektspeicher, und die Anwendung erfährt nur, wo sie liegt.
+       *
+       * Genau die Anfrage, die hier wegfällt, ist dreimal gescheitert — die
+       * Datei vollständig durch die Anwendung zu schieben (§252, §255). Ist
+       * kein Objektspeicher eingerichtet oder kommt der direkte Weg nicht
+       * durch, meldet `direktHochladen` das, und unten läuft der alte Weg
+       * weiter. Eine Abweisung der Datei selbst wird dagegen gezeigt: Sie
+       * noch einmal hochzuladen würde dieselbe Meldung ergeben.
+       */
+      const direkt = await direktHochladen({
+        adressePfad: `/api/chat/${offen}/datei/adresse`,
+        vermerkPfad: `/api/chat/${offen}/datei`,
+        datei,
+        ...(text ? { zusatz: { text } } : {}),
+      })
+      if (direkt.art === 'abgewiesen') { setFehler(direkt.fehler); return }
+      if (direkt.art === 'ok') {
+        uebernehmen(direkt.antwort as unknown as Parameters<typeof uebernehmen>[0])
+        return
+      }
+
       const daten = new FormData()
       daten.append('datei', datei)
-      if (entwurf.trim()) daten.append('text', entwurf.trim())
+      if (text) daten.append('text', text)
       const r = await fetch(`/api/chat/${offen}/datei`, { method: 'POST', body: daten })
       const d = await r.json().catch(() => ({}))
       /*
@@ -317,18 +370,7 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
             + `${Math.round(datei.size / 1024)} kB).`)
         return
       }
-      setNachrichten(prev => [...prev, {
-        ...d.nachricht,
-        vonMir: true,
-        createdAt: d.nachricht.createdAt,
-        dateiTyp: d.nachricht.datei?.mimeType ?? null,
-        dateiName: d.nachricht.datei?.dateiname ?? null,
-        dateiGroesse: d.nachricht.datei?.groesse ?? null,
-        zurueckziehbar: true,
-      }])
-      setEntwurf('')
-      setTimeout(() => ende.current?.scrollIntoView({ behavior: 'smooth' }), 50)
-      listeLaden()
+      uebernehmen(d)
     } catch {
       setFehler('Keine Verbindung — die Datei ließ sich nicht senden.')
     } finally {

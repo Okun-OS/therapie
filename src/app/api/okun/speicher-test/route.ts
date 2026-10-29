@@ -114,7 +114,42 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // ── 3. Aufräumen ────────────────────────────────────────────────────────
+  /*
+   * ── 3. Mit Anzeigenamen zurückholen ──────────────────────────────────────
+   *
+   * §260 Ein eigener Schritt, weil es eine eigene Signatur ist.
+   *
+   * Im Speicher heißt eine Datei `chat/<raum>/2026-10-29/9f3c…b1.jpg`. Damit
+   * sie beim Herunterladen trotzdem „Foto.jpg" heißt, wird
+   * `response-content-disposition` in die Adresse geschrieben — und damit
+   * mitsigniert. Das ist der einzige Parameter im ganzen Verfahren, der
+   * kleingeschrieben ist; die Sortierung geschieht nach Bytefolge, und wenn
+   * die durcheinandergeht, lautet die Antwort „SignatureDoesNotMatch".
+   *
+   * Örtlich prüfbar ist davon nur, dass wir richtig sortieren. Ob Cloudflare
+   * die Unterschrift annimmt, sagt allein Cloudflare — deshalb steht es hier
+   * und nicht in `r2.test.ts`.
+   */
+  if (konnteAblegen) {
+    await messen('Name beim Herunterladen', async () => {
+      const adresse = downloadAdresse(pfad, 120, new Date(), 'dateien', 'Selbsttest Ö.txt')
+      if (!adresse) return 'Keine Adresse.'
+      const r = await fetch(adresse)
+      if (!r.ok) return `HTTP ${r.status}: ${fehlercode(await r.text())}`
+      const kopf = r.headers.get('content-disposition') ?? ''
+      /*
+       * Der Vergleich ist auch hier der Kern: Eine Antwort mit 200 beweist
+       * nur, dass die Signatur gepasst hat. Ob der Speicher den Namen
+       * tatsächlich setzt, steht im Kopf.
+       */
+      if (!kopf.includes('Selbsttest')) {
+        return `Der Speicher hat den Namen nicht gesetzt (content-disposition: ${kopf || 'fehlt'}).`
+      }
+      return null
+    })
+  }
+
+  // ── 4. Aufräumen ────────────────────────────────────────────────────────
   if (konnteAblegen) {
     await messen('Aufräumen', async () => {
       const adresse = loeschAdresse(pfad, 120)

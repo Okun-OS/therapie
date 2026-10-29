@@ -4,10 +4,11 @@ import { requireRole } from '@/lib/session'
 import { raumZugriff, eigeneKennung } from '@/lib/chat'
 import { sendPushToEmployee } from '@/lib/push'
 import {
-  dateiSpeichern, pruefeChatDatei, sichererDateiname, CHAT_TYPEN,
+  dateiSpeichern, objektSpeichern, pruefeChatDatei, sichererDateiname, CHAT_TYPEN,
 } from '@/lib/file-storage'
 import { dateityp } from '@/lib/dateityp'
 import { vorfall, vorfallMelden } from '@/lib/fehlerkennung'
+import { downloadAdresse, objektKopf, objektWegraeumen } from '@/lib/r2'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,6 +49,28 @@ async function postImpl(req: NextRequest, { params }: { params: { id: string } }
   if (raum.archiviertAm) {
     return NextResponse.json(
       { error: 'Diese Gruppe ist geschlossen. Der Verlauf bleibt lesbar.' }, { status: 409 },
+    )
+  }
+
+  /*
+   * §260 Ab hier führen zwei Wege weiter.
+   *
+   * JSON  — die Datei liegt schon im Objektspeicher, es wird nur vermerkt,
+   *         wo. Das ist der neue, direkte Weg.
+   * Rest  — die Datei kommt als `multipart/form-data` durch die Anwendung.
+   *         Der alte Weg, und zugleich der Rückfall, wenn kein Objektspeicher
+   *         eingerichtet ist.
+   *
+   * Beide bleiben, und das ist Absicht: Eine Umstellung, die bei fehlender
+   * Einrichtung das Senden von Dateien anhält, wäre schlimmer als der Zustand
+   * vorher.
+   */
+  if ((req.headers.get('content-type') ?? '').includes('application/json')) {
+    return vermerken(
+      req,
+      { id: raum.id, customerId: raum.customerId, locationId: raum.locationId ?? null },
+      ich,
+      session.role,
     )
   }
 
@@ -150,44 +173,178 @@ async function postImpl(req: NextRequest, { params }: { params: { id: string } }
     return NextResponse.json({ error: v.text }, { status: 500 })
   }
 
-  /*
-   * Der Begleittext ist freiwillig. Steht keiner da, nimmt die Nachricht den
-   * Dateinamen — eine Nachricht ganz ohne Text wäre in jeder Liste, jeder
-   * Vorschau und jeder Push-Meldung eine leere Zeile.
-   */
-  const text = String(form.get('text') ?? '').trim().slice(0, 2000) || name
+  return nachrichtAnlegen({
+    raumId: raum.id,
+    ich,
+    employeeId: mich?.employeeId ?? null,
+    absenderName: mich?.name ?? null,
+    /*
+     * Der Begleittext ist freiwillig. Steht keiner da, nimmt die Nachricht den
+     * Dateinamen — eine Nachricht ganz ohne Text wäre in jeder Liste, jeder
+     * Vorschau und jeder Push-Meldung eine leere Zeile.
+     */
+    text: String(form.get('text') ?? '').trim().slice(0, 2000) || name,
+    datei: {
+      id: abgelegt.id, dateiname: name, mimeType: typ, groesse: daten.length,
+    },
+  })
+}
 
+/**
+ * §260 Der zweite Weg: Die Datei liegt schon im Speicher.
+ *
+ * WIE ES DAZU KOMMT
+ * Die Oberfläche hat sich bei `…/datei/adresse` einen Platz geben lassen, das
+ * Telefon hat die Datei direkt dorthin geladen, und jetzt soll sie im Verlauf
+ * erscheinen. Die Anwendung hat die Datei dabei nie gesehen.
+ *
+ * WARUM TROTZDEM GEPRÜFT WIRD — UND ZWAR AM SPEICHER, NICHT AN DER MELDUNG
+ * Was hier hereinkommt, ist eine Behauptung des Browsers. Ihr zu glauben
+ * hieße, drei Prüfungen aufzugeben, die der alte Weg hatte: ob überhaupt
+ * etwas angekommen ist, wie groß es wirklich ist und was tatsächlich
+ * drinsteht. `objektKopf` holt deshalb die ersten 64 Bytes samt wahrer Größe
+ * aus dem Speicher — eine Anfrage, und danach gelten dieselben Regeln wie
+ * vorher.
+ *
+ * WARUM DER SCHLÜSSEL AUF DIESEN RAUM FESTGENAGELT IST
+ * Das ist die wichtigste Zeile hier. Ohne sie könnte ein Mitglied eines
+ * beliebigen Gesprächs den Schlüssel einer FREMDEN Datei eintragen — etwa den
+ * eines Krankenscheins aus einer Personalakte — und sie anschließend über
+ * sein eigenes Gespräch herunterladen. Der Schlüssel muss mit
+ * `chat/<diesem Raum>/` beginnen; alles darunter darf dieses Mitglied ohnehin
+ * sehen.
+ */
+async function vermerken(
+  req: NextRequest,
+  raum: { id: string; customerId: string; locationId: string | null },
+  ich: string,
+  rolle: string,
+) {
+  const eingang = await req.json().catch(() => ({})) as {
+    objektSchluessel?: string; dateiname?: string; mimeType?: string; text?: string
+  }
+  const schluessel = String(eingang.objektSchluessel ?? '')
+  if (!schluessel || !eingang.dateiname) {
+    return NextResponse.json({ error: 'Es fehlen Angaben zur Datei.' }, { status: 400 })
+  }
+
+  // Siehe oben: der Riegel, der fremde Dateien draußen hält.
+  if (!schluessel.startsWith(`chat/${raum.id}/`) || schluessel.includes('..')) {
+    return NextResponse.json({ error: 'Dieser Platz gehört nicht zu diesem Gespräch.' },
+      { status: 403 })
+  }
+
+  const kopf = await objektKopf(schluessel)
+  if (!kopf) {
+    return NextResponse.json({
+      error: 'Die Datei ist im Speicher nicht angekommen. Bitte noch einmal '
+        + 'versuchen — am besten mit WLAN oder vollem Empfang.',
+    }, { status: 409 })
+  }
+
+  const name = sichererDateiname(eingang.dateiname)
+  // §241/§246 Dieselbe Erkennung wie beim alten Weg, jetzt mit den Bytes aus
+  // dem Speicher: Endung, gemeldeter Typ UND Inhalt.
+  const erkannt = dateityp(name, eingang.mimeType, kopf.anfang, Object.keys(CHAT_TYPEN))
+  const typ = erkannt.typ
+  const geprueft = erkannt.widerspruch
+    ? { ok: false, fehler: erkannt.widerspruch }
+    : pruefeChatDatei(name, typ, kopf.groesse)
+
+  if (!geprueft.ok) {
+    // Abgewiesen heißt: Das Objekt darf nicht liegen bleiben. Sonst hätten wir
+    // eine Datei im Speicher, von der kein Eintrag mehr weiß.
+    await objektWegraeumen(schluessel)
+    return NextResponse.json({ error: geprueft.fehler }, { status: 400 })
+  }
+
+  const mich = await prisma.user.findUnique({
+    where: { id: ich }, select: { name: true, employeeId: true },
+  })
+
+  let abgelegt: { id: string }
+  try {
+    abgelegt = await objektSpeichern({
+      customerId: raum.customerId,
+      locationId: raum.locationId,
+      ownerType: 'chat' as never,
+      ownerId: raum.id,
+      kategorie: 'sonstiges',
+      dateiname: name,
+      mimeType: typ,
+      objektSchluessel: schluessel,
+      groesse: kopf.groesse,
+      hochgeladenVon: ich,
+      hochgeladenVonName: mich?.name ?? null,
+      sichtbarFuerMitarbeiter: false,
+      pruefen: pruefeChatDatei,
+    })
+  } catch (fehler) {
+    await objektWegraeumen(schluessel)
+    const v = vorfall('chat/datei/vermerken', fehler,
+      'Die Datei ließ sich nicht speichern.')
+    await vorfallMelden('chat/datei/vermerken', fehler, v.kennung, {
+      userId: ich, name: mich?.name ?? undefined, role: rolle,
+      customerId: raum.customerId,
+    })
+    return NextResponse.json({ error: v.text }, { status: 500 })
+  }
+
+  return nachrichtAnlegen({
+    raumId: raum.id,
+    ich,
+    employeeId: mich?.employeeId ?? null,
+    absenderName: mich?.name ?? null,
+    text: String(eingang.text ?? '').trim().slice(0, 2000) || name,
+    datei: {
+      id: abgelegt.id, dateiname: name, mimeType: typ, groesse: kopf.groesse,
+    },
+  })
+}
+
+/**
+ * §260 Was nach dem Ablegen für beide Wege gleich ist.
+ *
+ * Vorher stand das nur einmal da — am Ende des einen Weges. Mit dem zweiten
+ * Weg wäre es eine Abschrift geworden, und Abschriften laufen auseinander:
+ * §229, §232 und §235 sind genau daran gescheitert. Hier wäre es der
+ * Zeitstempel der letzten Aktivität oder die Push-Meldung, die beim direkten
+ * Weg still ausfällt.
+ */
+async function nachrichtAnlegen(opts: {
+  raumId: string
+  ich: string
+  employeeId: string | null
+  /** Der Name des Absenders, soweit bekannt. */
+  absenderName: string | null
+  text: string
+  datei: { id: string; dateiname: string; mimeType: string; groesse: number }
+}) {
   const nachricht = await prisma.chatNachricht.create({
     data: {
-      raumId: raum.id, userId: ich, employeeId: mich?.employeeId ?? null,
-      absenderName: mich?.name ?? 'Unbekannt',
-      text, art: 'datei', dateiId: abgelegt.id,
+      raumId: opts.raumId, userId: opts.ich, employeeId: opts.employeeId,
+      absenderName: opts.absenderName ?? 'Unbekannt',
+      text: opts.text, art: 'datei', dateiId: opts.datei.id,
     },
   })
   await prisma.chatRaum.update({
-    where: { id: raum.id }, data: { letzteAktivitaet: nachricht.createdAt },
+    where: { id: opts.raumId }, data: { letzteAktivitaet: nachricht.createdAt },
   })
 
   // Dieselbe Benachrichtigung wie bei einer Textnachricht — wer ein Bild
   // bekommt, soll es genauso mitbekommen.
   const andere = await prisma.chatMitglied.findMany({
-    where: { raumId: raum.id, userId: { not: ich }, employeeId: { not: null } },
+    where: { raumId: opts.raumId, userId: { not: opts.ich }, employeeId: { not: null } },
     select: { employeeId: true },
   })
   await Promise.all(andere.map(m => sendPushToEmployee(m.employeeId!, {
-    title: mich?.name ?? 'Neue Nachricht',
-    body: `${CHAT_TYPEN[typ] ?? 'Datei'}: ${text}`,
-    url: `/nachrichten?raum=${raum.id}`,
+    // Ohne Namen lieber „Neue Nachricht" als „Unbekannt" auf dem Sperrbildschirm.
+    title: opts.absenderName ?? 'Neue Nachricht',
+    body: `${CHAT_TYPEN[opts.datei.mimeType] ?? 'Datei'}: ${opts.text}`,
+    url: `/nachrichten?raum=${opts.raumId}`,
   }).catch(() => undefined)))
 
-  return NextResponse.json({
-    nachricht: {
-      ...nachricht,
-      datei: {
-        id: abgelegt.id, dateiname: name, mimeType: typ, groesse: daten.length,
-      },
-    },
-  })
+  return NextResponse.json({ nachricht: { ...nachricht, datei: opts.datei } })
 }
 
 /**
@@ -229,9 +386,41 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const datei = await prisma.storedFile.findFirst({
     where: { id, ownerType: 'chat', ownerId: params.id, deletedAt: null },
-    select: { dateiname: true, mimeType: true, inhalt: true },
+    select: {
+      dateiname: true, mimeType: true, inhalt: true,
+      treiber: true, objektSchluessel: true,
+    },
   })
-  if (!datei?.inhalt) {
+  if (!datei) {
+    return NextResponse.json({ error: 'Datei nicht gefunden' }, { status: 404 })
+  }
+
+  /*
+   * §260 Liegt die Datei im Objektspeicher, wird nur der Weg dorthin gewiesen.
+   *
+   * Die Zugriffsprüfung ist zu diesem Zeitpunkt schon gelaufen — wer hier
+   * ankommt, ist Mitglied dieses Gesprächs und die Datei gehört dazu. Die
+   * ausgestellte Adresse gilt fünf Minuten und nur für diese eine Datei.
+   *
+   * WARUM UMLEITEN UND NICHT DURCHREICHEN
+   * Weil ein Durchreichen genau das wieder einführen würde, was wir loswerden
+   * wollten: Die ganze Datei läge im Arbeitsspeicher des Servers, und Railway
+   * zählte jeden Abruf als ausgehenden Verkehr. Bei R2 ist der Verkehr frei —
+   * aber nur, wenn er dort stattfindet.
+   */
+  if (datei.treiber === 'r2' && datei.objektSchluessel) {
+    const adresse = downloadAdresse(
+      datei.objektSchluessel, 300, new Date(), 'dateien', datei.dateiname,
+    )
+    if (!adresse) {
+      return NextResponse.json(
+        { error: 'Der Dateispeicher ist gerade nicht erreichbar.' }, { status: 503 },
+      )
+    }
+    return NextResponse.redirect(adresse, 302)
+  }
+
+  if (!datei.inhalt) {
     return NextResponse.json({ error: 'Datei nicht gefunden' }, { status: 404 })
   }
 

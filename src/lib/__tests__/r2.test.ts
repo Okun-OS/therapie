@@ -347,3 +347,62 @@ describe('§259 Programm- und Dateispeicher sind getrennt', () => {
     expect(downloadAdresse('latest.yml', 300, JETZT)).toContain('abc123.')
   })
 })
+
+/**
+ * §260 Der Name beim Herunterladen.
+ *
+ * Im Speicher heißt die Datei `chat/<raum>/2026-10-29/9f3c…b1.jpg` — ein
+ * zufälliger Schlüssel. Ohne diesen Zusatz landete im Ordner „Downloads" eine
+ * Datei mit einem Namen aus 32 Hexzeichen.
+ *
+ * Der Zusatz steht als Abfrageparameter in der Adresse und ist damit Teil der
+ * Signatur. Er ist kleingeschrieben, die übrigen Parameter beginnen mit
+ * „X-Amz" — die Sortierung geschieht nach Bytefolge, und Großbuchstaben kommen
+ * davor. Geht das durcheinander, lautet die Antwort „SignatureDoesNotMatch".
+ */
+describe('§260 Der Anzeigename', () => {
+  it('steht in der Adresse — und zwar als `inline`, nicht als Download', () => {
+    const a = new URL(downloadAdresse('chat/r1/9f3c.jpg', 300, JETZT, 'dateien', 'Foto.jpg')!)
+    expect(a.searchParams.get('response-content-disposition'))
+      .toBe('inline; filename="Foto.jpg"')
+  })
+
+  it('ohne Namen steht der Parameter NICHT da', () => {
+    const a = new URL(downloadAdresse('chat/r1/9f3c.jpg', 300, JETZT, 'dateien')!)
+    expect(a.searchParams.get('response-content-disposition')).toBeNull()
+  })
+
+  it('und die Signatur ändert sich mit ihm — er ist mitsigniert', () => {
+    const sig = (a: string | null) => new URL(a!).searchParams.get('X-Amz-Signature')
+    const ohne = sig(downloadAdresse('x.jpg', 300, JETZT, 'dateien'))
+    const mitA = sig(downloadAdresse('x.jpg', 300, JETZT, 'dateien', 'Foto.jpg'))
+    const mitB = sig(downloadAdresse('x.jpg', 300, JETZT, 'dateien', 'Vertrag.pdf'))
+    expect(new Set([ohne, mitA, mitB]).size).toBe(3)
+  })
+
+  it('die Parameter bleiben sortiert, auch mit dem neuen dazwischen', () => {
+    const roh = downloadAdresse('x.jpg', 300, JETZT, 'dateien', 'Foto.jpg')!
+    const namen = roh.split('?')[1].split('&')
+      .map(t => t.split('=')[0])
+      .filter(n => n !== 'X-Amz-Signature')
+    expect(namen).toEqual([...namen].sort())
+    // Die Bytefolge: Großbuchstaben vor Kleinbuchstaben.
+    expect(namen[namen.length - 1]).toBe('response-content-disposition')
+  })
+
+  it('ein Anführungszeichen im Namen bricht den Kopf nicht auf', () => {
+    // `sichererDateiname` entfernt es schon; diese Stelle soll sich darauf
+    // nicht verlassen müssen.
+    const a = new URL(downloadAdresse('x.jpg', 300, JETZT, 'dateien',
+      'Fo"to\r\n; attachment.jpg')!)
+    expect(a.searchParams.get('response-content-disposition'))
+      .toBe('inline; filename="Foto; attachment.jpg"')
+  })
+
+  it('Umlaute und Leerzeichen werden kodiert, nicht verschluckt', () => {
+    const roh = downloadAdresse('x.pdf', 300, JETZT, 'dateien', 'Ärztliche Bescheinigung.pdf')!
+    expect(roh).not.toContain('Ärztliche Bescheinigung')
+    expect(new URL(roh).searchParams.get('response-content-disposition'))
+      .toBe('inline; filename="Ärztliche Bescheinigung.pdf"')
+  })
+})

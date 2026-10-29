@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 // §100 Dateiablage — Speicherung und Zugriffsregeln für Personalunterlagen.
 //
 // Wo die Dateien liegen
@@ -168,6 +169,79 @@ export function sichererDateiname(roh: string): string {
     .replace(/[^A-Za-z0-9ÄÖÜäöüß._ -]/g, '_')
     .slice(0, 120)
     .trim() || 'datei'
+}
+
+/**
+ * §260 Ein Platz im Objektspeicher — der Name, unter dem die Datei dort liegt.
+ *
+ * WARUM NICHT DER DATEINAME
+ * Weil zwei Menschen denselben Dateinamen hochladen („IMG_0427.jpg") und sich
+ * sonst gegenseitig überschrieben. Und weil der Name in der Adresse stünde:
+ * `…/krankenschein-mueller.pdf` verrät etwas, bevor jemand die Datei öffnet.
+ *
+ * Der Schlüssel ist stattdessen zufällig. Die Endung bleibt dran, damit sich
+ * eine Datei im Speicher noch einordnen lässt, wenn die Datenbank einmal
+ * danebenliegt — mehr nicht.
+ *
+ * Der Ordner vorn trennt die Verwendungszwecke: Wer später aufräumen oder eine
+ * Löschfrist durchsetzen will, braucht das.
+ */
+export function objektSchluessel(bereich: string, dateiname: string): string {
+  const endung = (dateiname.match(/\.([A-Za-z0-9]{1,8})$/)?.[1] ?? '').toLowerCase()
+  const zufall = randomBytes(16).toString('hex')
+  const heute = new Date().toISOString().slice(0, 10)
+  return `${bereich}/${heute}/${zufall}${endung ? `.${endung}` : ''}`
+}
+
+/**
+ * §260 Einen Datensatz für eine Datei anlegen, die bereits IM SPEICHER liegt.
+ *
+ * Das Gegenstück zu `dateiSpeichern`: Dort geht der Inhalt durch die Anwendung
+ * in die Datenbank, hier hat ihn das Telefon schon direkt abgelegt und es wird
+ * nur noch vermerkt, wo er liegt.
+ *
+ * WARUM DIE GRÖSSE ÜBERGEBEN WIRD UND NICHT GEMESSEN
+ * Weil die Anwendung die Datei nie sieht — das ist der ganze Zweck. Die Zahl
+ * kommt vom Browser und ist damit eine Behauptung; sie dient der Anzeige, nicht
+ * einer Prüfung. Die wirkliche Grenze zieht die ausgestellte Adresse: Sie gilt
+ * fünf Minuten, nur für diesen einen Schlüssel und nur für diesen einen Typ.
+ */
+export async function objektSpeichern(eingang: Omit<DateiEingang, 'daten'> & {
+  objektSchluessel: string
+  groesse: number
+  pruefen?: (name: string, typ: string, groesse: number) => PruefErgebnis
+}) {
+  const pruefer = eingang.pruefen ?? pruefeDatei
+  const pruefung = pruefer(eingang.dateiname, eingang.mimeType, eingang.groesse)
+  if (!pruefung.ok) throw new Error(pruefung.fehler)
+
+  const sichtbar = eingang.sichtbarFuerMitarbeiter
+    ?? IMMER_SICHTBAR.includes(eingang.kategorie)
+
+  return prisma.storedFile.create({
+    data: {
+      customerId: eingang.customerId,
+      locationId: eingang.locationId ?? null,
+      ownerType: eingang.ownerType,
+      ownerId: eingang.ownerId,
+      kategorie: eingang.kategorie,
+      dateiname: sichererDateiname(eingang.dateiname),
+      mimeType: eingang.mimeType,
+      groesse: eingang.groesse,
+      // §260 Der Unterschied zu `dateiSpeichern`: kein Inhalt in der
+      // Datenbank, dafür der Verweis in den Objektspeicher.
+      treiber: 'r2',
+      inhalt: null,
+      objektSchluessel: eingang.objektSchluessel,
+      sichtbarFuerMitarbeiter: sichtbar,
+      hochgeladenVon: eingang.hochgeladenVon,
+      hochgeladenVonName: eingang.hochgeladenVonName ?? null,
+      notiz: eingang.notiz ?? null,
+      gueltigVon: eingang.gueltigVon ?? null,
+      gueltigBis: eingang.gueltigBis ?? null,
+    },
+    select: DATEI_FELDER,
+  })
 }
 
 /** Datei ablegen. Der Treiber entscheidet, wohin der Inhalt geht. */

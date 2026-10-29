@@ -160,8 +160,23 @@ export function downloadAdresse(
   gueltigSekunden = 900,
   jetzt: Date = new Date(),
   zweck: Speicherzweck = 'programm',
+  /**
+   * §260 Der Name, unter dem die Datei beim Herunterladen erscheinen soll.
+   *
+   * Im Speicher heißt sie `chat/<raum>/2026-10-29/9f3c…b1.jpg` — ein
+   * zufälliger Schlüssel, damit zwei Fotos namens `IMG_0427.jpg` sich nicht
+   * überschreiben und der Name nicht in der Adresse steht. Genau deshalb muss
+   * der richtige Name hier wieder dazu: Sonst landet im Ordner „Downloads"
+   * eine Datei mit einem Namen aus 32 Hexzeichen.
+   *
+   * `response-content-disposition` wird mitsigniert; der Speicher setzt den
+   * Kopf dann so, wie der alte Weg ihn gesetzt hat.
+   */
+  anzeigeName?: string,
 ): string | null {
-  return ausgestellteAdresse('GET', schluesselPfad, gueltigSekunden, jetzt, undefined, zweck)
+  return ausgestellteAdresse({
+    methode: 'GET', schluesselPfad, gueltigSekunden, jetzt, zweck, anzeigeName,
+  })
 }
 
 /**
@@ -195,7 +210,9 @@ export function uploadAdresse(
   jetzt: Date = new Date(),
   zweck: Speicherzweck = 'dateien',
 ): string | null {
-  return ausgestellteAdresse('PUT', schluesselPfad, gueltigSekunden, jetzt, mimeType, zweck)
+  return ausgestellteAdresse({
+    methode: 'PUT', schluesselPfad, gueltigSekunden, jetzt, mimeType, zweck,
+  })
 }
 
 /**
@@ -211,7 +228,9 @@ export function loeschAdresse(
   jetzt: Date = new Date(),
   zweck: Speicherzweck = 'dateien',
 ): string | null {
-  return ausgestellteAdresse('DELETE', schluesselPfad, gueltigSekunden, jetzt, undefined, zweck)
+  return ausgestellteAdresse({
+    methode: 'DELETE', schluesselPfad, gueltigSekunden, jetzt, zweck,
+  })
 }
 
 /**
@@ -223,15 +242,27 @@ export function loeschAdresse(
  * auseinander, und der Unterschied meldet sich als „SignatureDoesNotMatch",
  * ohne Hinweis worauf.
  */
-function ausgestellteAdresse(
-  methode: 'GET' | 'PUT' | 'DELETE',
-  schluesselPfad: string,
-  gueltigSekunden: number,
-  jetzt: Date,
-  mimeType?: string,
-  zweck: Speicherzweck = 'programm',
-): string | null {
-  const z = zugang(zweck)
+function ausgestellteAdresse(auftrag: {
+  methode: 'GET' | 'PUT' | 'DELETE'
+  schluesselPfad: string
+  gueltigSekunden: number
+  jetzt: Date
+  mimeType?: string
+  zweck?: Speicherzweck
+  anzeigeName?: string
+}): string | null {
+  /*
+   * §260 Benannte Angaben statt einer Reihe von Stellen.
+   *
+   * Vorher standen hier sechs Parameter hintereinander, davon zwei optionale
+   * mitten drin. Der Aufruf `(…, undefined, 'dateien')` sagt niemandem mehr,
+   * was gemeint ist, und ein Vertauschen fällt nicht auf: Die Folge wäre
+   * „SignatureDoesNotMatch", und diese Meldung nennt den Grund nicht.
+   */
+  const {
+    methode, schluesselPfad, gueltigSekunden, jetzt, mimeType, anzeigeName,
+  } = auftrag
+  const z = zugang(auftrag.zweck ?? 'programm')
   if (!z) return null
 
   const { lang, tag } = zeitstempel(jetzt)
@@ -256,6 +287,21 @@ function ausgestellteAdresse(
     ['X-Amz-Expires', String(gueltigSekunden)],
     ['X-Amz-SignedHeaders', signierteKoepfe],
   ]
+  /*
+   * §260 Der Anzeigename. `inline` und nicht `attachment`, genau wie beim
+   * alten Weg: Ein Bild soll man sehen und eine Sprachnachricht hören können,
+   * ohne sie vorher herunterzuladen.
+   *
+   * Anführungszeichen im Namen würden den Kopf aufbrechen; `sichererDateiname`
+   * entfernt sie bereits, hier steht es noch einmal, weil diese Stelle sich
+   * nicht darauf verlassen können soll.
+   */
+  if (anzeigeName) {
+    parameter.push([
+      'response-content-disposition',
+      `inline; filename="${anzeigeName.replace(/[\r\n"]/g, '')}"`,
+    ])
+  }
   const abfrage = parameter
     .map(([k, v]) => `${kodieren(k)}=${kodieren(v)}`)
     .sort()
@@ -281,6 +327,82 @@ function ausgestellteAdresse(
     .update(zuSignieren).digest('hex')
 
   return `https://${wirt(z)}${pfad}?${abfrage}&X-Amz-Signature=${signatur}`
+}
+
+/**
+ * §260 Nachsehen, was wirklich im Speicher liegt.
+ *
+ * DAS PROBLEM, DAS DAMIT GELÖST WIRD
+ * Beim direkten Weg lädt das Telefon zum Speicher, und erst danach meldet es
+ * der Anwendung: „liegt da, heißt so, ist so groß." Diese Meldung ist eine
+ * BEHAUPTUNG. Ihr zu glauben hieße, drei Prüfungen aufzugeben, die der alte
+ * Weg hatte:
+ *
+ *   — ob überhaupt etwas angekommen ist (sonst steht im Verlauf eine
+ *     Nachricht mit einem Anhang, den niemand öffnen kann),
+ *   — wie groß es wirklich ist (die Grenze von 25 MB wäre sonst eine Bitte),
+ *   — was tatsächlich drinsteht (§241: eine `.exe` mit dem Namen `foto.jpg`
+ *     und dem gemeldeten Typ `image/jpeg` kommt sonst durch).
+ *
+ * WARUM EIN TEILSTÜCK UND KEIN `HEAD`
+ * Ein `HEAD` bräuchte eine eigene Unterschrift — die Methode steht in der
+ * Signatur. Ein `GET` mit Bereichsangabe kommt mit der vorhandenen
+ * Download-Adresse aus und bringt beides in einer Anfrage: Im Kopf
+ * `content-range` steht die wahre Gesamtgröße, im Rumpf die ersten Bytes für
+ * die Typerkennung. Geholt werden 64 Bytes, nicht die Datei.
+ */
+export async function objektKopf(
+  schluesselPfad: string,
+  zweck: Speicherzweck = 'dateien',
+): Promise<{ groesse: number; anfang: Buffer } | null> {
+  const adresse = downloadAdresse(schluesselPfad, 60, new Date(), zweck)
+  if (!adresse) return null
+
+  const antwort = await fetch(adresse, { headers: { range: 'bytes=0-63' } }).catch(() => null)
+  if (!antwort) return null
+  /*
+   * 416 heißt „der angeforderte Bereich liegt außerhalb" — bei einem Objekt
+   * ohne Inhalt. Das Objekt gibt es also, es ist nur leer; die Prüfung weiter
+   * oben weist eine leere Datei ohnehin ab.
+   */
+  if (antwort.status === 416) {
+    await antwort.body?.cancel().catch(() => undefined)
+    return { groesse: 0, anfang: Buffer.alloc(0) }
+  }
+  if (!antwort.ok) {
+    await antwort.body?.cancel().catch(() => undefined)
+    return null
+  }
+
+  const anfang = Buffer.from(await antwort.arrayBuffer())
+  /*
+   * `bytes 0-63/421337` — hinter dem Schrägstrich die Gesamtgröße. Fehlt der
+   * Kopf, hat der Speicher die ganze Datei geschickt, und dann ist deren
+   * Länge die Gesamtgröße.
+   */
+  const gesamt = antwort.headers.get('content-range')?.match(/\/(\d+)\s*$/)?.[1]
+  return { groesse: gesamt ? Number(gesamt) : anfang.length, anfang }
+}
+
+/**
+ * §260 Ein Objekt wegräumen, von dem kein Eintrag mehr weiß.
+ *
+ * Gebraucht für den Fall, in dem das Telefon hochgeladen hat, die Prüfung
+ * danach aber fehlschlägt. Ohne das bliebe eine Datei im Speicher liegen, die
+ * in keiner Akte und keinem Verlauf auftaucht — und die deshalb auch keine
+ * Löschfrist je erreicht.
+ *
+ * Scheitert das Wegräumen, passiert nichts weiter: Der Mensch soll deswegen
+ * keine zweite Fehlermeldung sehen.
+ */
+export async function objektWegraeumen(
+  schluesselPfad: string,
+  zweck: Speicherzweck = 'dateien',
+): Promise<void> {
+  const adresse = loeschAdresse(schluesselPfad, 120, new Date(), zweck)
+  if (!adresse) return
+  const antwort = await fetch(adresse, { method: 'DELETE' }).catch(() => null)
+  await antwort?.body?.cancel().catch(() => undefined)
 }
 
 /**
