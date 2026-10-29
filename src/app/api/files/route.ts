@@ -101,7 +101,17 @@ async function postImpl(req: NextRequest) {
   }
 
   const groesse = datei.size
-  const daten = Buffer.from(await datei.arrayBuffer())
+  // §255 Siehe `chat/[id]/datei`: Bricht die Verbindung beim Lesen des
+  // Rumpfes ab, ist das keine Störung der Anlage, sondern der Leitung.
+  let daten: Buffer
+  try {
+    daten = Buffer.from(await datei.arrayBuffer())
+  } catch {
+    return NextResponse.json({
+      error: 'Die Übertragung wurde unterbrochen. Bitte noch einmal versuchen '
+        + '— am besten mit WLAN oder vollem Empfang.',
+    }, { status: 400 })
+  }
   /*
    * §241 Dieselbe Ursache wie beim Chat-Anhang, dieselbe Meldung: „außerdem
    * konnte man da auch keine Bescheinigung hochladen, da hat der Upload nicht

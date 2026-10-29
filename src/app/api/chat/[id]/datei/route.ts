@@ -57,7 +57,31 @@ async function postImpl(req: NextRequest, { params }: { params: { id: string } }
     return NextResponse.json({ error: 'Es war keine Datei dabei.' }, { status: 400 })
   }
 
-  const daten = Buffer.from(await datei.arrayBuffer())
+  /*
+   * §255 Die Übertragung kann mitten im Lesen abbrechen.
+   *
+   * `arrayBuffer()` liest den Rumpf der Anfrage fertig ein. Bricht die
+   * Verbindung dabei ab — ein Funkloch, ein Wechsel von WLAN auf Mobilfunk,
+   * ein gesperrter Bildschirm —, wirft dieser Aufruf. Bis hierher war er
+   * NICHT abgefangen: Daraus wurde eine 500, und in der Oberfläche stand
+   * „Die Datei ließ sich nicht senden" ohne Grund.
+   *
+   * Gemeldet wurde genau das, mit Kennung 88e511 und ohne Zusatz — also kein
+   * Datenbankfehler. Ein abgebrochener Rumpf passt zum Bild: Es geschieht am
+   * Telefon, nicht am Schreibtisch, und nicht jedes Mal.
+   *
+   * Das ist keine Störung der Anlage, sondern eine der Leitung. Entsprechend
+   * lautet die Antwort: noch einmal versuchen, nicht „melde einen Fehler".
+   */
+  let daten: Buffer
+  try {
+    daten = Buffer.from(await datei.arrayBuffer())
+  } catch {
+    return NextResponse.json({
+      error: 'Die Übertragung wurde unterbrochen. Bitte noch einmal versuchen '
+        + '— am besten mit WLAN oder vollem Empfang.',
+    }, { status: 400 })
+  }
   const name = sichererDateiname(datei.name || 'Anhang')
   /*
    * §241 Hier stand `datei.type || 'application/octet-stream'`.

@@ -68,6 +68,14 @@ function art(fehler: unknown): string | null {
   if (/heap out of memory|allocation failed/i.test(text)) {
     return 'Arbeitsspeicher erschöpft'
   }
+  /*
+   * §255 Ein abgebrochener Anfragerumpf. Am Telefon der häufigste Fall, den
+   * man für eine Störung der Anlage halten könnte — er ist aber einer der
+   * Leitung, und die Antwort darauf lautet „noch einmal versuchen".
+   */
+  if (/aborted|ECONNRESET|socket hang up|terminated|premature close|stream/i.test(text)) {
+    return 'Übertragung unterbrochen'
+  }
   return null
 }
 

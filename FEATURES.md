@@ -6603,3 +6603,41 @@ nicht die Ursache dessen, was gemeldet wurde.
 
 **1342** Modultests, `alle-seiten-ohne-fehler` 60/60, `widersprueche` 17/17,
 `q-glocke-und-anhaenge` 23/23, `a-mitarbeiter` 37/37, `r-stundenkonto` 11/11.
+
+## Block §255 (29.10.) — Die Kennung hat geredet
+
+**Die Meldung:** „Die Datei ließ sich nicht senden. (Kennung: 88e511)"
+
+Die Kennung aus §252 hat getan, wozu sie da ist. Zwei Dinge stehen in dieser
+einen Zeile:
+
+**Kein Datenbankfehler.** Die Einordnung hätte sonst „Datenbank überlastet",
+„Datenbankstand veraltet" oder „Speicher voll" dazugeschrieben. Sie schwieg —
+also keine der bekannten Ursachen.
+
+**Und es ist die äußere Meldung, nicht die innere.** „Ließ sich nicht senden"
+kommt vom Mantel um den ganzen Weg; „ließ sich nicht speichern" wäre die
+Ablage gewesen. Der Fehler passierte also **außerhalb** des Speicherns.
+
+### Was dann noch übrig bleibt
+
+Ein Aufruf war nicht abgefangen: `datei.arrayBuffer()`. Er liest den Rumpf der
+Anfrage fertig ein. Bricht die Verbindung dabei ab — ein Funkloch, ein Wechsel
+von WLAN auf Mobilfunk, ein gesperrter Bildschirm —, wirft er. Daraus wurde
+eine 500.
+
+Das passt zum Bild: Es geschieht am Telefon, nicht am Schreibtisch, und nicht
+jedes Mal.
+
+**Das ist keine Störung der Anlage, sondern eine der Leitung.** Entsprechend
+lautet die Antwort jetzt:
+
+> Die Übertragung wurde unterbrochen. Bitte noch einmal versuchen — am besten
+> mit WLAN oder vollem Empfang.
+
+Mit HTTP 400 statt 500, in beiden Hochladewegen. Nachgestellt mit einer
+Anfrage, die mehr ankündigt, als sie sendet: vorher 500, jetzt 400.
+
+### Nachweise
+
+**1342** Modultests, darunter die Einordnung abgebrochener Übertragungen.

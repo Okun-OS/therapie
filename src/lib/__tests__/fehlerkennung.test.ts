@@ -60,6 +60,10 @@ describe('vorfall', () => {
       ['value too long for the column', 'Inhalt zu groß für die Ablage'],
       ['ENOSPC: no space left on device', 'Speicher voll'],
       ['JavaScript heap out of memory', 'Arbeitsspeicher erschöpft'],
+      // §255 Der Fall vom Telefon: Die Leitung bricht mitten im Hochladen ab.
+      ['Error: aborted', 'Übertragung unterbrochen'],
+      ['read ECONNRESET', 'Übertragung unterbrochen'],
+      ['Premature close', 'Übertragung unterbrochen'],
     ]
     for (const [meldung, art] of faelle) {
       expect(vorfall('x', new Error(meldung), 'Ging nicht.').text).toContain(art)
