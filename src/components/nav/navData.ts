@@ -110,6 +110,16 @@ const adminDock: DockItem[] = [
       title: 'Einstellungen',
       sections: [
         { items: [
+          /*
+           * §244 Der Weg zu den Einstellungen selbst — er fehlte.
+           *
+           * Dieser Punkt heißt „Einstellungen" und listete Nachweise,
+           * Recruiting, Aufgaben, Support und Funde. Wo man die Regel zur
+           * Krankmeldung, die Urlaubsvorgaben oder die Hinweis-Adresse ändert,
+           * stand nirgends. Gemerkt hat es niemand, weil nichts darauf zeigte
+           * und die fehlende Seite still eine 404 war.
+           */
+          { href: '/admin/settings',  label: 'Standort-Einstellungen', description: 'Krankmeldung, Urlaubsvorgaben, Benachrichtigungen', icon: '⚙️' },
           { href: '/admin/nachweise', label: 'Nachweise & Fristen', description: 'Schulungen, Belehrungen, was wann abläuft',   icon: '🛡' },
           { href: '/admin/recruiting', label: 'Recruiting',     description: 'Stellen ausschreiben, Bewerber begleiten, Karriereseite', icon: '📣' },
           { href: '/admin/tasks',     label: 'Aufgabenkatalog',  description: 'To-dos und Checklisten für Dienste',             icon: '✅' },

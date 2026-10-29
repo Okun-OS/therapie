@@ -6148,3 +6148,61 @@ selbst. `alle-seiten-ohne-fehler` 60/60, `urlaubstage-stimmen-ueberein` 13/13,
 Lesestände eines echten Gesprächs und hat sie nicht zurückgestellt. Nicht jedes
 Mal — nur bei passender Reihenfolge, und genau solche Fehlalarme kosten eine
 Prüfung ihren Ruf. Sie räumt jetzt auf; beide laufen abwechselnd wiederholt grün.
+
+## Block §244 (29.10.) — Die Seite, die es nicht gab, und niemand vermisste
+
+Entstanden aus §243: Der Seitendurchgang wurde so geschärft, dass eine fehlende
+Seite ein Befund ist. Er meldete genau eine — `/admin/settings`.
+
+### Warum das niemandem auffiel
+
+**Es führte nichts dorthin.** Der Menüpunkt „Einstellungen" der Standortleitung
+listete Nachweise, Recruiting, Aufgabenkatalog, Support und Funde — aber keinen
+Weg zu den Einstellungen selbst.
+
+Und der Seitendurchgang rief die Adresse zwar auf, meldete aber **grün**: Er
+sucht nach Fehlertext, und die eigene 404-Seite (§234) enthält keinen. Sie sagt
+ruhig und auf Deutsch, dass es die Seite nicht gibt. Eine gute Fehlerseite hat
+also eine Prüfung blind gemacht — das ist die Art Nebenwirkung, die man nur
+findet, wenn man nach ihr sucht.
+
+### Warum es jetzt zählte
+
+Gemeldet war: „Das muss auch möglich sein, dass es eingestellt wird" — die Regel
+zum Krankenschein. §242 hat die Mitarbeiterseite auf die Einstellung umgestellt.
+**Nur kam die Leitung an diese Einstellung nicht heran.** Sie liegt unter
+`/company/settings`, und dorthin führt im Menü der Leitung nichts.
+
+### Warum nicht einfach ein Verweis dorthin
+
+Weil eine Leitung dort Felder sähe, die sie nicht speichern darf — Anschrift,
+Betriebsnummer, IBAN, DATEV-Nummern. Der Server weist das seit §113/§114 zurecht
+ab, aber ein Formular, dessen halbe Felder beim Speichern eine Absage ergeben,
+ist schlimmer als keines.
+
+`/admin/settings` zeigt deshalb nur, was eine Standortleitung wirklich ändern
+darf — dieselbe Liste wie `ERLAUBT_ALLE` in der Schnittstelle:
+
+| | |
+|---|---|
+| Krankmeldung | Bescheinigung ab dem … Kalendertag |
+| Urlaubsgenehmigung | automatisch bis … Tage |
+| Vorgaben für neue Mitarbeitende | Wochenstunden, Urlaubstage |
+| Benachrichtigungen | E-Mail für Hinweise an die Leitung |
+
+Unter der Krankmeldungs-Einstellung steht in einem Satz, **was sie auslöst** —
+wer eine Zahl ändert, soll sehen, was passiert, statt es einmal zu setzen und
+die Wirkung nie zu sehen.
+
+Gespeichert werden nur diese fünf Felder, nicht das ganze geladene Objekt:
+Sonst schickte die Leitung die Unternehmensfelder mit und finge eine Absage für
+etwas ein, das sie gar nicht bearbeitet hat.
+
+### Nachweise
+
+`alle-seiten-ohne-fehler` **60/60** — und diesmal heißt das etwas: Die Prüfung
+scheiterte vorher an genau dieser Adresse, nachdem sie fehlende Seiten melden
+gelernt hat. Nachgemessen: `/admin/settings` als Leitung HTTP 200, und ein
+Mitarbeiter bekommt beim Speichern weiterhin 403.
+
+`widersprueche` 15/15, `q-glocke-und-anhaenge` 23/23, **1330** Modultests.

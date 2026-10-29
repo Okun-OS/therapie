@@ -175,8 +175,24 @@ for (const rolle of ROLLEN) {
       continue
     }
 
+    /*
+     * §243 Eine Seite, die es gar nicht gibt, ist der schwerste Befund — und
+     * dieser Durchgang hat ihn bis hierher übersehen.
+     *
+     * `/admin/settings` steht seit Langem in der Liste unten und war die ganze
+     * Zeit eine 404. Gemeldet hat es niemand, weil die Prüfung nach
+     * FEHLERTEXT sucht und die eigene 404-Seite (§234) keinen enthält: Sie
+     * sagt ruhig und auf Deutsch, dass es die Seite nicht gibt. Grün und
+     * bedeutungslos.
+     *
+     * Hier steht eine Liste von Seiten, die es geben SOLL. Wenn eine davon
+     * fehlt, ist das kein Nebenbefund, sondern der Hauptbefund.
+     */
+    const istLeer = /Diese Seite gibt es nicht/i.test(text)
+
     const imText = auffaellig(text)
     const alles = [
+      ...(istLeer ? ['Seite fehlt: Diese Adresse steht in der Liste, führt aber ins Leere'] : []),
       ...imText.map(t => `Text: ${t}`),
       ...ausnahmen.map(t => `Ausnahme: ${t}`),
       ...serverfehler.map(t => `Server: ${t}`),

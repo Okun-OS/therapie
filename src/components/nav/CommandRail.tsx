@@ -22,6 +22,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/workforce-score':    'Workforce Score',
   '/admin/reports':            'Berichte',
   '/admin/settings/planning-policy':    'Planungsrichtlinien',
+  '/admin/settings':                    'Standort-Einstellungen',
   '/admin/assistant':                   'OKUN Assistent',
   '/admin/payroll':            'Lohnabrechnung',
   '/admin/surcharges':         'Zuschlags-Engine',
