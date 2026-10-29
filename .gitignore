@@ -44,3 +44,4 @@ next-env.d.ts
 # weiter oben greift hier nicht, weil der Schrägstrich am Anfang nur die
 # Wurzel meint.
 /desktop/node_modules/
+.dev.log
