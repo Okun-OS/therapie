@@ -31,10 +31,18 @@ export default function EmployeeProfile() {
   const [monthlyClosingsAll, setMonthlyClosingsAll] = useState<MonthlyClosing[]>([])
 
   useEffect(() => {
-    fetch('/api/employees').then(r => r.json()).then(d => setAllEmployees(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setAllLocations(d.locations))
     fetch('/api/shifts').then(r => r.json()).then(d => setShifts(d.shifts))
   }, [])
+
+  // §253 Das Profil braucht nur die eigene Person — und kann erst fragen,
+  // wenn die Kennung da ist.
+  useEffect(() => {
+    if (!user?.employeeId) return
+    fetch(`/api/employees?employeeId=${user.employeeId}`)
+      .then(r => r.json()).then(d => setAllEmployees(d.employees ?? []))
+      .catch(() => {})
+  }, [user?.employeeId])
 
   const employee = allEmployees.find(e => e.id === user?.employeeId)
   const location = allLocations.find(l => l.id === employee?.locationId)

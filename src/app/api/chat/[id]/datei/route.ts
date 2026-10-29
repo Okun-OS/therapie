@@ -7,6 +7,7 @@ import {
   dateiSpeichern, pruefeChatDatei, sichererDateiname, CHAT_TYPEN,
 } from '@/lib/file-storage'
 import { dateityp } from '@/lib/dateityp'
+import { vorfall, vorfallMelden } from '@/lib/fehlerkennung'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +34,7 @@ export const dynamic = 'force-dynamic'
  * sind eine Tür zu viel.
  */
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+async function postImpl(req: NextRequest, { params }: { params: { id: string } }) {
   const session = requireRole(req)
   if (session instanceof NextResponse) return session
 
@@ -86,20 +87,44 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { id: ich }, select: { name: true, employeeId: true },
   })
 
-  const abgelegt = await dateiSpeichern({
-    customerId: raum.customerId,
-    locationId: raum.locationId ?? null,
-    ownerType: 'chat' as never,
-    ownerId: raum.id,
-    kategorie: 'sonstiges',
-    dateiname: name,
-    mimeType: typ,
-    daten,
-    hochgeladenVon: ich,
-    hochgeladenVonName: mich?.name ?? null,
-    sichtbarFuerMitarbeiter: false,
-    pruefen: pruefeChatDatei,
-  })
+  /*
+   * §252 Ab hier wird geschrieben — und ab hier kann etwas schiefgehen, das
+   * nichts mit der Datei zu tun hat.
+   *
+   * Gemeldet wurde „Fehler 500, 204 kB". 500 heißt: Die Anwendung ist über
+   * etwas gestolpert, und der Browser bekam keine Auskunft, sondern eine
+   * leere Seite. Örtlich ließ sich das nicht nachstellen — dieselbe Datei
+   * geht durch jedes Gespräch mit HTTP 200.
+   *
+   * Ohne diesen Mantel ist ein solcher Fall unsichtbar: Der Mensch sieht
+   * „500", ich sehe nichts. Jetzt steht in der Meldung eine Kennung, und
+   * dieselbe Kennung steht im Protokoll neben dem vollen Fehler.
+   */
+  let abgelegt: { id: string }
+  try {
+    abgelegt = await dateiSpeichern({
+      customerId: raum.customerId,
+      locationId: raum.locationId ?? null,
+      ownerType: 'chat' as never,
+      ownerId: raum.id,
+      kategorie: 'sonstiges',
+      dateiname: name,
+      mimeType: typ,
+      daten,
+      hochgeladenVon: ich,
+      hochgeladenVonName: mich?.name ?? null,
+      sichtbarFuerMitarbeiter: false,
+      pruefen: pruefeChatDatei,
+    })
+  } catch (fehler) {
+    const v = vorfall('chat/datei/ablegen', fehler,
+      'Die Datei ließ sich nicht speichern.')
+    await vorfallMelden('chat/datei/ablegen', fehler, v.kennung, {
+      userId: ich, name: mich?.name ?? undefined, role: session.role,
+      customerId: raum.customerId,
+    })
+    return NextResponse.json({ error: v.text }, { status: 500 })
+  }
 
   /*
    * Der Begleittext ist freiwillig. Steht keiner da, nimmt die Nachricht den
@@ -139,6 +164,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       },
     },
   })
+}
+
+/**
+ * §252 Der äußere Mantel.
+ *
+ * Alles, was unterwegs unerwartet scheitert, wird hier zu einer Antwort mit
+ * Kennung statt zu einer leeren 500. Ohne ihn sieht ein Mensch „Fehler 500"
+ * und ich sehe gar nichts — genau die Lage, in der wir dreimal gelandet sind.
+ */
+export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
+  try {
+    return await postImpl(req, ctx)
+  } catch (fehler) {
+    const v = vorfall('chat/datei', fehler, 'Die Datei ließ sich nicht senden.')
+    await vorfallMelden('chat/datei', fehler, v.kennung)
+    return NextResponse.json({ error: v.text }, { status: 500 })
+  }
 }
 
 /**

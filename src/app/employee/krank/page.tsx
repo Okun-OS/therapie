@@ -122,12 +122,10 @@ export default function Krankmelden() {
 
   useEffect(() => {
     if (!user?.employeeId) return
-    fetch('/api/employees')
+    // §253 Nur den eigenen Datensatz — siehe `api/employees/route.ts`.
+    fetch(`/api/employees?employeeId=${user.employeeId}`)
       .then(r => r.json())
-      .then(d => {
-        const ich = (d.employees ?? []).find((e: { id: string }) => e.id === user.employeeId)
-        setLocationId(ich?.locationId ?? user.locationId ?? null)
-      })
+      .then(d => setLocationId((d.employees ?? [])[0]?.locationId ?? user.locationId ?? null))
       .catch(() => setLocationId(user.locationId ?? null))
   }, [user?.employeeId, user?.locationId])
 

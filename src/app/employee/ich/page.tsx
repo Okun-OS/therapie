@@ -51,9 +51,10 @@ export default function Ich() {
 
   useEffect(() => {
     if (!user?.employeeId) return
-    fetch('/api/employees')
+    // §253 Nur den eigenen Datensatz holen, nicht die ganze Belegschaft.
+    fetch(`/api/employees?employeeId=${user.employeeId}`)
       .then(r => r.json())
-      .then(d => setMich((d.employees ?? []).find((e: Employee) => e.id === user.employeeId) ?? null))
+      .then(d => setMich((d.employees ?? [])[0] ?? null))
       .catch(() => {})
     // §149/§150 Beides zählt in eine Zahl: Für den Menschen ist es dasselbe —
     // etwas wartet auf ihn. Zwei Zähler nebeneinander wären eine Unterscheidung,

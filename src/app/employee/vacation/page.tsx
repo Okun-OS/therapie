@@ -33,9 +33,17 @@ export default function EmployeeVacation() {
   const [VACATION_REQUESTS, setVACATION_REQUESTS] = useState<VacationRequest[]>([])
 
   useEffect(() => {
-    fetch('/api/employees').then(r => r.json()).then(d => setEMPLOYEES(d.employees))
     fetch('/api/locations').then(r => r.json()).then(d => setLOCATIONS(d.locations))
   }, [])
+
+  // §253 Die Urlaubsseite braucht nur die eigene Person, nicht die ganze
+  // Belegschaft — und sie kann erst fragen, wenn die Kennung da ist.
+  useEffect(() => {
+    if (!user?.employeeId) return
+    fetch(`/api/employees?employeeId=${user.employeeId}`)
+      .then(r => r.json()).then(d => setEMPLOYEES(d.employees ?? []))
+      .catch(() => {})
+  }, [user?.employeeId])
 
   useEffect(() => {
     if (!user?.employeeId) return

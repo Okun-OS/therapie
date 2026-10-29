@@ -6456,3 +6456,91 @@ Kilobyte an.
 acht weiteren Läufen nicht reproduzieren konnte — vermutlich eine
 Überschneidung mit dem gleichzeitig startenden Rechendienst. Ich weiß nicht,
 welcher Test es war.
+
+## Block §252–§253 (29.10.) — „Fehler 500, 204 kB" — und warum ich blind war
+
+**Die Meldung:** „Immer noch und die Website auch langsam, bin ich sauer."
+Dazu ein Bild mit dem Satz, auf den ich drei Runden gewartet habe:
+
+> Die Datei ließ sich nicht senden (Fehler 500, 204 kB).
+
+### Was diese eine Zeile beweist
+
+**Das Verkleinern aus §249 funktioniert.** Aus 6,9 Megabyte sind 204 Kilobyte
+geworden. Keine Größengrenze, kein Zeitablauf, keine Typprüfung.
+
+**Und die Anwendung stürzt ab.** 500 heißt: Sie ist über etwas gestolpert, und
+der Browser bekam keine Auskunft, sondern nichts. Darum stand dort auch die
+allgemeine Meldung — es gab kein JSON, das einen Grund genannt hätte.
+
+### Was ich ausgeschlossen habe
+
+| | |
+|---|---|
+| Größengrenze | 5 MB gehen örtlich in 1,4 s durch |
+| Oberfläche | durch die **echte** Maske, angemeldet: HTTP 200, keine Fehlermeldung |
+| Ein bestimmtes Gespräch | dieselbe Datei durch **alle** Gespräche: durchweg 200 |
+| Push-Meldung | ist abgefangen, kann nicht werfen |
+| `customerId` fehlt | beide Spalten sind nicht-optional |
+| Langsamer Server | 150–450 ms im Betrieb, für jede Seite |
+
+Örtlich ließ sich der Fall **nicht nachstellen**. Damit war ich blind — und
+das, nicht der Fehler selbst, ist nach drei Runden der eigentliche Mangel.
+
+### §252 Die Anwendung sagt jetzt, woran sie gescheitert ist
+
+Beide Hochladewege tragen einen Mantel. Was unerwartet scheitert, wird zu
+einer Antwort mit **Kennung** statt zu einer leeren 500:
+
+> Die Datei ließ sich nicht speichern. Datenbank überlastet. (Kennung: a7f3c1)
+
+Dieselbe Kennung steht im Serverprotokoll neben dem vollen Fehler — und als
+**Fund** im OKUN-Bereich, mit Fehlertext, Stelle und Zeitpunkt. Damit muss
+niemand mehr auf eine Rückfrage warten, um die Ursache zu sehen.
+
+Die **Art** des Fehlers geht nach außen, wo sie eindeutig und harmlos ist:
+Datenbank nicht erreichbar, Datenbank überlastet, Datenbankstand veraltet,
+Inhalt zu groß, Speicher voll, Arbeitsspeicher erschöpft. Im besten Fall
+erspart das die Rückfrage ganz.
+
+**Was NICHT nach außen geht**, und §234 hatte den Grund schon aufgeschrieben:
+Wirtsname, Port, Tabellen- und Spaltennamen. Das gehört nicht auf den
+Bildschirm einer Pflegekraft und erst recht nicht in einen Screenshot. Mit
+Gegenprobe geprüft: Aus „Can't reach database server at `postgres.internal`:
+`5432`" wird „Datenbank nicht erreichbar", und weder Wirtsname noch Port
+stehen in der Antwort.
+
+### §253 Die Langsamkeit — und sie geht auf mein Konto
+
+Der Server antwortet in 150–450 ms. Die Langsamkeit sitzt also in dem, was die
+App danach lädt — und da habe ich selbst etwas verschlimmert.
+
+**Vier Seiten der Mitarbeiter-App holten die ganze Belegschaft**, um darin den
+eigenen Datensatz zu suchen: Startseite, Profil, Urlaub, Krankmeldung. Seit
+§238 wird dabei für **jeden** Menschen das Urlaubskonto berechnet — auch für
+die fünfzehn, die niemanden interessieren.
+
+Mit `?employeeId=` kommt genau ein Datensatz:
+
+| | |
+|---|---|
+| vorher | **183 899** Bytes, 42 ms |
+| jetzt | **559** Bytes, 12 ms |
+
+Das ist der Faktor 330 — viermal pro Besuch, über eine mobile Verbindung. Die
+Zugriffsprüfung bleibt dieselbe: Eine fremde Kennung wird mit 403 abgewiesen,
+nachgemessen.
+
+### Nachweise
+
+**1342** Modultests (acht neu für die Fehlerkennung, darunter die Gegenprobe,
+dass aus einem Datenbankfehler keine Angaben über die Anlage nach außen
+dringen).
+
+`a-mitarbeiter` 37/37, `r-stundenkonto` 11/11, `q-glocke-und-anhaenge` 23/23,
+`alle-seiten-ohne-fehler` 60/60, `urlaubstage-stimmen-ueberein` 13/13,
+`widersprueche` 17/17, `e5-chat` 106/106.
+
+**Offen gesagt:** Der 500er ist damit nicht behoben, sondern sichtbar gemacht.
+Ich kenne die Ursache nicht und kann sie von hier aus nicht erreichen. Beim
+nächsten Versuch nennt die Meldung sie — oder sie steht als Fund im Programm.

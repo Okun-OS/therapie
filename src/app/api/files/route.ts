@@ -9,6 +9,7 @@ import {
 } from '@/lib/file-storage'
 import { automatischZuordnen, verknuepfen } from '@/lib/krankmeldung'
 import { dateityp } from '@/lib/dateityp'
+import { vorfall, vorfallMelden } from '@/lib/fehlerkennung'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 }
 
 // §100 POST /api/files — Datei hochladen (multipart/form-data)
-export async function POST(req: NextRequest) {
+async function postImpl(req: NextRequest) {
   const session = requireRole(req, ['employee', 'admin', 'company', 'okun'])
   if (session instanceof NextResponse) return session
 
@@ -184,4 +185,21 @@ export async function POST(req: NextRequest) {
     { datei: { ...gespeichert, absenceId: zuordnung?.zugeordnet ?? null }, zuordnung },
     { status: 201 },
   )
+}
+
+/**
+ * §252 Der äußere Mantel — siehe `chat/[id]/datei/route.ts`.
+ *
+ * Gemeldet war die Bescheinigung in derselben Weise wie der Chat-Anhang:
+ * „der Upload hat nicht funktioniert", ohne dass jemand hätte sagen können,
+ * woran. Eine leere 500 ist keine Auskunft.
+ */
+export async function POST(req: NextRequest) {
+  try {
+    return await postImpl(req)
+  } catch (fehler) {
+    const v = vorfall('files', fehler, 'Die Datei ließ sich nicht speichern.')
+    await vorfallMelden('files', fehler, v.kennung)
+    return NextResponse.json({ error: v.text }, { status: 500 })
+  }
 }

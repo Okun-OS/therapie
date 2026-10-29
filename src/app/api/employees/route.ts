@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { listEmployees, locationIdsForBereiche } from '@/lib/entities'
+import { listEmployees, locationIdsForBereiche, getEmployeeById } from '@/lib/entities'
 import { addEmployeeWithInvitation, LocationCustomerMismatchError } from '@/lib/invitations'
 import { requireRole, resolveCustomerId, resolveBereichIds } from '@/lib/session'
 import { getAppOrigin } from '@/lib/app-url'
 import { logAudit } from '@/lib/audit'
+import { assertEmployeeAccess } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 import { urlaubskonto, type Urlaubskonto } from '@/lib/urlaubskonto'
 
@@ -64,6 +65,32 @@ export async function GET(req: NextRequest) {
   if (session instanceof NextResponse) return session
 
   const locationId = req.nextUrl.searchParams.get('locationId') ?? undefined
+
+  /*
+   * §253 Eine einzelne Person, wenn nur die gebraucht wird.
+   *
+   * GEMELDET: „Und die Website auch langsam."
+   *
+   * Vier Seiten der Mitarbeiter-App holten hier die GANZE Belegschaft, um
+   * darin den eigenen Datensatz zu suchen — Startseite, Profil, Urlaub,
+   * Krankmeldung. Seit §238 wird dabei für JEDEN Menschen das Urlaubskonto
+   * berechnet, also auch für die fünfzehn, die niemanden interessieren.
+   *
+   * Das war schon vorher Verschwendung und ist seit §238 teuer. Mit
+   * `?employeeId=` kommt genau ein Datensatz — und das Konto wird einmal
+   * gerechnet statt sechzehnmal.
+   *
+   * Die Zugriffsprüfung bleibt dieselbe wie überall: `assertEmployeeAccess`
+   * lässt den eigenen Datensatz durch und die Leitung an ihren Standort.
+   */
+  const einzeln = req.nextUrl.searchParams.get('employeeId')
+  if (einzeln) {
+    const verwehrt = await assertEmployeeAccess(session, einzeln)
+    if (verwehrt) return verwehrt
+    const einer = await getEmployeeById(einzeln)
+    if (!einer) return NextResponse.json({ employees: [] })
+    return NextResponse.json({ employees: await mitUrlaubskonto([einer]) })
+  }
 
   if (session.role === 'okun') {
     // OKUN-Admins dürfen plattformweit lesen, aber immer auf locationId eingrenzen wenn angegeben
