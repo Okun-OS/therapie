@@ -1,9 +1,25 @@
-const CACHE_VERSION = 'okun-v4'
+// §239 Von v4 auf v5: Die alte Fassung hatte die VERKAUFSSEITE vorgespeichert.
+// Ohne Erhöhung bliebe sie auf jedem Gerät liegen, das die App schon hat — und
+// genau sie war das, was beim Öffnen erschien.
+const CACHE_VERSION = 'okun-v5'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`
 
+/*
+ * §239 Hier stand `'/'` — die Verkaufsseite, bei der Installation
+ * vorgespeichert.
+ *
+ * Gemeldet: „Wenn ich auf die App gehe, dann kommt immer erst diese
+ * Kack-Website." Genau so kam sie: Die App startete auf `/`, und sobald das
+ * Netz langsam war, lieferte dieser Zwischenspeicher die gespeicherte
+ * Verkaufsseite aus. Die Weiterleitung der Middleware läuft dann nicht — sie
+ * steckt in einer Antwort, die nie geholt wurde.
+ *
+ * Eine Weiterleitung lässt sich nicht vorspeichern. Die App startet deshalb
+ * auf `/app` (siehe `src/app/app/page.tsx`), und `/` liegt hier nicht mehr.
+ * `/offline` bleibt: Das ist eine Seite, die es ohne Netz geben MUSS.
+ */
 const STATIC_ASSETS = [
-  '/',
   '/offline',
   '/brand/icon-192.png',
   '/brand/icon-512.png',

@@ -31,9 +31,16 @@
  */
 
 import { prisma } from './prisma'
+import { NACHWEIS_AB_TAG_STANDARD } from './krankmeldung-regel'
 
-/** Ab dem wievielten Kalendertag die Bescheinigung verlangt wird (§5 EntgFG). */
-export const NACHWEIS_AB_TAG_STANDARD = 4
+/**
+ * Ab dem wievielten Kalendertag die Bescheinigung verlangt wird (§5 EntgFG).
+ *
+ * §242 Der Wert steht in `krankmeldung-regel.ts` und wird von hier nur
+ * weitergereicht: Diese Datei zieht Prisma nach und kann deshalb nicht in ein
+ * Browser-Bauteil importiert werden — die Krankmeldeseite braucht ihn aber.
+ */
+export { NACHWEIS_AB_TAG_STANDARD } from './krankmeldung-regel'
 
 /**
  * Fehlzeiten, für die überhaupt ein Nachweis in Frage kommt.

@@ -6,6 +6,7 @@ import { sendPushToEmployee } from '@/lib/push'
 import {
   dateiSpeichern, pruefeChatDatei, sichererDateiname, CHAT_TYPEN,
 } from '@/lib/file-storage'
+import { dateityp } from '@/lib/dateityp'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,7 +58,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const daten = Buffer.from(await datei.arrayBuffer())
   const name = sichererDateiname(datei.name || 'Anhang')
-  const typ = datei.type || 'application/octet-stream'
+  /*
+   * §241 Hier stand `datei.type || 'application/octet-stream'`.
+   *
+   * Auf dem Telefon meldet der Browser für Dateien aus „Dateien" und iCloud
+   * häufig gar keinen Typ. Daraus wurde `application/octet-stream`, und das
+   * steht in keiner Liste erlaubter Arten — eine ganz normale PDF fiel durch,
+   * und in der Oberfläche sah es aus, als passiere beim Senden nichts.
+   * Nachgemessen und als genau dieser Fall bestätigt.
+   *
+   * `dateityp` bestimmt die Art aus Endung UND den ersten Bytes. Das ist
+   * strenger als vorher: Dem gemeldeten Typ wurde bis hierher blind geglaubt.
+   */
+  const erkannt = dateityp(name, datei.type, daten)
+  if (erkannt.widerspruch) {
+    return NextResponse.json({ error: erkannt.widerspruch }, { status: 400 })
+  }
+  const typ = erkannt.typ
   const geprueft = pruefeChatDatei(name, typ, daten.length)
   if (!geprueft.ok) {
     return NextResponse.json({ error: geprueft.fehler }, { status: 400 })

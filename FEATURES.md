@@ -5899,3 +5899,154 @@ werden aus derselben `kanonischeBasis()` gebaut. Gemessen ist das `Location:`;
 die Abo-Adresse selbst ist gegen eine gebaute Fassung mit genau der
 Railway-Einstellung geprüft (`https://okun-workforce.com/api/calendar-feed/…`),
 weil dafür eine Anmeldung nötig ist und im Betrieb keine stattfinden soll.
+
+## Block §239–§242 (29.10.) — Glocke, App-Start, Haken, Anhänge, Krankenschein
+
+Sechs Meldungen in einem Durchgang. Zwei davon hatten dieselbe Ursache, und
+zwei waren nicht das, wonach sie aussahen.
+
+### §239 Die Glocke führt jetzt irgendwohin
+
+**Die Meldung:** „Wenn man eine Benachrichtigung hat bei der Glocke, möchte ich,
+dass man draufklickt und dahin geleitet wird, worum es geht. Also dich hat
+jemand angefragt für einen Schichttausch, dann klicke ich rauf und dann möchte
+ich, dass ich zu dieser Schichttauschanfrage hingeleitet werde."
+
+Nachgesehen: Die Zieladresse gab es längst — sie wurde an die Push-Meldung
+übergeben und dann **weggeworfen**. Gespeichert wurden Titel, Text und Art; die
+Adresse nicht. Ein Klick in der Glocke markierte deshalb nur als gelesen.
+
+| | |
+|---|---|
+| `Notification.url` | neu — jede neue Benachrichtigung trägt ihr Ziel |
+| `benachrichtigungsziel.ts` | leitet für **bestehende** Zeilen ein Ziel aus der Art her |
+| Glocke im Kopf und in der Leiste | führt beim Antippen dorthin |
+
+**Warum beides.** Hätte ich nur das Feld eingebaut, wäre die Glocke für jeden,
+der heute hineinschaut, unverändert tot — die Verbesserung käme erst bei der
+nächsten Benachrichtigung an. Die Herleitung ist rollenabhängig: Eine gemeldete
+Abwesenheit führt die Leitung dorthin, wo sie sie bearbeitet, die betroffene
+Person zu ihrer eigenen Krankmeldung.
+
+**Und eine Sperre, die vorher niemand brauchte:** Ein Ziel wird nur verfolgt,
+wenn es innerhalb des Programms liegt. Die Rundmeldung nimmt eine Adresse von
+außen entgegen — ohne diese Prüfung wäre das ein Weg, jemanden aus der App
+heraus auf eine fremde Seite zu schicken.
+
+### §239 Die App startet nicht mehr auf der Verkaufsseite
+
+**Die Meldung:** „Wenn ich auf die App gehe, dann kommt immer erst diese
+Kack-Website. Das hatten wir ja schon mal."
+
+§201 hatte die Weiterleitung in die Middleware verlegt, und die funktioniert:
+Nachgemessen antwortet `/` mit gültiger Sitzung mit 307 auf `/employee`. **Nur
+erreicht die App diese Antwort gar nicht.** Zwei Dinge wirkten zusammen:
+
+1. Im Manifest stand `start_url: "/"` — die App fragte nach der Adresse der
+   Verkaufsseite.
+2. Der Dienst-Arbeiter hatte **genau diese Seite vorgespeichert**. Bei
+   langsamem Netz lieferte er sie aus; dann läuft keine Middleware, sondern es
+   erscheint die Werbeseite, und erst danach leitet der Browser um.
+
+Eine Weiterleitung lässt sich nicht zwischenspeichern — eine Seite schon.
+Darum: neue Startadresse `/app`, auf der nie etwas anderes steht als die
+Entscheidung, wohin. `/` fliegt aus dem Zwischenspeicher, die Fassung wurde auf
+v5 erhöht, damit die gespeicherte Verkaufsseite auf allen Geräten verschwindet.
+
+Nachgemessen: `/app` → `/employee`, `/admin`, `/company` je nach Rolle, ohne
+Anmeldung → `/login`.
+
+### §240 Ein Haken, zwei Haken, türkis
+
+**Die Meldung:** „Ich konnte eine Nachricht nicht löschen, weil da stand, dass
+es schon gelesen wurde … obwohl das wurde noch gar nicht gelesen."
+
+**Das war kein Anzeigefehler.** Die Oberfläche sieht alle zehn Sekunden nach, ob
+etwas Neues da ist — und meldete bei **jedem** dieser Durchläufe „gelesen". Wer
+ein Gespräch irgendwo offen liegen hatte, auch in einem Hintergrund-Reiter von
+gestern, las damit alles binnen zehn Sekunden, ohne hinzusehen. Die Auskunft war
+nicht falsch gerechnet, sondern auf einer falschen Tatsache aufgebaut.
+
+Und genau daran hing §221: Zurückziehen geht nur, solange niemand gelesen hat.
+Eine Zusage, die an einem Wert hängt, der sich von selbst hochzählt, verbietet
+irgendwann alles.
+
+| Zustand | Haken | heißt |
+|---|---|---|
+| gesendet | einer, blass | Der Server hat sie |
+| zugestellt | zwei, blass | Sie liegt auf dem Gerät des anderen |
+| gelesen | zwei, türkis | Jemand hat das Gespräch geöffnet, während das Fenster sichtbar war |
+
+Was der Takt vorher fälschlich „gelesen" nannte, heißt jetzt **zugestellt** —
+kein neues Verhalten, das alte unter dem richtigen Namen. Gelesen wird beim
+Öffnen gemeldet und beim Zurückkommen ins Fenster, und nur bei
+`visibilityState === 'visible'`. Zurückziehen ist erst gesperrt, wenn **gelesen**
+erreicht ist, wie gewünscht.
+
+In der Gruppe zählt der Langsamste: Zwei Haken, weil einer von acht das Gerät
+angehabt hat, wären eine Auskunft über niemanden.
+
+**Was NICHT passiert ist:** Die bestehenden Lesestände wurden nicht geleert.
+Sauber wäre es — rückwirkend lässt sich nicht feststellen, wer hingesehen hat.
+Dann stünde aber bei jedem Menschen jedes alte Gespräch wieder auf ungelesen.
+Die Korrektur wirkt ab jetzt, nicht rückwirkend; das steht so auch in der
+Migration.
+
+### §241 Dateien, für die der Browser keinen Typ meldet
+
+**Die Meldung:** „Man konnte Bilder und Dokumente zwar auswählen, aber man
+konnte es nicht hochladen" — und, an anderer Stelle: „außerdem konnte man da
+auch keine Bescheinigung hochladen".
+
+Zwei Meldungen, **eine Ursache**. Die Schnittstellen waren in Ordnung: Bild, PDF,
+HEIC und ein vier Megabyte großes Foto gingen alle durch. Abgewiesen wurde genau
+ein Fall:
+
+    Datei ohne gemeldeten Typ  →  HTTP 400
+    „Dateien dieser Art lassen sich hier nicht verschicken
+     (application/octet-stream)."
+
+Und das ist am Telefon der Normalfall: Wer auf dem iPhone über „Dateien" oder
+aus iCloud etwas auswählt, bekommt häufig ein `File` mit leerem `type`. Eine
+ganz normale `Krankenschein.pdf` fiel damit durch — und in der Oberfläche sah es
+aus, als passiere beim Senden nichts.
+
+`dateityp.ts` bestimmt die Art jetzt aus **Endung und ersten Bytes**. Beides
+zusammen, nicht eines davon: Nur Endung wäre eine Einladung (`schadsoftware.exe`
+in `foto.jpg` umbenannt), nur Bytes ginge nicht (eine .docx ist ein ZIP wie
+jedes andere).
+
+**Der neue Weg ist strenger als der alte, nicht lockerer.** Vorher wurde dem
+gemeldeten Typ blind geglaubt: Eine Datei mit `type: 'application/pdf'` kam
+durch, was immer darin stand. Jetzt wird eine PDF, die sich „harmlos.png" nennt,
+abgewiesen — nachgemessen.
+
+### §242 „Ab dem vierten Tag" war für diesen Betrieb falsch
+
+**Die Meldung:** „Dann wurde behauptet, dass Krankenschein erst am vierten Tag
+nötig ist, obwohl das gar nicht stimmt. Das ist ab dem ersten Tag nötig. Das
+muss auch möglich sein, dass es eingestellt wird."
+
+Einstellbar war es seit §130 (`auNachweisAbTag`, unter Einstellungen →
+Krankmeldung), und der Server rechnet auch damit. **Nur die Krankmeldeseite hat
+die Einstellung nie gelesen** — dort stand dreimal eine feste 4. Wer sie auf 1
+setzte, bekam am Bildschirm weiterhin „ab dem vierten Kalendertag" zu sehen:
+eine Zusage, die der Betrieb gar nicht macht, und zwar in der gefährlichen
+Richtung — sie sagte „brauchst du nicht".
+
+Nachgemessen über die ganze Kette: Leitung setzt 1 → Mitarbeiter liest 1 → eine
+eintägige Krankmeldung ist nachweispflichtig. Mit der Gegenprobe, dass sie es
+bei der gesetzlichen Grenze **nicht** ist.
+
+Die gesetzliche Grenze steht jetzt in `krankmeldung-regel.ts` — einer Datei ohne
+Datenbankbezug. `krankmeldung.ts` zieht Prisma nach; dass der Bündler das aus
+dem Browser-Bauteil wegoptimiert, ist heute wahr und keine Zusicherung.
+
+### Nachweise
+
+**1330** Modultests (35 neu). Neu `pruefungen/q-glocke-und-anhaenge.mjs`
+**23/23** — Glocke mit und ohne gespeichertes Ziel, die drei Hakenzustände samt
+Sperre, Anhang und Bescheinigung ohne gemeldeten Typ, und die Krankenschein-Regel
+über Leitung und Mitarbeiter hinweg. Jeweils mit Gegenprobe.
+
+`alle-seiten-ohne-fehler` **60/60**, `e5-chat` **106/106**.

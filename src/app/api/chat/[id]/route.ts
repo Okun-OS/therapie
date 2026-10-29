@@ -9,6 +9,7 @@ import {
 import {
   OKUN_ART, ASSISTENT_ART, weiterleitenAnOkun, assistentAntwortet,
 } from '@/lib/okun-kanal'
+import { nachrichtenstatus, zurueckziehbar } from '@/lib/nachrichtenstatus'
 
 export const dynamic = 'force-dynamic'
 
@@ -125,10 +126,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
        * §221 Zurückziehen geht nur, solange niemand sonst gelesen hat.
        * Die Auskunft kommt vom Server: Der Browser kennt den Lesestand der
        * anderen nicht — und soll ihn auch nicht erraten müssen.
+       *
+       * §240 Die Regel stand hier als Bedingung ausgeschrieben und hing an
+       * `gelesenBis` — einem Wert, den der Zehn-Sekunden-Takt von selbst
+       * hochzählte. Jetzt entscheidet `nachrichtenstatus.ts`, und „gelesen"
+       * heißt dort wieder, was es heißt.
        */
-      zurueckziehbar: n.userId === ich && n.art !== 'system'
-        && mitglieder.every(m => m.userId === ich
-          || !m.gelesenBis || m.gelesenBis < n.createdAt),
+      zurueckziehbar: zurueckziehbar(n, mitglieder, ich),
+      /** §240 gesendet · zugestellt · gelesen — die Haken in der Oberfläche. */
+      status: n.userId === ich && n.art !== 'system'
+        ? nachrichtenstatus(n, mitglieder) : null,
       createdAt: n.createdAt.toISOString(),
     })),
   })
@@ -237,6 +244,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const body = await req.json().catch(() => ({})) as {
     gelesen?: boolean
+    /** §240 Angekommen, aber noch nicht angesehen. */
+    zugestellt?: boolean
     name?: string; beschreibung?: string
     hinzufuegen?: string[]; entfernen?: string
     beitreten?: boolean; verlassen?: boolean; archivieren?: boolean
@@ -271,11 +280,30 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (zugriff.grund !== 'ok') return NICHT_DA
   const raum = zugriff.raum!
 
-  // ── Lesestand ────────────────────────────────────────────────────────────
-  if (body.gelesen) {
+  /*
+   * §240 Zustellung — und Lesen.
+   *
+   * Vorher gab es nur `gelesen`, und die Oberfläche schickte es bei jedem
+   * Durchlauf ihres Zehn-Sekunden-Takts. Das war in Wahrheit die Zustellung;
+   * jetzt heißt es auch so.
+   *
+   * `gelesen` setzt BEIDES: Wer etwas gelesen hat, hat es bekommen. Ohne diese
+   * Zeile könnte ein Lesestand ohne Zustellstand entstehen, und dann stünde ein
+   * Haken weniger da, als der Wahrheit entspricht.
+   */
+  if (body.zugestellt) {
     await prisma.chatMitglied.update({
       where: { raumId_userId: { raumId: raum.id, userId: ich } },
-      data: { gelesenBis: new Date() },
+      data: { zugestelltBis: new Date() },
+    })
+    return NextResponse.json({ ok: true })
+  }
+
+  if (body.gelesen) {
+    const jetzt = new Date()
+    await prisma.chatMitglied.update({
+      where: { raumId_userId: { raumId: raum.id, userId: ich } },
+      data: { gelesenBis: jetzt, zugestelltBis: jetzt },
     })
     return NextResponse.json({ ok: true })
   }

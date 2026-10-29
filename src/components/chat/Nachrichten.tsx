@@ -57,6 +57,45 @@ interface Mitglied {
   ichSelbst: boolean
 }
 
+/**
+ * §240 Die Haken.
+ *
+ *   ein Haken, blass      gesendet — der Server hat sie
+ *   zwei Haken, blass     zugestellt — sie liegt auf dem Gerät des anderen
+ *   zwei Haken, türkis    gelesen — jemand hat hingesehen
+ *
+ * Gewünscht war ausdrücklich eine Farbe für „gelesen": „wenn die Haken dann
+ * irgendwie eine Farbe annehmen … lass es mal grün machen oder so. Oder
+ * golden, keine Ahnung. Oder türkis." Türkis ist die Hausfarbe (#26C6C6) —
+ * damit sagt der Zustand dasselbe wie überall sonst im Programm, statt eine
+ * weitere Farbe einzuführen.
+ *
+ * Die Blase eigener Nachrichten ist selbst türkis. Darauf wäre türkis auf
+ * türkis unsichtbar, deshalb steht „gelesen" dort als kräftiges Weiß gegen die
+ * blassen Haken davor — derselbe Sprung, nur in der Helligkeit.
+ *
+ * `title` ist kein Beiwerk: Drei Zustände, die sich nur durch Anzahl und Farbe
+ * unterscheiden, kann niemand raten, und wer eine Vorlesehilfe benutzt, sieht
+ * sie gar nicht.
+ */
+function Haken({ status, aufFarbe }: {
+  status: 'gesendet' | 'zugestellt' | 'gelesen'
+  aufFarbe: boolean
+}) {
+  const text = { gesendet: 'Gesendet', zugestellt: 'Zugestellt', gelesen: 'Gelesen' }[status]
+  const farbe = status === 'gelesen'
+    ? (aufFarbe ? 'text-white' : 'text-[#26C6C6]')
+    : (aufFarbe ? 'text-white/50' : 'text-gray-400')
+  return (
+    <span className={`inline-flex items-center ${farbe}`} title={text} aria-label={text}>
+      <Check size={12} strokeWidth={3} />
+      {status !== 'gesendet' && (
+        <Check size={12} strokeWidth={3} className="-ml-[7px]" />
+      )}
+    </span>
+  )
+}
+
 interface Nachricht {
   id: string
   text: string
@@ -71,6 +110,8 @@ interface Nachricht {
   dateiGroesse?: number | null
   /** Ob sie sich noch für alle zurückziehen lässt — entscheidet der Server. */
   zurueckziehbar?: boolean
+  /** §240 gesendet · zugestellt · gelesen — nur bei eigenen Nachrichten. */
+  status?: 'gesendet' | 'zugestellt' | 'gelesen' | null
 }
 
 interface Gruppe {
@@ -141,11 +182,23 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
       if (!r.ok) { setFehler('Gespräch nicht gefunden'); setOffen(null); return }
       const d = await r.json()
       setKopf(d.raum); setMitglieder(d.mitglieder ?? []); setNachrichten(d.nachrichten ?? [])
+      /*
+       * §240 Hier stand `gelesen: true` — bei JEDEM Durchlauf des
+       * Zehn-Sekunden-Takts.
+       *
+       * Damit „las" jeder, der ein Gespräch irgendwo offen liegen hatte, alles
+       * binnen zehn Sekunden, ohne hinzusehen. Gemeldet wurde die Folge: Eine
+       * gerade geschriebene Nachricht ließ sich nicht mehr zurückziehen, weil
+       * sie angeblich schon gelesen war.
+       *
+       * Was hier passiert, ist Zustellung: Die Nachricht liegt auf dem Gerät.
+       * Genau das heißt es jetzt auch. Gelesen wird in `alsGelesenMelden`
+       * gemeldet — beim Öffnen und beim Zurückkommen ins Fenster.
+       */
       await fetch(`/api/chat/${id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gelesen: true }),
+        body: JSON.stringify({ zugestellt: true }),
       })
-      setRaeume(prev => prev.map(x => x.id === id ? { ...x, ungelesen: 0 } : x))
       if (scrollen) setTimeout(() => ende.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch { setFehler('Gespräch konnte nicht geladen werden') }
   }, [])
@@ -163,8 +216,45 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
     return () => clearInterval(takt)
   }, [offen, listeLaden, raumLaden])
 
+  /**
+   * §240 Gelesen melden — und zwar nur, wenn jemand hinsehen KANN.
+   *
+   * `document.visibilityState` ist der Unterschied zwischen „das Gespräch ist
+   * offen" und „jemand schaut hin". Ein Reiter von gestern im Hintergrund ist
+   * offen; gelesen hat dort niemand etwas.
+   *
+   * Die Zahl der ungelesenen in der Liste wird erst HIER zurückgesetzt. Vorher
+   * tat das der Takt — und dann verschwand das Abzeichen, ohne dass jemand
+   * hingesehen hatte.
+   */
+  const alsGelesenMelden = useCallback(async (id: string) => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+    await fetch(`/api/chat/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gelesen: true }),
+    }).catch(() => {})
+    setRaeume(prev => prev.map(x => x.id === id ? { ...x, ungelesen: 0 } : x))
+  }, [])
+
+  /*
+   * §240 Wer das Fenster wieder nach vorn holt, sieht jetzt hin.
+   *
+   * Ohne das bliebe eine Nachricht, die ankam, während das Fenster im
+   * Hintergrund lag, für immer ungelesen — man hätte sie gesehen, und der
+   * Absender wüsste es nicht.
+   */
+  useEffect(() => {
+    if (!offen) return
+    const beiSichtbar = () => {
+      if (document.visibilityState === 'visible') alsGelesenMelden(offen)
+    }
+    document.addEventListener('visibilitychange', beiSichtbar)
+    return () => document.removeEventListener('visibilitychange', beiSichtbar)
+  }, [offen, alsGelesenMelden])
+
   async function oeffnen(id: string) {
     setOffen(id); setNachrichten([]); setFehler(''); setMaske('keine')
+    alsGelesenMelden(id)
     /*
      * §223 Auf dem Telefon oben anfangen.
      *
@@ -882,6 +972,12 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                         <p className={`text-[10px] ${n.vonMir ? 'text-white/70' : 'text-gray-400'}`}>
                           {uhrzeit(n.createdAt)}
                         </p>
+                        {/* §240 Nur bei eigenen Nachrichten — bei fremden
+                            wäre der eigene Lesestand keine Auskunft, sondern
+                            eine Selbstverständlichkeit. */}
+                        {n.vonMir && n.status && (
+                          <Haken status={n.status} aufFarbe />
+                        )}
                         {/* §221 Wegräumen. „Für alle" steht nur da, solange
                             es wirklich geht — ein Knopf, der mit einer
                             Fehlermeldung antwortet, ist kein Knopf. */}

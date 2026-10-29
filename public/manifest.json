@@ -2,7 +2,7 @@
   "name": "OKUN Workforce",
   "short_name": "OKUN",
   "description": "KI-gestützte Dienstplanung und Mitarbeiterverwaltung für soziale Einrichtungen",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

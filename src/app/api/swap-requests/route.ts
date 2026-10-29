@@ -48,7 +48,10 @@ export async function POST(req: NextRequest) {
     title: 'Schichttausch-Anfrage',
     body: `${requesterName} möchte mit dir tauschen: dein Dienst am ${targetDate} gegen ${requesterDate}.${message ? ` Nachricht: „${message}"` : ''} Bitte bestätige oder lehne ab.`,
     requestId: request.id,
-    url: '/employee/schedule',
+    // §239 Direkt auf den Reiter mit den Tauschanfragen — gemeldet war
+    // genau das: „dann möchte ich, dass ich zu dieser
+    // Schichttauschanfrage hingeleitet werde".
+    url: '/employee/schedule?tab=swaps',
   }).catch(() => {})
 
   return NextResponse.json({ request })

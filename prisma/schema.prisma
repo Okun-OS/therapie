@@ -163,6 +163,19 @@ model Notification {
   title      String
   body       String
   requestId  String?
+  /// §239 Wohin diese Benachrichtigung führt.
+  ///
+  /// Die Adresse wurde schon vorher an die Push-Meldung übergeben — nur nicht
+  /// gespeichert. In der Glocke stand deshalb ein Text ohne Ziel, und ein
+  /// Klick markierte ihn bloß als gelesen. Gemeldet: „Dich hat jemand angefragt
+  /// für einen Schichttausch, dann klicke ich rauf und dann möchte ich, dass
+  /// ich zu dieser Schichttauschanfrage hingeleitet werde."
+  ///
+  /// Wahlfrei, weil es Benachrichtigungen ohne eigenen Ort gibt und weil alle
+  /// BESTEHENDEN Zeilen keinen haben. Für die rechnet `benachrichtigungsziel.ts`
+  /// ein Ziel aus der Art aus — sonst wäre die Verbesserung erst für
+  /// Benachrichtigungen da, die es noch gar nicht gibt.
+  url        String?
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())
 }
@@ -525,7 +538,21 @@ model ChatMitglied {
   /// mitglied | leitung — "leitung" darf Mitglieder aendern und schliessen
   rolle         String    @default("mitglied")
   /// Bis wohin gelesen wurde; alles Spaetere ist ungelesen
+  ///
+  /// §240 „Gelesen" heisst ab jetzt: Ein Mensch hat das Gespraech geoeffnet,
+  /// waehrend das Fenster sichtbar war. Vorher wurde dieses Feld bei JEDEM
+  /// Nachsehen im Zehn-Sekunden-Takt hochgesetzt — wer ein Gespraech
+  /// irgendwo offen liegen hatte, "las" damit alles binnen zehn Sekunden,
+  /// ohne hinzusehen. Gemeldet: "da stand, dass es schon gelesen wurde und
+  /// das deswegen nicht zu loeschen ging, obwohl das wurde noch gar nicht
+  /// gelesen".
   gelesenBis    DateTime?
+  /// §240 Bis wohin die Nachrichten auf dem Geraet ANGEKOMMEN sind.
+  ///
+  /// Das ist, was der Takt vorher faelschlich als "gelesen" eingetragen hat —
+  /// also kein neues Verhalten, sondern das alte unter dem richtigen Namen.
+  /// Daraus wird der zweite Haken: zugestellt, aber noch nicht angesehen.
+  zugestelltBis DateTime?
   /// §221 Ab wann dieses Gespraech aus MEINER Liste verschwunden ist.
   ///
   /// Ein Gespraech zu zweit gehoert zwei Menschen. Es fuer beide zu loeschen,

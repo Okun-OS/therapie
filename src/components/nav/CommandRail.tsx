@@ -8,6 +8,7 @@ import { Bell, Search, ChevronDown, LogOut, User as UserIcon, Megaphone, Send, X
 import Link from 'next/link'
 import { getDockItems } from './navData'
 import { SearchModal } from './SearchModal'
+import { benachrichtigungsziel } from '@/lib/benachrichtigungsziel'
 
 const PATH_LABELS: Record<string, string> = {
   // Admin
@@ -75,6 +76,10 @@ interface NotifItem {
   title: string
   body: string
   read: boolean
+  /** §239 Die Art — daraus wird ein Ziel, wenn keines gespeichert ist. */
+  type?: string
+  /** §239 Wohin diese Benachrichtigung führt. */
+  url?: string | null
 }
 
 export function CommandRail() {
@@ -143,6 +148,25 @@ export function CommandRail() {
   }, [])
 
   const unread = notifications.filter(n => !n.read).length
+
+  /**
+   * §239 Antippen führt dorthin, worum es geht.
+   *
+   * Vorher wurde der Eintrag nur als gelesen markiert, und das war alles.
+   * Gemeldet: „Dich hat jemand angefragt für einen Schichttausch, dann klicke
+   * ich rauf und dann möchte ich, dass ich zu dieser Schichttauschanfrage
+   * hingeleitet werde."
+   *
+   * Gelesen wird in jedem Fall — auch wenn es kein Ziel gibt. Sonst bliebe
+   * eine Benachrichtigung ohne Ort für immer ungelesen.
+   */
+  const oeffnen = (n: NotifItem) => {
+    if (!n.read) markRead(n.id)
+    const ziel = benachrichtigungsziel(n, user?.role)
+    if (!ziel) return
+    setNotifOpen(false)
+    router.push(ziel)
+  }
 
   const markRead = (id: string) => {
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)))
@@ -390,7 +414,7 @@ export function CommandRail() {
                   {notifications.map(n => (
                     <div
                       key={n.id}
-                      onClick={() => !n.read && markRead(n.id)}
+                      onClick={() => oeffnen(n)}
                       className={`px-4 py-3 flex gap-2.5 items-start transition-colors cursor-pointer hover:bg-gray-50 ${!n.read ? 'bg-brand/[0.04]' : ''}`}
                     >
                       <div

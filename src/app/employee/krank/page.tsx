@@ -10,6 +10,7 @@ import { schlangeGeaendert } from '@/components/offline/Warteschlange'
 import { istApp, kameraFoto } from '@/lib/nativ'
 import type { NachweisLageDaten } from '@/lib/types'
 import { AU_ARTEN } from '@/lib/bem'
+import { NACHWEIS_AB_TAG_STANDARD } from '@/lib/krankmeldung-regel'
 
 /**
  * §137 Krankmelden vom Telefon.
@@ -23,7 +24,8 @@ import { AU_ARTEN } from '@/lib/bem'
  * beim Arzt geholt hat.
  *
  * Was die App dabei von selbst weiß: ob überhaupt eine Bescheinigung nötig ist.
- * Das steht im Gesetz (§5 EntgFG: ab dem vierten Kalendertag) und im
+ * Das steht im Gesetz (§5 EntgFG: ab dem vierten Kalendertag, §242: der
+ * Betrieb darf es früher verlangen und diese Seite liest das jetzt) und im
  * Arbeitsvertrag (der Betrieb darf sie früher verlangen) — beides muss niemand
  * im Kopf haben, der gerade krank ist.
  */
@@ -87,6 +89,35 @@ export default function Krankmelden() {
    */
   const [meine, setMeine] = useState<Krankmeldung[] | null>(null)
   const dateiFeld = useRef<HTMLInputElement>(null)
+
+  /**
+   * §242 Ab dem wievielten Tag DIESER Betrieb eine Bescheinigung verlangt.
+   *
+   * DIE MELDUNG
+   * „Dann wurde behauptet, dass Krankenschein erst am vierten Tag nötig ist,
+   * obwohl das gar nicht stimmt. Das ist ab dem ersten Tag nötig."
+   *
+   * Die Regel ist seit §130 einstellbar (`auNachweisAbTag`, zu finden unter
+   * Einstellungen → Krankmeldung), und der Server rechnet auch damit. Nur
+   * diese Seite hat sie nie gelesen: Hier stand dreimal eine feste 4. Wer die
+   * Einstellung auf 1 setzte, bekam am Bildschirm weiterhin „ab dem vierten
+   * Kalendertag" zu sehen — eine Zusage, die der Betrieb gar nicht macht.
+   *
+   * Ohne Antwort bleibt es bei der gesetzlichen Grenze (§5 Abs.1 EntgFG). Das
+   * ist die vorsichtigere Richtung: Sie verspricht niemandem, er brauche
+   * keinen Schein.
+   */
+  const [abTag, setAbTag] = useState(NACHWEIS_AB_TAG_STANDARD)
+
+  useEffect(() => {
+    fetch('/api/org-settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const wert = Number(d?.settings?.auNachweisAbTag)
+        if (Number.isFinite(wert) && wert >= 1) setAbTag(wert)
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!user?.employeeId) return
@@ -155,7 +186,7 @@ export default function Krankmelden() {
         .then(x => x.json()).catch(() => null)
       setFertig({
         id: d.absence.id,
-        pflichtig: lage?.lage?.pflicht?.pflichtig ?? tage >= 4,
+        pflichtig: lage?.lage?.pflicht?.pflichtig ?? tage >= abTag,
         text: lage?.lage?.pflicht?.begruendung ?? '',
       })
       // §227 Damit die Liste beim Zurückgehen die neue Meldung enthält und
@@ -174,14 +205,23 @@ export default function Krankmelden() {
       schlangeGeaendert()
       setFertig({
         id: null,
-        // Ohne Netz kann der Server nicht antworten. Die gesetzliche Grenze
-        // (§5 EntgFG: ab dem vierten Kalendertag) gilt trotzdem — eine
-        // strengere betriebliche Regelung kommt dann später dazu.
-        pflichtig: tage >= 4,
-        text: tage >= 4
-          ? 'Ab dem vierten Kalendertag braucht es in der Regel eine Bescheinigung.'
-          : 'Bei bis zu drei Kalendertagen in der Regel nicht. '
-            + 'Sobald die Meldung übertragen ist, sagt dir die App verbindlich Bescheid.',
+        /*
+         * Ohne Netz kann der Server nicht antworten — gerechnet wird mit der
+         * betrieblichen Regel, die diese Seite beim Öffnen geladen hat.
+         *
+         * §242 Vorher stand hier eine feste 4, also die gesetzliche Grenze.
+         * Für einen Betrieb, der die Bescheinigung ab dem ersten Tag verlangt,
+         * war das die falsche Auskunft, und zwar in der gefährlichen Richtung:
+         * Sie sagte „brauchst du nicht".
+         */
+        pflichtig: tage >= abTag,
+        text: tage >= abTag
+          ? (abTag <= 1
+            ? 'Hier braucht es ab dem ersten Tag eine Bescheinigung.'
+            : `Ab dem ${abTag}. Kalendertag braucht es eine Bescheinigung.`)
+          : `Bei bis zu ${abTag - 1} ${abTag - 1 === 1 ? 'Kalendertag' : 'Kalendertagen'} `
+            + 'in der Regel nicht. Sobald die Meldung übertragen ist, sagt dir '
+            + 'die App verbindlich Bescheid.',
       })
     } finally { setSendet(false) }
   }, [user, locationId, von, bis, tage, notiz, meineLaden])
@@ -345,7 +385,9 @@ export default function Krankmelden() {
             {tage > 0
               ? `${tage} ${tage === 1 ? 'Kalendertag' : 'Kalendertage'}`
               : 'Das Ende liegt vor dem Anfang.'}
-            {tage >= 4 && ' — dafür braucht es in der Regel eine Bescheinigung.'}
+            {tage >= abTag && (abTag <= 1
+              ? ' — dafür braucht es eine Bescheinigung, hier ab dem ersten Tag.'
+              : ` — dafür braucht es ab dem ${abTag}. Kalendertag eine Bescheinigung.`)}
           </p>
         </div>
 

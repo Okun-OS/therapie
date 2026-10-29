@@ -8,6 +8,7 @@ import {
   type Kategorie,
 } from '@/lib/file-storage'
 import { automatischZuordnen, verknuepfen } from '@/lib/krankmeldung'
+import { dateityp } from '@/lib/dateityp'
 
 export const dynamic = 'force-dynamic'
 
@@ -99,14 +100,26 @@ export async function POST(req: NextRequest) {
   }
 
   const groesse = datei.size
-  const mimeType = datei.type || 'application/octet-stream'
+  const daten = Buffer.from(await datei.arrayBuffer())
+  /*
+   * §241 Dieselbe Ursache wie beim Chat-Anhang, dieselbe Meldung: „außerdem
+   * konnte man da auch keine Bescheinigung hochladen, da hat der Upload nicht
+   * funktioniert". Ohne gemeldeten Typ wurde daraus `application/octet-stream`
+   * und fiel durch die Prüfung.
+   *
+   * Die Datei wird dafür schon hier gelesen und nicht erst weiter unten — die
+   * ersten Bytes entscheiden mit.
+   */
+  const erkannt = dateityp(datei.name, datei.type, daten)
+  if (erkannt.widerspruch) {
+    return NextResponse.json({ error: erkannt.widerspruch }, { status: 400 })
+  }
+  const mimeType = erkannt.typ
   const pruefung = pruefeDatei(datei.name, mimeType, groesse)
   if (!pruefung.ok) return NextResponse.json({ error: pruefung.fehler }, { status: 400 })
 
   const customerId = await resolveCustomerId(session)
   if (!customerId) return NextResponse.json({ error: 'Kunde nicht gefunden' }, { status: 404 })
-
-  const daten = Buffer.from(await datei.arrayBuffer())
 
   const sichtbarRoh = form.get('sichtbarFuerMitarbeiter')
   const gespeichert = await dateiSpeichern({

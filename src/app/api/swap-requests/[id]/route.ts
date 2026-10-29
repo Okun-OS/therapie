@@ -54,7 +54,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       title: 'Schichttausch bestätigt',
       body: `${swap.targetEmployeeName} hat deinen Schichttausch bestätigt: Du übernimmst ${swap.targetDate}, ${swap.targetEmployeeName} übernimmt ${swap.requesterDate}.`,
       requestId: swap.id,
-      url: '/employee/schedule',
+      url: '/employee/schedule?tab=swaps',
     }).catch(() => {})
 
     // Inform leadership about the executed swap
@@ -78,7 +78,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       title: 'Schichttausch abgelehnt',
       body: `${swap.targetEmployeeName} hat deine Tausch-Anfrage für ${swap.requesterDate} abgelehnt.`,
       requestId: swap.id,
-      url: '/employee/schedule',
+      url: '/employee/schedule?tab=swaps',
     }).catch(() => {})
   }
 

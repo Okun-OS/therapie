@@ -14,6 +14,9 @@ export async function notifyEmployee(
       title: opts.title,
       body: opts.body,
       requestId: opts.requestId,
+      // §239 Die Adresse wurde bisher NUR an die Push-Meldung weitergereicht
+      // und nicht gespeichert. In der Glocke stand deshalb ein Text ohne Ziel.
+      url: opts.url ?? null,
     },
   })
 

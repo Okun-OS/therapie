@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { formatRelativeTime } from '@/lib/utils'
 import { Logo } from '@/components/ui/Logo'
+import { benachrichtigungsziel } from '@/lib/benachrichtigungsziel'
 
 interface HeaderProps {
   title: string
@@ -18,6 +19,10 @@ interface NotificationItem {
   body: string
   read: boolean
   createdAt: string
+  /** §239 Die Art — daraus wird ein Ziel, wenn keines gespeichert ist. */
+  type?: string
+  /** §239 Wohin diese Benachrichtigung führt. */
+  url?: string | null
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
@@ -29,6 +34,24 @@ export function Header({ title, subtitle }: HeaderProps) {
   // §129 Ungelesene Nachrichten. Eigene Abfrage, weil sie auf jeder Seite
   // laeuft — die volle Gespraechsliste dafuer zu laden waere Verschwendung.
   const [chatUngelesen, setChatUngelesen] = useState(0)
+
+  /**
+   * §239 Antippen führt dorthin, worum es geht.
+   *
+   * Vorher wurde der Eintrag nur als gelesen markiert. Gemeldet: „Dich hat
+   * jemand angefragt für einen Schichttausch, dann klicke ich rauf und dann
+   * möchte ich, dass ich zu dieser Schichttauschanfrage hingeleitet werde."
+   *
+   * Gelesen wird in jedem Fall — auch ohne Ziel. Sonst bliebe eine
+   * Benachrichtigung ohne Ort für immer ungelesen.
+   */
+  const oeffnen = (n: NotificationItem) => {
+    if (!n.read) markRead(n.id)
+    const ziel = benachrichtigungsziel(n, user?.role)
+    if (!ziel) return
+    setNotifOpen(false)
+    router.push(ziel)
+  }
 
   const handleLogout = () => {
     logout()
@@ -197,7 +220,7 @@ export function Header({ title, subtitle }: HeaderProps) {
                   {notifications.map(n => (
                     <div
                       key={n.id}
-                      onClick={() => !n.read && markRead(n.id)}
+                      onClick={() => oeffnen(n)}
                       className={`px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
                     >
                       <div className="flex gap-3">
