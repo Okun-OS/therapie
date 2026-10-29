@@ -171,9 +171,38 @@ export async function middleware(req: NextRequest) {
    */
   if (req.nextUrl.pathname !== '/') return NextResponse.next()
 
-  const rolle = await rolleAus(req.cookies.get(KEKS)?.value)
-  const ziel = rolle ? ZIELE[rolle] : null
-  if (!ziel) return NextResponse.next()
+  /*
+   * §245 Wer ein Sitzungs-Cookie dabeihat, sieht die Verkaufsseite nicht —
+   * auch dann nicht, wenn die Unterschrift hier nicht geprüft werden kann.
+   *
+   * GEMELDET, ZUM ZWEITEN MAL
+   * „Ich sehe immer noch, wenn ich auf die App gehe, erstmal für eine Sekunde
+   * die Website und dann erst werde ich in die App geschickt."
+   *
+   * WAS ICH NACHGEMESSEN HABE — UND WAS NICHT
+   * Örtlich tritt der Fall nicht auf: Im echten Browser, mit eingetragenem
+   * Dienst-Arbeiter und angemeldet, zeigt `/` zu keinem Zeitpunkt die
+   * Verkaufsseite. Auch ein Bau ohne `SESSION_SECRET` ändert daran nichts —
+   * die Variable wird zur Laufzeit gelesen, nicht beim Bauen. Beide
+   * Vermutungen waren falsch, und die Ursache im Betrieb kenne ich nicht.
+   *
+   * WAS DARAUS FOLGT
+   * Eine Weiterleitung, die an einer Bedingung hängt, deren Scheitern ich
+   * nicht nachstellen kann, ist die falsche Bauform. Sie hängt jetzt nur noch
+   * daran, ob überhaupt ein Cookie da ist — das kann nicht fehlschlagen.
+   *
+   * Die Unterschrift zu prüfen bleibt der Normalfall, weil sie das Ziel
+   * genauer trifft: direkt in die Rolle statt über einen Zwischenschritt.
+   * Gelingt sie nicht, geht es auf `/app`, und DORT entscheidet die volle
+   * Prüfung in der Node-Umgebung. Ein erfundenes Cookie führt damit auf die
+   * Anmeldung, nicht in die Anwendung — die Berechtigung trifft weiterhin
+   * `requireRole`, hier wird nur gelenkt.
+   */
+  const keks = req.cookies.get(KEKS)?.value
+  if (!keks) return NextResponse.next()
+
+  const rolle = await rolleAus(keks)
+  const ziel = rolle ? ZIELE[rolle] : '/app'
   return NextResponse.redirect(new URL(ziel, req.url))
 }
 

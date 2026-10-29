@@ -108,6 +108,48 @@ describe('dateityp', () => {
     })
   })
 
+  /*
+   * §246 DER ZWEITE GEMELDETE FALL.
+   *
+   * §241 hat den Fall ohne gemeldeten Typ behoben. Gemeldet kam trotzdem
+   * wieder: „Ich kann immer noch keine Bilder verschicken." Ein iPhone meldet
+   * für dasselbe Foto je nach Herkunft `image/heic`, `image/heif` oder
+   * `image/jpg` — und die beiden letzten standen in keiner Liste.
+   */
+  it('erkennt die Schreibweisen desselben Formats', () => {
+    expect(dateityp('IMG.HEIC', 'image/heif', KOPF.heic).typ).toBe('image/heic')
+    expect(dateityp('IMG.HEIC', 'image/HEIF', KOPF.heic).typ).toBe('image/heic')
+    expect(dateityp('IMG.JPG', 'image/jpg', KOPF.jpeg).typ).toBe('image/jpeg')
+    expect(dateityp('IMG.JPG', 'image/pjpeg', KOPF.jpeg).typ).toBe('image/jpeg')
+    expect(dateityp('ton.m4a', 'audio/x-m4a').typ).toBe('audio/mp4')
+  })
+
+  /*
+   * Die Regel, die jede künftige Schreibweise auffängt, ohne dass jemand eine
+   * Tabelle pflegen muss: Ein gemeldeter Typ, den diese Stelle gar nicht
+   * annimmt, tritt gegen die Endung zurück.
+   */
+  it('ein nicht angenommener Typ tritt gegen die Endung zurück', () => {
+    const erlaubt = ['application/pdf', 'image/jpeg', 'image/png']
+    expect(dateityp('Schein.pdf', 'application/x-irgendwas', KOPF.pdf, erlaubt))
+      .toMatchObject({ typ: 'application/pdf', quelle: 'endung' })
+  })
+
+  it('aber ein angenommener Typ behält den Vorrang', () => {
+    // Die Gegenprobe: Sonst würde die Endung immer gewinnen, und ein
+    // absichtlich gesetzter Typ wäre wertlos.
+    const erlaubt = ['application/pdf', 'image/jpeg']
+    expect(dateityp('ohne-endung', 'application/pdf', KOPF.pdf, erlaubt))
+      .toMatchObject({ typ: 'application/pdf', quelle: 'gemeldet' })
+  })
+
+  it('und taugt auch die Endung nichts, bleibt es beim gemeldeten Typ', () => {
+    // Damit die Fehlermeldung die richtige nennt und nicht eine erfundene.
+    const erlaubt = ['application/pdf']
+    expect(dateityp('datei.xyz', 'video/mp4', undefined, erlaubt))
+      .toMatchObject({ typ: 'video/mp4' })
+  })
+
   it('Groß- und Kleinschreibung und Zusätze stören nicht', () => {
     expect(dateityp('BILD.JPG', 'IMAGE/JPEG; charset=binary', KOPF.jpeg).typ)
       .toBe('image/jpeg')

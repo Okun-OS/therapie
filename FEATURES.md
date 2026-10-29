@@ -6206,3 +6206,119 @@ gelernt hat. Nachgemessen: `/admin/settings` als Leitung HTTP 200, und ein
 Mitarbeiter bekommt beim Speichern weiterhin 403.
 
 `widersprueche` 15/15, `q-glocke-und-anhaenge` 23/23, **1330** Modultests.
+
+## Block §245–§248 (29.10.) — Dreimal dasselbe gemeldet, dreimal falsch behoben
+
+Drei Meldungen, die ich schon als erledigt gemeldet hatte. Das ist der
+eigentliche Befund dieses Blocks: Zweimal habe ich an einer Stelle repariert,
+an der das Problem nicht saß, und einmal eine Lösung gebaut, die die Frage
+nicht beantwortet hat.
+
+### §245 Die Verkaufsseite blitzt auf — diesmal nachgestellt
+
+**Die Meldung, zum zweiten Mal:** „Ich sehe immer noch, wenn ich auf die App
+gehe, erstmal für eine Sekunde die Website und dann erst werde ich in die App
+geschickt."
+
+**Zwei Vermutungen, beide widerlegt.** Erst dachte ich an `SESSION_SECRET`, das
+in der Edge-Umgebung beim Bauen eingesetzt wird und zur Laufzeit fehlen könnte
+— nachgemessen mit einem Bau ohne die Variable: Sie wird zur Laufzeit gelesen,
+die Weiterleitung funktioniert. Dann an den Dienst-Arbeiter — im echten
+Browser, angemeldet, zeigt `/` zu keinem Zeitpunkt die Verkaufsseite.
+
+**Nachgestellt habe ich ihn schließlich doch:** mit einer Sitzung im
+`sessionStorage`, aber ohne gültiges Cookie. Dann greift die Weiterleitung des
+Servers nicht, die Seite erscheint, und erst danach schiebt sich die
+Weiterleitung des Browsers davor. Genau eine Sekunde.
+
+Drei Lagen, weil ich die Ursache im Betrieb nach wie vor nicht kenne:
+
+| | |
+|---|---|
+| Middleware | leitet weiter, sobald ÜBERHAUPT ein Cookie da ist — ohne Unterschriftsprüfung, die fehlschlagen könnte. Die Berechtigung trifft weiterhin `requireRole`; hier wird nur gelenkt |
+| Startseite | ein winziges Skript setzt beim Einlesen ein Merkmal, wenn im Browser eine Sitzung liegt; eine CSS-Regel verdeckt die Seite damit **vor dem ersten Zeichnen** |
+| Aufräumen | sagt der Server, dass keine Sitzung besteht, wird das Merkmal entfernt — sonst sähe ein Interessent mit altem `sessionStorage` einen leeren Bildschirm |
+
+Der erste Versuch war eine Decke, die React nach dem Aufbau zeichnet. Im Test
+war die Seite davor sichtbar — eine Decke, die zu spät kommt, ist keine.
+
+### §246 Bilder lassen sich nicht verschicken — zum zweiten Mal
+
+**Die Meldung:** „Zusätzlich kann ich immer noch keine Bilder verschicken. Da
+steht dann immer, die Datei konnte nicht gesendet werden."
+
+§241 hat den Fall behoben, dass der Browser **gar keinen** Typ meldet. Der
+übrige Fall ist ein anderer: Ein iPhone meldet für dasselbe Foto je nach
+Herkunft `image/heic`, `image/heif` oder `image/jpg`. In der Liste erlaubter
+Arten stand nur `image/heic` und `image/jpeg` — die beiden anderen fielen
+durch, und zwar **mit** gemeldetem Typ. §241 griff da gar nicht.
+
+Zwei Dinge dagegen:
+
+- eine Tabelle gleichbedeutender Schreibweisen (`image/heif` → `image/heic`,
+  `audio/x-m4a` → `audio/mp4`, …)
+- und die Regel darunter, die jede künftige Schreibweise auffängt, **ohne dass
+  jemand eine Tabelle pflegen muss**: Ein gemeldeter Typ, den diese Stelle gar
+  nicht annimmt, tritt gegen die Endung zurück.
+
+Nachgemessen gehen jetzt `image/heif`, `image/HEIF`, `image/jpg`,
+`image/pjpeg` und „kein Typ" durch — im Chat und in der Personalakte. Eine
+Datei, die nicht ist, was sie vorgibt, wird weiterhin abgewiesen.
+
+### §247 Stundenkonto 0 über minus 98 Stunden
+
+**Die Meldung:** „Es macht keinen Sinn, dass das Stundenkonto auf 0 steht und
+darunter minus 98 Stunden in diesem Monat. Macht gar keinen Sinn."
+
+§243 hatte die zweite Zahl **benannt** danebengestellt, mit der Begründung:
+zwei Zahlen mit zwei Namen widersprächen sich nicht. Das war falsch gedacht.
+Über der Kachel steht ein Wort — „Stundenkonto" —, und was darunter steht,
+liest jeder als dieselbe Sache.
+
+Jetzt steht dort **eine** Zahl: der freigegebene Stand plus alles, was seitdem
+offen ist. Gerechnet in `/api/hours-account/laufend`, weil dafür mehrere Monate
+durchgegangen werden müssen.
+
+**Warum nicht einfach „freigegeben plus dieser Monat".** Dann fehlten die
+Monate dazwischen. Bei einem Betrieb, der seit August keinen Abschluss
+freigegeben hat, wären August und September still unter den Tisch gefallen —
+ein halber Stand mit dem Etikett des ganzen. Gerechnet wird ab dem Monat nach
+dem letzten freigegebenen Abschluss, höchstens achtzehn Monate; dass die Grenze
+gegriffen hat, sagt die Antwort, damit die Oberfläche nicht so tun muss, als
+sei die Zahl vollständig.
+
+**Die Folge, die ich fast übersehen hätte.** Zeigen die Mitarbeiterseiten den
+laufenden Stand und die Listen der Leitung weiter den freigegebenen, ist der
+Widerspruch nur verschoben — Leitung und Person sähen zwei Zahlen unter
+demselben Wort. Für eine ganze Belegschaft ist der laufende Stand zu teuer zu
+rechnen, und für eine Abrechnungsliste ist der freigegebene auch die richtige
+Zahl. Deshalb heißt er dort jetzt **„abgerechnet"** und nicht mehr „Konto".
+
+### §248 Die Haken in Gold
+
+**Die Meldung:** „Dass die Haken türkis sind, macht keinen Sinn, weil die
+Nachrichtenbox von einem selber ist schon türkis. Die Haken müssen, wenn sie
+gelesen sind, irgendwie golden werden."
+
+Trifft zu. §240 hatte auf der türkisen Blase ein kräftiges Weiß genommen — ein
+Zustand, den man nur an einem Helligkeitssprung erkennt, ist keiner. Gold hebt
+sich wirklich ab und ist im Programm bereits besetzt: Wappen und Assistent
+tragen es.
+
+### Nachweise
+
+**1334** Modultests (vier neu für die Schreibweisen samt Gegenprobe, dass ein
+angenommener Typ den Vorrang behält).
+
+`widersprueche` **17/17** — die Prüfung misst jetzt das Gegenteil von vorher:
+Unter „Stundenkonto" darf **keine** zweite Zahl mehr stehen, und weist die
+Zeiterfassung eine Abweichung aus, darf das Konto nicht null sein.
+
+`zeiten-stimmen-ueberein` 13/13, `urlaubstage-stimmen-ueberein` 13/13,
+`alle-seiten-ohne-fehler` 60/60, `q-glocke-und-anhaenge` 23/23, `e5-chat`
+106/106, `a-mitarbeiter` 37/37.
+
+**Ein Fehler in meiner eigenen Änderung**, gefunden vom eigenen Test: Ohne
+brauchbaren Typ und ohne bekannte Endung stand als Quelle „endung", obwohl
+nichts ausgewertet wurde. Der Typ stimmte, die Auskunft darüber nicht — und die
+entscheidet über die Fehlermeldung.

@@ -233,3 +233,28 @@ html.im-programm .zieh-flaeche textarea,
 html.im-programm .zieh-flaeche [role='button'] {
   -webkit-app-region: no-drag;
 }
+
+
+/*
+ * §245 Die Verkaufsseite bleibt unsichtbar, solange im Browser noch eine
+ * Sitzung liegt.
+ *
+ * Gemeldet, zweimal: „Ich sehe immer noch, wenn ich auf die App gehe, erstmal
+ * für eine Sekunde die Website und dann erst werde ich in die App geschickt."
+ *
+ * Nachgestellt im echten Browser: Mit einer Sitzung im `sessionStorage`, aber
+ * ohne gültiges Cookie, erscheint die Seite — und wird erst danach verdeckt.
+ * Eine Decke, die React erst nach dem Aufbau zeichnet, kommt zu spät; genau
+ * das war die Sekunde.
+ *
+ * Darum hier und nicht in einem Bauteil: Das Merkmal setzt ein winziges
+ * Skript, das WÄHREND des Einlesens der Seite läuft, also vor dem ersten
+ * Zeichnen. Diese Regel greift damit sofort.
+ *
+ * Eng gefasst auf `.verkaufsseite`: Das Merkmal am Dokument bleibt bei einem
+ * Seitenwechsel im Browser bestehen. Ohne diese Einschränkung wäre danach
+ * auch die Anwendung selbst unsichtbar.
+ */
+html[data-sitzung="1"] .verkaufsseite {
+  visibility: hidden;
+}

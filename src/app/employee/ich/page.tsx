@@ -80,36 +80,33 @@ export default function Ich() {
 
 
   /**
-   * §243 Was im LAUFENDEN Monat zusammengekommen ist.
+   * §247 Das Stundenkonto als EINE Zahl.
    *
-   * DIE MELDUNG
-   * „Es gibt eine Diskrepanz zwischen dem Stundenkonto, was da angezeigt wird
-   * — du bist offiziell eigentlich im Minus, aber dann wird Stundenkonto 0
-   * angezeigt ganz oft. Das beißt sich halt wieder."
+   * §243 hat hier die laufende Monatsdifferenz BENANNT danebengestellt — in
+   * der Annahme, zwei Zahlen mit zwei Namen widersprächen sich nicht.
+   * Gemeldet kam zurück: „Es macht keinen Sinn, dass das Stundenkonto auf 0
+   * steht und darunter minus 98 Stunden in diesem Monat."
    *
-   * Beide Zahlen stimmten für sich. Das Stundenkonto zählt nur freigegebene
-   * Monate (§238), und solange keiner freigegeben ist, steht da null. Die
-   * Zeiterfassung zeigt daneben den laufenden Monat. Wer beides sieht, liest
-   * zwei Antworten auf dieselbe Frage.
+   * Das stimmt. Über der Kachel steht ein Wort — „Stundenkonto" —, und was
+   * darunter steht, liest jeder als dieselbe Sache. Zwei Namen helfen nicht,
+   * wenn die Überschrift eine ist.
    *
-   * Statt eine der beiden zu verschweigen oder sie zu einer zusammenzurechnen
-   * — und damit einen halben Stand als ganzen auszugeben — steht die zweite
-   * Zahl jetzt BENANNT daneben. Zwei Zahlen mit zwei Namen widersprechen sich
-   * nicht.
+   * Gezeigt wird jetzt der freigegebene Stand PLUS alles, was seitdem offen
+   * ist. Gerechnet wird das am Server (`/api/hours-account/laufend`), weil
+   * dafür mehrere Monate durchgegangen werden müssen und eine Oberfläche das
+   * nicht Monat für Monat nachfragen soll.
    */
-  const [laufend, setLaufend] = useState<number | null>(null)
+  const [kontoMinuten, setKontoMinuten] = useState<number | null>(null)
+  const [kontoUnvollstaendig, setKontoUnvollstaendig] = useState(false)
 
   useEffect(() => {
     if (!user?.employeeId) return
-    const jetzt = new Date()
-    const adresse = `/api/hours-account?employeeId=${user.employeeId}`
-      + `&year=${jetzt.getFullYear()}&month=${jetzt.getMonth() + 1}`
-    fetch(adresse)
+    fetch('/api/hours-account/laufend')
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        const s = d?.summary
-        if (!s) return
-        setLaufend((s.istMinutes ?? 0) + (s.overtimeMinutes ?? 0) - (s.sollMinutes ?? 0))
+        if (!d?.konto) return
+        setKontoMinuten(d.konto.gesamtMinuten)
+        setKontoUnvollstaendig(Boolean(d.konto.abgeschnitten))
       })
       .catch(() => {})
   }, [user?.employeeId])
@@ -127,10 +124,17 @@ export default function Ich() {
    * Diese Schnittstelle liefert die Über- und Unterstunden EINES Monats, und
    * das ist unter der Überschrift „Stundenkonto" die falsche Zahl.
    */
-  const saldo = mich?.hoursBalance != null ? mich.hoursBalance * 60 : null
-  const saldoText = saldo == null
+  /*
+   * §247 Ein Strich, bis die Zahl da ist.
+   *
+   * Vorher stand hier der Wert aus dem Mitarbeiterdatensatz, also der
+   * freigegebene Stand allein. Eine 0, die sich gleich in −98:50 verwandelt,
+   * ist schlimmer als ein Strich: Sie sieht aus, als stünde sie fest.
+   */
+  const kontoText = kontoMinuten == null
     ? '—'
-    : `${saldo >= 0 ? '+' : '−'}${Math.floor(Math.abs(saldo) / 60)}:${String(Math.round(Math.abs(saldo) % 60)).padStart(2, '0')}`
+    : `${kontoMinuten >= 0 ? '+' : '−'}${Math.floor(Math.abs(kontoMinuten) / 60)}:`
+      + `${String(Math.abs(kontoMinuten) % 60).padStart(2, '0')}`
 
   return (
     <div className="px-4 pt-4 pb-2 space-y-4 max-w-2xl mx-auto">
@@ -157,17 +161,16 @@ export default function Ich() {
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
           <Clock size={18} className="text-navy mb-2" />
           <p className={`text-2xl font-bold tabular-nums ${
-            (saldo ?? 0) < 0 ? 'text-amber-700' : 'text-navy'}`}
+            (kontoMinuten ?? 0) < 0 ? 'text-amber-700' : 'text-navy'}`}
             data-test="stundenkonto">
-            {saldoText}
+            {kontoText}
           </p>
           <p className="text-xs text-gray-400">Stundenkonto</p>
-          {/* §243 Die zweite Zahl, benannt — siehe oben. */}
-          {laufend !== null && laufend !== 0 && (
-            <p className="text-[10px] text-gray-400 mt-0.5 leading-tight"
-              data-test="laufender-monat">
-              {laufend > 0 ? '+' : '−'}{Math.floor(Math.abs(laufend) / 60)}:
-              {String(Math.abs(laufend) % 60).padStart(2, '0')} diesen Monat
+          {/* §247 Nur, wenn die Zahl wirklich nicht alles erfasst. Sonst
+              stünde dort wieder eine zweite Angabe, die niemand braucht. */}
+          {kontoUnvollstaendig && (
+            <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">
+              älteste Monate nicht enthalten
             </p>
           )}
         </div>

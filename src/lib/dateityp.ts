@@ -64,6 +64,42 @@ const NICHTSSAGEND = ['', 'application/octet-stream', 'binary/octet-stream',
   'application/x-binary', 'content/unknown']
 
 /**
+ * §246 Dieselbe Art, anders geschrieben.
+ *
+ * §241 hat den Fall behoben, dass der Browser GAR KEINEN Typ meldet. Gemeldet
+ * kam trotzdem wieder: „Ich kann immer noch keine Bilder verschicken. Da steht
+ * dann immer, die Datei konnte nicht gesendet werden."
+ *
+ * Nachgesehen: Ein iPhone meldet für dasselbe Foto je nach Herkunft
+ * `image/heic`, `image/heif` oder `image/jpg`. In der Liste erlaubter Arten
+ * steht nur `image/heic` und `image/jpeg` — die beiden anderen fielen durch,
+ * und zwar MIT gemeldetem Typ. §241 griff da gar nicht, weil es den Typ ja
+ * gab; er stand nur nicht in der Liste.
+ *
+ * Eine Liste, die jede Schreibweise jedes Herstellers kennen muss, veraltet
+ * mit dem nächsten Gerät. Darum zwei Dinge: diese Tabelle für die bekannten
+ * Fälle — und darunter die Regel, dass ein gemeldeter Typ, den wir nicht
+ * kennen, gegen die Endung zurücktritt.
+ */
+const GLEICHBEDEUTEND: Record<string, string> = {
+  'image/heif': 'image/heic',
+  'image/heic-sequence': 'image/heic',
+  'image/heif-sequence': 'image/heic',
+  'image/jpg': 'image/jpeg',
+  'image/pjpeg': 'image/jpeg',
+  'image/x-png': 'image/png',
+  'application/x-pdf': 'application/pdf',
+  'audio/x-m4a': 'audio/mp4',
+  'audio/m4a': 'audio/mp4',
+  'audio/mp3': 'audio/mpeg',
+  'audio/x-wav': 'audio/wav',
+  'audio/vnd.wave': 'audio/wav',
+  'video/mov': 'video/quicktime',
+  'video/x-quicktime': 'video/quicktime',
+  'text/csv': 'text/plain',
+}
+
+/**
  * Was wirklich am Anfang der Datei stehen muss.
  *
  * Nur Formate mit einer eindeutigen Kennung. Was hier fehlt, wird nicht
@@ -114,11 +150,48 @@ export function dateityp(
   name: string,
   gemeldet: string | null | undefined,
   daten?: Uint8Array,
+  /**
+   * §246 Welche Arten die aufrufende Stelle überhaupt annimmt.
+   *
+   * Wird sie übergeben, tritt ein gemeldeter Typ, der NICHT darin steht,
+   * gegen die Endung zurück. Das ist die Regel, die jede künftige
+   * Schreibweise auffängt, ohne dass jemand eine Tabelle pflegen muss: Was
+   * wir nicht kennen, glauben wir nicht — wir sehen auf den Namen und, wo es
+   * geht, auf den Inhalt.
+   *
+   * Ohne sie verhält sich alles wie bisher.
+   */
+  erlaubt?: Iterable<string>,
 ): TypErgebnis {
-  const sauber = (gemeldet ?? '').trim().toLowerCase().split(';')[0]
+  const roh = (gemeldet ?? '').trim().toLowerCase().split(';')[0]
+  const sauber = GLEICHBEDEUTEND[roh] ?? roh
   const ausEndung = AUS_ENDUNG[endung(name)]
 
-  const typ = !NICHTSSAGEND.includes(sauber) ? sauber : ausEndung
+  let gemeldetBrauchbar = !NICHTSSAGEND.includes(sauber)
+  if (gemeldetBrauchbar && erlaubt) {
+    const liste = new Set(erlaubt)
+    // Ein Typ, den diese Stelle gar nicht annimmt, hilft nicht weiter — aber
+    // die Endung vielleicht schon. Nur wenn auch die nichts taugt, bleibt es
+    // beim gemeldeten: Dann ist die Fehlermeldung wenigstens die richtige.
+    if (!liste.has(sauber) && ausEndung && liste.has(ausEndung)) {
+      gemeldetBrauchbar = false
+    }
+  }
+
+  /*
+   * §246 Wenn WEDER der gemeldete Typ brauchbar ist NOCH die Endung etwas
+   * hergibt, ist nichts erkannt worden — auch dann nicht, wenn der gemeldete
+   * Typ als Zeichenkette vorliegt. `application/octet-stream` ist keine
+   * Erkenntnis, sondern ihr Gegenteil.
+   *
+   * Beim ersten Versuch stand hier als Quelle „endung", obwohl keine Endung
+   * ausgewertet wurde. Der Typ stimmte, die Auskunft darüber nicht — und die
+   * Auskunft ist das, was weiter unten über die Fehlermeldung entscheidet.
+   */
+  if (!gemeldetBrauchbar && !ausEndung) {
+    return { typ: sauber || 'application/octet-stream', quelle: 'unbekannt' }
+  }
+  const typ = gemeldetBrauchbar ? sauber : ausEndung!
   if (!typ) return { typ: 'application/octet-stream', quelle: 'unbekannt' }
 
   /*
@@ -127,13 +200,15 @@ export function dateityp(
    * eine PDF drin ist; diese Zeile ist der Grund, warum der neue Weg strenger
    * ist als der alte und nicht lockerer.
    */
+  const quelle: TypErgebnis['quelle'] = gemeldetBrauchbar ? 'gemeldet' : 'endung'
+
   const pruefer = daten && daten.length >= 12 ? KENNUNG[typ] : undefined
   if (pruefer && !pruefer(daten!)) {
     return {
-      typ, quelle: !NICHTSSAGEND.includes(sauber) ? 'gemeldet' : 'endung',
+      typ, quelle,
       widerspruch: `Die Datei heißt „${name}", ihr Inhalt passt aber nicht dazu.`,
     }
   }
 
-  return { typ, quelle: !NICHTSSAGEND.includes(sauber) ? 'gemeldet' : 'endung' }
+  return { typ, quelle }
 }

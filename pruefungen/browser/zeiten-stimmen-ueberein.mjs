@@ -10,6 +10,18 @@
 // — „Mein Tag", Profil, Personalakte der Leitung, Belegschaftsliste, Berichte
 // und die Unternehmensansicht.
 //
+// §247 WAS SICH GEÄNDERT HAT — UND WARUM ES JETZT ZWEI GRÖSSEN SIND
+// Die Mitarbeiterseiten zeigen seit §247 den LAUFENDEN Stand: freigegeben plus
+// alles, was seitdem offen ist. Die Listen der Leitung zeigen weiterhin den
+// freigegebenen Stand — berechnet würde der laufende für eine ganze Belegschaft
+// zu teuer, und für eine Abrechnungsliste ist der freigegebene auch die
+// richtige Zahl. Damit das kein neuer Widerspruch wird, heißt er dort jetzt
+// „abgerechnet" und nicht mehr „Konto".
+//
+// Diese Prüfung vergleicht deshalb: „Mein Tag" gegen „Mein Profil" (dieselbe
+// Größe, muss gleich sein) — und sichert getrennt zu, dass die Leitungsliste
+// den ABGERECHNETEN Stand zeigt.
+//
 // WAS DIESE PRÜFUNG MISST
 // Nicht, ob die Zahl „richtig" ist — richtig ist, was im Stundenkonto steht.
 // Sondern ob ÜBERALL DIESELBE steht, auch über zwei Rollen hinweg und über
@@ -117,7 +129,7 @@ async function inDerListe(seite) {
   const name = vorher?.name ?? ''
   for (let versuch = 0; versuch < 60; versuch++) {
     const treffer = await seite.evaluate((gesucht) => {
-      for (const feld of Array.from(document.querySelectorAll('[data-test="stundenkonto"]'))) {
+      for (const feld of Array.from(document.querySelectorAll('[data-test="abgerechnet"]'))) {
         const karte = feld.closest('div[class*="rounded"]')
         if (karte && (karte.textContent ?? '').includes(gesucht)) {
           return (feld.textContent ?? '').trim()

@@ -70,7 +70,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
    * `dateityp` bestimmt die Art aus Endung UND den ersten Bytes. Das ist
    * strenger als vorher: Dem gemeldeten Typ wurde bis hierher blind geglaubt.
    */
-  const erkannt = dateityp(name, datei.type, daten)
+  // §246 Mit der Liste: Ein gemeldeter Typ, den der Chat nicht annimmt
+  // (`image/heif` vom iPhone), tritt gegen die Endung zurück.
+  const erkannt = dateityp(name, datei.type, daten, Object.keys(CHAT_TYPEN))
   if (erkannt.widerspruch) {
     return NextResponse.json({ error: erkannt.widerspruch }, { status: 400 })
   }

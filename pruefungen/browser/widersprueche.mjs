@@ -242,32 +242,54 @@ console.log('\n=== §243 Das Stundenkonto gegen seine eigene Aufstellung ===')
   }
 
   /*
-   * §243 Der gemeldete Widerspruch: oben „Stundenkonto +0:00", hier 105
-   * Minusstunden. Jetzt steht die laufende Zahl BENANNT auf der Startseite —
-   * und sie muss zu dem passen, was die Zeiterfassung ausweist.
+   * §247 Der gemeldete Widerspruch — und was daraus wurde.
+   *
+   * §243 stellte die laufende Monatsdifferenz BENANNT neben das Stundenkonto.
+   * Gemeldet kam zurück: „Es macht keinen Sinn, dass das Stundenkonto auf 0
+   * steht und darunter minus 98 Stunden in diesem Monat."
+   *
+   * Zwei Zahlen mit zwei Namen widersprechen sich eben doch, wenn die
+   * Überschrift darüber eine einzige ist. Jetzt steht dort EINE Zahl: der
+   * freigegebene Stand plus alles, was seitdem offen ist.
+   *
+   * Geprüft wird deshalb das Gegenteil von vorher: Unter „Stundenkonto" darf
+   * KEINE zweite Zahl mehr stehen — und die eine muss den laufenden Monat
+   * enthalten.
    */
   await seite.goto(`${BASIS}/employee/ich`, { waitUntil: 'domcontentloaded' })
   await seite.waitForTimeout(4000)
-  const laufendFeld = seite.locator('[data-test="laufender-monat"]')
-  const hatLaufend = await laufendFeld.count() > 0
-  const erwartet = soll !== null && ist !== null && plus !== null
-    ? ist + plus - soll : null
 
-  if (erwartet !== null && erwartet !== 0) {
-    check('Die Startseite nennt den laufenden Monat eigens',
-      hatLaufend, hatLaufend ? '' : 'kein Feld gefunden')
-    if (hatLaufend) {
-      const roh = (await laufendFeld.first().textContent() ?? '').trim()
-      const vorzeichen = roh.startsWith('−') || roh.startsWith('-') ? -1 : 1
-      const betrag = roh.match(/(\d+):(\d{2})/)
-      const gezeigt = betrag
-        ? vorzeichen * (Number(betrag[1]) * 60 + Number(betrag[2])) : null
-      check('Und zwar mit derselben Zahl wie die Zeiterfassung',
-        gezeigt === erwartet, `Startseite ${gezeigt} · Zeiterfassung ${erwartet} Minuten`)
+  const zweite = await seite.locator('[data-test="laufender-monat"]').count()
+  check('Unter dem Stundenkonto steht keine zweite Zahl mehr', zweite === 0,
+    `${zweite} gefunden`)
+
+  const kontoFeld = seite.locator('[data-test="stundenkonto"]')
+  let konto = null
+  for (let versuch = 0; versuch < 60; versuch++) {
+    const roh = (await kontoFeld.first().textContent() ?? '').trim()
+    const t = roh.match(/(\d+):(\d{2})/)
+    if (t) {
+      const vz = roh.startsWith('−') || roh.startsWith('-') ? -1 : 1
+      konto = vz * (Number(t[1]) * 60 + Number(t[2]))
+      break
     }
-  } else {
-    check('Ohne Abweichung steht auch keine zweite Zahl da', !hatLaufend,
-      `erwartet ${erwartet}, Feld da: ${hatLaufend}`)
+    await seite.waitForTimeout(250)
+  }
+  check('Und die eine Zahl ist da', konto !== null, `${konto}`)
+
+  /*
+   * Die Zusicherung, die den gemeldeten Fall ausschließt: Weist die
+   * Zeiterfassung für diesen Monat eine Abweichung aus, darf das Stundenkonto
+   * nicht null sein. Genau diese Kombination war die Meldung.
+   */
+  const diesenMonat = soll !== null && ist !== null && plus !== null
+    ? ist + plus - soll : null
+  if (diesenMonat !== null && diesenMonat !== 0) {
+    check('Bei Abweichung im Monat steht das Konto nicht auf null',
+      konto !== 0, `Konto ${konto}, Monat ${diesenMonat} Minuten`)
+    check('Und es enthält den laufenden Monat',
+      konto !== null && Math.sign(konto) === Math.sign(diesenMonat),
+      `Konto ${konto} · Monat ${diesenMonat} Minuten`)
   }
 
   await ctx.close()

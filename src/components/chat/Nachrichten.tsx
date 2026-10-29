@@ -64,15 +64,17 @@ interface Mitglied {
  *   zwei Haken, blass     zugestellt — sie liegt auf dem Gerät des anderen
  *   zwei Haken, türkis    gelesen — jemand hat hingesehen
  *
- * Gewünscht war ausdrücklich eine Farbe für „gelesen": „wenn die Haken dann
- * irgendwie eine Farbe annehmen … lass es mal grün machen oder so. Oder
- * golden, keine Ahnung. Oder türkis." Türkis ist die Hausfarbe (#26C6C6) —
- * damit sagt der Zustand dasselbe wie überall sonst im Programm, statt eine
- * weitere Farbe einzuführen.
+ * §248 WARUM GOLD UND NICHT TÜRKIS
+ * §240 hatte Türkis gewählt, die Hausfarbe — und auf der eigenen Blase, die
+ * selbst türkis ist, ein kräftiges Weiß. Gemeldet kam zurück: „Dass die Haken
+ * türkis sind, macht keinen Sinn, weil die Nachrichtenbox von einem selber ist
+ * schon türkis. Deswegen müssten die Haken, wenn sie gelesen sind, irgendwie
+ * golden werden."
  *
- * Die Blase eigener Nachrichten ist selbst türkis. Darauf wäre türkis auf
- * türkis unsichtbar, deshalb steht „gelesen" dort als kräftiges Weiß gegen die
- * blassen Haken davor — derselbe Sprung, nur in der Helligkeit.
+ * Das trifft zu, und der Weiß-Umweg war eine Krücke: Ein Zustand, den man nur
+ * an einem Helligkeitssprung erkennt, ist keiner. Gold hebt sich auf der
+ * türkisen Blase wirklich ab und ist im Programm bereits besetzt — das
+ * Wappen oben links und der Assistent tragen es.
  *
  * `title` ist kein Beiwerk: Drei Zustände, die sich nur durch Anzahl und Farbe
  * unterscheiden, kann niemand raten, und wer eine Vorlesehilfe benutzt, sieht
@@ -83,8 +85,9 @@ function Haken({ status, aufFarbe }: {
   aufFarbe: boolean
 }) {
   const text = { gesendet: 'Gesendet', zugestellt: 'Zugestellt', gelesen: 'Gelesen' }[status]
+  // §248 Gold für gelesen — auf der türkisen Blase und daneben dasselbe.
   const farbe = status === 'gelesen'
-    ? (aufFarbe ? 'text-white' : 'text-[#26C6C6]')
+    ? 'text-[#F2C230]'
     : (aufFarbe ? 'text-white/50' : 'text-gray-400')
   return (
     <span className={`inline-flex items-center ${farbe}`} title={text} aria-label={text}>

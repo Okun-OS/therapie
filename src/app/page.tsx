@@ -39,7 +39,17 @@ export default function Startseite() {
   const a = anbieter()
 
   return (
-    <div className="min-h-screen bg-navy-900">
+    <div className="min-h-screen bg-navy-900 verkaufsseite">
+      {/*
+        §245 Läuft beim Einlesen der Seite, vor dem ersten Zeichnen.
+        Siehe die Begründung bei `.verkaufsseite` in `globals.css`.
+      */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: "try{if(sessionStorage.getItem('dienstplan_user'))"
+            + "document.documentElement.setAttribute('data-sitzung','1')}catch(e){}",
+        }}
+      />
       <AngemeldeteWeiterleiten />
       <WebsiteKopf />
 

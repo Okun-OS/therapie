@@ -443,9 +443,18 @@ export default function AdminEmployees() {
                   </div>
                   <div className={`flex items-center gap-1 text-xs font-semibold ${getBalanceColor(emp.hoursBalance)}`}>
                     <TrendingUp size={11} />
-                    <span data-test="stundenkonto">
+                    {/*
+                      §247 „abgerechnet", nicht „Konto".
+                      `hoursBalance` wächst nur beim Freigeben eines
+                      Monatsabschlusses. Die Mitarbeitenden sehen seit §247 den
+                      LAUFENDEN Stand — freigegeben plus alles, was seitdem
+                      offen ist. Stünde hier weiter „Konto", sähen Leitung und
+                      Person zwei verschiedene Zahlen unter demselben Wort.
+                      Das Wort sagt jetzt, welche der beiden es ist.
+                    */}
+                    <span data-test="abgerechnet">
                       {emp.hoursBalance >= 0 ? '+' : ''}{emp.hoursBalance}h
-                    </span> Konto
+                    </span> abgerechnet
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <Palmtree size={11} />
@@ -494,7 +503,7 @@ export default function AdminEmployees() {
 
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Stundenkonto', value: `${selectedEmployee.hoursBalance >= 0 ? '+' : ''}${selectedEmployee.hoursBalance}h`, color: getBalanceColor(selectedEmployee.hoursBalance) },
+                { label: 'Abgerechnet', value: `${selectedEmployee.hoursBalance >= 0 ? '+' : ''}${selectedEmployee.hoursBalance}h`, color: getBalanceColor(selectedEmployee.hoursBalance) },
                 { label: 'Wochenstunden', value: `${selectedEmployee.weeklyHours}h`, color: 'text-navy' },
                 { label: 'Resturlaub', value: `${restUrlaub(selectedEmployee) ?? '–'} Tage`, color: 'text-navy' },
                 { label: 'Dabei seit', value: new Date(selectedEmployee.joinedAt).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }), color: 'text-navy' },

@@ -189,7 +189,7 @@ export default function EmployeeDetailPage() {
 
           <div className="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-white/10">
             {[
-              { label: 'Stundenkonto', value: `${employee.hoursBalance >= 0 ? '+' : ''}${employee.hoursBalance}h`, highlight: true },
+              { label: 'Abgerechnet', value: `${employee.hoursBalance >= 0 ? '+' : ''}${employee.hoursBalance}h`, highlight: true },
               { label: 'Wochenstunden', value: `${employee.weeklyHours}h` },
               { label: 'Resturlaub', value: `${remainingVacation}d` },
               { label: 'Dabei seit', value: new Date(employee.joinedAt + 'T00:00:00').toLocaleDateString('de-DE', { month: 'short', year: 'numeric' }) },
@@ -236,7 +236,7 @@ export default function EmployeeDetailPage() {
             />
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Stundenkonto', value: `${employee.hoursBalance >= 0 ? '+' : ''}${employee.hoursBalance}h`, color: balanceColor, icon: TrendingUp },
+                { label: 'Abgerechnet', value: `${employee.hoursBalance >= 0 ? '+' : ''}${employee.hoursBalance}h`, color: balanceColor, icon: TrendingUp },
                 { label: 'Wochenstunden', value: `${employee.weeklyHours}h / Woche`, color: 'text-navy', icon: Clock },
                 { label: 'Urlaub genommen', value: `${employee.vacationDaysUsed} / ${employee.vacationDaysTotal} Tage`, color: 'text-navy', icon: Palmtree },
                 { label: 'Resturlaub', value: `${remainingVacation ?? '–'} Tage`, color: (remainingVacation ?? 99) < 5 ? 'text-amber-600' : 'text-green-600', icon: Calendar },

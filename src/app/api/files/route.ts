@@ -3,7 +3,7 @@ import { requireRole, resolveCustomerId } from '@/lib/session'
 import { assertEmployeeAccess, allowedLocationScope } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
 import {
-  dateiSpeichern, pruefeDatei, DATEI_FELDER, mitarbeiterDarfSehen,
+  ERLAUBTE_TYPEN, dateiSpeichern, pruefeDatei, DATEI_FELDER, mitarbeiterDarfSehen,
   MITARBEITER_DARF_HOCHLADEN, KATEGORIEN, MAX_DATEI_BYTES,
   type Kategorie,
 } from '@/lib/file-storage'
@@ -110,7 +110,9 @@ export async function POST(req: NextRequest) {
    * Die Datei wird dafür schon hier gelesen und nicht erst weiter unten — die
    * ersten Bytes entscheiden mit.
    */
-  const erkannt = dateityp(datei.name, datei.type, daten)
+  // §246 Siehe Chat: dieselbe Regel, andere Liste — die Akte nimmt
+  // weniger Arten an als ein Gespräch.
+  const erkannt = dateityp(datei.name, datei.type, daten, Object.keys(ERLAUBTE_TYPEN))
   if (erkannt.widerspruch) {
     return NextResponse.json({ error: erkannt.widerspruch }, { status: 400 })
   }

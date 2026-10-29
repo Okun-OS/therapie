@@ -160,6 +160,16 @@ export default function EmployeeProfile() {
     }
   }
 
+  /** §247 Der laufende Stand — eine Zahl, siehe `hours-account/laufend`. */
+  const [kontoMinuten, setKontoMinuten] = useState<number | null>(null)
+  useEffect(() => {
+    if (!employee?.id) return
+    fetch(`/api/hours-account/laufend?employeeId=${employee.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.konto) setKontoMinuten(d.konto.gesamtMinuten) })
+      .catch(() => {})
+  }, [employee?.id])
+
   // §235 Dieselbe Rechnung wie auf der Urlaubsseite.
   const konto = urlaubskonto(employee ?? {}, meineUrlaubsantraege)
 
@@ -211,9 +221,19 @@ export default function EmployeeProfile() {
               <p className="text-xs text-gray-500">Resturlaub</p>
             </div>
             <div className="text-center">
-              <p className={`text-lg font-bold ${employee.hoursBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}
+              {/*
+                §247 Dieselbe Zahl wie auf „Mein Tag" — freigegebener Stand
+                plus alles, was seitdem offen ist. Vorher stand hier
+                `hoursBalance` allein, also nur die freigegebenen Monate; das
+                war die 0, über die sich jemand zu Recht gewundert hat.
+              */}
+              <p className={`text-lg font-bold ${(kontoMinuten ?? 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}
                 data-test="stundenkonto">
-                {employee.hoursBalance >= 0 ? '+' : ''}{employee.hoursBalance}h
+                {kontoMinuten == null
+                  ? '–'
+                  : `${kontoMinuten >= 0 ? '+' : '−'}`
+                    + `${Math.floor(Math.abs(kontoMinuten) / 60)}:`
+                    + `${String(Math.abs(kontoMinuten) % 60).padStart(2, '0')}`}
               </p>
               {/*
                 §238 „+0h" neben „1,6h Überstunden 2026" liest sich wie ein
@@ -225,9 +245,6 @@ export default function EmployeeProfile() {
                 Die Zahl stimmte; es fehlte der Satz dazu.
               */}
               <p className="text-xs text-gray-500">Stundenkonto</p>
-              <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">
-                zählt freigegebene Monate
-              </p>
             </div>
             <div className="text-center">
               <p className="text-lg font-bold text-navy">{employee.weeklyHours}h</p>
