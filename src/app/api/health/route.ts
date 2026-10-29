@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { r2Eingerichtet } from '@/lib/r2'
 
 /**
  * §236 Der Lebenszeichen-Pfad für die Anlage.
@@ -27,5 +28,31 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export function GET() {
-  return NextResponse.json({ status: 'ok' })
+  /*
+   * §258 Ein zweites Feld: ob der Objektspeicher eingerichtet ist.
+   *
+   * WARUM HIER UND NICHT HINTER EINER ANMELDUNG
+   * Weil es die einzige Angabe ist, die beim Einrichten gebraucht wird und
+   * die von außen prüfbar sein muss: Sind die fünf Werte in Railway
+   * angekommen? Ohne sie lässt sich das nur erraten — und Raten hat in diesem
+   * Vorhaben schon genug Zeit gekostet.
+   *
+   * WAS DABEI NICHT HERAUSGEHT
+   * Nur ein Ja oder Nein. Kein Eimername, keine Kontonummer, kein Schlüssel.
+   * Dass ein Dienst einen Objektspeicher benutzt, ist keine Auskunft, die
+   * jemandem nützt; die Zugangsdaten wären eine.
+   */
+  /*
+   * §259 Zwei getrennte Speicher, zwei getrennte Auskünfte. `programm` hält
+   * die Windows-Aktualisierungen (§210), `dateien` die Anhänge und
+   * Bescheinigungen. Sie in eine Angabe zusammenzufassen hieße, nicht sehen
+   * zu können, welcher von beiden fehlt.
+   */
+  return NextResponse.json({
+    status: 'ok',
+    speicher: {
+      programm: r2Eingerichtet('programm') ? 'eingerichtet' : 'fehlt',
+      dateien: r2Eingerichtet('dateien') ? 'eingerichtet' : 'fehlt',
+    },
+  })
 }

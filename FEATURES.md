@@ -6727,3 +6727,65 @@ eine Leseadresse zugleich eine Schreibadresse.
 Die Zugangsdaten. Ohne sie lässt sich nicht prüfen, ob Cloudflare die Signatur
 annimmt — das geht nur gegen den echten Speicher und wird von Hand gemacht,
 bevor irgendetwas umgestellt wird.
+
+## Block §258–§259 (29.10.) — Der Prüfknopf, und ein Fehler, den der Eigentümer gefunden hat
+
+### §259 Zwei Speicher, die nichts voneinander wissen
+
+**Beim Einrichten wäre fast etwas kaputtgegangen**, und gemerkt hat es nicht
+ich, sondern der Eigentümer:
+
+> „Problem ist, wir haben schon einen anderen R2-Bucket drin und R2-Geheimnis,
+> R2-Konto-ID, R2-Schlüssel für irgendeine andere Funktion."
+
+Er hat recht. `R2_BUCKET` zeigt auf `okun-programm` — dort holt sich das
+Windows-Programm seine Aktualisierungen (§210). Meine Anleitung hätte diese
+Variable überschrieben, und die Selbstaktualisierung wäre **still**
+kaputtgegangen. Still, weil sie niemand täglich benutzt: Es wäre erst
+aufgefallen, wenn jemand eine neue Fassung gebraucht hätte.
+
+Die beiden Zwecke sind jetzt getrennt:
+
+| | Programm | Dateien |
+|---|---|---|
+| Eimer | `R2_BUCKET` | `R2_DATEIEN_BUCKET` |
+| Schlüssel | `R2_SCHLUESSEL` | `R2_DATEIEN_SCHLUESSEL` |
+| Geheimnis | `R2_GEHEIMNIS` | `R2_DATEIEN_GEHEIMNIS` |
+| Rechtsraum | `R2_BEREICH` | `R2_DATEIEN_BEREICH` (`eu`) |
+| Konto | `R2_KONTO_ID` | geteilt, mit eigener Überschreibung |
+
+**Warum nicht ein Eimer für beides.** Weil die beiden nichts miteinander zu
+tun haben: Im einen liegen Programmdateien, die jeder herunterladen darf, im
+anderen Krankenscheine. Der Schlüssel für den einen soll den anderen nicht
+öffnen können — und der Dateieimer liegt im EU-Rechtsraum, der Programmeimer
+nicht.
+
+Die wichtigste Gegenprobe: **Fehlt der Dateispeicher, springt NICHT
+stillschweigend der Programmeimer ein.** Sonst lägen Krankenscheine neben den
+Programmdateien, und zwar ohne Rechtsraum.
+
+### §258 Der Prüfknopf
+
+Die Signatur nach AWS' Verfahren Version 4 lässt sich örtlich nicht prüfen.
+Jeder denkbare Fehler darin — ein nicht kodiertes Zeichen, eine falsche
+Reihenfolge der Köpfe, die falsche Adresse für einen EU-Eimer — meldet sich
+bei Cloudflare mit **derselben** Auskunft: `SignatureDoesNotMatch`, ohne
+Hinweis worauf.
+
+Unter **OKUN → Speicher** steht jetzt ein Knopf. Er legt eine Testdatei ab,
+holt sie zurück, **vergleicht den Inhalt** und räumt wieder auf. Nur abzulegen
+würde nichts beweisen: Eine Datei, die danach niemand lesen kann, ist keine
+abgelegte Datei.
+
+Das Lebenszeichen (`/api/health`) meldet außerdem, welcher der beiden Speicher
+eingerichtet ist — ein Ja oder Nein, kein Eimername, keine Kontonummer, kein
+Schlüssel.
+
+Beides zusammen ersetzt das, was bisher passiert ist: ein Foto in einen Chat
+laden und aus einem Fehler 500 raten, woran es lag.
+
+### Nachweise
+
+**1362** Modultests, `r2.test.ts` allein **36** — darunter sieben neue für die
+Trennung der beiden Speicher. Der Prüfknopf ist gegen eine Rolle abgesichert,
+die ihn nicht drücken darf: Ein Mitarbeiter bekommt 403, nachgemessen.

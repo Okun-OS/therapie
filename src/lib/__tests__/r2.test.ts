@@ -20,10 +20,17 @@ import { downloadAdresse, uploadAdresse, loeschAdresse, r2Eingerichtet } from '.
 const SICHERN = { ...process.env }
 
 beforeEach(() => {
+  // Der Programmspeicher (§210) — Windows-Aktualisierungen.
   process.env.R2_KONTO_ID = 'abc123'
   process.env.R2_BUCKET = 'okun-programm'
   process.env.R2_SCHLUESSEL = 'AKIAIOSFODNN7EXAMPLE'
   process.env.R2_GEHEIMNIS = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY'
+  // §259 Der Dateispeicher — Anhänge und Bescheinigungen, eigener Eimer,
+  // eigener Schlüssel, eigener Rechtsraum.
+  process.env.R2_DATEIEN_BUCKET = 'okun-dateien'
+  process.env.R2_DATEIEN_SCHLUESSEL = 'AKIAIOSFODNN7DATEIEN'
+  process.env.R2_DATEIEN_GEHEIMNIS = 'ganzAndererSchluesselFuerDieDateien12345'
+  process.env.R2_DATEIEN_BEREICH = 'eu'
 })
 afterEach(() => { process.env = { ...SICHERN } })
 
@@ -212,8 +219,9 @@ describe('§256 Der Rechtsraum', () => {
 describe('§257 Hochladen und Löschen', () => {
   it('stellt eine Adresse zum Hochladen aus', () => {
     const a = uploadAdresse('chat/raum1/foto.jpg', 'image/jpeg', 300, JETZT)
-    expect(a).toContain('abc123.r2.cloudflarestorage.com')
-    expect(a).toContain('/okun-programm/chat/raum1/foto.jpg')
+    // §259 In den DATEI-Eimer, im EU-Rechtsraum.
+    expect(a).toContain('abc123.eu.r2.cloudflarestorage.com')
+    expect(a).toContain('/okun-dateien/chat/raum1/foto.jpg')
     expect(a).toContain('X-Amz-Signature=')
   })
 
@@ -238,7 +246,7 @@ describe('§257 Hochladen und Löschen', () => {
    * Leseadresse zugleich eine Schreibadresse.
    */
   it('Lesen und Schreiben sind nicht dieselbe Adresse', () => {
-    const lesen = new URL(downloadAdresse('x.jpg', 300, JETZT)!)
+    const lesen = new URL(downloadAdresse('x.jpg', 300, JETZT, 'dateien')!)
     const schreiben = new URL(uploadAdresse('x.jpg', 'image/jpeg', 300, JETZT)!)
     expect(lesen.searchParams.get('X-Amz-Signature'))
       .not.toBe(schreiben.searchParams.get('X-Amz-Signature'))
@@ -250,20 +258,20 @@ describe('§257 Hochladen und Löschen', () => {
     expect(a).toContain('X-Amz-Signature=')
     expect(new URL(a!).searchParams.get('X-Amz-SignedHeaders')).toBe('host')
     expect(new URL(a!).searchParams.get('X-Amz-Signature'))
-      .not.toBe(new URL(downloadAdresse('chat/raum1/foto.jpg', 300, JETZT)!)
+      .not.toBe(new URL(downloadAdresse('chat/raum1/foto.jpg', 300, JETZT, 'dateien')!)
         .searchParams.get('X-Amz-Signature'))
   })
 
   it('ohne eingerichteten Speicher gibt es keine Adresse', () => {
-    delete process.env.R2_SCHLUESSEL
+    delete process.env.R2_DATEIEN_SCHLUESSEL
     expect(uploadAdresse('x.jpg', 'image/jpeg', 300, JETZT)).toBeNull()
     expect(loeschAdresse('x.jpg', 300, JETZT)).toBeNull()
   })
 
-  it('und im EU-Eimer zeigt auch die Schreibadresse dorthin', () => {
-    process.env.R2_BEREICH = 'eu'
+  it('und ohne Rechtsraum zeigt sie auf die allgemeine Adresse', () => {
+    delete process.env.R2_DATEIEN_BEREICH
     expect(uploadAdresse('x.jpg', 'image/jpeg', 300, JETZT))
-      .toContain('abc123.eu.r2.cloudflarestorage.com')
+      .toContain('abc123.r2.cloudflarestorage.com')
   })
 
   it('die Gültigkeit steht in der Adresse und ist kurz', () => {
@@ -271,5 +279,71 @@ describe('§257 Hochladen und Löschen', () => {
     // Protokoll, soll sie dort nichts mehr wert sein.
     expect(new URL(uploadAdresse('x.jpg', 'image/jpeg', undefined, JETZT)!)
       .searchParams.get('X-Amz-Expires')).toBe('300')
+  })
+})
+
+/**
+ * §259 Zwei Speicher, die nichts voneinander wissen.
+ *
+ * DER FEHLER, DER FAST PASSIERT WÄRE
+ * Beim Einrichten des Dateispeichers wäre `R2_BUCKET` überschrieben worden.
+ * Die Variable zeigt aber auf `okun-programm`, von dem sich das
+ * Windows-Programm seine Aktualisierungen holt (§210) — die
+ * Selbstaktualisierung wäre still kaputtgegangen. Still, weil sie niemand
+ * täglich benutzt: Es wäre erst aufgefallen, wenn jemand eine neue Fassung
+ * gebraucht hätte.
+ *
+ * Gefunden hat das der Eigentümer, nicht ich.
+ */
+describe('§259 Programm- und Dateispeicher sind getrennt', () => {
+  it('die Programmdateien liegen weiter im Programmeimer', () => {
+    const a = downloadAdresse('latest.yml', 300, JETZT)
+    expect(a).toContain('/okun-programm/latest.yml')
+    expect(a).toContain('abc123.r2.cloudflarestorage.com')
+    expect(a).not.toContain('.eu.')
+  })
+
+  it('und die Anhänge im Dateieimer, in der EU', () => {
+    const a = downloadAdresse('chat/x.jpg', 300, JETZT, 'dateien')
+    expect(a).toContain('/okun-dateien/chat/x.jpg')
+    expect(a).toContain('abc123.eu.r2.cloudflarestorage.com')
+  })
+
+  /*
+   * Die Gegenprobe, die den eigentlichen Schaden ausschließt: Fehlt der
+   * Dateispeicher, darf NICHT stillschweigend der Programmeimer einspringen.
+   * Dann lägen Krankenscheine neben den Programmdateien — und zwar ohne
+   * Rechtsraum.
+   */
+  it('fehlt der Dateispeicher, springt NICHT der Programmeimer ein', () => {
+    delete process.env.R2_DATEIEN_BUCKET
+    expect(r2Eingerichtet('dateien')).toBe(false)
+    expect(uploadAdresse('x.jpg', 'image/jpeg', 300, JETZT)).toBeNull()
+    // Und umgekehrt bleibt der Programmspeicher davon unberührt.
+    expect(r2Eingerichtet('programm')).toBe(true)
+    expect(downloadAdresse('latest.yml', 300, JETZT)).toContain('/okun-programm/')
+  })
+
+  it('und umgekehrt genauso', () => {
+    delete process.env.R2_BUCKET
+    expect(r2Eingerichtet('programm')).toBe(false)
+    expect(r2Eingerichtet('dateien')).toBe(true)
+  })
+
+  it('die Schlüssel sind verschieden — eine Adresse öffnet nicht beide', () => {
+    const sig = (a: string | null) => new URL(a!).searchParams.get('X-Amz-Signature')
+    expect(sig(downloadAdresse('x', 300, JETZT)))
+      .not.toBe(sig(downloadAdresse('x', 300, JETZT, 'dateien')))
+  })
+
+  it('die Kontonummer darf geteilt werden — es ist ein Konto', () => {
+    delete process.env.R2_DATEIEN_KONTO_ID
+    expect(downloadAdresse('x', 300, JETZT, 'dateien')).toContain('abc123.eu.')
+  })
+
+  it('lässt sich aber auch eigens setzen', () => {
+    process.env.R2_DATEIEN_KONTO_ID = 'xyz789'
+    expect(downloadAdresse('x', 300, JETZT, 'dateien')).toContain('xyz789.eu.')
+    expect(downloadAdresse('latest.yml', 300, JETZT)).toContain('abc123.')
   })
 })

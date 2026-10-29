@@ -53,18 +53,50 @@ export interface R2Zugang {
 }
 
 /** Ist der Speicher überhaupt eingerichtet? */
-export function r2Eingerichtet(): boolean {
-  return Boolean(zugang())
+export function r2Eingerichtet(zweck: Speicherzweck = 'programm'): boolean {
+  return Boolean(zugang(zweck))
 }
 
-export function zugang(): R2Zugang | null {
-  const kontoId = process.env.R2_KONTO_ID
-  const bucket = process.env.R2_BUCKET
-  const schluessel = process.env.R2_SCHLUESSEL
-  const geheimnis = process.env.R2_GEHEIMNIS
+/**
+ * §259 Wofür der Speicher gebraucht wird — es sind zwei verschiedene Dinge.
+ *
+ * DER FEHLER, DER FAST PASSIERT WÄRE
+ * Beim Einrichten des Dateispeichers wäre `R2_BUCKET` überschrieben worden.
+ * Diese Variable zeigt aber auf `okun-programm`, und von dort holt sich das
+ * Windows-Programm seine Aktualisierungen (§210). Die Selbstaktualisierung
+ * wäre still kaputtgegangen — still, weil sie niemand täglich benutzt und
+ * ein Fehler dort erst auffällt, wenn jemand eine neue Fassung braucht.
+ *
+ * Gefunden hat das der Eigentümer, nicht ich.
+ *
+ * WARUM ZWEI GETRENNTE ZUGÄNGE UND NICHT EIN EIMER FÜR BEIDES
+ * Weil die beiden nichts miteinander zu tun haben. Im einen liegen
+ * Programmdateien, die jeder herunterladen darf; im anderen Krankenscheine.
+ * Der Schlüssel für den einen soll den anderen nicht öffnen können — und der
+ * Dateieimer liegt im EU-Rechtsraum, der Programmeimer nicht.
+ */
+export type Speicherzweck = 'programm' | 'dateien'
+
+export function zugang(zweck: Speicherzweck = 'programm'): R2Zugang | null {
+  /*
+   * Die Kontonummer ist bei beiden dieselbe — es ist ein Cloudflare-Konto.
+   * Sie lässt sich trotzdem eigens setzen, falls der Dateispeicher einmal
+   * woanders liegen soll.
+   */
+  const kontoId = zweck === 'dateien'
+    ? (process.env.R2_DATEIEN_KONTO_ID || process.env.R2_KONTO_ID)
+    : process.env.R2_KONTO_ID
+
+  const bucket = zweck === 'dateien' ? process.env.R2_DATEIEN_BUCKET : process.env.R2_BUCKET
+  const schluessel = zweck === 'dateien'
+    ? process.env.R2_DATEIEN_SCHLUESSEL : process.env.R2_SCHLUESSEL
+  const geheimnis = zweck === 'dateien'
+    ? process.env.R2_DATEIEN_GEHEIMNIS : process.env.R2_GEHEIMNIS
+  const bereichRoh = zweck === 'dateien' ? process.env.R2_DATEIEN_BEREICH : process.env.R2_BEREICH
+
   if (!kontoId || !bucket || !schluessel || !geheimnis) return null
   // §256 Leer lassen heißt „ohne Festlegung"; `eu` bindet an die EU.
-  const bereich = (process.env.R2_BEREICH || '').trim().toLowerCase() || null
+  const bereich = (bereichRoh || '').trim().toLowerCase() || null
   return { kontoId, bucket, schluessel, geheimnis, bereich }
 }
 
@@ -127,8 +159,9 @@ export function downloadAdresse(
   schluesselPfad: string,
   gueltigSekunden = 900,
   jetzt: Date = new Date(),
+  zweck: Speicherzweck = 'programm',
 ): string | null {
-  return ausgestellteAdresse('GET', schluesselPfad, gueltigSekunden, jetzt)
+  return ausgestellteAdresse('GET', schluesselPfad, gueltigSekunden, jetzt, undefined, zweck)
 }
 
 /**
@@ -160,8 +193,9 @@ export function uploadAdresse(
   mimeType: string,
   gueltigSekunden = 300,
   jetzt: Date = new Date(),
+  zweck: Speicherzweck = 'dateien',
 ): string | null {
-  return ausgestellteAdresse('PUT', schluesselPfad, gueltigSekunden, jetzt, mimeType)
+  return ausgestellteAdresse('PUT', schluesselPfad, gueltigSekunden, jetzt, mimeType, zweck)
 }
 
 /**
@@ -175,8 +209,9 @@ export function loeschAdresse(
   schluesselPfad: string,
   gueltigSekunden = 300,
   jetzt: Date = new Date(),
+  zweck: Speicherzweck = 'dateien',
 ): string | null {
-  return ausgestellteAdresse('DELETE', schluesselPfad, gueltigSekunden, jetzt)
+  return ausgestellteAdresse('DELETE', schluesselPfad, gueltigSekunden, jetzt, undefined, zweck)
 }
 
 /**
@@ -194,8 +229,9 @@ function ausgestellteAdresse(
   gueltigSekunden: number,
   jetzt: Date,
   mimeType?: string,
+  zweck: Speicherzweck = 'programm',
 ): string | null {
-  const z = zugang()
+  const z = zugang(zweck)
   if (!z) return null
 
   const { lang, tag } = zeitstempel(jetzt)
