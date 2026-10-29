@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -75,6 +75,8 @@ export default function EmployeeSchedule() {
   const [calendarModal, setCalendarModal] = useState(false)
   const [calView, setCalView] = useState<CalView>('week')
   const [swaps, setSwaps] = useState<SwapRequest[]>([])
+  // §267 Was schiefging, als ein Tausch angenommen wurde.
+  const [tauschFehler, setTauschFehler] = useState('')
   const [myWishes, setMyWishes] = useState<WishSubmission[]>([])
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
@@ -124,10 +126,28 @@ export default function EmployeeSchedule() {
   const employee = EMPLOYEES.find(e => e.id === user?.employeeId)
   const location = LOCATIONS.find(l => l.id === employee?.locationId)
 
-  useEffect(() => {
+  /**
+   * §267 Den Dienstplan neu holen.
+   *
+   * Eigens benannt, weil er nach einem Tausch WIEDER geholt werden muss. Vor
+   * diesem Umbau geschah das nur einmal beim Öffnen der Seite: Wer eine
+   * Tauschanfrage annahm, sah danach weiter den alten Plan — die Anfrage
+   * stand auf „angenommen", der Plan zeigte den Stand von vorher.
+   *
+   * Zusammen mit dem Fehler in der Schnittstelle (siehe
+   * `api/swap-requests/[id]`) ergab das genau das gemeldete Bild: Es hieß
+   * getauscht, und im Plan stimmte nichts.
+   */
+  const planLaden = useCallback(async () => {
     if (!employee?.locationId) return
-    fetch(`/api/schedule-entries?locationId=${employee.locationId}`).then(r => r.json()).then(d => setSCHEDULE_ENTRIES(d.entries))
+    try {
+      const r = await fetch(`/api/schedule-entries?locationId=${employee.locationId}`)
+      const d = await r.json()
+      setSCHEDULE_ENTRIES(d.entries ?? [])
+    } catch { /* Ohne Netz bleibt der zuletzt geholte Stand stehen. */ }
   }, [employee?.locationId])
+
+  useEffect(() => { planLaden() }, [planLaden])
 
   const myEntries = SCHEDULE_ENTRIES.filter(s => s.employeeId === user?.employeeId)
 
@@ -341,12 +361,32 @@ export default function EmployeeSchedule() {
   }
 
   const handleAcceptSwap = async (id: string) => {
-    await fetch(`/api/swap-requests/${id}`, {
+    const r = await fetch(`/api/swap-requests/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'accepted' }),
     })
+
+    /*
+     * §267 Erst fragen, ob es geklappt hat.
+     *
+     * Hier wurde die Anfrage ohne Rückfrage auf „angenommen" gesetzt — auch
+     * dann, wenn der Server abgelehnt hat. Zusammen mit dem Fehler auf der
+     * anderen Seite stand damit „bestätigt" auf dem Bildschirm, während im
+     * Plan nichts geschehen war.
+     */
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}))
+      setTauschFehler(d.error
+        ?? 'Der Tausch ließ sich nicht ausführen. Bitte die Seite neu laden.')
+      await planLaden()
+      return
+    }
+
+    setTauschFehler('')
     setSwaps(p => p.map(s => s.id === id ? { ...s, status: 'accepted' as const } : s))
+    // Und den Plan neu holen — sonst steht dort weiter der alte Stand.
+    await planLaden()
   }
 
   const handleDeclineSwap = async (id: string) => {
@@ -753,6 +793,19 @@ export default function EmployeeSchedule() {
                 Tausch starten
               </Button>
             </CardHeader>
+
+            {/*
+              * §267 Wenn ein Tausch nicht ausgeführt werden konnte, steht das
+              * hier — und zwar für die Person, die gerade zugesagt hat.
+              * Vorher erfuhr es nur die Leitung, ganz unten in einer E-Mail.
+              */}
+            {tauschFehler && (
+              <div className="mx-4 mb-3 flex gap-2 rounded-xl bg-amber-50 p-3">
+                <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800">{tauschFehler}</p>
+              </div>
+            )}
+
             <SwapList
               swaps={swaps}
               currentUserId={user?.employeeId ?? ''}
