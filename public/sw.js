@@ -2,7 +2,39 @@
 // §251 Von v5 auf v6: Sie landete trotzdem im Speicher — siehe unten bei der
 // Behandlung von `/`. Ohne Erhöhung bliebe die gespeicherte Kopie auf jedem
 // Gerät liegen, das die App schon hat.
-const CACHE_VERSION = 'okun-v6'
+// §264 Von v6 auf v7 — und diesmal wird AUFGERÄUMT, nicht umbenannt.
+//
+// GEMELDET, ZUM FÜNFZEHNTEN MAL
+// „Hat sich gar nichts verändert. Ich sehe immer noch die URL und auch immer
+//  noch die Website. Langsam werde ich richtig sauer."
+//
+// NACHGEMESSEN, STATT WEITER ZU RATEN
+// Der Server liefert das Richtige: `/` und `/app` antworten einem Angemeldeten
+// mit dem dunklen Startbildschirm, nicht mit der Verkaufsseite. Geprüft am
+// 29.10.2026 unmittelbar gegen okun-workforce.com.
+//
+// Gleichzeitig: App vom Startbildschirm, und als erstes die weiße
+// Verkaufsseite. Beides zusammen lässt nur einen Schluss zu — diese Seite
+// kommt gar nicht vom Server. Sie liegt auf dem Gerät.
+//
+// WIE SIE DORT HINKOMMT
+// Bis §239 stand `'/'` in der Vorspeicherung: Bei der Installation wurde die
+// Verkaufsseite mitgespeichert. §239 hat sie aus der Liste genommen, §251 das
+// Nachspeichern unterbunden — beides wirkt aber NUR, wenn die neue Fassung des
+// Dienst-Arbeiters auch das Sagen hat. Solange die alte läuft, gelten ihre
+// Regeln, und sie liefert ihre Kopie aus, ohne den Server zu fragen.
+//
+// Und hier liegt der Konstruktionsfehler, der das am Leben gehalten hat: Beim
+// Aufräumen wurden bisher nur Speicher gelöscht, deren Name NICHT zur neuen
+// Fassung passt. Was in `okun-v6-static` lag, blieb liegen — und wer von v5
+// auf v6 kam, trug die alte Kopie mit hinüber, weil sie beim Umstieg aus der
+// gespeicherten Seite neu angelegt wurde.
+//
+// Diese Fassung löscht deshalb ALLES, was wir je gespeichert haben, und lädt
+// danach offene Fenster neu. Ein Dienst-Arbeiter, der eine falsche Seite
+// ausliefert, darf nicht darauf hoffen, dass sie irgendwann von selbst
+// verschwindet.
+const CACHE_VERSION = 'okun-v7'
 const STATIC_CACHE = `${CACHE_VERSION}-static`
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`
 
@@ -28,25 +60,58 @@ const STATIC_ASSETS = [
   '/brand/icon-maskable-512.png',
 ]
 
+/**
+ * §264 Beim Einbau zuerst ALLES wegräumen, was je gespeichert wurde.
+ *
+ * Bisher wurde beim Aufräumen nur gelöscht, was nicht zur aktuellen Fassung
+ * gehört. Das klingt vernünftig und ist genau die Lücke: Die Verkaufsseite,
+ * einmal im Speicher, wandert beim Umstieg auf die nächste Fassung mit —
+ * ausgeliefert aus einem Speicher, dessen Name zur NEUEN Fassung passt.
+ *
+ * Hier wird deshalb rückhaltlos geleert. Es geht dabei nichts verloren, was
+ * nicht in Sekunden wieder da wäre: Es sind Kopien, keine Daten. Was ein
+ * Mensch eingegeben und noch nicht abgeschickt hat, liegt woanders — in der
+ * Warteschlange, nicht hier.
+ */
+async function allesLeeren() {
+  const namen = await caches.keys()
+  await Promise.all(namen.map(n => caches.delete(n)))
+}
+
 self.addEventListener('install', event => {
   self.skipWaiting()
   event.waitUntil(
-    caches.open(STATIC_CACHE).then(cache => cache.addAll(STATIC_ASSETS).catch(() => {}))
+    allesLeeren()
+      .then(() => caches.open(STATIC_CACHE))
+      .then(cache => cache.addAll(STATIC_ASSETS))
+      .catch(() => {})
   )
 })
 
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    Promise.all([
-      self.clients.claim(),
-      caches.keys().then(keys =>
-        Promise.all(
-          keys.filter(k => k.startsWith('okun-') && k !== STATIC_CACHE && k !== DYNAMIC_CACHE)
-            .map(k => caches.delete(k))
-        )
-      ),
-    ])
-  )
+  event.waitUntil((async () => {
+    await allesLeeren().catch(() => {})
+    await caches.open(STATIC_CACHE)
+      .then(cache => cache.addAll(STATIC_ASSETS)).catch(() => {})
+    await self.clients.claim()
+
+    /*
+     * §264 Und dann die offenen Fenster neu laden.
+     *
+     * Ohne das bliebe genau das auf dem Bildschirm stehen, worüber sich
+     * jemand gerade beschwert — die alte Seite aus dem alten Speicher. Sie
+     * verschwände erst beim nächsten Öffnen, und „mach die App einmal ganz
+     * zu" ist keine Antwort, die man Pflegekräften zumuten sollte.
+     *
+     * `navigate` ist dafür das richtige Mittel: Es braucht keine Mithilfe der
+     * Seite. Eine Nachricht an die Seite zu schicken würde hier nichts nützen
+     * — die alte Seite hat auch das alte Programm und hörte gar nicht zu.
+     */
+    const fenster = await self.clients.matchAll({ type: 'window' })
+    await Promise.all(fenster.map(f => {
+      try { return f.navigate(f.url).catch(() => undefined) } catch { return undefined }
+    }))
+  })())
 })
 
 self.addEventListener('fetch', event => {

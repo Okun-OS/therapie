@@ -48,8 +48,29 @@ export function GET() {
    * Bescheinigungen. Sie in eine Angabe zusammenzufassen hieße, nicht sehen
    * zu können, welcher von beiden fehlt.
    */
+  /*
+   * §264 Welcher Stand hier läuft — und warum das hier steht.
+   *
+   * „Hat sich gar nichts verändert." Dieser Satz ist fünfzehnmal gefallen,
+   * und jedes Mal stand die Frage dahinter, die niemand beantworten konnte:
+   * Läuft auf diesem Gerät überhaupt schon der neue Stand?
+   *
+   * Der Server war längst richtig; auf dem Telefon lag eine alte Kopie im
+   * Speicher des Dienst-Arbeiters. Beides hätte sich in zehn Sekunden klären
+   * lassen, wenn irgendwo eine Nummer gestanden hätte, die man vergleichen
+   * kann. Es stand keine da.
+   *
+   * Jetzt steht sie hier — und in der App unter „Profil", damit sie auch
+   * jemand ablesen kann, der kein Fenster zum Server hat.
+   */
+  const stand = process.env.RAILWAY_GIT_COMMIT_SHA
+    ?? process.env.VERCEL_GIT_COMMIT_SHA
+    ?? null
+
   return NextResponse.json({
     status: 'ok',
+    stand: stand ? stand.slice(0, 7) : 'unbekannt',
+    gebautAm: process.env.RAILWAY_DEPLOYMENT_CREATED_AT ?? null,
     speicher: {
       programm: r2Eingerichtet('programm') ? 'eingerichtet' : 'fehlt',
       dateien: r2Eingerichtet('dateien') ? 'eingerichtet' : 'fehlt',

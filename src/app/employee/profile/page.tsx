@@ -13,6 +13,7 @@ import { MapPin, Clock, Save, Bell, Shield, ListChecks, FileText, History, Calen
 import { formatDate, toDateString } from '@/lib/utils'
 import type { Employee, Location, ScheduleEntry, Shift, OvertimeRequest, Absence, MonthlyClosing, VacationRequest } from '@/lib/types'
 import { urlaubskonto } from '@/lib/urlaubskonto'
+import { Auffrischen } from '@/components/app/Auffrischen'
 
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 const CLOSING_STATUS_LABEL: Record<string, string> = { offen: 'Offen', geprueft: 'Geprüft', freigegeben: 'Freigegeben' }
@@ -549,6 +550,12 @@ export default function EmployeeProfile() {
             </>
           )}
         </Card>
+
+        {/*
+          * §264 Ganz unten, klein: welcher Stand hier läuft — und ein Knopf,
+          * der gespeicherte Reste wegräumt. Siehe `Auffrischen`.
+          */}
+        <Auffrischen />
       </div>
     </>
   )
