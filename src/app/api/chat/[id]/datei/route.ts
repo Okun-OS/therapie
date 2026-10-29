@@ -4,11 +4,13 @@ import { requireRole } from '@/lib/session'
 import { raumZugriff, eigeneKennung } from '@/lib/chat'
 import { sendPushToEmployee } from '@/lib/push'
 import {
-  dateiSpeichern, objektSpeichern, pruefeChatDatei, sichererDateiname, CHAT_TYPEN,
+  dateiSpeichern, objektSpeichern, objektSchonVermerkt, istSchonVermerkt, pruefeChatDatei,
+  sichererDateiname, CHAT_TYPEN,
 } from '@/lib/file-storage'
 import { dateityp } from '@/lib/dateityp'
 import { vorfall, vorfallMelden } from '@/lib/fehlerkennung'
 import { downloadAdresse, objektKopf, objektWegraeumen } from '@/lib/r2'
+import { nachweisGueltig } from '@/lib/objekt-nachweis'
 
 export const dynamic = 'force-dynamic'
 
@@ -221,17 +223,37 @@ async function vermerken(
   rolle: string,
 ) {
   const eingang = await req.json().catch(() => ({})) as {
-    objektSchluessel?: string; dateiname?: string; mimeType?: string; text?: string
+    objektSchluessel?: string; dateiname?: string; mimeType?: string
+    nachweis?: string; text?: string
   }
   const schluessel = String(eingang.objektSchluessel ?? '')
   if (!schluessel || !eingang.dateiname) {
     return NextResponse.json({ error: 'Es fehlen Angaben zur Datei.' }, { status: 400 })
   }
 
-  // Siehe oben: der Riegel, der fremde Dateien draußen hält.
+  /*
+   * Zwei Riegel, und beide sind nötig.
+   *
+   * Der Ordner hält fremde Gespräche und fremde Akten draußen. Die
+   * Unterschrift (§261) hält darüber hinaus alles draußen, was wir nicht
+   * selbst ausgegeben haben — auch einen Schlüssel aus DIESEM Ordner, den
+   * jemand anders eingetragen hätte.
+   */
   if (!schluessel.startsWith(`chat/${raum.id}/`) || schluessel.includes('..')) {
     return NextResponse.json({ error: 'Dieser Platz gehört nicht zu diesem Gespräch.' },
       { status: 403 })
+  }
+  if (!nachweisGueltig(schluessel, `chat:${raum.id}`, eingang.nachweis)) {
+    return NextResponse.json({
+      error: 'Der Platz für die Datei ist nicht mehr gültig. Bitte noch einmal senden.',
+    }, { status: 403 })
+  }
+
+  // §261 Ein Platz wird einmal ausgegeben und einmal eingelöst.
+  if (await objektSchonVermerkt(schluessel)) {
+    return NextResponse.json(
+      { error: 'Diese Datei ist bereits gesendet.' }, { status: 409 },
+    )
   }
 
   const kopf = await objektKopf(schluessel)
@@ -280,6 +302,16 @@ async function vermerken(
       pruefen: pruefeChatDatei,
     })
   } catch (fehler) {
+    /*
+     * §261 Der Wettlauf: Zwei Anfragen haben dieselbe Unterschrift im selben
+     * Augenblick eingelöst. Das Objekt bleibt liegen — die andere Anfrage
+     * braucht es — und der Mensch bekommt die Antwort von oben, keine 500.
+     */
+    if (istSchonVermerkt(fehler)) {
+      return NextResponse.json(
+        { error: 'Diese Datei ist bereits gesendet.' }, { status: 409 },
+      )
+    }
     await objektWegraeumen(schluessel)
     const v = vorfall('chat/datei/vermerken', fehler,
       'Die Datei ließ sich nicht speichern.')

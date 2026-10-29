@@ -1,0 +1,22 @@
+-- §261 Ein Platz im Objektspeicher gehört zu genau einem Eintrag.
+--
+-- WARUM DAS IN DIE DATENBANK GEHÖRT UND NICHT NUR IN DIE ANWENDUNG
+-- Seit §260 lädt das Telefon die Datei unmittelbar in den Objektspeicher und
+-- meldet der Anwendung hinterher, wo sie liegt. Die Unterschrift über diesen
+-- Platz gilt eine halbe Stunde (§261). Die Anwendung sieht nach, ob an dem
+-- Platz schon ein Eintrag hängt — zwei Anfragen im selben Augenblick kämen
+-- aber beide durch diese Prüfung, weil zwischen Nachsehen und Anlegen ein
+-- Spalt liegt.
+--
+-- Danach hingen zwei Einträge an EINER Datei. Löscht jemand den einen, wird
+-- das Objekt weggeräumt, und der andere zeigt ins Leere — eine Bescheinigung,
+-- die in der Liste steht und sich nicht öffnen lässt.
+--
+-- Der eindeutige Index schließt den Spalt. Er ist die einzige Stelle, an der
+-- das wirklich gelingt: Alles darüber kann sich überschneiden.
+--
+-- WAS MIT DEN BESTEHENDEN ZEILEN PASSIERT
+-- Nichts. Sie haben `objektSchluessel = NULL`, weil ihr Inhalt in der
+-- Datenbank liegt, und Postgres lässt beliebig viele NULL-Werte in einem
+-- eindeutigen Index zu.
+CREATE UNIQUE INDEX "StoredFile_objektSchluessel_key" ON "StoredFile"("objektSchluessel");

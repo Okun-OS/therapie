@@ -366,32 +366,89 @@ console.log('\n=== §201 Wer angemeldet ist, sieht die Verkaufsseite nicht ===')
  * Die Gegenprobe ist hier die wichtigere Hälfte: Eine Weiche, die auch
  * Unangemeldete umleitet, hätte die Website von einem Tag auf den anderen
  * aus Google genommen.
+ *
+ * §254 DIESE PRÜFUNG HAT DAS FALSCHE GEMESSEN — UND ES FÄLLT ERST JETZT AUF
+ *
+ * Sie verlangte eine Umleitung: HTTP 307 mit Ziel. Genau das war der Fehler,
+ * über den der Eigentümer dreimal geschrieben hat: „Ich sehe immer noch die
+ * Webseite, wenn ich auf die App gehe."
+ *
+ * Eine Umleitung ZEICHNET NICHTS. iOS behält von jeder Adresse das letzte
+ * gezeichnete Bild — und für `/` war das die Verkaufsseite, von irgendwann
+ * vorher. Beim Öffnen zeigt das Telefon dieses Bild, während die Umleitung
+ * läuft. Die Messung war grün und die Beschwerde blieb, weil ich geprüft
+ * habe, OB umgeleitet wird, und nicht, WAS man sieht.
+ *
+ * Seit §254 wird nicht mehr umgeleitet, sondern `/start` an derselben Adresse
+ * ausgeliefert: dunkelblau, Wappen, und von dort geht es weiter. Damit ist das
+ * letzte Bild von `/` für einen Angemeldeten der Startbildschirm und nicht die
+ * Werbung.
+ *
+ * Geprüft wird deshalb ab hier, WAS AUSGELIEFERT WIRD. Ein Status allein
+ * beweist hier nichts.
  */
-const nurFolgen = async (cookie) => {
+const startseite = async (cookie) => {
   const r = await fetch(`${BASIS}/`, {
     redirect: 'manual', headers: cookie ? { cookie } : {},
   })
-  return { status: r.status, ziel: r.headers.get('location') ?? '' }
+  return {
+    status: r.status,
+    ziel: r.headers.get('location') ?? '',
+    text: await r.text().catch(() => ''),
+  }
 }
 
-const anonym = await nurFolgen(null)
+const anonym = await startseite(null)
 check('Ohne Anmeldung kommt die Verkaufsseite — unverändert',
-  anonym.status === 200, `HTTP ${anonym.status} → ${anonym.ziel}`)
+  anonym.status === 200 && /Beispielbetrieb/i.test(anonym.text),
+  `HTTP ${anonym.status}, ${anonym.text.length} Zeichen`)
 
 for (const [wer, pfad] of [
   ['gf@rheinblick-reha.de', '/company'],
   ['anna.fischer@rheinblick-reha.de', '/employee'],
   ['okun@okun.de', '/okun'],
 ]) {
-  const angemeldet = await nurFolgen(await login(wer))
-  check(`Angemeldet wird sofort nach ${pfad} geschickt`,
-    angemeldet.status === 307 && angemeldet.ziel.endsWith(pfad),
+  const angemeldet = await startseite(await login(wer))
+
+  check(`Angemeldet kommt an derselben Adresse der Startbildschirm, keine Umleitung`,
+    angemeldet.status === 200 && angemeldet.ziel === '',
     `HTTP ${angemeldet.status} → ${angemeldet.ziel}`)
+
+  /*
+   * Die Zeile, auf die es ankommt: Auf dem Bildschirm steht nicht die Werbung.
+   * Daran wäre der gemeldete Fehler aufgefallen, an einem Status nicht.
+   */
+  check(`Und darauf steht NICHT die Verkaufsseite (${pfad})`,
+    !/Beispielbetrieb/i.test(angemeldet.text),
+    `${angemeldet.text.length} Zeichen, Verkaufsseite hat ${anonym.text.length}`)
+
+  check(`Von dort geht es nach ${pfad} weiter`,
+    angemeldet.text.includes(pfad), pfad)
 }
 
-const erfunden = await nurFolgen('okun_session=ausgedacht.unterschrift')
-check('Ein selbst geschriebener Keks stellt die Weiche nicht',
-  erfunden.status === 200, `HTTP ${erfunden.status} → ${erfunden.ziel}`)
+/*
+ * §254 Ein erfundener Keks — und warum hier jetzt etwas anderes erwartet wird.
+ *
+ * Diese Zeile verlangte vorher die Verkaufsseite: Wer kein echtes Cookie hat,
+ * sollte die Website sehen. Seit §254 hängt die Weiche nicht mehr an der
+ * Unterschrift, sondern nur daran, OB ein Cookie da ist — der Grund steht in
+ * `middleware.ts`: Eine Weiche, die an einer Bedingung hängt, deren Scheitern
+ * sich nicht nachstellen lässt, ist die falsche Bauform.
+ *
+ * Ein erfundenes Cookie landet damit auf dem Startbildschirm und von dort auf
+ * der Anmeldung. Das ist die Absicht und keine Lücke: Die Berechtigung trifft
+ * weiterhin `requireRole` in der Anwendung, hier wird nur gelenkt.
+ *
+ * Die Sorge, die hinter der alten Zeile stand, bleibt geprüft — eine Zeile
+ * weiter oben: Ohne Cookie kommt die Verkaufsseite. Das ist der Fall, der für
+ * Google zählt, denn ein Suchroboter schickt keine Cookies.
+ */
+const erfunden = await startseite('okun_session=ausgedacht.unterschrift')
+check('Ein erfundener Keks führt NICHT in die Anwendung, sondern zur Anmeldung',
+  erfunden.status === 200
+  && !/Beispielbetrieb/i.test(erfunden.text)
+  && erfunden.text.includes('/login'),
+  `HTTP ${erfunden.status}, ${erfunden.text.length} Zeichen`)
 
 const angemeldeterKeks = await login('gf@rheinblick-reha.de')
 for (const seite of ['/funktionen', '/kontakt', '/impressum', '/datenschutz']) {

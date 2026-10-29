@@ -206,6 +206,39 @@ export function objektSchluessel(bereich: string, dateiname: string): string {
  * einer Prüfung. Die wirkliche Grenze zieht die ausgestellte Adresse: Sie gilt
  * fünf Minuten, nur für diesen einen Schlüssel und nur für diesen einen Typ.
  */
+/**
+ * §261 Hängt an diesem Platz schon ein Eintrag?
+ *
+ * Die Unterschrift über einen Platz gilt eine halbe Stunde. Wer sie in dieser
+ * Zeit zweimal einlöst, bekäme zwei Einträge auf EINE Datei — und sobald
+ * jemand den einen löscht, zeigt der andere ins Leere. Das muss nicht
+ * passieren: Ein Platz wird einmal ausgegeben und einmal eingelöst.
+ */
+export async function objektSchonVermerkt(objektSchluessel: string): Promise<boolean> {
+  const da = await prisma.storedFile.findFirst({
+    where: { objektSchluessel }, select: { id: true },
+  })
+  return Boolean(da)
+}
+
+/**
+ * §261 Dasselbe, nachdem die Datenbank es abgelehnt hat.
+ *
+ * Zwischen `objektSchonVermerkt` und dem Anlegen liegt ein Spalt: Zwei
+ * Anfragen im selben Augenblick kämen beide durch das Nachsehen. Den Spalt
+ * schließt der eindeutige Index — und der meldet sich als P2002.
+ *
+ * Für den Menschen ist das derselbe Fall wie oben, also soll auch dieselbe
+ * Antwort kommen und nicht eine 500 mit Kennung.
+ */
+export function istSchonVermerkt(fehler: unknown): boolean {
+  const code = (fehler as { code?: unknown } | null)?.code
+  if (code !== 'P2002') return false
+  const ziel = (fehler as { meta?: { target?: unknown } }).meta?.target
+  const felder = Array.isArray(ziel) ? ziel.map(String) : [String(ziel ?? '')]
+  return felder.some(f => f.includes('objektSchluessel'))
+}
+
 export async function objektSpeichern(eingang: Omit<DateiEingang, 'daten'> & {
   objektSchluessel: string
   groesse: number
@@ -298,13 +331,67 @@ export const DATEI_FELDER = {
   createdAt: true,
 } as const
 
-/** Inhalt einer Datei holen. */
+/**
+ * Wo eine Datei liegt — ohne sie zu holen.
+ *
+ * §261 Für die Stellen, die umleiten können statt durchzureichen. Das ist der
+ * ganze Zweck des Objektspeichers: Die Datei läuft nicht durch die Anwendung,
+ * Railway zählt keinen ausgehenden Verkehr dafür, und kein Arbeitsspeicher
+ * wird für 20 MB Video vorgehalten.
+ */
+export async function dateiOrt(id: string): Promise<
+  | { art: 'db'; mimeType: string; dateiname: string }
+  | { art: 'r2'; objektSchluessel: string; mimeType: string; dateiname: string }
+  | null
+> {
+  const datei = await prisma.storedFile.findFirst({
+    where: { id, deletedAt: null },
+    select: { mimeType: true, dateiname: true, treiber: true, objektSchluessel: true },
+  })
+  if (!datei) return null
+  if (datei.treiber === 'r2' && datei.objektSchluessel) {
+    return {
+      art: 'r2',
+      objektSchluessel: datei.objektSchluessel,
+      mimeType: datei.mimeType,
+      dateiname: datei.dateiname,
+    }
+  }
+  return { art: 'db', mimeType: datei.mimeType, dateiname: datei.dateiname }
+}
+
+/**
+ * Inhalt einer Datei holen.
+ *
+ * §261 Liegt sie im Objektspeicher, wird sie von dort geholt.
+ *
+ * WARUM DIESE STELLE DEN UMWEG MITMACHT, OBWOHL ER TEUER IST
+ * Weil es Aufrufer gibt, die den Inhalt WIRKLICH brauchen und nicht umleiten
+ * können: eine Belehrung, die in ein Schriftstück eingesetzt wird, eine
+ * Bewerbungsunterlage in einem Archiv. Ohne diesen Zweig hätten die nach dem
+ * Umzug einer Datei still „Inhalt nicht verfügbar" gemeldet — und das fällt
+ * erst Wochen später auf, wenn jemand eine alte Unterlage sucht. Genau solche
+ * stillen Lücken sind in diesem Vorhaben mehrfach teuer geworden.
+ *
+ * Wer umleiten kann, nimmt `dateiOrt`.
+ */
 export async function dateiInhalt(id: string): Promise<{ inhalt: Buffer; mimeType: string; dateiname: string } | null> {
   const datei = await prisma.storedFile.findFirst({
     where: { id, deletedAt: null },
-    select: { inhalt: true, mimeType: true, dateiname: true, treiber: true },
+    select: {
+      inhalt: true, mimeType: true, dateiname: true, treiber: true,
+      objektSchluessel: true,
+    },
   })
   if (!datei) return null
+
+  if (datei.treiber === 'r2' && datei.objektSchluessel) {
+    const { objektHolen } = await import('./r2')
+    const inhalt = await objektHolen(datei.objektSchluessel)
+    if (!inhalt) return null
+    return { inhalt, mimeType: datei.mimeType, dateiname: datei.dateiname }
+  }
+
   if (datei.treiber !== 'db' || !datei.inhalt) return null
   return {
     inhalt: Buffer.from(datei.inhalt),

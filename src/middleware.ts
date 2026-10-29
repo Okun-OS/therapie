@@ -35,70 +35,25 @@ import { kanonischeBasis } from '@/lib/kanonische-basis'
 
 const KEKS = 'okun_session'
 
-/** Dieselben Ziele wie in `AngemeldeteWeiterleiten` — eine Rolle, ein Ort. */
-const ZIELE: Record<string, string> = {
-  employee: '/employee',
-  admin: '/admin',
-  okun: '/okun',
-  company: '/company',
-}
-
-function geheimnis(): string | null {
-  const wert = process.env.SESSION_SECRET
-  if (wert) return wert
-  // In der Entwicklung signiert `session.ts` mit diesem festen Wert. Im
-  // Betrieb gibt es ihn nicht — dort ist ein fehlendes Geheimnis ein Grund,
-  // niemanden weiterzuleiten, statt einen zu erfinden.
-  return process.env.NODE_ENV === 'production'
-    ? null
-    : 'dev-insecure-session-secret-do-not-use-in-production'
-}
-
-/** Base64url → Bytes. `atob` kennt nur das klassische Alphabet. */
-function ausBase64url(text: string): Uint8Array<ArrayBuffer> {
-  const roh = atob(text.replace(/-/g, '+').replace(/_/g, '/')
-    .padEnd(text.length + ((4 - text.length % 4) % 4), '='))
-  const bytes = new Uint8Array(new ArrayBuffer(roh.length))
-  for (let i = 0; i < roh.length; i++) bytes[i] = roh.charCodeAt(i)
-  return bytes
-}
-
-/**
- * Die Rolle aus einer gültigen Sitzungsmarke lesen — oder `null`.
+/*
+ * §262 Hier stand bis zum 29.10.2026 eine eigene Signaturprüfung.
  *
- * Bewusst eine eigene, kleine Umsetzung statt eines Aufrufs in `session.ts`:
- * Diese Schicht läuft in Next.js in einer Umgebung ohne Node-Module, und ein
- * Import von `node:crypto` würde den ganzen Bau zum Scheitern bringen. Was
- * hier doppelt steht, ist die Rechenvorschrift — nicht die Entscheidung,
- * wer hereindarf. Die trifft weiterhin `requireRole`.
+ * Sie las die Rolle aus der Sitzungsmarke, prüfte die Unterschrift mit
+ * `crypto.subtle` und schlug daraus das Ziel vor — rund sechzig Zeilen samt
+ * eigener Base64url-Umsetzung, weil diese Schicht ohne Node-Module läuft.
+ *
+ * §254 hat sie außer Dienst gestellt: Die Weiche hängt seitdem nur daran, ob
+ * überhaupt ein Cookie da ist, und das Ziel bestimmt `/start` in der
+ * Node-Umgebung mit der vollen Prüfung. Stehen geblieben ist sie trotzdem,
+ * und `void ZIELE` hat dafür gesorgt, dass die Werkzeuge nicht meckern.
+ *
+ * Das ist die unangenehmste Art toter Code: Er sieht aus wie eine
+ * Sicherheitsprüfung, er wird gelesen wie eine, und er läuft nie. Wer ihn
+ * später findet, muss erst beweisen, dass er nichts tut.
+ *
+ * Gefunden hat ihn der eigene Durchlauf — über eine Prüfung, die noch das
+ * alte Verhalten verlangte.
  */
-async function rolleAus(marke: string | undefined): Promise<string | null> {
-  if (!marke) return null
-  const teile = marke.split('.')
-  if (teile.length !== 2) return null
-
-  const schluesselRoh = geheimnis()
-  if (!schluesselRoh) return null
-
-  try {
-    const schluessel = await crypto.subtle.importKey(
-      'raw', new TextEncoder().encode(schluesselRoh),
-      { name: 'HMAC', hash: 'SHA-256' }, false, ['verify'],
-    )
-    const stimmt = await crypto.subtle.verify(
-      'HMAC', schluessel, ausBase64url(teile[1]),
-      new TextEncoder().encode(teile[0]),
-    )
-    if (!stimmt) return null
-
-    const inhalt = JSON.parse(new TextDecoder().decode(ausBase64url(teile[0])))
-    // Dieselbe Laufzeit wie in `session.ts` — 30 Tage.
-    if ((Date.now() - inhalt.iat) / 1000 > 60 * 60 * 24 * 30) return null
-    return typeof inhalt.role === 'string' ? inhalt.role : null
-  } catch {
-    return null
-  }
-}
 
 /*
  * §237 Eine falsche `APP_URL` soll nicht noch einmal still sein.
@@ -218,7 +173,6 @@ export async function middleware(req: NextRequest) {
    * Die Rolle wird hier nicht mehr gebraucht: `/start` liest die Sitzung
    * selbst, in der Node-Umgebung und mit der vollen Prüfung.
    */
-  void ZIELE
   return NextResponse.rewrite(new URL('/start', req.url))
 }
 

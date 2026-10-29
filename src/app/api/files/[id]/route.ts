@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/session'
 import { assertEmployeeAccess, allowedLocationScope } from '@/lib/scope'
 import { prisma } from '@/lib/prisma'
-import { dateiInhalt, dateiLoeschen, mitarbeiterDarfSehen, DATEI_FELDER } from '@/lib/file-storage'
+import {
+  dateiInhalt, dateiOrt, dateiLoeschen, mitarbeiterDarfSehen, DATEI_FELDER,
+} from '@/lib/file-storage'
+import { downloadAdresseMit } from '@/lib/r2'
 import { verknuepfen, nachweisKennzeichenAktualisieren } from '@/lib/krankmeldung'
 import { SIEGEL_KEKS, siegelSperre } from '@/lib/lohnsiegel'
 import type { SessionPayload } from '@/lib/session'
@@ -72,11 +75,61 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   })
   if (sperre) return NextResponse.json(sperre, { status: sperre.status })
 
+  /*
+   * §261 Liegt die Unterlage im Objektspeicher, wird der Weg dorthin gewiesen.
+   *
+   * Alle Türen oben sind zu diesem Zeitpunkt durchlaufen — Rollenprüfung,
+   * Aktenzugriff, die Sicht des Mitarbeiters und das Siegel vor der
+   * Lohnabrechnung. Die ausgestellte Adresse gilt eine Minute und nur für
+   * diese eine Datei.
+   *
+   * WAS DABEI NICHT VERLOREN GEHEN DARF
+   * Die beiden Köpfe, die der alte Weg gesetzt hat: `Content-Disposition` mit
+   * dem richtigen Namen und `Cache-Control: private, no-store`. Beide gehen
+   * mit in die Adresse und werden mitsigniert — ohne sie wäre die Umstellung
+   * ein Rückschritt im Datenschutz, denn eine Lohnabrechnung gehört in keinen
+   * Zwischenspeicher.
+   */
+  const ort = await dateiOrt(params.id)
+  if (!ort) return NextResponse.json({ error: 'Inhalt nicht verfügbar' }, { status: 404 })
+
+  // inline für PDFs und Bilder (Vorschau), sonst Download erzwingen
+  const sichtbar = ort.mimeType === 'application/pdf' || ort.mimeType.startsWith('image/')
+
+  if (ort.art === 'r2') {
+    const adresse = downloadAdresseMit({
+      schluesselPfad: ort.objektSchluessel,
+      /*
+       * §261 Eine Minute, und das ist hier kürzer als beim Chat-Anhang.
+       *
+       * Was mit dieser Umstellung einhergeht, soll nicht unter den Tisch
+       * fallen: Die ausgestellte Adresse öffnet die Datei OHNE Anmeldung,
+       * solange sie gilt. Beim alten Weg stand sie an einer Adresse, die
+       * jedes Mal den Keks verlangte.
+       *
+       * Hier klickt ein Mensch und der Browser folgt sofort — eine Minute
+       * reicht dafür mit Abstand. Ein Bild im Gespräch darf länger gelten,
+       * weil es auch dann noch nachgeladen wird, wenn jemand weit nach oben
+       * scrollt. Eine Lohnabrechnung wird geklickt, nicht nachgeladen.
+       */
+      gueltigSekunden: 60,
+      zweck: 'dateien',
+      anzeigeName: ort.dateiname,
+      anzeigeArt: sichtbar ? 'inline' : 'attachment',
+      zwischenspeicher: 'private, no-store',
+    })
+    if (!adresse) {
+      return NextResponse.json(
+        { error: 'Der Dateispeicher ist gerade nicht erreichbar.' }, { status: 503 },
+      )
+    }
+    return NextResponse.redirect(adresse, 302)
+  }
+
   const inhalt = await dateiInhalt(params.id)
   if (!inhalt) return NextResponse.json({ error: 'Inhalt nicht verfügbar' }, { status: 404 })
 
-  // inline für PDFs und Bilder (Vorschau), sonst Download erzwingen
-  const anzeigbar = inhalt.mimeType === 'application/pdf' || inhalt.mimeType.startsWith('image/')
+  const anzeigbar = sichtbar
   return new NextResponse(new Uint8Array(inhalt.inhalt), {
     headers: {
       'Content-Type': inhalt.mimeType,

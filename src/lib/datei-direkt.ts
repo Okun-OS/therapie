@@ -42,6 +42,11 @@ export interface Platz {
   schluessel?: string
   typ?: string
   dateiname?: string
+  /**
+   * §261 Die Unterschrift über diesen Platz. Sie geht unverändert zurück —
+   * die Anwendung erkennt daran, dass sie den Platz selbst ausgegeben hat.
+   */
+  nachweis?: string
 }
 
 export type DirektErgebnis =
@@ -58,8 +63,18 @@ export async function direktHochladen(opts: {
   /** Wo gemeldet wird, wo die Datei liegt, etwa `/api/chat/<raum>/datei`. */
   vermerkPfad: string
   datei: File
-  /** Zusätzliche Felder für die Meldung, etwa der Begleittext. */
-  zusatz?: Record<string, string>
+  /**
+   * §261 Wohin die Datei gehört. Geht an BEIDE Stellen — an die, die den
+   * Platz ausgibt, und an die, die ihn einlöst.
+   *
+   * Das ist nicht Bequemlichkeit: Die Zugriffsprüfung muss an beiden Stellen
+   * laufen, und sie kann nur prüfen, was sie kennt. Für die Personalakte
+   * stehen hier `ownerType`, `ownerId` und `kategorie`; beim Chat steckt der
+   * Raum schon im Pfad.
+   */
+  kontext?: Record<string, string>
+  /** Zusätzliche Felder nur für die Meldung, etwa der Begleittext. */
+  zusatz?: Record<string, string | boolean>
   /** Nur für die Prüfung einsetzbar. */
   holen?: typeof fetch
 }): Promise<DirektErgebnis> {
@@ -70,6 +85,7 @@ export async function direktHochladen(opts: {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
+      ...opts.kontext,
       dateiname: opts.datei.name,
       mimeType: opts.datei.type,
       groesse: opts.datei.size,
@@ -109,23 +125,49 @@ export async function direktHochladen(opts: {
   if (!ablage || !ablage.ok) return { art: 'kein-speicher' }
 
   // ── 3. Melden, wo sie liegt ────────────────────────────────────────────
-  const vermerk = await hole(opts.vermerkPfad, {
+  const melden = () => hole(opts.vermerkPfad, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
+      ...opts.kontext,
       objektSchluessel: platz.schluessel,
+      nachweis: platz.nachweis,
       dateiname: platz.dateiname ?? opts.datei.name,
       mimeType: platz.typ,
       ...opts.zusatz,
     }),
   }).catch(() => null)
 
+  let vermerk = await melden()
+
+  /*
+   * §262 Ein zweiter Versuch — und zwar nur HIER.
+   *
+   * Das ist der unangenehmste Punkt im ganzen Ablauf: Die Datei liegt im
+   * Speicher, aber die Meldung darüber kam nicht durch. Den alten Weg zu
+   * nehmen hieße, dieselbe Datei ein zweites Mal hochzuladen, und das erste
+   * Objekt bliebe liegen, ohne dass irgendein Eintrag davon weiß.
+   *
+   * Die Meldung ist dagegen klein — ein paar hundert Bytes JSON. Dass sie
+   * scheitert, während der Upload gerade gelungen ist, spricht für ein kurzes
+   * Loch in der Verbindung, nicht für ein dauerhaftes. Also einmal warten und
+   * noch einmal.
+   *
+   * Zweimal zu melden ist dabei unbedenklich: Der Platz lässt sich nur einmal
+   * einlösen (§261, eindeutiger Index), der zweite Versuch bekäme „bereits
+   * gesendet".
+   */
+  if (!vermerk) {
+    await new Promise(fertig => setTimeout(fertig, 1500))
+    vermerk = await melden()
+  }
+
   if (!vermerk) {
     /*
-     * Hier liegt die Datei im Speicher, aber die Meldung kam nicht durch. Den
-     * alten Weg zu nehmen hieße, sie ein zweites Mal hochzuladen — und das
-     * erste Objekt bliebe als Leiche liegen. Besser ehrlich sein: Die
-     * Anwendung räumt verwaiste Objekte beim nächsten Durchgang weg.
+     * Jetzt ist es ehrlich gesagt: Das Objekt BLEIBT liegen. Es kostet Platz
+     * und niemand kommt an es heran — einen Durchgang, der verwaiste Objekte
+     * wegräumt, gibt es noch nicht. Genau deshalb steht hier kein
+     * beruhigender Satz, sondern der Hinweis, was der Mensch tun soll.
      */
     return {
       art: 'abgewiesen',

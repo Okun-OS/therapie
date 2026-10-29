@@ -12,6 +12,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/lib/toast-context'
+import { direktHochladen } from '@/lib/datei-direkt'
+import { bildVerkleinern } from '@/lib/bild-verkleinern'
 import { FileText, Upload, Trash2, Eye, EyeOff, Loader2, Image as ImageIcon, Download, Link2, Stethoscope } from 'lucide-react'
 
 interface Datei {
@@ -115,33 +117,77 @@ export function Personalakte({
       .catch(() => setFehlzeiten([]))
   }, [ownerType, ownerId])
 
-  const hochladen = async (datei: File) => {
+  /**
+   * §261 Was nach dem Hochladen für beide Wege gleich ist — der direkte in
+   * den Objektspeicher und der alte durch die Anwendung.
+   */
+  const uebernehmen = (d: {
+    datei: Datei
+    zuordnung?: { zugeordnet: string | null; vorschlaege: unknown[] }
+  }) => {
+    setDateien(prev => [d.datei, ...prev])
+    setGueltigVon(''); setGueltigBis('')
+
+    // Der Hinweis sagt, was tatsaechlich passiert ist. "Eingereicht" allein
+    // laesst offen, ob die Bescheinigung auch angekommen ist, wo sie hin soll.
+    if (d.zuordnung?.zugeordnet) {
+      showToast('Eingereicht und der passenden Fehlzeit zugeordnet', 'success')
+    } else if (kategorie === 'krankenschein' && (d.zuordnung?.vorschlaege?.length ?? 0) > 0) {
+      showToast('Eingereicht — bitte unten noch die Fehlzeit auswählen', 'success')
+    } else {
+      showToast(verwalten ? 'Dokument abgelegt' : 'Eingereicht — die Leitung sieht es jetzt', 'success')
+    }
+  }
+
+  const hochladen = async (roh: File) => {
     setLaedtHoch(true)
     try {
+      /*
+       * §262 Auch hier verkleinern, nicht nur beim Einreichen durch den
+       * Mitarbeiter (§249).
+       *
+       * Hier legt die Leitung ab, was sie gerade abfotografiert hat — ein
+       * Zeugnis, eine Bescheinigung vom Träger. Aus einer Telefonkamera sind
+       * das drei bis fünf Megabyte; danach ein paar hundert Kilobyte. Und bei
+       * HEIC vom iPhone ist es zugleich die Umwandlung in ein Format, das
+       * überall angenommen wird. Dass das an der einen Stelle geschah und an
+       * der anderen nicht, war schlicht übersehen.
+       */
+      const datei = await bildVerkleinern(roh)
+      const kontext = { ownerType, ownerId, kategorie }
+      const zusatz: Record<string, string> = {}
+      if (kategorie === 'krankenschein') {
+        if (gueltigVon) zusatz.gueltigVon = gueltigVon
+        if (gueltigBis) zusatz.gueltigBis = gueltigBis
+      }
+
+      /*
+       * §261 Zuerst der direkte Weg in den Objektspeicher. Ist keiner
+       * eingerichtet oder kommt er nicht durch, läuft unten der alte Weg
+       * weiter — eine Umstellung, die ohne Einrichtung das Hochladen anhält,
+       * wäre schlimmer als der Zustand vorher.
+       */
+      const direkt = await direktHochladen({
+        adressePfad: '/api/files/adresse',
+        vermerkPfad: '/api/files',
+        datei, kontext, zusatz,
+      })
+      if (direkt.art === 'abgewiesen') { showToast(direkt.fehler, 'error'); return }
+      if (direkt.art === 'ok') {
+        uebernehmen(direkt.antwort as unknown as Parameters<typeof uebernehmen>[0])
+        return
+      }
+
       const form = new FormData()
       form.append('datei', datei)
       form.append('ownerType', ownerType)
       form.append('ownerId', ownerId)
       form.append('kategorie', kategorie)
-      if (kategorie === 'krankenschein') {
-        if (gueltigVon) form.append('gueltigVon', gueltigVon)
-        if (gueltigBis) form.append('gueltigBis', gueltigBis)
-      }
+      for (const [k, v] of Object.entries(zusatz)) form.append(k, v)
       const res = await fetch('/api/files', { method: 'POST', body: form })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { showToast(d.error ?? 'Hochladen fehlgeschlagen', 'error'); return }
-      setDateien(prev => [d.datei, ...prev])
-      setGueltigVon(''); setGueltigBis('')
-
-      // Der Hinweis sagt, was tatsaechlich passiert ist. "Eingereicht" allein
-      // laesst offen, ob die Bescheinigung auch angekommen ist, wo sie hin soll.
-      if (d.zuordnung?.zugeordnet) {
-        showToast('Eingereicht und der passenden Fehlzeit zugeordnet', 'success')
-      } else if (kategorie === 'krankenschein' && (d.zuordnung?.vorschlaege?.length ?? 0) > 0) {
-        showToast('Eingereicht — bitte unten noch die Fehlzeit auswählen', 'success')
-      } else {
-        showToast(verwalten ? 'Dokument abgelegt' : 'Eingereicht — die Leitung sieht es jetzt', 'success')
-      }
+      uebernehmen(d)
     } catch {
       showToast('Hochladen fehlgeschlagen', 'error')
     } finally {

@@ -180,6 +180,40 @@ export function downloadAdresse(
 }
 
 /**
+ * §261 Dieselbe Adresse, aber mit benannten Angaben.
+ *
+ * Gebraucht für die Personalakte: Dort hängt am Herunterladen mehr als der
+ * Name. Eine Lohnabrechnung soll heruntergeladen und nicht angezeigt werden,
+ * und sie darf in keinem Zwischenspeicher landen — der alte Weg setzte dafür
+ * `Cache-Control: private, no-store`, und dieser Kopf muss mit, sonst wäre die
+ * Umstellung ein Rückschritt im Datenschutz.
+ *
+ * Beide Angaben werden mitsigniert; der Speicher setzt die Köpfe dann so.
+ */
+export function downloadAdresseMit(auftrag: {
+  schluesselPfad: string
+  gueltigSekunden?: number
+  jetzt?: Date
+  zweck?: Speicherzweck
+  anzeigeName?: string
+  /** `inline` zeigt an, `attachment` lädt herunter. Vorgabe: `inline`. */
+  anzeigeArt?: 'inline' | 'attachment'
+  /** Was im Kopf `Cache-Control` stehen soll, etwa `private, no-store`. */
+  zwischenspeicher?: string
+}): string | null {
+  return ausgestellteAdresse({
+    methode: 'GET',
+    schluesselPfad: auftrag.schluesselPfad,
+    gueltigSekunden: auftrag.gueltigSekunden ?? 900,
+    jetzt: auftrag.jetzt ?? new Date(),
+    zweck: auftrag.zweck,
+    anzeigeName: auftrag.anzeigeName,
+    anzeigeArt: auftrag.anzeigeArt,
+    zwischenspeicher: auftrag.zwischenspeicher,
+  })
+}
+
+/**
  * §257 Eine zeitlich begrenzte Adresse zum HOCHLADEN.
  *
  * WARUM DAS DIE GANZE SACHE ÄNDERT
@@ -250,6 +284,8 @@ function ausgestellteAdresse(auftrag: {
   mimeType?: string
   zweck?: Speicherzweck
   anzeigeName?: string
+  anzeigeArt?: 'inline' | 'attachment'
+  zwischenspeicher?: string
 }): string | null {
   /*
    * §260 Benannte Angaben statt einer Reihe von Stellen.
@@ -261,6 +297,7 @@ function ausgestellteAdresse(auftrag: {
    */
   const {
     methode, schluesselPfad, gueltigSekunden, jetzt, mimeType, anzeigeName,
+    anzeigeArt, zwischenspeicher,
   } = auftrag
   const z = zugang(auftrag.zweck ?? 'programm')
   if (!z) return null
@@ -288,19 +325,27 @@ function ausgestellteAdresse(auftrag: {
     ['X-Amz-SignedHeaders', signierteKoepfe],
   ]
   /*
-   * §260 Der Anzeigename. `inline` und nicht `attachment`, genau wie beim
-   * alten Weg: Ein Bild soll man sehen und eine Sprachnachricht hören können,
-   * ohne sie vorher herunterzuladen.
+   * §260 Der Anzeigename. Vorgabe `inline` wie beim alten Weg im Chat: Ein
+   * Bild soll man sehen und eine Sprachnachricht hören können, ohne sie
+   * vorher herunterzuladen. Die Akte setzt für eine Lohnabrechnung
+   * `attachment`.
    *
-   * Anführungszeichen im Namen würden den Kopf aufbrechen; `sichererDateiname`
-   * entfernt sie bereits, hier steht es noch einmal, weil diese Stelle sich
-   * nicht darauf verlassen können soll.
+   * Anführungszeichen und Zeilenumbrüche im Namen würden den Kopf aufbrechen;
+   * `sichererDateiname` entfernt sie bereits, hier steht es noch einmal, weil
+   * diese Stelle sich nicht darauf verlassen können soll.
    */
-  if (anzeigeName) {
+  if (anzeigeName || anzeigeArt) {
+    const art = anzeigeArt ?? 'inline'
+    const name = (anzeigeName ?? '').replace(/[\r\n"]/g, '')
     parameter.push([
       'response-content-disposition',
-      `inline; filename="${anzeigeName.replace(/[\r\n"]/g, '')}"`,
+      name ? `${art}; filename="${name}"` : art,
     ])
+  }
+  // §261 Personalunterlagen gehören nicht in einen Zwischenspeicher. Der alte
+  // Weg setzte den Kopf selbst; über eine ausgestellte Adresse muss er mit.
+  if (zwischenspeicher) {
+    parameter.push(['response-cache-control', zwischenspeicher])
   }
   const abfrage = parameter
     .map(([k, v]) => `${kodieren(k)}=${kodieren(v)}`)
@@ -382,6 +427,35 @@ export async function objektKopf(
    */
   const gesamt = antwort.headers.get('content-range')?.match(/\/(\d+)\s*$/)?.[1]
   return { groesse: gesamt ? Number(gesamt) : anfang.length, anfang }
+}
+
+/**
+ * §261 Ein Objekt vollständig holen.
+ *
+ * WANN DAS DER RICHTIGE WEG IST UND WANN NICHT
+ * Nicht für Bilder im Chat und nicht für Unterlagen in der Akte — dort wird
+ * umgeleitet, damit die Datei nicht durch die Anwendung läuft. Hier geht es um
+ * die Stellen, die den Inhalt WIRKLICH in der Hand haben müssen: eine
+ * Belehrung, die in ein Schriftstück eingesetzt wird, eine Bewerbungsunterlage
+ * in einem Archiv.
+ *
+ * Ohne diesen Weg hätten diese Stellen nach dem Umzug in den Objektspeicher
+ * still „Inhalt nicht verfügbar" gemeldet — ein Fehler, der erst Wochen später
+ * auffällt, wenn jemand eine alte Unterlage sucht.
+ */
+export async function objektHolen(
+  schluesselPfad: string,
+  zweck: Speicherzweck = 'dateien',
+): Promise<Buffer | null> {
+  const adresse = downloadAdresse(schluesselPfad, 120, new Date(), zweck)
+  if (!adresse) return null
+  const antwort = await fetch(adresse).catch(() => null)
+  if (!antwort) return null
+  if (!antwort.ok) {
+    await antwort.body?.cancel().catch(() => undefined)
+    return null
+  }
+  return Buffer.from(await antwort.arrayBuffer())
 }
 
 /**

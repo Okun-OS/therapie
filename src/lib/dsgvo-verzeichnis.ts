@@ -122,6 +122,62 @@ export const UNTERAUFTRAEGE: Unterauftrag[] = [
     quelle: 'https://railway.com/legal/dpa',
   },
   {
+    /*
+     * §262 Neu mit dem Objektspeicher (§256–§261).
+     *
+     * WAS SICH DAMIT WIRKLICH ÄNDERT
+     * Vorher lagen alle Dateien als Spalte in der Datenbank bei Railway. Jetzt
+     * liegen sie bei einem zweiten Dienstleister — und darunter sind
+     * Arbeitsunfähigkeitsbescheinigungen. Das sind Gesundheitsdaten nach
+     * Art. 9 DSGVO, also die empfindlichste Kategorie, die dieses Programm
+     * führt. Ein neuer Empfänger dafür ist nicht eine Zeile Verwaltung, er ist
+     * der Kern dessen, was ein Verzeichnis überhaupt leisten soll.
+     *
+     * WARUM DER EIMER AUF DIE EU FESTGELEGT IST
+     * Cloudflare bietet an, einen Eimer an einen Rechtsraum zu binden. Der
+     * Eimer `okun-dateien` ist mit `eu` angelegt (§256), und das ist keine
+     * Einstellung, die sich später nachholen lässt — sie geht nur beim
+     * Anlegen. Damit bleiben Speicherung und Verarbeitung in der
+     * Europäischen Union, und es gibt für die Dateien keine Übermittlung in
+     * ein Drittland, die zu begründen wäre.
+     *
+     * WARUM „offen" UND NICHT „geschlossen"
+     * Der Auftragsverarbeitungsvertrag von Cloudflare ist Teil des
+     * Hauptvertrags und nennt dort ausdrücklich die
+     * „Self-Serve Subscription Agreement" (nachgesehen am 29.10.2026). Er
+     * sagt aber auch, er gelte „from the date Customer signed or the parties
+     * otherwise agreed to this DPA" — und wie ein Selbstbedienungskunde dieses
+     * Einverständnis gibt, steht dort NICHT.
+     *
+     * Daraus „gilt automatisch" zu machen, wäre eine Annahme. Bei Railway,
+     * Resend und Firebase steht hier „geschlossen", weil der Eigentümer das
+     * jeweils gemeldet hat — nicht, weil ich es erschlossen habe. Dieselbe
+     * Latte gilt hier.
+     */
+    name: 'Cloudflare, Inc. (R2 Objektspeicher)',
+    zweck:
+      'Ablage der hochgeladenen Dateien: Personalunterlagen, '
+      + 'Arbeitsunfähigkeitsbescheinigungen, Anhänge aus Gesprächen',
+    ort: 'Eimer auf den Rechtsraum „EU" festgelegt — Speicherung und '
+      + 'Verarbeitung ausschließlich in der Europäischen Union',
+    daten:
+      'Der Inhalt der hochgeladenen Dateien samt Dateinamen. Darunter sind '
+      + 'Gesundheitsdaten nach Art. 9 DSGVO (Arbeitsunfähigkeits-'
+      + 'bescheinigungen). Keine Stammdaten, keine Arbeitszeiten, keine '
+      + 'Lohndaten — die bleiben in der Datenbank.',
+    vertrag: 'offen',
+    quelle: 'https://www.cloudflare.com/cloudflare-customer-dpa/',
+    drittland:
+      'Für die Dateien keine Übermittlung in ein Drittland: Der Eimer ist auf '
+      + 'den Rechtsraum „EU" festgelegt (nachgesehen am 29.10.2026, Cloudflare '
+      + 'antwortet nur über die EU-Adresse). Zu erledigen ist der Vertrag: Der '
+      + 'Auftragsverarbeitungsvertrag ist Teil des Hauptvertrags und nennt die '
+      + '„Self-Serve Subscription Agreement" — wie ein Selbstbedienungskunde '
+      + 'ihm zustimmt, sagt er nicht. Zu klären ist, ob die Zustimmung mit dem '
+      + 'Konto bereits vorliegt oder ob sie eigens zu erteilen ist; danach ist '
+      + 'dieser Eintrag umzustellen.',
+  },
+  {
     name: 'Resend, Inc.',
     zweck: 'Versand von E-Mails (Einladungen, Benachrichtigungen, Lohnbelege)',
     ort: 'USA',

@@ -2012,6 +2012,16 @@ model StoredFile {
   @@index([ownerType, ownerId])
   @@index([customerId])
   @@index([locationId])
+  // §261 Ein Platz im Objektspeicher gehört zu genau einem Eintrag.
+  //
+  // Die Anwendung prüft das schon vor dem Anlegen. Zwei Anfragen, die im
+  // selben Augenblick dieselbe Unterschrift einlösen, kämen aber beide durch
+  // diese Prüfung — und danach hingen zwei Einträge an einer Datei. Löscht
+  // jemand den einen, zeigt der andere ins Leere.
+  //
+  // Postgres lässt beliebig viele NULL-Werte in einem eindeutigen Index zu;
+  // die Zeilen, die weiter in der Datenbank liegen, stören sich also nicht.
+  @@unique([objektSchluessel])
 }
 
 // ── §102 Lohn-Stammdaten am Mitarbeiter ──────────────────────────────────────

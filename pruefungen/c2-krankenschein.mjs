@@ -21,10 +21,38 @@ const kitaLeitung = await login('leitung@kita-sonnenschein.de')
 const locationId = (await hole(leitung, '/api/auth/me')).body.user.locationId
 const mAnna = (await hole(anna, '/api/auth/me')).body.user
 
+/**
+ * Eine kleinste, ECHTE PDF.
+ *
+ * §241/§246 Hier stand bis zum 29.10.2026 ein Textschnipsel mit dem Typ
+ * `application/pdf` davor — und die Prüfung meldete seither „Die Datei heißt
+ * ‚au-bescheinigung.pdf', ihr Inhalt passt aber nicht dazu."
+ *
+ * Das war kein Fehler im Programm, sondern einer in den Testdaten: §241 prüft
+ * seitdem die ersten Bytes, weil dem gemeldeten Typ nicht zu glauben ist. Der
+ * Grund dafür steht in `dateityp.ts` — eine ausführbare Datei mit dem Namen
+ * `foto.jpg` soll nicht durchkommen. Eine Prüfung, die diesen Riegel mit
+ * erfundenen Bytes umgeht, prüft genau das nicht mehr.
+ *
+ * Also eine richtige PDF: ein Dokument mit einer leeren Seite.
+ */
+function pdfBytes(text) {
+  const koerper = `%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]>>endobj
+trailer<</Root 1 0 R>>
+% ${text}
+%%EOF
+`
+  return new Uint8Array(Buffer.from(koerper, 'latin1'))
+}
+
 /** Eine Datei einreichen — wie der Browser es tut. */
 async function einreichen(cookie, { ownerId, kategorie = 'krankenschein', von, bis, absenceId }) {
   const form = new FormData()
-  form.append('datei', new Blob([`AU-Bescheinigung ${von ?? ''}`], { type: 'application/pdf' }),
+  form.append('datei',
+    new Blob([pdfBytes(`AU-Bescheinigung ${von ?? ''}`)], { type: 'application/pdf' }),
     'au-bescheinigung.pdf')
   form.append('ownerType', 'employee')
   form.append('ownerId', ownerId)

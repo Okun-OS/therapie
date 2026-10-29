@@ -85,13 +85,16 @@ describe('direktHochladen', () => {
 
   it('meldet den Schlüssel und den geprüften Namen, nicht den rohen', async () => {
     const { holen, rufe } = stubFetch([
-      { status: 200, koerper: { ...PLATZ, dateiname: 'Foto_1.jpg' } },
+      { status: 200, koerper: { ...PLATZ, dateiname: 'Foto_1.jpg', nachweis: '1800.abc' } },
       { status: 200 },
       { status: 200, koerper: {} },
     ])
     await direktHochladen({ ...PFADE, datei: DATEI(), zusatz: { text: 'Hallo' }, holen })
     expect(rufe[2].rumpf).toEqual({
       objektSchluessel: 'chat/r1/2026-10-29/ab.jpg',
+      // §261 Der Nachweis geht unverändert zurück. Ohne ihn weist die
+      // Anwendung den Schlüssel ab — er wäre nur eine Behauptung.
+      nachweis: '1800.abc',
       dateiname: 'Foto_1.jpg',
       mimeType: 'image/jpeg',
       text: 'Hallo',
@@ -168,14 +171,33 @@ describe('direktHochladen', () => {
    * alten Weg zu nehmen hieße, sie ein zweites Mal hochzuladen.
    */
   it('liegt die Datei schon und nur die Bestätigung fehlt, wird NICHT neu hochgeladen', async () => {
-    const { holen } = stubFetch([
+    const { holen, rufe } = stubFetch([
       { status: 200, koerper: PLATZ },
       { status: 200 },
+      'wirft',
+      // §262 Ein zweiter Versuch, nur für die Meldung — sie ist klein, und
+      // dass sie scheitert, während der Upload gelang, spricht für ein
+      // kurzes Loch in der Verbindung.
       'wirft',
     ])
     const erg = await direktHochladen({ ...PFADE, datei: DATEI(), holen })
     expect(erg.art).toBe('abgewiesen')
     expect((erg as { fehler: string }).fehler).toContain('neu laden')
+    // Vier Aufrufe: Platz, Ablegen, Melden, Melden. Nicht zweimal ablegen.
+    expect(rufe.map(r => r.methode)).toEqual(['POST', 'PUT', 'POST', 'POST'])
+  })
+
+  it('und der zweite Versuch rettet eine Meldung, die nur kurz nicht durchkam', async () => {
+    const { holen, rufe } = stubFetch([
+      { status: 200, koerper: PLATZ },
+      { status: 200 },
+      'wirft',
+      { status: 200, koerper: { nachricht: { id: 'n2' } } },
+    ])
+    const erg = await direktHochladen({ ...PFADE, datei: DATEI(), holen })
+    expect(erg).toEqual({ art: 'ok', antwort: { nachricht: { id: 'n2' } } })
+    // Und die Datei ging genau EINMAL hinaus.
+    expect(rufe.filter(r => r.methode === 'PUT')).toHaveLength(1)
   })
 
   it('eine unvollständige Antwort auf die Platzanfrage gilt als „kein Speicher"', async () => {

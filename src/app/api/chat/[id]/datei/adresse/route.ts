@@ -5,6 +5,7 @@ import { uploadAdresse, r2Eingerichtet } from '@/lib/r2'
 import { pruefeChatDatei, sichererDateiname, objektSchluessel, CHAT_TYPEN } from '@/lib/file-storage'
 import { dateityp } from '@/lib/dateityp'
 import { vorfall } from '@/lib/fehlerkennung'
+import { nachweisAusstellen } from '@/lib/objekt-nachweis'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,16 +63,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       )
     }
 
-    if (!r2Eingerichtet('dateien')) {
-      /*
-       * Kein Objektspeicher: Dann bleibt der alte Weg über die Anwendung.
-       * Die Oberfläche erkennt das an dieser Antwort und schickt die Datei
-       * wie bisher — eine Umstellung, die bei fehlender Einrichtung alles
-       * anhält, wäre schlimmer als die alte Lösung.
-       */
-      return NextResponse.json({ speicher: 'aus' })
-    }
-
     const { dateiname, mimeType, groesse } = await req.json().catch(() => ({})) as {
       dateiname?: string; mimeType?: string; groesse?: number
     }
@@ -89,6 +80,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: geprueft.fehler }, { status: 400 })
     }
 
+    /*
+     * §261 Diese Abfrage stand vorher WEITER OBEN, und das war falsch.
+     *
+     * Der eigene Nachweis hat es gefunden: Ohne eingerichteten Speicher kam
+     * für `setup.exe` eine 200 zurück, weil die Typprüfung übersprungen
+     * wurde. Gefährlich war es nicht — der alte Weg weist die Datei danach
+     * ebenso ab —, aber die Antwort hing davon ab, ob ein Speicher
+     * eingerichtet ist. Eine Prüfung, deren Ergebnis von der Einrichtung
+     * abhängt, ist keine verlässliche Prüfung, und bei der Fehlersuche ist
+     * das die Art Unterschied, die einen Nachmittag kostet.
+     *
+     * Jetzt entscheidet erst die Datei, dann der Speicher. Kein Objektspeicher
+     * heißt: Der alte Weg über die Anwendung bleibt — eine Umstellung, die bei
+     * fehlender Einrichtung alles anhält, wäre schlimmer als die alte Lösung.
+     */
+    if (!r2Eingerichtet('dateien')) return NextResponse.json({ speicher: 'aus' })
+
     const schluessel = objektSchluessel(`chat/${raum.id}`, name)
     const adresse = uploadAdresse(schluessel, erkannt.typ)
     if (!adresse) {
@@ -99,6 +107,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       speicher: 'an',
       adresse,
       schluessel,
+      /**
+       * §261 Die Unterschrift über diesen Platz. Beim Vermerken wird sie
+       * geprüft — ohne sie ist ein genannter Schlüssel nur eine Behauptung.
+       */
+      nachweis: nachweisAusstellen(schluessel, `chat:${raum.id}`),
       /** Der Typ MUSS beim Hochladen genau so mitgeschickt werden. */
       typ: erkannt.typ,
       dateiname: name,

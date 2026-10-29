@@ -12,6 +12,7 @@ import type { NachweisLageDaten } from '@/lib/types'
 import { AU_ARTEN } from '@/lib/bem'
 import { NACHWEIS_AB_TAG_STANDARD } from '@/lib/krankmeldung-regel'
 import { bildVerkleinern } from '@/lib/bild-verkleinern'
+import { direktHochladen } from '@/lib/datei-direkt'
 
 /**
  * §137 Krankmelden vom Telefon.
@@ -258,6 +259,36 @@ export default function Krankmelden() {
        * Das ist die Mehrheit.
        */
       const datei = await bildVerkleinern(eingang)
+
+      /*
+       * §261 Zuerst der direkte Weg: Das Bild geht unmittelbar in den
+       * Objektspeicher, die Anwendung erfährt nur, wo es liegt.
+       *
+       * Genau diese Übertragung ist die, die gemeldet wurde — „der Upload hat
+       * nicht funktioniert". Sie läuft jetzt nicht mehr durch die Anwendung.
+       * Ist kein Objektspeicher eingerichtet oder kommt der direkte Weg nicht
+       * durch, läuft unten der alte Weg weiter.
+       */
+      const kontext = {
+        ownerType: 'employee',
+        ownerId: user.employeeId,
+        kategorie: 'krankenschein',
+      }
+      const direkt = await direktHochladen({
+        adressePfad: '/api/files/adresse',
+        vermerkPfad: '/api/files',
+        datei,
+        kontext,
+        // §130 Direkt der eben gemeldeten Fehlzeit zuordnen.
+        zusatz: { gueltigVon: von, gueltigBis: bis, absenceId: fertig.id },
+      })
+      if (direkt.art === 'abgewiesen') { setFehler(direkt.fehler); return }
+      if (direkt.art === 'ok') {
+        setEingereicht(true)
+        meineLaden()
+        return
+      }
+
       const form = new FormData()
       form.append('datei', datei)
       form.append('ownerType', 'employee')

@@ -88,9 +88,12 @@ export const MASSNAHMEN: Massnahme[] = [
     bezeichnung: 'Rechenzentrum',
     beschreibung:
       'Das Programm und die Datenbank laufen bei Railway in Rechenzentren '
-      + 'innerhalb der Europäischen Union. Eigene Geräte, auf die jemand '
-      + 'zugreifen könnte, gibt es nicht — es existiert kein Server im Büro '
-      + 'und keine lokale Kopie der Datenbank.',
+      + 'innerhalb der Europäischen Union. Die hochgeladenen Dateien liegen '
+      + 'seit §256 im Objektspeicher von Cloudflare (R2), in einem Eimer, der '
+      + 'auf den Rechtsraum „EU" festgelegt ist — Gesundheitsdaten nach '
+      + 'Art. 9 DSGVO verlassen damit die Europäische Union nicht. Eigene '
+      + 'Geräte, auf die jemand zugreifen könnte, gibt es nicht — es '
+      + 'existiert kein Server im Büro und keine lokale Kopie der Datenbank.',
     stand: 'betreiber',
     luecke:
       'Der physische Schutz ist Sache des Betreibers und Gegenstand des '
