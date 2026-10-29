@@ -6544,3 +6544,62 @@ dringen).
 **Offen gesagt:** Der 500er ist damit nicht behoben, sondern sichtbar gemacht.
 Ich kenne die Ursache nicht und kann sie von hier aus nicht erreichen. Beim
 nächsten Versuch nennt die Meldung sie — oder sie steht als Fund im Programm.
+
+## Block §254 (29.10.) — Dreimal richtig gemessen, dreimal die falsche Frage
+
+**Die Meldung, zum vierten Mal:** „Ich sehe immer noch die Webseite, wenn ich
+auf die App gehe. Immer noch. Es kann nicht sein, ich bin immer noch bei
+meinem ersten Auftrag."
+
+### Der Denkfehler
+
+Ich habe dreimal die Weiterleitung repariert — in der Middleware (§201, §245),
+im Dienst-Arbeiter (§239, §251), in den Kopfzeilen (§251). Jede einzelne
+Messung war richtig. `/` antwortet mit einer Weiterleitung, die Verkaufsseite
+wird nicht ausgeliefert, der Zwischenspeicher hält sie nicht mehr.
+
+**Und trotzdem war alles am Problem vorbei, weil eine Weiterleitung nichts
+zeichnet.**
+
+Ein iPhone zeigt beim Öffnen einer Adresse zuerst ein **Standbild** dessen, was
+dort zuletzt zu sehen war, und holt die Seite im Hintergrund. Unter `/` war
+zuletzt die Verkaufsseite zu sehen. Und weil dort seit meinen Korrekturen
+**nie wieder etwas gezeichnet wird** — es wird ja sofort weitergeleitet —,
+bleibt dieses Standbild für immer stehen.
+
+Jede weitere Verbesserung an der Weiterleitung konnte daran nichts ändern. Sie
+hat das alte Bild im Gegenteil festgenagelt.
+
+Das ist die unangenehmste Art Fehler: Jede Messung stimmt, und die
+Schlussfolgerung ist trotzdem falsch, weil die falsche Frage gemessen wurde.
+Ich habe geprüft, *ob weitergeleitet wird* — gefragt war, *was man sieht*.
+
+### Was jetzt passiert
+
+Die Middleware **leitet nicht mehr weiter, sie schreibt um**. Die Adresse
+bleibt `/`, ausgeliefert wird `/start`: der dunkle Hintergrund der App mit dem
+Wappen, nichts sonst. Ab dem ersten Öffnen ist das Standbild unter `/` damit
+die App.
+
+Danach geht es im Browser weiter, ohne weitere Anfrage an den Server — das
+Ziel steht schon in der Seite.
+
+| | |
+|---|---|
+| mit Sitzung | 200, **10 952** Bytes, kein Verkaufstext, `location.replace("/employee")` |
+| ohne Sitzung | 200, **57 469** Bytes, die Verkaufsseite unverändert |
+
+Im Browser nachgesehen: Ein Interessent bekommt die Verkaufsseite, ein
+Angemeldeter sieht sie zu keinem Zeitpunkt.
+
+### Warum nicht gleich so
+
+Weil ich die Frage falsch gestellt hatte. Die drei vorigen Blöcke haben
+trotzdem echte Fehler behoben — der Dienst-Arbeiter speicherte die
+Verkaufsseite wirklich, die Kopfzeilen waren wirklich falsch. Sie waren nur
+nicht die Ursache dessen, was gemeldet wurde.
+
+### Nachweise
+
+**1342** Modultests, `alle-seiten-ohne-fehler` 60/60, `widersprueche` 17/17,
+`q-glocke-und-anhaenge` 23/23, `a-mitarbeiter` 37/37, `r-stundenkonto` 11/11.

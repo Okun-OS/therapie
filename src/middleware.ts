@@ -201,9 +201,25 @@ export async function middleware(req: NextRequest) {
   const keks = req.cookies.get(KEKS)?.value
   if (!keks) return NextResponse.next()
 
-  const rolle = await rolleAus(keks)
-  const ziel = rolle ? ZIELE[rolle] : '/app'
-  return NextResponse.redirect(new URL(ziel, req.url))
+  /*
+   * §254 UMSCHREIBEN statt WEITERLEITEN.
+   *
+   * Hier stand `NextResponse.redirect`. Das war dreimal nachgemessen richtig
+   * — und dreimal am gemeldeten Problem vorbei: Eine Weiterleitung zeichnet
+   * nichts. Ein iPhone zeigt beim Öffnen zuerst ein Standbild dessen, was
+   * unter dieser Adresse zuletzt zu sehen war. Unter `/` war das die
+   * Verkaufsseite, und weil dort seit den Korrekturen nie wieder etwas
+   * gezeichnet wurde, blieb das Standbild für immer stehen.
+   *
+   * `rewrite` behält die Adresse `/` und liefert den Inhalt von `/start` aus
+   * — den dunklen Hintergrund der App mit dem Wappen. Ab dem ersten Öffnen
+   * ist das Standbild unter `/` damit die App.
+   *
+   * Die Rolle wird hier nicht mehr gebraucht: `/start` liest die Sitzung
+   * selbst, in der Node-Umgebung und mit der vollen Prüfung.
+   */
+  void ZIELE
+  return NextResponse.rewrite(new URL('/start', req.url))
 }
 
 /**
