@@ -28,8 +28,13 @@ import { getPublicHolidayName } from '@/lib/holidays'
 import type { ScheduleEntry, Absence } from '@/lib/types'
 import { ausfallStundenAmTag } from '@/lib/ausfallstunden'
 import { AU_ARTEN } from '@/lib/bem'
+import { dienstMinuten } from '@/lib/dienstzeit'
+import { dienstSymbol } from '@/lib/dienstsymbole'
 
-const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase }
+// §266 Hier stand eine Abschrift der Symbolkarte OHNE `night`. Ein
+// Nachtdienst fand damit kein Symbol, und die Zeile unten verlangt Eintrag
+// UND Dienstzeit UND Symbol — der Dienst fiel in den Zweig „Frei". Eine
+// Pflegekraft sah frei, wo sie eingeteilt war.
 
 type Tab = 'schedule' | 'swaps' | 'wishes' | 'team'
 type CalView = 'day' | 'week' | 'month'
@@ -178,12 +183,18 @@ export default function EmployeeSchedule() {
   const selectedShift = selectedEntry ? getShift(selectedEntry.shiftId) : null
   const swapShift = swapEntry ? getShift(swapEntry.shiftId) : null
 
+  /*
+   * §266 Hier stand `Ende − Anfang` ohne Behandlung von Mitternacht.
+   *
+   * Ein Nachtdienst von 21:00 bis 06:30 ergab damit −870 Minuten, und vier
+   * davon die gemeldeten „−58h Stunden geplant". In der Leitungsansicht und
+   * auf dem Ausdruck stimmte dieselbe Rechnung seit jeher — nur in den beiden
+   * Ansichten des Mitarbeiters nicht.
+   */
   const totalHours = weekEntries.reduce((sum, e) => {
     const shift = getShift(e.shiftId)
     if (!shift) return sum
-    const [sh, sm] = shift.startTime.split(':').map(Number)
-    const [eh, em] = shift.endTime.split(':').map(Number)
-    return sum + (eh * 60 + em - sh * 60 - sm)
+    return sum + dienstMinuten(shift.startTime, shift.endTime)
   }, 0)
 
   const handleSwapSubmit = async (targetEmpId: string, targetDate: string, targetShiftId: string, message: string) => {
@@ -539,7 +550,9 @@ export default function EmployeeSchedule() {
                 const shift = entry ? getShift(entry.shiftId) : null
                 const todayFlag = isToday(dateStr)
                 const isPast = day < new Date(new Date().setHours(0, 0, 0, 0))
-                const Icon = shift ? SHIFT_ICONS[shift.type] : null
+                // §266 Immer ein Symbol: Eine unbekannte Dienstart darf keinen Dienst
+                // verschwinden lassen. Genau daran lag das „Frei" über dem Nachtdienst.
+                const Icon = shift ? dienstSymbol(shift.type) : null
                 const holiday = getPublicHolidayName(dateStr, location?.bundesland)
                 const ausfall = entry ? null : ausfallAmTag(dateStr)
 
@@ -903,7 +916,7 @@ export default function EmployeeSchedule() {
           <div className="space-y-4">
             <div className="flex items-center gap-4 p-4 rounded-2xl" style={{ backgroundColor: selectedShift.bgColor }}>
               <div className="w-14 h-14 rounded-2xl bg-white/50 flex items-center justify-center">
-                {(() => { const Icon = SHIFT_ICONS[selectedShift.type] || Briefcase; return <Icon size={28} style={{ color: selectedShift.color }} /> })()}
+                {(() => { const Icon = dienstSymbol(selectedShift.type); return <Icon size={28} style={{ color: selectedShift.color }} /> })()}
               </div>
               <div>
                 <p className="text-lg font-bold" style={{ color: selectedShift.color }}>{selectedShift.name}</p>

@@ -260,7 +260,18 @@ async function main() {
    */
   await prisma.scheduleEntry.deleteMany({ where: { locationId: standort.id } })
 
-  const bereichVon = new Map(BELEGSCHAFT.map(([n, , b]) => [n, b]))
+  /*
+   * §266 Der NAME des Bereichs, nicht seine Kennung.
+   *
+   * Hier stand `b` — und das ist `sf-nord`. Im Dienstplan stand damit unter
+   * jedem Dienst eine Datenbankkennung statt „Bereich Nord". Aufgefallen ist
+   * es auf einem Bildschirmfoto für den App Store; dort wäre es
+   * mitveröffentlicht worden.
+   */
+  const bereichNamen = new Map(BEREICHE.map(b => [b.id, b.name]))
+  const bereichVon = new Map(
+    BELEGSCHAFT.map(([n, , b]) => [n, bereichNamen.get(b as string) ?? b]),
+  )
   let gelegt = 0
   for (let personIndex = 0; personIndex < BELEGSCHAFT.length; personIndex++) {
     const [name, , , funktion] = BELEGSCHAFT[personIndex]

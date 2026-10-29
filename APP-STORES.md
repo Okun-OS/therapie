@@ -4,8 +4,19 @@ Diese Datei ist der Ablaufplan von hier bis zur veröffentlichten App. Sie sagt,
 was fertig ist, was OKUN besorgen muss und was am Mac zu tun ist. Wer sie von
 oben nach unten abarbeitet, kommt durch.
 
-Stand: **10.10.2026** — die Hülle ist gebaut, Push ist auf beiden Seiten
-verdrahtet. Was fehlt, sind Konten und zwei gebaute Apps.
+Stand: **29.10.2026** — die D-U-N-S-Nummer ist da. Damit sind beide
+Entwicklerkonten aufgeschlossen, und der Weg ist frei bis zur Einreichung.
+
+Neu seit dem 10.10.:
+- **D-U-N-S-Nummer liegt vor** (29.10.2026) → Schritte 4 bis 6 können laufen
+- **Bildschirmfotos** liegen unter `store/`, erzeugt aus der laufenden
+  Anwendung (`node scripts/store-bilder.mjs`) — iPhone in zwei Maßen, iPad
+  und Android, dazu das Pflicht-Titelbild für Google
+- **Store-Texte** stehen in `STORE-TEXTE.md`, zum Kopieren
+- **Ob Firebase eingerichtet ist, lässt sich jetzt ablesen**:
+  `https://okun-workforce.com/api/health` nennt es unter `push.geraete`
+
+Was fehlt, sind die beiden Konten und zwei gebaute Apps.
 
 ---
 

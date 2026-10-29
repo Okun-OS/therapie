@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { drucken } from '@/lib/drucken'
+import { dienstStunden } from '@/lib/dienstzeit'
 
 interface PrintEmployee { id: string; name: string; weeklyHours: number }
 interface PrintShift { id: string; name: string; startTime: string; endTime: string }
@@ -28,13 +29,11 @@ function formatDay(dateStr: string): string {
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.`
 }
 
+// §266 Siehe `dienstzeit.ts` — dieselbe Rechnung wie in jeder anderen Ansicht.
 function calcHours(startTime: string, endTime: string, breakThreshold: number, breakDeduction: number): number {
-  const [sh, sm] = startTime.split(':').map(Number)
-  const [eh, em] = endTime.split(':').map(Number)
-  let mins = (eh * 60 + em) - (sh * 60 + sm)
-  if (mins <= 0) mins += 1440
-  if (mins >= breakThreshold) mins -= breakDeduction
-  return Math.round(mins * 10 / 60) / 10
+  return dienstStunden(startTime, endTime, {
+    thresholdMinutes: breakThreshold, deductionMinutes: breakDeduction,
+  })
 }
 
 export default function SchedulePrintPage() {

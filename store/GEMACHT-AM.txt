@@ -1,0 +1,4 @@
+Erzeugt am 2026-10-29T21:47:52.048Z
+Quelle: http://localhost:3000
+Erzeugt mit: node scripts/store-bilder.mjs
+Zu sehen sind die Testdaten aus npm run seed — ein erfundener Betrieb.

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { ArrowLeftRight, Sun, Moon, Briefcase, User, Send } from 'lucide-react'
 import type { ScheduleEntry, Shift, Employee } from '@/lib/types'
 import { getDayName, formatDate } from '@/lib/utils'
+import { dienstSymbol } from '@/lib/dienstsymbole'
 
 interface SwapModalProps {
   open: boolean
@@ -20,7 +21,7 @@ interface SwapModalProps {
   onSubmit: (targetEmployeeId: string, targetDate: string, targetShiftId: string, message: string) => void
 }
 
-const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase }
+// §266 Siehe `dienstsymbole.ts`.
 
 export function SwapModal({ open, onClose, myEntry, myShift, colleagues, colleagueEntries, shifts, onSubmit }: SwapModalProps) {
   const [step, setStep] = useState<'select' | 'message'>('select')
@@ -52,7 +53,7 @@ export function SwapModal({ open, onClose, myEntry, myShift, colleagues, colleag
     onClose()
   }
 
-  const MyIcon = SHIFT_ICONS[myShift.type] || Briefcase
+  const MyIcon = dienstSymbol(myShift.type)
 
   return (
     <Modal open={open} onClose={handleClose} title="Dienst tauschen" size="md">
@@ -103,7 +104,7 @@ export function SwapModal({ open, onClose, myEntry, myShift, colleagues, colleag
                 ) : (
                   colleagueOptions.map(({ emp, entry, shift }) => {
                     if (!shift) return null
-                    const Icon = SHIFT_ICONS[shift.type] || Briefcase
+                    const Icon = dienstSymbol(shift.type)
                     const isSelected = selected?.empId === emp.id && selected?.date === entry.date
                     return (
                       <button

@@ -32,6 +32,8 @@ import {
   CheckCircle, Loader, AlertTriangle, Info, Scale, CalendarOff, X, CalendarRange, MessageCircle, LayoutGrid, Users, Plus, Trash2,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { dienstStunden } from '@/lib/dienstzeit'
+import { dienstSymbol, STANDARD_SYMBOL } from '@/lib/dienstsymbole'
 
 /**
  * §227 Wie eine Abwesenheit in der Zelle heißt.
@@ -101,16 +103,17 @@ const DEFAULT_RULES: PlanningRules = {
   breakDeductionMinutes: 30,
 }
 
-const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase, night: MoonStar }
-const DEFAULT_SHIFT_ICON = Briefcase
+// §266 Die Zuordnung steht jetzt in `dienstsymbole.ts` — hier stand eine von
+// vier Abschriften, und drei davon kannten `night` nicht.
+const DEFAULT_SHIFT_ICON = STANDARD_SYMBOL
 
+// §266 Dieselbe Rechnung wie überall sonst. Hier stimmte sie schon; falsch
+// war sie in den beiden Ansichten des Mitarbeiters.
 function calcShiftHours(startTime: string, endTime: string, breakThresholdMinutes = 360, breakDeductionMinutes = 30): number {
-  const [sh, sm] = startTime.split(':').map(Number)
-  const [eh, em] = endTime.split(':').map(Number)
-  let mins = (eh * 60 + em) - (sh * 60 + sm)
-  if (mins <= 0) mins += 1440
-  if (mins >= breakThresholdMinutes) mins -= breakDeductionMinutes
-  return Math.round(mins * 10 / 60) / 10
+  return dienstStunden(startTime, endTime, {
+    thresholdMinutes: breakThresholdMinutes,
+    deductionMinutes: breakDeductionMinutes,
+  })
 }
 const SOLVER_STEPS = [
   'Lade Mitarbeiter & Schichten...',
@@ -1616,7 +1619,7 @@ export default function AdminSchedule() {
                                         <div className="flex flex-col gap-1">
                                           {assigned.map(emp => {
                                             const a = getDisplayAssignment(emp.id, dateStr)!
-                                            const Icon = SHIFT_ICONS[a.shift.type] ?? DEFAULT_SHIFT_ICON
+                                            const Icon = dienstSymbol(a.shift.type)
                                             return (
                                               <div key={emp.id} className="rounded-lg px-2 py-1 flex flex-col gap-0.5" style={{ backgroundColor: a.shift.bgColor }}>
                                                 <div className="flex items-center gap-1.5">
@@ -1786,7 +1789,7 @@ export default function AdminSchedule() {
                                     const isNonWorkDay2 = !isLocationWorkDay(day)
                                     const isOutsidePeriod2 = dateStr < periodStart || dateStr > periodEnd
                                     const hideCell2 = isNonWorkDay2 || isOutsidePeriod2
-                                    const Icon = assignment ? (SHIFT_ICONS[assignment.shift.type] ?? DEFAULT_SHIFT_ICON) : null
+                                    const Icon = assignment ? dienstSymbol(assignment.shift.type) : null
                                     // §96: klar unterscheidbare Farben je Dienstart
                                     const farbe = assignment ? displayColors(assignment.shift) : null
                                     return (
@@ -2017,7 +2020,7 @@ export default function AdminSchedule() {
             {/* Shift legend */}
             <div className="flex flex-wrap gap-2">
               {locationShifts.map(shift => {
-                const Icon = SHIFT_ICONS[shift.type] ?? DEFAULT_SHIFT_ICON
+                const Icon = dienstSymbol(shift.type)
                 return (
                   <div key={shift.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ backgroundColor: shift.bgColor }}>
                     <Icon size={13} style={{ color: shift.color }} />
@@ -2395,7 +2398,7 @@ export default function AdminSchedule() {
               ) : (
                 <div className="space-y-2">
                   {locationShifts.map(shift => {
-                    const Icon = SHIFT_ICONS[shift.type] ?? DEFAULT_SHIFT_ICON
+                    const Icon = dienstSymbol(shift.type)
                     const isActive = currentAssignment?.shift.id === shift.id && !customTimeShiftId
                     return (
                       <button

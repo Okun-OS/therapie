@@ -5,6 +5,7 @@ import type {
   FreigabeEmpfehlung,
   RegelVerletzung,
 } from '@/lib/company-model-types'
+import { dienstMinuten } from './dienstzeit'
 
 // §72: NET working hours of one plan entry — individual presence window
 // (startzeit/endzeit trims) minus the unpaid break above the threshold.
@@ -15,10 +16,13 @@ function entryNetHours(
 ): number {
   const von = entry.startzeit ?? schicht.von
   const bis = entry.endzeit ?? schicht.bis
-  const [sh, sm] = von.split(':').map(Number)
-  const [eh, em] = bis.split(':').map(Number)
-  let mins = eh * 60 + em - (sh * 60 + sm)
-  if (mins <= 0) mins += 24 * 60
+  /*
+   * §266 Die Spanne kommt aus `dienstzeit.ts`. Die Rundung NICHT: Hier wird
+   * auf volle Stunden ungerundet weitergerechnet, weil diese Zahl in eine
+   * Prüfung eingeht und nicht auf einen Bildschirm. Eine Rundung an dieser
+   * Stelle würde Grenzfälle verschieben.
+   */
+  let mins = dienstMinuten(von, bis)
   if (mins >= pausen.thresholdMinutes) mins -= pausen.deductionMinutes
   return mins / 60
 }

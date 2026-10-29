@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { CheckCircle, XCircle, ArrowLeftRight, MessageSquare, Sun, Moon, Briefcase, Mail } from 'lucide-react'
 import type { SwapRequest, Shift } from '@/lib/types'
 import { formatDate, getDayName } from '@/lib/utils'
+import { dienstSymbol } from '@/lib/dienstsymbole'
 
 interface SwapListProps {
   swaps: SwapRequest[]
@@ -14,7 +15,8 @@ interface SwapListProps {
   onDecline?: (id: string) => void
 }
 
-const SHIFT_ICONS: Record<string, React.ElementType> = { early: Sun, late: Moon, mid: Briefcase }
+// §266 Die Symbolkarte steht in `dienstsymbole.ts` — hier stand eine von
+// vier Abschriften, und sie kannte `night` nicht.
 
 const STATUS_CFG = {
   pending: { label: 'Ausstehend', badge: 'warning' as const, icon: ArrowLeftRight },
@@ -31,7 +33,7 @@ export function SwapList({ swaps, currentUserId, shifts, onAccept, onDecline }: 
   const renderShiftTag = (shiftId: string, date: string) => {
     const shift = shifts.find(s => s.id === shiftId)
     if (!shift) return null
-    const Icon = SHIFT_ICONS[shift.type] || Briefcase
+    const Icon = dienstSymbol(shift.type)
     return (
       <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold" style={{ backgroundColor: shift.bgColor, color: shift.color }}>
         <Icon size={12} />

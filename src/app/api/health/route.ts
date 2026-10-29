@@ -75,5 +75,21 @@ export function GET() {
       programm: r2Eingerichtet('programm') ? 'eingerichtet' : 'fehlt',
       dateien: r2Eingerichtet('dateien') ? 'eingerichtet' : 'fehlt',
     },
+    /*
+     * §265 Ob Push für die Store-Apps eingerichtet ist.
+     *
+     * `APP-STORES.md` führt „Firebase-Projekt" seit dem 10.10. als offen. Ob
+     * es das noch ist, ließ sich von außen nicht feststellen — man hätte eine
+     * App installieren und auf eine Benachrichtigung warten müssen.
+     *
+     * Dieselbe Blindstelle wie bei §264, und dieselbe Antwort: eine Angabe,
+     * die man ablesen kann. Herausgegeben wird nur, OB der Schlüssel da ist —
+     * nicht, welcher. Ein Dienstkonto-Schlüssel gehört nirgendwohin außer in
+     * die Umgebung.
+     */
+    push: {
+      geraete: process.env.FCM_SERVICE_ACCOUNT ? 'eingerichtet' : 'fehlt',
+      browser: process.env.VAPID_PRIVATE_KEY ? 'eingerichtet' : 'fehlt',
+    },
   })
 }

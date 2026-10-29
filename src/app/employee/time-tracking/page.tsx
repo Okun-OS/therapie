@@ -17,6 +17,7 @@ import { PlayCircle, StopCircle, Clock, Timer, TrendingUp, Calendar, Coffee, Ale
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate, formatTime, getWeekDays, toDateString } from '@/lib/utils'
 import { nettoMinuten } from '@/lib/arbeitszeit'
+import { dienstMinuten } from '@/lib/dienstzeit'
 
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 
@@ -519,7 +520,8 @@ export default function TimeTracking() {
                 if (shift) {
                   const [sh, sm] = shift.startTime.split(':').map(Number)
                   const [eh, em] = shift.endTime.split(':').map(Number)
-                  plannedMinutes = (eh * 60 + em) - (sh * 60 + sm)
+                  // §266 Mitternacht eingerechnet — siehe `dienstzeit.ts`.
+                  plannedMinutes = dienstMinuten(shift.startTime, shift.endTime)
                 }
                 const isOver = mins > plannedMinutes
                 return (
