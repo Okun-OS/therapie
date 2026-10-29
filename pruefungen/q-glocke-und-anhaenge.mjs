@@ -73,8 +73,21 @@ const raeume = (await hole(anna, '/api/chat')).body.raeume ?? []
 const raum = raeume.find(r => r.art === 'direkt')
 check('Ein Gespräch zu zweit ist da', Boolean(raum), `${raeume.length} Gespräche`)
 
+/*
+ * §240 Der Ausgangszustand — und was danach wiederhergestellt wird.
+ *
+ * Diese Prüfung verstellt die Lesestände eines echten Gesprächs. Beim ersten
+ * Lauf blieb das so stehen, und `e5-chat` zählte danach eine ungelesene
+ * Nachricht zu viel: 105 statt 106. Nicht jedes Mal — nur wenn die Reihenfolge
+ * stimmte, und genau solche Fehlalarme lassen eine Prüfung ihren Ruf
+ * verlieren. Was ich verstelle, stelle ich zurück.
+ */
+let lesestaendeVorher = []
 if (raum) {
-  // Der Ausgangszustand: Beide Lesestände zurück auf nichts.
+  lesestaendeVorher = await prisma.chatMitglied.findMany({
+    where: { raumId: raum.id },
+    select: { id: true, gelesenBis: true, zugestelltBis: true },
+  })
   await prisma.chatMitglied.updateMany({
     where: { raumId: raum.id }, data: { gelesenBis: null, zugestelltBis: null },
   })
@@ -250,6 +263,24 @@ check('Mit der gesetzlichen Grenze ist dieselbe Meldung NICHT pflichtig',
   JSON.stringify(lage2.body.lage?.pflicht ?? null))
 
 // ── Aufräumen ─────────────────────────────────────────────────────────────
+for (const m of lesestaendeVorher) {
+  await prisma.chatMitglied.update({
+    where: { id: m.id },
+    data: { gelesenBis: m.gelesenBis, zugestelltBis: m.zugestelltBis },
+  })
+}
+/*
+ * Die Nachrichten, die diese Prüfung geschrieben hat, gehen auch wieder weg —
+ * sonst wächst ein echtes Gespräch mit jedem Lauf um vier Testeinträge.
+ */
+if (raum) {
+  await prisma.chatNachricht.deleteMany({
+    where: { raumId: raum.id, text: { contains: 'Nachweis §240' } },
+  })
+  await prisma.chatNachricht.deleteMany({
+    where: { raumId: raum.id, text: { in: ['Krankenschein.pdf', 'Bescheinigung.pdf'] } },
+  })
+}
 await prisma.absence.deleteMany({
   where: { employeeId: annaId, startDate: { gte: `${jahr}-01-01` } },
 })

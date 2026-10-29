@@ -6050,3 +6050,101 @@ Sperre, Anhang und Bescheinigung ohne gemeldeten Typ, und die Krankenschein-Rege
 über Leitung und Mitarbeiter hinweg. Jeweils mit Gegenprobe.
 
 `alle-seiten-ohne-fehler` **60/60**, `e5-chat` **106/106**.
+
+## Block §243 (29.10.) — Der Widerspruch beim Stundenkonto, und die Suche nach mehr davon
+
+**Die Meldung:** „Es gibt eine Diskrepanz zwischen dem Stundenkonto, was da
+angezeigt wird — du bist offiziell eigentlich im Minus, aber dann wird
+Stundenkonto 0 angezeigt ganz oft. Das beißt sich halt wieder. Auf solche
+Fehler bitte auch nochmal testen, ne, ob es mehr solche Sachen gibt, wo sich
+Sachen widersprechen." Dazu: „Ich finde, das sind zu viele Punkte. Könnte man
+das irgendwie aufräumen?"
+
+### Ein echter Rechenfehler, der dabei herausfiel
+
+Die Zeiterfassung zeigte **Soll 112h · Ist 6h 10min · Minusstunden 105h 50min**
+— am 29. Oktober. Nachgerechnet stimmte jede Zahl für sich. Nur zählte das Soll
+den **ganzen Monat**, auch Tage, an denen noch niemand hätte arbeiten können.
+
+Am 1. eines Monats hätten dort sofort volle 112 Minusstunden gestanden, ohne
+dass irgendetwas versäumt worden wäre. Eine Zahl, die einen Rückstand
+behauptet, bevor die Zeit vergangen ist, ist keine Auskunft, sondern ein
+Vorwurf.
+
+`workdaysInMonth` schneidet den laufenden Monat jetzt bei heute ab. Nachgemessen:
+Oktober 147h statt 154h, September zählt weiterhin voll.
+
+**Der Monatsabschluss bleibt ausdrücklich beim ganzen Monat.** Sein Saldo wandert
+dauerhaft ins Stundenkonto — würde er mitten im Monat mit gekürztem Soll
+festgeschrieben, fehlte der Rest für immer.
+
+### Der Widerspruch selbst
+
+Beide Zahlen stimmten. Das Stundenkonto zählt nur freigegebene Monate (§238),
+und solange keiner freigegeben ist, steht da null. Daneben zeigt die
+Zeiterfassung den laufenden Monat. Wer beides sieht, liest zwei Antworten auf
+dieselbe Frage.
+
+Statt eine zu verschweigen oder beide zu einer zusammenzurechnen — und damit
+einen halben Stand als ganzen auszugeben — steht die zweite Zahl jetzt
+**benannt** daneben: „−12:30 diesen Monat". Zwei Zahlen mit zwei Namen
+widersprechen sich nicht.
+
+### „Mein Tag" aufgeräumt — und eine Dopplung dabei gefunden
+
+Elf Zeilen in vier Gruppen. Zwei davon führten **auf dieselbe Seite**:
+
+> „Meine Unterlagen" → `/employee/profile`
+> „Profil und Einstellungen" → `/employee/profile`
+
+Zwei Einträge, ein Ziel, zwei verschiedene Versprechen. Wer den oberen nahm und
+seine Kontaktdaten suchte, hatte sie vor sich und wusste es nicht. Geblieben ist
+einer („Mein Profil"), dessen Untertitel beides nennt.
+
+Punkte, Datenauskunft, Fehlermeldung und Impressum liegen jetzt unter einem
+Aufklapper „Mehr" — **weggeklappt, nicht weg**: Die Auskunft nach Art. 15/17
+DSGVO und das Impressum müssen in der App erreichbar bleiben (§139, §153). Von
+elf immer sichtbaren Zeilen sind sechs geblieben.
+
+### Die Suche nach weiteren Widersprüchen
+
+`pruefungen/browser/widersprueche.mjs` sucht nach einer **Art** von Fehler, ohne
+die einzelnen Fälle zu kennen — das ist der Unterschied zwischen „ich habe den
+gemeldeten Fehler behoben" und „ich habe nachgesehen, ob es mehr davon gibt".
+
+| Art | gefunden |
+|---|---|
+| Ein Ziel, zwei Versprechen | „Meine Unterlagen" / „Profil und Einstellungen" |
+| Ein Weg ins Leere | `/admin/settings` — 404, und zwar seit Langem |
+| Überschrift gegen eigene Aufstellung | Stundenkonto +0:00 über 105 Minusstunden |
+| Dieselbe Größe zweimal verschieden | deckt bereits `urlaubstage-` und `zeiten-stimmen-ueberein` ab |
+
+**Zweimal hat die Prüfung mich korrigiert, nicht das Programm.** Erst schlug sie
+bei „Dienstplan" / „Dienstplan anpassen" an — eine Kachel und ein Knopf daneben
+sind die normale Bauform einer Übersicht, kein Widerspruch. Meine Regel war zu
+grob, und eine Prüfung, die bei richtigem Verhalten rot wird, liest nach dem
+dritten Mal niemand mehr. Dann maß sie auf `/company` null Ziele, weil die Seite
+noch nicht fertig war.
+
+### Und ein Befund, der das Programm wirklich betraf
+
+Nach dem Warten blieben auf `/company` trotzdem **null Verweise** — die
+Unternehmensübersicht navigierte durchgehend über `<button onClick>`. Ein Knopf
+lässt sich nicht in einem neuen Reiter öffnen, zeigt sein Ziel nicht beim
+Darüberfahren und wird Vorlesehilfen als Knopf angesagt.
+
+Vier Stellen sind jetzt Verweise. Die Prüfung sieht dort statt null **544
+Ziele** — und prüft jedes davon.
+
+### Nachweise
+
+**1330** Modultests. Neu `widersprueche` **15/15** mit Gegenprobe am Suchmuster
+selbst. `alle-seiten-ohne-fehler` 60/60, `urlaubstage-stimmen-ueberein` 13/13,
+`zeiten-stimmen-ueberein` 13/13, `q-glocke-und-anhaenge` 23/23,
+`a-mitarbeiter` 37/37, `e5-chat` 106/106.
+
+**Eine Prüfung hat eine andere gestört**, und das ist mir aufgefallen, weil
+`e5-chat` einmal 105 statt 106 meldete: `q-glocke-und-anhaenge` verstellt
+Lesestände eines echten Gesprächs und hat sie nicht zurückgestellt. Nicht jedes
+Mal — nur bei passender Reihenfolge, und genau solche Fehlalarme kosten eine
+Prüfung ihren Ruf. Sie räumt jetzt auf; beide laufen abwechselnd wiederholt grün.

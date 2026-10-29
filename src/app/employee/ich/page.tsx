@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import {
-  Receipt, Palmtree, Stethoscope, Clock, FolderOpen, User, TrendingUp,
+  Receipt, Palmtree, Stethoscope, Clock, User, TrendingUp,
   ChevronRight, LogOut, Shield, ShieldCheck,
 } from 'lucide-react'
 import type { Employee, VacationRequest } from '@/lib/types'
@@ -78,6 +78,42 @@ export default function Ich() {
       .finally(() => setAntraegeGeladen(true))
   }, [user?.employeeId])
 
+
+  /**
+   * §243 Was im LAUFENDEN Monat zusammengekommen ist.
+   *
+   * DIE MELDUNG
+   * „Es gibt eine Diskrepanz zwischen dem Stundenkonto, was da angezeigt wird
+   * — du bist offiziell eigentlich im Minus, aber dann wird Stundenkonto 0
+   * angezeigt ganz oft. Das beißt sich halt wieder."
+   *
+   * Beide Zahlen stimmten für sich. Das Stundenkonto zählt nur freigegebene
+   * Monate (§238), und solange keiner freigegeben ist, steht da null. Die
+   * Zeiterfassung zeigt daneben den laufenden Monat. Wer beides sieht, liest
+   * zwei Antworten auf dieselbe Frage.
+   *
+   * Statt eine der beiden zu verschweigen oder sie zu einer zusammenzurechnen
+   * — und damit einen halben Stand als ganzen auszugeben — steht die zweite
+   * Zahl jetzt BENANNT daneben. Zwei Zahlen mit zwei Namen widersprechen sich
+   * nicht.
+   */
+  const [laufend, setLaufend] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!user?.employeeId) return
+    const jetzt = new Date()
+    const adresse = `/api/hours-account?employeeId=${user.employeeId}`
+      + `&year=${jetzt.getFullYear()}&month=${jetzt.getMonth() + 1}`
+    fetch(adresse)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const s = d?.summary
+        if (!s) return
+        setLaufend((s.istMinutes ?? 0) + (s.overtimeMinutes ?? 0) - (s.sollMinutes ?? 0))
+      })
+      .catch(() => {})
+  }, [user?.employeeId])
+
   // §238 Dieselbe Rechnung wie auf Urlaubsseite und Profil.
   const konto = urlaubskonto(mich ?? {}, meineAntraege)
 
@@ -126,6 +162,14 @@ export default function Ich() {
             {saldoText}
           </p>
           <p className="text-xs text-gray-400">Stundenkonto</p>
+          {/* §243 Die zweite Zahl, benannt — siehe oben. */}
+          {laufend !== null && laufend !== 0 && (
+            <p className="text-[10px] text-gray-400 mt-0.5 leading-tight"
+              data-test="laufender-monat">
+              {laufend > 0 ? '+' : '−'}{Math.floor(Math.abs(laufend) / 60)}:
+              {String(Math.abs(laufend) % 60).padStart(2, '0')} diesen Monat
+            </p>
+          )}
         </div>
       </div>
 
@@ -148,33 +192,58 @@ export default function Ich() {
             : 'Belehrungen, Bescheinigungen, Führungszeugnis'} />
       </Gruppe>
 
+      {/*
+        §243 Hier standen acht weitere Zeilen in drei Gruppen.
+        Gemeldet: „Ich finde, das sind zu viele Punkte. Könnte man das
+        irgendwie aufräumen, dass es da nicht so unübersichtlich [ist]."
+
+        ZWEI DAVON WAREN DASSELBE
+        „Meine Unterlagen" und „Profil und Einstellungen" führten BEIDE auf
+        `/employee/profile` — zwei Einträge, ein Ziel, zwei verschiedene
+        Versprechen. Wer den oberen nahm und seine Kontaktdaten suchte, hatte
+        sie vor sich und wusste es nicht. Geblieben ist einer, und sein
+        Untertitel nennt jetzt beides.
+
+        DER REST IST WEGGEKLAPPT, NICHT WEG
+        Punkte, Datenauskunft, Fehlermeldung und Impressum braucht man selten
+        und muss sie jederzeit erreichen können — zwei Dinge, die sich nicht
+        widersprechen, wenn man sie faltet. Ausgeblendet werden darf keines
+        davon: Die Auskunft nach Art. 15/17 DSGVO und das Impressum müssen in
+        der App erreichbar bleiben (§139, §153).
+      */}
       <Gruppe>
-        <Zeile href="/employee/profile" icon={<FolderOpen size={18} className="text-gray-400" />}
-          titel="Meine Unterlagen" text="Vertrag, Bescheinigungen, Personalakte" />
         <Zeile href="/employee/profile" icon={<User size={18} className="text-gray-400" />}
-          titel="Profil und Einstellungen" text="Kontaktdaten, Kalender, Benachrichtigungen" />
-        <Zeile href="/employee/workforce-score" icon={<TrendingUp size={18} className="text-gray-400" />}
-          titel="Meine Punkte" text="Workforce Score" />
+          titel="Mein Profil" text="Unterlagen, Kontaktdaten, Kalender, Benachrichtigungen" />
       </Gruppe>
 
       {/* §139 Nur in der App: Benachrichtigungen und die Sperre. Beides gehört
           zum Telefon, nicht zum Konto — im Browser rendert es nichts. */}
       <AppEinstellungen />
 
-      <Gruppe>
-        {/* §139 Vorher führte das direkt in ein PDF. Die Auskunft ist aber nur
-            die eine Hälfte des Rechts — die andere ist die Löschung, und die
-            muss in der App erreichbar sein (Art. 17 DSGVO, Apple 5.1.1 v). */}
-        <Zeile href="/employee/daten" icon={<Shield size={18} className="text-gray-400" />}
-          titel="Meine Daten" text="Auskunft, Mitnehmen und Löschung beantragen" />
-        <Zeile href="/funde" icon={<Shield size={18} className="text-gray-400" />}
-          titel="Etwas melden" text="Fehler oder Verbesserungsvorschlag" />
-        {/* §153 Auch in der App erreichbar — nicht nur auf der Anmeldeseite.
-            Wer angemeldet ist, kommt sonst nie wieder daran vorbei. */}
-        <Zeile href="/datenschutz" extern
-          icon={<Shield size={18} className="text-gray-400" />}
-          titel="Datenschutz & Impressum" text="Wer verarbeitet was, und wer haftet" />
-      </Gruppe>
+      <details className="group rounded-2xl bg-white border border-gray-100 overflow-hidden">
+        <summary className="flex items-center justify-between px-4 py-3 cursor-pointer
+                            text-sm font-semibold text-navy list-none">
+          Mehr
+          <ChevronRight size={16}
+            className="text-gray-300 transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="border-t border-gray-100">
+          <Zeile href="/employee/workforce-score" icon={<TrendingUp size={18} className="text-gray-400" />}
+            titel="Meine Punkte" text="Workforce Score" />
+          {/* §139 Vorher führte das direkt in ein PDF. Die Auskunft ist aber
+              nur die eine Hälfte des Rechts — die andere ist die Löschung, und
+              die muss in der App erreichbar sein (Art. 17 DSGVO, Apple 5.1.1 v). */}
+          <Zeile href="/employee/daten" icon={<Shield size={18} className="text-gray-400" />}
+            titel="Meine Daten" text="Auskunft, Mitnehmen und Löschung beantragen" />
+          <Zeile href="/funde" icon={<Shield size={18} className="text-gray-400" />}
+            titel="Etwas melden" text="Fehler oder Verbesserungsvorschlag" />
+          {/* §153 Auch in der App erreichbar — nicht nur auf der Anmeldeseite.
+              Wer angemeldet ist, kommt sonst nie wieder daran vorbei. */}
+          <Zeile href="/datenschutz" extern
+            icon={<Shield size={18} className="text-gray-400" />}
+            titel="Datenschutz & Impressum" text="Wer verarbeitet was, und wer haftet" />
+        </div>
+      </details>
 
       <button
         onClick={() => logout()}

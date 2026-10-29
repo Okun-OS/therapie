@@ -170,12 +170,12 @@ export default function CompanyDashboard() {
                         <div className={`h-2 rounded-full ${isNeg ? 'bg-red-400' : 'bg-green-400'}`}
                           style={{ width: `${Math.min(Math.abs(emp.hoursBalance) * 6, 100)}%` }} />
                       </div>
-                      <button
-                        onClick={() => router.push(`/company/employees/${emp.id}`)}
+                      <Link
+                        href={`/company/employees/${emp.id}`}
                         className={`text-xs font-bold w-10 text-right flex-shrink-0 hover:underline ${isNeg ? 'text-red-500' : 'text-green-600'}`}
                       >
                         {emp.hoursBalance >= 0 ? '+' : ''}{emp.hoursBalance}h
-                      </button>
+                      </Link>
                     </div>
                   )
                 })}
@@ -192,7 +192,7 @@ export default function CompanyDashboard() {
                   <EmptyState icon={CheckCircle} title="Alle Anträge bearbeitet ✓" />
                 ) : (
                   pendingVacations.map(v => (
-                    <button key={v.id} onClick={() => router.push(`/company/employees/${v.employeeId}`)}
+                    <Link key={v.id} href={`/company/employees/${v.employeeId}`}
                       className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left">
                       <div className="w-8 h-8 rounded-full bg-navy flex items-center justify-center text-brand text-xs font-bold flex-shrink-0">
                         {v.employeeName.split(' ').map(n => n[0]).join('')}
@@ -202,7 +202,7 @@ export default function CompanyDashboard() {
                         <p className="text-xs text-gray-500">{v.locationName} · {v.days} Tage</p>
                       </div>
                       <Badge variant="warning">Offen</Badge>
-                    </button>
+                    </Link>
                   ))
                 )}
               </div>
@@ -245,7 +245,7 @@ export default function CompanyDashboard() {
                 const loc = LOCATIONS.find(l => l.id === emp.locationId)
                 const isNeg = emp.hoursBalance < 0
                 return (
-                  <button key={emp.id} onClick={() => router.push(`/company/employees/${emp.id}`)}
+                  <Link key={emp.id} href={`/company/employees/${emp.id}`}
                     className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4 hover:shadow-md hover:border-gray-200 transition-all text-left group">
                     <div className="w-11 h-11 rounded-2xl bg-navy flex items-center justify-center font-bold text-brand text-sm flex-shrink-0">
                       {emp.name.split(' ').map(n => n[0]).join('')}
@@ -268,7 +268,7 @@ export default function CompanyDashboard() {
                       </div>
                     </div>
                     <ChevronRight size={16} className="text-gray-300 group-hover:text-brand transition-colors flex-shrink-0" />
-                  </button>
+                  </Link>
                 )
               })}
               {filteredEmployees.length === 0 && (
@@ -317,7 +317,7 @@ export default function CompanyDashboard() {
                   {EMPLOYEES.filter(e => e.locationId === loc.id && e.role === 'employee').map(emp => {
                     const isNeg = emp.hoursBalance < 0
                     return (
-                      <button key={emp.id} onClick={() => router.push(`/company/employees/${emp.id}`)}
+                      <Link key={emp.id} href={`/company/employees/${emp.id}`}
                         className="w-full flex items-center gap-2 text-left hover:opacity-80 transition-opacity">
                         <span className="text-xs text-gray-500 w-20 truncate flex-shrink-0">{emp.name.split(' ')[0]}</span>
                         <div className="flex-1 bg-gray-100 rounded-full h-1.5">
@@ -327,7 +327,7 @@ export default function CompanyDashboard() {
                         <span className={`text-xs font-bold w-9 text-right flex-shrink-0 ${isNeg ? 'text-red-500' : 'text-green-600'}`}>
                           {emp.hoursBalance >= 0 ? '+' : ''}{emp.hoursBalance}h
                         </span>
-                      </button>
+                      </Link>
                     )
                   })}
                 </div>

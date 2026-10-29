@@ -155,10 +155,39 @@ function standardDailyMinutes(weeklyHours: number): number {
   return (weeklyHours / 5) * 60
 }
 
-function workdaysInMonth(year: number, month: number): number {
+/**
+ * Die Arbeitstage eines Monats — bei einem LAUFENDEN Monat nur bis heute.
+ *
+ * §243 DER FEHLER, DER DAHINTERSTAND
+ * Gezählt wurde immer der ganze Monat. Für einen Monat, der noch läuft, heißt
+ * das: Tage, an denen noch niemand hätte arbeiten können, stehen schon im
+ * Soll. Gemeldet wurde die Folge —
+ *
+ *     Soll 112h · Ist 6h 10min · Minusstunden 105h 50min
+ *
+ * am 29. Oktober, also kurz vor Monatsende. Am 1. eines Monats wären es
+ * sofort volle 112 Stunden Minus gewesen, ohne dass irgendetwas versäumt
+ * worden wäre. Eine Zahl, die einen Rückstand behauptet, bevor die Zeit
+ * vergangen ist, ist keine Auskunft, sondern ein Vorwurf.
+ *
+ * `heute` wird übergeben und nicht hier bestimmt: Sonst hinge die Rechnung an
+ * der Uhr des Servers und ließe sich nicht prüfen.
+ */
+function workdaysInMonth(year: number, month: number, heute?: Date): number {
   const daysInMonth = new Date(year, month, 0).getDate()
+  /*
+   * Nur der laufende Monat wird abgeschnitten. Ein vergangener Monat zählt
+   * voll — sonst stimmte der Monatsabschluss nicht mehr, und ein künftiger
+   * zählt ebenfalls voll, weil dort noch gar nichts erfasst sein kann und eine
+   * Null gegen eine Null keine Aussage ergäbe.
+   */
+  const stichtag = heute
+    && heute.getFullYear() === year && heute.getMonth() + 1 === month
+    ? Math.min(heute.getDate(), daysInMonth)
+    : daysInMonth
+
   let count = 0
-  for (let d = 1; d <= daysInMonth; d++) {
+  for (let d = 1; d <= stichtag; d++) {
     const day = new Date(year, month - 1, d).getDay()
     if (day !== 0 && day !== 6) count++
   }
@@ -250,7 +279,17 @@ export async function getAbsencesByEmployee(employeeId: string): Promise<Absence
   return rows.map(toAbsence)
 }
 
-export async function getHoursAccountSummary(employeeId: string, year: number, month: number, weeklyHours: number = 40): Promise<HoursAccountSummary> {
+export async function getHoursAccountSummary(
+  employeeId: string, year: number, month: number, weeklyHours: number = 40,
+  /**
+   * §243 Der Stichtag für einen laufenden Monat.
+   *
+   * Übergeben statt hier bestimmt, damit sich die Rechnung prüfen lässt und
+   * nicht an der Uhr des Servers hängt. Fehlt er, zählt der ganze Monat — das
+   * ist der richtige Fall für einen Monatsabschluss.
+   */
+  heute: Date = new Date(),
+): Promise<HoursAccountSummary> {
   const logs = await getTimeLogsByMonth(employeeId, year, month)
   // §206 Nicht noch einmal die Pause abziehen — siehe `src/lib/arbeitszeit.ts`.
   const istMinutes = nettoSumme(logs)
@@ -305,7 +344,8 @@ export async function getHoursAccountSummary(employeeId: string, year: number, m
   const vacationDays = vacationRequests.reduce((s, v) => s + v.days, 0)
 
   // Soll-Arbeitstage abzüglich Urlaub/Krankheit/sonstiger Abwesenheit (jetzt als reine Arbeitstage gezählt)
-  const sollDays = Math.max(0, workdaysInMonth(year, month) - vacationDays - sickDays - otherAbsenceDays)
+  const sollDays = Math.max(0,
+    workdaysInMonth(year, month, heute) - vacationDays - sickDays - otherAbsenceDays)
   /*
    * §227 Der Tagessatz kommt aus `ausfallstunden.ts`, nicht aus
    * `standardDailyMinutes(weeklyHours)`.
@@ -333,7 +373,20 @@ export async function getOrCreateMonthlyClosing(
   const existing = await prisma.monthlyClosing.findUnique({ where: { employeeId_year_month: { employeeId, year, month } } })
   if (existing) return toMonthlyClosing(existing)
 
-  const summary = await getHoursAccountSummary(employeeId, year, month, employeeInfo?.weeklyHours)
+  /*
+   * §243 Der Monatsabschluss rechnet den GANZEN Monat.
+   *
+   * Die Kürzung auf „bis heute" gilt der laufenden Anzeige: Dort wäre ein Soll
+   * für Tage, die noch nicht stattgefunden haben, ein Vorwurf ohne Anlass.
+   * Ein Abschluss sagt dagegen etwas über den vollen Monat aus, und sein Saldo
+   * wandert dauerhaft ins Stundenkonto. Würde er mitten im Monat mit gekürztem
+   * Soll festgeschrieben, fehlte der Rest für immer.
+   *
+   * Deshalb hier ein Stichtag, der sicher hinter dem Monatsende liegt.
+   */
+  const nachMonatsende = new Date(year, month, 1)
+  const summary = await getHoursAccountSummary(
+    employeeId, year, month, employeeInfo?.weeklyHours, nachMonatsende)
   // §206 Tage, nicht Buchungen: Wer vormittags und nachmittags stempelt,
   // hat einen Arbeitstag, nicht zwei.
   const arbeitstage = new Set(
