@@ -1,55 +1,32 @@
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
-import { verifySessionToken } from '@/lib/session'
+import Start from '../start/page'
 
 /**
- * §239 Die Startadresse der App — und zwar eine ohne Verkaufsseite darauf.
+ * §239 Die Startadresse der installierten App.
  *
  * DIE MELDUNG
  * „Wenn ich auf die App gehe, dann kommt immer erst diese Kack-Website. Das
- * darf aber nicht sein. Ich muss direkt, wenn ich angemeldet bin, auch auf die
- * Seite kommen und nicht erst die Website kommen. Das hatten wir ja schon mal."
+ * darf aber nicht sein."
  *
- * WARUM §201 DAS NICHT ERLEDIGT HAT
- * §201 hat die Weiterleitung vom Browser in die Middleware verlegt, damit die
- * Verkaufsseite nicht mehr aufblitzt. Nachgemessen tut sie das auch: `/` mit
- * gültiger Sitzung antwortet mit 307 auf `/employee`.
+ * §263 HIER STAND DERSELBE FEHLER WIE UNTER `/`
+ * Diese Seite war eine reine Weiterleitung: Sitzung lesen, `redirect()`,
+ * fertig. Kein Inhalt. Genau das hat §254 unter `/` als Ursache entlarvt —
+ * eine Weiterleitung ZEICHNET NICHTS, und ein iPhone zeigt beim Öffnen einer
+ * Adresse zuerst ein Standbild dessen, was dort zuletzt zu sehen war. Eine
+ * Adresse, auf der nie etwas gezeichnet wird, friert ihr altes Standbild für
+ * immer ein.
  *
- * Nur erreicht die App diese Weiterleitung gar nicht. Zwei Dinge wirken
- * zusammen:
+ * §254 hat das unter `/` behoben und diese Seite übersehen — dabei ist sie
+ * die Adresse, mit der die INSTALLIERTE App startet (`start_url` im
+ * Manifest). Wer die App vom Startbildschirm öffnet, kommt hier an und
+ * nirgends sonst.
  *
- *   1. Im Manifest stand `start_url: "/"` — die App fragte also immer nach der
- *      Adresse der Verkaufsseite.
- *   2. Der Dienst-Arbeiter hatte genau diese Seite VORGESPEICHERT
- *      (`STATIC_ASSETS` enthielt `'/'`). Beim Öffnen wird sie aus dem
- *      Zwischenspeicher ausgeliefert, sobald das Netz langsam ist — und dann
- *      läuft keine Middleware, sondern es erscheint die Verkaufsseite.
- *      Danach greift die Weiterleitung im Browser. Genau das sieht man:
- *      erst die Website, dann die App.
- *
- * Eine Weiterleitung kann man nicht zwischenspeichern — eine Seite schon.
- * Darum bekommt die App eine eigene Startadresse, auf der nie etwas anderes
- * steht als eine Weiterleitung. Der Dienst-Arbeiter speichert `/` nicht mehr
- * vor, und die Fassung der Zwischenspeicher wurde erhöht, damit die alte
- * gespeicherte Verkaufsseite auf allen Geräten verschwindet.
- *
- * WARUM HIER NICHTS ZU SEHEN IST
- * Es gibt keinen Inhalt — nur die Entscheidung, wohin. Wer keine gültige
- * Sitzung mitbringt, landet bei der Anmeldung; die Verkaufsseite bleibt unter
- * `/` für alle, die sie suchen.
+ * Jetzt steht hier dasselbe wie unter `/`: der dunkle Hintergrund der App mit
+ * dem Wappen, und von dort geht es weiter. Nicht als Abschrift, sondern als
+ * dieselbe Seite — zwei Abschriften derselben Startseite liefen auseinander,
+ * und auffallen würde das daran, dass es an einer der beiden Adressen wieder
+ * flackert.
  */
 
 export const dynamic = 'force-dynamic'
 
-const ZIELE: Record<string, string> = {
-  employee: '/employee',
-  admin: '/admin',
-  okun: '/okun',
-  company: '/company',
-}
-
-export default async function AppStart() {
-  const marke = (await cookies()).get('okun_session')?.value
-  const sitzung = verifySessionToken(marke)
-  redirect(sitzung ? ZIELE[sitzung.role] ?? '/login' : '/login')
-}
+export default Start

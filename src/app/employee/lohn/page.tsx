@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { Receipt, Download, FileText, Loader2 } from 'lucide-react'
 import { useLohnsiegel, Siegelkarte, Freigabeleiste } from '@/components/employee/Lohnfreigabe'
+import { DateiKnopf } from '@/components/ui/DateiKnopf'
 
 /**
  * §137 Meine Lohnabrechnungen.
@@ -125,12 +126,11 @@ export default function MeinLohn() {
             <p className="text-xs font-semibold text-gray-400 uppercase px-1">{jahr}</p>
             <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
               {abrechnungen.filter(a => a.jahr === jahr).map(a => (
-                <a
+                <DateiKnopf
                   key={a.id}
-                  href={`/api/files/${a.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
+                  adresse={`/api/files/${a.id}`}
+                  name={a.dateiname}
+                  className="flex w-full text-left items-center gap-3 px-4 py-3.5 active:bg-gray-50"
                 >
                   <FileText size={18} className="text-gray-300 shrink-0" />
                   <span className="min-w-0 flex-1">
@@ -142,7 +142,7 @@ export default function MeinLohn() {
                     </span>
                   </span>
                   <Download size={17} className="text-teal-600 shrink-0" />
-                </a>
+                </DateiKnopf>
               ))}
             </div>
           </div>
@@ -154,12 +154,11 @@ export default function MeinLohn() {
           <p className="text-xs font-semibold text-gray-400 uppercase px-1">Jahresübersichten</p>
           <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
             {jahresbelege.map(d => (
-              <a
+              <DateiKnopf
                 key={d.id}
-                href={`/api/files/${d.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-3 px-4 py-3.5 active:bg-gray-50"
+                adresse={`/api/files/${d.id}`}
+                name={d.dateiname}
+                className="flex w-full text-left items-center gap-3 px-4 py-3.5 active:bg-gray-50"
               >
                 <FileText size={18} className="text-gray-300 shrink-0" />
                 <span className="min-w-0 flex-1">
@@ -167,7 +166,7 @@ export default function MeinLohn() {
                   <span className="block text-xs text-gray-400">{groesse(d.groesse)}</span>
                 </span>
                 <Download size={17} className="text-teal-600 shrink-0" />
-              </a>
+              </DateiKnopf>
             ))}
           </div>
           <p className="text-[11px] text-gray-400 px-1">

@@ -443,6 +443,26 @@ for (const [wer, pfad] of [
  * weiter oben: Ohne Cookie kommt die Verkaufsseite. Das ist der Fall, der für
  * Google zählt, denn ein Suchroboter schickt keine Cookies.
  */
+/*
+ * §263 `/app` ist die Startadresse der INSTALLIERTEN App (`start_url` im
+ * Manifest). Wer sie vom Startbildschirm öffnet, kommt dort an — und dort
+ * stand bis zum 29.10.2026 dieselbe reine Weiterleitung, die §254 unter `/`
+ * als Ursache entlarvt hat. Eine Adresse, auf der nie etwas gezeichnet wird,
+ * friert ihr altes Standbild ein.
+ */
+const appStart = await (async () => {
+  const r = await fetch(`${BASIS}/app`, {
+    redirect: 'manual', headers: { cookie: await login('anna.fischer@rheinblick-reha.de') },
+  })
+  return { status: r.status, ziel: r.headers.get('location') ?? '', text: await r.text() }
+})()
+check('Auch /app leitet nicht weiter, sondern zeichnet den Startbildschirm',
+  appStart.status === 200 && appStart.ziel === '',
+  `HTTP ${appStart.status} → ${appStart.ziel}`)
+check('Und von dort geht es nach /employee weiter',
+  appStart.text.includes('/employee') && !/Beispielbetrieb/i.test(appStart.text),
+  `${appStart.text.length} Zeichen`)
+
 const erfunden = await startseite('okun_session=ausgedacht.unterschrift')
 check('Ein erfundener Keks führt NICHT in die Anwendung, sondern zur Anmeldung',
   erfunden.status === 200

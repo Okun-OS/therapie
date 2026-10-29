@@ -11,6 +11,8 @@ import { einreihen } from '@/lib/warteschlange'
 import { schlangeGeaendert } from '@/components/offline/Warteschlange'
 import { bildVerkleinern } from '@/lib/bild-verkleinern'
 import { direktHochladen } from '@/lib/datei-direkt'
+import { dateiSichern } from '@/lib/datei-oeffnen'
+import { Bildschau } from '@/components/ui/Bildschau'
 
 /**
  * §129 Nachrichten.
@@ -1227,22 +1229,49 @@ function Anhang({ raum, dateiId, typ, name, groesse, hell }: {
   hell: boolean
 }) {
   const adresse = `/api/chat/${raum}/datei?id=${dateiId}`
+  const [schau, setSchau] = useState(false)
   const mb = groesse ? (groesse / 1024 / 1024) : 0
   const grosse = mb >= 1 ? `${mb.toFixed(1)} MB`
     : groesse ? `${Math.max(1, Math.round(groesse / 1024))} KB` : ''
 
   if (typ.startsWith('image/')) {
+    /*
+     * §263 Ein Knopf, kein Verweis.
+     *
+     * Hier stand `<a href={adresse} target="_blank">`. Seit §260 antwortet
+     * diese Adresse mit einer Umleitung in den Objektspeicher — auf eine
+     * FREMDE Adresse —, und iOS holt eine installierte App dafür aus dem
+     * Vollbild in einen Browser mit Adresszeile. Gemeldet wurde genau das.
+     *
+     * Jetzt öffnet sich das Bild in der App, mit eigenem Zoom. Das `<img>`
+     * folgt der Umleitung von sich aus; es wird nirgendwohin navigiert.
+     */
     return (
-      <a href={adresse} target="_blank" rel="noreferrer" className="block mb-1">
-        {/* Kein `next/image`: Die Datei liegt hinter einer Anmeldung und
-            wird nicht vom Bildoptimierer geholt. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={adresse}
-          alt={name}
-          className="rounded-xl max-h-64 w-auto object-contain bg-black/5"
-        />
-      </a>
+      <>
+        <button
+          type="button"
+          onClick={() => setSchau(true)}
+          className="block mb-1"
+          aria-label={`${name} groß ansehen`}
+        >
+          {/* Kein `next/image`: Die Datei liegt hinter einer Anmeldung und
+              wird nicht vom Bildoptimierer geholt. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={adresse}
+            alt={name}
+            className="rounded-xl max-h-64 w-auto object-contain bg-black/5"
+          />
+        </button>
+        {schau && (
+          <Bildschau
+            adresse={adresse}
+            name={name}
+            onSchliessen={() => setSchau(false)}
+            onHerunterladen={() => { dateiSichern(adresse, name) }}
+          />
+        )}
+      </>
     )
   }
 
@@ -1261,12 +1290,16 @@ function Anhang({ raum, dateiId, typ, name, groesse, hell }: {
     )
   }
 
+  /*
+   * §263 Auch hier ein Knopf statt eines Verweises — aus demselben Grund wie
+   * beim Bild. Die Datei wird geholt und gesichert, ohne dass die App eine
+   * fremde Adresse ansteuert.
+   */
   return (
-    <a
-      href={adresse}
-      target="_blank"
-      rel="noreferrer"
-      className={`flex items-center gap-2 mb-1 rounded-xl px-2.5 py-2 ${
+    <button
+      type="button"
+      onClick={() => { dateiSichern(adresse, name) }}
+      className={`flex w-full items-center gap-2 mb-1 rounded-xl px-2.5 py-2 text-left ${
         hell ? 'bg-white/15 hover:bg-white/25' : 'bg-white hover:bg-gray-50 border border-gray-200'}`}
     >
       <FileText size={16} className="shrink-0 opacity-70" />
@@ -1275,6 +1308,6 @@ function Anhang({ raum, dateiId, typ, name, groesse, hell }: {
         {grosse && <span className="block text-[10px] opacity-60">{grosse}</span>}
       </span>
       <Download size={14} className="shrink-0 opacity-60" />
-    </a>
+    </button>
   )
 }

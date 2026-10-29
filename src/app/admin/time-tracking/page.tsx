@@ -18,6 +18,7 @@ import {
 import { ABWEICHUNG_TEXT, type Abweichungsart } from '@/lib/stempelgrund'
 import { formatDate, formatTime } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { DateiKnopf } from '@/components/ui/DateiKnopf'
 
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 
@@ -672,13 +673,15 @@ export default function AdminTimeTracking() {
                           {n.hochgeladenVonName ? ` · ${n.hochgeladenVonName}` : ''}
                         </p>
                       </div>
-                      <a
-                        href={`/api/files/${n.id}`} target="_blank" rel="noreferrer"
+                      <DateiKnopf
+                        adresse={`/api/files/${n.id}`}
+                        name={n.dateiname}
+
                         title="Bescheinigung öffnen"
                         className="p-1.5 rounded-lg text-gray-400 hover:text-brand hover:bg-gray-50"
                       >
                         <Download size={13} />
-                      </a>
+                      </DateiKnopf>
                     </div>
                   ))}
                 </div>

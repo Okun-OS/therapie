@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/Button'
 import { useToast } from '@/lib/toast-context'
 import { direktHochladen } from '@/lib/datei-direkt'
 import { bildVerkleinern } from '@/lib/bild-verkleinern'
+import { dateiSichern } from '@/lib/datei-oeffnen'
+import { Bildschau } from '@/components/ui/Bildschau'
 import { FileText, Upload, Trash2, Eye, EyeOff, Loader2, Image as ImageIcon, Download, Link2, Stethoscope } from 'lucide-react'
 
 interface Datei {
@@ -83,6 +85,8 @@ export function Personalakte({
   const [dateien, setDateien] = useState<Datei[]>([])
   const [laden, setLaden] = useState(true)
   const [laedtHoch, setLaedtHoch] = useState(false)
+  // §263 Welches Bild gerade groß zu sehen ist — oder keines.
+  const [schau, setSchau] = useState<{ adresse: string; name: string } | null>(null)
   const [kategorie, setKategorie] = useState(verwalten ? 'vertrag' : 'krankenschein')
   const dateiFeld = useRef<HTMLInputElement>(null)
 
@@ -136,6 +140,25 @@ export function Personalakte({
       showToast('Eingereicht — bitte unten noch die Fehlzeit auswählen', 'success')
     } else {
       showToast(verwalten ? 'Dokument abgelegt' : 'Eingereicht — die Leitung sieht es jetzt', 'success')
+    }
+  }
+
+  /**
+   * §263 Eine Unterlage öffnen — ohne die App zu verlassen.
+   *
+   * Ein Bild geht in die Bildschau: Dort lässt es sich vergrößern, und genau
+   * das war die Meldung („man kann das Bild nicht richtig schön vergrößern").
+   * Alles andere wird gesichert, ohne dass eine fremde Adresse angesteuert
+   * wird.
+   */
+  const oeffnen = async (d: Datei) => {
+    const adresse = `/api/files/${d.id}`
+    if (d.mimeType.startsWith('image/')) {
+      setSchau({ adresse, name: d.dateiname })
+      return
+    }
+    if (await dateiSichern(adresse, d.dateiname) === 'fehlgeschlagen') {
+      showToast('Die Datei ließ sich nicht öffnen.', 'error')
     }
   }
 
@@ -314,14 +337,22 @@ export function Personalakte({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <a
-                      href={`/api/files/${d.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm font-medium text-navy hover:text-brand truncate"
+                    {/*
+                      * §263 Knopf statt Verweis — siehe `Bildschau`.
+                      *
+                      * Seit §260 leitet `/api/files/<id>` in den
+                      * Objektspeicher um, also auf eine fremde Adresse. iOS
+                      * holt eine installierte App dafür aus dem Vollbild in
+                      * einen Browser mit Adresszeile. Ein Bild öffnet sich
+                      * jetzt in der App, alles andere wird gesichert.
+                      */}
+                    <button
+                      type="button"
+                      onClick={() => oeffnen(d)}
+                      className="text-sm font-medium text-navy hover:text-brand truncate text-left"
                     >
                       {d.dateiname}
-                    </a>
+                    </button>
                     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">
                       {KATEGORIE_TEXT[d.kategorie] ?? d.kategorie}
                     </span>
@@ -364,15 +395,14 @@ export function Personalakte({
                   )}
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <a
-                    href={`/api/files/${d.id}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => oeffnen(d)}
                     title="Öffnen"
                     className="p-1.5 rounded-lg text-gray-400 hover:text-brand hover:bg-gray-50 transition-colors"
                   >
                     <Download size={13} />
-                  </a>
+                  </button>
                   {verwalten && (
                     <>
                       <button
@@ -396,6 +426,15 @@ export function Personalakte({
             )
           })}
         </div>
+      )}
+
+      {schau && (
+        <Bildschau
+          adresse={schau.adresse}
+          name={schau.name}
+          onSchliessen={() => setSchau(null)}
+          onHerunterladen={() => { dateiSichern(schau.adresse, schau.name) }}
+        />
       )}
     </div>
   )

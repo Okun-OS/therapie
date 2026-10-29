@@ -5,6 +5,7 @@ import {
   Loader2, Plus, X, Paperclip, Check, HelpCircle, Bell, Undo2, Send,
   AlertTriangle, Users2,
 } from 'lucide-react'
+import { DateiKnopf } from '@/components/ui/DateiKnopf'
 
 /**
  * §149 Was der Betrieb angefordert hat — und was zurückkam.
@@ -334,12 +335,15 @@ export function Anforderungsliste() {
                           )}
                           <span className="whitespace-pre-line">{b.text}</span>
                           {b.dateiId && (
-                            <a href={`/api/files/${b.dateiId}`}
-                              target="_blank" rel="noreferrer"
+                            <DateiKnopf
+                              adresse={`/api/files/${b.dateiId}`}
+                              name={b.dateiname ?? 'Anhang'}
+
                               className="flex items-center gap-1.5 text-xs font-medium
-                                         text-teal-700 mt-1.5">
+                                         text-teal-700 mt-1.5"
+                            >
                               <Paperclip size={12} /> {b.dateiname} ansehen
-                            </a>
+                            </DateiKnopf>
                           )}
                         </li>
                       ))}

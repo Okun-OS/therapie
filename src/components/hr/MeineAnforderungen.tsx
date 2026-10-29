@@ -5,6 +5,7 @@ import {
   Loader2, Upload, Paperclip, CheckCircle2, MessageSquare, X, Send, Clock,
   AlertTriangle,
 } from 'lucide-react'
+import { DateiKnopf } from '@/components/ui/DateiKnopf'
 
 /**
  * §149 Was von mir gebraucht wird — die Sicht des Mitarbeiters.
@@ -182,12 +183,15 @@ export function MeineAnforderungen() {
                           )}
                           <span className="whitespace-pre-line">{b.text}</span>
                           {b.dateiId && (
-                            <a href={`/api/files/${b.dateiId}`}
-                              target="_blank" rel="noreferrer"
+                            <DateiKnopf
+                              adresse={`/api/files/${b.dateiId}`}
+                              name={b.dateiname ?? 'Anhang'}
+
                               className="flex items-center gap-1.5 text-xs font-medium
-                                         text-teal-700 mt-1.5">
+                                         text-teal-700 mt-1.5"
+                            >
                               <Paperclip size={12} /> {b.dateiname}
-                            </a>
+                            </DateiKnopf>
                           )}
                         </li>
                       ))}
