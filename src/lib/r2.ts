@@ -30,6 +30,26 @@ export interface R2Zugang {
   bucket: string
   schluessel: string
   geheimnis: string
+  /**
+   * §256 Der Rechtsraum des Eimers — leer oder `eu`.
+   *
+   * Cloudflare bietet an, einen Eimer auf einen Rechtsraum festzulegen. Für
+   * Personaldaten ist das keine Kür: In diesem Programm liegen
+   * Arbeitsunfähigkeitsbescheinigungen, und das sind Gesundheitsdaten nach
+   * Art. 9 DSGVO. Ein Eimer mit `eu` speichert und verarbeitet sie nur in der
+   * Europäischen Union.
+   *
+   * Solche Eimer sind NUR über eine andere Adresse erreichbar:
+   *
+   *     ohne Festlegung   <konto>.r2.cloudflarestorage.com
+   *     mit `eu`          <konto>.eu.r2.cloudflarestorage.com
+   *
+   * Hier stand die erste Form fest eingetragen. Wer einen EU-Eimer anlegt und
+   * die Zugangsdaten einträgt, hätte „SignatureDoesNotMatch" bekommen — eine
+   * Meldung, die mit der Ursache nichts zu tun hat und einen Nachmittag
+   * kostet.
+   */
+  bereich: string | null
 }
 
 /** Ist der Speicher überhaupt eingerichtet? */
@@ -43,7 +63,9 @@ export function zugang(): R2Zugang | null {
   const schluessel = process.env.R2_SCHLUESSEL
   const geheimnis = process.env.R2_GEHEIMNIS
   if (!kontoId || !bucket || !schluessel || !geheimnis) return null
-  return { kontoId, bucket, schluessel, geheimnis }
+  // §256 Leer lassen heißt „ohne Festlegung"; `eu` bindet an die EU.
+  const bereich = (process.env.R2_BEREICH || '').trim().toLowerCase() || null
+  return { kontoId, bucket, schluessel, geheimnis, bereich }
 }
 
 const REGION = 'auto'
@@ -81,7 +103,11 @@ function zeitstempel(jetzt: Date): { lang: string; tag: string } {
 }
 
 function wirt(z: R2Zugang): string {
-  return `${z.kontoId}.r2.cloudflarestorage.com`
+  // §256 Ein auf einen Rechtsraum festgelegter Eimer hat eine eigene Adresse
+  // und ist über die allgemeine NICHT erreichbar. Siehe `R2Zugang.bereich`.
+  return z.bereich
+    ? `${z.kontoId}.${z.bereich}.r2.cloudflarestorage.com`
+    : `${z.kontoId}.r2.cloudflarestorage.com`
 }
 
 /**

@@ -6641,3 +6641,39 @@ Anfrage, die mehr ankündigt, als sie sendet: vorher 500, jetzt 400.
 ### Nachweise
 
 **1342** Modultests, darunter die Einordnung abgebrochener Übertragungen.
+
+## Block §256 (29.10.) — Der Rechtsraum des Objektspeichers
+
+Vorbereitung für den Umzug der Dateien aus der Datenbank in einen
+Objektspeicher. Nachgesehen, bevor die Einrichtung beginnt — und dabei einen
+Fehler gefunden, der einen Nachmittag gekostet hätte.
+
+### Was aufgefallen ist
+
+Cloudflare bietet an, einen Eimer auf einen **Rechtsraum** festzulegen. Für
+dieses Programm ist das keine Kür: Hier liegen
+Arbeitsunfähigkeitsbescheinigungen, und das sind Gesundheitsdaten nach Art. 9
+DSGVO. Ein Eimer mit `eu` speichert und verarbeitet sie nur in der
+Europäischen Union.
+
+Solche Eimer sind **nur über eine andere Adresse erreichbar**:
+
+| | |
+|---|---|
+| ohne Festlegung | `<konto>.r2.cloudflarestorage.com` |
+| mit `eu` | `<konto>.eu.r2.cloudflarestorage.com` |
+
+In `r2.ts` stand die erste Form **fest eingetragen**. Wer einen EU-Eimer
+anlegt und die Zugangsdaten einträgt, hätte `SignatureDoesNotMatch` bekommen
+— eine Meldung, die mit der Ursache nichts zu tun hat.
+
+`R2_BEREICH` entscheidet das jetzt: leer heißt ohne Festlegung, `eu` bindet an
+die EU.
+
+### Nachweise
+
+**1347** Modultests, fünf davon neu für den Rechtsraum — darunter zwei
+Gegenproben: dass ein leerer Wert nicht zu `abc123..r2…` führt (ein Punkt zu
+viel wäre wieder ein Wirtsname, den es nicht gibt), und dass sich die Signatur
+mit der Adresse ändert. Täte sie das nicht, wäre die Umstellung wirkungslos
+und der Fehler bliebe unerklärlich.

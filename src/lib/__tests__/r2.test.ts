@@ -146,3 +146,57 @@ describe('§210 Was die Signatur still kaputt machen würde', () => {
     expect(namen).toEqual([...namen].sort())
   })
 })
+
+/**
+ * §256 Der Rechtsraum des Eimers.
+ *
+ * Für Personaldaten ist das keine Kür: Hier liegen
+ * Arbeitsunfähigkeitsbescheinigungen, also Gesundheitsdaten nach Art. 9
+ * DSGVO. Ein auf `eu` festgelegter Eimer ist NUR über eine eigene Adresse
+ * erreichbar — über die allgemeine antwortet Cloudflare mit
+ * „SignatureDoesNotMatch", und diese Meldung hat mit der Ursache nichts zu
+ * tun.
+ */
+describe('§256 Der Rechtsraum', () => {
+  it('ohne Festlegung die allgemeine Adresse', () => {
+    delete process.env.R2_BEREICH
+    const a = downloadAdresse('latest.yml', 300, JETZT)
+    expect(a).toContain('abc123.r2.cloudflarestorage.com')
+    expect(a).not.toContain('.eu.')
+  })
+
+  it('mit `eu` die Adresse der Europäischen Union', () => {
+    process.env.R2_BEREICH = 'eu'
+    expect(downloadAdresse('latest.yml', 300, JETZT))
+      .toContain('abc123.eu.r2.cloudflarestorage.com')
+  })
+
+  it('Groß- und Kleinschreibung und Leerraum stören nicht', () => {
+    process.env.R2_BEREICH = '  EU  '
+    expect(downloadAdresse('latest.yml', 300, JETZT))
+      .toContain('abc123.eu.r2.cloudflarestorage.com')
+  })
+
+  /*
+   * Die Gegenprobe: Ein leerer Wert darf nicht zu `abc123..r2…` führen —
+   * dieser Punkt zu viel wäre ein Wirtsname, den es nicht gibt, und der
+   * Fehler sähe wieder aus wie ein Signaturfehler.
+   */
+  it('ein leerer Wert zählt wie keiner', () => {
+    process.env.R2_BEREICH = '   '
+    const a = downloadAdresse('latest.yml', 300, JETZT)
+    expect(a).toContain('abc123.r2.cloudflarestorage.com')
+    expect(a).not.toContain('..')
+  })
+
+  it('und die Signatur ändert sich mit der Adresse', () => {
+    // Der Wirtsname geht in die Signatur ein. Täte er es nicht, wäre die
+    // Umstellung wirkungslos und der Fehler bliebe unerklärlich.
+    delete process.env.R2_BEREICH
+    const ohne = downloadAdresse('latest.yml', 300, JETZT)
+    process.env.R2_BEREICH = 'eu'
+    const mit = downloadAdresse('latest.yml', 300, JETZT)
+    const sig = (a: string | null) => new URL(a!).searchParams.get('X-Amz-Signature')
+    expect(sig(ohne)).not.toBe(sig(mit))
+  })
+})
