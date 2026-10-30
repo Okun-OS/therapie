@@ -1,0 +1,597 @@
+export type Role = 'employee' | 'admin' | 'company' | 'okun'
+export type ShiftType = 'early' | 'late' | 'mid' | 'night' | 'frei'
+export type RequestStatus = 'pending' | 'approved' | 'denied'
+export type SwapStatus = 'pending' | 'accepted' | 'declined' | 'cancelled'
+export type WishStatus = 'pending' | 'fulfilled' | 'not_fulfilled'
+export type WishImportance = 'normal' | 'important' | 'urgent'
+
+export interface Location {
+  id: string
+  customerId?: string
+  bereichId?: string
+  name: string
+  address: string
+  city: string
+  state: string
+  zip?: string
+  street?: string
+  houseNumber?: string
+  country?: string
+  bundesland?: string
+  employeeCount: number
+  adminId: string
+  active: boolean
+  // §127/§132 Die Dienstplanung wird je Kunde von Hand gebaut. Bis OKUN sie
+  // eingerichtet hat, bleibt sie gesperrt — und der Kunde sieht den Hinweis,
+  // statt einen schlechten Plan zu bekommen.
+  dienstplanungFrei?: boolean
+  dienstplanungHinweis?: string | null
+  /**
+   * §198 Das von OKUN für diesen Standort gebaute Regelpaket, falls es eines
+   * gibt. Die Oberfläche braucht es, um zu wissen, WER die Dienstzeiten
+   * anlegt — bei einem Regelpaket ist das OKUN, nicht der Kunde.
+   */
+  rulePackId?: string | null
+}
+
+export interface Bereich {
+  id: string
+  customerId: string
+  name: string
+  description?: string
+  createdAt: string
+}
+
+export interface Employee {
+  /**
+   * §238 Das gerechnete Urlaubskonto, vom Server mitgeliefert.
+   *
+   * Optional, weil nicht jede Antwort aus `/api/employees` kommt — und weil
+   * eine Kollegin es nach §108 nicht bekommt. Eine Maske, die es nicht hat,
+   * zeigt einen Strich und rechnet NICHT selbst nach.
+   */
+  urlaub?: import('./urlaubskonto').Urlaubskonto
+  id: string
+  customerId?: string
+  name: string
+  email: string
+  role: Role
+  locationId: string | undefined
+  weeklyHours: number
+  position: string
+  hoursBalance: number
+  vacationDaysTotal: number
+  vacationDaysUsed: number
+  preferences?: EmployeePreferences
+  active: boolean
+  joinedAt: string
+  hasChildren?: boolean
+  phone?: string
+  birthDate?: string
+  roleType?: string
+  employmentType?: string
+  gruppe?: string
+  bereich?: string
+  multiGroupCapable?: boolean
+  fixedLocations?: string
+  qualifications?: string[]
+  allowedTasks?: string[]
+  avatarUrl?: string
+  workDaysPerWeek?: number
+  workDays?: string[]
+  dailyTargetHours?: number
+  fixedOffDays?: string[]
+}
+
+export interface EmployeePreferences {
+  preferredShifts: ShiftType[]
+  unavailableDays: number[]
+  maxConsecutiveDays?: number
+  noEarlyAfterLate?: boolean
+  notes?: string
+}
+
+export interface Shift {
+  id: string
+  name: string
+  type: ShiftType
+  startTime: string
+  endTime: string
+  color: string
+  bgColor: string
+  minStaff: number
+  locationId: string
+  /**
+   * §233 Tätigkeiten, die dieser Dienst verlangt.
+   *
+   * Wer eine davon nicht zugeordnet hat, bekommt den Dienst nicht. Leer heißt
+   * „verlangt nichts" — und das ist die Voreinstellung, damit ein Betrieb, der
+   * die Seite „Aufgaben" nie benutzt hat, unverändert weiterplant.
+   */
+  requiredTasks?: string[]
+}
+
+export interface PlanningUnit {
+  id: string
+  locationId: string
+  name: string
+  type: string
+  description?: string
+  capacity?: number
+  address?: string
+  notes?: string
+  sortOrder: number
+  // §71 hierarchy: a "gruppe" points at its parent "etage" unit
+  parentId?: string | null
+  // §71 minimum staff per shift for this unit
+  minStaff?: number
+  /**
+   * §166 Bis zu diesem Tag gibt diese Gruppe niemanden an andere ab.
+   *
+   * §182 Diese beiden Felder standen in der Datenbank und im Rechendienst,
+   * aber nicht hier — und damit fielen sie auf dem ganzen Weg zwischen
+   * Oberfläche und Datenbank heraus. Die Maske schickte sie, die Schnittstelle
+   * reichte sie weiter, und `updatePlanningUnitById` schrieb sie nicht; beim
+   * Lesen kamen sie ebenfalls nicht zurück. Die Sperre ließ sich im Programm
+   * also setzen, ohne dass irgendetwas geschah. Aufgefallen ist es erst, als
+   * daneben die Zeiträume für „Gruppe unterwegs" gebaut wurden.
+   */
+  abgabeGesperrtBis?: string | null
+  abgabeGrund?: string | null
+  /** §182 Zeitraum, in dem diese Gruppe unterwegs ist (Fahrt, Projektwoche). */
+  unterwegsVon?: string | null
+  unterwegsBis?: string | null
+  unterwegsGrund?: string | null
+}
+
+export interface LocationPlanningRules {
+  locationId: string
+  maxWeeklyHours: number
+  restHours: number
+  maxConsecutiveDays: number
+  fridayLateMax: number
+  mondayEarlyMax: number
+  fridayEarlyMax: number
+  weekendMax: number
+  considerWishes: boolean
+  balanceHoursAccount: boolean
+  autoBreakDeduction: boolean
+  breakThresholdMinutes: number
+  breakDeductionMinutes: number
+  breakRulesExtractedAt?: string
+}
+
+export interface TaskBlock {
+  start: string
+  end: string
+  aufgabe: string
+}
+
+export interface ScheduleEntry {
+  id: string
+  employeeId: string
+  shiftId: string
+  date: string
+  locationId: string
+  status: 'planned' | 'confirmed'
+  note?: string
+  reason?: string
+  startTime?: string
+  endTime?: string
+  gruppe?: string
+  funktion?: string
+  isSubstitution?: boolean
+  substitutionFor?: string
+  /**
+   * §233 Tätigkeitsblöcke INNERHALB eines Dienstes — zwei Ansichten zeigen
+   * sie, und bis heute schreibt sie nichts.
+   *
+   * Nicht zu verwechseln mit `Shift.requiredTasks`: Das ist „dieser Dienst
+   * verlangt diese Tätigkeit", und danach plant der Rechendienst seit §233.
+   * Hier geht es um „von 9 bis 11 Dokumentation, danach Gruppe" — eine
+   * Aufteilung innerhalb der Schicht. Dafür müsste der Rechendienst die Zeit
+   * im Dienst auflösen; `solver.py` tut das nicht und liefert keine Blöcke.
+   *
+   * Die Anzeige bleibt stehen, weil sie bei leerer Liste nichts zeichnet und
+   * eine spätere Umsetzung sie wieder bräuchte. Wer hier Daten erwartet, findet
+   * keine — das steht hier, damit niemand danach sucht.
+   */
+  taskBlocks?: TaskBlock[]
+}
+
+export interface TimeLog {
+  id: string
+  employeeId: string
+  date: string
+  clockIn: string
+  clockInAt?: string
+  clockOut?: string
+  totalMinutes?: number
+  breakMinutes?: number
+  breakStart?: string
+  breakStartAt?: string
+  note?: string
+  locationId: string
+  /**
+   * §204 Was beim Stempeln angegeben wurde.
+   *
+   * Diese drei Felder gab es seit §203 in der Datenbank — im Mapper fehlten
+   * sie, und damit war die ganze Nachfrage write-only: geschrieben, aber von
+   * niemandem lesbar. Die Leitung sah weiterhin eine Zahl ohne Erklärung,
+   * also genau das, was §203 abstellen sollte.
+   *
+   * Gefunden hat es eine Gegenprobe, die eigentlich etwas anderes zeigen
+   * wollte — dass beim Zurückziehen eines Antrags die Spur am Zeiteintrag
+   * bleibt. Sie blieb, nur sehen konnte sie niemand.
+   */
+  /** Warum ohne geplanten Dienst gestempelt wurde. */
+  grundKommen?: string
+  /** Warum die gearbeitete Zeit nicht zum Plan passt. */
+  grundGehen?: string
+  /** `ohne-dienst` | `frueher` | `laenger` */
+  abweichung?: string
+}
+
+// ─── Überstunden ──────────────────────────────────────────────────────────────
+
+export type OvertimeRequestStatus = 'pending' | 'approved' | 'denied' | 'partial'
+
+export const OVERTIME_REASONS = ['Personalmangel', 'Übergabe dauerte länger', 'Dokumentation', 'Elterngespräch', 'Notfall', 'Vertretung', 'Sonstiges'] as const
+
+export interface OvertimeRequest {
+  id: string
+  employeeId: string
+  employeeName: string
+  locationId: string
+  date: string
+  timeLogId: string
+  overtimeMinutes: number
+  reason: string
+  comment?: string
+  status: OvertimeRequestStatus
+  approvedMinutes?: number
+  adminComment?: string
+  respondedAt?: string
+  respondedBy?: string
+  submittedAt: string
+}
+
+// ─── Krankheiten und Abwesenheiten ────────────────────────────────────────────
+
+export type AbsenceType = 'krankheit' | 'fortbildung' | 'sonstige' | 'unentschuldigt' | 'entschuldigt'
+export type AbsenceVerificationStatus = 'offen' | 'geprueft' | 'abgelehnt'
+
+export interface Absence {
+  id: string
+  employeeId: string
+  employeeName: string
+  locationId: string
+  type: AbsenceType
+  startDate: string
+  endDate: string
+  days: number
+  note?: string
+  proofProvided: boolean
+  verificationStatus: AbsenceVerificationStatus
+  verifiedBy?: string
+  verifiedAt?: string
+  submittedAt: string
+  // §130 Wie es um die Arbeitsunfaehigkeitsbescheinigung steht. Wird vom
+  // Server aus den verknuepften Dateien abgeleitet, nicht von Hand gepflegt.
+  nachweisLage?: NachweisLageDaten
+}
+
+/** §130 Siehe src/lib/krankmeldung.ts — hier nur die Form fuer die Oberflaeche. */
+export interface NachweisLageDaten {
+  pflicht: { pflichtig: boolean; spaetestensAm: string | null; begruendung: string }
+  anzahlNachweise: number
+  ohneZeitraum: number
+  luecken: { von: string; bis: string; tage: number }[]
+  deckung: 'vollstaendig' | 'teilweise' | 'keine' | 'nicht_noetig'
+  text: string
+}
+
+// ─── Stundenkonto / Monatsabschluss ───────────────────────────────────────────
+
+export interface HoursAccountSummary {
+  employeeId: string
+  year: number
+  month: number
+  sollMinutes: number
+  istMinutes: number
+  breakMinutes: number
+  overtimeMinutes: number
+  undertimeMinutes: number
+  vacationDays: number
+  sickDays: number
+  otherAbsenceDays: number
+}
+
+export type MonthlyClosingStatus = 'offen' | 'geprueft' | 'freigegeben'
+
+export interface MonthlyClosing {
+  id: string
+  employeeId: string
+  employeeName: string
+  locationId: string
+  year: number
+  month: number
+  status: MonthlyClosingStatus
+  arbeitstage: number
+  sollMinutes: number
+  istMinutes: number
+  breakMinutes: number
+  overtimeMinutes: number
+  undertimeMinutes: number
+  vacationDays: number
+  sickDays: number
+  otherAbsenceDays: number
+  approvalsCount: number
+  comments: { author: string; text: string; at: string }[]
+  reviewedBy?: string
+  reviewedAt?: string
+  releasedBy?: string
+  releasedAt?: string
+}
+
+export interface VacationRequest {
+  id: string
+  employeeId: string
+  employeeName: string
+  locationId: string
+  locationName: string
+  startDate: string
+  endDate: string
+  days: number
+  reason?: string
+  status: RequestStatus
+  submittedAt: string
+  respondedAt?: string
+  respondedBy?: string
+}
+
+// ─── Shift Swap ─────────────────────────────────────────────────────────────
+
+export interface SwapRequest {
+  id: string
+  requesterId: string
+  requesterName: string
+  requesterDate: string    // ISO date they want to give away
+  requesterShiftId: string
+  targetEmployeeId: string
+  targetEmployeeName: string
+  targetDate: string       // ISO date they want to receive
+  targetShiftId: string
+  message?: string
+  status: SwapStatus
+  submittedAt: string      // ISO timestamp
+  respondedAt?: string
+  locationId: string
+}
+
+// ─── Wish Submissions (Dienstwünsche) ────────────────────────────────────────
+
+export interface WishSubmission {
+  id: string
+  employeeId: string
+  employeeName: string
+  locationId: string
+  date: string             // ISO date for the desired day
+  preferredShiftType: ShiftType
+  reason?: string
+  importance: WishImportance
+  submittedAt: string      // ISO timestamp – used for tie-breaking
+  status: WishStatus
+  conflictInfo?: {
+    conflictedWith: string[]  // names of employees who also requested this slot
+    reason: string            // human-readable resolution explanation
+    winnerId: string
+    // §73 extras for the employee conflict actions (contact / swap request)
+    date?: string
+    shiftId?: string
+    shiftName?: string
+    notifiedAt?: string
+  }
+}
+
+// ─── Schließzeiten / Pflichturlaub ───────────────────────────────────────────
+
+export interface ClosurePeriod {
+  id: string
+  locationId: string
+  name: string
+  startDate: string
+  endDate: string
+  createdBy: string
+  createdAt: string
+}
+
+// ─── Fairness ────────────────────────────────────────────────────────────────
+
+export interface ShiftFairnessData {
+  employeeId: string
+  employeeName: string
+  weeklyHours: number
+  // Absolute counts over the observed period
+  earlyCnt: number
+  lateCnt: number
+  midCnt: number
+  // Day-of-week distribution  (0=Sun … 6=Sat)
+  dayOfWeekCounts: number[]
+  fridayEarlyCnt: number
+  fridayLateCnt: number
+  mondayEarlyCnt: number
+  mondayLateCnt: number
+  weekendCnt: number
+  totalShiftsCnt: number
+  // Belastungsmanagement: längste Folge aufeinanderfolgender Arbeitstage im Betrachtungszeitraum
+  maxConsecutiveDays: number
+  // Anzahl übernommener Vertretungen im Betrachtungszeitraum (nur über getFairnessInsights befüllt, sonst 0)
+  substitutionCoverageCnt: number
+  // Derived: debt per type (negative = owed more of this type)
+  earlyDebt: number
+  lateDebt: number
+  midDebt: number
+  // Overall fairness score 0–100 (100 = perfectly balanced)
+  fairnessScore: number
+  issues: string[]
+}
+
+export interface User {
+  id: string
+  name: string
+  email: string
+  role: Role
+  employeeId?: string
+  locationId?: string
+  customerId?: string
+  customerName?: string
+  position?: string
+  avatarUrl?: string
+}
+
+export interface DashboardStats {
+  totalEmployees: number
+  presentToday: number
+  openVacationRequests: number
+  hoursThisMonth: number
+  understaffedShifts: number
+}
+
+// ─── Vacation Planning ────────────────────────────────────────────────────────
+
+/*
+ * §231 `VacationPlanPreference` ist entfallen — siehe `prisma/schema.prisma`.
+ * Die Jahresplanung arbeitet mit den Urlaubsanträgen und einer Frist.
+ */
+
+export interface VacationRules {
+  facilityDescription: string
+  maxConcurrent: number
+  customRules: string[]
+  // Ferienregelung für Mitarbeiter mit schulpflichtigen Kindern (facility-weit, nicht pro Mitarbeiter)
+  schoolHolidayPriorityMode: 'always' | 'slight' | 'none'
+  /** §231 Bis wann Anträge für die Jahresplanung da sein müssen (`YYYY-MM-DD`). */
+  antragsfrist?: string | null
+  /** §231 Für welches Jahr diese Frist gilt. */
+  antragsfristJahr?: number | null
+}
+
+export interface SchoolHoliday {
+  name: string
+  startDate: string
+  endDate: string
+  state: string
+}
+
+export interface VacationPlanSlot {
+  startDate: string
+  endDate: string
+  days: number
+}
+
+export interface VacationPlanEntry {
+  employeeId: string
+  employeeName: string
+  slots: VacationPlanSlot[]
+  note?: string
+}
+
+export interface VacationPlanConflict {
+  employeeNames: string[]
+  reasoning: string
+}
+
+export interface VacationPlanSummary {
+  fulfillmentPercent: number
+  fulfilledCount: number
+  totalCount: number
+}
+
+export interface VacationPlan {
+  plan: VacationPlanEntry[]
+  reasoning: string
+  warnings: string[]
+  summary?: VacationPlanSummary
+  conflicts?: VacationPlanConflict[]
+}
+
+export interface VacationRecommendation {
+  stance: 'empfehlung_genehmigen' | 'empfehlung_pruefen' | 'empfehlung_ablehnen'
+  reasoning: string
+}
+
+// ─── OKUN Plattformverwaltung ─────────────────────────────────────────────────
+
+export type CustomerStatus = 'trial' | 'active' | 'suspended' | 'cancelled'
+export type LicensePlan = 'starter' | 'professional' | 'enterprise'
+
+export interface Customer {
+  id: string
+  name: string
+  contactName: string
+  contactEmail: string
+  status: CustomerStatus
+  plan: LicensePlan
+  seatsLicensed: number
+  seatsUsed: number
+  locationsCount: number
+  createdAt: string
+  renewalDate?: string
+  notes?: string
+  roles?: string[]
+  legalContractDate?: string
+  legalContractNotes?: string
+}
+
+export interface TestAccount {
+  id: string
+  customerName: string
+  contactEmail: string
+  createdAt: string
+  expiresAt: string
+  converted: boolean
+}
+
+export interface Invitation {
+  id: string
+  email: string
+  role: Role
+  customerName?: string
+  status: 'pending' | 'accepted' | 'expired'
+  sentAt: string
+}
+
+export interface SupportAccessLogEntry {
+  id: string
+  customerName: string
+  requestedBy: string
+  reason: string
+  grantedAt: string
+  revokedAt?: string
+}
+
+export interface OrgSettings {
+  organizationName: string
+  defaultWeeklyHours: number
+  defaultVacationDaysPerYear: number
+  autoApproveVacationUnderDays: number
+  notificationEmail: string
+  // §113/§114 Angaben des Arbeitgebers: Anschrift für die Entgeltabrechnung,
+  // Bankverbindung für die SEPA-Datei, Beraterdaten für den DATEV-Export.
+  strasse?: string | null
+  plz?: string | null
+  ort?: string | null
+  betriebsnummer?: string | null
+  steuernummer?: string | null
+  iban?: string | null
+  bic?: string | null
+  kontoinhaber?: string | null
+  datevBeraternummer?: string | null
+  datevMandantennummer?: string | null
+  // §130 Ab dem wievielten Kalendertag der Betrieb die
+  // Arbeitsunfaehigkeitsbescheinigung verlangt. Leer = die gesetzlichen vier.
+  auNachweisAbTag?: number | null
+  /** §147 Ob die Standortleitung BEM-Vorgänge sehen darf. Standard: nein. */
+  bemSichtbarLeitung?: boolean
+}
