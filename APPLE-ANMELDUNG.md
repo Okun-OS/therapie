@@ -65,13 +65,21 @@ Organisationen ausdrücklich.
 
 ### 0.3 Welche Apple-ID überhaupt
 
-**Eine Apple-ID mit einer Adresse auf `okun-systems.com`** — zum Beispiel
-`felix.okun@okun-systems.com` oder `apple@okun-systems.com`. Apple schreibt:
-*„Your work email address needs to be associated with your organization's
-domain name."*
+**Apple unterscheidet hier zwei Dinge, und ich hatte sie zuerst in einen Topf
+geworfen.** Noch einmal nachgelesen am 30.10.2026 auf der Anmeldeseite:
 
-Eine private Adresse (gmail, icloud) geht zwar technisch, führt aber zu
-Rückfragen und Verzögerung.
+| | Wortlaut bei Apple | Heißt |
+|---|---|---|
+| **Apple-ID** | *„We **recommend** that your Apple Account uses your email address from your organization."* | Empfehlung |
+| **Arbeits-E-Mail im Formular** | *„Your work email address **needs to be** associated with your organization's domain name."* | Pflicht |
+
+Also: **Die Apple-ID darf Ihre eigene bleiben.** Pflicht ist nur, dass die
+Arbeits-E-Mail, die Sie IM ANMELDEFORMULAR eintragen, auf
+`okun-systems.com` endet.
+
+Eine Firmenadresse auch als Apple-ID zu nehmen, bleibt der sauberere Weg —
+der Zugang hängt dann nicht an einem privaten Gerät. Aber es ist eine
+Abwägung und keine Vorschrift, und die Abwägung gehört dem Eigentümer.
 
 > **Nicht die persönliche Apple-ID vom iPhone nehmen.** Diese ID wird der
 > *Account Holder* des Firmenkontos: Sie besitzt die App, die Verträge und
@@ -279,8 +287,12 @@ Store-Texte und Bildschirmfotos ein. Beides liegt schon bereit:
 
 ## Was NICHT nötig ist
 
-- **Kein Mac.** Weder für die Anmeldung noch später für den Bau — dafür
-  richte ich einen macOS-Läufer bei GitHub Actions ein.
+- **Kein Mac** — für die Anmeldung ohnehin nicht, und für den Bau auch nicht:
+  dafür richte ich einen macOS-Läufer bei GitHub Actions ein.
+
+  > Nachtrag vom 30.10.2026: Ein Mac ist vorhanden. Damit wird der Läufer zur
+  > Bequemlichkeit statt zur Notwendigkeit — er lohnt trotzdem, weil er bei
+  > jeder Änderung von selbst baut und niemand daran denken muss.
 - **Keine fertige App.** Die Anmeldung läuft unabhängig davon.
 - **Keine Umsatzsteuer-ID.** Sie wird im Impressum noch nachgereicht; Apple
   fragt im Anmeldeverfahren nicht danach. Für die Steuerdaten in App Store
