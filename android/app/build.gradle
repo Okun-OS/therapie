@@ -1,5 +1,38 @@
 apply plugin: 'com.android.application'
 
+/*
+ * §273 Der Upload-Schlüssel — und warum er nicht hier steht.
+ *
+ * Google Play nimmt nur unterschriebene Pakete an. Der Schlüssel dafür darf
+ * nicht ins Projekt: Wer ihn hat, kann Aktualisierungen von OKUN Workforce
+ * unterschreiben und sie an jedes Telefon ausliefern, auf dem die App schon
+ * installiert ist.
+ *
+ * Gelesen wird darum aus zwei Quellen, in dieser Reihenfolge:
+ *   1. `android/okun-signatur.properties` — liegt in .gitignore, für den Bau
+ *      von Hand.
+ *   2. Umgebungsvariablen `OKUN_KEYSTORE_PFAD`, `OKUN_KEYSTORE_KENNWORT`,
+ *      `OKUN_SCHLUESSEL_NAME`, `OKUN_SCHLUESSEL_KENNWORT` — für den Bau auf
+ *      einem Server, wo die Werte aus dem Geheimnis-Speicher kommen.
+ *
+ * Fehlt beides, baut `assembleRelease` weiterhin — nur eben unsigniert. Das
+ * ist Absicht: Ein Bau, der ohne Schlüssel abbricht, lässt sich nicht prüfen,
+ * und ein Bau, der sich stillschweigend selbst unterschreibt, täuscht.
+ */
+def signaturWerte = new Properties()
+def signaturDatei = rootProject.file('okun-signatur.properties')
+if (signaturDatei.exists()) {
+    signaturDatei.withInputStream { signaturWerte.load(it) }
+}
+def signaturWert = { String name, String umgebung ->
+    signaturWerte.getProperty(name) ?: System.getenv(umgebung)
+}
+def keystorePfad = signaturWert('keystorePfad', 'OKUN_KEYSTORE_PFAD')
+def hatSchluessel = keystorePfad != null && rootProject.file(keystorePfad).exists()
+if (!hatSchluessel) {
+    logger.lifecycle('OKUN: kein Upload-Schlüssel gefunden — Freigabe-Pakete bleiben unsigniert.')
+}
+
 android {
     namespace = "de.okun.workforce"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,10 +49,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    if (hatSchluessel) {
+        signingConfigs {
+            freigabe {
+                storeFile rootProject.file(keystorePfad)
+                storePassword signaturWert('keystoreKennwort', 'OKUN_KEYSTORE_KENNWORT')
+                keyAlias signaturWert('schluesselName', 'OKUN_SCHLUESSEL_NAME')
+                keyPassword signaturWert('schluesselKennwort', 'OKUN_SCHLUESSEL_KENNWORT')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hatSchluessel) {
+                signingConfig signingConfigs.freigabe
+            }
         }
     }
 }

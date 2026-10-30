@@ -53,9 +53,15 @@ captures/
 .idea/navEditor.xml
 
 # Keystore files
-# Uncomment the following lines if you do not want to check your keystore files in.
-#*.jks
-#*.keystore
+# §273 Diese Zeilen standen hier auskommentiert — die Vorlage von Google
+# empfiehlt sie, schaltet sie aber nicht ein. Ein Upload-Schlüssel, der in
+# dieses Verzeichnis gelegt wird, wäre mitcommittet worden; wer ihn dann aus
+# der Git-Historie liest, kann Aktualisierungen der App unterschreiben.
+*.jks
+*.keystore
+
+# Und die Datei, in der das Kennwort dazu steht.
+okun-signatur.properties
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild

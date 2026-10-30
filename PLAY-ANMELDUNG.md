@@ -158,7 +158,8 @@ danach in drei Richtungen:
 
 1. **`google-services.json`** aus Firebase, sobald das Projekt steht
    (`FIREBASE.md`). Ohne sie baut die App zwar, klingelt aber nicht.
-2. **Den Upload-Schlüssel.** Den erzeuge ich beim Bau.
+2. **Den Upload-Schlüssel.** ✅ Erzeugt am 30.10.2026 — Einzelheiten,
+   Fingerabdruck und wo das Kennwort liegt: `ANDROID-BAU.md`.
 
    > **§272 Hier stand eine schärfere Warnung, und sie gilt so nicht mehr.**
    > Beim Anlegen der App akzeptiert man die **Play App-Signatur** — damit
@@ -169,8 +170,10 @@ danach in drei Richtungen:
    > App hätte nie wieder aktualisiert werden können. Für Android App Bundles
    > (`.aab`) ist die Play-Signatur ohnehin Pflicht — und ein `.aab` ist das
    > einzige Format, das Google für neue Apps annimmt.
-3. **Das `.aab`-Paket** zum Hochladen. Android baue ich hier auf dem Server —
-   dafür braucht niemand einen Rechner.
+3. **Das `.aab`-Paket** zum Hochladen. ✅ Gebaut und unterschrieben am
+   30.10.2026 auf diesem Server — dafür brauchte niemand einen Rechner.
+   `de.okun.workforce`, Version 1 (1.0), ~7 MB. Anleitung zum Neubauen:
+   `ANDROID-BAU.md`.
 4. **Den Store-Eintrag**: Texte aus `STORE-TEXTE.md`, Bildschirmfotos aus
    `store/android/`, dazu das Pflicht-Titelbild 1024×500.
 5. **Die Datensicherheits-Angaben** (*Data safety*) — das Gegenstück zu

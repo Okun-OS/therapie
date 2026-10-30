@@ -1,0 +1,30 @@
+// Maven Central antwortet aus dieser Umgebung mit 429 (Too Many Requests) —
+// die IP ist geteilt. Google betreibt einen vollstaendigen Spiegel von Maven
+// Central ohne diese Drosselung. Dieses Init-Skript tauscht die Quelle aus,
+// ohne eine Zeile im Projekt zu aendern: `./gradlew -I spiegel.gradle ...`.
+
+def SPIEGEL = 'https://maven-central.storage-download.googleapis.com/maven2'
+def GEDROSSELT = ['repo.maven.apache.org', 'repo1.maven.org', 'jcenter.bintray.com']
+
+def istGedrosselt = { repo ->
+  repo instanceof org.gradle.api.artifacts.repositories.MavenArtifactRepository &&
+    GEDROSSELT.any { repo.url.toString().contains(it) }
+}
+
+settingsEvaluated { settings ->
+  settings.pluginManagement.repositories {
+    maven { url SPIEGEL }
+    all { repo -> if (istGedrosselt(repo)) remove repo }
+  }
+}
+
+allprojects {
+  buildscript.repositories {
+    maven { url SPIEGEL }
+    all { repo -> if (istGedrosselt(repo)) remove repo }
+  }
+  repositories {
+    maven { url SPIEGEL }
+    all { repo -> if (istGedrosselt(repo)) remove repo }
+  }
+}

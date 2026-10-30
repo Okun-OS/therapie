@@ -181,7 +181,15 @@ export async function pushAnmelden(): Promise<PushErgebnis> {
       }
       PushNotifications.addListener('registration', t => schluss(t.value))
       PushNotifications.addListener('registrationError', () => schluss(null))
-      PushNotifications.register()
+      /*
+       * §273 Das `catch` ist nicht Zierde. Fehlt auf Android die
+       * `google-services.json`, wirft der Dienst auf der Java-Seite
+       * („Default FirebaseApp is not initialized") — und zwar beim Aufruf,
+       * nicht als `registrationError`. Ohne das `catch` wäre das eine
+       * unbehandelte Ablehnung, und der Mitarbeiter stünde die vollen 15
+       * Sekunden vor einem Knopf, der längst entschieden ist.
+       */
+      PushNotifications.register().catch(() => schluss(null))
       setTimeout(() => schluss(null), 15000)
     })
 
