@@ -79,6 +79,57 @@ Rückfragen und Verzögerung.
 > Gerät hängen — und sie muss bleiben, wenn später jemand anderes die App
 > betreut.
 
+### 0.4 „Dann habe ich ja nicht meinen eigenen Entwickler-Zugang"
+
+Doch. Das ist der häufigste Einwand gegen 0.3, und er beruht auf einem
+Missverständnis, das die Anleitung oben nicht ausgeräumt hat. Drei Dinge,
+alle am 30.10.2026 auf Apples eigenen Seiten nachgesehen:
+
+**1. Die Firmenadresse gehört Ihnen.**
+`apple@okun-systems.com` ist kein fremder Zugang — es ist ein Postfach, das
+Sie einrichten und kontrollieren. „Der Firma gehörend" heißt nicht „jemand
+anderem gehörend", sondern: Es hängt nicht an einem privaten Gerät und nicht
+an einem privaten Vertrag. Geht das iPhone verloren oder wechselt die private
+Apple-ID, bleibt der Zugang zur App bestehen.
+
+**2. Ihre private Apple-ID kann trotzdem im Konto arbeiten.**
+Ein Organisationskonto hat ein Team. Jedes Mitglied meldet sich mit SEINER
+EIGENEN Apple-ID an — verwaltet wird das in App Store Connect unter *Users
+and Access*. Die Rollen:
+
+| Rolle | Darf |
+|---|---|
+| **Account Holder** | alles; nimmt Verträge an, verlängert die Mitgliedschaft, gibt Bankdaten frei |
+| **Admin** | Menschen und Zugriffe verwalten, Apps verwalten |
+| **App Manager** | Apps in App Store Connect verwalten |
+| **Developer** | Zertifikate und Profile, also der technische Teil |
+| **Marketing / Finance** | Store-Auftritt beziehungsweise Abrechnungen |
+
+Sie können sich also mit Ihrer privaten Apple-ID als **Admin** ins Team
+holen und vom iPhone aus arbeiten, ohne sich dort abzumelden. Der Account
+Holder ist die Firmenadresse; gearbeitet wird mit der ID, die Sie ohnehin
+benutzen.
+
+**3. Die Entscheidung ist nicht endgültig.**
+Die Rolle des Account Holders lässt sich später an ein anderes Teammitglied
+übergeben — Apple hat dafür ein eigenes Verfahren (*Membership details →
+Update your information → Transfer Account Holder role*). Voraussetzung: Die
+Person ist schon im Team, hat Zwei-Faktor-Anmeldung an und darf die Firma
+rechtlich binden.
+
+**Und warum dann überhaupt eine Firmenadresse?**
+Weil Apple es auf der Anmeldeseite verlangt: *„Your work email address needs
+to be associated with your organization's domain name."* Eine private Adresse
+führt zu Rückfragen und Verzögerung — und das ist der eine Teil des
+Verfahrens, bei dem Warten nichts nützt.
+
+> **Falls Sie schon einen Entwickler-Zugang als Einzelperson haben:** Dann
+> sagen Sie es mir, bevor Sie anfangen. Ob sich ein bestehender Zugang in ein
+> Firmenkonto umwandeln lässt, habe ich NICHT geprüft — Apples Seite dazu war
+> am 30.10.2026 nicht erreichbar, und ich schreibe hier nichts hin, was ich
+> nicht nachgesehen habe. Es gibt zwei mögliche Wege (umwandeln oder neu
+> anmelden und die Apps übertragen), und welcher stimmt, sehe ich dann nach.
+
 ---
 
 ## Schritt 1 — Die D-U-N-S-Nummer gegen Apples Datenbestand prüfen
