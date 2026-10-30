@@ -1882,3 +1882,92 @@ def test_standortwerte_ohne_paket_gelten_sie():
     plan = Plan(rechne(m))
     zwei = sum(1 for t in TAGE if plan.je_etage(t, "frueh")[UNTEN] >= 2)
     assert zwei >= len(TAGE) // 2, f"nur an {zwei} Tagen zwei Frühdienste unten"
+
+
+# ── §268/§269 Der Freitag rotiert ───────────────────────────────────────────
+#
+# Angesagt vom Eigentümer am 30.10.2026:
+#
+#   „Ich möchte, dass da die Spätdienste am Freitag sowie die Frühdienste am
+#    Freitag durchrotieren. Dass keiner einen Frühdienst und Spätdienst am
+#    Freitag zweimal in Folge haben darf."
+#   „Nee, nicht Spätdienst nur einmal in 4 Wochen, sondern Freitag Spätdienst
+#    nur einmal in 4 Wochen."
+#
+# Geprüft wird hier am GELÖSTEN Plan und nicht am Baustein. Dass die Regel
+# rechnet, zeigt `test_rulepacks.py`; dass sie im fertigen Plan ankommt, kann
+# nur der fertige Plan zeigen — und genau dazwischen liegt der teuerste
+# Fehler, den ein Regelpaket haben kann.
+
+FREITAGE = [t for t in TAGE if date.fromisoformat(t).weekday() == 4]
+
+
+def _wer_hat_am(p: Plan, tag: str, typ: str) -> set[str]:
+    return {
+        name for name in ID_VON
+        if p.dienst(name, tag) and TYP[p.dienst(name, tag)] == typ
+    }
+
+
+@pytest.mark.parametrize("typ", ["frueh", "spaet"])
+def test_freitag_niemand_zweimal_in_folge(leer, typ):
+    """
+    Die beiden Freitage im Plan liegen sieben Tage auseinander. Niemand steht
+    an beiden im selben Dienst.
+    """
+    assert len(FREITAGE) == 2, f"Der Aufbau soll zwei Freitage haben, hat {FREITAGE}"
+    erster = _wer_hat_am(leer, FREITAGE[0], typ)
+    zweiter = _wer_hat_am(leer, FREITAGE[1], typ)
+    doppelt = erster & zweiter
+    assert not doppelt, (
+        f"{', '.join(sorted(doppelt))} hat den {typ}dienst an beiden Freitagen "
+        f"({FREITAGE[0]} und {FREITAGE[1]})."
+    )
+
+
+def test_freitag_es_steht_ueberhaupt_jemand_da(leer):
+    """
+    Die Gegenprobe. Ohne sie wäre die Prüfung darüber auch dann grün, wenn an
+    beiden Freitagen GAR NIEMAND im Früh- oder Spätdienst stünde — und eine
+    Etage, die freitags nicht aufschließt, wäre schlimmer als jede
+    Wiederholung.
+    """
+    for tag in FREITAGE:
+        for typ in ("frueh", "spaet"):
+            wer = _wer_hat_am(leer, tag, typ)
+            assert len(wer) == 2, (
+                f"Am {tag} stehen {len(wer)} Personen im {typ}dienst, "
+                "erwartet sind zwei — eine je Etage."
+            )
+
+
+def test_freitagsspaetdienst_nicht_zweimal_in_vier_wochen(leer):
+    """
+    §269 Die strengere der beiden Regeln, am Plan abgelesen.
+
+    Die beiden Freitage liegen sieben Tage auseinander und damit im selben
+    Vier-Wochen-Fenster. Wer am ersten den Spätdienst hatte, darf am zweiten
+    keinen haben — das ist hier dasselbe Ergebnis wie „nicht zweimal in
+    Folge", und genau deshalb steht die Prüfung eigens da: Sie hält auch dann,
+    wenn der Zeitraum später einmal vier Wochen umfasst und die beiden Regeln
+    auseinanderfallen.
+    """
+    gezaehlt: dict[str, int] = {}
+    for tag in FREITAGE:
+        for name in _wer_hat_am(leer, tag, "spaet"):
+            gezaehlt[name] = gezaehlt.get(name, 0) + 1
+    mehrfach = {n: z for n, z in gezaehlt.items() if z > 1}
+    assert not mehrfach, (
+        "Innerhalb von vier Wochen mehr als einen Freitagsspätdienst: "
+        + ", ".join(f"{n} ({z})" for n, z in sorted(mehrfach.items()))
+    )
+
+
+def test_freitagsregeln_stehen_im_protokoll(leer):
+    """
+    Ein Regelpaket, dessen Wirkung sich nicht nachlesen lässt, kann niemand
+    abnehmen — auch die Leitung nicht, die den Bericht liest.
+    """
+    protokoll = " ".join(leer.paket.get("regeln") or [])
+    assert "Freitagsrotation" in protokoll, protokoll[-800:]
+    assert "nur freitags" in protokoll, protokoll[-800:]

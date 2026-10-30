@@ -2129,9 +2129,16 @@ def nicht_zwei_freitage_in_folge(ctx: PlanKontext, dienst_typ: str,
 
 
 def hoechstens_alle_n_wochen(ctx: PlanKontext, dienst_typ: str, wochen: int,
-                             schluessel: str, gewicht: int = 800) -> None:
+                             schluessel: str, gewicht: int = 800,
+                             nur_freitags: bool = False) -> None:
     """
     Diesen Dienst möglichst nur einmal in `wochen` Wochen.
+
+    Mit `nur_freitags` zählen ausschließlich die Freitage. Das ist ein großer
+    Unterschied und nicht nur eine Einschränkung: In einem Haus mit zwei
+    Etagen gibt es zehn Spätdienste je Woche, aber nur zwei davon am Freitag.
+    Was für alle Spätdienste zusammen rechnerisch unmöglich ist, hat beim
+    Freitag Luft — siehe die Rechnung im Kita-Paket.
 
     WARUM EIN WUNSCH UND KEIN MUSS
     Weil es so gewünscht wurde — „am besten nur einmal in 4 Wochen, nach
@@ -2155,6 +2162,16 @@ def hoechstens_alle_n_wochen(ctx: PlanKontext, dienst_typ: str, wochen: int,
     if not si_liste:
         ctx.notiere(f"Abstandsregel „{dienst_typ}“: keine Dienste dieser Art.")
         return
+
+    # §269 Welche Tage überhaupt zählen.
+    zaehlt = (
+        [di for di in range(ctx.n_days) if ctx.ist_freitag(di)] if nur_freitags
+        else list(range(ctx.n_days))
+    )
+    if nur_freitags and not zaehlt:
+        ctx.notiere(f"Abstandsregel „{dienst_typ}“ (nur freitags): kein Freitag im Plan.")
+        return
+    wortlaut = f"{dienst_typ}, nur freitags" if nur_freitags else dienst_typ
 
     fenster_tage = max(1, wochen) * 7
 
@@ -2186,8 +2203,9 @@ def hoechstens_alle_n_wochen(ctx: PlanKontext, dienst_typ: str, wochen: int,
         # 1. Das wandernde Fenster innerhalb des Zeitraums.
         for start in fenster_starts:
             tage = [
-                di for di in range(start, ctx.n_days)
-                if (_tage_differenz(ctx.days[start], ctx.days[di]) or 0) < fenster_tage
+                di for di in zaehlt
+                if di >= start
+                and (_tage_differenz(ctx.days[start], ctx.days[di]) or 0) < fenster_tage
             ]
             if len(tage) < 2:
                 continue
@@ -2204,7 +2222,7 @@ def hoechstens_alle_n_wochen(ctx: PlanKontext, dienst_typ: str, wochen: int,
         zuletzt = (ctx.employees[ei].get("belastungsHistorie") or {}).get(schluessel)
         if not zuletzt:
             continue
-        for di in range(ctx.n_days):
+        for di in zaehlt:
             abstand = _tage_differenz(zuletzt, ctx.days[di])
             if abstand is None or abstand >= fenster_tage:
                 continue
@@ -2224,7 +2242,7 @@ def hoechstens_alle_n_wochen(ctx: PlanKontext, dienst_typ: str, wochen: int,
                 ctx.strafe(anteil, ctx.X[ei, di, si])
 
     ctx.notiere(
-        f"Abstandsregel „{dienst_typ}“: möglichst nur einer in {wochen} Wochen "
+        f"Abstandsregel „{wortlaut}“: möglichst nur einer in {wochen} Wochen "
         f"({fenster_tage} Tage), {fenster_gezaehlt} Fenster, Gewicht {gewicht}. "
         "Der letzte Dienst vor dem Zeitraum zählt mit."
     )

@@ -51,7 +51,7 @@ from .. import bausteine as b
 
 META = {
     "kunde": "Kita – zwei Etagen, acht Gruppen",
-    "version": 7,
+    "version": 8,
     "beschreibung":
         "Zwei Etagen, acht Gruppen. Feste Tagesmuster aus den Personalakten "
         "statt frei verteilter "
@@ -60,8 +60,9 @@ META = {
         "Springerin nur zur Kernzeit, Leitung nur im Notfall, Vertretung "
         "zuerst auf der eigenen Etage — und Fairness "
         "über die Zeitraumgrenze hinweg, den Freitag eigens gezählt. "
-        "§268: Der Freitagsfrüh- und -spätdienst rotiert — niemand hat ihn "
-        "zweimal in Folge.",
+        "§268/§269: Der Freitagsfrüh- und -spätdienst rotiert — niemand hat "
+        "ihn zweimal in Folge —, und den Freitagsspätdienst möglichst nur "
+        "einmal in vier Wochen.",
     "aufgenommen": "2026-09-26",
 }
 
@@ -330,44 +331,35 @@ def apply(ctx) -> None:
     b.versuche(ctx, b.nicht_zwei_freitage_in_folge, "frueh", "letzterFreitagFrueh")
     b.versuche(ctx, b.nicht_zwei_freitage_in_folge, "spaet", "letzterFreitagSpaet")
 
-    # ── 6c. Der Spätdienst alle vier Wochen — NACHGERECHNET UND NICHT EINGEBAUT
+    # ── 6c. Der Freitagsspätdienst mit Abstand ──────────────────────────────
     #
-    # §268 Gewünscht war: „Und den Spätdienst am besten nur einmal in 4
-    # Wochen, nach Möglichkeit. Wenn es nicht anders geht, dann ist es so."
+    # §269 „Nee, nicht Spätdienst nur einmal in 4 Wochen, sondern Freitag
+    # Spätdienst nur einmal in 4 Wochen."
     #
-    # Der Baustein dafür ist gebaut und geprüft (`hoechstens_alle_n_wochen`,
-    # `test_rulepacks.py`). Für DIESES Haus ist er trotzdem nicht eingehängt,
-    # und der Grund ist Arithmetik:
+    # Das ist eine ganz andere Regel als die, die ich zuerst gerechnet hatte,
+    # und der Unterschied ist der ganze Punkt. Nachgerechnet:
     #
-    #     zwei Etagen × fünf Arbeitstage        = 10 Spätdienste je Woche
-    #     in vier Wochen                        = 40 Spätdienste
-    #     sechzehn Kräfte, ohne Leitung
-    #     und Springerin                        = 14, die ihn übernehmen können
+    #                                   alle Spätdienste   nur freitags
+    #     je Woche                              10                2
+    #     in vier Wochen                        40                8
+    #     Kräfte, die ihn übernehmen            14               14
+    #     „höchstens einer in vier Wochen"  unmöglich      geht auf
     #
-    #     „Höchstens einer in vier Wochen" erlaubt 14. Gebraucht werden 40.
+    # Für ALLE Spätdienste wäre der Wunsch um das Dreifache daneben gewesen —
+    # und eine unerfüllbare Regel verschlechtert den ganzen Plan, nicht nur
+    # sich selbst (§268, nachgemessen: Der Rechendienst erreichte das Optimum
+    # nicht mehr). Beim Freitag allein werden acht Dienste auf vierzehn
+    # Kräfte verteilt. Rechnerisch bekommt jede Kraft alle sieben Wochen einen
+    # Freitagsspätdienst; die Vier-Wochen-Regel ist also nicht einmal eng.
     #
-    # Der Wunsch ist also nicht knapp, sondern um das Dreifache daneben. Jede
-    # Kraft braucht in diesem Haus im Schnitt alle 1,4 Wochen einen
-    # Spätdienst, und daran ändert keine Regel etwas — das ändert nur mehr
-    # Personal oder ein späterer Dienstschluss.
-    #
-    # WARUM „DANN EBEN NICHT PERFEKT" HIER NICHT GILT
-    # Weil eine unerfüllbare Regel den Plan nicht nur an ihrer eigenen Stelle
-    # verschlechtert. Nachgemessen am 30.10.2026: Mit ihr erreichte der
-    # Rechendienst in der Abnahme das Optimum nicht mehr, sondern brach nach
-    # sechzig Sekunden bei „FEASIBLE" ab. Damit sind ALLE weichen Regeln
-    # dieses Pakets nur noch ungefähr erfüllt — Vorlieben, Fairness,
-    # Vertretungsreihenfolge. Die eine unerreichbare Regel hätte zehn
-    # erreichbare mitgenommen.
-    #
-    # WAS STATTDESSEN WIRKT
-    # `hoechstens_pro_woche_weich("spaet", 1)` eine Seite weiter oben begrenzt
-    # auf einen Spätdienst je Woche — das ist bei zehn Diensten und vierzehn
-    # Kräften die engste Grenze, die überhaupt erfüllbar ist. Die Verteilung
-    # darüber hinaus regeln `historische_fairness` und `freitagsfairness`.
-    #
-    # Will der Betrieb es trotzdem, genügt diese eine Zeile:
-    #     b.versuche(ctx, b.hoechstens_alle_n_wochen, "spaet", 4, "letzterSpaet")
+    # WARUM ZUSÄTZLICH ZUR ROTATION DARÜBER
+    # Die beiden Regeln liegen übereinander und das ist Absicht: „nie zweimal
+    # in Folge" ist der teure Riegel, der praktisch immer hält; „möglichst
+    # vier Wochen Abstand" ist der leichtere Wunsch darüber. Fällt die halbe
+    # Belegschaft aus, gibt der Wunsch zuerst nach und der Riegel hält — in
+    # dieser Reihenfolge, und beides steht im Bericht.
+    b.versuche(ctx, b.hoechstens_alle_n_wochen, "spaet", 4, "letzterFreitagSpaet",
+               800, True)
 
     # ── 7. Persönliche Vorlieben ────────────────────────────────────────────
     #

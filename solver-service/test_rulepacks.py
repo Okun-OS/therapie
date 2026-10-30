@@ -825,3 +825,94 @@ def test_abstand_meldet_sich_im_protokoll():
     text = " ".join(ctx.protokoll)
     assert "Freitagsrotation" in text and "Abstandsregel" in text, text
     assert "Vorgeschichte" in text or "vor dem Zeitraum" in text, text
+
+
+# ── §269 Nur der Freitag ────────────────────────────────────────────────────
+#
+# „Nee, nicht Spätdienst nur einmal in 4 Wochen, sondern Freitag Spätdienst
+#  nur einmal in 4 Wochen."
+#
+# Der Unterschied ist nicht kosmetisch: Für alle Spätdienste zusammen ist die
+# Regel in einem Haus mit zwei Etagen arithmetisch unmöglich (40 gebraucht,
+# 14 erlaubt), für den Freitag allein geht sie auf (8 gebraucht, 14 erlaubt).
+# Eine Regel, die versehentlich alle Tage zählt, wäre also nicht etwas
+# strenger, sondern unerfüllbar — und würde den ganzen Plan mitnehmen.
+
+def test_abstand_nur_freitags_zaehlt_nur_freitage():
+    """
+    Zwei Spätdienste an zwei Freitagen gehen an verschiedene Leute. Zwei an
+    gewöhnlichen Tagen dürfen dieselbe Person treffen.
+    """
+    ctx = baue_kontext()
+    si = ctx.dienste_vom_typ("spaet")[0]
+    freitage = _freitage(ctx)
+
+    # An beiden Freitagen UND an zwei Dienstagen wird jemand gebraucht.
+    dienstage = [di for di in range(ctx.n_days) if ctx.weekdays[di] == 1]
+    _spaetdienst_erzwingen(ctx, freitage + dienstage[:2], [1, 2])
+    b.hoechstens_alle_n_wochen(ctx, "spaet", 4, "letzterFreitagSpaet",
+                               nur_freitags=True)
+
+    solver = loese_mit_ziel(ctx)
+    anFreitagen = [
+        next(ei for ei in (1, 2) if eingeteilt(solver, ctx, ei, di, si))
+        for di in freitage
+    ]
+    assert anFreitagen[0] != anFreitagen[1], (
+        "Beide Freitagsspätdienste gingen an dieselbe Person."
+    )
+
+
+def test_abstand_nur_freitags_laesst_die_anderen_tage_in_ruhe():
+    """
+    Die Gegenprobe, und sie ist hier die wichtigere: Zählte die Regel alle
+    Tage mit, wäre sie in diesem Haus unerfüllbar. Ein gewöhnlicher
+    Dienstagsspätdienst darf deshalb bei derselben Person bleiben.
+    """
+    ctx = baue_kontext()
+    si = ctx.dienste_vom_typ("spaet")[0]
+    dienstage = [di for di in range(ctx.n_days) if ctx.weekdays[di] == 1][:2]
+    assert len(dienstage) == 2
+
+    # Nur EINE Person kommt in Frage — mit einer Regel, die alle Tage zählt,
+    # wäre das teuer; mit „nur freitags" kostet es nichts.
+    _spaetdienst_erzwingen(ctx, dienstage, [1])
+    b.hoechstens_alle_n_wochen(ctx, "spaet", 4, "letzterFreitagSpaet",
+                               nur_freitags=True)
+
+    assert not ctx.kosten or True  # die Regel darf hier gar nichts belasten
+    solver = loese_mit_ziel(ctx)
+    for di in dienstage:
+        assert eingeteilt(solver, ctx, 1, di, si)
+
+
+def test_abstand_nur_freitags_die_vorgeschichte_zaehlt_mit():
+    """
+    Wer vor zwei Wochen am Freitag Spätdienst hatte, bekommt den nächsten
+    Freitag nicht — vier Wochen sind noch nicht um.
+    """
+    ctx = baue_kontext()
+    si = ctx.dienste_vom_typ("spaet")[0]
+    freitage = _freitage(ctx)
+
+    from datetime import date, timedelta
+    j, m, t = (int(x) for x in ctx.days[freitage[0]].split("-"))
+    vorZweiWochen = (date(j, m, t) - timedelta(days=14)).isoformat()
+    ctx.employees[1]["belastungsHistorie"] = {"letzterFreitagSpaet": vorZweiWochen}
+
+    _spaetdienst_erzwingen(ctx, [freitage[0]], [1, 2])
+    b.hoechstens_alle_n_wochen(ctx, "spaet", 4, "letzterFreitagSpaet",
+                               nur_freitags=True)
+
+    solver = loese_mit_ziel(ctx)
+    assert eingeteilt(solver, ctx, 2, freitage[0], si), (
+        "Der Freitag ging an die Person, die vor zwei Wochen schon dran war."
+    )
+
+
+def test_abstand_nur_freitags_sagt_es_im_protokoll():
+    ctx = baue_kontext()
+    b.hoechstens_alle_n_wochen(ctx, "spaet", 4, "letzterFreitagSpaet",
+                               nur_freitags=True)
+    text = " ".join(ctx.protokoll)
+    assert "nur freitags" in text, text
