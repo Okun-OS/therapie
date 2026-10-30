@@ -147,10 +147,26 @@ Verfahrens, bei dem Warten nichts nützt.
 Dort die Firmendaten eingeben und nachsehen, was Dun & Bradstreet über die
 OKUN Systems UG gespeichert hat.
 
-**Worauf es ankommt:** Der Firmenname muss dort **genau** so stehen wie im
-Handelsregister — `OKUN Systems UG (haftungsbeschränkt)`. Nicht „OKUN
-Systems", nicht „Okun Systems UG". Apple gleicht ab; weicht es ab, bleibt die
+**Worauf es ankommt:** Der Firmenname muss **Zeichen für Zeichen so
+eingetragen werden, wie er bei D&B gespeichert ist** — nicht so, wie er im
+Handelsregister steht. Apple gleicht gegen D&B ab; weicht es ab, bleibt die
 Anmeldung liegen, ohne dass jemand sagt warum.
+
+> **§271 Und das heißt im Zweifel: ohne Umlaut.**
+>
+> Hier stand zuerst, der Name müsse „genau wie im Handelsregister" lauten,
+> also `OKUN Systems UG (haftungsbeschränkt)` mit ä. Das war falsch, und der
+> Eigentümer hat es gemerkt: D&B hatte ihm ausdrücklich gesagt, ihr System
+> führe keine Umlaute — einzutragen sei `haftungsbeschrankt`, und
+> ausdrücklich NICHT `haftungsbeschraenkt`.
+>
+> D&B ist ein amerikanisches System. Was dort steht, ist für Apple die
+> Wahrheit, auch wenn das Handelsregister es anders schreibt. **Der Abgleich
+> schlägt die Rechtschreibung.** Eine „korrigierte" Schreibweise wäre genau
+> die, die hängen bleibt.
+>
+> Deshalb ist der Blick in die Suche oben keine Kür: Dort steht, was Apple
+> erwartet.
 
 Ebenso prüfen: Anschrift und Telefonnummer.
 
@@ -195,8 +211,8 @@ Gehälter rechnet, ist das der falsche Anbieter.
 
 Aus der Tabelle oben. Wichtig dabei:
 
-- **Legal Entity Name**: `OKUN Systems UG (haftungsbeschränkt)` — genau wie
-  in der D-U-N-S-Datenbank. Dieser Name erscheint später im App Store als
+- **Legal Entity Name**: genau wie in der D-U-N-S-Datenbank — nach Auskunft
+  von D&B ohne Umlaut, also `OKUN Systems UG (haftungsbeschrankt)`. Dieser Name erscheint später im App Store als
   Anbieter der App; jeder Nutzer sieht ihn.
 - **Website**: `https://okun-systems.com`
 - **D-U-N-S Number**: aus Schritt 1
@@ -280,7 +296,8 @@ Store-Texte und Bildschirmfotos ein. Beides liegt schon bereit:
 2. **Der Name in der Apple-ID ist nicht der echte Name.** Siehe Schritt 0.1.
    Apple nennt das selbst als Verzögerungsgrund.
 3. **Der Firmenname weicht vom D-U-N-S-Eintrag ab.** Ein fehlendes
-   „(haftungsbeschränkt)" genügt.
+   „(haftungsbeschrankt)" genügt — und ebenso ein hinzugefügter Umlaut, den
+   D&B gar nicht führt. Maßgeblich ist der Datensatz, nicht das Register.
 4. **„Individual" statt „Organization" gewählt.** Lässt sich nicht umstellen.
 
 ---
