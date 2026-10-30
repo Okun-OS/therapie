@@ -53,6 +53,7 @@ Dieselben Angaben wie bei Apple, plus zwei, die es dort nicht gab:
 | **Kontakt-E-Mail und -Telefon** | für Google, um Sie zu erreichen |
 | **Entwickler-E-Mail und -Telefon** | ⚠️ **steht öffentlich im Play Store** |
 | Entwicklername | frei wählbar — **OKUN Workforce** |
+| **Paketname der App** | `de.okun.workforce` — **nie wieder änderbar** |
 
 ### ⚠️ Die Falle, die es bei Apple nicht gibt
 
@@ -157,10 +158,17 @@ danach in drei Richtungen:
 
 1. **`google-services.json`** aus Firebase, sobald das Projekt steht
    (`FIREBASE.md`). Ohne sie baut die App zwar, klingelt aber nicht.
-2. **Den Signierschlüssel.** Den erzeuge ich beim Bau — und er gehört
-   **sicher aufbewahrt**: Geht er verloren, lässt sich die App im Play Store
-   nie wieder aktualisieren. Sie müsste unter neuem Namen neu veröffentlicht
-   werden, und alle Nutzer müssten sie neu installieren.
+2. **Den Upload-Schlüssel.** Den erzeuge ich beim Bau.
+
+   > **§272 Hier stand eine schärfere Warnung, und sie gilt so nicht mehr.**
+   > Beim Anlegen der App akzeptiert man die **Play App-Signatur** — damit
+   > verwahrt GOOGLE den eigentlichen Signaturschlüssel, und man lädt nur mit
+   > einem Upload-Schlüssel hoch. Geht der verloren, setzt Google ihn zurück.
+   >
+   > Ohne Play-Signatur wäre ein verlorener Schlüssel das Ende gewesen: Die
+   > App hätte nie wieder aktualisiert werden können. Für Android App Bundles
+   > (`.aab`) ist die Play-Signatur ohnehin Pflicht — und ein `.aab` ist das
+   > einzige Format, das Google für neue Apps annimmt.
 3. **Das `.aab`-Paket** zum Hochladen. Android baue ich hier auf dem Server —
    dafür braucht niemand einen Rechner.
 4. **Den Store-Eintrag**: Texte aus `STORE-TEXTE.md`, Bildschirmfotos aus
