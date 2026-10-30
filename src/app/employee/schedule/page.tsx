@@ -25,7 +25,7 @@ import {
   getDayName, isToday,
 } from '@/lib/utils'
 import { getPublicHolidayName } from '@/lib/holidays'
-import type { ScheduleEntry, Absence } from '@/lib/types'
+import type { ScheduleEntry, Absence, TimeLog } from '@/lib/types'
 import { ausfallStundenAmTag } from '@/lib/ausfallstunden'
 import { AU_ARTEN } from '@/lib/bem'
 import { dienstMinuten } from '@/lib/dienstzeit'
@@ -77,6 +77,19 @@ export default function EmployeeSchedule() {
   const [swaps, setSwaps] = useState<SwapRequest[]>([])
   // §267 Was schiefging, als ein Tausch angenommen wurde.
   const [tauschFehler, setTauschFehler] = useState('')
+  /*
+   * §270 Die eigenen Stempelzeiten.
+   *
+   * Gewünscht: „Wenn ich jetzt von 7 bis 15:30 hatte und ich war
+   * eingeloggt von 6:59 Uhr bis 15:32 Uhr, dass dann auch diese Uhrzeit
+   * dasteht für den abgeschlossenen Dienst … und am besten noch daneben
+   * oder darunter, was die geplante Zeit war."
+   *
+   * Der Plan sagt, was vorgesehen war. Die Stempelzeit sagt, was war.
+   * Beides nebeneinander ist der Unterschied zwischen einem Plan und
+   * einem Nachweis — und ein Nachweis ist es, der im Streitfall zählt.
+   */
+  const [zeitbuchungen, setZeitbuchungen] = useState<TimeLog[]>([])
   const [myWishes, setMyWishes] = useState<WishSubmission[]>([])
   const [EMPLOYEES, setEMPLOYEES] = useState<Employee[]>([])
   const [LOCATIONS, setLOCATIONS] = useState<Location[]>([])
@@ -148,6 +161,23 @@ export default function EmployeeSchedule() {
   }, [employee?.locationId])
 
   useEffect(() => { planLaden() }, [planLaden])
+
+  useEffect(() => {
+    if (!user?.employeeId) return
+    fetch(`/api/time-logs?employeeId=${user.employeeId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setZeitbuchungen(d?.logs ?? []))
+      .catch(() => undefined)
+  }, [user?.employeeId])
+
+  /**
+   * §270 Was an diesem Tag wirklich gestempelt wurde.
+   *
+   * Mehrere Buchungen am selben Tag gibt es (Unterbrechung, zweiter
+   * Einsatz). Genommen wird die erste — sie trägt den Beginn des Tages.
+   */
+  const buchungAm = (datum: string) =>
+    zeitbuchungen.find(l => l.date === datum)
 
   const myEntries = SCHEDULE_ENTRIES.filter(s => s.employeeId === user?.employeeId)
 
@@ -494,10 +524,22 @@ export default function EmployeeSchedule() {
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: shift.color }} />
                           <p className="text-lg font-bold text-navy">{shift.name}</p>
                         </div>
-                        <p className="text-sm text-gray-600 font-mono">{shift.startTime} – {shift.endTime}</p>
+                        <p className="text-sm text-gray-600 font-mono">
+                          {shift.startTime} – {shift.endTime}
+                          <span className="font-sans text-gray-400"> geplant</span>
+                        </p>
+                        {/* §270 Und was wirklich war — siehe `Gearbeitet`. */}
+                        <Gearbeitet buchung={buchungAm(dateStr)} />
                         {(entry.gruppe || entry.funktion) && (
                           <p className="text-xs text-gray-400 mt-1">{[entry.gruppe, entry.funktion].filter(Boolean).join(' · ')}</p>
                         )}
+                      </div>
+                    ) : buchungAm(dateStr) ? (
+                      /* §270 Gestempelt ohne geplanten Dienst — eingesprungen. */
+                      <div>
+                        <p className="text-lg font-bold text-navy">Gearbeitet</p>
+                        <p className="text-xs text-gray-400">Ohne geplanten Dienst</p>
+                        <Gearbeitet buchung={buchungAm(dateStr)} />
                       </div>
                     ) : (
                       <p className="text-gray-400 text-sm">{holiday ? 'Feiertag – kein Dienst' : 'Kein Dienst geplant'}</p>
@@ -618,15 +660,47 @@ export default function EmployeeSchedule() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-navy">{shift.name}</p>
-                          <p className="text-xs text-gray-500">{entry.startTime ?? shift.startTime} – {entry.endTime ?? shift.endTime} Uhr</p>
+                          <p className="text-xs text-gray-500 whitespace-nowrap">
+                            {entry.startTime ?? shift.startTime} – {entry.endTime ?? shift.endTime} Uhr
+                            <span className="text-gray-400"> geplant</span>
+                          </p>
+                          {/*
+                            * §270 Und darunter, was wirklich war.
+                            *
+                            * „Wenn ich jetzt von 7 bis 15:30 hatte und ich war
+                            * eingeloggt von 6:59 bis 15:32, dass dann auch diese
+                            * Uhrzeit dasteht für den abgeschlossenen Dienst."
+                            *
+                            * Steht nur da, wenn gestempelt wurde — ein leeres
+                            * „gearbeitet: —" unter jedem künftigen Dienst wäre
+                            * Lärm. Und die Soll-Zeit bleibt daneben stehen: Eine
+                            * Ist-Zeit ohne Soll-Zeit sagt nichts darüber, ob sie
+                            * in Ordnung war.
+                            */}
+                          <Gearbeitet buchung={buchungAm(dateStr)} knapp />
                           {(entry.gruppe || entry.funktion) && (
                             <p className="text-xs text-gray-400 truncate">{[entry.gruppe, entry.funktion].filter(Boolean).join(' · ')}</p>
                           )}
                         </div>
+                        {/*
+                          * §270 An einem vergangenen Tag steht rechts weniger.
+                          *
+                          * „Geplant" ist bei einem Dienst, der vorbei ist, keine
+                          * Auskunft mehr, und tauschen lässt er sich auch nicht.
+                          * Beides stand trotzdem da und nahm den Platz weg, den
+                          * jetzt die Uhrzeiten brauchen: Auf einem Telefon brach
+                          * „08:00 – 16:30 Uhr geplant" über vier Zeilen um, und
+                          * die Zeile wurde dreimal so hoch.
+                          *
+                          * Das Fragezeichen für die Einzelheiten bleibt — gerade
+                          * im Rückblick ist das die Stelle, an der jemand nachsieht.
+                          */}
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <Badge variant={entry.status === 'confirmed' ? 'success' : 'default'}>
-                            {entry.status === 'confirmed' ? '✓' : 'Geplant'}
-                          </Badge>
+                          {!isPast && (
+                            <Badge variant={entry.status === 'confirmed' ? 'success' : 'default'}>
+                              {entry.status === 'confirmed' ? '✓' : 'Geplant'}
+                            </Badge>
+                          )}
                           <button
                             onClick={() => setSelectedEntry(entry)}
                             className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
@@ -634,13 +708,15 @@ export default function EmployeeSchedule() {
                           >
                             <Info size={14} className="text-gray-400" />
                           </button>
-                          <button
-                            onClick={() => setSwapEntry(entry)}
-                            className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
-                            title="Tauschen"
-                          >
-                            <ArrowLeftRight size={14} className="text-blue-500" />
-                          </button>
+                          {!isPast && (
+                            <button
+                              onClick={() => setSwapEntry(entry)}
+                              className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                              title="Tauschen"
+                            >
+                              <ArrowLeftRight size={14} className="text-blue-500" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ) : ausfall ? (
@@ -659,6 +735,21 @@ export default function EmployeeSchedule() {
                               : 'An diesem Tag stand kein Dienst an'}
                           </p>
                         </div>
+                      </div>
+                    ) : buchungAm(dateStr) ? (
+                      /*
+                        * §270 Gestempelt, aber kein Dienst geplant.
+                        *
+                        * Hier stand „Frei" — auch dann, wenn jemand an diesem
+                        * Tag nachweislich gearbeitet hat. Das ist der Fall, der
+                        * am meisten weh tut: eingesprungen, nichts im Plan, und
+                        * im Rückblick sieht es aus, als wäre man zu Hause
+                        * gewesen.
+                        */
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-navy">Gearbeitet</p>
+                        <p className="text-xs text-gray-400">Ohne geplanten Dienst</p>
+                        <Gearbeitet buchung={buchungAm(dateStr)} knapp />
                       </div>
                     ) : (
                       <div className="flex-1">
@@ -977,6 +1068,19 @@ export default function EmployeeSchedule() {
               </div>
             </div>
 
+            {/*
+              * §270 Die Stempelzeit auch hier — das Detail ist die Stelle, an
+              * der jemand nachsieht, wenn er es genau wissen will.
+              */}
+            {buchungAm(selectedEntry.date) && (
+              <div className="rounded-2xl bg-teal-50/60 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase text-teal-700/70">
+                  Tatsächlich gearbeitet
+                </p>
+                <Gearbeitet buchung={buchungAm(selectedEntry.date)} />
+              </div>
+            )}
+
             <div className="space-y-2">
               {([
                 { label: 'Datum', value: `${getDayName(selectedEntry.date)}, ${formatDate(selectedEntry.date)}` },
@@ -1213,5 +1317,53 @@ export default function EmployeeSchedule() {
         />
       )}
     </>
+  )
+}
+
+
+/**
+ * §270 Was an diesem Tag wirklich gestempelt wurde.
+ *
+ * Gewünscht war, die Ist-Zeit neben die Soll-Zeit zu stellen — „dass ich am
+ * Mittwoch dann sehe, wie ich am Dienstag wirklich da war".
+ *
+ * WARUM DAS MEHR IST ALS EINE ZEILE MEHR
+ * Ein Dienstplan sagt, was vorgesehen war. Was war, steht in der
+ * Zeiterfassung, und bis hierher musste man dafür die Seite wechseln und
+ * Datum für Datum vergleichen. Nebeneinander ist es ein Nachweis — und ein
+ * Nachweis ist das, was im Streitfall zählt: bei der Zeitarbeit, bei einer
+ * Prüfung, bei einer Nachfrage zum Lohn.
+ *
+ * WAS BEWUSST NICHT DASTEHT
+ * Keine Bewertung. Kein rotes „2 Minuten zu spät", kein grünes Häkchen für
+ * pünktlich. Zwei Minuten sind der Weg vom Parkplatz, und eine Oberfläche,
+ * die daraus eine Note macht, erzeugt Druck, wo Auskunft gemeint war. Die
+ * Zahlen stehen da; wer sie beurteilen muss, tut es selbst.
+ */
+function Gearbeitet({ buchung, knapp = false }: { buchung?: TimeLog; knapp?: boolean }) {
+  if (!buchung) return null
+
+  const dauer = buchung.totalMinutes
+    ? `${Math.floor(buchung.totalMinutes / 60)}:${String(buchung.totalMinutes % 60).padStart(2, '0')} Std.`
+    : null
+
+  return (
+    <p className="text-xs text-teal-700 mt-0.5 whitespace-nowrap">
+      {buchung.clockOut
+        ? `${buchung.clockIn} – ${buchung.clockOut} Uhr gearbeitet`
+        : `seit ${buchung.clockIn} Uhr eingestempelt`}
+      {/*
+        * §270 In der Wochenzeile nur die Uhrzeit.
+        *
+        * Dauer und Pause standen dort zuerst mit dabei — und liefen auf dem
+        * Telefon über den rechten Rand hinaus. Die Zeile beantwortet „wann war
+        * ich da"; wie lange und wie viel Pause beantwortet das Detail, und wer
+        * das wissen will, tippt ohnehin darauf.
+        */}
+      {!knapp && dauer && <span className="text-teal-600/70"> · {dauer}</span>}
+      {!knapp && buchung.breakMinutes
+        ? <span className="text-teal-600/70"> · {buchung.breakMinutes} Min. Pause</span>
+        : null}
+    </p>
   )
 }
