@@ -15,6 +15,9 @@ Neu seit dem 10.10.:
 - **Store-Texte** stehen in `STORE-TEXTE.md`, zum Kopieren
 - **Ob Firebase eingerichtet ist, lässt sich jetzt ablesen**:
   `https://okun-workforce.com/api/health` nennt es unter `push.geraete`
+- **Die Apple-Anmeldung steht als eigene Anleitung in `APPLE-ANMELDUNG.md`** —
+  Schritt für Schritt, mit den Firmendaten schon eingetragen und gegen Apples
+  eigene Seiten geprüft (30.10.2026)
 
 Was fehlt, sind die beiden Konten und zwei gebaute Apps.
 
