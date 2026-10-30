@@ -60,8 +60,10 @@ captures/
 *.jks
 *.keystore
 
-# Und die Datei, in der das Kennwort dazu steht.
+# Und die Datei, in der das Kennwort dazu steht — unter jedem Namen, unter dem
+# sie je weitergegeben wird.
 okun-signatur.properties
+*KENNWORT*
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
