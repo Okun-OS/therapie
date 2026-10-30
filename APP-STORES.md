@@ -17,7 +17,10 @@ Neu seit dem 10.10.:
   `https://okun-workforce.com/api/health` nennt es unter `push.geraete`
 - **Die Apple-Anmeldung steht als eigene Anleitung in `APPLE-ANMELDUNG.md`** —
   Schritt für Schritt, mit den Firmendaten schon eingetragen und gegen Apples
-  eigene Seiten geprüft (30.10.2026)
+  eigene Seiten geprüft (30.10.2026). **Abgeschickt am 30.10.2026**,
+  Enrollment ID `8HA944K62Q`; Apple prüft
+- **Google Play ebenso in `PLAY-ANMELDUNG.md`** — 25 $ einmalig, dieselbe
+  D-U-N-S-Nummer, gegen Googles Hilfeseiten geprüft
 
 Was fehlt, sind die beiden Konten und zwei gebaute Apps.
 
