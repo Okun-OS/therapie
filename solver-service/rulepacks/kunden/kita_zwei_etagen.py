@@ -51,7 +51,7 @@ from .. import bausteine as b
 
 META = {
     "kunde": "Kita – zwei Etagen, acht Gruppen",
-    "version": 6,
+    "version": 7,
     "beschreibung":
         "Zwei Etagen, acht Gruppen. Feste Tagesmuster aus den Personalakten "
         "statt frei verteilter "
@@ -59,7 +59,9 @@ META = {
         "genug Leute für den Nachmittag, Gruppe 1 nie unter zwei Personen, "
         "Springerin nur zur Kernzeit, Leitung nur im Notfall, Vertretung "
         "zuerst auf der eigenen Etage — und Fairness "
-        "über die Zeitraumgrenze hinweg, den Freitag eigens gezählt.",
+        "über die Zeitraumgrenze hinweg, den Freitag eigens gezählt. "
+        "§268: Der Freitagsfrüh- und -spätdienst rotiert — niemand hat ihn "
+        "zweimal in Folge.",
     "aufgenommen": "2026-09-26",
 }
 
@@ -303,6 +305,69 @@ def apply(ctx) -> None:
     b.versuche(ctx, b.historische_fairness, "spaet", "spaetDienste")
     b.versuche(ctx, b.freitagsfairness, "frueh", "freitagFrueh")
     b.versuche(ctx, b.freitagsfairness, "spaet", "freitagSpaet")
+
+    # ── 6b. Der Freitag rotiert ─────────────────────────────────────────────
+    #
+    # §268 Vom Eigentümer am 30.10.2026 angesagt:
+    #
+    #   „Ich möchte, dass da die Spätdienste am Freitag sowie die Frühdienste
+    #    am Freitag durchrotieren. Dass keiner einen Frühdienst und
+    #    Spätdienst am Freitag zweimal in Folge haben darf."
+    #
+    # WARUM DIE FAIRNESS DARÜBER NICHT GENÜGT
+    # `freitagsfairness` verteilt die Freitage gleichmäßig — und gleichmäßig
+    # ist nicht abwechselnd. Vier Freitage in Folge und danach acht frei ist
+    # rechnerisch dasselbe wie jeder zweite Freitag. Für den Menschen, der
+    # vier Wochenenden am Stück später anfängt, ist es das nicht.
+    #
+    # WARUM TEUER UND NICHT VERBOTEN
+    # Dieselbe Begründung wie in Abschnitt 5 eine Seite weiter oben, und sie
+    # gilt hier genauso: Ein Verbot macht den Plan unlösbar, sobald vier Leute
+    # krank sind. Dann steht der Betrieb ohne alles da, nicht nur ohne
+    # Rotation. Das Gewicht liegt über allem, was dieser Plan sonst kennt —
+    # gebrochen wird es nur, wenn es gar nicht anders geht, und dann steht es
+    # im Bericht.
+    b.versuche(ctx, b.nicht_zwei_freitage_in_folge, "frueh", "letzterFreitagFrueh")
+    b.versuche(ctx, b.nicht_zwei_freitage_in_folge, "spaet", "letzterFreitagSpaet")
+
+    # ── 6c. Der Spätdienst alle vier Wochen — NACHGERECHNET UND NICHT EINGEBAUT
+    #
+    # §268 Gewünscht war: „Und den Spätdienst am besten nur einmal in 4
+    # Wochen, nach Möglichkeit. Wenn es nicht anders geht, dann ist es so."
+    #
+    # Der Baustein dafür ist gebaut und geprüft (`hoechstens_alle_n_wochen`,
+    # `test_rulepacks.py`). Für DIESES Haus ist er trotzdem nicht eingehängt,
+    # und der Grund ist Arithmetik:
+    #
+    #     zwei Etagen × fünf Arbeitstage        = 10 Spätdienste je Woche
+    #     in vier Wochen                        = 40 Spätdienste
+    #     sechzehn Kräfte, ohne Leitung
+    #     und Springerin                        = 14, die ihn übernehmen können
+    #
+    #     „Höchstens einer in vier Wochen" erlaubt 14. Gebraucht werden 40.
+    #
+    # Der Wunsch ist also nicht knapp, sondern um das Dreifache daneben. Jede
+    # Kraft braucht in diesem Haus im Schnitt alle 1,4 Wochen einen
+    # Spätdienst, und daran ändert keine Regel etwas — das ändert nur mehr
+    # Personal oder ein späterer Dienstschluss.
+    #
+    # WARUM „DANN EBEN NICHT PERFEKT" HIER NICHT GILT
+    # Weil eine unerfüllbare Regel den Plan nicht nur an ihrer eigenen Stelle
+    # verschlechtert. Nachgemessen am 30.10.2026: Mit ihr erreichte der
+    # Rechendienst in der Abnahme das Optimum nicht mehr, sondern brach nach
+    # sechzig Sekunden bei „FEASIBLE" ab. Damit sind ALLE weichen Regeln
+    # dieses Pakets nur noch ungefähr erfüllt — Vorlieben, Fairness,
+    # Vertretungsreihenfolge. Die eine unerreichbare Regel hätte zehn
+    # erreichbare mitgenommen.
+    #
+    # WAS STATTDESSEN WIRKT
+    # `hoechstens_pro_woche_weich("spaet", 1)` eine Seite weiter oben begrenzt
+    # auf einen Spätdienst je Woche — das ist bei zehn Diensten und vierzehn
+    # Kräften die engste Grenze, die überhaupt erfüllbar ist. Die Verteilung
+    # darüber hinaus regeln `historische_fairness` und `freitagsfairness`.
+    #
+    # Will der Betrieb es trotzdem, genügt diese eine Zeile:
+    #     b.versuche(ctx, b.hoechstens_alle_n_wochen, "spaet", 4, "letzterSpaet")
 
     # ── 7. Persönliche Vorlieben ────────────────────────────────────────────
     #

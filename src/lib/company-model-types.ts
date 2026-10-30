@@ -268,6 +268,26 @@ export interface PlanungsMitarbeiter {
     fruehDienste?: number
     freitagFrueh?: number
     freitagSpaet?: number
+    /*
+     * §268 Nicht nur WIE OFT, sondern WANN ZULETZT.
+     *
+     * Die Zähler darüber tragen die Vorgeschichte als Menge: „vier
+     * Spätdienste in fünf Wochen". Für zwei Regeln reicht das nicht, weil sie
+     * nach einem ABSTAND fragen und nicht nach einer Menge:
+     *
+     *   „Keiner darf den Freitagsfrüh- oder -spätdienst zweimal in Folge
+     *    haben."
+     *   „Den Spätdienst möglichst nur einmal in vier Wochen."
+     *
+     * Wer vier Spätdienste hatte, kann sie vor fünf Wochen gehabt haben oder
+     * gestern. Für diese beiden Regeln ist das der ganze Unterschied, und
+     * eine Zahl allein kann ihn nicht ausdrücken.
+     *
+     * Leer heißt: in den letzten fünf Wochen nicht vorgekommen.
+     */
+    letzterFreitagFrueh?: string | null
+    letzterFreitagSpaet?: string | null
+    letzterSpaet?: string | null
   }
 }
 

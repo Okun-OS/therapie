@@ -87,6 +87,28 @@ def eingeteilt(solver, ctx, ei, di, si) -> bool:
     return solver.value(ctx.X[ei, di, si]) == 1
 
 
+def loese_mit_ziel(ctx):
+    """
+    §268 Wie `loese`, aber mit dem Ziel des Pakets.
+
+    `loese` darüber löst nur: Es sucht IRGENDEINE zulässige Lösung. Für harte
+    Regeln genügt das — eine verbotene Zuteilung ist dort gar nicht möglich.
+
+    Für WEICHE Regeln genügt es nicht, und das ist eine Falle: `ctx.strafe`
+    sammelt die Kosten nur ein; minimiert werden sie erst vom echten
+    Rechendienst. Wer eine weiche Regel mit `loese` prüft, prüft, ob der
+    Solver zufällig das Richtige tut — und bekommt eine Prüfung, die mal grün
+    und mal rot ist, ohne dass sich am Programm etwas geändert hätte.
+    """
+    if ctx.kosten:
+        ctx.model.minimize(sum(ctx.kosten))
+    solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 10
+    status = solver.solve(ctx.model)
+    assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE), "Aufgabe nicht lösbar"
+    return solver
+
+
 # ── Die Sucher melden sich laut ─────────────────────────────────────────────
 
 def test_unbekannte_person_wirft_fehler():
@@ -666,3 +688,140 @@ def test_fehlerhafte_einrichtung_wird_ganz_abgelehnt():
         {"name": "Früh", "art": "frueh", "von": "06:00", "bis": "14:00"}]}
     einrichtung, fehler = einrichtung_von(heil)
     assert fehler == [] and einrichtung["dienstzeiten"][0]["name"] == "Früh"
+
+
+# ── §268 Abstand statt Menge ────────────────────────────────────────────────
+#
+# Zwei Bausteine, die nicht fragen „wie viele", sondern „wie weit
+# auseinander". Geprüft wird auch hier am GELÖSTEN Plan: Eine Regel, die
+# durchläuft und nichts bewirkt, ist der teuerste Fehler überhaupt.
+
+def _freitage(ctx):
+    return [di for di in range(ctx.n_days) if ctx.ist_freitag(di)]
+
+
+def _spaetdienst_erzwingen(ctx, tage, wer):
+    """An diesen Tagen MUSS genau eine der Personen den Spätdienst haben."""
+    si = ctx.dienste_vom_typ("spaet")[0]
+    for di in tage:
+        ctx.model.add(sum(ctx.X[ei, di, si] for ei in wer) == 1)
+
+
+def test_freitag_nicht_zweimal_in_folge():
+    """Zwei Freitage, zwei Personen — dann muss gewechselt werden."""
+    ctx = baue_kontext()
+    freitage = _freitage(ctx)
+    assert len(freitage) == 2, "Der Aufbau soll genau zwei Freitage haben"
+
+    # Nur zwei Personen kommen in Frage, und an beiden Freitagen wird einer
+    # gebraucht. Ohne die Regel darf dieselbe Person beide nehmen.
+    _spaetdienst_erzwingen(ctx, freitage, [1, 2])
+    b.nicht_zwei_freitage_in_folge(ctx, "spaet", "letzterFreitagSpaet")
+
+    solver = loese_mit_ziel(ctx)
+    si = ctx.dienste_vom_typ("spaet")[0]
+    wer = [
+        next(ei for ei in (1, 2) if eingeteilt(solver, ctx, ei, di, si))
+        for di in freitage
+    ]
+    assert wer[0] != wer[1], (
+        f"Beide Freitage gingen an dieselbe Person ({ctx.employees[wer[0]]['name']})."
+    )
+
+
+def test_freitag_ohne_die_regel_darf_es_dieselbe_person_sein():
+    """
+    Die Gegenprobe. Ohne sie bewiese der Test oben nur, dass der Solver
+    zufällig gewechselt hat — und wäre auch dann grün, wenn die Regel nichts
+    tut.
+    """
+    ctx = baue_kontext()
+    freitage = _freitage(ctx)
+    _spaetdienst_erzwingen(ctx, freitage, [1, 2])
+    # Eine Person an beiden Freitagen ausdrücklich belohnen, indem die andere
+    # am zweiten Freitag gesperrt wird: Ohne die Regel ist das lösbar.
+    si = ctx.dienste_vom_typ("spaet")[0]
+    ctx.model.add(ctx.X[2, freitage[1], si] == 0)
+
+    solver = loese_mit_ziel(ctx)
+    assert eingeteilt(solver, ctx, 1, freitage[1], si), (
+        "Ohne die Regel müsste Person 1 den zweiten Freitag nehmen können."
+    )
+
+
+def test_freitag_die_vorgeschichte_zaehlt_mit():
+    """
+    Wer am Freitag VOR dem Zeitraum den Spätdienst hatte, bekommt den ersten
+    Freitag im Zeitraum nicht — sonst fängt die Rotation bei jeder neuen
+    Planung von vorne an.
+    """
+    ctx = baue_kontext()
+    freitage = _freitage(ctx)
+    ersterFreitag = ctx.days[freitage[0]]
+
+    from datetime import date, timedelta
+    j, m, t = (int(x) for x in ersterFreitag.split("-"))
+    davor = (date(j, m, t) - timedelta(days=7)).isoformat()
+    ctx.employees[1]["belastungsHistorie"] = {"letzterFreitagSpaet": davor}
+
+    _spaetdienst_erzwingen(ctx, [freitage[0]], [1, 2])
+    b.nicht_zwei_freitage_in_folge(ctx, "spaet", "letzterFreitagSpaet")
+
+    solver = loese_mit_ziel(ctx)
+    si = ctx.dienste_vom_typ("spaet")[0]
+    assert eingeteilt(solver, ctx, 2, freitage[0], si), (
+        "Der erste Freitag ging an die Person, die ihn schon in der Vorwoche hatte."
+    )
+
+
+def test_abstand_verteilt_auf_verschiedene_leute():
+    """
+    Zwei Spätdienste in zwei Wochen, Regel „höchstens einer in zwei Wochen":
+    Sie müssen an verschiedene Personen gehen.
+    """
+    ctx = baue_kontext()
+    si = ctx.dienste_vom_typ("spaet")[0]
+    _spaetdienst_erzwingen(ctx, [1, 8], [1, 2])
+    b.hoechstens_alle_n_wochen(ctx, "spaet", 2, "letzterSpaet")
+
+    solver = loese_mit_ziel(ctx)
+    wer = [
+        next(ei for ei in (1, 2) if eingeteilt(solver, ctx, ei, di, si))
+        for di in (1, 8)
+    ]
+    assert wer[0] != wer[1], "Beide Spätdienste gingen an dieselbe Person."
+
+
+def test_abstand_die_vorgeschichte_schiebt_nach_hinten():
+    """
+    Wer gestern den Spätdienst hatte, bekommt ihn nicht gleich wieder —
+    solange es eine Alternative gibt.
+    """
+    ctx = baue_kontext()
+    si = ctx.dienste_vom_typ("spaet")[0]
+
+    from datetime import date, timedelta
+    j, m, t = (int(x) for x in ctx.days[0].split("-"))
+    gestern = (date(j, m, t) - timedelta(days=1)).isoformat()
+    ctx.employees[1]["belastungsHistorie"] = {"letzterSpaet": gestern}
+
+    _spaetdienst_erzwingen(ctx, [0], [1, 2])
+    b.hoechstens_alle_n_wochen(ctx, "spaet", 4, "letzterSpaet")
+
+    solver = loese_mit_ziel(ctx)
+    assert eingeteilt(solver, ctx, 2, 0, si), (
+        "Der Spätdienst ging an die Person, die ihn gestern schon hatte."
+    )
+
+
+def test_abstand_meldet_sich_im_protokoll():
+    """
+    Beide Bausteine müssen sagen, was sie getan haben. Ein Regelpaket, dessen
+    Wirkung man nicht nachlesen kann, lässt sich nicht abnehmen.
+    """
+    ctx = baue_kontext()
+    b.nicht_zwei_freitage_in_folge(ctx, "spaet", "letzterFreitagSpaet")
+    b.hoechstens_alle_n_wochen(ctx, "spaet", 4, "letzterSpaet")
+    text = " ".join(ctx.protokoll)
+    assert "Freitagsrotation" in text and "Abstandsregel" in text, text
+    assert "Vorgeschichte" in text or "vor dem Zeitraum" in text, text

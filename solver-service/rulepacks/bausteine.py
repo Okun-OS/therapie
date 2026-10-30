@@ -2008,3 +2008,223 @@ def hoechstens_gleichzeitig_abwesend(ctx: PlanKontext, anzahl: int) -> None:
             )
     if gemeldet == 0:
         ctx.notiere(f"An keinem Tag sind mehr als {anzahl} Personen gleichzeitig abwesend.")
+
+
+# ── §268 Abstand statt Menge ────────────────────────────────────────────────
+#
+# Die Fairnessbausteine darüber zählen MENGEN: wie viele Spätdienste, wie
+# viele Freitage. Das verteilt gleichmäßig und beantwortet trotzdem nicht,
+# was ein Betrieb unter „durchrotieren" versteht.
+#
+# Gewünscht wurde:
+#
+#   „Dass keiner einen Frühdienst und Spätdienst am Freitag zweimal in Folge
+#    haben darf. Und den Spätdienst am besten nur einmal in 4 Wochen, nach
+#    Möglichkeit. Wenn es nicht anders geht, dann ist es so."
+#
+# Beide Sätze fragen nach einem ABSTAND. Eine Menge kann den nicht ausdrücken:
+# Vier Spätdienste in fünf Wochen können gleichmäßig verteilt gewesen sein
+# oder viermal hintereinander — die Zahl ist dieselbe, für den Menschen ist es
+# ein völlig anderer Monat.
+#
+# Beide Bausteine lesen deshalb ein DATUM aus der Vorgeschichte (§268:
+# `letzterFreitagFrueh`, `letzterFreitagSpaet`, `letzterSpaet`) und rechnen
+# über die Grenze des geplanten Zeitraums hinweg.
+
+def _datum_zu_tag(ctx: PlanKontext, datum: str):
+    """Der Index dieses Datums im Plan — oder None, wenn es außerhalb liegt."""
+    try:
+        return ctx.days.index(datum)
+    except ValueError:
+        return None
+
+
+def _tage_differenz(a: str, b: str):
+    """Tage zwischen zwei ISO-Daten (b − a). None, wenn eines unbrauchbar ist."""
+    from datetime import date
+    try:
+        ja, ma, ta = (int(x) for x in a.split("-"))
+        jb, mb, tb = (int(x) for x in b.split("-"))
+        return (date(jb, mb, tb) - date(ja, ma, ta)).days
+    except (ValueError, AttributeError):
+        return None
+
+
+def nicht_zwei_freitage_in_folge(ctx: PlanKontext, dienst_typ: str,
+                                 schluessel: str, gewicht: int = 20_000,
+                                 hart: bool = False) -> None:
+    """
+    Niemand hat den Freitagsdienst dieser Art in zwei aufeinanderfolgenden
+    Wochen.
+
+    WARUM DER FREITAG EIGENS
+    Ein Freitagsspätdienst kostet das Wochenende seinen Anfang, ein
+    Freitagsfrühdienst den Schlaf davor. `freitagsfairness` verteilt sie schon
+    gleichmäßig — aber gleichmäßig heißt nicht abwechselnd: Vier Freitage in
+    Folge und danach acht frei ist rechnerisch dasselbe wie jeder zweite.
+
+    WARUM TEUER UND NICHT VERBOTEN
+    Das Regelwerk dieses Hauses sagt an anderer Stelle schon, warum (§163,
+    Abschnitt 5): Ein Verbot macht den Plan unlösbar, sobald vier Leute krank
+    sind — und dann steht der Betrieb ohne alles da, nicht nur ohne Rotation.
+
+    Mit `hart=True` lässt es sich erzwingen. Die Vorgabe ist bewusst eine
+    andere: ein Gewicht, das über allem liegt, was der Plan sonst kennt (zum
+    Vergleich: das Verlassen der Stammgruppe kostet 300, die Leitung im
+    Dienst 9.000). Es wird also nur gebrochen, wenn es gar nicht anders geht
+    — und steht dann im Bericht.
+
+    GEGEN DIE VORGESCHICHTE
+    Wer am letzten Freitag VOR dem Zeitraum diesen Dienst hatte, bekommt den
+    ersten Freitag im Zeitraum nicht. Ohne das fängt die Rotation bei jeder
+    neuen Planung von vorne an — der Fehler, den `historische_fairness` schon
+    einmal für die Mengen behoben hat.
+    """
+    si_liste = ctx.dienste_vom_typ(dienst_typ) or ctx.dienste(dienst_typ)
+    if not si_liste:
+        ctx.notiere(f"Freitagsrotation „{dienst_typ}“: keine Dienste dieser Art.")
+        return
+
+    freitage = [di for di in range(ctx.n_days) if ctx.ist_freitag(di)]
+    if not freitage:
+        ctx.notiere(f"Freitagsrotation „{dienst_typ}“: kein Freitag im Plan.")
+        return
+
+    paare = 0
+    for ei in range(ctx.n_emp):
+        # 1. Innerhalb des Zeitraums: je zwei Freitage, die sieben Tage
+        #    auseinanderliegen.
+        for i in range(len(freitage) - 1):
+            a, bb = freitage[i], freitage[i + 1]
+            if _tage_differenz(ctx.days[a], ctx.days[bb]) != 7:
+                continue
+            zusammen = sum(ctx.X[ei, a, si] for si in si_liste) \
+                + sum(ctx.X[ei, bb, si] for si in si_liste)
+            if hart:
+                ctx.model.add(zusammen <= 1)
+            else:
+                verstoss = ctx.model.new_bool_var(f"fr2_{dienst_typ}_{ei}_{a}")
+                ctx.model.add(zusammen <= 1 + verstoss)
+                ctx.strafe(gewicht, verstoss)
+            paare += 1
+
+        # 2. Gegen die Vorgeschichte: der Freitag unmittelbar davor.
+        zuletzt = (ctx.employees[ei].get("belastungsHistorie") or {}).get(schluessel)
+        if not zuletzt:
+            continue
+        erster = freitage[0]
+        if _tage_differenz(zuletzt, ctx.days[erster]) == 7:
+            for si in si_liste:
+                if hart:
+                    ctx.model.add(ctx.X[ei, erster, si] == 0)
+                else:
+                    ctx.strafe(gewicht, ctx.X[ei, erster, si])
+
+    ctx.notiere(
+        f"Freitagsrotation „{dienst_typ}“: {len(freitage)} Freitage, "
+        f"{paare} Paare geprüft, "
+        + ("Verbot." if hart else f"Gewicht {gewicht} je Wiederholung.")
+        + " Der Freitag unmittelbar vor dem Zeitraum zählt mit."
+    )
+
+
+def hoechstens_alle_n_wochen(ctx: PlanKontext, dienst_typ: str, wochen: int,
+                             schluessel: str, gewicht: int = 800) -> None:
+    """
+    Diesen Dienst möglichst nur einmal in `wochen` Wochen.
+
+    WARUM EIN WUNSCH UND KEIN MUSS
+    Weil es so gewünscht wurde — „am besten nur einmal in 4 Wochen, nach
+    Möglichkeit. Wenn es nicht anders geht, dann ist es so." Genau dafür ist
+    ein Gewicht da: Der Plan weicht nur aus, wenn er sonst nicht zustande
+    kommt, und schreibt es in den Bericht.
+
+    WIE GERECHNET WIRD
+    Über ein wanderndes Fenster von `wochen` × 7 Tagen: In keinem solchen
+    Fenster soll mehr als ein Dienst dieser Art stehen. Das ist strenger und
+    ehrlicher als „höchstens einer je Kalendermonat" — zwei Spätdienste am
+    30. und 1. wären dort zwei Monate und in Wirklichkeit zwei Tage.
+
+    UND DIE VORGESCHICHTE
+    Lag der letzte solche Dienst weniger als `wochen` Wochen zurück, sind die
+    ersten Tage des Zeitraums noch im Fenster. Sie werden mit demselben
+    Gewicht belastet — sonst beginnt die Schonfrist mit jedem neuen Plan von
+    vorne.
+    """
+    si_liste = ctx.dienste_vom_typ(dienst_typ) or ctx.dienste(dienst_typ)
+    if not si_liste:
+        ctx.notiere(f"Abstandsregel „{dienst_typ}“: keine Dienste dieser Art.")
+        return
+
+    fenster_tage = max(1, wochen) * 7
+
+    # §268 Die Fenster: in Wochenschritten, nicht tageweise.
+    #
+    # Der erste Entwurf legte für JEDEN Starttag ein Fenster an — bei sechzehn
+    # Kräften und vier Wochen waren das 448 Zählvariablen mit je dreihundert
+    # Gliedern. Der Rechendienst erreichte das Optimum danach nicht mehr: Er
+    # brach nach sechzig Sekunden bei „FEASIBLE" ab, und damit war JEDE weiche
+    # Entscheidung im ganzen Paket nicht mehr ablesbar. Eine Regel, die den
+    # Plan nur noch halb rechnen lässt, verschlechtert ihn an allen anderen
+    # Stellen.
+    #
+    # Zwei Vereinfachungen, die nichts kosten:
+    #
+    #   1. Ist der Zeitraum nicht länger als das Fenster — der Normalfall, es
+    #      werden ein bis vier Wochen geplant —, gibt es genau EIN Fenster:
+    #      den ganzen Zeitraum. Dann ist die Regel eine Zeile je Person.
+    #   2. Sonst rückt das Fenster in Wochenschritten weiter. Ein Fenster, das
+    #      einen Tag später beginnt, verbietet fast dasselbe; die Lücke dazwischen
+    #      schließt die Vorgeschichte beim nächsten Lauf.
+    fenster_starts = (
+        [0] if ctx.n_days <= fenster_tage
+        else list(range(0, ctx.n_days, 7))
+    )
+    fenster_gezaehlt = 0
+
+    for ei in range(ctx.n_emp):
+        # 1. Das wandernde Fenster innerhalb des Zeitraums.
+        for start in fenster_starts:
+            tage = [
+                di for di in range(start, ctx.n_days)
+                if (_tage_differenz(ctx.days[start], ctx.days[di]) or 0) < fenster_tage
+            ]
+            if len(tage) < 2:
+                continue
+            zusammen = sum(ctx.X[ei, di, si] for di in tage for si in si_liste)
+            # Der Wertebereich bewusst klein: Wer in vier Wochen fünf
+            # Spätdienste hat, ist genauso weit weg vom Ziel wie einer mit
+            # vier. Ein weiter Bereich macht das Ziel nur unruhiger.
+            ueber = ctx.model.new_int_var(0, 3, f"abst_{dienst_typ}_{ei}_{start}")
+            ctx.model.add(ueber >= zusammen - 1)
+            ctx.strafe(gewicht, ueber)
+            fenster_gezaehlt += 1
+
+        # 2. Die Vorgeschichte: Wie viel vom Fenster ragt noch in den Zeitraum?
+        zuletzt = (ctx.employees[ei].get("belastungsHistorie") or {}).get(schluessel)
+        if not zuletzt:
+            continue
+        for di in range(ctx.n_days):
+            abstand = _tage_differenz(zuletzt, ctx.days[di])
+            if abstand is None or abstand >= fenster_tage:
+                continue
+            # §268 Abklingend, nicht pauschal.
+            #
+            # Ein Spätdienst am Tag nach dem letzten ist etwas anderes als
+            # einer sechsundzwanzig Tage später — beide liegen im Fenster,
+            # aber nur der erste ist das, was die Regel verhindern soll.
+            #
+            # Ein pauschales Gewicht über das ganze Fenster hat außerdem
+            # gemessen Schaden angerichtet: Es legte sich als unvermeidbare
+            # Grundlast über das ganze Ziel, und der Rechendienst erreichte
+            # das Optimum nicht mehr. Dann sind ALLE weichen Regeln des
+            # Pakets nur noch ungefähr erfüllt.
+            anteil = max(1, gewicht * (fenster_tage - abstand) // fenster_tage)
+            for si in si_liste:
+                ctx.strafe(anteil, ctx.X[ei, di, si])
+
+    ctx.notiere(
+        f"Abstandsregel „{dienst_typ}“: möglichst nur einer in {wochen} Wochen "
+        f"({fenster_tage} Tage), {fenster_gezaehlt} Fenster, Gewicht {gewicht}. "
+        "Der letzte Dienst vor dem Zeitraum zählt mit."
+    )

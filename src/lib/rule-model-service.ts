@@ -15,6 +15,7 @@ import type {
   FairnessKonfig,
   CustomConstraintEntry,
 } from '@/lib/company-model-types'
+import { letzterDienst } from './belastung'
 
 const DAY_NAME_TO_DOW: Record<string, number> = {
   Mo: 1, Di: 2, Mi: 3, Do: 4, Fr: 5, Sa: 6, So: 0,
@@ -508,6 +509,23 @@ export async function buildRuleModel(
     const freitagFrueh = anFreitag('frueh')
     const freitagSpaet = anFreitag('spaet')
 
+    /*
+     * §268 Wann zuletzt — nicht nur wie oft.
+     *
+     * Gewünscht sind zwei Regeln, die nach einem ABSTAND fragen: der
+     * Freitagsdienst nicht zweimal in Folge, der Spätdienst möglichst nur
+     * einmal in vier Wochen. Beide lassen sich aus einer Anzahl nicht
+     * ableiten — vier Spätdienste können fünf Wochen her sein oder von
+     * gestern.
+     *
+     * `recentEntries` liegt absteigend nach Datum vor, der erste Treffer ist
+     * also der jüngste. Fehlt einer, bleibt das Feld leer; der Rechendienst
+     * liest das als „kommt in den letzten fünf Wochen nicht vor".
+     */
+    const letzterFreitagFrueh = letzterDienst(empRecent, schichten, 'frueh', true)
+    const letzterFreitagSpaet = letzterDienst(empRecent, schichten, 'spaet', true)
+    const letzterSpaet = letzterDienst(empRecent, schichten, 'spaet')
+
     const empEinheiten: string[] = []
     if (emp.gruppe) empEinheiten.push(emp.gruppe)
     if (emp.bereich) empEinheiten.push(emp.bereich)
@@ -585,6 +603,7 @@ export async function buildRuleModel(
       belastungsHistorie: {
         nachtSchichten, wochenendDienste, spaetDienste,
         fruehDienste, freitagFrueh, freitagSpaet,
+        letzterFreitagFrueh, letzterFreitagSpaet, letzterSpaet,
       },
     }
   })
