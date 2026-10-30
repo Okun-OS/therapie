@@ -231,13 +231,36 @@ prüft es beim Rückruf.
 
 ---
 
-## Schritt 6 — Bezahlen
+## Schritt 6 — Abschicken, und die Enrollment-ID notieren
 
-99 USD, in Euro abgerechnet, per Kreditkarte. **Die Mitgliedschaft verlängert
-sich jährlich automatisch.**
+Nach dem Absenden erscheint:
 
-> Läuft sie aus, verschwindet die App aus dem Store — nicht sofort, aber sie
-> verschwindet. Der Tag sollte im Kalender stehen.
+> **Your enrollment is being processed.**
+> Enrollment ID: ………
+> *„Once we verify your authority to sign legal agreements, we'll email you
+> with instructions on how to complete your enrollment."*
+
+**Die Enrollment-ID aufschreiben.** Bei jeder Rückfrage an Apple ist sie das
+Erste, wonach gefragt wird.
+
+> **§271 Hier stand zuerst „Bezahlen".** Das war die falsche Reihenfolge, und
+> es ist am lebenden Fall aufgefallen (30.10.2026, Anmeldung der OKUN Systems
+> UG): Bezahlt wird NICHT beim Absenden. Apple prüft zuerst und schickt dann
+> erst die Anweisung zum Abschluss. Die 99 USD kommen danach — siehe
+> Schritt 8.
+
+**Und noch eines, bevor Sie die Seite verlassen:** Auf derselben Seite stehen
+alle eingetragenen Angaben noch einmal untereinander. Lesen Sie sie durch,
+besonders die **Website**. Apple schreibt daneben:
+
+> *„The information on this account will be used for verification and legal
+> agreements, so please make sure your information is correct. To edit your
+> account information, contact us."*
+
+Das heißt: **Ab hier ändert man nichts mehr selbst.** Ein Tippfehler in der
+Adresse der Website — bei dieser Anmeldung war um ein Haar ein `.comn` stehen
+geblieben — führt zur Ablehnung, und die Begründung nennt ihn nicht. Lieber
+jetzt eine Mail an den Support als in zehn Tagen von vorne anfangen.
 
 ---
 
@@ -257,9 +280,16 @@ unterschreiben dürfen. Drei Minuten.
 
 ---
 
-## Schritt 8 — Die Verträge annehmen
+## Schritt 8 — Bezahlen und die Verträge annehmen
 
-Nach der Freischaltung: **https://appstoreconnect.apple.com** →
+Erst jetzt, und erst nach der E-Mail von Apple: **99 USD**, in Euro
+abgerechnet, per Kreditkarte. **Die Mitgliedschaft verlängert sich jährlich
+automatisch.**
+
+> Läuft sie aus, verschwindet die App aus dem Store — nicht sofort, aber sie
+> verschwindet. Der Tag gehört in den Kalender.
+
+Danach: **https://appstoreconnect.apple.com** →
 *Agreements, Tax, and Banking*.
 
 Dort liegt der **Paid Applications Agreement** (auch wenn die App kostenlos
@@ -293,6 +323,10 @@ Store-Texte und Bildschirmfotos ein. Beides liegt schon bereit:
 
 1. **Niemand geht ans Telefon.** Siehe Schritt 7. Der Anruf kommt
    unangekündigt und sieht nach Werbung aus.
+   
+   Dazu gehört auch: **das Postfach im Blick behalten**, das als Arbeits-
+   E-Mail eingetragen wurde. Dort kommt die Anweisung zum Abschluss an,
+   und sie landet gern im Spam.
 2. **Der Name in der Apple-ID ist nicht der echte Name.** Siehe Schritt 0.1.
    Apple nennt das selbst als Verzögerungsgrund.
 3. **Der Firmenname weicht vom D-U-N-S-Eintrag ab.** Ein fehlendes
