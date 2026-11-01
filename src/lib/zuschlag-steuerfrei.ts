@@ -42,11 +42,31 @@ export interface ZuschlagLage {
   feiertagStunden: number
 }
 
+export interface ArtAufteilung {
+  frei: number
+  pflichtig: number
+}
+
 export interface ZuschlagAufteilung {
   /** Der steuerfreie Teil in Euro. */
   steuerfrei: number
   /** Der beitragsfreie Teil in Euro — kann kleiner sein als der steuerfreie. */
   svfrei: number
+  /**
+   * §276 Und dasselbe je Zuschlagsart.
+   *
+   * Die Summe allein reicht dem Lohnbüro nicht: Es bucht „Nachtzuschlag
+   * steuerfrei" und „Nachtzuschlag steuerpflichtig" auf VERSCHIEDENE
+   * Lohnarten, und ebenso für Sonntag und Feiertag. Aus einer Gesamtsumme
+   * lässt sich das nicht zurückrechnen — welcher Teil der steuerpflichtigen
+   * Zuschläge aus der Nacht stammt und welcher vom Feiertag, steht ihr
+   * nicht an.
+   */
+  jeArt: {
+    nacht: ArtAufteilung
+    sonntag: ArtAufteilung
+    feiertag: ArtAufteilung
+  }
   /** Was ein Mensch wissen muss, wenn nichts freigestellt werden konnte. */
   hinweis?: string
 }
@@ -62,6 +82,14 @@ const auf2 = (n: number) => Math.round(n * 100) / 100
 export function zuschlagSteuerfrei(lage: ZuschlagLage): ZuschlagAufteilung {
   const { grundlohn } = lage
 
+  type Art = 'nacht' | 'sonntag' | 'feiertag'
+  const posten: [Art, number, number, number][] = [
+    // [Art, gezahlter Zuschlag, Stunden, Höchstsatz]
+    ['nacht', lage.nachtBetrag, lage.nachtStunden, FREI_NACHT],
+    ['sonntag', lage.sonntagBetrag, lage.sonntagStunden, FREI_SONNTAG],
+    ['feiertag', lage.feiertagBetrag, lage.feiertagStunden, FREI_FEIERTAG],
+  ]
+
   if (!(grundlohn > 0)) {
     /*
      * Ohne Grundlohn lässt sich die Grenze nicht bilden. Dann wird NICHTS
@@ -72,6 +100,11 @@ export function zuschlagSteuerfrei(lage: ZuschlagLage): ZuschlagAufteilung {
     const gezahlt = lage.nachtBetrag + lage.sonntagBetrag + lage.feiertagBetrag
     return {
       steuerfrei: 0, svfrei: 0,
+      jeArt: {
+        nacht: { frei: 0, pflichtig: auf2(Math.max(0, lage.nachtBetrag)) },
+        sonntag: { frei: 0, pflichtig: auf2(Math.max(0, lage.sonntagBetrag)) },
+        feiertag: { frei: 0, pflichtig: auf2(Math.max(0, lage.feiertagBetrag)) },
+      },
       hinweis: gezahlt > 0
         ? 'Ohne Grundlohn je Stunde lässt sich die Steuerfreiheit der Zuschläge (§3b EStG) '
           + 'nicht bestimmen — sie werden vorsichtshalber voll versteuert.'
@@ -79,20 +112,27 @@ export function zuschlagSteuerfrei(lage: ZuschlagLage): ZuschlagAufteilung {
     }
   }
 
-  const posten: [number, number, number][] = [
-    // [gezahlter Zuschlag, Stunden, Höchstsatz]
-    [lage.nachtBetrag, lage.nachtStunden, FREI_NACHT],
-    [lage.sonntagBetrag, lage.sonntagStunden, FREI_SONNTAG],
-    [lage.feiertagBetrag, lage.feiertagStunden, FREI_FEIERTAG],
-  ]
-
   let steuerfrei = 0
   let svfrei = 0
-  for (const [gezahlt, stundenzahl, satz] of posten) {
-    if (gezahlt <= 0 || stundenzahl <= 0) continue
-    steuerfrei += Math.min(gezahlt, Math.min(grundlohn, GRUNDLOHN_GRENZE_STEUER) * stundenzahl * satz)
-    svfrei += Math.min(gezahlt, Math.min(grundlohn, GRUNDLOHN_GRENZE_SV) * stundenzahl * satz)
+  const jeArt = {
+    nacht: { frei: 0, pflichtig: 0 },
+    sonntag: { frei: 0, pflichtig: 0 },
+    feiertag: { frei: 0, pflichtig: 0 },
   }
 
-  return { steuerfrei: auf2(steuerfrei), svfrei: auf2(svfrei) }
+  for (const [art, gezahlt, stundenzahl, satz] of posten) {
+    if (gezahlt <= 0) continue
+    if (stundenzahl <= 0) {
+      // Ein Betrag ohne zugehörige Stunden kann kein §3b-Zuschlag sein —
+      // die Grenze ist ein Produkt aus Stunden. Er bleibt steuerpflichtig.
+      jeArt[art].pflichtig = auf2(gezahlt)
+      continue
+    }
+    const frei = Math.min(gezahlt, Math.min(grundlohn, GRUNDLOHN_GRENZE_STEUER) * stundenzahl * satz)
+    steuerfrei += frei
+    svfrei += Math.min(gezahlt, Math.min(grundlohn, GRUNDLOHN_GRENZE_SV) * stundenzahl * satz)
+    jeArt[art] = { frei: auf2(frei), pflichtig: auf2(gezahlt - frei) }
+  }
+
+  return { steuerfrei: auf2(steuerfrei), svfrei: auf2(svfrei), jeArt }
 }

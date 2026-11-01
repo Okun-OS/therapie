@@ -272,8 +272,28 @@ export async function monatsGrundlagen(
     g.beschaeftigt = teil.beschaeftigt
 
     const regeln = regelnJeStandort.get(m.locationId ?? '') ?? DEFAULT_SURCHARGE_RULES
-    const satz = zuschlagsStundenlohn(m.lohnart, m.stundenlohn, m.monatsgehalt, m.weeklyHours)
-    g.zuschlagsStundenlohn = satz != null ? Math.round(satz * 100) / 100 : null
+
+    /*
+     * §276 EIN Grundlohn, für die Zahlung und für die Steuerfreiheit.
+     *
+     * Hier wurde der abgeleitete Stundenlohn auf Cent gerundet in die
+     * Grundlage geschrieben — und die Zuschläge darunter mit dem
+     * UNGERUNDETEN Wert gezahlt. Beides zusammen ergibt einen Zuschlag, der
+     * den §3b-Höchstbetrag um Bruchteile eines Cents übersteigt, weil die
+     * Grenze aus dem gerundeten Grundlohn gebildet wird.
+     *
+     * Gemessen am 01.11.2026: 43,15 Nachtstunden, Grundlohn 21,98 €/h.
+     * Gezahlt wurden 237,12 €, steuerfrei blieben 237,11 € — ein Cent
+     * steuerpflichtiger Nachtzuschlag. Für ein Lohnbüro ist das eine eigene
+     * Lohnart über einen Cent, und auf dem Lohnzettel geht die Rechnung
+     * nicht auf: 21,98 × 43,15 × 25 % sind 237,11 und nicht 237,12.
+     *
+     * Gerundet wird deshalb EINMAL, vor beidem. Der ausgewiesene Grundlohn
+     * ist damit auch der, mit dem gerechnet wurde — nachrechenbar von Hand.
+     */
+    const satzRoh = zuschlagsStundenlohn(m.lohnart, m.stundenlohn, m.monatsgehalt, m.weeklyHours)
+    const satz = satzRoh != null ? Math.round(satzRoh * 100) / 100 : null
+    g.zuschlagsStundenlohn = satz
 
     let minuten = 0
     for (const z of zeitenJeMitarbeiter.get(m.employeeId) ?? []) {

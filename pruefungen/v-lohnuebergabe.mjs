@@ -79,6 +79,28 @@ check('Steuerfrei und steuerpflichtig stehen getrennt',
   zeilen.every(z => 'zuschlaegeSteuerfrei' in z && 'zuschlaegeSteuerpflichtig' in z),
   'beide Spalten vorhanden')
 
+/*
+ * §276 Und je Art, nicht nur in der Summe. „Nachtzuschlag steuerfrei" und
+ * „Nachtzuschlag steuerpflichtig" sind im Lohnprogramm zwei Lohnarten; aus
+ * einer Gesamtsumme ist nicht zu gewinnen, welcher Teil woher stammt.
+ */
+const ARTEN = ['Nacht', 'Sonntag', 'Feiertag']
+check('Jede begünstigte Zuschlagsart ist einzeln aufgeteilt',
+  zeilen.length > 0 && ARTEN.every(a =>
+    `zuschlag${a}Frei` in zeilen[0] && `zuschlag${a}Pflichtig` in zeilen[0]),
+  ARTEN.map(a => `${a}: ${zeilen[0]?.[`zuschlag${a}Frei`]} frei / `
+    + `${zeilen[0]?.[`zuschlag${a}Pflichtig`]} pflichtig`).join(' · '))
+
+check('Und die Einzelteile ergeben die beiden Summen',
+  zeilen.every(z => {
+    const frei = z.zuschlagNachtFrei + z.zuschlagSonntagFrei + z.zuschlagFeiertagFrei
+    const pflichtig = z.zuschlagNachtPflichtig + z.zuschlagSonntagPflichtig
+      + z.zuschlagFeiertagPflichtig + z.zuschlagSamstag + z.zuschlagSonstige
+    return Math.abs(frei - z.zuschlaegeSteuerfrei) < 0.02
+      && Math.abs(pflichtig - z.zuschlaegeSteuerpflichtig) < 0.02
+  }),
+  'sonst stimmt die Datei in sich selbst nicht')
+
 check('Und die beiden ergeben zusammen den Gesamtbetrag',
   zeilen.every(z =>
     Math.abs((z.zuschlaegeSteuerfrei + z.zuschlaegeSteuerpflichtig) - z.zuschlaegeGesamt) < 0.02),
@@ -289,6 +311,31 @@ check('Jeder Mensch steht dabei nur einmal darin',
  * nach Bundesland Bayern" über drei Länder hinweg wäre eine Behauptung, die
  * für zwei davon falsch ist — und Feiertagszuschläge hängen daran.
  */
+/*
+ * §276 Und die Zahl auf dem Bildschirm ist dieselbe wie die in der Datei.
+ *
+ * Der Fund vom 01.11.2026: Sie waren es nicht. Die Übersicht rechnete mit
+ * dem Vorgabe-Stundenlohn aus dem Zuschlagsregelwerk (21,50 €), die
+ * Abrechnung und damit die Übergabe mit dem Grundlohn des Menschen
+ * (21,98 €). Für Elif Demir standen 231,93 € auf dem Bildschirm und
+ * 237,12 € in der Datei — dieselbe Nachtarbeit, derselbe Monat.
+ *
+ * Welche Zahl stimmt, sieht man ihnen nicht an. Ausgezahlt wird die aus der
+ * Abrechnung; die Anzeige folgt ihr jetzt. Diese Prüfung ist das Band
+ * zwischen beiden: Reißt es, stehen wieder zwei Wahrheiten da.
+ */
+const uebersichtBetrag = (name) => {
+  const r = (uebersichtGf.body?.rows ?? []).find(x => x.employeeName === name)
+  return (r?.byRule ?? []).reduce((s, b) => s + b.euros, 0)
+}
+const abweichungen = zeilen
+  .map(z => ({ name: z.name, diff: z.zuschlaegeGesamt - uebersichtBetrag(z.name) }))
+  .filter(x => Math.abs(x.diff) >= 0.005)
+
+check('Bildschirm und Übergabedatei nennen denselben Betrag',
+  abweichungen.length === 0,
+  abweichungen.map(a => `${a.name}: ${a.diff.toFixed(2)} €`).join(' · ') || 'alle gleich')
+
 check('Über mehrere Standorte wird kein einzelnes Bundesland behauptet',
   (mehrfach.body?.standorte ?? 0) <= 1 || mehrfach.body?.bundesland === undefined,
   `Bundesland: ${mehrfach.body?.bundesland ?? '— (richtig, mehrere Standorte)'}`)

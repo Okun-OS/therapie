@@ -54,11 +54,23 @@ export interface UebergabeZeile {
   samstagStunden: number
   sonntagStunden: number
   feiertagStunden: number
-  zuschlagNacht: number
+  /*
+   * §276 Je Art getrennt in steuerfrei und steuerpflichtig.
+   *
+   * Nicht nur der Gesamtbetrag je Art: Das Lohnprogramm führt für
+   * „Nachtzuschlag steuerfrei" und „Nachtzuschlag steuerpflichtig" zwei
+   * verschiedene Lohnarten, weil die eine in die Beitragsberechnung geht und
+   * die andere nicht. Aus einem Gesamtbetrag ist das nicht zu gewinnen.
+   */
+  zuschlagNachtFrei: number
+  zuschlagNachtPflichtig: number
+  zuschlagSonntagFrei: number
+  zuschlagSonntagPflichtig: number
+  zuschlagFeiertagFrei: number
+  zuschlagFeiertagPflichtig: number
+  /** Samstagszuschlag — für ihn gibt es keine Steuerbefreiung (§3b kennt ihn nicht). */
   zuschlagSamstag: number
-  zuschlagSonntag: number
-  zuschlagFeiertag: number
-  /** Mehrarbeits- und sonstige Zuschläge — nie nach §3b begünstigt. */
+  /** Mehrarbeits- und sonstige Zuschläge — ebenfalls nie nach §3b begünstigt. */
   zuschlagSonstige: number
   zuschlaegeGesamt: number
   zuschlaegeSteuerfrei: number
@@ -104,10 +116,13 @@ export function uebergabeZeile(
     samstagStunden: auf2(g.saturdayHours),
     sonntagStunden: auf2(g.sundayHours),
     feiertagStunden: auf2(g.holidayHours),
-    zuschlagNacht: auf2(g.nightSurcharge),
+    zuschlagNachtFrei: frei.jeArt.nacht.frei,
+    zuschlagNachtPflichtig: frei.jeArt.nacht.pflichtig,
+    zuschlagSonntagFrei: frei.jeArt.sonntag.frei,
+    zuschlagSonntagPflichtig: frei.jeArt.sonntag.pflichtig,
+    zuschlagFeiertagFrei: frei.jeArt.feiertag.frei,
+    zuschlagFeiertagPflichtig: frei.jeArt.feiertag.pflichtig,
     zuschlagSamstag: auf2(g.saturdaySurcharge),
-    zuschlagSonntag: auf2(g.sundaySurcharge),
-    zuschlagFeiertag: auf2(g.holidaySurcharge),
     zuschlagSonstige,
     zuschlaegeGesamt: gesamt,
     zuschlaegeSteuerfrei: frei.steuerfrei,
@@ -140,11 +155,14 @@ const SPALTEN: [string, (z: UebergabeZeile) => string | number | null][] = [
   ['Samstagsstunden', z => z.samstagStunden],
   ['Sonntagsstunden', z => z.sonntagStunden],
   ['Feiertagsstunden', z => z.feiertagStunden],
-  ['Zuschlag Nacht', z => z.zuschlagNacht],
-  ['Zuschlag Samstag', z => z.zuschlagSamstag],
-  ['Zuschlag Sonntag', z => z.zuschlagSonntag],
-  ['Zuschlag Feiertag', z => z.zuschlagFeiertag],
-  ['Zuschlag sonstige', z => z.zuschlagSonstige],
+  ['Zuschlag Nacht steuerfrei', z => z.zuschlagNachtFrei],
+  ['Zuschlag Nacht steuerpflichtig', z => z.zuschlagNachtPflichtig],
+  ['Zuschlag Sonntag steuerfrei', z => z.zuschlagSonntagFrei],
+  ['Zuschlag Sonntag steuerpflichtig', z => z.zuschlagSonntagPflichtig],
+  ['Zuschlag Feiertag steuerfrei', z => z.zuschlagFeiertagFrei],
+  ['Zuschlag Feiertag steuerpflichtig', z => z.zuschlagFeiertagPflichtig],
+  ['Zuschlag Samstag (steuerpflichtig)', z => z.zuschlagSamstag],
+  ['Zuschlag sonstige (steuerpflichtig)', z => z.zuschlagSonstige],
   ['Zuschläge gesamt', z => z.zuschlaegeGesamt],
   ['davon steuerfrei', z => z.zuschlaegeSteuerfrei],
   ['davon steuerpflichtig', z => z.zuschlaegeSteuerpflichtig],

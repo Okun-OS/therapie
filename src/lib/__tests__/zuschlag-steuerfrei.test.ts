@@ -146,6 +146,80 @@ describe('§275 Was NICHT freigestellt wird', () => {
   })
 })
 
+describe('§276 Je Art getrennt', () => {
+  /*
+   * Der Grund, warum die Summe nicht reicht: Zwei Monate mit demselben
+   * steuerpflichtigen Gesamtbetrag, der einmal aus der Nacht und einmal vom
+   * Feiertag stammt. Das Lohnprogramm bucht sie auf verschiedene Lohnarten —
+   * aus der Summe allein ist nicht zu sagen, auf welche.
+   */
+  it('unterscheidet, woher der steuerpflichtige Teil kommt', () => {
+    const ausNacht = zuschlagSteuerfrei({
+      ...LEER, grundlohn: 20, nachtBetrag: 100, nachtStunden: 10,   // frei 50, pflichtig 50
+    })
+    const ausFeiertag = zuschlagSteuerfrei({
+      ...LEER, grundlohn: 20, feiertagBetrag: 150, feiertagStunden: 4, // frei 100, pflichtig 50
+    })
+
+    const pflichtig = (r: ReturnType<typeof zuschlagSteuerfrei>) =>
+      r.jeArt.nacht.pflichtig + r.jeArt.sonntag.pflichtig + r.jeArt.feiertag.pflichtig
+    expect(pflichtig(ausNacht)).toBe(pflichtig(ausFeiertag))   // dieselbe Summe …
+
+    expect(ausNacht.jeArt.nacht.pflichtig).toBe(50)            // … verschiedene Herkunft
+    expect(ausNacht.jeArt.feiertag.pflichtig).toBe(0)
+    expect(ausFeiertag.jeArt.feiertag.pflichtig).toBe(50)
+    expect(ausFeiertag.jeArt.nacht.pflichtig).toBe(0)
+  })
+
+  it('frei und pflichtig ergeben je Art den gezahlten Betrag', () => {
+    const r = zuschlagSteuerfrei({
+      grundlohn: 19.5,
+      nachtBetrag: 77.77, nachtStunden: 11,
+      sonntagBetrag: 123.45, sonntagStunden: 9,
+      feiertagBetrag: 55.55, feiertagStunden: 2,
+    })
+    expect(r.jeArt.nacht.frei + r.jeArt.nacht.pflichtig).toBeCloseTo(77.77, 2)
+    expect(r.jeArt.sonntag.frei + r.jeArt.sonntag.pflichtig).toBeCloseTo(123.45, 2)
+    expect(r.jeArt.feiertag.frei + r.jeArt.feiertag.pflichtig).toBeCloseTo(55.55, 2)
+  })
+
+  it('und die Teile summieren sich zum Gesamtwert', () => {
+    const r = zuschlagSteuerfrei({
+      grundlohn: 20,
+      nachtBetrag: 100, nachtStunden: 10,
+      sonntagBetrag: 50, sonntagStunden: 8,
+      feiertagBetrag: 150, feiertagStunden: 4,
+    })
+    const summeFrei = r.jeArt.nacht.frei + r.jeArt.sonntag.frei + r.jeArt.feiertag.frei
+    expect(summeFrei).toBeCloseTo(r.steuerfrei, 2)
+  })
+
+  it('ohne Grundlohn ist je Art alles steuerpflichtig', () => {
+    const r = zuschlagSteuerfrei({
+      ...LEER, grundlohn: 0,
+      nachtBetrag: 40, nachtStunden: 5,
+      feiertagBetrag: 60, feiertagStunden: 2,
+    })
+    expect(r.jeArt.nacht).toEqual({ frei: 0, pflichtig: 40 })
+    expect(r.jeArt.feiertag).toEqual({ frei: 0, pflichtig: 60 })
+    expect(r.jeArt.sonntag).toEqual({ frei: 0, pflichtig: 0 })
+  })
+
+  it('ein Betrag ohne Stunden bleibt steuerpflichtig — und verschwindet nicht', () => {
+    /*
+     * Die Gegenprobe zum Überspringen: Vorher wurde ein Posten ohne Stunden
+     * einfach übergangen. In der Summe fiel das nicht auf (steuerfrei blieb
+     * 0, richtig) — je Art wäre der Betrag aber spurlos weg gewesen, und das
+     * Lohnbüro hätte ihn nie gebucht.
+     */
+    const r = zuschlagSteuerfrei({
+      ...LEER, grundlohn: 20, nachtBetrag: 80, nachtStunden: 0,
+    })
+    expect(r.steuerfrei).toBe(0)
+    expect(r.jeArt.nacht.pflichtig).toBe(80)
+  })
+})
+
 describe('§275 Mehrere Arten zugleich', () => {
   it('werden einzeln begrenzt und dann addiert', () => {
     /*

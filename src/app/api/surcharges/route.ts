@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { requireRole, resolveCustomerId, resolveLocationId } from '@/lib/session'
 import { allowedLocationScope } from '@/lib/scope'
 import { aggregateWithRules, DEFAULT_SURCHARGE_RULES } from '@/lib/surcharge-engine'
+import { zuschlagsStundenlohn } from '@/lib/payroll-monat'
 import type {
   ConfiguredSurchargeRule, EmployeeSurchargeRow, RuleResult,
 } from '@/lib/surcharge-engine'
@@ -102,9 +103,50 @@ export async function GET(req: NextRequest) {
   const employeeIds = Array.from(new Set(logs.map(l => l.employeeId)))
   const employees = await prisma.employee.findMany({
     where: { id: { in: employeeIds } },
-    select: { id: true, name: true },
+    select: { id: true, name: true, weeklyHours: true },
   })
   const nameVon = Object.fromEntries(employees.map(e => [e.id, e.name]))
+
+  /*
+   * §276 Der Stundenlohn, mit dem gerechnet wird — und warum er aus den
+   * Lohn-Stammdaten kommt und nicht aus dem Regelwerk.
+   *
+   * Hier stand nur `defaultHourlyWage` aus dem Zuschlagsregelwerk. Die
+   * Abrechnung rechnet dagegen seit jeher mit dem Grundlohn DES MENSCHEN
+   * (`zuschlagsStundenlohn` in payroll-monat.ts). Beides nebeneinander
+   * ergibt zwei Wahrheiten für denselben Monat — gemessen am 01.11.2026 im
+   * Beispielbetrieb: Dieselbe Nachtarbeit stand auf dem Bildschirm mit
+   * 231,93 € und in der Abrechnung mit 237,11 €, weil die Seite mit
+   * 21,50 €/h aus dem Regelwerk rechnete und die Abrechnung mit den
+   * tatsächlichen 21,98 €/h.
+   *
+   * Welche Zahl stimmt, sieht man ihnen nicht an — und ausgezahlt wird die
+   * aus der Abrechnung. Die Anzeige folgt ihr jetzt. Dieselbe Funktion,
+   * nicht dieselbe Rechnung noch einmal: Eine zweite Herleitung wäre genau
+   * der Fehler, der hier gerade behoben wird.
+   *
+   * Das Regelwerk bleibt der Rückfall für alle, die noch keine
+   * Lohn-Stammdaten haben — sonst stünde für sie gar kein Betrag da.
+   */
+  const lohnProfile = await prisma.employeePayrollProfile.findMany({
+    where: { employeeId: { in: employeeIds } },
+    select: {
+      employeeId: true, lohnart: true, stundenlohn: true, monatsgehalt: true,
+    },
+  })
+  const wochenstundenVon = new Map(employees.map(e => [e.id, e.weeklyHours]))
+  const lohnJeMenschStamm: Record<string, number> = {}
+  for (const prof of lohnProfile) {
+    const roh = zuschlagsStundenlohn(
+      prof.lohnart, prof.stundenlohn, prof.monatsgehalt,
+      wochenstundenVon.get(prof.employeeId) ?? null,
+    )
+    // Auf Cent gerundet, genau wie in `monatsGrundlagen` (§276) — sonst
+    // stünde hier wieder eine andere Zahl als in der Abrechnung, nur eben
+    // eine um Bruchteile eines Cents andere.
+    const lohn = roh != null ? Math.round(roh * 100) / 100 : null
+    if (lohn && lohn > 0) lohnJeMenschStamm[prof.employeeId] = lohn
+  }
 
   /*
    * Das Regelwerk eines Standorts: zuerst sein eigenes, sonst das des
@@ -130,7 +172,14 @@ export async function GET(req: NextRequest) {
       : DEFAULT_SURCHARGE_RULES
     if ((regelwerk?.rules ?? []).length === 0) irgendwoStandard = true
 
-    const lohnJeMensch: Record<string, number> = {}
+    /*
+     * Die Reihenfolge, in der ein Stundenlohn gefunden wird:
+     *   1. ausdrücklich am Regelwerk für DIESEN Menschen hinterlegt
+     *   2. sein Grundlohn aus den Lohn-Stammdaten — dieselbe Zahl, mit der
+     *      abgerechnet wird
+     *   3. der Vorgabewert des Regelwerks
+     */
+    const lohnJeMensch: Record<string, number> = { ...lohnJeMenschStamm }
     for (const wc of regelwerk?.wageConfigs ?? []) {
       if (wc.employeeId) lohnJeMensch[wc.employeeId] = wc.hourlyWage
     }

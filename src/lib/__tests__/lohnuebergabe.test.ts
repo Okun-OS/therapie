@@ -65,6 +65,41 @@ describe('§275 Die Zeile', () => {
       .toBeCloseTo(z.zuschlaegeGesamt, 2)
   })
 
+  /*
+   * §276 Je Art getrennt — der Punkt, an dem eine Gesamtsumme für ein
+   * Lohnprogramm nicht reicht: „Nachtzuschlag steuerfrei" und
+   * „Nachtzuschlag steuerpflichtig" sind zwei verschiedene Lohnarten.
+   */
+  it('weist die Zuschläge je Art steuerfrei und steuerpflichtig aus', () => {
+    const z = uebergabeZeile(ANNA, GRUNDLAGE({
+      zuschlagsStundenlohn: 20,
+      nightHours: 10, nightSurcharge: 100,       // frei 50, pflichtig 50
+      holidayHours: 4, holidaySurcharge: 150,    // frei 100, pflichtig 50
+      saturdayHours: 8, saturdaySurcharge: 32,   // Samstag: nie frei
+    }))
+    expect(z.zuschlagNachtFrei).toBe(50)
+    expect(z.zuschlagNachtPflichtig).toBe(50)
+    expect(z.zuschlagFeiertagFrei).toBe(100)
+    expect(z.zuschlagFeiertagPflichtig).toBe(50)
+    expect(z.zuschlagSamstag).toBe(32)
+  })
+
+  it('und die Einzelteile ergeben die beiden Summen', () => {
+    const z = uebergabeZeile(ANNA, GRUNDLAGE({
+      zuschlagsStundenlohn: 18.4,
+      nightHours: 12, nightSurcharge: 71.11,
+      sundayHours: 6, sundaySurcharge: 60.6,
+      holidayHours: 3, holidaySurcharge: 90.9,
+      saturdaySurcharge: 20, saturdayHours: 5,
+      otherSurcharge: 10,
+    }))
+    const frei = z.zuschlagNachtFrei + z.zuschlagSonntagFrei + z.zuschlagFeiertagFrei
+    const pflichtig = z.zuschlagNachtPflichtig + z.zuschlagSonntagPflichtig
+      + z.zuschlagFeiertagPflichtig + z.zuschlagSamstag + z.zuschlagSonstige
+    expect(frei).toBeCloseTo(z.zuschlaegeSteuerfrei, 2)
+    expect(pflichtig).toBeCloseTo(z.zuschlaegeSteuerpflichtig, 2)
+  })
+
   it('Mehrarbeitszuschlag ist nie steuerfrei', () => {
     const z = uebergabeZeile(ANNA, GRUNDLAGE({
       zuschlagsStundenlohn: 20, overtimeHours: 10, overtimeSurcharge: 50,
