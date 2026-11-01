@@ -8,7 +8,17 @@ Was hier NICHT steht: Datenschutzangaben, Prüfernotiz und Alterseinstufung.
 Die stehen in `APP-STORES.md`, Teil D, und gehören dort auch hin — sie sind
 eine rechtliche Aussage und keine Werbung.
 
-Stand: 29.10.2026
+Stand: 01.11.2026
+
+> **§274 Warum „Lohnabrechnung" hier nicht mehr vorkommt.** Entscheidung des
+> Eigentümers vom 01.11.2026: Solange die ITSG-Systemprüfung nicht da ist,
+> wird die Abrechnung nicht beworben. Eine Store-Beschreibung steht
+> monatelang und wird beim Installieren gelesen — ein Versprechen dort
+> zurückzunehmen ist teurer, als es später hinzuzufügen.
+>
+> **Was bleibt und wahr ist:** „Deine Entgeltabrechnung ansehen." Die App
+> zeigt das PDF, das der Betrieb einstellt — gleich, welches Programm es
+> gerechnet hat. Das ist eine Zustellung, keine Abrechnung.
 
 ---
 
@@ -24,9 +34,9 @@ OKUN Workforce
 ### Kurzbeschreibung (max. 80 Zeichen)
 
 ```
-Dienstplan, Zeiterfassung und Lohnabrechnung für Pflege und Therapie.
+Dienstplan, Stempeluhr und Krankmeldung für Pflege und Therapie.
 ```
-*(69 Zeichen)*
+*(64 Zeichen)*
 
 > Die Kurzbeschreibung steht in der Trefferliste unter dem Namen. Sie ist die
 > einzige Zeile, die fast jeder liest — deshalb drei Substantive und die
@@ -38,10 +48,10 @@ Dienstplan, Zeiterfassung und Lohnabrechnung für Pflege und Therapie.
 Der Dienstplan in der Tasche — und alles, was daran hängt.
 
 OKUN Workforce ist das Werkzeug für Beschäftigte in Pflege, Therapie und
-sozialen Einrichtungen. Dienstplan, Zeiterfassung, Krankmeldung, Urlaub und
-Lohnabrechnung liegen an einer Stelle, und sie hängen zusammen: Der Dienst
-wird geplant, die Zeit wird gestempelt, der Lohn entsteht aus genau dieser
-Zeit. Niemand überträgt etwas von Hand.
+sozialen Einrichtungen. Dienstplan, Zeiterfassung, Krankmeldung und Urlaub
+liegen an einer Stelle, und sie hängen zusammen: Der Dienst wird geplant,
+die Zeit wird gestempelt, die Zuschläge für Nacht, Sonntag und Feiertag
+entstehen aus genau dieser Zeit. Niemand überträgt etwas von Hand.
 
 WAS DU DAMIT MACHST
 
@@ -50,7 +60,7 @@ WAS DU DAMIT MACHST
 • Dich krankmelden und den Krankenschein abfotografieren
 • Urlaub beantragen und den Stand verfolgen
 • Dienste tauschen und Wünsche hinterlegen
-• Deine Lohnabrechnung ansehen und sichern
+• Deine Entgeltabrechnung ansehen und sichern, sobald dein Betrieb sie einstellt
 • Mit Kolleginnen und der Leitung schreiben
 
 AUCH OHNE NETZ
@@ -103,9 +113,9 @@ Dienstplan & Zeiterfassung
 ### Schlüsselwörter (max. 100 Zeichen, mit Komma getrennt, KEINE Leerzeichen danach)
 
 ```
-Dienstplan,Schichtplan,Zeiterfassung,Stempeluhr,Pflege,Lohnabrechnung,Urlaub,Krankmeldung,Personal
+Dienstplan,Schichtplan,Zeiterfassung,Stempeluhr,Pflege,Nachtzuschlag,Urlaub,Krankmeldung,Personal
 ```
-*(99 Zeichen)*
+*(98 Zeichen)*
 
 > Drei Regeln, die Apple nicht hinschreibt und trotzdem anwendet: Der
 > App-Name selbst gehört nicht in die Schlüsselwörter (er zählt ohnehin),
@@ -115,9 +125,9 @@ Dienstplan,Schichtplan,Zeiterfassung,Stempeluhr,Pflege,Lohnabrechnung,Urlaub,Kra
 ### Werbetext (max. 170 Zeichen, jederzeit änderbar ohne neue Version)
 
 ```
-Neu: Krankenschein abfotografieren und einreichen, ohne die App zu verlassen. Dienstplan, Stempeluhr und Lohnabrechnung bleiben, wo sie sind — in deiner Tasche.
+Neu: Krankenschein abfotografieren und einreichen, ohne die App zu verlassen. Dienstplan, Stempeluhr und Urlaubsantrag bleiben, wo sie sind — in deiner Tasche.
 ```
-*(160 Zeichen)*
+*(157 Zeichen)*
 
 ### Beschreibung (max. 4000 Zeichen)
 
@@ -146,7 +156,7 @@ Für die erste Veröffentlichung:
 
 ```
 Die erste Fassung. Dienstplan, Stempeluhr, Krankmeldung, Urlaub,
-Lohnabrechnung und Nachrichten — für Beschäftigte in Pflege, Therapie und
+Diensttausch und Nachrichten — für Beschäftigte in Pflege, Therapie und
 sozialen Einrichtungen.
 ```
 

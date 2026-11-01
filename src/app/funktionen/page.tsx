@@ -12,8 +12,8 @@ import {
  * §177 Das ganze Programm — der vollständige Funktionsumfang.
  *
  * WARUM VOLLSTÄNDIG UND NICHT „DIE WICHTIGSTEN"
- * Wer eine Software für Lohn und Dienstplan sucht, hat eine Liste im Kopf,
- * die er abhaken will: „Können die auch Pfändung? Kurzarbeit? BEM?" Fehlt
+ * Wer eine Software für Personal und Dienstplan sucht, hat eine Liste im
+ * Kopf, die er abhaken will: „Können die auch Mutterschutz? BEM?" Fehlt
  * sein Punkt auf der Seite, nimmt er an, es gibt ihn nicht — und ruft nicht
  * an. Eine Auswahl der Höhepunkte verkauft schlechter als eine lange Liste,
  * in der jeder sein eigenes Problem findet.
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   description:
     'Alle Funktionen von OKUN Workforce: Recruiting, Personalakte, '
     + 'Dienstplanung, Zeiterfassung, Abwesenheiten, Kommunikation, '
-    + 'Auswertungen und Lohnabrechnung — miteinander verbunden.',
+    + 'Auswertungen und Zuschläge — miteinander verbunden.',
 }
 
 export default function Funktionen() {

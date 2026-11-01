@@ -9,9 +9,22 @@
  * WAS SICH GEGENÜBER DER ERSTEN FASSUNG GEÄNDERT HAT
  * Die war auf Dienstplanung zugeschnitten und damit zu klein: OKUN Workforce
  * ist ein durchgängiges System für Personalarbeit — vom Recruiting über
- * Personalakte, Planung und Zeit bis zur Lohnabrechnung. Wer eine
- * Lohnsoftware sucht, liest „Der Dienstplan kennt Ihre Regeln" und klickt
- * weg.
+ * Personalakte und Planung bis zum Monatsabschluss.
+ *
+ * §274 UND WARUM „LOHNABRECHNUNG" HIER NICHT MEHR STEHT
+ * Entscheidung des Eigentümers vom 01.11.2026. Eine Lohnsoftware, die
+ * Sozialversicherungsmeldungen erzeugen soll, braucht die Systemprüfung der
+ * ITSG. Die wird angegangen, aber später. Bis dahin darf das Wort hier nicht
+ * stehen: Ein Betrieb, der wegen der Abrechnung kauft, kauft etwas, das er
+ * nicht bekommt — und eine Zusage zurückzunehmen, die jemand beim Kauf
+ * gelesen hat, ist ungleich teurer, als sie später hinzuzufügen.
+ *
+ * Geworben wird stattdessen mit dem, was wirklich läuft und was fast jeder
+ * Betrieb ohnehin braucht: Zeiten und Zuschläge entstehen hier, das
+ * Lohnprogramm bleibt, wo es ist. Was die Übergabe dorthin angeht, steht
+ * hier nur, was heute schon geht — die Regel darunter („wer etwas ergänzt,
+ * das es nicht gibt, macht aus einer Übersicht ein Versprechen") gilt für
+ * diesen Abschnitt doppelt.
  *
  * §178 ZWEI REGELN, DIE AUS FEHLERN ENTSTANDEN SIND
  *
@@ -39,12 +52,12 @@ export interface Punkt {
 
 export const KOPF = {
   vorspann: 'Ihr Team hat einen Arbeitsplatz. Ihre Personalabteilung jetzt auch.',
-  zeilen: ['Vom Bewerber bis zum Lohn.', 'Alles in einem System.'],
+  zeilen: ['Ein Mitarbeiter.', 'Ein System.'],
   text:
     'OKUN Workforce verbindet Recruiting, Mitarbeiterverwaltung, '
-    + 'Personalplanung, Arbeitszeiten, Abwesenheiten, Kommunikation und '
-    + 'Lohnabrechnung auf einer Plattform. Weniger Programme. Weniger '
-    + 'Handarbeit. Mehr Überblick.',
+    + 'Personalplanung, Arbeitszeiten, Abwesenheiten und Kommunikation auf '
+    + 'einer Plattform. Weniger Programme. Weniger Handarbeit. Mehr '
+    + 'Überblick.',
 }
 
 /** Die sechs Kacheln unter dem Aufmacher. */
@@ -75,11 +88,11 @@ export const STAERKEN: Punkt[] = [
       + 'verwalten – und direkt dort berücksichtigen, wo sie relevant werden.',
   },
   {
-    titel: 'Von erfasster Zeit direkt zur Abrechnung',
+    titel: 'Zuschläge, die niemand mehr ausrechnet',
     text:
-      'Freigegebene Zeiten, Überstunden und Zuschläge stehen bereits dort '
-      + 'bereit, wo daraus Lohn wird. Kein monatliches Zusammensuchen und '
-      + 'Abtippen.',
+      'Nacht, Samstag, Sonntag und Feiertag entstehen aus den gestempelten '
+      + 'Zeiten – nach den Regeln Ihres Betriebs. Am Monatsende stehen sie '
+      + 'fertig da, statt in einer Excel-Liste zusammengesucht zu werden.',
   },
   {
     titel: 'Vom Bewerber zum Mitarbeiter',
@@ -103,7 +116,8 @@ export const KERN = {
   absaetze: [
     'In vielen Unternehmen liegt Personalarbeit heute verteilt: Bewerbungen '
     + 'hier, Mitarbeiterdaten dort, Urlaub per Mail, Arbeitszeiten in einem '
-    + 'anderen Programm und die Abrechnung am Monatsende wieder woanders.',
+    + 'anderen Programm – und am Monatsende wird für das Lohnbüro alles noch '
+    + 'einmal von Hand zusammengesucht.',
     'Das Problem sind nicht die einzelnen Programme. Das Problem sind die '
     + 'Lücken dazwischen.',
     'OKUN Workforce verbindet diese Abläufe in einem System. Was einmal '
@@ -121,11 +135,14 @@ export const KERN = {
  * §184 Die drei Bildschirmfotos — und was sie zusammen sagen.
  *
  * WARUM AUSGERECHNET DIESE DREI
- * Weil sie zusammen den einen Satz belegen, den der Eigentümer selbst als das
- * Besondere benannt hat: Wer Zeiterfassung und Lohnabrechnung im selben
- * Programm hat, muss die Stunden nicht übertragen — sie sind schon da. Drei
- * einzelne Bilder zeigten drei Programme. Diese drei zeigen einen Vorgang:
- * derselbe Mensch, derselbe Monat, von der Planung bis aufs Konto.
+ * Weil sie zusammen einen Vorgang zeigen statt drei Programme: derselbe
+ * Mensch, derselbe Monat, von der Planung über die Stempeluhr bis zu dem,
+ * was am Monatsende an Zuschlägen dasteht. Wer plant und erfasst, muss die
+ * Stunden nicht übertragen — sie sind schon da.
+ *
+ * §274 Das dritte Bild war die Lohnabrechnung. Es ist jetzt die
+ * Zuschlagsübersicht: Das ist der letzte Schritt, den wir wirklich gehen,
+ * und der erste, den ein Lohnbüro von uns bekommt.
  *
  * Die Bilder entstehen mit `npm run schaufenster` aus dem laufenden Programm
  * und zeigen einen erfundenen Beispielbetrieb. Kein echter Kunde, kein echter
@@ -137,8 +154,8 @@ export const SCHAUFENSTER = {
   text:
     'Keine nachgebauten Bilder: Das sind Bildschirmfotos aus dem Programm, '
     + 'aufgenommen in einem Beispielbetrieb. Was hier als Dienst geplant ist, '
-    + 'wird morgens gestempelt — und steht am Monatsende in der Abrechnung, '
-    + 'ohne dass jemand eine Stunde überträgt.',
+    + 'wird morgens gestempelt — und steht am Monatsende fertig gerechnet in '
+    + 'den Zuschlägen, ohne dass jemand eine Stunde überträgt.',
   schritte: [
     {
       bild: '/schaufenster/dienstplan.png',
@@ -159,24 +176,25 @@ export const SCHAUFENSTER = {
         + 'Einstempeln, Krankmeldung und Urlaub daneben. Mehr braucht es morgens nicht.',
     },
     {
-      bild: '/schaufenster/lohnabrechnung.png',
+      bild: '/schaufenster/zuschlaege.png',
       breite: 2880,
       hoehe: 1800,
-      titel: 'Die Lohnabrechnung',
+      titel: 'Die Zuschläge',
       text:
-        'Brutto, Abzüge, Netto und Arbeitgeberkosten — gerechnet aus genau den '
-        + 'Zeiten, die gestempelt wurden. Daneben SEPA-Datei und DATEV-Export.',
+        'Je Person und Monat, gerechnet aus genau den Zeiten, die gestempelt '
+        + 'wurden — nach den Zuschlagsregeln Ihres Betriebs. Was nicht '
+        + 'angefallen ist, steht auch nicht da.',
     },
   ],
 }
 
 /** Die Liste neben dem Abschnitt „Der Unterschied". */
 export const KERN_PUNKTE: string[] = [
-  'Ein System vom Recruiting bis zur Abrechnung',
+  'Ein System vom Recruiting bis zum Monatsabschluss',
   'Daten einmal erfassen und anschließend weiterverwenden',
   'Eigene Abläufe statt erzwungener Standardprozesse',
   'Personalplanung nach den Regeln Ihres Unternehmens',
-  'Arbeitszeiten und Zuschläge direkt mit der Abrechnung verbunden',
+  'Zuschläge entstehen aus den erfassten Zeiten — ohne Abtippen',
   'Verwaltung und Mitarbeiter arbeiten im selben System',
 ]
 
@@ -198,7 +216,7 @@ export const ABLAUF: Punkt[] = [
     titel: 'Alles greift ineinander',
     text:
       'Personalplanung, Abwesenheiten, Zeiten, Mitarbeiterdaten und '
-      + 'Abrechnung arbeiten anschließend mit denselben Informationen.',
+      + 'Zuschläge arbeiten anschließend mit denselben Informationen.',
   },
   {
     titel: 'Der Alltag wird einfacher',
@@ -213,21 +231,20 @@ export const SCHLUSS = {
   titel: 'Wie viele Programme braucht es heute, um einen Mitarbeiter zu verwalten?',
   betont: 'Mit OKUN Workforce reicht eines.',
   text:
-    'Recruiting, Personalplanung, Arbeitszeit, Mitarbeiterverwaltung und '
-    + 'Lohnabrechnung – miteinander verbunden in einem System.',
+    'Recruiting, Personalplanung, Arbeitszeit, Zuschläge und '
+    + 'Mitarbeiterverwaltung – miteinander verbunden in einem System.',
   knopf: 'OKUN Workforce kennenlernen',
 }
 
 // ── Funktionsseite ──────────────────────────────────────────────────────────
 
 export const FUNKTIONEN_KOPF = {
-  vorspann: 'Ein Mitarbeiter. Ein System. Vom ersten Kontakt bis zum Lohn.',
+  vorspann: 'Vom ersten Kontakt bis zum Monatsabschluss.',
   zeilen: ['Alles, was Personal ausmacht.', 'Alles miteinander verbunden.'],
   text:
     'Recruiting, Personalakte, Planung, Zeiterfassung, Abwesenheiten, '
-    + 'Kommunikation, Auswertungen und Lohnabrechnung greifen in OKUN '
-    + 'Workforce ineinander – statt als einzelne Lösungen nebeneinander zu '
-    + 'stehen.',
+    + 'Kommunikation, Auswertungen und Zuschläge greifen in OKUN Workforce '
+    + 'ineinander – statt als einzelne Lösungen nebeneinander zu stehen.',
 }
 
 export interface Bereich {
@@ -303,29 +320,18 @@ export const BEREICHE: Bereich[] = [
     ],
   },
   {
-    titel: 'Lohnabrechnung',
+    titel: 'Übergabe an die Lohnabrechnung',
     einleitung:
-      'Aus freigegebenen Arbeitszeiten wird die Abrechnung: mit Lohnsteuer, '
-      + 'Sozialversicherung, Zuschlägen, Korrekturen, Lohnbeleg sowie DATEV- '
-      + 'und SEPA-Ausgabe.',
+      'Ihr Lohnprogramm bleibt, wo es ist. OKUN Workforce liefert die Zahlen, '
+      + 'die es am Monatsende braucht – gerechnet aus den tatsächlich '
+      + 'gestempelten Zeiten statt aus einer Liste, die jemand abtippt.',
     punkte: [
-      'Lohnsteuer nach Steuerklasse, Kinderfreibeträgen und Kirchensteuer',
-      'Sozialversicherung mit allen vier Zweigen und den Grenzen des Jahres',
-      'Minijob, kurzfristige Beschäftigung und Übergangsbereich',
-      'Teilmonate bei Ein- und Austritt',
-      'Einmalzahlungen: Weihnachtsgeld, Prämie, Abfindung',
-      'Rückwirkende Änderungen mit Aufrollung und Korrekturbetrag',
-      'Lohnpfändung nach §§850 ff. ZPO, mit Rangfolge und Nachweis',
-      'Betriebliche Altersvorsorge: 8 % steuerfrei im Jahr, 4 % beitragsfrei im Monat',
-      'Kurzarbeitergeld auf der pauschalierten Nettodifferenz, mit Abrechnungsliste',
-      'Mehrfachbeschäftigung mit geteilter Beitragsbemessungsgrenze',
-      'Umlagen U1, U2 und Insolvenzgeld — die Sätze von 24 Krankenkassen sind hinterlegt',
-      'Bescheinigungen: Arbeitsbescheinigung, Krankengeld, Mutterschaftszuschuss',
-      'ELStAM-Stand je Person, Warnung bei Veralterung, Import der Änderungsliste',
-      'Lohnbeleg als PDF, Zustellung in die App',
-      'Jahresabschluss und die Werte für die Lohnsteuerbescheinigung',
-      'DATEV-Export für den Steuerberater',
-      'SEPA-Datei für die Überweisung',
+      'Monatsabschluss durch die Leitung — erst danach geht etwas ans Lohnbüro',
+      'Zuschläge für Nacht, Samstag, Sonntag und Feiertag nach §3b EStG',
+      'Eigene Zuschlagsregeln je Unternehmen, Standort oder Person',
+      'Zuschlagsübersicht je Person und Monat, mit Ausgabe als CSV',
+      'Stundennachweis je Mitarbeiter als Druckansicht für die Personalakte',
+      'Ihre fertige Entgeltabrechnung in die App zustellen — jeder sieht seine eigene auf dem Telefon',
     ],
   },
   {
@@ -420,7 +426,7 @@ export const BEREICHE: Bereich[] = [
       'Gesichts- oder Fingerabdruck-Sperre vor Lohn- und Personaldaten',
       'Kamera für Nachweise und Bescheinigungen, ohne Umweg über die Dateiauswahl',
       'Programm für Windows, macOS und Linux — mit eigenem Symbol im Startmenü',
-      'Drucken ohne Browserrand: ein Lohnbeleg für die Personalakte',
+      'Drucken ohne Browserrand: Stundennachweis und Dienstplan für die Personalakte',
       'Funktioniert im Funkloch und reicht nach, sobald wieder Netz da ist',
     ],
   },
@@ -430,7 +436,8 @@ export const BEREICHE: Bereich[] = [
 export const FUNKTIONEN_SCHLUSS = {
   titel: 'Warum das alles geprüft ist',
   text:
-    'Ein Programm, das Gehälter rechnet, darf sich nicht irren. Bei jeder '
+    'Ein Programm, an dem Arbeitszeiten und Zuschläge hängen, darf sich '
+    + 'nicht irren. Bei jeder '
     + 'Auslieferung laufen über 1400 Prüfungen gegen das laufende System — '
     + 'echte Anmeldung, echte Datenbank, mehrere Mandanten. Dazu kommen über '
     + '900 Rechenprüfungen und die Abnahme des Rechenkerns an wirklich '
@@ -444,8 +451,9 @@ export const KONTAKT = {
   zeilen: ['Ihre Abläufe zuerst.', 'Unsere Software danach.'],
   text:
     'Zeigen Sie uns, wie Sie heute Mitarbeiter verwalten, planen, Zeiten '
-    + 'erfassen und abrechnen. Wir zeigen Ihnen, wie OKUN Workforce daraus '
-    + 'einen durchgängigen Ablauf macht – passend zu Ihrem Unternehmen.',
+    + 'erfassen und an Ihr Lohnbüro übergeben. Wir zeigen Ihnen, wie OKUN '
+    + 'Workforce daraus einen durchgängigen Ablauf macht – passend zu Ihrem '
+    + 'Unternehmen.',
   knopf: 'Gespräch vereinbaren',
 }
 
@@ -455,7 +463,7 @@ export const FUSS = {
   claim: 'Ihre gesamte Personalarbeit. Ein System.',
   text:
     'Recruiting, Mitarbeiterverwaltung, Personalplanung, Arbeitszeit, '
-    + 'Abwesenheiten und Lohnabrechnung – miteinander verbunden.',
+    + 'Abwesenheiten und Zuschläge – miteinander verbunden.',
   /*
    * §193 Der Rechteinhaber — „OKUN Systems UG", nicht „OKUN Workforce".
    *
@@ -478,5 +486,5 @@ export const FUSS = {
 /** Der Text, den Google unter dem Link anzeigt. */
 export const BESCHREIBUNG =
   'OKUN Workforce verbindet Recruiting, Mitarbeiterverwaltung, '
-  + 'Personalplanung, Zeiterfassung und Lohnabrechnung in einer zentralen '
+  + 'Personalplanung, Zeiterfassung und Zuschläge in einer zentralen '
   + 'Plattform.'

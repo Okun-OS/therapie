@@ -167,7 +167,7 @@ export default function LoginPage() {
             älter als das Produkt. Die Anmeldeseite ist die Seite, die ein
             Interessent direkt nach der Startseite sieht — und dort stand das
             Programm plötzlich wieder als Dienstplansoftware da, obwohl eine
-            Bildschirmbreite weiter „Vom Bewerber bis zum Lohn" steht.
+            Bildschirmbreite weiter „Ein Mitarbeiter. Ein System." steht.
 
             Der Text kommt jetzt aus derselben Quelle wie die Website. Nicht
             abgeschrieben, sondern importiert: sonst laufen beide beim nächsten

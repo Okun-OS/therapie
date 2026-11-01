@@ -312,8 +312,11 @@ const COMPANY_STEPS: TourStep[] = [
   },
   {
     emoji: '💰',
-    title: 'Finanzen: Lohnabrechnung & Zuschlags-Engine',
-    body: 'Zwei neue Features – in Kürze verfügbar.\n\nLohnabrechnung: Gehaltsabrechnungen aller Standorte an einem Ort. Zuschlags-Engine: Automatische Berechnung von Zuschlägen, Prämien und Sonderzahlungen.\n\nSie sehen sie als Erste.',
+    // §274 Hier stand „Lohnabrechnung & Zuschlags-Engine – in Kürze
+    // verfügbar". Die Abrechnung wird nicht zugesagt, solange die
+    // ITSG-Systemprüfung fehlt — und „in Kürze" ist eine Zusage.
+    title: 'Zuschläge aus den erfassten Zeiten',
+    body: 'Nacht, Samstag, Sonntag und Feiertag werden aus den gestempelten Zeiten gerechnet – nach den Regeln Ihres Betriebs, nicht nach einer Pauschale.\n\nJe Person und Monat, über alle Standorte, zum Mitnehmen für Ihr Lohnprogramm.',
     path: '/company/controlling',
     spotlightSelector: '[data-tour="finance-preview"]',
   },

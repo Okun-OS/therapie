@@ -404,6 +404,139 @@ async function main() {
     }
   }
 
+  /*
+   * §274 Und die gestempelten Zeiten der übrigen neun — aus ihrem eigenen Plan.
+   *
+   * WARUM DAS DAZUKAM
+   * Bis hierher stempelte nur die Hauptperson, und zwar Frühdienst, Montag bis
+   * Freitag. Die Zuschlagsübersicht zeigte darum genau eine Zeile mit einer
+   * Viertelstunde Nachtzuschlag — gemessen am 01.11.2026 auf dem Werbebild,
+   * das daraus entstehen sollte. Für ein Programm, dessen Kernaussage lautet
+   * „was geplant ist, wird gestempelt, daraus entstehen die Zuschläge", war
+   * das der denkbar schlechteste Beleg.
+   *
+   * Gestempelt wird deshalb aus dem veröffentlichten Plan: Spätdienst bis
+   * 21:30, Nachtdienst von 21:00 bis 06:30 — und damit entstehen die
+   * Nachtzuschläge, um die es geht. Keine erfundenen Zahlen, sondern dieselbe
+   * Rechnung, die beim Kunden läuft.
+   *
+   * Nur der VORMONAT. Der laufende Monat gehört der Hauptperson allein: Auf
+   * der Stempeluhr steht ihr Stundenkonto, und ein halb gestempelter Monat
+   * für zehn Leute brächte dort nichts.
+   */
+  const dienstZeiten = new Map(DIENSTE.map(d => [d.id, d]))
+  const vormonatPraefix = `${VORMONAT.jahr}-${String(VORMONAT.monat).padStart(2, '0')}`
+  const uebrige = BELEGSCHAFT.map(([name]) => name).filter(name => name !== HAUPTPERSON)
+
+  await prisma.timeLog.deleteMany({
+    where: {
+      employeeId: { in: uebrige.map(name => personen[name]) },
+      date: { startsWith: vormonatPraefix },
+    },
+  })
+
+  const geplant = await prisma.scheduleEntry.findMany({
+    where: {
+      locationId: standort.id,
+      date: { startsWith: vormonatPraefix },
+      employeeId: { in: uebrige.map(name => personen[name]) },
+    },
+    select: { employeeId: true, shiftId: true, date: true },
+    orderBy: { date: 'asc' },
+  })
+
+  let gestempelt = 0
+  for (const eintrag of geplant) {
+    const dienst = dienstZeiten.get(eintrag.shiftId)
+    if (!dienst) continue
+
+    /*
+     * Dieselbe Streuung wie oben: ein paar Minuten zu früh, ein paar zu spät.
+     * Ein Monat, in dem jeder auf die Minute pünktlich ist, sieht aus wie
+     * erfunden, weil er es ist.
+     */
+    const ab = ABWEICHUNG[n % ABWEICHUNG.length]
+    n++
+    const [sH, sM] = dienst.startTime.split(':').map(Number)
+    const [eH, eM] = dienst.endTime.split(':').map(Number)
+    const beginn = sH * 60 + sM - Math.abs(ab)
+    let ende = eH * 60 + eM + (ab > 0 ? 4 : 0)
+
+    /*
+     * Der Nachtdienst endet am nächsten Morgen. `dienstMinuten` rechnet über
+     * Mitternacht; hier muss die Dauer genauso entstehen, sonst stünde beim
+     * Nachtdienst eine negative Stundenzahl — derselbe Fehler, der schon
+     * einmal auf einem Store-Bild stand.
+     */
+    let dauer = ende - beginn
+    if (dauer <= 0) { dauer += 24 * 60; ende += 24 * 60 }
+    const pause = dauer > 9 * 60 ? 45 : 30
+
+    await prisma.timeLog.create({
+      data: {
+        employeeId: eintrag.employeeId, locationId: standort.id, date: eintrag.date,
+        clockIn: zeit(beginn < 0 ? beginn + 24 * 60 : beginn),
+        clockOut: zeit(ende % (24 * 60)),
+        totalMinutes: dauer - pause, breakMinutes: pause,
+        quelle: 'app',
+      },
+    })
+    gestempelt++
+  }
+
+  /*
+   * §274 Das Zuschlagsregelwerk des Beispielbetriebs.
+   *
+   * Ohne eigene Regeln rechnet die Anwendung zwar nach den gesetzlichen
+   * Standardwerten (§3b EStG) — schreibt aber eine gelbe Bake über die Seite:
+   * „Es sind noch keine eigenen Zuschlagsregeln konfiguriert." Auf einem
+   * Werbebild ist das eine Mängelanzeige.
+   *
+   * Und ohne Stundenlohn stehen nur Minuten da, keine Beträge. Der Betrag ist
+   * aber das, was ein Lohnbüro interessiert.
+   */
+  const regelwerk = await prisma.surchargeRuleSet.upsert({
+    where: { id: 'sf-zuschlaege' },
+    update: { defaultHourlyWage: 21.5, onboardingCompleted: true },
+    create: {
+      id: 'sf-zuschlaege',
+      customerId: kunde.id,
+      locationId: standort.id,
+      name: 'Zuschläge Beispielbetrieb',
+      defaultHourlyWage: 21.5,
+      onboardingCompleted: true,
+    },
+  })
+  await prisma.surchargeRule.deleteMany({ where: { ruleSetId: regelwerk.id } })
+  await prisma.surchargeRule.createMany({
+    data: [
+      {
+        ruleSetId: regelwerk.id, name: 'Nachtzuschlag',
+        description: '20:00–06:00 Uhr', type: 'night',
+        timeStart: '20:00', timeEnd: '06:00', daysOfWeek: [],
+        rateType: 'percent', rateValue: 25, priority: 0, sortOrder: 0,
+      },
+      {
+        ruleSetId: regelwerk.id, name: 'Samstagszuschlag',
+        description: 'ab 13:00 Uhr', type: 'saturday',
+        timeStart: '13:00', timeEnd: '24:00', daysOfWeek: [6],
+        rateType: 'percent', rateValue: 20, priority: 1, sortOrder: 1,
+      },
+      {
+        ruleSetId: regelwerk.id, name: 'Sonntagszuschlag',
+        description: 'ganztägig', type: 'sunday',
+        daysOfWeek: [0], excludeHolidays: true,
+        rateType: 'percent', rateValue: 50, priority: 2, sortOrder: 2,
+      },
+      {
+        ruleSetId: regelwerk.id, name: 'Feiertagszuschlag',
+        description: 'gesetzliche Feiertage', type: 'holiday',
+        daysOfWeek: [], includeHolidays: true,
+        rateType: 'percent', rateValue: 125, priority: 3, sortOrder: 3,
+      },
+    ],
+  })
+
   // ── Die Lohndaten ─────────────────────────────────────────────────────────
   //
   // Alles, was eine Abrechnung braucht — aber nicht die Abrechnung selbst.
@@ -460,6 +593,8 @@ async function main() {
   console.log(`  Personal   ${BELEGSCHAFT.length} Menschen, ${DIENSTE.length} Dienstzeiten, ${BEREICHE.length} Bereiche`)
   console.log(`  Dienstplan ${ALLE_TAGE[0]} bis ${ALLE_TAGE.at(-1)}, ${gelegt} Dienste, veröffentlicht`)
   console.log(`  Zeiten     ${HAUPTPERSON}, ${String(VORMONAT.monat).padStart(2, '0')}.${VORMONAT.jahr} vollständig und ${String(LAUFEND.monat).padStart(2, '0')}.${LAUFEND.jahr} bis gestern`)
+  console.log(`             ${gestempelt} weitere Stempelungen aus dem Plan (${uebrige.length} Personen, ${String(VORMONAT.monat).padStart(2, '0')}.${VORMONAT.jahr})`)
+  console.log('  Zuschläge  Nacht 25 %, Samstag 20 %, Sonntag 50 %, Feiertag 125 % · 21,50 €/h')
   console.log(`  Zugang     leitung@beispielbetrieb.de / ${PASSWORT}`)
   console.log(`             ${mail(HAUPTPERSON)} / ${PASSWORT}`)
 }

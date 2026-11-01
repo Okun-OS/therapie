@@ -277,7 +277,7 @@ const anlage = createServer((req, res) => {
   const pfad = req.url.split('?')[0].replace(/\/+$/, '') || '/'
   const seiten = {
     '/login': '<h1 data-test="anlage">Anmelden bei OKUN Workforce</h1>',
-    '/': '<h1 data-test="verkaufsseite">Vom Bewerber bis zum Lohn</h1>',
+    '/': '<h1 data-test="verkaufsseite">Ein Mitarbeiter. Ein System.</h1>',
     '/funktionen': '<h1 data-test="verkaufsseite">Alles, was Personal ausmacht</h1>',
     '/impressum': '<h1 data-test="impressum">Angaben gemäß §5 DDG</h1>',
   }

@@ -159,7 +159,13 @@ const TITELBILD = `<!doctype html>
   <div class="schimmer"></div>
   <div class="inhalt">
     <div class="marke"><img src="${BASIS}/brand/logo-horizontal-negativ.png" alt=""></div>
-    <h1>Dienstplan, Zeiterfassung<br>und Lohnabrechnung —<br><em>in einer App</em></h1>
+    <!--
+      §274 Hier stand „Dienstplan, Zeiterfassung und Lohnabrechnung".
+      Die Abrechnung wird nicht beworben, solange die ITSG-Systemprüfung
+      fehlt — und ein Titelbild im Play Store ist die eine Fläche, die
+      jeder sieht, bevor er irgendeinen Text liest.
+    -->
+    <h1>Dienstplan, Stempeluhr<br>und Krankmeldung —<br><em>in einer App</em></h1>
     <p>Für Pflege, Therapie und soziale Einrichtungen.</p>
   </div>
 </body></html>`

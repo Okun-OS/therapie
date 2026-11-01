@@ -87,38 +87,50 @@ async function ruf(cookie, pfad, methode = 'GET', daten) {
   return { status: r.status, body: await r.json().catch(() => ({})) }
 }
 
-async function lohnlaufVorbereiten() {
+/*
+ * §274 Hieß einmal `lohnlaufVorbereiten` und rief am Ende
+ * `/api/payroll/vorbereiten` auf — für das Bild der Lohnabrechnung. Das Bild
+ * gibt es nicht mehr, der Aufruf also auch nicht: Er erzeugte eine komplette
+ * Abrechnung, nur damit ein Werbefoto entsteht.
+ *
+ * Was bleibt, wird für die Zuschlagsübersicht wirklich gebraucht: der
+ * Monatsabschluss. Er gehört der Leitung — bei Stundenlohn ist die erfasste
+ * Zeit die Grundlage des Entgelts, und ohne ihre Freigabe geht zu Recht
+ * nichts ans Lohnbüro.
+ */
+async function monatsabschlussFreigeben() {
   const cookie = await anmeldung(LEITUNG)
   const heute = new Date()
   const jahr = heute.getMonth() === 0 ? heute.getFullYear() - 1 : heute.getFullYear()
   const monat = heute.getMonth() === 0 ? 12 : heute.getMonth()
 
-  // Der Monatsabschluss gehört der Leitung: Bei Stundenlohn ist die erfasste
-  // Zeit die Grundlage des Entgelts, und ohne ihre Freigabe wird zu Recht
-  // nicht abgerechnet.
   const personen = (await ruf(cookie, '/api/employees')).body.employees ?? []
-  for (const p of personen.filter(x => x.locationId === 'schaufenster-standort')) {
+  const amStandort = personen.filter(x => x.locationId === 'schaufenster-standort')
+  let frei = 0
+  for (const p of amStandort) {
     const angelegt = await ruf(cookie, '/api/monthly-closings/get-or-create', 'POST', {
       employeeId: p.id, year: jahr, month: monat,
       employeeInfo: { employeeName: p.name },
     })
     const id = angelegt.body.closing?.id
-    if (!id || angelegt.body.closing?.status === 'freigegeben') continue
-    await ruf(cookie, '/api/time-tracking/release-closing', 'POST', {
+    if (!id) continue
+    if (angelegt.body.closing?.status === 'freigegeben') { frei++; continue }
+    const r = await ruf(cookie, '/api/time-tracking/release-closing', 'POST', {
       closingId: id, releasedBy: 'Lena Hartmann',
     })
+    if (r.status < 300) frei++
   }
 
-  const lauf = await ruf(cookie, '/api/payroll/vorbereiten', 'POST', { year: jahr, month: monat })
-  const fertig = (await ruf(cookie, `/api/payroll?year=${jahr}&month=${monat}`)).body.entries ?? []
-  console.log(`  Lohnlauf ${String(monat).padStart(2, '0')}.${jahr}: ${fertig.length} Abrechnungen`
-    + `${lauf.body?.hinweis ? ` · ${lauf.body.hinweis}` : ''}`)
-  if (fertig.length === 0) {
-    throw new Error('Der Lohnlauf hat nichts erzeugt. Erst `npm run seed:schaufenster` ausführen.')
+  console.log(`  Monatsabschluss ${String(monat).padStart(2, '0')}.${jahr}: `
+    + `${frei} von ${amStandort.length} freigegeben`)
+  if (frei === 0) {
+    throw new Error(
+      'Kein Monatsabschluss freigegeben. Erst `npm run seed:schaufenster` ausführen.',
+    )
   }
 }
 
-await lohnlaufVorbereiten()
+await monatsabschlussFreigeben()
 
 async function anmelden(ctx, email) {
   const seite = await ctx.newPage()
@@ -215,35 +227,41 @@ const bilder = []
   await seite.close()
 }
 
-// ── 2. Die Lohnabrechnung ───────────────────────────────────────────────────
+// ── 2. Die Zuschläge ────────────────────────────────────────────────────────
+//
+// §274 Hier stand die Lohnabrechnung. Sie wird nicht mehr beworben, solange
+// die ITSG-Systemprüfung fehlt. Die Zuschlagsübersicht ist der ehrliche
+// Nachfolger: derselbe Monat, dieselben gestempelten Zeiten — und das ist
+// das Erste, was ein Lohnbüro von uns bekommt.
 {
   const seite = await anmelden(kontext, LEITUNG)
-  await seite.goto(`${BASIS}/admin/payroll`, { waitUntil: 'networkidle' })
+  await seite.goto(`${BASIS}/admin/surcharges`, { waitUntil: 'networkidle' })
   await seite.waitForTimeout(3_000)
 
   /*
    * Einen Monat zurück. Die Seite öffnet im laufenden Monat, und der ist am
-   * Dritten noch leer — eine Lohnabrechnung entsteht, wenn der Monat vorbei
-   * ist. Das erste Bild zeigte deshalb „Noch keine Abrechnungen für diesen
-   * Monat": richtig, und als Werbebild das Gegenteil dessen, was gemeint war.
+   * Ersten noch fast leer — Zuschläge entstehen aus gestempelten Zeiten.
+   * Das alte Bild zeigte aus genau diesem Grund einmal einen leeren Monat:
+   * richtig, und als Werbebild das Gegenteil dessen, was gemeint war.
    */
   const zurueck = seite.locator('button:has(svg.lucide-chevron-left)').first()
   await zurueck.click({ timeout: 5_000 }).catch(() => {})
   await seite.waitForTimeout(3_000)
 
-  // Nachsehen, ob der Monat wirklich gewechselt hat. Ein Klick, der ins Leere
-  // ging, fiele sonst erst auf der fertigen Website auf — das erste Bild
-  // zeigte genau deshalb einen leeren Monat.
-  const leer = await seite.getByText('Noch keine Abrechnungen').isVisible().catch(() => false)
-  if (leer) {
+  /*
+   * Nachsehen, ob wirklich Zeilen dastehen. Ein Klick, der ins Leere ging,
+   * fiele sonst erst auf der fertigen Website auf.
+   */
+  const zeilen = await seite.locator('table tbody tr').count().catch(() => 0)
+  if (zeilen === 0) {
     throw new Error(
-      'Die Lohnabrechnung zeigt einen leeren Monat. Wurde `npm run seed:schaufenster` '
-      + 'ausgeführt und der Lohnlauf für den Vormonat angelegt?',
+      'Die Zuschlagsübersicht ist leer. Wurde `npm run seed:schaufenster` ausgeführt, '
+      + 'und gibt es gestempelte Zeiten im Vormonat?',
     )
   }
   await aufraeumen(seite)
-  await seite.screenshot({ path: join(ZIEL, 'lohnabrechnung.png') })
-  bilder.push('lohnabrechnung.png')
+  await seite.screenshot({ path: join(ZIEL, 'zuschlaege.png') })
+  bilder.push('zuschlaege.png')
   await seite.close()
 }
 

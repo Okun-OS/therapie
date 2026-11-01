@@ -25,7 +25,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/settings':                    'Standort-Einstellungen',
   '/admin/assistant':                   'OKUN Assistent',
   '/admin/payroll':            'Lohnabrechnung',
-  '/admin/surcharges':         'Zuschlags-Engine',
+  '/admin/surcharges':         'Zuschläge',
   // Employee
   '/employee':                 'Mein Tag',
   '/employee/schedule':        'Mein Dienstplan',

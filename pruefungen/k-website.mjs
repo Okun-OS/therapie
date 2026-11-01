@@ -38,9 +38,15 @@ check('Die Startseite leitet nicht mehr sofort auf die Anmeldung um',
   `HTTP ${start.status}, ${start.text.length} Zeichen`)
 // §179 Die Startseite positioniert das Produkt als durchgaengiges System
 // fuer Personalarbeit — nicht als Dienstplansoftware. Wer nur den Dienstplan
-// nennt, verliert jeden, der eine Lohnsoftware sucht.
+// nennt, verliert jeden, der mehr sucht.
+//
+// §274 Hier stand „Lohnabrechnung". Seit dem 01.11.2026 steht sie nicht mehr
+// auf der Website (Entscheidung des Eigentuemers, solange die ITSG-
+// Systempruefung nicht da ist). Diese Pruefung haette danach rot gestanden,
+// ohne dass etwas kaputt ist — sie haette den alten Stand verlangt. Geprueft
+// wird jetzt das, was wirklich beworben wird.
 for (const bereich of [
-  'Recruiting', 'Personalplanung', 'Arbeitszeit', 'Lohnabrechnung',
+  'Recruiting', 'Personalplanung', 'Arbeitszeit', 'Zuschläge',
   'Abwesenheiten',
 ]) {
   check(`Die Startseite nennt „${bereich}"`,
@@ -84,12 +90,41 @@ check('Die Seite verspricht keine Selbstregistrierung',
 check('Und nennt keine Preise, die nicht feststehen',
   !/€\s*\d|\d+\s*€|Euro\s*\/\s*Monat/i.test(start.text))
 
+/*
+ * §274 Die Gegenprobe zur Entscheidung: keine fertige Lohnabrechnung
+ * versprechen, solange die ITSG-Systempruefung fehlt.
+ *
+ * Nicht auf das Wort „Lohnabrechnung" geprueft — das darf vorkommen, und
+ * zwar genau einmal sinnvoll: „Uebergabe an die Lohnabrechnung", also an
+ * DIE DES KUNDEN. Geprueft wird auf die Begriffe, die nur ein Programm
+ * fuehrt, das wirklich abrechnet. Taucht einer davon wieder auf, ist das
+ * Versprechen zurueck, egal wie der Satz drumherum lautet.
+ */
+const NUR_ECHTE_ABRECHNUNG = [
+  'Lohnsteuer', 'Sozialversicherung', 'Beitragsnachweis', 'ELStAM',
+  'SEPA', 'Lohnpfändung', 'Kurzarbeitergeld', 'Nettolohn',
+  'Lohnbeleg', 'Beitragsbemessungsgrenze',
+]
+for (const seite of [['Startseite', start], ['Funktionsseite', await ohne('/funktionen')]]) {
+  const [name, antwort] = seite
+  const text = antwort.text.replace(/<[^>]*>/g, ' ')
+  for (const begriff of NUR_ECHTE_ABRECHNUNG) {
+    check(`Die ${name} verspricht keine fertige Abrechnung: „${begriff}"`,
+      !new RegExp(begriff, 'i').test(text),
+      'Ohne ITSG-Systemprüfung darf das nicht beworben werden')
+  }
+}
+check('Und der alte Claim ist nirgends mehr da',
+  !/bis zum Lohn/i.test(start.text),
+  '§274 „Vom Bewerber bis zum Lohn" versprach die Abrechnung')
+
 // ── K2 Die Funktionsseite ist vollständig ──────────────────────────────────
 console.log('\n=== K2 Der Funktionsumfang ===')
 
 const funktionen = await ohne('/funktionen')
 for (const bereich of [
-  'Dienstplanung', 'Zeiterfassung', 'Abwesenheiten', 'Lohnabrechnung',
+  'Dienstplanung', 'Zeiterfassung', 'Abwesenheiten',
+  'Übergabe an die Lohnabrechnung',
   'Nachweise', 'Kommunikation', 'Auswertungen', 'Recruiting',
   'Datenschutz',
 ]) {
@@ -98,21 +133,22 @@ for (const bereich of [
 }
 
 // Die Stellen, an denen sich das Produkt von anderen unterscheidet.
+//
+// §274 Hier standen Pfaendung, Kurzarbeitergeld, Altersvorsorge, SEPA und
+// ELStAM — die Teile der echten Abrechnung. Sie stehen nicht mehr auf der
+// Seite und werden jetzt umgekehrt geprueft (oben, NUR_ECHTE_ABRECHNUNG).
+// Uebrig bleiben die Unterscheidungsmerkmale, die wirklich zu haben sind.
 for (const [begriff, warum] of [
-  ['Pfändung', 'der Lohnteil, nach dem Kunden ausdrücklich fragen'],
-  ['Kurzarbeitergeld', 'dasselbe'],
-  ['Altersvorsorge', 'dasselbe'],
   ['Eingliederungsmanagement', 'BEM — sonst sucht es jemand vergeblich'],
-  ['DATEV', 'der Weg zum Steuerberater'],
-  ['SEPA', 'der Weg zur Bank'],
-  ['ELStAM', 'die Steuermerkmale'],
+  ['§3b', 'die steuerfreien Zuschläge — der Grund, warum die Zeiten hier entstehen'],
+  ['Monatsabschluss', 'die Freigabe, ohne die nichts ans Lohnbüro geht'],
+  ['Mutterschutz', 'danach wird ausdrücklich gefragt'],
+  ['Stundenkonten', 'Über- und Minusstunden'],
 ]) {
   // Ohne Ruecksicht auf Gross- und Kleinschreibung: Geprueft wird, ob das
-  // Thema vorkommt, nicht wie es zufaellig am Satzanfang steht. „Pfaendung"
-  // steht im Text als „Lohnpfaendung" — fachlich richtig, und die erste
-  // Fassung dieser Pruefung fand es deshalb nicht.
+  // Thema vorkommt, nicht wie es zufaellig am Satzanfang steht.
   check(`„${begriff}" wird genannt`,
-    new RegExp(begriff, 'i').test(funktionen.text), warum)
+    new RegExp(begriff.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(funktionen.text), warum)
 }
 
 const funktionenText = funktionen.text.replace(/<[^>]*>/g, ' ')
@@ -320,14 +356,18 @@ for (const datei of ['start-aufmacher', 'funktionen-aufmacher', 'band-verbunden'
 console.log('\n=== K5 Was die Startseite zeigt ===')
 
 // §184 Drei Bildschirmfotos aus dem laufenden Programm — Dienstplan,
-// Stempeluhr, Lohnabrechnung. Sie belegen den einen Satz, der dieses Produkt
-// von anderen unterscheidet: Was geplant und gestempelt wird, steht am
-// Monatsende in der Abrechnung, ohne dass jemand eine Stunde überträgt.
+// Stempeluhr, Zuschläge. Sie belegen den einen Satz, der dieses Produkt von
+// anderen unterscheidet: Was geplant und gestempelt wird, steht am
+// Monatsende fertig gerechnet da, ohne dass jemand eine Stunde überträgt.
+//
+// §274 Das dritte war die Lohnabrechnung. Sie wird nicht mehr beworben,
+// solange die ITSG-Systemprüfung fehlt; an ihrer Stelle steht die
+// Zuschlagsübersicht — der letzte Schritt, den wir wirklich gehen.
 const start2 = await ohne('/')
 for (const [datei, was] of [
   ['dienstplan', 'der Dienstplan'],
   ['stempeluhr', 'die Stempeluhr'],
-  ['lohnabrechnung', 'die Lohnabrechnung'],
+  ['zuschlaege', 'die Zuschläge'],
 ]) {
   check(`Die Startseite zeigt ${was}`,
     new RegExp(`schaufenster(%2F|/)${datei}\\.png`).test(start2.text),

@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * §131 Zuschlags-Engine auf Unternehmensebene.
+ * §131 Zuschläge auf Unternehmensebene.
  *
  * Wie bei der Lohnabrechnung: die Navigation zeigte hierher, das Ziel lag aber
  * unter `/admin` und war für die Rolle „company" gesperrt. Klick ohne Wirkung,

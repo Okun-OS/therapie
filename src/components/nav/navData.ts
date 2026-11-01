@@ -160,7 +160,7 @@ const companyDock: DockItem[] = [
           // eine Pfaendung darf die Standortleitung nicht sehen, die
           // /company/payroll mitbenutzt.
           { href: '/company/lohnverwaltung', label: 'Pfändung, bAV & Umlagen', description: 'Was nicht in jede Abrechnung gehört', icon: '⚖️' },
-          { href: '/company/surcharges', label: 'Zuschlags-Engine', description: 'Zuschläge, Prämien & Sonderzahlungen', icon: '⚡' },
+          { href: '/company/surcharges', label: 'Zuschläge', description: 'Zuschläge, Prämien & Sonderzahlungen', icon: '⚡' },
         ]},
       ],
     },

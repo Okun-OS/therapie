@@ -31,7 +31,7 @@ import {
  */
 
 export const metadata: Metadata = {
-  title: 'Vom Bewerber bis zum Lohn',
+  title: 'Ein Mitarbeiter. Ein System.',
   description: BESCHREIBUNG,
 }
 
