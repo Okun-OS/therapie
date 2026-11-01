@@ -124,6 +124,24 @@ async function main() {
     update: { role: 'admin', customerId: kunde.id, passwordHash: hash },
   })
 
+  /*
+   * §275 Und die Unternehmensebene.
+   *
+   * Sie fehlte bisher: Der Beispielbetrieb hatte nur eine Standortleitung.
+   * Damit war die Übergabe ans Lohnbüro im Schaufenster gar nicht zu
+   * erreichen — sie ist der Unternehmensebene vorbehalten, weil sie Beträge
+   * je Person enthält. Ein Schaufenster, in dem ein beworbener Schritt nicht
+   * vorgeführt werden kann, ist kein Schaufenster.
+   */
+  await prisma.user.upsert({
+    where: { email: 'gf@beispielbetrieb.de' },
+    create: {
+      email: 'gf@beispielbetrieb.de', name: 'Geschäftsführung Beispielbetrieb',
+      role: 'company', customerId: kunde.id, passwordHash: hash,
+    },
+    update: { role: 'company', customerId: kunde.id, passwordHash: hash },
+  })
+
   const standort = await prisma.location.upsert({
     where: { id: STANDORT },
     create: {
@@ -595,6 +613,7 @@ async function main() {
   console.log(`  Zeiten     ${HAUPTPERSON}, ${String(VORMONAT.monat).padStart(2, '0')}.${VORMONAT.jahr} vollständig und ${String(LAUFEND.monat).padStart(2, '0')}.${LAUFEND.jahr} bis gestern`)
   console.log(`             ${gestempelt} weitere Stempelungen aus dem Plan (${uebrige.length} Personen, ${String(VORMONAT.monat).padStart(2, '0')}.${VORMONAT.jahr})`)
   console.log('  Zuschläge  Nacht 25 %, Samstag 20 %, Sonntag 50 %, Feiertag 125 % · 21,50 €/h')
+  console.log('  Übergabe   gf@beispielbetrieb.de sieht Beträge und die Datei fürs Lohnbüro')
   console.log(`  Zugang     leitung@beispielbetrieb.de / ${PASSWORT}`)
   console.log(`             ${mail(HAUPTPERSON)} / ${PASSWORT}`)
 }

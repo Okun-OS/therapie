@@ -24,6 +24,7 @@ import { artBestimmen, beitraegeNachArt, individuellBesteuert } from './beschaef
 import { anteiligeBbg, type TeilmonatErgebnis } from './teilmonat'
 import { anteiligeGrenze, lage as mehrfachLage } from './mehrfachbeschaeftigung'
 import { berechne as umlagenBerechnen, type Umlagesaetze } from './umlagen'
+import { zuschlagSteuerfrei, type ZuschlagAufteilung } from './zuschlag-steuerfrei'
 
 // Kirchensteuer: 8 % in Bayern und Baden-Württemberg, sonst 9 %.
 // Die Feiertagslogik nutzt ausgeschriebene Ländernamen — beide Schreibweisen
@@ -34,60 +35,41 @@ function kirchensteuerRate(bl?: string): number {
 }
 
 // ── Steuerfreie Zuschläge (§3b EStG, §1 SvEV) ───────────────────────────────
-
-// Höchstsätze, bis zu denen ein Zuschlag steuerfrei bleibt
-const FREI_NACHT = 0.25       // Nachtarbeit 20:00–06:00 Uhr
-const FREI_SONNTAG = 0.50     // Sonntagsarbeit
-const FREI_FEIERTAG = 1.25    // Feiertagsarbeit
-// Samstagszuschläge sind NICHT steuerfrei — dafür gibt es keine Vorschrift.
-
-const GRUNDLOHN_GRENZE_STEUER = 50   // §3b Abs.2 Satz 1 EStG
-const GRUNDLOHN_GRENZE_SV = 25       // §1 Abs.1 Satz 1 Nr.1 SvEV
+//
+// §275 Die Rechnung selbst steht in `zuschlag-steuerfrei.ts`. Sie stand früher
+// hier und war damit nur der Abrechnung zugänglich — gebraucht wird sie aber
+// auch in der Übergabe ans Lohnbüro, die ohne Abrechnung auskommen muss.
+// Abschreiben wäre die schlechtere Lösung gewesen: Zwei Kopien einer
+// Steuervorschrift laufen auseinander, und welche der beiden Zahlen dann
+// stimmt, sieht man ihnen nicht an.
+//
+// Was hier bleibt, ist das Einzige, was wirklich zur Abrechnung gehört: woher
+// der Grundlohn kommt, wenn er nicht ausdrücklich angegeben wurde.
 
 /**
- * Der steuer- und beitragsfreie Teil der Zuschläge.
- *
- * Steuerfrei ist immer nur der tatsächlich gezahlte Zuschlag, höchstens aber der
- * gesetzliche Prozentsatz des Grundlohns. Wer mehr zahlt, zahlt den Rest
- * versteuert — und wer über 25 €/h Grundlohn liegt, zahlt ab dort Beiträge,
- * obwohl es steuerfrei bleibt. Beide Grenzen greifen unabhängig voneinander.
+ * Den Grundlohn je Stunde bestimmen — angegeben, vereinbart, oder
+ * zurückgerechnet aus dem laufenden Entgelt.
  */
+function grundlohnJeStunde(input: PayrollInput, regularPay: number): number {
+  const stunden = input.regularHours + input.overtimeHours
+  return input.grundlohnHourly
+    ?? input.hourlyWage
+    ?? (stunden > 0 ? regularPay / stunden : 0)
+}
+
 function steuerfreieZuschlaege(
   input: PayrollInput,
   regularPay: number,
-): { steuerfrei: number; svfrei: number; hinweis?: string } {
-  const stunden = input.regularHours + input.overtimeHours
-  const grundlohn = input.grundlohnHourly
-    ?? input.hourlyWage
-    ?? (stunden > 0 ? regularPay / stunden : 0)
-
-  if (grundlohn <= 0) {
-    const gezahlt = (input.nightSurcharge ?? 0) + (input.sundaySurcharge ?? 0) + (input.holidaySurcharge ?? 0)
-    return {
-      steuerfrei: 0, svfrei: 0,
-      hinweis: gezahlt > 0
-        ? 'Ohne Grundlohn je Stunde lässt sich die Steuerfreiheit der Zuschläge (§3b EStG) '
-          + 'nicht bestimmen — sie werden vorsichtshalber voll versteuert.'
-        : undefined,
-    }
-  }
-
-  const posten: [number, number, number][] = [
-    // [gezahlter Zuschlag, Stunden, Höchstsatz]
-    [input.nightSurcharge ?? 0, input.nightHours, FREI_NACHT],
-    [input.sundaySurcharge ?? 0, input.sundayHours, FREI_SONNTAG],
-    [input.holidaySurcharge ?? 0, input.holidayHours, FREI_FEIERTAG],
-  ]
-
-  let steuerfrei = 0
-  let svfrei = 0
-  for (const [gezahlt, stundenzahl, satz] of posten) {
-    if (gezahlt <= 0 || stundenzahl <= 0) continue
-    steuerfrei += Math.min(gezahlt, Math.min(grundlohn, GRUNDLOHN_GRENZE_STEUER) * stundenzahl * satz)
-    svfrei += Math.min(gezahlt, Math.min(grundlohn, GRUNDLOHN_GRENZE_SV) * stundenzahl * satz)
-  }
-
-  return { steuerfrei: round2(steuerfrei), svfrei: round2(svfrei) }
+): ZuschlagAufteilung {
+  return zuschlagSteuerfrei({
+    grundlohn: grundlohnJeStunde(input, regularPay),
+    nachtBetrag: input.nightSurcharge ?? 0,
+    nachtStunden: input.nightHours,
+    sonntagBetrag: input.sundaySurcharge ?? 0,
+    sonntagStunden: input.sundayHours,
+    feiertagBetrag: input.holidaySurcharge ?? 0,
+    feiertagStunden: input.holidayHours,
+  })
 }
 
 // ── Main calculation ─────────────────────────────────────────────────────────

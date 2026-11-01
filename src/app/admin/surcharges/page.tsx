@@ -86,6 +86,14 @@ function BerechnungTab() {
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
   const canSeeAmounts = user?.role === 'company'
+  /*
+   * §275 Was der Übergabe ans Lohnbüro fehlen würde — vorher, nicht nachher.
+   * Eine Datei, die stillschweigend halb richtig ist, kostet das Lohnbüro
+   * einen Rückruf und den Betrieb einen Tag.
+   */
+  const [uebergabeMaengel, setUebergabeMaengel] = useState<
+    { art: string; text: string; betroffen: string[] }[]
+  >([])
 
   useEffect(() => {
     setLoading(true)
@@ -98,6 +106,16 @@ function BerechnungTab() {
       })
       .finally(() => setLoading(false))
   }, [year, month])
+
+  useEffect(() => {
+    if (!canSeeAmounts) { setUebergabeMaengel([]); return }
+    let abgebrochen = false
+    fetch(`/api/lohnuebergabe?jahr=${year}&monat=${month}`)
+      .then(r => (r.ok ? r.json() : { maengel: [] }))
+      .then(d => { if (!abgebrochen) setUebergabeMaengel(d.maengel ?? []) })
+      .catch(() => { if (!abgebrochen) setUebergabeMaengel([]) })
+    return () => { abgebrochen = true }
+  }, [year, month, canSeeAmounts])
 
   function navigate(dir: -1 | 1) {
     let m = month + dir, y = year
@@ -173,15 +191,51 @@ function BerechnungTab() {
           </span>
         )}
         {canSeeAmounts && rows.length > 0 && (
-          <button
-            onClick={exportCSV}
-            className="flex items-center gap-1.5 text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors"
-          >
-            <Download size={14} />
-            Export CSV
-          </button>
+          <>
+            {/*
+              §275 Zwei Dateien mit zwei Zwecken, und darum zwei Knöpfe.
+
+              „Übersicht" ist diese Tabelle als Datei — eine Spalte je
+              Zuschlagsregel des Betriebs, zum Nachsehen. „Übergabe ans
+              Lohnbüro" ist das Gegenteil: feste Spalten, Personalnummer,
+              steuerfrei und steuerpflichtig getrennt — eine Datei, die ein
+              Lohnprogramm einliest. Wer beide zusammenlegt, verliert
+              entweder die eigenen Regeln oder die Einlesbarkeit.
+            */}
+            <a
+              href={`/api/lohnuebergabe?jahr=${year}&monat=${month}&format=csv`}
+              className="flex items-center gap-1.5 text-sm bg-navy text-white px-3 py-1.5 rounded-lg hover:bg-navy-700 transition-colors"
+            >
+              <Download size={14} />
+              Übergabe ans Lohnbüro
+            </a>
+            <button
+              onClick={exportCSV}
+              className="flex items-center gap-1.5 text-sm bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Download size={14} />
+              Übersicht
+            </button>
+          </>
         )}
       </div>
+
+      {canSeeAmounts && uebergabeMaengel.length > 0 && (
+        <div className="space-y-2">
+          {uebergabeMaengel.map(m => (
+            <div key={m.art} className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+              <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>
+                {m.text}
+                <strong className="ml-1">
+                  {m.betroffen.slice(0, 5).join(', ')}
+                  {m.betroffen.length > 5 ? ` und ${m.betroffen.length - 5} weitere` : ''}
+                </strong>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {usingDefaults && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
