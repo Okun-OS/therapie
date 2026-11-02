@@ -184,13 +184,27 @@ Beides ist kostenlos, Xcode braucht rund 15 GB.
 git clone … && cd therapie
 npm install
 
-# Die Adresse der laufenden Anlage — ohne sie zeigt die App auf die
-# Vorgabe aus capacitor.config.ts.
-export OKUN_APP_URL=https://okun-workforce.com
+# NICHTS exportieren. Die Vorgabe aus capacitor.config.ts ist richtig.
+# Nur für eine Testanlage, und dann MIT Pfad:
+#   export OKUN_APP_URL=https://test.beispiel.de/app
 
 npm run app:ios        # baut, synchronisiert und öffnet Xcode
 npm run app:android    # dasselbe für Android Studio
 ```
+
+> **§279 Hier stand `export OKUN_APP_URL=https://okun-workforce.com`** — und
+> genau diese Zeile hat die erste Fassung im Play Store kaputtgemacht. Der
+> Wert überschreibt die Vorgabe, und weil er keinen Pfad trägt, startete die
+> App auf `/`: auf der Verkaufsseite. Dieselbe Adresse ist die einzige, die
+> der Dienst-Arbeiter nie zwischenspeichert (§251) — deshalb ging offline
+> auch gar nichts.
+>
+> Nachgemessen wurde das nicht in der Quelle, sondern im fertigen Paket:
+> `unzip -p …aab base/assets/capacitor.config.json`. Die erzeugte Datei liegt
+> in `.gitignore`; im Projekt war der Fehler nicht zu sehen.
+>
+> `capacitor.config.ts` ergänzt eine Adresse ohne Pfad jetzt selbst um
+> `/app`, und `pruefungen/w-huelle-startadresse.mjs` sieht ins gebaute Paket.
 
 `npm run app:sync` allein reicht, wenn sich nur die Konfiguration geändert hat.
 **Wichtig:** Weil die App die Anlage lädt, muss nach einer Änderung am Programm

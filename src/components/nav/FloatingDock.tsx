@@ -406,25 +406,66 @@ export function FloatingDock() {
       )}
 
       {/* Dock */}
+      {/*
+        §278 Wie hoch der Griff stehen bleibt, wenn die Leiste unten ist.
+
+        GEMELDET nach dem ersten Lauf auf einem Telefon: „Die Bar wieder zu
+        öffnen, unten, wenn die da war, war relativ schwer."
+
+        Hier standen 20 Pixel — etwa drei Millimeter, am äußersten unteren
+        Rand. Dort liegt auf Android die Geste zum Startbildschirm und auf
+        dem iPhone der Home-Balken; beide fangen den Fingertipp ab, bevor er
+        bei uns ankommt. Google verlangt 48dp als kleinste Tippfläche, Apple
+        44pt — und zwar OBERHALB des Systembereichs.
+
+        Am Mauszeiger fiel das nicht auf: Dafür gibt es weiter unten eine
+        Hilfe, die die Leiste einblendet, sobald der Zeiger an den unteren
+        Rand kommt. `mousemove` gibt es auf einem Telefon nicht. Die Leiste
+        war dort also nicht schwer zu öffnen, sondern gar nicht.
+      */}
       <div
         className="fixed bottom-0 left-0 right-0 z-40"
         style={{
-          transform: dockHidden ? 'translateY(calc(100% - 20px))' : 'translateY(0)',
+          // 48 Pixel Griff plus der Bereich, den das Betriebssystem für sich
+          // beansprucht.
+          ['--dock-griff' as string]: 'calc(48px + max(8px, env(safe-area-inset-bottom)))',
+          transform: dockHidden ? 'translateY(calc(100% - var(--dock-griff)))' : 'translateY(0)',
           transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
+        } as React.CSSProperties}
       >
         {/* Grip / toggle strip */}
-        <div className="flex justify-center pb-0.5">
+        <div
+          className="flex justify-center"
+          style={{
+            paddingBottom: dockHidden ? 'max(8px, env(safe-area-inset-bottom))' : '2px',
+          }}
+        >
           <button
             onClick={() => setDockHidden(h => !h)}
-            aria-label={dockHidden ? 'Dock einblenden' : 'Dock ausblenden'}
-            className="flex flex-col items-center gap-0.5 px-4 py-1 rounded-t-xl hover:bg-black/5 transition-colors"
+            aria-label={dockHidden ? 'Menüleiste einblenden' : 'Menüleiste ausblenden'}
+            className="flex flex-col items-center justify-center gap-1 px-10 min-h-[48px] rounded-t-2xl transition-colors hover:bg-black/5"
+            style={dockHidden ? {
+              // Eingeklappt steht der Griff allein auf der Seite. Ohne eigenen
+              // Grund verschwindet er auf hellen wie dunklen Flächen — und was
+              // man nicht sieht, tippt man nicht an.
+              background: 'rgba(20,23,25,0.88)',
+              backdropFilter: 'blur(32px)',
+              WebkitBackdropFilter: 'blur(32px)',
+              border: '1px solid rgba(38,198,198,0.15)',
+              borderBottom: 'none',
+            } : undefined}
           >
-            <div className="w-8 h-1 rounded-full bg-gray-300/80" />
+            <div
+              className="w-10 h-1 rounded-full"
+              style={{ background: dockHidden ? 'rgba(255,255,255,0.45)' : 'rgba(209,213,219,0.8)' }}
+            />
             <ChevronUp
-              size={10}
-              className="text-gray-400 transition-transform"
-              style={{ transform: dockHidden ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}
+              size={14}
+              style={{
+                color: dockHidden ? 'rgba(255,255,255,0.7)' : '#9CA3AF',
+                transform: dockHidden ? 'rotate(0deg)' : 'rotate(180deg)',
+                transition: 'transform 0.3s ease',
+              }}
             />
           </button>
         </div>

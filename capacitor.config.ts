@@ -24,17 +24,53 @@ import type { CapacitorConfig } from '@capacitor/cli'
  *
  * DIE ADRESSE IST EINSTELLBAR
  * `OKUN_APP_URL` beim Bauen der Hülle setzen. Ohne Angabe zeigt sie auf
- * okun-workforce.com/login — die eigene Domain, seit 28.09.2026.
+ * okun-workforce.com — die eigene Domain, seit 28.09.2026.
  *
- * §177 WARUM AUF /login UND NICHT AUF DIE STARTSEITE
- * Unter `/` steht seit dem 29.09. die Verkaufsseite. Eine Mitarbeiterin, die
- * morgens die App öffnet, will sich anmelden und nicht lesen, warum ihr
- * Arbeitgeber dieses Programm kaufen sollte. Wer schon angemeldet ist, wird
- * von `/login` ohnehin sofort weitergereicht.
+ * §279 WARUM AUF /app UND WARUM NIEMALS AUF `/`
+ *
+ * GEMELDET nach dem ersten Lauf aus dem Play Store: „Da haben wir wieder
+ * vorher die Website gesehen", und „offline geht nix".
+ *
+ * Nachgemessen IM GEBAUTEN PAKET — nicht in der Quelle, und das war der
+ * Unterschied: `base/assets/capacitor.config.json` trug
+ * `"url": "https://okun-workforce.com"`, ohne Pfad. Die App startete also
+ * auf `/`. Dort steht die Verkaufsseite, und `/` ist zugleich die EINE
+ * Adresse, die der Dienst-Arbeiter nie zwischenspeichert und nie aus dem
+ * Speicher ausliefert (§251). Beide Meldungen hatten dieselbe Ursache.
+ *
+ * Woher der fehlende Pfad kam: `APP-STORES.md` gab als Bauanleitung
+ * `export OKUN_APP_URL=https://okun-workforce.com` an — genau der Wert, der
+ * die Vorgabe mit dem Pfad überschreibt. Die erzeugte
+ * `capacitor.config.json` liegt in .gitignore; im Projekt war also nichts
+ * zu sehen, und keine Prüfung sah in das fertige Paket.
+ *
+ * `/app` ist die richtige Adresse, und zwar aus drei Gründen:
+ *   - Sie ZEICHNET (den dunklen Hintergrund mit dem Wappen) statt
+ *     weiterzuleiten. Ein iPhone friert sonst das letzte Standbild ein
+ *     (§254).
+ *   - Sie ist damit zwischenspeicherbar — eine Weiterleitung ist es nicht,
+ *     und `/login` ist für Angemeldete genau das.
+ *   - Sie entscheidet selbst: angemeldet in die Rolle, sonst zur Anmeldung.
+ *
+ * Und damit derselbe Fehler nicht wiederkommt, wird eine Adresse OHNE Pfad
+ * hier nicht mehr übernommen, sondern um `/app` ergänzt. Wer eine Testanlage
+ * ansteuert, gibt den Pfad mit an; wer die Domain allein nennt, bekommt die
+ * App und nicht die Verkaufsseite.
  */
 
-const adresse = process.env.OKUN_APP_URL?.replace(/\/+$/, '')
-  || 'https://okun-workforce.com/login'
+const APP_PFAD = '/app'
+
+function startAdresse(roh: string | undefined): string {
+  const basis = (roh?.trim() || 'https://okun-workforce.com').replace(/\/+$/, '')
+  try {
+    return new URL(basis).pathname === '/' ? `${basis}${APP_PFAD}` : basis
+  } catch {
+    // Unbrauchbare Angabe: lieber die eigene Domain als gar keine App.
+    return `https://okun-workforce.com${APP_PFAD}`
+  }
+}
+
+const adresse = startAdresse(process.env.OKUN_APP_URL)
 
 const config: CapacitorConfig = {
   appId: 'de.okun.workforce',

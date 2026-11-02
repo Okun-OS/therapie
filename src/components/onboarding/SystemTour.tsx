@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { X, ArrowRight, ArrowLeft, CheckCircle, RefreshCw, Zap } from 'lucide-react'
 import type { Role } from '@/lib/types'
+import { istApp } from '@/lib/nativ'
 
 // ── Persistence ──────────────────────────────────────────────────────────────
 
@@ -400,6 +401,24 @@ export function SystemTour({ role }: { role: Role }) {
 
   // Load from localStorage on mount
   useEffect(() => {
+    /*
+     * §278 In der App läuft die Tour nicht.
+     *
+     * GEMELDET nach dem ersten Lauf auf einem echten Telefon: „Die Tour ist
+     * verdeckt — entfernen Sie die mal bitte für die App, die brauchen wir
+     * da nicht."
+     *
+     * Sie ist für den Bildschirm am Schreibtisch gebaut: Sie leuchtet
+     * Bedienelemente aus, legt eine Sprechblase daneben und springt über
+     * Seiten. Auf einem Telefon liegt die Blase über genau dem Knopf, den
+     * sie erklärt — und wer die App öffnet, will stempeln und nicht geführt
+     * werden.
+     *
+     * Nur in der App. Im Browser bleibt sie: Dort richtet sie sich an die
+     * Verwaltung, und dort hat sie Platz.
+     */
+    if (istApp()) return
+
     const done = localStorage.getItem(DONE_KEY(role))
     if (done) return
     const saved = loadState()
