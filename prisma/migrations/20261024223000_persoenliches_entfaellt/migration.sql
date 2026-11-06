@@ -1,0 +1,24 @@
+-- §235 Die freiwilligen persönlichen Angaben entfallen.
+--
+-- Gemeldet: „Das mit den persönlichen, mit den Stärken und Schwächen, das kann
+-- auch raus, es braucht kein Mensch mehr. Das hat doch nie Sinn gemacht."
+--
+-- In `EmployeeHumanContext` standen Stärken, Lebenssituation, bevorzugte
+-- Tätigkeiten und besondere Absprachen. §232 hatte bereits die beiden Felder
+-- entfernt, die es anderswo ein zweites Mal gab, und den Satz korrigiert, der
+-- behauptete, die Angaben hülfen bei der Planung. Übrig blieb eine Erhebung,
+-- die den Rechendienst nicht erreicht: Die Leitung konnte sie lesen, und der
+-- Assistent konnte sie auf Frage heranziehen.
+--
+-- WARUM GELÖSCHT UND NICHT NUR AUSGEBLENDET
+-- „Lebenssituation" meint alleinerziehend, Pflege von Angehörigen,
+-- gesundheitliche Einschränkungen — Gesundheits- und Familiendaten nach
+-- Art. 9 DSGVO. Für solche Daten gilt die Datenminimierung besonders streng:
+-- Wer sie nicht mehr braucht, darf sie nicht aufbewahren. Eine ausgeblendete
+-- Tabelle wäre weiterhin eine Verarbeitung, nur eine unsichtbare — und
+-- unsichtbare Verarbeitung ist die, die in einer Auskunft vergessen wird.
+--
+-- Der Eintrag im DSGVO-Verzeichnis, die Auskunft und die Löschroutine sind im
+-- selben Schritt mitgegangen.
+
+DROP TABLE "EmployeeHumanContext";

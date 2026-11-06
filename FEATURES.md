@@ -1,0 +1,6791 @@
+# OKUN Workforce — Featureliste
+
+> **Wo wir gerade stehen, steht in `STAND.md`.** Diese Liste hier hält fest,
+> was fertig ist und wie es nachgewiesen wurde — sie ist das Gedächtnis, nicht
+> die Tagesordnung.
+
+Arbeitsliste. Jeder Punkt durchläuft: **besprechen → verstehen → implementieren
+→ testen → abhaken.**
+
+Angelegt 18.08.2026 auf Basis einer Bestandsaufnahme im Code.
+
+## Bedeutung der Kennzeichnung
+
+| | |
+|---|---|
+| `[ ]` **steht** | Code ist da und hat Substanz — **aber nicht nachgewiesen.** Braucht den Test-Schritt, bevor abgehakt wird. |
+| `[ ]` **teilweise** | Ein Teil fehlt, im Punkt benannt. |
+| `[ ]` **fehlt** | Nicht vorhanden. Kein Datenmodell, keine Route. |
+| `[x]` | Besprochen, verstanden, umgesetzt **und getestet**. |
+
+Der Unterschied zwischen „steht" und abgehakt ist der wichtigste in diesem
+Dokument. Am 17.08. sah die Dienstplanung fertig aus und meldete 100 % — sie
+hielt drei aktive Regeln nicht ein. Nichts wird abgehakt, weil es plausibel
+aussieht.
+
+---
+
+## A · Mitarbeiter und Stammdaten
+
+- [x] **A1 Mitarbeiter anlegen und verwalten** — nachgewiesen. Löschen ist der
+      Plattformverwaltung vorbehalten; die Standortleitung deaktiviert stattdessen.
+- [x] **A2 Mitarbeiterprofil** — nachgewiesen über die eigenen Daten, Unterlagen
+      und Kollegensicht.
+- [x] **A3 Einladung und Registrierung** — nachgewiesen: Einladung entsteht beim
+      Anlegen und ist über den Link abrufbar.
+- [x] **A4 Rollen und Rechte** — nachgewiesen an über dreißig Abschottungen.
+- [x] **A5 Dateiablage** — fertig und getestet. Inhalt liegt in der Datenbank
+      (Railways Dateispeicher ist nach jedem Neustart leer); ein S3-Speicher kann
+      später dazukommen, ohne dass sich am Rest etwas ändert. 10 MB je Datei,
+      nur PDF und Bilder. 19 Modultests, 18 Ende-zu-Ende-Checks am laufenden
+      System, 5 im Browser.
+- [x] **A6 Personalakte** — fertig und getestet. Arbeitsvertrag, Zeugnisse,
+      Bescheinigungen, Krankmeldungen. Vertrag und Lohnabrechnung sieht der
+      Mitarbeiter automatisch, alles Übrige nur nach ausdrücklicher Freigabe.
+      Der Mitarbeiter kann Krankmeldungen selbst einreichen, sich aber keinen
+      Vertrag in die Akte legen. Löschen ist weich (Aufbewahrungsfristen).
+
+## B · Arbeitszeit
+
+- [x] **B1 Zeiterfassung, Unternehmenssicht** — nachgewiesen. Leitung sieht die
+      Buchungen ihres Standorts, eine fremde Leitung keine.
+- [x] **B2 Zeiterfassung, Mitarbeitersicht** — nachgewiesen: ein- und ausstempeln,
+      Pause starten und beenden, laufende Erfassung abrufen.
+- [x] **B3 Zeiterfassungsprotokolle** — nachgewiesen. Der Mitarbeiter bekommt sein
+      eigenes Monatsprotokoll (kam vorher gar nicht heran), das eines Kollegen nicht.
+- [x] **B4 Freigabe und Monatsabschluss** — nachgewiesen: anlegen, abrufen, Freigaben.
+- [x] **B5 Überstunden** — nachgewiesen: beantragen, teilweise genehmigen. Keine
+      Selbstgenehmigung, keine Genehmigung durch eine fremde Leitung.
+- [x] **B6 Stundenkonto** — nachgewiesen. Eigenes abrufbar, fremdes gesperrt.
+
+## C · Abwesenheit
+
+- [x] **C1 Urlaubsanträge** — nachgewiesen: beantragen, abrufen, genehmigen.
+      Kein Antrag auf fremden Namen, keine Selbstgenehmigung, keine Bescheidung
+      durch eine fremde Leitung.
+- [x] **C2 Urlaubsjahresplanung** — nachgewiesen: Wunschsammlung starten,
+      eigene Urlaubswünsche hinterlegen; nicht für Kollegen, nicht am fremden Standort.
+- [x] **C3 Urlaubsregeln** — nachgewiesen. Nur die eigene Leitung setzt sie;
+      unvollständige Angaben werden verständlich abgelehnt statt mit HTTP 500.
+- [x] **C4 Abwesenheiten** — nachgewiesen: erfassen, korrigieren und entfernen,
+      nicht auf fremden Namen, nicht durch eine fremde Leitung.
+- [x] **C6 Krankenschein und Fehlzeit** — fertig. Die Bescheinigung wird beim
+      Einreichen der passenden Fehlzeit zugeordnet, Lücken werden benannt, die
+      Frist nach §5 EntgFG ist einstellbar. Siehe Block C6 unten.
+- [x] **C5 Schließzeiten** — nachgewiesen: anlegen, löschen, Ende-vor-Beginn
+      wird abgewiesen; eine fremde Leitung kann weder lesen noch anlegen noch löschen.
+
+## D · Lohn
+
+- [x] **D1 Lohnberechnung** — nachgewiesen, und inzwischen nicht mehr selbst
+      gerechnet. Erst kamen beim Nachrechnen fünf Fehler heraus (doppelter
+      Grundfreibetrag, Steuerklasse III ohne Splittingverfahren, volle
+      Sozialabgaben statt Vorsorgepauschale, Kinderfreibetrag in der Lohnsteuer
+      statt nur bei Soli und Kirchensteuer, Steuerformel von 2024 neben
+      Freibeträgen von 2025). Nach der Korrektur stimmte Steuerklasse I auf den
+      Cent — Klasse III lag immer noch 9 € daneben. Deshalb rechnet die
+      Lohnsteuer jetzt der **amtliche Programmablaufplan des BMF**, dieselbe
+      Vorschrift, die jede Lohnsoftware in Deutschland umsetzt (`lohnsteuer-pap.ts`).
+      Wir liefern die Eingaben und übernehmen das Ergebnis. Die Jahreswerte
+      stehen als Daten in `lohnjahre.ts` mit Quelle und Prüfvermerk — 2025 und
+      2026 sind eingetragen; für ein Jahr ohne geprüfte Werte wird die
+      Abrechnung **verweigert statt geschätzt**.
+- [x] **D2 Zuschlagsregeln** — nachgewiesen, mit dem größten Fund des Blocks:
+      Nacht-, Sonntags- und Feiertagszuschläge wurden voll versteuert, obwohl sie
+      nach §3b EStG steuerfrei sind. Das kostete den Mitarbeiter bares Geld. Jetzt
+      werden steuerfreier und beitragsfreier Anteil getrennt gerechnet (25 % / 50 %
+      / 125 % des Grundlohns, Steuerfreiheit bis 50 €/h Grundlohn, Beitragsfreiheit
+      nur bis 25 €/h) und auf Abrechnung, Beleg und DATEV-Datei getrennt
+      ausgewiesen. Samstagszuschläge bleiben steuerpflichtig — dafür gibt es keine
+      Vorschrift.
+- [x] **D3 Lohnabrechnung als Dokument** — fertig und getestet. `src/lib/lohnbeleg.ts`
+      erzeugt die Entgeltabrechnung als PDF mit allen Angaben nach §108 GewO und
+      Entgeltbescheinigungsverordnung; sie landet in der Personalakte.
+- [x] **D4 Zustellung an den Mitarbeiter** — fertig und getestet. Der Beleg liegt
+      für den Mitarbeiter sichtbar in seinen Unterlagen, er wird benachrichtigt,
+      und eine fremde Leitung kommt nicht heran.
+- [x] **D5 DATEV-Export** — fertig und getestet. CSV mit einer Zeile je Lohnart,
+      zugeordnet über die Personalnummer, Berater- und Mandantennummer im Kopf.
+      Keine behauptete Zertifizierung — eine strukturierte Übergabedatei.
+- [x] **D6 Auszahlung per SEPA-Datei** — fertig und getestet. pain.001.001.03 mit
+      geprüfter IBAN-Prüfsumme und stimmender Kontrollsumme. Bewusst als Datei zum
+      Upload bei der Bank, nicht als eigene Zahlungsauslösung (erlaubnispflichtig,
+      ZAG).
+
+  **Kein einziger externer Zugang nötig.** Gerechnet wird bei uns, DATEV und SEPA
+  sind Dateien zum Weitergeben, Feiertage rechnen wir selbst. Das Einzige, was
+  von außen kommt, ist einmal im Jahr der Programmablaufplan des BMF — ein
+  Download, kein Zugang.
+- [ ] **D7 Meldewesen (SV-Meldungen, Lohnsteueranmeldung)** — **bewusst nicht
+      selbst.** Braucht zertifizierte Übermittlung (ITSG, ELSTER). Läuft über
+      Steuerberater oder DATEV — dafür D5.
+
+## E · Kommunikation
+
+- [x] **E1 Push-Infrastruktur** — nachgewiesen. Ein Gerät lässt sich nur für die
+      eigene Person anmelden; fremde Push-Nachrichten sind nicht mitlesbar.
+- [x] **E2 Benachrichtigungen** — nachgewiesen: eigenes Postfach lesen und
+      markieren, Rundruf am eigenen Standort. Fremde Postfächer, fremde
+      Nachrichten und Rundrufe an fremde Standorte sind gesperrt.
+- [x] **E3 Einspringen und Kandidatensuche** — nachgewiesen: Anfrage anlegen,
+      5 Kandidaten werden automatisch ermittelt. Keine Zusage im Namen anderer,
+      keine Eskalation durch eine fremde Leitung.
+- [x] **E4 Einspringen: Benachrichtigung der Infragekommenden** — fertig und
+      getestet. Ausfall am Dienst melden, Empfänger wählen, Postfach/Push/E-Mail;
+      danach Dienstanfrage oder direktes Besetzen. 16 Ende-zu-Ende-Checks.
+- [x] **E5 Mitarbeiter-Chat** — fertig. Jeder schreibt jedem am eigenen
+      Standort, die Standortleitung eröffnet und verwaltet Gruppen. Siehe
+      Block E5 unten.
+
+## F · Dienstplanung
+
+Sonderfall: wird pro Kunde von Hand programmiert, nicht vom Kunden eingerichtet.
+Siehe `PRODUKT-NOTIZEN.md`.
+
+- [x] **F1 Rechenkern** — nachgewiesen. Rechendienst erreichbar und auf passendem
+      Stand (Version 98); der Versionsabgleich greift.
+- [x] **F2 Plan erzeugen und speichern** — nachgewiesen: Lauf angenommen, Ergebnis
+      abgeschlossen, 54 Zuweisungen, alle mit den definierten Dienstzeiten.
+      Woche speichern und abrufen; alles gegen fremde Standorte gesperrt.
+- [x] **F3 Dienstwünsche** — nachgewiesen: eintragen und abrufen; kein Wunsch auf
+      fremden Namen, keine Einsicht in fremde Wünsche.
+- [x] **F4 Schichttausch** — nachgewiesen: Anfrage stellen, bestätigen, und die
+      Dienste sind danach WIRKLICH getauscht. Nur die angefragte Person darf
+      antworten; ein beantworteter Tausch lässt sich nicht erneut beantworten.
+- [x] **F5 Kundenmodul-Mechanik** — fertig. Entwurf lag unter
+      `solver-service/rulepacks/`, nicht eingebunden, nicht aktiv
+- [x] **F6 Freischaltung je Kunde** — fertig. Dienstplanung ist gesperrt,
+      bis das Kundenmodul abgenommen ist.
+
+## G · Grundlagen und Betrieb
+
+- [x] **G1 DSGVO: Auskunft und Datenexport** — fertig. Jeder holt seine Auskunft
+      selbst, als lesbares PDF und als Datei zum Mitnehmen. Siehe Block G1/G2 unten.
+- [x] **G2 DSGVO: Löschkonzept** — fertig. Katalog über alle 35 Tabellen mit
+      Personenbezug, Vorschau vor jeder Löschung, Sperre statt Löschung wo das
+      Gesetz es verlangt, Löschbericht als Nachweis. Siehe Block G1/G2 unten.
+- [x] **G3 Automatische Prüfung vor dem Ausrollen** — fertig. 670 Nachweise im
+      Repo unter `pruefungen/`, ein Befehl (`npm run pruefen`), automatischer
+      Lauf bei jedem Push. Siehe Block G3 unten.
+      `.github/workflows` ist leer. Ohne das trägt kein Qualitätsversprechen.
+- [x] **G4 Mandantentrennung** — nachgewiesen in allen geprüften Bereichen.
+- [x] **G5 Prüfprotokolle** — nachgewiesen (Schreiben in die Datenbank).
+
+---
+
+## Zählung
+
+| Zustand | Anzahl |
+|---|---|
+| abgehakt (getestet) | 54 |
+| teilweise | 1 |
+| fehlt | 5 |
+| bewusst nicht selbst | 1 |
+
+## Vorschlag für die Reihenfolge
+
+1. **A · Mitarbeiter und Stammdaten** — alles hängt daran, und A5 (Dateiablage)
+   ist zugleich das Fundament für Personalakte, Krankenscheine und Lohnbelege.
+2. **D · Lohn** — größter sichtbarer Nutzen; D3/D4 fallen nach A5 leicht.
+3. **E · Kommunikation** — E4 ist ein kleiner Handgriff mit großer Wirkung.
+4. **C · Abwesenheit** — C4 schließt nach A5 auf.
+5. **B · Arbeitszeit** — steht weitgehend, braucht vor allem den Nachweis.
+6. **G · Grundlagen** — G3 vorziehen, sobald der erste Kunde produktiv ist.
+7. **F · Dienstplanung** — nach der Standardstrecke.
+
+Innerhalb jedes Punktes gehört zum Schritt „verstehen" ausdrücklich, das
+Vorhandene **auszuprobieren** statt es anzunehmen.
+
+---
+
+# Aktueller Auftrag (18.08.2026)
+
+Alles aus den Ansagen des Inhabers. Wird hier abgehakt, sobald es **läuft und
+getestet ist** — nicht wenn es vorbereitet ist.
+
+## Dateiablage und Akte
+- [x] **1 Dateiablage** — siehe A5
+- [x] **2 Personalakte** — siehe A6
+
+## Vertretung / Dienstausfall
+- [x] **3 Dienst im Plan anklicken** → verschieben, löschen, **fällt aus**
+- [x] **4 Ausfall-Dialog** mit Grund und Empfängerwahl: alle, ausgewählte oder niemand
+- [x] **5 Mitarbeiter werden wirklich benachrichtigt** — Postfach, Push und E-Mail;
+      im Test 11 von 11 Kollegen, die ausgefallene Person ausgenommen
+- [x] **6 Dienstanfrage und Besetzen** — der Dienst kommt als Vertretung zurück
+      in den Plan, mit unveränderten Zeiten; doppelte Vergabe wird verhindert
+- [x] **7 KI-Chat entfernt** — Komponente, Entwurfsmodul und KI-Route gelöscht
+
+## Mitarbeiter-Ablauf
+- [x] **8 Lohn-Stammdaten am Mitarbeiter** — eigene, streng geschützte Tabelle:
+      Steuerklasse, Kinderfreibeträge, Konfession, Bundesland, Versicherungsart,
+      Krankenkasse mit Zusatzbeitrag, SV-Nummer, Steuer-ID, Lohnart mit Stunden-
+      oder Monatslohn, IBAN/BIC, Anschrift, Ein- und Austritt, Probezeit,
+      Befristung, Schwerbehinderung. Sie speisen die Abrechnung wirklich:
+      „Abrechnung vorbereiten" übernimmt sie und benennt, wo etwas fehlt.
+- [x] **9 Anlegen auf Unternehmensebene** — neue Seite mit Liste, Suche,
+      Standortfilter, Warnung bei Mitarbeitern ohne Standort, Anlegen samt
+      Einladung und anschließender Standortzuordnung per Klick
+- [x] **10 Am Standort nur noch dienstplanbezogene Angaben** — Gruppe, Bereich,
+      feste freie Tage, Qualifikationen. Lohn und Bank bleiben Sache des
+      Unternehmens; eine fremde Standortleitung kommt an beides nicht heran
+
+## Unternehmensebene aufräumen
+- [x] **11 Dienstplanung aus der Unternehmens-Navigation entfernt** — erreichbar
+      über den jeweiligen Standort
+- [x] **12 Planungsmodell entfernt** (`/company/model` gelöscht, liefert 404)
+- [x] **13 Scores und KI-Analyse entfernt** — alle fünf Seiten gelöscht, im Test
+      alle mit 404 nachgewiesen; auf Standortebene bleiben sie erhalten
+- [x] **14 Standort öffnen und dort alles sehen** — neues Standort-Cockpit mit
+      Kennzahlen, offenen Punkten, Basiswerten, Struktur nach Etagen, Mitarbeiter-
+      liste und Wegen zu Dienstplan, Urlaub, Vertretungen, Regeln, Auswertungen
+- [x] **15 Unternehmensonboarding entfernt** — es erfasste Unternehmens- und
+      Standortdaten per Sprachmodell. Dieselbe Aufgabe erledigen jetzt die
+      Unternehmenseinstellungen und der Einrichtungs-Assistent am Standort.
+      Die Zwangsweiterleitung beim ersten Login ist ebenfalls weg, ebenso der
+      Tour-Schritt und alle Verweise darauf.
+
+---
+
+# Aufräumen der Menüs (18.08.2026)
+
+- [x] **Standortebene: Dienstplanung von 7 auf 4** — Dienstplan, Kalender,
+      Urlaub & Wünsche, Vertretungen. Urlaubsanträge, Jahresplanung und
+      Dienstwünsche liegen jetzt auf einer Seite mit Umschaltung.
+- [x] **Standortebene: Auswertungen von 6 auf 3** — Workforce Insights,
+      Fairness, Personalrisiko und Controlling sind eine Seite mit vier
+      Ansichten; daneben nur noch Workforce Score und Berichte.
+- [x] **Irreführende KI-Marken entfernt** — Dienstplan, Urlaub und Vertretungen
+      trugen goldene „KI"-Abzeichen. Die Planung rechnet mit einem Solver, und
+      aus der Vertretung wurde die KI bewusst entfernt.
+- [x] **Doppeltes Icon behoben** — „KI & Analyse" und „OKUN Assistent" waren
+      beide derselbe goldene Stern. Auswertungen bekommen ein Diagramm-Symbol,
+      der Assistent ein Frage-Symbol.
+- [x] **Aufgabenkatalog in die Einstellungen** — er ist Konfiguration, keine
+      tägliche Planung.
+- [x] **Sieben Routen entfernt**, alle Verweise, Benachrichtigungs-Ziele,
+      Hilfetexte und Tour-Schritte mitgezogen.
+
+---
+
+# Befunde aus der Nachweis-Phase
+
+Gefunden, weil geprüft statt geglaubt wurde — und jeweils sofort behoben.
+
+## Block A (18.08.)
+- **Kollegendaten offen**: Jeder Mitarbeiter konnte Stundenkonto,
+  Urlaubsanspruch, verbrauchte Urlaubstage und Wochenstunden aller Kollegen
+  abrufen. Behoben: Kollegen zeigen nur noch Name, Funktion, Standort, Gruppe
+  und Qualifikationen; die eigenen Daten bleiben vollständig.
+
+## Block F (10.09.)
+- **Ein Planungslauf ließ sich an JEDEM Standort starten.** Eine fremde Leitung
+  konnte beim Wettbewerber einen Dienstplan rechnen lassen und über die
+  Sitzungs-ID an dessen Personaldaten kommen. Der gravierendste Fund in diesem
+  Block.
+- **Arbeitszeitregeln standen jedem Angemeldeten offen** — Höchststunden,
+  Ruhezeit und Folgetage ließen sich ohne Rollenprüfung ändern.
+- Zwölf Schnittstellen abgesichert: Planungsläufe, Planungssitzungen,
+  Arbeitszeitregeln, Planungsrichtlinie, Einheiten, Wochenspeicherung,
+  Nachoptimierung, Korrekturen und Dienstwünsche.
+
+## Block E (10.09.)
+- **Fremde Push-Nachrichten waren mitlesbar.** `push/subscribe` nahm eine
+  beliebige `employeeId` entgegen — man konnte das EIGENE Gerät als Empfänger
+  für die Meldungen einer Kollegin eintragen und ab dann alles mitlesen.
+  Der gravierendste Einzelfund dieser Prüfphase.
+- **Fremde Postfächer waren lesbar** und fremde Nachrichten ließen sich als
+  gelesen markieren — also im Postfach der anderen Person verstecken.
+- **Rundrufe gingen an jeden angegebenen Standort**, auch an den eines
+  fremden Kunden.
+- **Zusagen und Tauschanfragen im Namen anderer** waren möglich: sowohl das
+  Zusagen auf eine Vertretung als auch das Stellen einer Tauschanfrage nahmen
+  die handelnde Person aus dem Aufruf statt aus der Anmeldung.
+- Elf Schnittstellen abgesichert.
+
+## Block C (10.09.)
+- **Acht Schnittstellen ohne Standortprüfung.** Eine fremde Leitung konnte die
+  Urlaubsregeln, Jahresplanung und Schließzeiten eines anderen Kunden ändern
+  und dessen Urlaubsanträge bescheiden. Alle geschlossen.
+- **Zugriffsprüfung nur im Lesen, nicht im Schreiben.** Bei `absences` und
+  `vacation-requests` stand sie im GET, fehlte aber im POST: Ein Mitarbeiter
+  konnte eine Krankmeldung und einen Urlaubsantrag auf den Namen einer
+  Kollegin einreichen.
+- **Drei Routen stürzten mit HTTP 500 und LEEREM Antworttext ab**, sobald ein
+  Feld fehlte oder unbekannt war — der Nutzer sah gar nichts. Urlaubsregeln
+  und Urlaubswünsche antworten jetzt mit Klartext; beim Urlaubsantrag ermittelt
+  der Server den Standortnamen selbst, statt ihn vom Aufrufer zu verlangen.
+
+## Block B (10.09.)
+- **17 von 18 Zeiterfassungs-Schnittstellen ohne Zugriffsprüfung.** Jeder
+  Angemeldete konnte für jede beliebige Person stempeln, Pausen buchen,
+  Überstunden beantragen, Zeitbuchungen ändern, Monatsabschlüsse korrigieren
+  und freigeben — auch über Mandantengrenzen hinweg. Alle 18 abgesichert.
+- **`assertEmployeeAccess` war zu weit gefasst.** Ein Mitarbeiter fiel in
+  denselben Zweig wie eine Leitung und durfte damit auf alle Kolleginnen und
+  Kollegen seines Standorts zugreifen. Für die Rolle „employee" gilt jetzt
+  ausschließlich der eigene Datensatz. Eine Stelle, Wirkung überall.
+- **`notify-admin` nahm einen frei erfundenen Absendernamen** und eine
+  beliebige Standort-ID entgegen. Jetzt zählt nur, wer wirklich anfragt, und
+  der Standort muss zum Aufrufer gehören.
+- **Doppeltes Einstempeln** legte eine zweite laufende Erfassung an; die Zeit
+  lief doppelt und der Monatsabschluss stimmte nicht mehr. Wird abgewiesen.
+- **Der Mitarbeiter kam an sein eigenes Zeitprotokoll nicht heran** — die
+  Rollenliste schloss ihn aus. Korrigiert.
+
+## Block D (10.09.)
+
+51 Prüfungen: 36 gegen Beleg, Zustellung, DATEV und SEPA, 15 gegen die
+Lohnberechnung selbst — dazu 33 Rechentests gegen den Gesetzestext.
+
+- **Fünf Fehler in der Lohnsteuer.** Der Grundfreibetrag wurde doppelt
+  abgezogen: einmal von Hand, und noch einmal, weil er in der Formel des
+  §32a EStG bereits steckt. Steuerklasse III rechnete mit einem verdoppelten
+  Freibetrag statt nach dem Splittingverfahren. Statt der Vorsorgepauschale
+  nach §39b Abs.2 wurden die vollen Sozialabgaben abgesetzt. Der
+  Kinderfreibetrag minderte die Lohnsteuer, obwohl er nach §51a EStG nur für
+  Soli und Kirchensteuer zählt. Und die Formel selbst war die von 2024, während
+  die Freibeträge daneben von 2025 stammten. Alles korrigiert und gegen den
+  Gesetzestext nachgerechnet.
+- **Steuerfreie Zuschläge wurden versteuert.** Nacht-, Sonntags- und
+  Feiertagszuschläge sind nach §3b EStG bis zu festen Sätzen steuerfrei — das
+  Programm hat sie voll versteuert und verbeitragt. Im Testfall waren das
+  25 EUR im Monat, die dem Mitarbeiter zustanden. Jetzt werden steuerfreier
+  und beitragsfreier Anteil getrennt gerechnet und getrennt ausgewiesen.
+- **„Vorbereiten" hat nie gerechnet.** Der Lauf übertrug nur die Stammdaten;
+  Brutto und Netto blieben null. Damit war der Beleg leer, die DATEV-Datei ohne
+  Lohnarten und die SEPA-Datei ohne Zahlung. Jetzt fließen Stunden aus der
+  Zeiterfassung, Urlaub und Krankheit aus den Abwesenheiten und die Zuschläge
+  aus dem Regelwerk des Kunden ein.
+- **Ein zweiter Lauf hätte Freigegebenes überschrieben.** Entwürfe werden neu
+  gerechnet, freigegebene Abrechnungen bleiben unangetastet.
+- **Der Zusatzbeitrag der Krankenkasse wurde ignoriert.** Gerechnet wurde mit
+  einem Durchschnittswert, obwohl der echte Satz am Mitarbeiter hinterlegt ist.
+
+## Block D, zweiter Durchgang (10.09.) — Lohnsteuer vom Amt statt selbst gebaut
+
+Nach der Korrektur der eigenen Steuerformel stimmte Steuerklasse I auf den Cent
+(395,83 €), Steuerklasse III aber immer noch nicht: 111,17 € statt 102,00 €.
+Eine Abweichung, die man einer Zahl nicht ansieht und die jeden Monat auf jeder
+Abrechnung stünde. Deshalb der Wechsel auf die amtliche Vorlage.
+
+- **Die Lohnsteuer rechnet jetzt der BMF-Programmablaufplan.** Kein API, keine
+  laufende Verbindung — eine Umsetzung der amtlichen Vorschrift als Bibliothek
+  (`lohnsteuerrechner`, MIT, eine Abhängigkeit). Vor der Aufnahme geprüft: keine
+  Installationsskripte, keine Netzaufrufe, kein `eval`. Der Rechenweg trägt die
+  Seitenverweise des Ablaufplans und die dort vorgeschriebenen Rundungsregeln.
+- **Unabhängig nachgerechnet, nicht geglaubt.** Ein Referenzfall wurde von Hand
+  aus den Konstanten des Ablaufplans hergeleitet (5.000 € · StKl I · 2026 →
+  9.430 € Jahressteuer → 785,83 € im Monat) und stimmt auf den Cent. Zusätzlich
+  ist der Tarif an seinen Bruchstellen nachgerechnet: Zone 2 endet exakt beim
+  Startwert von Zone 3.
+- **Die 2026er Werte sind damit belegt statt geraten** — Grundfreibetrag
+  12.348 €, Beitragsbemessungsgrenzen 8.450 € und 5.812,50 € im Monat,
+  Soli-Freigrenze 20.350 €. Vorher hätte ich die Tarifkoeffizienten raten müssen.
+- **Zwei Dinge, die vorher als „braucht einen Steuerberater" markiert waren,
+  gehen jetzt:** die abweichende Aufteilung der Pflegeversicherung in Sachsen
+  und der Beitragsabschlag ab dem zweiten Kind unter 25.
+- **Kinderlosenzuschlag und Kinderabschlag sind zwei verschiedene Dinge** und
+  wurden vorher aus der Zahl der Kinderfreibeträge abgeleitet — das ist falsch.
+  Der Zuschlag entfällt dauerhaft mit dem ersten Kind, die Abschläge gibt es nur
+  für Kinder unter 25. Beide Angaben stehen jetzt eigens am Lohnprofil.
+- **Jahre ohne geprüfte Rechengrößen werden abgewiesen**, mit einer Meldung, die
+  sagt was fehlt und wo es einzutragen ist — statt still mit falschen Werten zu
+  rechnen. Am laufenden System nachgewiesen.
+- **Auf dem Beleg steht jetzt, wonach gerechnet wurde**, und die Grundlage wird
+  an der Abrechnung gespeichert. Wer eine alte Abrechnung prüft, sieht den Stand
+  ohne Rückfrage.
+
+Nachweis: 19 Prüfungen gegen den Ablaufplan, 37 im Rechenkern, 39 am laufenden
+System für Beleg, Export und SEPA, 15 für die Lohnberechnung.
+
+## Block D8 (10.09.) — ELStAM
+
+Die Lohnsteuer ist seit dem Wechsel auf den amtlichen Ablaufplan exakt. Exakt
+gerechnet mit einem veralteten Merkmal ist aber trotzdem falsch: Steuerklasse,
+Kinderfreibeträge und Freibeträge kommen vom Finanzamt und ändern sich laufend.
+Bei 3.400 € brutto liegen zwischen Klasse I und Klasse III mit einem Kind
+**286 € im Monat** — und für zu wenig einbehaltene Lohnsteuer haftet der
+Arbeitgeber (§42d EStG).
+
+- [x] **D8 ELStAM-Abgleich** — fertig und getestet. Zwei Teile:
+      - **Der schützende:** Jedes Lohnprofil trägt einen ELStAM-Stand. Vor dem
+        Abrechnungslauf wird gemeldet, wessen Stand fehlt oder älter ist als der
+        Abrechnungsmonat. Gewarnt, nicht gesperrt — manchmal gibt es schlicht
+        keine Änderung, aber es muss jemandem auffallen, bevor gerechnet wird.
+      - **Der bequeme:** Die monatliche Änderungsliste wird eingelesen. Der
+        Abgleich zeigt Mitarbeiter für Mitarbeiter, was sich ändern *würde*;
+        übernommen wird erst nach Bestätigung. Festgehalten wird, von wann der
+        Stand ist, aus welcher Liste er kommt und wer bestätigt hat.
+- [x] **Freibetrag, Hinzurechnungsbetrag und Faktor** — gehören zu ELStAM, wurden
+      bisher gar nicht geführt. Der amtliche Ablaufplan nimmt sie entgegen, jetzt
+      werden sie auch gefüllt. Der Faktor gilt nur in Steuerklasse IV; an einer
+      anderen Klasse wäre er ein Datenfehler und wird nicht angewandt.
+
+Entscheidungen, die im Code stehen und begründet sind:
+
+- **Zugeordnet wird über die Steuer-ID**, ersatzweise Personalnummer, notfalls
+  Name. Eine Zuordnung über den Namen wird gekennzeichnet und ist **nicht**
+  vorausgewählt — bei Namensgleichheit wird gar nicht zugeordnet, sondern gefragt.
+- **Felder, die die Liste nicht nennt, bleiben unangetastet.** Eine fehlende
+  Spalte darf keinen bestehenden Freibetrag löschen.
+- **Die Datei ist nur ein Parser.** Käme später ein zertifizierter Abruf dazu,
+  bliebe alles Übrige — Abgleich, Bestätigung, Nachweis — unverändert.
+- **Eine fremde Leitung findet fremde Mitarbeiter in ihrer Datei gar nicht erst.**
+  Kein Fehler, kein Hinweis: der Abgleich läuft nur gegen den eigenen Bestand.
+
+Nachweis: 22 Modultests, 24 Prüfungen am laufenden System — darunter der
+vollständige Weg von der Liste bis zur gesunkenen Lohnsteuer (388 € → 102 €).
+
+## Block D9 (10.09.) — Rückwirkende Aufrollung
+
+Der Fall, um den es geht: Eine Abrechnung ist freigegeben und ausgezahlt. Danach
+ändert sich etwas an ihrer Grundlage — ein Krankenschein wird nachgereicht, eine
+Zeitbuchung korrigiert, das Finanzamt meldet rückwirkend eine andere
+Steuerklasse, eine Gehaltserhöhung gilt ab einem vergangenen Datum. Bisher
+passierte dann nichts: ein freigegebener Monat wurde nicht mehr angefasst, und
+die Abrechnung blieb dauerhaft falsch. **Das ist kein Randfall, sondern der
+Normalfall in jedem Betrieb.**
+
+- [x] **D9 Aufrollung** — fertig und getestet.
+      - Freigegebene Monate werden mit den heutigen Daten nachgerechnet. Die
+        freigegebene Abrechnung wird dabei **nie überschrieben** — sie bleibt,
+        wie sie unterschrieben wurde. Der Unterschied entsteht als eigener,
+        nachvollziehbarer Datensatz daneben.
+      - Wie beim ELStAM-Import: erst zeigen was abweicht, dann bestätigen.
+        Geprüft wird das ganze Jahr, weil niemand vorher weiß, welcher Monat
+        betroffen ist.
+      - Die Differenz wird im nächsten offenen Monat ausgezahlt. Ist der schon
+        freigegeben, **wandert die Korrektur weiter statt liegenzubleiben.**
+      - Eine versehentlich angelegte Korrektur lässt sich verwerfen. Eine
+        bereits ausgezahlte nicht — dafür gibt es die Aufrollung des
+        Ausgleichsmonats.
+- [x] **Auszahlungsbetrag als eigenes Feld** — Netto plus Korrektur. SEPA, DATEV
+      und der Beleg lesen dieses eine Feld, damit sie nicht auseinanderlaufen
+      können. Auf dem Beleg steht die Korrektur als eigene Zeile mit Herkunft
+      („Nachzahlung aus August 2026"), in der DATEV-Datei als eigene Lohnart.
+
+Zwei Rechtsprinzipien, die hier bewusst getrennt behandelt werden:
+
+- **Lohnsteuer folgt dem Zuflussprinzip.** Die Differenz wird in dem Monat
+  versteuert, in dem sie ausgezahlt wird; §41c EStG erlaubt dem Arbeitgeber die
+  Aufrollung innerhalb des Jahres.
+- **Sozialversicherung folgt beim laufenden Entgelt dem Entstehungsprinzip.**
+  Die Beiträge gehören in den Ursprungsmonat. Deshalb hält jeder
+  Korrekturdatensatz **beide** Monate fest — das ist die Grundlage für den
+  späteren Beitragsnachweis.
+
+### Dabei gefunden und behoben: die Lohn-Schnittstelle war offen
+
+Block D war bei der Nachweis-Phase übersprungen worden, deshalb war
+`/api/payroll` nie geprüft. Es fanden sich drei Löcher:
+
+- **Eine fremde Leitung konnte eine fremde Abrechnung freigeben und ändern.**
+  PATCH hat allein über die Kennung gearbeitet, ohne zu prüfen, wem die
+  Abrechnung gehört — über Mandantengrenzen hinweg. Am laufenden System
+  nachgewiesen und behoben.
+- **Der Browser bestimmte Brutto und Netto.** POST schrieb den ganzen
+  Anfragekörper in die Datenbank. Jetzt liefert er nur die
+  Bemessungsgrundlagen; gerechnet wird auf dem Server.
+- **Eine Standortleitung sah die Abrechnungen aller Standorte.** GET war nur
+  nach Kunde gefiltert, nicht nach Standort.
+
+Dazu: ein freigegebener Monat lässt sich über POST nicht mehr überschreiben
+(HTTP 409), und wer freigibt, wird festgehalten statt vom Absender bestimmt.
+
+Nachweis: 15 Modultests, 40 Prüfungen am laufenden System — darunter der ganze
+Weg von der rückwirkenden Steuerklassenänderung über die Korrektur bis zum
+höheren Betrag in der SEPA-Datei.
+
+## Block D10 (10.09.) — Einmalzahlungen
+
+Weihnachtsgeld hat jeder Kunde, und bisher gab es dafür gar keinen Platz. Wer es
+zahlen wollte, konnte es nur als erhöhtes Monatsgehalt eintragen — dann stimmte
+weder die Steuer noch der Beitrag.
+
+- [x] **Einmalzahlungen** — Weihnachtsgeld, Urlaubsgeld, Prämien, Abfindungen.
+      Sie werden erfasst und beim nächsten Abrechnungslauf gerechnet; dieselbe
+      Reihenfolge wie bei allem anderen.
+- [x] **Besteuert nach §39b Abs.3 EStG** — die Steuer auf eine Einmalzahlung ist
+      der Unterschied zwischen der Jahressteuer mit und ohne sie. Der amtliche
+      Ablaufplan konnte das bereits, wir haben es nur nicht genutzt.
+- [x] **Verbeitragt an der anteiligen Jahresgrenze**, nicht an der Monatsgrenze.
+      Das ist der teuerste Fehler bei Einmalzahlungen: wer mit der Monatsgrenze
+      rechnet, verbeitragt bei Gutverdienern zu wenig — und das fällt erst bei
+      der Betriebsprüfung auf, Jahre später. Renten- und Krankenversicherung
+      werden an getrennten Grenzen gerechnet.
+- [x] **Die Märzklausel wird gemeldet, nicht geraten.** §23a Abs.4 SGB IV kann
+      eine Zahlung aus dem ersten Quartal dem Vorjahr zuordnen. Das braucht die
+      vollständigen Vorjahresdaten — solange die nicht sicher vorliegen, gibt es
+      eine Warnung statt einer stillen Annahme.
+- [x] **Abfindungen sind beitragsfrei**, aber steuerpflichtig — sie entschädigen
+      den Verlust des Arbeitsplatzes und sind kein Arbeitsentgelt.
+- [x] Getrennte Lohnarten im DATEV-Export, eigene Zeile auf dem Beleg, getrennt
+      ausgewiesene Steuer.
+- [x] Ein freigegebener Monat lässt sich nicht nachträglich um eine Zahlung
+      ergänzen — dafür gibt es die Aufrollung.
+
+Nachweis: 21 Modultests, 29 Prüfungen am laufenden System. Im Testfall bleiben
+von 3.400 EUR Weihnachtsgeld **2.217,90 EUR netto** (463 EUR Steuer,
+719,10 EUR Beiträge).
+
+## Block D11 (10.09.) — Minijob, kurzfristig, Übergangsbereich
+
+In Kita und Reha sind geringfügig Beschäftigte der Normalfall. Bisher hat das
+Programm bei kleinen Beträgen nur gewarnt und ansonsten wie bei einem regulären
+Arbeitsverhältnis gerechnet — **falsch in beide Richtungen**: dem Minijobber
+wurden Beiträge abgezogen, die er nicht schuldet, und der Arbeitgeber zahlte
+nicht die Pauschalen, die er schuldet.
+
+- [x] **Minijob** — 15 % Rente und 13 % Kranken pauschal beim Arbeitgeber,
+      3,6 % Eigenanteil beim Arbeitnehmer (befreibar), 2 % Pauschsteuer statt
+      Besteuerung nach ELStAM. Nachgewiesen: von 500 € bleiben 482 €, den
+      Arbeitgeber kostet es 650 €.
+- [x] **Kurzfristige Beschäftigung** — beitragsfrei in allen Zweigen, aber
+      steuerpflichtig. Mit Hinweis auf die Zeitgrenze.
+- [x] **Übergangsbereich** nach §20 Abs.2a SGB IV — mit beiden Bemessungsgrößen:
+      der Gesamtbeitrag bemisst sich anders als der Arbeitnehmeranteil. Deshalb
+      trägt der Arbeitgeber an der Untergrenze alles allein. Bei 1.200 € zahlt
+      der Arbeitnehmer 180,77 € statt 246,60 €.
+- [x] **Er steht bewusst nicht zur Wahl.** Wer als „regulär" geführt wird und im
+      Bereich verdient, wird so gerechnet — das ist Gesetz, keine Vereinbarung.
+
+Zwei Entscheidungen, auf die es ankam:
+
+- **Die Geringfügigkeitsgrenze steht nicht als Zahl im Code.** Sie folgt seit
+  2022 dem Mindestlohn (§8 Abs.1a SGB IV) und wird daraus gerechnet. Die
+  Herleitung bestätigt sich selbst: 12,82 € Mindestlohn ergeben genau die
+  amtlichen 556 € für 2025. Damit kann sie nicht veralten, ohne dass es
+  auffällt — geprüft werden muss nur noch der Mindestlohn. Für 2026 ist er im
+  Prüfvermerk ausdrücklich als **ungeprüft** markiert.
+- **Kein Sprung an der Schwelle.** Ein Euro mehr Brutto darf nie weniger Netto
+  bedeuten. Eigens getestet, sowohl als Modultest als auch am laufenden System:
+  603 € → 581,29 € netto, 604 € → 603,70 € netto.
+
+Nachweis: 35 Modultests, 22 Prüfungen am laufenden System.
+
+## Block D13 (10.09.) — Teilmonate
+
+Wer mitten im Monat kommt oder geht, hat bisher das volle Monatsgehalt bekommen,
+und die Beitragsbemessungsgrenzen galten für den ganzen Monat. Hat jeder Kunde,
+und es stimmte davon nichts.
+
+- [x] **SV-Tage statt Kalendertagen.** Die Sozialversicherung zählt anders: jeder
+      volle Monat hat 30 Tage — auch der Februar, auch der Januar. Der 31. zählt
+      nicht. Ein Teilmonat, der am Monatsende ausläuft, wird im Februar auf 30
+      aufgefüllt.
+- [x] **Die Probe, die alles zusammenhält:** zwei Teilmonate desselben Monats
+      müssen zusammen genau 30 ergeben. Der 1.–14. Februar sind 14 SV-Tage, der
+      15.–28. sind 16 — zusammen 30. Wer Kalendertage zählt, kommt auf 28 und
+      verbeitragt zu wenig. Am laufenden System nachgewiesen: zwei halbe Monate
+      ergeben zusammen wieder genau 3.400 € Brutto.
+- [x] Anteiliges Gehalt, anteilige Bemessungsgrenzen. Stundenlöhner bleiben
+      unberührt — sie werden ohnehin nach Stunden bezahlt.
+- [x] Wer im Monat gar nicht beschäftigt war, bekommt keine Abrechnung.
+- [x] Anteiliger Urlaubsanspruch nach §5 BUrlG mit der vorgeschriebenen
+      Aufrundung, Urlaubsabgeltung nach §7 Abs.4 und §11 BUrlG.
+
+**Dabei gefunden:** Die Beschäftigungsart wurde nach dem Monatsbetrag
+klassifiziert. Wer mit 3.400 € Gehalt am 25. anfängt, kommt auf rund 566 € im
+ersten Monat — und wäre damit fälschlich im Übergangsbereich gelandet, mit
+falschen Beiträgen. Klassifiziert wird jetzt nach dem **regelmäßigen** Entgelt.
+Eigens getestet.
+
+Nachweis: 27 Modultests, 14 Prüfungen am laufenden System.
+
+## Block G3 (10.09.) — Automatische Prüfung vor dem Ausrollen
+
+Bis heute lagen über 280 Prüfungen **nur im Arbeitsverzeichnis einer Sitzung.**
+Der wurde einmal komplett gelöscht — und damit war der einzige Beweis weg, dass
+die Lohnabrechnung stimmt. Für ein Programm, das Gehälter rechnet und bei jedem
+Push automatisch ausgerollt wird, war das untragbar.
+
+- [x] **Alle Nachweise im Repo** unter `pruefungen/`, mit einem Läufer, der sie
+      hintereinander ausführt und ein ehrliches Ergebnis liefert.
+- [x] **Ein Befehl:** `npm run pruefen`. Mit Filter: `npm run pruefen -- d9`.
+- [x] **Verständliche Voraussetzungsprüfung** — läuft das System nicht oder
+      fehlen die Testdaten, sagt der Läufer das im Klartext, statt mit
+      unverständlichen Fehlern abzubrechen.
+- [x] **Automatischer Lauf bei jedem Push** (`.github/workflows/pruefen.yml`):
+      Typen, Modultests, Bauen, dann die Nachweise gegen das gestartete System
+      mit eigener Datenbank.
+
+**Was der erste Lauf sofort gefunden hat:** Drei von zwölf Prüfungen sind
+fehlgeschlagen — nicht weil das Programm falsch war, sondern weil sie sich
+gegenseitig Zustand hinterließen. Einzeln bestanden alle, hintereinander nicht.
+Eine Prüfung, die nur einzeln besteht, ist kein Sicherheitsnetz. Jede Lohn-
+Prüfung stellt jetzt ihren Ausgangszustand selbst her (`zuruecksetzen`).
+
+Stand: **303 Checks in 12 Prüfungen, alle grün** — dazu 320 Modultests.
+
+## Block D14 (10.09.) — Beleg und DATEV vollständig
+
+Beim Prüfen des eigenen Stands gefunden: Die Sonderformen wurden zwar richtig
+gerechnet, aber nirgends erklärt.
+
+- [x] **Der Beleg nennt SV-Tage und Beschäftigungsart.** Die SV-Tage sind nach
+      der Entgeltbescheinigungsverordnung ohnehin anzugeben — und ohne sie kann
+      niemand nachvollziehen, warum bei einem Teilmonat nur ein Teil kam.
+- [x] **Er erklärt, warum nichts abgeht.** Bei einem Minijob stand vorher nur
+      „Lohnsteuer 0,00 €". Jetzt steht dabei, dass der Arbeitgeber sie pauschal
+      trägt (§40a Abs.2 EStG) und dass der Verdienst nicht in die
+      Steuererklärung gehört. Dasselbe für kurzfristige Beschäftigung,
+      Übergangsbereich und Teilmonat — und **nur dann**, wenn es zutrifft.
+- [x] **Der DATEV-Export führt die Arbeitgeberanteile** als eigene Lohnarten
+      (6100–6130) und die Pauschsteuer (6200). Beim Minijob fehlten dem
+      Steuerberater vorher **sämtliche** Abgaben, obwohl die Pauschalen dort die
+      einzigen sind.
+
+Nachweis: 15 Prüfungen am laufenden System, die den Beleg wirklich aufmachen
+(PDF entpacken und den sichtbaren Text lesen) statt nur zu prüfen, ob eine Datei
+ankommt.
+
+## Block D15 (10.09.) — Jahresabschluss
+
+Ohne ihn kann kein Kunde das Jahr abschließen. Das Jahresende ist in
+dreieinhalb Monaten.
+
+**Die Entscheidung, die die Bauweise bestimmt hat:** Rechtlich zählt die
+*elektronische* Lohnsteuerbescheinigung. Der Arbeitgeber übermittelt sie, der
+Mitarbeiter bekommt einen **Ausdruck** davon — und der trägt die Kennung der
+Übermittlung. Solange wir nicht selbst übermitteln (Fahrplan Teil 4), können wir
+keinen gültigen Ausdruck erzeugen. Wer es trotzdem täte, gäbe dem Kunden ein
+Papier in die Hand, das amtlich aussieht und keines ist.
+
+Deshalb entstehen zwei Dinge statt einer Fälschung:
+
+- [x] **Die vollständigen Jahreswerte für den Steuerberater** als CSV — er
+      übermittelt und erzeugt daraus die Bescheinigung. Mit Personalnummer,
+      Steuer-ID, Steuerklasse, allen Beträgen und den Hinweisen, die er braucht.
+- [x] **Eine Jahresübersicht für den Mitarbeiter** als PDF in der Personalakte.
+      Sie heißt so, wie sie ist, und sagt ausdrücklich: *„Diese Übersicht ist
+      KEINE Lohnsteuerbescheinigung."* Dazu, woher die amtliche kommt.
+
+Zwei Regeln, die falsch anzuwenden Geld kostet:
+
+- **Pauschal versteuerter Arbeitslohn wird nicht bescheinigt** (§40a EStG). Wer
+  als Minijobber mit der 2-Prozent-Pauschale abgerechnet wird, taucht mit diesem
+  Verdienst in seiner Steuererklärung gar nicht auf. Wer ihn trotzdem
+  bescheinigt, lässt ihn ein zweites Mal besteuern.
+- **Steuerfreie Zuschläge nach §3b bleiben aus dem Bruttoarbeitslohn heraus** —
+  sie werden nicht bescheinigt. Auf der Übersicht stehen sie trotzdem, getrennt,
+  damit der Mitarbeiter sein Geld wiederfindet.
+
+Dazu: unterjähriger Eintritt, und Lücken im Beschäftigungszeitraum werden als
+möglicher Großbuchstabe U gemeldet statt stillschweigend übergangen.
+
+Nachweis: 17 Modultests, 33 Prüfungen am laufenden System — darunter das
+Öffnen des PDF und die Prüfung, dass der Satz „KEINE Lohnsteuerbescheinigung"
+wirklich draufsteht.
+
+---
+
+# Die Übergangsversion ist vollständig
+
+Stand 10.09.2026. Was ein Kunde damit kann:
+
+| | |
+|---|---|
+| Rechnen | Lohnsteuer nach dem amtlichen Programmablaufplan, Sozialabgaben, §3b-Zuschläge, Einmalzahlungen, Minijob, Übergangsbereich, Teilmonate |
+| Nachführen | ELStAM-Änderungsliste einlesen, Stand überwachen |
+| Korrigieren | Rückwirkende Aufrollung mit Ausgleich im Folgemonat |
+| Zustellen | Beleg nach §108 GewO in die Personalakte, mit Benachrichtigung |
+| Weitergeben | DATEV-Datei je Lohnart an den Steuerberater |
+| Auszahlen | SEPA-Datei für die Bank des Kunden |
+| Abschließen | Jahreswerte für die Bescheinigung, Übersicht für den Mitarbeiter |
+
+**Gemeldet wird über den Steuerberater.** Das ist bewusst so, bis die
+Zertifizierung steht (Fahrplan Teil 4 und 5).
+
+**Nachweis: 351 Checks in 14 Prüfungen am laufenden System, 339 Modultests.**
+
+---
+
+## Block F5/F6 (11.09.) — Regelpakete und Freischaltung
+
+Das Geschäftsmodell aus `PRODUKT-NOTIZEN.md` war bisher eine Absichtserklärung:
+„Wir programmieren die Dienstplanung je Kunde von Hand." Der Entwurf dafür lag
+seit August im Rechendienst — **verdrahtet war nichts davon.** Kein Feld am
+Standort, kein Aufruf im Solver, kein Kundenverzeichnis, keine Sperre.
+
+### F5 — Regelpakete
+
+- [x] **Die Mechanik läuft.** Ein Standort trägt eine Paket-ID, der Solver lädt
+      das Paket und wendet es an — nach den Custom-Constraints des Kunden, damit
+      es auf ihnen aufbauen kann.
+- [x] **Bausteine statt Einzelstücke** (`rulepacks/bausteine.py`): die Muster,
+      die in vielen Betrieben gleich aussehen — Leitung ohne Gruppe, höchstens
+      N pro Woche, Dienst nur an bestimmten Tagen, immer eine Fachkraft, zwei
+      Personen nie zusammen. Ein Kundenpaket bleibt damit zehn Zeilen lang.
+- [x] **Ein echtes Paket als Muster** (`kunden/kita_sonnenschein.py`) — genau
+      die Fälle, an denen die Planung im August gescheitert ist, mit einem Satz
+      dazu, **warum** der Betrieb es so hält. Dieser Satz ist wichtiger als der
+      Code darunter.
+- [x] **Jede Regel meldet sich laut.** Eine Regel, die niemanden trifft, ist der
+      teuerste Fehler überhaupt — sie sieht aus, als würde sie wirken. Die
+      Sucher werfen einen Fehler statt still nichts zu tun.
+- [x] **Der Verifier prüft das Paket mit.** Ein Paket, das nicht lief, ist eine
+      kritische Verletzung — und eines, das durchlief und **nichts tat**, auch.
+      Der zweite Fall ist der gefährlichere, weil er unauffällig ist.
+- [x] **Eine Paket-ID kann keinen fremden Modulpfad laden** — eigens geprüft.
+- [x] Der Rechendienst meldet seine Pakete in `/version`; die Verwaltung merkt,
+      wenn ein zugeordnetes Paket nach einem Deploy verschwunden ist.
+
+### F6 — Freischaltung
+
+- [x] **Die Dienstplanung ist gesperrt, bis OKUN sie eingerichtet hat.** Ein
+      Kunde, der ungebaute Dienstplanung ausprobiert, bekommt einen schlechten
+      Plan und ein falsches Bild vom Produkt — genau das ist im August passiert.
+- [x] Der Planungslauf antwortet mit HTTP 423 und einem Text, den OKUN je
+      Standort hinterlegen kann („wird gerade eingerichtet, wir melden uns").
+- [x] **Freischalten darf nur OKUN**, weder die Standortleitung noch das
+      Unternehmen. Wer freigeschaltet hat und wann, wird festgehalten.
+- [x] ~~Eine eigene Seite unter `/okun/dienstplanung`.~~ Seit §200 am Standort
+      unter Kunden → Kunde → Standort; die alte Adresse leitet dorthin.
+- [x] **Bestehende Standorte werden nicht still gesperrt** — sie arbeiten heute
+      damit, und ein stiller Entzug wäre schlimmer als die fehlende Sperre. Nur
+      neue Standorte starten gesperrt.
+
+Nachweis: 24 Python-Tests für die Bausteine — darunter die **Gegenprobe**, dass
+es ohne die Regel mehr Spätdienste gäbe (sonst könnte eine wirkungslose Regel
+einen grünen Test erzeugen). Dazu 4 Tests im Verifier und 21 Prüfungen am
+laufenden System.
+
+## Block G1/G2 (11.09.) — Auskunft und Löschkonzept
+
+Vor dem ersten echten Kunden: Personendaten liegen bei uns in **35 Tabellen**.
+Eine Auskunft ist nur vollständig, wenn wirklich alle gemeint sind — und eine
+Löschung nur richtig, wenn jede Tabelle einzeln beurteilt wurde.
+
+### Der Kern: Löschen ist oft verboten
+
+„Recht auf Löschung" heißt nicht „alles weg". Lohnunterlagen müssen sechs Jahre
+bleiben, Buchungsbelege zehn, Arbeitszeitnachweise zwei. Wer sie auf Zuruf
+löscht, verstößt gegen Steuer- und Sozialrecht und kann bei der Betriebsprüfung
+nichts vorlegen. Richtig ist die **Einschränkung der Verarbeitung** (Art.18
+DSGVO): die Daten bleiben, werden gesperrt und nur noch für den Zweck verwendet,
+für den das Gesetz sie verlangt.
+
+- [x] **Ein Katalog statt Code an dreißig Stellen** (`src/lib/dsgvo-katalog.ts`):
+      je Datenart steht dort, was passiert (löschen / anonymisieren / sperren),
+      wie lange aufbewahrt wird, **aus welcher Vorschrift** die Frist folgt und
+      warum — in der Sprache des Betroffenen, ohne Tabellennamen.
+- [x] **Der Katalog kann nicht veralten.** Ein Test liest `schema.prisma` und
+      schlägt fehl, sobald eine neue Tabelle mit Personenbezug dazukommt und
+      nicht eingetragen wird. Er hat beim ersten Lauf sofort eine gefunden
+      (`SurchargeWageConfig`).
+- [x] **Keine Datenart kann beim Löschen stillschweigend übersprungen werden.**
+      Ein zweiter Test hält fest, dass es zu jeder Tabelle im Katalog auch eine
+      Abfrage gibt — der gefährlichste Fehler wäre der, bei dem der Knopf
+      funktioniert und die Daten trotzdem liegen bleiben.
+
+### G1 — Auskunft (Art.15) und Mitnehmen (Art.20)
+
+- [x] **Jeder holt sie selbst**, unter „Mein Profil". Art.15 ist ein Recht der
+      Person, keine Gefälligkeit des Arbeitgebers — es darf keinen Antrag
+      brauchen.
+- [x] **Zwei Formate mit Absicht:** ein PDF, das in Sätzen erklärt, welche Daten
+      es gibt, wie viele Einträge und wie lange sie bleiben — und die
+      vollständigen Einzeldaten als Datei, die man auch woanders hin mitnehmen
+      kann. Eine reine JSON-Datei wäre formal richtig und praktisch wertlos.
+- [x] **Fremde Daten sind gekürzt.** Eine Vertretungsanfrage nennt Kollegen, ein
+      Dienstplan zeigt, wer sonst Schicht hatte. Auskunft heißt „Ihre Daten",
+      nicht „alles, wo Ihr Name vorkommt".
+- [x] Passwörter und Geräteschlüssel sind nie enthalten — eigens geprüft.
+- [x] Die Auskunft nennt zu jeder Datenart die **Aufbewahrungsdauer** (Art.15
+      Abs.1 lit.d) — die Frage, die Betroffene am häufigsten stellen.
+- [x] Jeder Abruf wird protokolliert. Eine Auskunft versammelt an einer Stelle
+      alles über einen Menschen; wer sie erzeugt, muss nachvollziehbar sein.
+
+### G2 — Löschen, sperren, anonymisieren
+
+- [x] **Vorschau vor jeder Löschung.** Sie zeigt Zeile für Zeile, was
+      verschwindet, was anonymisiert wird und was bleiben **muss** — mit Datum
+      und Vorschrift. Eine Löschung lässt sich nicht zurücknehmen; wer sie
+      auslöst, muss vorher gesehen haben, was passiert.
+- [x] **Zwei Bremsen.** Ohne Austrittsdatum läuft nichts (ohne Austritt beginnt
+      keine Frist), und eine noch aktive Person wird nicht gelöscht. Dazu eine
+      ausdrückliche Bestätigung — ein doppelter Klick darf das nicht auslösen.
+- [x] **Anonymisieren heißt wirklich anonymisieren.** Der Dienstplan bleibt dem
+      Betrieb erhalten, die Einträge bekommen aber eine Zufallskennung, die
+      **nirgends gespeichert** wird. Damit ist die Verbindung zur Person
+      zerstört — das unterscheidet Anonymisierung von Pseudonymisierung.
+- [x] **Sperren nach Art.18** für Lohn, Zeiten, Fehlzeiten und Personalakte.
+      Bankverbindung und Anschrift gehen trotzdem sofort — für die Aufbewahrung
+      werden sie nicht gebraucht.
+- [x] **Abgelaufene Fristen werden geräumt.** Aufbewahren ist eine Pflicht,
+      keine Erlaubnis: läuft die Frist ab, wird gelöscht, am Ende auch der
+      Personaldatensatz selbst. Als Jahreslauf über alle gesperrten Personen.
+- [x] **Der Löschbericht bleibt.** Er enthält keine Personendaten, nur Zahlen
+      und Begründungen — und ist der einzige Weg, eine **vollständige** Löschung
+      hinterher noch nachweisen zu können (Art.5 Abs.2 DSGVO). Auch als PDF für
+      den Betroffenen.
+- [x] **Löschen darf nur das Unternehmen**, nicht die Standortleitung; der
+      Jahreslauf nur OKUN.
+
+Nachweis: 53 Prüfungen am laufenden System (`pruefungen/g1-dsgvo.mjs`) —
+darunter der harte Teil: nach der Löschung wird **nachgesehen**, dass die
+Fehlzeit noch da ist, der Zugang weg, die Schicht dem Betrieb erhalten und
+niemandem mehr zugeordnet, die IBAN entfernt und die Personalnummer geblieben.
+Dazu 22 Modultests.
+
+### Was noch aussteht
+Die Fristen sind mit der Vorschrift belegt, aus der sie stammen, aber **nicht
+von einem Steuerberater oder Datenschutzbeauftragten gegengezeichnet.** Das
+gehört vor den ersten echten Kunden — es ist eine Datei und eine Stunde Arbeit.
+
+## Block E5 (11.09.) — Nachrichten zwischen Mitarbeitern
+
+Bisher gab es nur Benachrichtigungen in eine Richtung und Support-Tickets an
+OKUN. Wer einer Kollegin schreiben wollte, hat das Programm verlassen und
+WhatsApp genommen — mit Dienstplänen, Krankmeldungen und Namen auf privaten
+Telefonen. Genau das soll überflüssig werden.
+
+### Was geht
+- [x] **Jeder schreibt jedem an seinem Standort.** Nicht dem ganzen Unternehmen:
+      In einem Betrieb mit acht Häusern hat der Kollege aus dem anderen Ort
+      nichts mit einem zu tun, und eine Suchliste über alle wäre selbst schon
+      eine Preisgabe. Leitung und Unternehmen erreichen jeden in ihrem Bereich —
+      dieselbe Grenze wie überall sonst.
+- [x] **Die Standortleitung eröffnet und verwaltet Gruppen:** Mitglieder setzen
+      und entfernen, umbenennen, schließen und wieder öffnen.
+- [x] **Geschlossen heißt nicht gelöscht.** Der Verlauf bleibt für die Mitglieder
+      lesbar; wer eine Absprache von vor einem Jahr sucht, findet sie wieder.
+- [x] Ungelesen-Zähler je Gespräch und ein Abzeichen im Kopf jeder Seite.
+- [x] Push aufs Handy — aber **keine E-Mail und kein Eintrag ins Postfach.** Bei
+      dreißig Nachrichten am Tag wären beides dreißig Störungen, und das
+      Postfach fasst ohnehin nur die letzten dreißig Meldungen.
+
+### Die drei Entscheidungen, auf die es ankommt
+
+**Mitlesen ist nicht Verwalten.** Eine Standortleitung darf Gruppen einrichten
+und Mitglieder setzen — lesen kann sie nur, was in Gruppen steht, in denen sie
+selbst Mitglied ist. Der Beitritt ist möglich, hinterlässt aber einen für alle
+sichtbaren Hinweis im Verlauf. Eine Vorgesetzte, die unbemerkt mitliest, wäre
+keine Funktion, sondern ein Vertrauensbruch.
+
+**Gespräche zu zweit sind unantastbar.** Für niemanden sonst einsehbar: nicht
+für die Leitung, nicht für das Unternehmen, nicht für OKUN. Deshalb kann ein
+Zugang ohne eigenen Mitarbeiterdatensatz — und das ist jeder OKUN-Zugang — den
+Chat gar nicht erst benutzen.
+
+**„Gibt es nicht" und „du bist kein Mitglied" sehen gleich aus.** Beides wird
+mit 404 beantwortet. Sonst ließe sich durch Ausprobieren herausfinden, welche
+Gespräche existieren — und schon die Existenz eines Gesprächs ist eine
+Information über Menschen.
+
+### Bewusst nicht gebaut
+- **Keine Lesebestätigung für andere und keine Anzeige „schreibt gerade".**
+  Beides erzeugt in einem Betrieb Druck: jemand sieht, dass gelesen und nicht
+  geantwortet wurde. Der Lesestand ist ausschließlich für den eigenen
+  Ungelesen-Zähler da.
+- **Kein Live-Kanal**, sondern Nachsehen alle zehn Sekunden. Für einen
+  Betriebschat schnell genug; eine dauerhafte Verbindung je Gerät wäre Aufwand,
+  der sich hier nicht auszahlt.
+
+### Beim Löschen
+Der Katalogtest hat die drei neuen Tabellen sofort eingefordert. Nachrichten
+unterliegen keiner Aufbewahrungspflicht und werden gelöscht — mit einem
+Unterschied: **Ein Gespräch zu zweit verschwindet ganz**, denn was übrig bliebe,
+wäre ein einseitiger Verlauf, der ausschließlich von der gelöschten Person
+handelt. **In Gruppen bleiben die Beiträge der anderen**; sie gehören anderen
+Menschen. Beides ist eigens nachgewiesen.
+
+Nachweis: 64 Prüfungen am laufenden System (`pruefungen/e5-chat.mjs`), davon der
+größere Teil zum Thema „wer kommt NICHT hinein". Dazu 6 Prüfungen in
+`g1-dsgvo.mjs` für das Löschen.
+
+### Nebenbei korrigiert
+Die Standortleitung hatte in den Testdaten keinen Mitarbeiterdatensatz, obwohl
+das Datenmodell genau das vorsieht (`reassignLocationAdmin` setzt
+`Employee.role = 'admin'`). Sie konnte damit verwalten, aber niemandem
+schreiben. Im Seed nachgetragen, zusammen mit drei weiteren Mitarbeiterzugängen
+— ohne die lässt sich ein Chat gar nicht prüfen.
+
+## Block C6 (11.09.) — Krankenschein und Fehlzeit verbunden
+
+Beide lagen nebeneinander und wussten nichts voneinander: die
+Arbeitsunfähigkeitsbescheinigung als Datei in der Personalakte, die Fehlzeit als
+Eintrag im Kalender. An der Fehlzeit stand ein von Hand gesetztes „Nachweis
+vorhanden: ja/nein" — und das stimmte irgendwann nicht mehr.
+
+### Der teure Fall ist nicht die fehlende Bescheinigung
+Sondern die **unvollständige**: drei Wochen krank, eine Bescheinigung über eine
+Woche. Vorher sah das aus wie eine vollständig belegte Fehlzeit. Jetzt wird
+ausgerechnet, welche Tage gedeckt sind, und die Lücke benannt: „Für 11.04. bis
+20.04. fehlt noch eine Bescheinigung (10 Tage) — in der Regel die
+Folgebescheinigung."
+
+- [x] **Zuordnung beim Einreichen.** Der Mitarbeiter gibt den Zeitraum der
+      Bescheinigung an; passt genau eine Fehlzeit, wird verbunden.
+- [x] **Bei mehreren wird gefragt, nicht geraten.** Eine falsch zugeordnete
+      Bescheinigung ist schlimmer als eine nicht zugeordnete, weil sie eine
+      Lücke zudeckt, die dann niemand mehr sieht.
+- [x] **Erst- und Folgebescheinigung** werden zusammengesetzt; eine Fehlzeit
+      kann beliebig viele Nachweise haben.
+- [x] **„Nachweis vorhanden" wird abgeleitet, nicht gepflegt.** Es ist das
+      Ergebnis daraus, ob Dateien verknüpft sind, und wird bei jeder Änderung —
+      auch beim Löschen einer Datei — neu bestimmt.
+- [x] **Eine Datei ohne Gültigkeitszeitraum deckt nichts ab** und wird auch so
+      angezeigt. Sie stillschweigend anzurechnen wäre der gefährlichere Weg.
+- [x] Die Leitung sieht die Bescheinigungen direkt an der Fehlzeit und kann sie
+      dort öffnen; der Mitarbeiter sieht selbst, ob seine Fehlzeit gedeckt ist.
+
+### Ab wann eine Bescheinigung verlangt wird
+§5 Abs.1 EntgFG: spätestens ab dem **vierten Kalendertag**. Gerechnet wird in
+Kalendertagen, nicht in Arbeitstagen — wer Freitag krank wird und Montag noch
+krank ist, ist am vierten Tag, auch wenn nur zwei davon Arbeitstage waren. Genau
+hier wird sonst falsch gerechnet.
+
+Satz 3 erlaubt dem Arbeitgeber, sie früher zu verlangen. Das steht im
+Arbeitsvertrag und ist deshalb **einstellbar** (Unternehmenseinstellungen),
+nicht einprogrammiert.
+
+### Nebenbei geschlossen: Fehlzeiten löschen
+Eine versehentlich erfasste Krankmeldung ließ sich bisher nur umdeuten, nicht
+entfernen — wer sich im Mitarbeiter vertippt hatte, hinterließ eine Krankheit
+bei einer Person, die nie krank war. Das fließt in Fehlzeitenquoten und in die
+Lohnabrechnung ein. Jetzt entfernbar; die eingereichten Bescheinigungen bleiben
+dabei in der Personalakte und verlieren nur ihre Zuordnung.
+
+### Bewusst nicht
+Die **elektronische AU (eAU)** bei der Krankenkasse abrufen. Das läuft über ein
+zertifiziertes Verfahren, das wir nicht haben — dasselbe Thema wie beim
+Meldewesen. Bis dahin reicht der Mitarbeiter seine Bescheinigung ein, so wie er
+es heute auch tut.
+
+Nachweis: 50 Prüfungen am laufenden System (`pruefungen/c2-krankenschein.mjs`)
+und 25 Modultests für die Fristen- und Lückenrechnung.
+
+## Block §131/§132 (11.09.) — Funde aus dem laufenden Betrieb
+
+Der erste echte Rundgang durch das laufende System hat sieben Sachen zutage
+gebracht, die kein Test gefunden hatte, weil alle Tests von den richtigen
+Voraussetzungen ausgingen.
+
+### Der Chat hing am falschen Datensatz
+Die erste Fassung machte den **Mitarbeiterdatensatz** zum Teilnehmer. Im Betrieb
+fiel das sofort um: Standortleitung und Geschäftsführung haben ein Konto, aber
+nicht zwingend einen Mitarbeiterdatensatz. Beide bekamen „Dieser Zugang ist
+keinem Mitarbeiter zugeordnet" zu sehen — ausgerechnet die zwei Rollen, die am
+meisten zu kommunizieren haben.
+
+Jetzt ist der Teilnehmer das **Benutzerkonto**. Damit erreicht die
+Geschäftsführung alle Standortleitungen und alle Mitarbeiter ihrer Häuser,
+eröffnet Gruppen über Standorte hinweg, und ein Mitarbeiter kann ihr auch
+antworten. Die Mitarbeiterkennung wird weiter mitgeschrieben — nur über sie
+findet eine Löschung nach Art.17 DSGVO die Nachrichten wieder.
+
+### Zwei Menüpunkte führten ins Leere
+„Lohnabrechnung" und „Zuschlags-Engine" zeigten in der Navigation des
+Unternehmens auf `/admin/...`. Deren Layout lässt nur die Rolle „admin" zu — wer
+als Unternehmen klickte, landete **wortlos wieder auf dem Dashboard**. Beide
+Seiten gibt es jetzt unter `/company/...`; der Inhalt ist derselbe, die
+Eingrenzung auf den eigenen Bereich macht ohnehin der Server.
+
+### Die Sperre der Dienstplanung war unsichtbar
+Es gab sie seit F6 — aber nur im Rechendienst. Im Dienstplan selbst sah der
+Kunde eine leere Wochentabelle mit „Noch keine Schichten angelegt" und dachte,
+er müsse selbst etwas einrichten. Genau das soll er nicht. Jetzt steht dort, dass
+wir seine Dienstplanung gerade bauen, und dass er alles andere in der
+Zwischenzeit ohne Einschränkung nutzen kann.
+
+Dazu zwei ehrlichere Texte: Die Einrichtung verspricht nicht mehr „fünf Schritte
+zur fertigen Dienstplanung", solange die Planung gesperrt ist — sie sammelt dann
+Grunddaten. Und die OKUN-Verwaltung warnt jetzt bei Standorten, die
+**freigeschaltet sind, aber kein Regelpaket haben**: die planen mit
+Standardregeln, die ihren Betrieb nicht kennen.
+
+### Ein Knopf, der nichts tat
+„Löschung vorbereiten" war deaktiviert, wenn ein Hindernis bestand — aber ohne
+sichtbaren Grund. Man drückt, nichts passiert, man weiß nicht warum. Der Grund
+steht jetzt direkt darunter. Und die Sicherheitsabfrage (den Namen tippen)
+verzeiht Groß-/Kleinschreibung: Sie soll vor Versehen schützen, nicht vor
+Tippfehlern.
+
+### Nebenbei gefunden: ein Datenschutzvorfall
+`/api/invitations` war **nicht auf den Mandanten eingegrenzt**. Eine
+Standortleitung sah die offenen Einladungen aller Kunden — mit Namen und
+E-Mail-Adressen. Behoben und mit zwei Prüfungen belegt. Bei der Gelegenheit
+liefert die Liste jetzt auch den Einladungslink: Wenn die E-Mail nicht ankommt,
+muss die Leitung ihn weitergeben können.
+
+Nachweis: 562 Prüfungen gesamt, davon 75 für die Nachrichten (jetzt
+einschließlich Unternehmensebene) und 28 für die Mitarbeiterverwaltung.
+
+## Block H1 (12.09.) — Funde erfassen statt Fehler melden
+
+Aus dem Fehlermelder ist die **Fundstelle** geworden. Der Auslöser war eine
+einfache Beobachtung: Getestet wird von mehreren Leuten, und was dabei auffällt,
+ist nicht immer ein Fehler. Ein Verbesserungsvorschlag passt nicht in ein
+Formular, das nach „Schweregrad des Fehlers" fragt.
+
+### Die Einsicht, die alles bestimmt
+Wie gut eine Behebung wird, hängt fast ausschließlich an der **Qualität der
+Meldung** — nicht an dem, was danach damit geschieht. Deshalb steckt die Arbeit
+im Formular und nicht in der Verarbeitung.
+
+Das wichtigste Feld ist **„Was hättest du erwartet?"**. Ohne es lässt sich nicht
+entscheiden, ob etwas kaputt ist oder nur anders, als der Melder dachte — und
+genau daran hängt, ob aus einer Meldung ein Fehler oder ein Vorschlag wird.
+
+- [x] **Zwei Wege zum Melden.** Der Käfer unten links für den schnellen Fund
+      unterwegs, ein ausführliches Formular unter „Funde" für die Tester. Beide
+      schreiben in dieselbe Tabelle, mit denselben Pflichtangaben.
+- [x] **Vier Arten:** Fehler, Verbesserungsvorschlag, Frage, Wunsch — mit je
+      eigenen Fragen. Bei einem Vorschlag gibt es nichts nachzustellen; da zählt
+      der Zielzustand, nicht der Weg dorthin.
+- [x] **Eine Ampel beim Absenden**, die sagt, was noch fehlt. Sie weist die
+      Meldung aber **nicht ab**: Eine abgewiesene Meldung ist eine verlorene
+      Meldung — wer zweimal abgewiesen wird, meldet beim dritten Mal nicht mehr.
+- [x] **Die Bewertung entsteht auf dem Server.** Ein Browser, der seine eigene
+      Meldung für vollständig erklärt, wäre eine Selbstbescheinigung.
+- [x] **Verbesserungen und Wünsche warten auf Freigabe.** Ein Fehler wird
+      behoben; ein Vorschlag ist eine Entscheidung darüber, wie das Produkt sein
+      soll. Die trifft nicht der Melder und nicht das Programm. Eine Ablehnung
+      bleibt mit Begründung stehen, damit derselbe Vorschlag nicht in drei
+      Wochen erneut auf dem Tisch liegt.
+- [x] **Rückfragen** an den Melder, der sie beantworten kann — und mit der
+      Antwort geht der Fund zurück in die Bearbeitung.
+- [x] **Was Geld oder Recht berührt** (Lohn, Zeiten, Datenschutz, Zugänge) wird
+      am Bereich erkannt, bekommt hohe Dringlichkeit und ist von jeder
+      automatischen Behebung ausgenommen.
+- [x] **Eine Fundliste ist eine Mängelliste des Betriebs** — wer nicht OKUN ist,
+      sieht ausschließlich die eigenen Meldungen.
+- [x] Der Melde-Weg war bisher **ohne Anmeldung** erreichbar; jetzt nicht mehr.
+
+Nachweis: 38 Prüfungen am laufenden System (`pruefungen/h-funde.mjs`), 26
+Modultests für die Bewertung und die Freigabe-Regeln.
+
+## Block §134 (12.09.) — Zwei Funde aus den eigenen Prüfungen
+
+Am Morgen des 12.09. schlugen fünf Lohn-Prüfungen fehl, ohne dass sich am
+Programm etwas geändert hatte. Der Grund: Sie rechneten mit einer Person aus den
+Testdaten, deren Zeiterfassung mitlief — und aus der entstanden über Nacht
+17,93 € Zuschläge. **Eine Prüfung, die am 11. besteht und am 12. nicht, prüft
+den Kalender und nicht das Programm.** Behoben, indem diese Prüfungen jetzt mit
+einer eigenen Person ohne Zeiterfassung rechnen.
+
+Beim Aufräumen kamen zwei echte Fehler heraus, die niemandem aufgefallen wären:
+
+### Der Jahreslohn ohne Vormonate
+Für den voraussichtlichen Jahresarbeitslohn (§39b Abs.3 EStG) zählte nur, was
+**in diesem System** bereits abgerechnet war. Bei einem Kunden, der im September
+zu uns wechselt, ist das nichts: Aus 40.800 € wurden 13.600 €, und auf ein
+Weihnachtsgeld von 3.400 € wurde **keine Lohnsteuer** einbehalten. Der
+Mitarbeiter hätte im Folgejahr eine Nachzahlung bekommen, mit der er nicht
+rechnet.
+
+Jetzt werden die Monate vor dem Wechsel aus dem laufenden Lohn hochgerechnet —
+ab dem Eintritt, nicht ab Januar. Genommen wird der größere der beiden Werte:
+Zu viel einbehaltene Steuer holt sich der Mitarbeiter mit der Steuererklärung
+zurück, zu wenig wird zur Nachzahlung. Von den beiden Fehlern ist nur einer
+zumutbar.
+
+### Doppelte Steuer-ID beim ELStAM-Abgleich
+Sind zwei Profile versehentlich mit derselben Steuer-ID angelegt, gewann still
+der zuletzt geladene — jemand bekam die Steuerklasse eines Kollegen. Bei
+gleichen **Namen** wurde die Mehrdeutigkeit längst gemeldet; ausgerechnet bei
+den Kennzeichen, denen man am meisten vertraut, nicht. Jetzt wird auch dort
+abgebrochen, mit dem Hinweis, zuerst die Stammdaten zu bereinigen.
+
+## Block H2 (12.09.) — Der stündliche Lauf
+
+Stufe 2 aus `FEHLERKREISLAUF.md`: Ein Zeitplan weckt stündlich eine Sitzung, die
+die offenen Funde liest, sie beurteilt und Vorschläge bzw. Rückfragen
+zurückschreibt. **Code ändert der Lauf noch nicht** — das ist Stufe 3 und
+kommt erst, wenn der Bericht ein paar Wochen gezeigt hat, dass die Einschätzung
+stimmt.
+
+### Ein eigener Schlüssel statt einer Anmeldung
+Der Lauf braucht einen Weg ins laufende System. Eine Anmeldung mit Benutzername
+und Passwort wäre dafür falsch: Sie brächte ein echtes Konto mit dessen vollen
+Rechten mit. Stattdessen ein eigener Schlüssel, der **genau zwei Dinge** kann —
+offene Funde lesen und ihren Bearbeitungsstand zurückschreiben. Wer ihn erbeutet,
+sieht Mängelmeldungen. Ärgerlich, aber kein Schaden an Menschen.
+
+- [x] **Ohne hinterlegten Schlüssel ist der Zugang zu** — nicht offen, nicht
+      „erstmal erlaubt". Ein Zugang, der ohne Einrichtung funktioniert, ist
+      irgendwann einer, den niemand eingerichtet hat.
+- [x] Der Vergleich läuft in gleichbleibender Zeit; sonst verrät die Dauer der
+      Antwort den Schlüssel Zeichen für Zeichen.
+- [x] **Eine OKUN-Anmeldung ersetzt den Schlüssel nicht** und umgekehrt.
+- [x] **Der Lauf kann sich keine Freigabe selbst erteilen.** Ein Vorschlag, der
+      nicht freigegeben ist, lässt sich nicht als erledigt melden — HTTP 409 mit
+      Begründung. Ein Programm, das sich selbst freigeben kann, hat keine
+      Freigabe.
+- [x] Die Einsortierung in die vier Töpfe passiert **im System**, nicht im Lauf.
+      So gilt für beide dieselbe Regel, und der Bericht auf der Fundeseite zeigt
+      genau das, was dann tatsächlich geschieht.
+
+### Was der Zeitplan wirklich kann
+Ich kann mich nicht aus der App heraus wecken — die App kann nichts zurufen.
+Möglich ist ein Zeitplan, der von sich aus eine Sitzung startet; kleinste
+Taktung ist **stündlich**. Für „sofort nach der Freigabe" heißt das im Schnitt
+eine halbe Stunde. Das ist die ehrliche Antwort, und stündlich statt täglich ist
+der Unterschied zwischen „morgen" und „gleich".
+
+Nachweis: 17 Prüfungen (`pruefungen/h2-fundelauf.mjs`), davon der größere Teil
+zu dem, was der Lauf **nicht** darf.
+
+## Block D16 (12.09.) — Kein Lohn ohne freigegebenen Monat
+
+Der eigentliche Vorteil daran, dass Zeiterfassung und Lohnabrechnung bei uns
+zusammenhängen: Niemand tippt mehr „fünf Stunden nachts, zehn am Sonntag, drei
+Vierundzwanzig-Stunden-Dienste" ein. Der Mitarbeiter stempelt, die Regeln der
+Zuschlags-Engine liegen darüber, und das Geld steht in der Abrechnung. Das gab
+es schon — was fehlte, war die andere Hälfte.
+
+### Der Preis für den Vorteil
+Wenn die gestempelte Zeit direkt Geld wird, darf nicht abgerechnet werden,
+solange sie noch wackelt. Eine Schicht, die abends nachgetragen wird, wäre ein
+Zuschlag, der **nach** der Abrechnung entsteht — und auf dem Beleg stünde eine
+Zahl, die morgen nicht mehr stimmt.
+
+- [x] **Die Standortleitung gibt den Monat frei, erst dann fließt er ein.** Mit
+      der Freigabe sind die Zeiten gesperrt; darauf ruht die Abrechnung.
+- [x] **Wer aufgehalten wird, steht mit Namen und Grund im Lauf** — und auf der
+      Lohnseite in einem Kasten, der stehen bleibt, statt nur kurz aufzublitzen.
+      Es geht darum, dass jemand diesen Monat kein Geld bekommt.
+- [x] **Drei Gründe werden unterschieden:** kein Abschluss vorhanden · Abschluss
+      vorhanden, aber nicht freigegeben · alles frei. „Geprüft" ist nicht
+      „freigegeben".
+- [x] **Wo die Regel nicht greift:** Wer ein festes Gehalt bezieht und in dem
+      Monat gar keine Zeiten erfasst hat, hat nichts freizugeben. Ihn zu
+      blockieren wäre keine Sorgfalt, sondern eine Schikane.
+- [x] **Bei Stundenlohn greift sie immer** — dort ist die erfasste Zeit nicht nur
+      Grundlage der Zuschläge, sondern des Entgelts selbst.
+- [x] Eine bereits gerechnete Abrechnung wird **nicht fortgeschrieben**, solange
+      der Monat offen ist: Die neuen Zuschläge fließen nicht ein.
+
+### Monat und Monat bleiben getrennt
+Eine Nachtschicht, die am letzten Tag eines Monats beginnt und erst im nächsten
+endet, gehört zu dem Tag, an dem sie **begonnen** hat. Sonst wanderten Zuschläge
+stillschweigend über die Monatsgrenze, und ein längst freigegebener Vormonat
+würde nachträglich teurer. Eigens nachgewiesen.
+
+### Nebenbei: das Abrechnungsjahr wird zuerst geprüft
+Bis hierher fiel ein Jahr ohne hinterlegte Rechengrößen erst auf, wenn die erste
+Person gerechnet wurde. Seit die Freigabe vorgeschaltet ist, kann es passieren,
+dass gar niemand gerechnet wird — dann wäre das fehlende Jahr stillschweigend
+durchgegangen, mit der Meldung „0 abgerechnet". Das Jahr ist eine Eigenschaft
+des Laufs, nicht einer Person, und wird jetzt vorab geprüft.
+
+Nachweis: 22 Prüfungen (`pruefungen/d16-monatsfreigabe.mjs`) und 10 Modultests
+für die Regel selbst — sie entscheidet über Geld und gehört zu den Stellen, die
+man einzeln nachrechnen können muss.
+
+## Block §137 (12.09.) — Die Mitarbeiter-App, Etappe 1
+
+Die App war eine Schreibtisch-Oberfläche im Telefonformat: fünf Symbole unten,
+hinter zweien davon Aufklapp-Menüs — also neun Wege, die erst ein zweiter
+Fingertipp sichtbar machte. Und die Startseite zeigte Kacheln mit
+Wochenstunden, Resturlaub und Punkten. Alles interessant, nichts davon der
+Grund, warum jemand um zehn vor sechs das Telefon aus der Tasche holt.
+
+### Der schwerste Fund: ein Knopf, der nichts tat
+Auf der Startseite stand **„Einstempeln" — und der Knopf hat nichts gestempelt.**
+Er hat nur die Anzeige umgeschaltet. Wer darauf gedrückt hat und losgegangen
+ist, war nicht eingestempelt. In einem System, in dem die gestempelte Zeit
+direkt Geld wird, ist das der schlimmste Fehler von allen: **Er sieht aus wie
+Erfolg.**
+
+### Eine Stempeluhr, ein Aufruf
+Vorher legte die Zeiten-Seite die Zeitbuchung selbst an, startete danach die
+Erfassung und merkte sich beide Kennungen im Browser — vier Aufrufe, von denen
+einer abbrechen konnte. Jetzt gibt es **einen Aufruf je Handgriff**
+(`/api/time-tracking/stempeln`), der Server entscheidet, was erlaubt ist, und
+antwortet mit dem neuen Zustand.
+
+- [x] **Der Zustand kommt vom Server**, nicht aus dem Browser. Ein Gerät, das
+      eine Weile offline war, weiß nicht mehr, was inzwischen geschah.
+- [x] **Die Reihenfolge lässt sich nicht umgehen:** zweimal einstempeln,
+      Pause ohne Einstempeln, Pause beenden ohne Pause — alles abgelehnt, mit
+      einem Satz, der sagt, wie es weitergeht.
+- [x] **Man stempelt für sich selbst.** Die Person kommt aus der Sitzung, nicht
+      aus der Anfrage; eine mitgeschickte fremde Kennung ändert nichts.
+- [x] **Eine vergessene Pause endet mit dem Ausstempeln** — sonst liefe sie bis
+      in alle Ewigkeit weiter.
+- [x] **Über zwölf Stunden eingestempelt?** Dann steht das als Hinweis da —
+      sofort, nicht erst beim Monatsabschluss.
+
+### Der Zeitpunkt vom Gerät — die Vorbereitung auf Etappe 2
+Im Funkloch entsteht der Stempel auf dem Telefon und wird später übertragen.
+Dann zählt die Zeit des Stempelns, nicht die des Hochladens. Ein mitgeschickter
+Zeitpunkt wird deshalb angenommen, aber eng geführt: **nie aus der Zukunft, nie
+älter als 24 Stunden, und immer als nachgereicht gekennzeichnet** (`quelle` am
+Zeiteintrag). Die Standortleitung sieht beim Monatsabschluss, welcher Eintrag
+vom Gerät kam und welcher aus dem Funkloch — ohne diese Kennzeichnung wäre der
+Zeitpunkt eine Behauptung, die niemand prüfen kann, und er entscheidet über Lohn.
+
+### Vier Menüpunkte statt neun
+**Heute** (der Stempelknopf, groß und ohne Scrollen) · **Plan** · **Nachrichten**
+· **Ich**. Die Aufklapp-Menüs sind weg, jeder Punkt führt direkt irgendwohin.
+
+Neu dabei, weil vorher am Telefon kaum erreichbar:
+- **Lohnabrechnungen** an eigener Stelle, nach Jahren sortiert, mit dem Monat
+  als Überschrift statt eines Dateinamens. Sie lagen bisher in der Personalakte
+  zwischen Verträgen und Zeugnissen — ordentlich abgelegt und trotzdem am
+  falschen Platz.
+- **Krankmelden in zwei Angaben:** seit wann, voraussichtlich bis wann. Die App
+  sagt selbst, ob eine Bescheinigung nötig ist (§5 EntgFG und die betriebliche
+  Regelung), und die Kamera steht bereit, um sie gleich abzufotografieren —
+  zugeordnet wird sie automatisch der eben gemeldeten Fehlzeit.
+- **Ich** trägt die zwei Zahlen, nach denen im Betrieb am häufigsten gefragt
+  wird: Resturlaub und Stundenkonto.
+
+Nachweis: 29 Prüfungen am laufenden System (`pruefungen/b2-stempeluhr.mjs`) und
+17 Modultests für die Reihenfolge der Handgriffe und den Zeitpunkt.
+
+## Block §138 (12.09.) — Die Mitarbeiter-App, Etappe 2: das Funkloch
+
+Eine Pflegekraft steht im Keller eines Altbaus und will einstempeln. Bisher
+bekam sie eine Fehlermeldung, und die Zeit war weg. Wer das zweimal erlebt hat,
+stempelt nicht mehr über die App — und dann stimmt weder die Arbeitszeit noch
+der Lohn. Dasselbe galt für die Krankmeldung um halb sechs aus dem Schlafzimmer
+mit einem Balken Empfang.
+
+Ab jetzt wird **gemerkt statt verloren**: Stempel, Pause, Krankmeldung,
+Urlaubsantrag und Nachricht wandern ohne Netz in eine Warteschlange auf dem
+Gerät und gehen raus, sobald wieder Empfang da ist — **mit der Uhrzeit des
+Handgriffs, nicht der der Übertragung.**
+
+### Vier Entscheidungen, die alles bestimmen
+
+- [x] **Die Reihenfolge hält.** Nachgereicht wird strikt in der Reihenfolge des
+      Entstehens, und beim ersten Vorgang, der nicht durchgeht, ist Schluss für
+      diesen Durchlauf. Sonst käme „gehen" vor „kommen" an, der Server lehnte es
+      zu Recht ab — und die Zeit wäre trotzdem weg.
+- [x] **Nur das Nötige kommt hinein.** Gemerkt wird, was ohne Rückfrage gültig
+      bleibt. **Nicht** gemerkt wird, was eine Antwort braucht — etwa eine
+      Zusage zum Einspringen: Bis die überträgt, hat vielleicht längst jemand
+      anderes zugesagt, und dann stünden zwei Leute in derselben Schicht.
+- [x] **Aufgeben ist erlaubt.** Was der Server dauerhaft ablehnt (400, 403) oder
+      was nach 20 Versuchen nicht ankommt, fliegt raus. Eine Schlange, die sich
+      nie leert, ist schlimmer als keine. Eine abgelaufene Anmeldung (401) gilt
+      dagegen nicht als Ablehnung — nach dem nächsten Anmelden geht es.
+- [x] **Nichts verschwindet still.** Jeder verworfene Vorgang bleibt als rote
+      Meldung stehen, bis jemand sie wegklickt, samt Grund vom Server. Bei etwas,
+      das über Lohn entscheidet, ist „ist wohl nicht durchgegangen" keine
+      zulässige Antwort.
+
+### Was man ohne Netz sieht
+Die Uhr zeigt den **Stand einschließlich dessen, was noch wartet** — sonst
+stünde „nicht eingestempelt", obwohl die Person längst arbeitet, und sie drückte
+ein zweites Mal. Lesbar bleiben im Funkloch außerdem der eigene Dienstplan, die
+Dienste, der Stempelzustand und die eigenen Fehlzeiten; sie kommen aus dem
+Zwischenspeicher und sind als **gespeicherter Stand** gekennzeichnet. Was nicht
+auf ein Telefon gehört, bleibt ungespeichert: Lohnabrechnungen und
+Mitarbeiterlisten im Zwischenspeicher wären ein Datenschutzproblem, kein
+Komfortgewinn.
+
+Kein „Background Sync": Den gibt es auf iPhones nicht, und genau dorthin soll
+die App. Nachgereicht wird, wenn die App offen ist — beim Start, sobald das Netz
+zurückkommt, und alle halbe Minute. Das genügt; der Weg aus dem Keller nach oben
+dauert länger.
+
+Die Leiste hängt **im Rahmen der ganzen Anwendung**, nicht nur in der
+Mitarbeiter-App: Auch eine Standortleitung schreibt Nachrichten aus dem Keller.
+
+Nachweis: 21 Modultests für die Regeln der Warteschlange (jeder Ausgang einzeln
+nachgerechnet, besonders die Fälle, in denen aufgegeben wird) und 23 Prüfungen
+am laufenden System (`pruefungen/b3-warteschlange.mjs`) für die andere Hälfte —
+dass der Server eine ganze Kette aus dem Funkloch mit den richtigen Uhrzeiten
+verbucht, Wiederholungen und falsche Reihenfolge mit 409 und einem Grund
+ablehnt, und Krankmeldung, Urlaubsantrag und Nachricht nachträglich annimmt.
+
+## Block §139 (12.09.) — Die Mitarbeiter-App, Etappe 3: die native Hülle
+
+Die App lädt die laufende Anwendung, sie bringt sie nicht mit. Das ist eine
+Entscheidung, keine Abkürzung: OKUN Workforce rechnet Gehälter. Eine App, die
+den Stand vom Tag der Einreichung mitbrächte, wäre am Tag darauf falsch — und
+jede Korrektur an der Lohnabrechnung müsste durch eine Store-Prüfung.
+
+Damit ist die Frage nicht „wie packe ich die Seite ein", sondern: **Was kann ein
+Browser nicht, das diese App können muss?** Fünf Dinge.
+
+### 1. Benachrichtigungen, die ankommen, wenn die App zu ist
+Web-Push erreicht ein iPhone nur, solange die Seite auf dem Startbildschirm
+liegt und der Dienst-Arbeiter lebt — Apple beendet den nach einiger Zeit. Wer
+Sonntagabend einen Ausfall für Montag sechs Uhr meldet, erreicht damit
+niemanden. Jetzt läuft es über APNs und FCM.
+
+Beide Wege stehen nebeneinander hinter **einem** Aufruf (`sendPushToEmployee`),
+kein Aufrufer muss sie unterscheiden. Der heikle Teil ist nicht das Senden,
+sondern das Aufräumen: **Wann wird eine Gerätekennung gelöscht?** Zu früh heißt,
+jemand bekommt nichts mehr und erfährt es nie. Gelöscht wird deshalb nur bei
+den zwei Antworten, mit denen Google genau das meint — ein ungültiges Feld in
+*unserem* Aufruf kostet kein Gerät.
+
+- [x] **Das Gerät gehört dem, der es anmeldet.** Beim Web-Push (§111) ließ sich
+      einmal das eigene Gerät als Empfänger für die Meldungen einer anderen
+      Person eintragen. Hier kommt die Person aus der Sitzung, und eine
+      mitgeschickte fremde Kennung ändert nichts.
+- [x] **Das Diensttelefon darf den Besitzer wechseln.** Meldet sich dort jemand
+      Neues an, übernimmt er den Eintrag — sonst bekäme der Vorgänger weiterhin
+      die Dienstpläne seines Nachfolgers auf den Sperrbildschirm.
+- [x] **Abmelden trägt das Gerät aus**, bevor die Sitzung weg ist.
+
+### 2. Die Kamera für den Krankenschein
+Vorher das Dateifeld, jetzt die Kamera der Hülle — mit einem verkleinerten Bild
+zurück. Ein Krankenschein aus einer Telefonkamera sind sonst fünf Megabyte, und
+die überträgt sich mit einem Balken Empfang nicht. Genau dort steht die Person
+aber, wenn sie den Schein beim Arzt abfotografiert.
+
+### 3. Face ID und Fingerabdruck
+Hinter zwei Fingertipps liegt eine Lohnabrechnung, hinter drei die
+Personalliste des Standorts. Telefone liegen im Dienstzimmer und werden
+verliehen. Eine Anmeldung, die Wochen hält — und das soll sie —, braucht eine
+zweite, schnelle Tür.
+
+**Freiwillig** (erzwungen schalten die Leute das Telefonschloss ganz ab),
+**erst nach einer Minute** (wer zur Kamera wechselt, wird nicht gesperrt),
+**im Zweifel zu** (Abbruch und Fehler lassen nicht durch), und **nicht
+einschaltbar ohne funktionierenden Sensor** — sonst käme jemand nie wieder
+hinein.
+
+### 4. Löschen des Kontos, in der App
+Apple verlangt seit 2022, dass eine App mit Konto das Löschen auch **in** der
+App anbietet (Richtlinie 5.1.1 v); ein „schreiben Sie uns" genügt ausdrücklich
+nicht und ist ein häufiger Ablehnungsgrund. Art. 17 DSGVO gibt das Recht
+ohnehin.
+
+Was hier **nicht** steht, ist ein Knopf, der sofort alles löscht — das wäre
+nicht erlaubt. Lohnunterlagen müssen sechs Jahre aufbewahrt werden (§147 AO,
+§257 HGB, §28f SGB IV), und ein solcher Knopf risse der Person am Ende ihre
+eigene Lohnsteuerbescheinigung weg. Der Antrag geht deshalb an den Arbeitgeber
+und wird mit dem Löschkonzept (§128) abgearbeitet.
+
+- [x] Neue Seite **Ich → Meine Daten**: Auskunft als PDF, Daten zum Mitnehmen,
+      Löschung beantragen — und der Stand des eigenen Antrags samt Antwort.
+- [x] Offene Anträge stehen bei der Leitung **ganz oben** auf der
+      Datenschutzseite. Art. 12 Abs. 3 DSGVO gibt einen Monat; eine Frist hält
+      nur, wer den Antrag sieht, ohne ihn zu suchen.
+- [x] **Eine Ablehnung ohne Begründung gibt es nicht** (Art. 12 Abs. 4). Der
+      Text landet in der App der Person.
+- [x] Wird die Person gelöscht, gilt ihr Antrag automatisch als erledigt und
+      zeigt auf den Löschbericht. Von Hand nachziehen würde vergessen — und in
+      ihrer App stünde ewig „liegt vor".
+
+### 5. Kein weißer Bildschirm ohne Netz
+`native/web/fehler.html` liegt **im** Programm und kommt ohne Stilblatt,
+Schriftart und Bild von außen aus — nichts davon käme an. Ohne sie sähe ein
+Prüfer bei Apple nichts und lehnte ab; ein Mitarbeiter im Zug wüsste nicht, ob
+sein Telefon kaputt ist oder nur der Tunnel lang.
+
+### Die zwei Dinge, die sonst zur Ablehnung führen
+Beides eingebaut, weil es später teuer wird: **`NSCameraUsageDescription`,
+`NSPhotoLibraryUsageDescription` und `NSFaceIDUsageDescription`** stehen mit
+verständlichen deutschen Sätzen in der Info.plist — fehlen sie, wird ohne
+Prüfung abgelehnt. Und **`POST_NOTIFICATIONS`** steht im Android-Manifest: ohne
+sie fragt Android 13 gar nicht erst nach Mitteilungen, die Anmeldung läuft
+scheinbar durch, und es kommt nie etwas an. Der stillste aller Fehler.
+
+Dazu: keine Google-Sicherung der App-Daten (`allowBackup=false`) auf einem
+Telefon mit Lohndaten, und `WKAppBoundDomains` auf iOS, damit der
+Offline-Zwischenspeicher aus §138 in Apples WebView überhaupt lebt.
+
+Nachweis: 33 Prüfungen am laufenden System (`pruefungen/b4-app.mjs`) für Gerät
+und Löschantrag, 6 Modultests für den Umgang mit toten Gerätekennungen. Der
+Ablaufplan bis zur Veröffentlichung steht in **`APP-STORES.md`** — samt der
+ehrlichen Liste dessen, was noch gegen eine Ablehnung spricht.
+
+## Block §140 (12.09.) — Aufgeräumt nach dem ersten Blick auf dem Telefon
+
+Vier Funde aus der Praxis, drei davon Oberfläche — und einer, der es nicht war.
+
+### Die Leiste unten trägt wieder nur Ziele
+Dort standen sieben Felder: die vier Ziele plus Suche, Konto und Abmelden.
+Suche und Konto gibt es schon oben in der Leiste; zwei Wege zum selben Ort sind
+kein Komfort, sondern eine Frage, die sich der Mensch stellen muss („sind die
+beiden dasselbe?"). Und Abmelden ist ein Handgriff von zweimal am Tag — der
+gehört nicht auf die Fläche, die man hundertmal antippt. Er steht weiterhin im
+Menü oben rechts, unter „Mein Konto" und unter „Ich".
+
+### Das Zeichen führt nach Hause
+Auf das OKUN-Zeichen zu tippen tat bisher nichts. Auf jeder Website der Welt
+führt das Logo aufs Dashboard — jetzt auch hier, und zwar auf das der eigenen
+Rolle.
+
+### Ein Knopf statt zweier ungleicher
+Unten links ein grauer Käfer, 40 Pixel, 80 vom Rand. Unten rechts ein türkiser
+Fragezeichen-Kreis, 48 Pixel, 96 vom Rand. Andere Ecke, andere Größe, andere
+Höhe, andere Farbe — vier Unterschiede ohne einen Grund. Das sah nicht nach
+zwei Funktionen aus, sondern nach zwei Systemen im selben Programm.
+
+Dabei beantworten beide dieselbe Lage: **„Ich komme hier gerade nicht weiter."**
+Ob daraus eine Frage wird oder eine Meldung, entscheidet sich erst danach. Also
+ein Knopf, ruhig gehalten, und die Wahl kommt nach dem Antippen. Der dauerhaft
+sichtbare rote Käfer ist damit weg — er sagte jedem Benutzer den ganzen Tag
+„hier ist etwas kaputt".
+
+### Der eine, der keine Oberfläche war
+Auf dem Bild von „Mein Konto" stand **„Konto unwiderruflich löschen — löscht
+Ihren Account und anonymisiert Ihre Mitarbeiterdaten"**. Der Knopf tat genau
+das: Benutzerkonto weg, Name und E-Mail des Mitarbeiters überschrieben mit
+„Gelöschter Mitarbeiter" — **ohne jede Prüfung.**
+
+In einem Programm, das Löhne rechnet, ist das aus zwei Richtungen falsch. Gegen
+das Gesetz: Das Lohnkonto muss sechs Jahre zuordenbar bleiben (§41 Abs. 1 EStG,
+§28f SGB IV), Buchungsbelege zehn (§147 AO, §257 HGB) — die Betriebsprüfung
+fände Abrechnungen ohne Person. Und gegen den Menschen selbst: Mit dem Namen
+verschwindet die Grundlage seiner eigenen Lohnsteuerbescheinigung.
+
+Daneben stand „Meine Daten exportieren — **alle** gespeicherten Daten". Ausgegeben
+wurden vier Tabellen, gekappt bei 500 Zeilen; der Katalog aus §128 kennt
+fünfunddreißig. Eine Auskunft, die unvollständig ist und sich vollständig nennt,
+ist schlimmer als gar keine — sie sieht aus wie die Erfüllung von Art. 15 DSGVO.
+
+- [x] Beides ersetzt durch **einen** Baustein (`MeineDatenrechte`), den „Mein
+      Konto" und die App-Seite „Meine Daten" gemeinsam benutzen: vollständige
+      Auskunft aus dem Katalog, Löschung über den Antrag aus §139.
+- [x] Der alte Sofort-Löschweg **antwortet jetzt mit 409** und sagt, warum und
+      wie es richtig geht — als Fehler, nicht still, damit es auffällt, falls
+      ihn doch noch jemand ruft.
+- [x] Der alte, unvollständige Export ist **entfernt**.
+- [x] Ein Zugang ohne Personalakte (Geschäftsführung) bekommt keine Knöpfe, die
+      ins Leere greifen, sondern den Satz, der erklärt, warum es hier nichts
+      abzurufen gibt.
+
+Nachweis: 4 zusätzliche Prüfungen in `pruefungen/b4-app.mjs` (jetzt 37). Die
+Prüfung ruft den Löschweg **wirklich** auf — käme die alte Fassung zurück, wäre
+danach ein Testkonto weg und die halbe Nachweisreihe fiele aus. Genau das ist
+beabsichtigt: Diese Rückkehr darf nicht leise passieren.
+
+## Block §142 (19.09.) — Der Lauf behebt jetzt selbst
+
+Stufe 2 hat gelesen, nachgedacht und einen Vorschlag hingeschrieben. Das war
+als Zwischenschritt richtig, aber es war auch der Punkt, an dem der Nutzen
+aufhörte: Ein Vorschlag, den trotzdem ein Mensch umsetzen muss, spart die
+Arbeit nicht, er verschiebt sie.
+
+Ab jetzt behebt der Lauf Kleinigkeiten selbst. Drei Spuren.
+
+### Die eine Entscheidung, an der alles hängt
+**Wo verläuft die Grenze, und wer zieht sie?**
+
+Nicht der Lauf. Er sagt, was er geändert hat und was er dafür hält — und der
+Server entscheidet anhand der **geänderten Dateien**. Wer sich selbst einstuft,
+stuft sich im Zweifel großzügig ein, und der Zweifel fällt hier auf Lohndaten.
+
+Die Regeln stehen deshalb in `src/lib/behebung.ts` und nicht in der Anweisung
+des Laufs: **Eine Regel, die in einem Text steht, den ein Modell liest, ist eine
+Bitte. Eine Regel, die der Server prüft, ist eine Regel.**
+
+| | Was | Wer entscheidet |
+|---|---|---|
+| **direkt** | Reine Anzeige. Höchstens 3 Dateien, 40 Zeilen, nur `.tsx` unter `src/app` oder `src/components`, nicht an heiklen Stellen | niemand — geht raus |
+| **sammeln** | Alles mit Verhalten. Fertig gebaut und geprüft, auf eigenem Zweig | du, auf der Fundeseite |
+| **abgelehnt** | Wird nicht angefasst | — |
+
+### Die wichtigste Zeile im ganzen Block
+- [x] **Prüfungen und Tests sind unantastbar.** Ein Lauf, der seine eigene
+      Prüfung ändern darf, bekommt jede Änderung grün — dann ist das
+      Sicherheitsnetz nur noch Dekoration. Eine einzige verbotene Datei kippt
+      die ganze Behebung, auch wenn sie nur als Beifang neben einer harmlosen
+      mitläuft. Das ist der einzige Verstoß, der nicht „sammeln" auslöst,
+      sondern rundheraus abgelehnt wird.
+
+Ebenso tabu: die Datenbank, Anmeldung und Rechte, Lohn, Datenschutz, die
+native Hülle — und die Regeldatei selbst. Sonst schriebe sich der Lauf die
+Erlaubnis.
+
+### Was sonst noch gilt
+- [x] **Ungeprüft geht nichts, auf beiden Spuren.** Was gesammelt wird, landet
+      später genauso auf der Anlage — nur mit einem Menschen dazwischen, und
+      der sieht einer roten Prüfung nicht an, dass sie rot ist.
+- [x] **Eine leere Prüfreihe ist kein grünes Ergebnis.** Null Prüfungen und
+      null Fehler sieht in einer Zusammenfassung aus wie „keine Fehler" — es
+      heißt aber „nichts geprüft". Wird ausdrücklich abgewiesen.
+- [x] **Geld und Recht nur nach ausdrücklicher Freigabe** — und auch dann nur
+      gesammelt, nie direkt. Bestätigt wurde die Absicht, nicht der Code.
+- [x] **Höchstens zwei Behebungen je Lauf.** Ein Lauf, der schiefgeht, richtet
+      dann auch nur begrenzt Schaden an.
+- [x] **Verworfen heißt nicht erledigt.** Der Fund bleibt offen — abgelehnt
+      wurde der Weg, nicht das Problem.
+- [x] **Was draußen ist, lässt sich nicht nachträglich freigeben.** Eine
+      Zustimmung im Nachhinein ist keine.
+
+### Nachlesbar, sonst nicht zu verantworten
+Auf der Fundeseite steht zu jeder Behebung: die Dateien, die Zahl der Zeilen,
+was sie geprüft hat, der Zweig, der Commit. Oben die, die auf eine Entscheidung
+warten, darunter das Protokoll dessen, was ohne Rückfrage rausging. **Eine
+Automatik, die man nicht nachlesen kann, ist eine, der man nicht widersprechen
+kann.**
+
+Was dort bewusst fehlt: ein Knopf „alles freigeben". Wer zehn Behebungen auf
+einmal durchwinkt, hat keine davon gelesen — und dann ist das Tor keines.
+
+### Das zweite Tor für Verbesserungen
+Ein Verbesserungsvorschlag durchläuft zwei Freigaben: erst *ob* daran
+gearbeitet wird, dann *ob dieser Weg richtig war*. Das erste Tor stand seit
+§133, das zweite ist neu.
+
+Nachweis: 26 Modultests für die Regeln und 40 Prüfungen am laufenden System
+(`pruefungen/h3-behebung.mjs`) — die Fälle, in denen NICHT gehandelt werden
+darf, gründlicher als die anderen. Der Maßstab dabei: Ein zu streng abgelehnter
+Fund kostet einen Klick, ein zu großzügig durchgewinkter im schlimmsten Fall
+einen falschen Lohn.
+
+## Block §143 (19.09.) — Der Melder hört, was aus seinem Fund wurde
+
+Bisher verschwand eine Meldung im Nichts. Wer einen Fehler meldete, wusste
+danach nicht, ob ihn jemand gelesen hat, ob daran gearbeitet wird, und ob es
+jemals behoben wurde. **Beim zweiten Mal meldet man dann nichts mehr** — und
+genau die Leute, die den Betrieb kennen, hören auf, uns zu sagen, was kaputt
+ist.
+
+### Der Moment, um den es geht
+Jemand meldet sonntags um elf, dass ein Knopf nicht funktioniert. Eine Stunde
+später steht in seinem Kanal: *„Ist behoben."* Das ist kein Beiwerk — das ist
+der Unterschied zwischen einem Werkzeug, dem man etwas erzählt, und einem, dem
+man nichts mehr erzählt. Seit §142 läuft die Behebung ohnehin von selbst; was
+fehlte, war nur, es dem zu sagen, der es gemeldet hat.
+
+### Drei Nachrichten, nicht mehr
+- [x] **eingegangen** — sofort beim Melden, mit der Nummer zum Nachfragen
+- [x] **wir sind dran** — nur, wenn es sich hinzieht (ab 20 Minuten). Bei einer
+      Kleinigkeit, die in derselben Viertelstunde rausgeht, wären zwei
+      Nachrichten hintereinander nur Lärm — und wer drei Nachrichten für einen
+      Tippfehler bekommt, stellt sie ab
+- [x] **behoben** — samt Einladung zum Widerspruch: Wer das liest und es geht
+      immer noch nicht, soll das loswerden können, ohne alles neu zu schreiben
+
+Jede geht in den Kanal **und** per E-Mail. Der Kanal ist der verlässliche Weg,
+die E-Mail der laute — wer sonntags meldet und das Programm zumacht, sähe eine
+reine Kanalnachricht erst beim nächsten Anmelden.
+
+Ohne Fachbegriffe. Kein Commit, kein Dateiname, kein „null pointer". Der Melder
+ist eine Pflegekraft, keine Entwicklerin; was technisch passiert ist, steht auf
+der Fundeseite, wo jemand es lesen will.
+
+### Der Kanal zu OKUN
+Neu in **Nachrichten**, bei jedem ganz oben: **OKUN Workforce**. Dort landen
+die Rückmeldungen — und was man hineinschreibt, kommt bei OKUN als E-Mail an.
+
+Bewusst **kein gewöhnlicher Direktchat**: Direktchats sind unantastbar (§129),
+niemand liest sie mit, auch OKUN nicht. Genau deshalb sitzt OKUN nicht als
+Teilnehmer in einem Kundenraum, sondern hat eine eigene Tür — eine eigene
+Raumart mit genau einem menschlichen Mitglied. Die Grenze bleibt, wo sie war.
+
+- [x] Jeder hat seinen eigenen; der Kanal einer Kollegin ist für niemanden
+      sonst lesbar
+- [x] Nicht verwaltbar, nicht schließbar, OKUN taucht in keiner Personenauswahl auf
+- [x] Ein Plattformzugang hat selbst keinen — er schriebe sich sonst selbst
+
+### Zwei Funde aus dem eigenen Prüflauf
+Beim Nachweis fiel auf, dass der stündliche Lauf **seinen eigenen, gerade
+angelegten Fund nicht mehr fand**. Ursache: Die Liste der offenen Funde war
+nach Alter sortiert und bei hundert abgeschnitten — sobald hundert offen
+standen, fiel jede NEUE Meldung hinten heraus, egal wie dringend. Jetzt kommt
+der Rückstand von vorn **und** alles aus den letzten 24 Stunden.
+
+Die zweite Ursache lag in den Prüfungen selbst: `h-funde` und `h2-fundelauf`
+legten bei jedem Lauf Funde an und räumten nicht auf — in einer Woche hatten
+sich genau hundert angesammelt. Beide schließen jetzt, was sie anlegen. **Eine
+Prüfung, die Müll hinterlässt, wird irgendwann selbst zur Fehlerquelle.**
+
+Nachweis: 11 Modultests für die Texte (unter anderem, dass keine Fachbegriffe
+durchrutschen) und 26 Prüfungen am laufenden System
+(`pruefungen/h4-rueckmeldung.mjs`).
+
+## Block §144 (19.09.) — Gruppen eröffnen, ohne vierzigmal zu klicken
+
+Der Fund aus dem Betrieb: *„Wenn ich als Standortleitung die Mitarbeiter suche,
+findet er nicht alle."* Drei Dinge dahinter, und das dritte war das eigentliche.
+
+### Alle auf einmal
+- [x] **„Alle Mitarbeiter auswählen"** — eine Gruppe fürs ganze Haus baute man
+      sonst mit vierzig Einzelklicks, und beim achtunddreißigsten verrutscht
+      einer. Bei aktiver Suche heißt der Knopf „Alle n Treffer auswählen": So
+      wird aus *Frühdienst* eingeben und einmal klicken eine fertige Gruppe.
+      Nochmal drücken hebt die Auswahl wieder auf.
+
+### Die Suche greift weiter
+- [x] Gesucht wird über **Name, Position, Standort und Rolle**. Vorher nur über
+      den Namen: Wer „Pflege" tippte, um die Pflegekräfte zu finden, bekam eine
+      leere Liste und hielt die Suche für kaputt.
+- [x] Mehrere Wörter werden **UND-verknüpft** — „pflege haus2" grenzt wirklich
+      ein, statt alles zu zeigen, was irgendeines der Wörter enthält.
+- [x] Eine leere Trefferliste sagt jetzt, dass sie leer ist, statt einfach
+      nichts zu zeigen.
+
+### Und der eigentliche Grund, warum jemand fehlte
+Er fehlte wirklich — aber nicht an der Suche. **Im Chat sind Benutzerkonten die
+Teilnehmer** (§131), und wer angelegt, aber noch nie angemeldet war, hat keins.
+Er kann also gar keine Nachricht empfangen.
+
+Ihn trotzdem zur Auswahl zu stellen wäre die schlechtere Lösung gewesen: Man
+setzte jemanden in eine Gruppe, in der er nie etwas liest, und merkte es nie.
+Richtig ist, die Lücke zu **benennen**:
+
+> ⚠ 3 Personen fehlen hier (Daniel Krüger, …) — sie haben noch keinen Zugang und
+> können deshalb keine Nachrichten empfangen. Unter **Mitarbeiter** lässt sich
+> eine Einladung verschicken.
+
+Mit Zahl, mit bis zu fünf Namen (eine Liste mit vierzig liest niemand) und mit
+dem Weg, es zu ändern. **Eine Liste, die schweigend unvollständig ist, lässt den
+Menschen an der Suche zweifeln statt an der fehlenden Einladung.**
+
+Nachweis: 6 zusätzliche Prüfungen in `pruefungen/e5-chat.mjs` (jetzt 81) —
+darunter, dass niemand gleichzeitig in beiden Listen steht und dass die Zahl am
+eigenen Mandanten endet.
+
+## Block §145 (20.09.) — Zwei feste Gespräche, die jeder schon hat
+
+Unter **Nachrichten** stehen ab sofort ganz oben zwei Gespräche, die niemand
+anlegen muss und die niemand schließen kann:
+
+| | Wer antwortet | Wie schnell |
+|---|---|---|
+| **OKUN Assistent** | ein Programm | sofort |
+| **OKUN Workforce** | Menschen bei OKUN | wenn jemand gelesen hat |
+
+### Warum zwei und nicht einer
+Beides in einen Raum zu legen wäre bequem und falsch. Man wüsste nie, ob
+gerade eine Maschine oder ein Mensch geantwortet hat — und würde dem einen
+Dinge erzählen, die für den anderen gedacht waren. Hinter der einen Tür sitzt
+etwas, das sofort antwortet und das Programm erklärt; hinter der anderen
+Menschen, die vielleicht erst morgen antworten, dafür aber **entscheiden**
+können.
+
+### Der Assistent
+- [x] **Begrüßt, statt leer dazustehen** — und sagt im selben Atemzug, was er
+      *nicht* kann: in Daten sehen oder etwas ändern. Sonst fragt ihn der erste
+      Mensch nach seinem Resturlaub und ist enttäuscht.
+- [x] **Die eigene Frage steht sofort im Verlauf**, die Antwort kommt Sekunden
+      später über dieselbe regelmäßige Abfrage wie die einer Kollegin. Ein
+      Absenden-Knopf, der acht Sekunden dreht, sieht aus wie ein hängendes
+      Programm.
+- [x] **Er antwortet immer** — notfalls mit einer ehrlichen Absage und dem
+      Verweis auf das Gespräch daneben. Ein Gespräch, in dem auf eine Frage gar
+      nichts folgt, ist schlimmer als eines mit einer Absage: Man wartet, lädt
+      neu, fragt noch einmal.
+- [x] Nur die letzten zwölf Beiträge als Zusammenhang. Was vor drei Wochen
+      gefragt wurde, hilft bei der heutigen Frage selten — kostet aber jedes Mal.
+
+### Der Systemtext liegt jetzt an einer Stelle
+Der Assistent wird von zwei Seiten gerufen: aus dem Fenster hinter dem
+Fragezeichen (§140) und aus diesem Gespräch. Beide benutzen dieselbe Datei
+(`src/lib/assistent.ts`). Zwei Kopien wären nach dem ersten Umbau
+auseinandergelaufen — **und dann bekäme derselbe Mensch auf dieselbe Frage zwei
+verschiedene Antworten, je nachdem, wo er sie stellt.**
+
+### Noch ein Prüfungsfehler derselben Art
+`b3-warteschlange` zählte ungelesene Nachrichten **über alle Räume** und
+erwartete null. Das stimmte, solange es außer Kollegengesprächen nichts gab —
+seit es die festen Räume gibt, hat dort jeder etwas Ungelesenes. Gezählt wird
+jetzt im Raum. Dieselbe Korrektur wie in `e5-chat` einen Block zuvor: **Eine
+Prüfung, die an fremdem Zustand hängt, prüft nicht das, was sie behauptet.**
+
+Nachweis: 12 zusätzliche Prüfungen in `pruefungen/h4-rueckmeldung.mjs`
+(jetzt 38).
+
+## Block §147 (21.09.) — HR Stufe 3: BEM aus den Fehlzeiten
+
+**§167 Abs. 2 SGB IX:** Wer innerhalb eines Jahres länger als sechs Wochen
+arbeitsunfähig war, dem *muss* ein betriebliches Eingliederungsmanagement
+angeboten werden. Ohne dokumentiertes Angebot ist eine spätere
+krankheitsbedingte Kündigung praktisch nicht haltbar.
+
+**Das ist die Stufe, die nur wir bauen können** — weil die Fehlzeiten schon im
+System liegen. Ein getrenntes Personalwerkzeug müsste sie abtippen lassen, und
+dann rechnet sie niemand aus, und dann fällt es erst auf, wenn ein Gericht
+danach fragt.
+
+### Drei Wörter im Gesetz, die gern falsch gelesen werden
+- [x] **„innerhalb eines Jahres"** — zwölf rollende Monate, nicht das
+      Kalenderjahr. Wer im November vier Wochen und im Februar drei Wochen
+      fehlt, ist über der Schwelle, obwohl in keinem Kalenderjahr sechs Wochen
+      zusammenkommen.
+- [x] **„oder wiederholt"** — es müssen keine sechs Wochen am Stück sein.
+      Einzelne Tage zählen zusammen.
+- [x] **„länger als"** — bei genau 42 Tagen ist die Schwelle noch *nicht*
+      überschritten. Erst der dreiundvierzigste löst aus. Ein Tag Unterschied,
+      und er entscheidet über eine Rechtspflicht.
+
+Dazu: überlappende Krankmeldungen zählen nicht doppelt (eine
+Folgebescheinigung, die einen Tag zurückreicht, darf nicht zu früh auslösen),
+Urlaub zählt gar nicht mit, und nach einem Abschluss wird **ab dem Abschluss**
+neu gezählt — sonst löste derselbe Zeitraum ein zweites Mal aus.
+
+### Was das Programm nicht tut
+Es entscheidet nichts und bietet nichts von selbst an. Es rechnet die Schwelle
+aus und sagt, dass ein Angebot fällig ist. **Ein BEM-Angebot ist ein Gespräch
+zwischen Menschen; eine automatische E-Mail dazu wäre der falsche Ton für den
+Anlass.**
+
+Eine **Ablehnung wird festgehalten**, nicht verworfen: Die Teilnahme ist
+freiwillig, und die dokumentierte Ablehnung ist der Nachweis, dass angeboten
+wurde — das Wertvollste am ganzen Vorgang. Ein **Abschluss braucht dagegen ein
+Ergebnis**: Ohne wäre das Verfahren nicht durchgeführt, sondern nur abgehakt,
+und genau das prüft ein Arbeitsgericht.
+
+### Gesundheitsdaten, also eng
+- [x] Die Standortleitung sieht BEM **standardmäßig nicht**. Der Betrieb kann
+      es freischalten — in kleinen Häusern führt sie das Gespräch selbst.
+- [x] **Die Leitung kann sich diese Freigabe nicht selbst erteilen.** Beim Bauen
+      aufgefallen: `/api/org-settings` nahm bis dahin jedes Feld von jeder
+      Leitung entgegen. Ohne diese Sperre wäre die ganze Sichtbarkeitsregel
+      eine Bitte gewesen.
+- [x] Ein Mitarbeiter sieht hier gar nichts — nicht einmal sich selbst. Sein BEM
+      erfährt er durch das Angebot, nicht durch eine Liste im Programm.
+- [x] **Keine Übersicht „wer war wie oft krank".** Angezeigt wird nur, wer über
+      der Schwelle liegt oder in einem Verfahren ist. Eine solche Liste kann man
+      nicht bauen, ohne dass sie irgendwann auch so benutzt wird.
+- [x] Niemals eine Diagnose — nur das Verfahren. In der Auskunft nach Art. 15
+      steht es trotzdem: Die Person darf wissen, was über ihr Verfahren
+      festgehalten ist.
+
+### Zwei Fehler, die der Prüflauf gefunden hat
+**Eine Antwort, die sich nur einmal lesen lässt.** Ich hatte die 403-Antwort als
+Modulkonstante angelegt. Eine `NextResponse` trägt einen Datenstrom, und der ist
+nach dem ersten Lesen verbraucht — ab der zweiten Anfrage kam ein 403 mit
+**leerem Körper**: Status richtig, Begründung weg. Jetzt eine Funktion.
+
+**Eine Prüfung, die an fremdem Zustand hing.** `i2-bem` rechnete zuerst mit den
+Fehlzeiten einer Person aus den Testdaten — und fiel im Gesamtlauf um, weil
+andere Nachweise deren Fehlzeiten anlegen und löschen. Sie hat jetzt eine eigene
+Person. Und sie räumt sie auch wieder weg: Beim ersten Versuch blieb „BEM
+Nachweis" stehen, stand alphabetisch vorn und wurde vom Lohnnachweis d12 als
+Testperson gegriffen, der daraufhin umfiel. **Wer jemanden anlegt, räumt ihn
+auch weg.**
+
+Nachweis: 26 Modultests für die Rechenwege (jeder Grenzfall der Schwelle
+einzeln) und 32 Prüfungen am laufenden System (`pruefungen/i2-bem.mjs`).
+
+## Block §148 (22.09.) — HR Stufe 4: Recruiting und Karriereseite
+
+**Der erste Teil dieses Programms ohne Anmeldung.** Bis hierher lag alles hinter
+einer Anmeldung, und jede Zugriffsfrage lief über `scope.ts`. Eine Karriereseite
+ist das Gegenteil: Sie soll von Google gefunden und von Fremden gelesen werden.
+Deshalb hat dieser Block eine Regel, die über allem steht — **nach draußen geht
+ausschließlich, was jemand ausdrücklich veröffentlicht hat.** Entschieden wird
+das an genau einer Stelle (`src/lib/karriere.ts`), nicht in drei Routen.
+
+### Was ein Träger davon hat
+- [x] **Stellen ausschreiben** — die Standortleitung für ihren Standort, die
+      Unternehmensebene auch unternehmensweit. Eine Anzeige entsteht als
+      **Entwurf** und geht nicht versehentlich online.
+- [x] **Karriereseite** unter `/karriere/<adresse>` — Überschrift, Über-uns-Text,
+      alle offenen Stellen, Bewerbungsformular. Kein eigener Webauftritt nötig.
+- [x] **Google for Jobs** — jede Anzeige trägt ein schema.org `JobPosting` im
+      Quelltext. Das ist der wirksamste Kanal für einen kleinen Träger, und er
+      kostet nichts. Google prüft streng: Fehlt `datePosted` oder
+      `hiringOrganization`, wird die Anzeige stillschweigend ignoriert — man
+      merkt nichts, es passiert nur nichts. Deshalb sind beide Pflichtfelder in
+      den Modultests festgenagelt.
+- [x] **XML-Feed** unter `/karriere/<adresse>/stellen.xml` für Indeed,
+      StepStone, kimeta und die Bundesagentur. Adresse einmal dort eintragen,
+      danach holen sie sich die Anzeigen selbst. Eine echte API-Anbindung gäbe
+      es bei jedem auch — aber nur gegen Vertrag, Schlüssel und in drei
+      verschiedenen Formaten. Der Feed ist das, was ein Träger am Montag
+      einrichten kann.
+- [x] **Bewerber-CRM** — Pipeline (neu → gesichtet → Gespräch → Zusage /
+      Absage), Bewerber von Hand einpflegen, Unterlagen ansehen, dem Bewerber
+      direkt aus dem Vorgang schreiben. Jede E-Mail und jeder Standwechsel steht
+      im Verlauf.
+- [x] **Übernahme in die Personalakte** — aus der Bewerbung entsteht in einem
+      Zug ein Mitarbeiter samt Einladung, die Bewerbungsunterlagen wandern in
+      die Akte, und die **Pflichtnachweise aus dem Katalog (§146) werden
+      automatisch zugewiesen**. Genau am Einstellungstag denkt daran sonst
+      niemand.
+
+### Drei Entscheidungen, die nicht offensichtlich sind
+
+**Ohne Impressum geht die Seite nicht online.** Eine geschäftsmäßige Seite ohne
+Anbieterkennzeichnung verstößt gegen §5 DDG und ist abmahnfähig. Das wäre ein
+unschöner Weg, eine neue Funktion kennenzulernen. Der Schalter „online stellen"
+lehnt deshalb ab und sagt, was fehlt — er warnt nicht bloß.
+
+**Bewerberdaten verschwinden von selbst.** Sie sind die einzigen Personendaten
+im System, für die es nach Verfahrensende keine Rechtsgrundlage mehr gibt. Sechs
+Monate ab Absage (§15 Abs.4 AGG, §61b ArbGG); länger nur mit ausdrücklicher
+Einwilligung in den Bewerberpool. Die Frist entsteht beim Wechsel in einen
+Endstand und fällt weg, wenn die Bewerbung ins Verfahren zurückkommt. Wer
+eingestellt wurde, wird nie gelöscht — aus der Bewerbung ist eine Personalakte
+geworden. Steht als eigene Datenart im Löschkonzept (§128).
+
+**Ein Honigtopf statt eines Captchas.** Das Formular hat ein unsichtbares Feld,
+das kein Mensch sieht und ein Automat ausfüllt. Wer es ausfüllt, bekommt
+„danke" und wird verworfen — merkte er, dass er auffiel, probierte er es mit
+einem anderen Feld noch einmal. Ein Captcha würde dasselbe leisten und dabei
+echte Bewerber vertreiben.
+
+### Nebenbei repariert: /api/org-settings
+Die Schnittstelle reichte den ganzen Körper der Anfrage an die Datenbank durch.
+Damit konnte jeder, der sie erreicht, **jede Spalte** der Tabelle beschreiben —
+einschließlich der Bankverbindung des Unternehmens. Mit diesem Block wäre auch
+das Impressum der öffentlichen Seite dazugekommen. Jetzt eine Liste erlaubter
+Felder, nach Rolle getrennt: Anschrift, Betriebsnummer, Bankverbindung und die
+BEM-Freigabe kann nur die Unternehmensebene setzen.
+
+Nachweis: 40 Modultests für die Rechenwege (Adressen, Löschfristen, JSON-LD,
+das offene Formular) und 77 Prüfungen am laufenden System
+(`pruefungen/j-recruiting.mjs`) — davon ein ganzer Abschnitt allein dafür, dass
+ein Fremder weder Entwurf noch geschlossene Anzeige noch abgeschaltete Seite zu
+sehen bekommt.
+
+### Nachgereicht
+- **Nachweis-Anforderung mit Rückweg** — fertig, Block §149 unten.
+- **Belehrungen digital** — fertig, Block §150 unten.
+
+## Block §149 (22.09.) — Nachweise anfordern, mit Rückweg
+
+**Das Loch, das der Fristenmotor gelassen hat.** §146 rechnet aus, wer was
+schuldig ist. Was danach kam, war Handarbeit: anrufen, eine E-Mail schreiben,
+sich merken, wer geantwortet hat. Genau dort ging es verloren.
+
+### Der Ablauf
+1. Der Betrieb fordert etwas an — für einen oder für alle auf einmal.
+2. Der Mensch bekommt eine Nachricht und kann es **direkt in der App
+   hochladen**. Ein Foto der Bescheinigung genügt.
+3. Der Betrieb wird benachrichtigt, sieht sich das Dokument an und **nimmt es
+   ab oder fragt nach** — mit einem Gespräch direkt am Vorgang.
+4. Die Abnahme trägt die Frist als erfüllt ein, und der Motor rechnet das
+   nächste Ablaufdatum selbst aus.
+
+Der Einstieg dafür steht dort, wo die Lücke sichtbar wird: In der Fristenliste
+hat jeder fehlende oder abgelaufene Nachweis jetzt einen Knopf
+„Bei … anfordern". Vorher musste man sich merken, wer was schuldig ist, und es
+auf einer anderen Seite noch einmal eintippen — das tat niemand.
+
+### Drei Entscheidungen
+- **Einreichen darf nur der Mensch, abnehmen nur der Betrieb.** Das ist der
+  ganze Sinn der Sache: Wer sich seinen Nachweis selbst abhaken kann, braucht
+  keinen. Durchgesetzt als Zustandsautomat in `src/lib/anforderung.ts`, nicht
+  in der Oberfläche — und jede Ablehnung sagt im Klartext, warum.
+- **Hochladen und einreichen sind ein Knopf.** Zwei wären eine Falle: Man lädt
+  hoch, geht weg, und beim Betrieb kommt nie etwas an.
+- **Das Gespräch hängt am Vorgang, nicht im Chat.** Die Rückfrage („Das Zeugnis
+  ist älter als drei Monate") gehört dorthin, wo der Nachweis liegt. Im Chat
+  wäre sie nach zwei Tagen weggescrollt — und in einem halben Jahr fände
+  niemand mehr, warum etwas zweimal eingereicht wurde.
+
+**Erinnern, ohne zu drangsalieren:** frühestens alle sieben Tage, nie an jemanden,
+bei dem der Betrieb selbst am Zug ist. Eine tägliche Mahnung liest niemand mehr.
+
+Die Datei landet in der Personalakte, nicht am Vorgang — dort gehören
+Unterlagen hin, und dort überleben sie den Abschluss. Wer selbst eingereicht
+hat, sieht sie auch wieder; eine fremde Leitung kommt nicht heran.
+
+Nachweis: 27 Modultests für den Zustandsautomaten (jeder verbotene Übergang
+einzeln) und 47 Prüfungen am laufenden System (`pruefungen/i3-anforderung.mjs`).
+Gesamtlauf: 1015/1015 in 30 Prüfungen, 651 Modultests.
+
+## Block §150 (22.09.) — Belehrungen digital
+
+**Der Fall aus der Praxis.** In einer Kita liegen jeden Monat vier, fünf Seiten
+Belehrungen zur Unterschrift: Hygiene, Brandschutz, Schweigepflicht,
+Unfallverhütung. Sie werden an jede Einrichtung geschickt, dort ausgedruckt,
+herumgereicht, unterschrieben, eingesammelt und abgeheftet. Drei Wochen später
+weiß niemand mehr, wer fehlt.
+
+Jetzt: einmal hochladen, an alle verteilen, per Klick bestätigen. Der Betrieb
+sieht jederzeit, **wer noch fehlt** — die Frage, die ein Ordner mit
+Unterschriftenlisten nicht beantwortet.
+
+### Was einen Nachweis belastbar macht
+Eine Unterweisung nach §12 ArbSchG, eine Belehrung nach §43 IfSG, eine
+Einweisung nach DGUV Vorschrift 1 — sie alle verlangen keinen bestimmten
+Schriftträger. Verlangt wird der **Nachweis**: dass diese Person diesen Inhalt
+zu diesem Zeitpunkt zur Kenntnis genommen hat. Dafür drei Entscheidungen:
+
+- [x] **Jeder Beleg trägt Kopien, keine Verweise.** Name, bestätigter Wortlaut
+      und Fingerabdruck (SHA-256) des Dokuments — aus dem Augenblick des
+      Klicks. Ein Beleg, der auf die heutige Fassung zeigt, belegt nichts: Nach
+      einer Änderung sähe er so aus, als hätte jemand etwas bestätigt, das es
+      damals nicht gab.
+- [x] **Eine verteilte Belehrung ist unveränderlich.** Titel, Dokument und
+      Bestätigungssatz sind ab dem Verteilen festgeschrieben. Änderbar bleibt
+      nur, was niemandem den Boden wegzieht: die Frist (verlängern hilft) und
+      der Hinweistext. Wer etwas anderes will, schließt die Runde und verteilt
+      eine neue — die alten Belege bleiben, wie sie sind.
+- [x] **Bestätigen kann nur die Person selbst.** Weder die Leitung noch ein
+      Kollege. Eine Belehrung, die jemand für einen anderen abhakt, belegt
+      nichts.
+
+### Was „gelesen" hier ehrlicherweise heißt
+Niemand kann prüfen, ob ein Mensch etwas gelesen hat — auf Papier genauso
+wenig. Festgehalten wird, was sich feststellen lässt: **wann das Dokument
+ausgeliefert wurde** (das weiß der Server, nicht der Browser) und wann
+bestätigt. Der Bestätigen-Knopf lebt erst nach dem Öffnen. Liegt zwischen
+beidem keine Sekunde, steht das im Beleg — das System nennt ihn dann „dünn
+belegt", und der Betrieb kann nachfassen. Das ist mehr, als eine
+Unterschriftenliste hergibt.
+
+**Wiederholung:** Eine Runde lässt sich als neue Runde klonen; der Titel
+bekommt den Monat, das Dokument wird geteilt statt kopiert (derselbe
+Fingerabdruck belegt genau das). Erinnern geht wie bei §149 höchstens alle
+sieben Tage.
+
+**Der Beleg gehört auch dem Menschen:** Er sieht in seiner App, was er wann
+bestätigt hat — im Wortlaut von damals. Und in der Auskunft nach Art.15 DSGVO
+steht es ebenfalls.
+
+Nachweis: 35 Modultests (Unveränderlichkeit, Fingerabdruck, Belastbarkeit des
+Belegs, Wiederholungsrhythmus) und 60 Prüfungen am laufenden System
+(`pruefungen/i4-belehrung.mjs`). Gesamtlauf: **1075/1075 in 31 Prüfungen**, 686
+Modultests, Bauen sauber.
+
+## Block §151 (22.09.) — Das HR-Modul im Browser durchgespielt
+
+Die 1080 Prüfungen sprechen mit den **Schnittstellen**. Sie sagen nichts
+darüber, ob eine Seite überhaupt rendert oder ob ein Knopf tut, was daraufsteht.
+Deshalb einmal alles im echten Browser bedient: jede neue Seite, jeder Reiter,
+und die drei Abläufe von Anfang bis Ende — Stelle ausschreiben bis Bewerbung,
+Nachweis anfordern bis Abnahme, Belehrung verteilen bis Bestätigung.
+
+**Ergebnis: Das HR-Modul selbst trug keinen Fehler.** Alle Seiten rendern, alle
+Reiter schalten, alle drei Abläufe laufen durch. Gefunden wurden vier andere
+Dinge — drei davon älter als dieses Modul.
+
+### Die Glocke war für jeden kaputt
+`Header.tsx` und `CommandRail.tsx` fragten das Postfach mit `user.id` ab — der
+Kennung des **Benutzerkontos**, nicht der des **Mitarbeiterdatensatzes**. Die
+beiden sind nie gleich. Folge: auf jeder Seite und in jeder Rolle eine Absage
+(403 beim Mitarbeiter, 404 bei der Leitung), die Glocke blieb dauerhaft leer.
+
+Gemerkt hat es nie jemand, weil beide Aufrufer den Fehler verschlucken
+(`.catch(() => {})`) — und eine leere Glocke sieht aus wie eine Glocke ohne neue
+Nachrichten.
+
+Das betraf §149 und §150 unmittelbar: Beide verschicken Benachrichtigungen, und
+die wären in der Oberfläche nie angekommen. `/api/notifications` fällt jetzt ohne
+Angabe auf das **eigene** Postfach zurück; ein Konto ohne Mitarbeiterdatensatz
+(die Unternehmensebene) bekommt eine leere Liste statt eines Fehlers. Die fremde
+Kennung bleibt möglich und wird weiter geprüft — mit Gegenprobe in
+`e-kommunikation.mjs`.
+
+### Dieselbe Verwechslung in der Frühwarnung
+`/api/controlling/early-warning` legt Benachrichtigungen an und bekam ebenfalls
+`user.id`. Die Meldungen landeten in einem Postfach, das es nicht gibt, und
+waren für niemanden lesbar.
+
+### Das Stundenkonto fragte ins Leere
+Die Kachel auf `/employee/ich` rief `/api/hours-account` ohne Jahr und Monat auf
+— 400 bei jedem Seitenaufruf. Beigetragen hat die Antwort nie etwas; angezeigt
+wurde immer schon der Wert aus dem Mitarbeiterdatensatz. Sie richtig zu stellen
+hätte es schlimmer gemacht: Diese Schnittstelle liefert die Über- und
+Unterstunden **eines Monats**, und das ist unter der Überschrift „Stundenkonto"
+die falsche Zahl. Die Abfrage ist jetzt weg.
+
+### Zwei stumme Knöpfe (aus §149/§150)
+Nach „Abnehmen" verschwand der Vorgang wortlos aus der Liste — er rutschte unter
+„erledigt", das zugeklappt ist. Aus Sicht des Anwenders passierte nichts, und
+der Zweifel führt zum zweiten Klick auf einen Knopf, den es nicht mehr gibt.
+Dasselbe beim Schließen einer Belehrungsrunde. Beide melden jetzt, was geschehen
+ist.
+
+### Und ein Prüfstand, der sich selbst vergiftete
+`f5-regelpakete` ordnet dem Reha-Standort das Regelpaket der **Kita** zu — das
+ist sein Zweck — und nahm es nie zurück. Zwei Prüfungen später plant
+`f-dienstplan` denselben Standort, der Rechendienst sucht nach Erzieherinnen,
+findet nur Pflegefachkräfte und liefert einen leeren Plan. Ein einziger
+abgebrochener Lauf vergiftete damit jeden folgenden.
+
+Das ist genau Regel 1 der `pruefungen/README.md`. `f5` stellt den Ausgangszustand
+jetzt wieder her, und `f-dienstplan` stellt seinen eigenen her, statt sich darauf
+zu verlassen.
+
+**Bekannt, nicht behoben:** `lohnPerson()` in `helfer.mjs` legt für jede
+Lohn-Prüfung eine Person an und räumt sie nie weg — inzwischen 182 Karteileichen
+am Reha-Standort. Sie stören noch nichts (der Plan rechnet mit 330 Personen
+durch), aber sie wachsen mit jedem Lauf. Eigener Vorgang.
+
+Stand nach diesem Block: **1080/1080 in 31 Prüfungen**, 686 Modultests, Bauen
+sauber, und zusätzlich 50 Schritte im Browser über drei Rollen und drei Abläufe.
+
+## Block §152 (25.09.) — Artikel 30 und 32: erst die Maßnahme, dann das Dokument
+
+Beim Schreiben der technischen und organisatorischen Maßnahmen fiel die Lücke
+auf, die sie hätten beschreiben sollen: **Die Anmeldung hatte keine Bremse.**
+Beliebig viele Passwortversuche, und ein Fehlversuch hinterließ keine Spur —
+obwohl der Protokolltyp `login_failed` seit Langem existierte und nie
+geschrieben wurde. Außerdem lief bei unbekannter E-Mail kein bcrypt, die
+Antwortzeit verriet also, welche Adressen ein Konto haben.
+
+TOMs zu schreiben, die Schutz vor unbefugtem Zugriff behaupten, wäre damit
+schlicht falsch gewesen. Also erst die Maßnahme.
+
+### Die Bremse
+- [x] **Zwei Zähler, nicht einer.** Je Konto (zehn Fehlversuche in einer
+      Viertelstunde) und je Absenderadresse (vierzig). Ein Zähler allein sieht
+      einen der beiden Angriffe nie: Wer zehn Versuche auf vierhundert Konten
+      verteilt, bleibt unter jeder Kontogrenze; wer aus einem Botnetz kommt,
+      hat für jeden Versuch eine neue Adresse.
+- [x] **Die Sperre läuft ab.** Eine dauerhafte Kontosperre wäre eine Waffe: Wer
+      die E-Mail-Adresse einer Standortleitung kennt, sperrt sie sonst mit zehn
+      falschen Versuchen dauerhaft aus. Nach einer Viertelstunde geht sie von
+      selbst auf — das kostet einen Angreifer vierzig Versuche pro Stunde und
+      einen Vertipper eine Kaffeepause.
+- [x] **Erst prüfen, dann rechnen.** Die Sperre greift VOR dem bcrypt-Vergleich.
+      Andersherum wäre die Bremse selbst der Hebel für eine Überlastung — jeder
+      Versuch kostet Kostenfaktor 12.
+- [x] **Gleiche Antwort für unbekannte und bekannte Adressen**, samt
+      Leerlauf-Vergleich, damit auch die Antwortzeit nichts verrät.
+- [x] **Die Adresse wird nur als gesalzenes Kürzel abgelegt.** Gebraucht wird
+      „dieselbe wie eben?", nicht die Adresse. Eine Liste, wer sich von wo
+      angemeldet hat, soll gar nicht erst entstehen.
+- [x] **Aufsperren als Supportfall.** Die Unternehmensebene hebt die Sperre
+      eigener Leute auf, OKUN auch die einer ganzen Verbindung — der Fall, dass
+      eine Einrichtung hinter einem Anschluss sich gemeinsam ausgesperrt hat.
+      Jede Aufhebung wird protokolliert, sonst bliebe genau der Angriff
+      unsichtbar, gegen den die Bremse gebaut ist.
+
+### Verzeichnis von Verarbeitungstätigkeiten (Art. 30)
+**Zwei Verzeichnisse, nicht eines.** Art. 30 kennt zwei Rollen, und wir sind
+beide: Der Kunde ist Verantwortlicher (Abs. 1), OKUN ist Auftragsverarbeiter
+(Abs. 2).
+
+Das Verzeichnis des Kunden **erzeugen wir ihm** aus dem Datenkatalog (§128) —
+je Datenart Zweck, Rechtsgrundlage mit Fundstelle, betroffene Personen, Daten,
+Empfänger und Löschung. Das ist kein Gefallen, sondern der Grund, warum ein
+Betrieb so ein Programm kauft: Er bekommt eine Pflicht erledigt, statt eine neue
+zu bekommen. Abrufbar unter *Datenschutz → Verarbeitungsverzeichnis*, druckbar
+als PDF.
+
+Es **gibt sich ausdrücklich nicht für vollständig aus**. Der Betrieb verarbeitet
+auch außerhalb dieses Programms — Bewerbungen auf Papier, eine Videoanlage am
+Eingang, die Telefonliste im Flur. Ein erzeugtes Verzeichnis, das das
+verschweigt, wäre gefährlicher als keines.
+
+### Maßnahmen (Art. 32)
+Zwanzig Maßnahmen in neun Rubriken — gegliedert nach der alten Anlage zu §9
+BDSG, weil ein Prüfer diese Gliederung wiedererkennt. Jede trägt einen **Beleg:
+den Pfad zu der Datei, in der sie tatsächlich steht.** Ein Test prüft, dass es
+die Datei gibt. Wer eine Maßnahme entfernt, ohne den Eintrag zu ändern, bekommt
+einen roten Lauf statt ein stilles Dokument.
+
+**Der Stand ist ehrlich gehalten:** 14 umgesetzt, 3 durch den Betreiber
+(Verschlüsselung im Ruhezustand, Sicherungen, Netz — das als eigene Leistung
+auszugeben wäre gelogen), 3 teilweise. Zu jeder nicht umgesetzten Maßnahme ist
+die Lücke benannt; ein Test erzwingt das. Eine TOM-Liste ohne offene Punkte
+glaubt niemand — zu Recht, sie sagt nur, dass niemand genau hingesehen hat.
+
+Die drei benannten Lücken: der zweite Faktor ist freiwillig und nicht erzwungen,
+die Sitzung gilt dreißig Tage, und ein dokumentierter Wiederherstellungstest der
+Sicherung fehlt — eine Sicherung, die nie zurückgespielt wurde, ist eine
+Vermutung.
+
+### Nebenbei gefunden: der Fehler hinter der „trägen" Dienstplanung
+`f-dienstplan` fiel seit Tagen sporadisch mit „0 Zuweisungen" um, und ich habe
+das der Aufwärmphase des Rechendiensts zugeschrieben. Falsch. Nach dem Rechnen
+geht die Sitzung in den Stand **`verifying`** — dort wird der Plan gegen die
+Regeln gehalten, und erst danach steht er in `week`. Die Prüfung kannte nur
+`queued` und `running`, brach deshalb sofort ab und las einen leeren Plan.
+Bestanden hat sie nur, wenn die Verifikation zufällig in denselben
+Drei-Sekunden-Takt fiel.
+
+Nachweis: 44 Modultests (Bremse, Vollständigkeit der Dokumente, Belegpfade) und
+45 Prüfungen am laufenden System (`pruefungen/g2-dsgvo-dokumente.mjs`) —
+darunter die Gegenprobe, dass ein anderes Konto von einer Sperre unberührt
+bleibt, und dass auch das richtige Passwort eine Sperre nicht aushebelt.
+Gesamtlauf: **1125/1125 in 32 Prüfungen**, 727 Modultests, Bauen sauber.
+
+### Noch offen aus diesem Auftrag
+- Datenschutzerklärung und Impressum für das Produkt selbst
+- Die Löschfristen einzeln gegen ihre Vorschrift prüfen
+- Lohn: Pfändung, betriebliche Altersvorsorge, Kurzarbeitergeld,
+  Mehrfachbeschäftigung, Bescheinigungen
+- Danach: ein Musterregelpaket für den Demo-Zugang
+
+## Block §153 (25.09.) — Impressum und Datenschutzerklärung
+
+**Der Hinweis stand schon da — er zeigte nur ins Leere.** Am Fuß der
+Anmeldeseite stand „© 2026 OKUN Workforce · Datenschutz · Impressum", als
+reiner Text, ohne Ziel. Das ist schlechter als gar nichts: Es sieht nach
+Erfüllung aus. §5 DDG verlangt „leicht erkennbar, unmittelbar erreichbar und
+ständig verfügbar".
+
+### Zwei Ebenen, die gern verwechselt werden
+- Für die Daten **seiner Mitarbeiter** ist der Kunde Verantwortlicher. Er
+  informiert sie nach Art. 13, nicht wir. Was wir dabei tun, steht in seinem
+  Verarbeitungsverzeichnis (§152) und im Vertrag zur Auftragsverarbeitung.
+- Für **diese Webseite** ist OKUN Verantwortlicher — für den Abruf der
+  Anmeldeseite, die öffentlichen Karriereseiten und die Protokolle, die dabei
+  entstehen. Dafür braucht es ein eigenes Impressum und eine eigene Erklärung.
+
+Beides liegt jetzt unter `/impressum` und `/datenschutz`, **ohne Anmeldung
+erreichbar**, verlinkt von der Anmeldeseite und aus der App unter „Ich".
+
+### Der Abschnitt, den die meisten Erklärungen auslassen
+**Art. 22 — automatisierte Entscheidungen.** Ein pauschales „findet nicht
+statt" wäre bequem und falsch: Das Programm rechnet Dienstpläne. Die Erklärung
+sagt deshalb genau, was gerechnet wird und wo die Grenze verläuft — der Plan ist
+ein *Vorschlag*, er wird angezeigt, kann geändert werden und wird erst wirksam,
+wenn ein Mensch ihn veröffentlicht. Genau darauf stellt Art. 22 Abs. 1 ab.
+
+Dazu der Workforce Score (freiwillig, ohne Wirkung auf Entgelt oder
+Arbeitsverhältnis) und der Hilfe-Assistent (sieht keine Betriebsdaten, bekommt
+nur den Text der Frage).
+
+### Was aus Daten wächst, steht nur an einer Stelle
+Die Liste der Dienstleister und die Aufbewahrungsfristen veralten am
+schnellsten. Beide werden aus dem Datenkatalog (§128) und dem
+Verarbeitungsverzeichnis (§152) erzeugt. Ein von Hand geschriebener Absatz
+daneben wäre nach dem nächsten Umbau falsch — und eine falsche
+Datenschutzerklärung ist schlechter als eine knappe.
+
+### Die Seiten zeigen ihre eigenen Lücken
+Solange Pflichtangaben fehlen, steht oben ein Kasten, der sie benennt — mit der
+Vorschrift dazu. Ein Impressum, das seine Unvollständigkeit verschweigt, wiegt
+in falscher Sicherheit; genau dafür werden Abmahnungen geschrieben.
+
+**Zu setzen sind** (in `.env.example` dokumentiert): `OKUN_FIRMA`,
+`OKUN_ANSCHRIFT`, `OKUN_VERTRETEN`, `OKUN_KONTAKT`, dazu `OKUN_REGISTER` und
+`OKUN_USTID`, sobald vorhanden, und `OKUN_DSB`, sobald ein
+Datenschutzbeauftragter benannt ist.
+
+Nachweis: 24 Modultests und 13 weitere Prüfungen in
+`pruefungen/g2-dsgvo-dokumente.mjs`. Gesamtlauf: **1138/1138 in 32 Prüfungen**,
+751 Modultests, Bauen sauber.
+
+> Die Texte sind sorgfältig hergeleitet und mit Fundstellen belegt. Die Freigabe
+> durch einen Anwalt oder Datenschutzbeauftragten ersetzt das nicht.
+
+## Block §154 (25.09.) — Die Löschfristen einzeln geprüft
+
+Jede der siebzehn Fristen gegen ihre Vorschrift gehalten, mit Herleitung und
+einer ehrlichen Angabe, wie belastbar sie ist: **sicher** (die Vorschrift nennt
+die Zahl), **Auslegung** (aus einer Wertung hergeleitet, vertretbar aber nicht
+zwingend) oder **zu klären** (da gehört die Antwort eines Fachmanns her).
+
+Ein Test hält die Prüfung an den Katalog: Eine neue Datenart ohne geprüfte Frist
+lässt den Lauf rot werden. Und jede Herleitung muss eine Fundstelle nennen — der
+Test hat beim Schreiben vier Einträge gefunden, in denen ich behauptet hatte,
+es gebe keine Vorschrift, ohne die Norm zu nennen, aus der das folgt.
+
+### Der Reflex, der falsch ist
+Im Zweifel länger aufbewahren — dem Finanzamt kann man dann nichts vorwerfen.
+Art. 5 Abs. 1 lit. e DSGVO sieht das anders: Daten dürfen nur so lange bleiben,
+wie der Zweck es verlangt. **Eine zu lange Frist ist genauso ein Verstoß wie
+eine zu kurze — nur einer, den niemand bemerkt.**
+
+### Was die Prüfung gefunden hat
+
+**Behoben — und es war mein eigener Fehler:** Die Bestätigung einer Belehrung
+wurde beim Ausscheiden gelöscht. Das ist genau der Beleg, für den §150 gebaut
+wurde: Behauptet ein ehemaliger Beschäftigter später, nie unterwiesen worden zu
+sein, stünde der Betrieb ohne Nachweis da. Art. 17 Abs. 3 lit. e DSGVO nimmt die
+Löschung dafür ausdrücklich zurück. Jetzt eine eigene Datenart, drei Jahre
+gesperrt (§195 BGB), danach gelöscht.
+
+**Vier Fragen für den Steuerberater und den Datenschutzbeauftragten** — sie
+stehen als Fragen da, nicht als Feststellungen, und sind im Programm unter
+*Datenschutz → Verarbeitungsverzeichnis* abrufbar:
+
+1. **Zeiterfassung, zwei Jahre — möglicherweise zu kurz.** §16 Abs. 2 ArbZG und
+   §17 MiLoG sagen „mindestens zwei Jahre". Die Aufzeichnungen sind aber die
+   Grundlage der Lohnabrechnung, und nach §147 Abs. 1 Nr. 5 AO sind Unterlagen,
+   die für die Besteuerung von Bedeutung sind, sechs Jahre aufzubewahren. Kommt
+   die Betriebsprüfung im vierten Jahr, liegt die Abrechnung vor — ihr Nachweis
+   ist gelöscht.
+2. **Personalakte, zehn Jahre — zu grob und vermutlich zu lang.** Die Akte wird
+   als ein Block mit der längsten denkbaren Frist behandelt. Eine
+   Lohnabrechnung ist ein Buchungsbeleg, ein Arbeitszeugnis nicht. Und die
+   Frist für Buchungsbelege wurde durch das Vierte
+   Bürokratieentlastungsgesetz von zehn auf **acht** Jahre verkürzt (§147
+   Abs. 3 AO, §257 Abs. 4 HGB, seit 1.1.2025). Die Kategorien sind im Programm
+   bereits vorhanden — die Unterscheidung lässt sich umsetzen, sobald die
+   Zahlen feststehen.
+3. **Lohnkonto: §28f SGB IV knüpft nicht an sechs Jahre an**, sondern an die
+   letzte Betriebsprüfung. Prüfungen finden etwa alle vier Jahre statt, also
+   liegt man meist richtig — aber eben nur meist.
+4. **Belehrungsnachweis: Genügen drei Jahre?** Bei Personenschäden aus einer
+   unterbliebenen Unterweisung reicht §199 Abs. 2 BGB bis zu dreißig Jahre.
+
+Dazu drei Anmerkungen ohne Handlungsbedarf: warum Krankheitszeiten sechs Jahre
+bleiben (Bestandteil der Abrechnung, nie eine Diagnose), warum ein Gespräch zu
+zweit ganz verschwindet, und warum der Löschantrag bei den Protokollen steht und
+nicht bei den Kontodaten.
+
+Nachweis: 18 Modultests und 8 weitere Prüfungen in
+`pruefungen/g2-dsgvo-dokumente.mjs`. Gesamtlauf: **1146/1146 in 32 Prüfungen**,
+769 Modultests, Bauen sauber.
+
+## Block §155 (26.09.) — Lohn Teil 1: Pfändung (§§850 ff. ZPO)
+
+**Warum das gefährlicher ist als der Rest der Abrechnung.** Bei jedem anderen
+Rechenfehler merkt es irgendwann jemand. Hier nicht: Zu viel einbehalten heißt,
+dass jemandem das Existenzminimum fehlt. Zu wenig einbehalten heißt, dass der
+**Arbeitgeber dem Gläubiger persönlich haftet** (§840 ZPO). Es gibt keine
+Seite, auf der ein Fehler harmlos wäre.
+
+### Drei Schritte, die gern verwechselt werden
+1. **Was ist überhaupt pfändbares Einkommen?** (§850a) Nicht alles, was
+   ausgezahlt wird, darf angefasst werden — die Hälfte der Mehrarbeit, das
+   Urlaubsgeld, Erschwerniszulagen bleiben außen vor.
+2. **Wie viel davon?** (§850c) Grundfreibetrag, der mit jeder Unterhaltspflicht
+   steigt; vom Rest bleiben drei bis neun Zehntel frei; oberhalb eines
+   Höchstbetrags ist alles pfändbar.
+3. **Wer bekommt es?** (§804 Abs. 3, §850d) Die ältere Pfändung geht vor,
+   Unterhalt steht davor — und für den gilt die Tabelle aus Schritt 2 gar nicht.
+
+### Die Unterscheidung, die in der Pflege Geld ausmacht
+**Nachtzuschläge sind unpfändbar, Sonntags- und Feiertagszuschläge nicht.** Das
+hat das Bundesarbeitsgericht ausdrücklich so entschieden (23.08.2017 –
+10 AZR 859/16): Nachtarbeit ist gesundheitlich belastend, der Zuschlag gleicht
+eine *Erschwernis* aus (§850a Nr. 3). Sonntagszuschläge gleichen keine
+Erschwernis aus, sondern die *Lage* der Arbeitszeit.
+
+Wer beides gleich behandelt, rechnet entweder zulasten des Beschäftigten oder
+zulasten des Gläubigers — und im zweiten Fall haftet der Betrieb dafür.
+
+### Was das Programm bewusst NICHT tut
+- **Es rät keinen notwendigen Unterhalt.** Bei einer Unterhaltspfändung setzt
+  das Gericht diesen Betrag fest. Fehlt er, wird **nichts** einbehalten und
+  die Oberfläche sagt warum — lieber gar nichts als eine geratene Zahl.
+- **Es rechnet nicht ohne geprüfte Tabelle.** Die Freigrenzen werden zum
+  1. Juli angepasst (§850c Abs. 4). Fehlt der Eintrag, wird der Abzug
+  verweigert statt mit veralteten Zahlen gerechnet.
+- **Es mindert nicht das Netto**, sondern den Auszahlungsbetrag. Steuerlich und
+  sozialversicherungsrechtlich ist das Geld verdient — es geht nur an jemand
+  anderen. Auf dem Beleg steht es als eigene Zeile je Gläubiger.
+
+> **Vor der ersten echten Pfändung zu prüfen:** Die Tabellenwerte sind nicht
+> gegen die amtliche Bekanntmachung im Bundesgesetzblatt abgeglichen; der
+> Eintrag ab Juli 2026 ist sogar nur fortgeschrieben. Es sind vier Zahlen je
+> Zeitraum — `ungepruefteTabellen()` listet sie auf.
+
+### Nebenbei gefunden: Löschen löschte nicht
+Die Prüfung ließ nach dem Aufräumen eine laufende Pfändung zurück. Der Grund
+war größer als erwartet: **`DELETE /api/employees/[id]` entfernte nur die eine
+Zeile in `Employee`.** Lohnabrechnungen, Zeitbuchungen, Pfändungen und Dateien
+blieben liegen — unsichtbar in der Oberfläche, vorhanden in der Datenbank. In
+der Prüfdatenbank waren es zwei Abrechnungen, drei Zeitbuchungen und zwei
+Pfändungen ohne zugehörigen Menschen.
+
+Der harte Löschweg räumt jetzt über denselben Zugriffsplan ab, den das
+Löschkonzept (§128) ohnehin führt, und meldet zurück, wie viel entfernt wurde.
+Er bleibt ausdrücklich der Weg für Daten, die es nie hätte geben dürfen — die
+Löschung eines ausgeschiedenen Beschäftigten läuft weiter über
+`/api/dsgvo/loeschung` und sperrt dort, wo das Gesetz aufbewahren heißt.
+
+Nachweis: 41 Modultests für die Rechenwege (jeder Grenzfall einzeln) und 31
+Prüfungen am laufenden System (`pruefungen/d17-pfaendung.mjs`) — darunter, dass
+ein zweiter Lohnlauf den Abzug nicht verdoppelt und dass die Standortleitung
+keine Pfändung sieht. Gesamtlauf: **1177/1177 in 33 Prüfungen**, 810
+Modultests, Bauen sauber.
+
+## Block §156 (26.09.) — Lohn Teil 2: Betriebliche Altersvorsorge
+
+**Der Fehler, den fast jede selbstgebaute Abrechnung macht.** Man merkt sich
+„acht Prozent sind frei" und rechnet damit. Das ist zweimal zur Hälfte richtig
+— und deshalb besonders gefährlich.
+
+### Zwei Grenzen in der Höhe
+- **Steuerfrei** sind Beiträge bis **8 %** der Beitragsbemessungsgrenze RV
+  (§3 Nr. 63 EStG).
+- **Beitragsfrei** in der Sozialversicherung sind sie nur bis **4 %**
+  (§1 Abs. 1 Satz 1 Nr. 9 SvEV).
+
+Dazwischen liegt ein Bereich, in dem der Beitrag steuerfrei ist und trotzdem
+verbeitragt wird. **Steuerbrutto und Beitragsbrutto sinken unterschiedlich
+stark.** Wer eine Zahl führt, zieht dort zu wenig Sozialversicherung ab — und
+das fällt erst bei der Betriebsprüfung auf, dann vier Jahre rückwirkend.
+
+### Zwei Grenzen im Zeitraum — derselbe Fehler in der anderen Achse
+- **Steuerlich** ist der Höchstbetrag ein **Jahresbetrag**. Er darf jederzeit
+  ausgeschöpft werden, auch auf einen Schlag im Dezember (R 3.63 LStR). Was ein
+  Monat nicht braucht, bleibt nutzbar.
+- **Beitragsrechtlich** wird bei laufendem Entgelt **monatlich** gerechnet: ein
+  Zwölftel der 4 % je Monat, **ohne Nachholung**. Was ein Monat nicht
+  ausschöpft, ist verfallen.
+
+Wer beide als Jahresbetrag führt, lässt im Januar das Zwölffache beitragsfrei
+durchlaufen. Das Programm führt deshalb zwei getrennte Zähler:
+`steuerfreiBisherImJahr` für die Steuer, `svfreiBisherImMonat` für die
+Beiträge. Beitragsfrei kann außerdem nur sein, was steuerfrei ist — ist der
+Jahresrahmen erschöpft, ist der Monatsrahmen gegenstandslos.
+
+Beispiel bei einer BBG von 8.450 € im Monat (2026): 8.112 € steuerfrei im
+Jahr, 338 € beitragsfrei im Monat. Wandelt jemand 507 € um, sinkt das
+Steuerbrutto um 507 €, das Beitragsbrutto aber nur um 338 €.
+
+### Der Zuschuss ist nicht einfach 15 %
+§1a Abs. 1a BetrAVG verpflichtet den Arbeitgeber, 15 % weiterzugeben — aber
+nur, *„soweit er durch die Entgeltumwandlung Sozialversicherungsbeiträge
+einspart"*. Oberhalb der 4-%-Grenze spart er nichts, also schuldet er dort
+auch nichts. Das Programm nennt **beide Zahlen**: die Pflicht und das, was
+vereinbart ist. Wer weniger vereinbart, bekommt es beim Anlegen gesagt — nicht
+erst auf der Abrechnung, wenn schon unterschrieben ist.
+
+Ein pauschaler Zuschuss auf den ganzen Betrag ist zulässig und wird oft
+vereinbart; er ist dann freiwillig, und genau so steht er da.
+
+### Was das Programm bewusst NICHT tut
+- **Altverträge nach §40b EStG a.F.** (vor 2005 geschlossen) werden nicht
+  gerechnet. Sie laufen nach eigenen Regeln. Das Programm erkennt sie, weist
+  die Umwandlung aus, mindert aber nichts und sagt, dass Beiträge und
+  Pauschsteuer von Hand gehören — statt sie still falsch zu rechnen.
+- **Es löscht keinen abgerechneten Vertrag.** Wurde damit schon ein Monat
+  abgerechnet, wird er beendet, nicht gelöscht — sonst weist ein Beleg eine
+  Umwandlung aus, deren Vertrag es nicht mehr gibt.
+- **Der Zuschuss mindert das Entgelt nicht.** Er kommt obendrauf: mehr an die
+  Versorgung, gleiches Brutto.
+
+### Wer was darf
+Anlegen und ändern darf die Unternehmensebene. Die Standortleitung sieht ihren
+Standort mit — anders als bei einer Pfändung (§155), denn eine Entgelt&shy;um&shy;wandlung
+ist nichts Belastendes, sondern ein Anspruch (§1a Abs. 1 BetrAVG), und sie
+verändert das Brutto. Der Beschäftigte sieht seinen eigenen Vertrag; er hat ihn
+schließlich geschlossen.
+
+Nachweis: 28 Modultests für die Rechenwege und 36 Prüfungen am laufenden System
+(`pruefungen/d18-bav.mjs`) — darunter der Bereich zwischen 4 % und 8 %, in dem
+das Beitragsbrutto über dem Steuerbrutto liegt, und ein Beitrag über dem
+Jahresrahmen.
+
+## Block §157 (26.09.) — Lohn Teil 3: Kurzarbeitergeld (§§95 ff. SGB III)
+
+**Zwei Fehler, die in entgegengesetzte Richtungen Geld kosten.**
+
+### Fehler eins: zweimal zahlen
+Wer in einem Monat mit Kurzarbeit das volle Monatsgehalt abrechnet und
+obendrein Kurzarbeitergeld auszahlt, zahlt zweimal — und das zweite bekommt er
+nicht erstattet. Abgerechnet wird deshalb das **Istentgelt**: das tatsächlich
+erzielte Bruttoarbeitsentgelt (§106 Abs. 1 SGB III). Es tritt an die Stelle des
+vertraglichen Entgelts, und die Abrechnung sagt das auf dem Beleg.
+
+### Fehler zwei: auf der Bruttodifferenz rechnen
+Kurzarbeitergeld ist **nicht** 60 % der Differenz der Bruttobeträge, sondern
+60 % (mit Kind 67 %) der Differenz der **pauschalierten Nettobeträge**
+(§§105, 106 SGB III). Bei 4.000 € Soll und 2.000 € Ist sind das nicht 1.200 €,
+sondern rund 696 €. Wer nach Brutto rechnet, zahlt über 500 € im Monat aus
+eigener Tasche — je Person.
+
+Das pauschalierte Netto ist eine eigene Größe (§153 SGB III): Bruttoentgelt
+minus 20 % Sozialversicherungspauschale, minus Lohnsteuer, minus Soli — **ohne
+Kirchensteuer** und unabhängig davon, was tatsächlich abgeführt wird.
+
+### Was fast immer vergessen wird
+Auf das **fiktive Entgelt** — 80 % des Ausfalls — fallen Beiträge zu Renten-,
+Kranken- und Pflegeversicherung an, und die trägt der **Arbeitgeber allein**
+(§249 Abs. 2 SGB V, §168 Abs. 1 Nr. 1a SGB VI). Die Erstattung aus der Pandemie
+ist ausgelaufen. Im Beispiel oben sind das 616 € im Monat, die in den
+Arbeitgeberkosten stehen — sonst sähe Kurzarbeit billiger aus, als sie ist.
+Zur Arbeitslosenversicherung fallen keine Beiträge an.
+
+### Die Fristen, an denen es scheitert
+- **§99 Abs. 2 SGB III** — Geld gibt es frühestens ab dem Kalendermonat, in dem
+  die Anzeige bei der Agentur eingegangen ist. Deshalb ist das Eingangsdatum
+  ein Pflichtfeld, und deshalb sagt der Lohnlauf es, wenn ein Monat davor liegt.
+- **§109 Abs. 1 SGB III** — der Leistungsantrag muss binnen drei Monaten nach
+  Ablauf des Abrechnungsmonats gestellt sein. Das ist eine **Ausschlussfrist**:
+  danach ist der Anspruch erloschen. Die Frist steht an jeder Antwort, und ab
+  30 Tagen davor wird sie beim Eintragen genannt.
+
+### Der Betrag aus der amtlichen Tabelle geht vor
+Die Agentur rechnet nach ihrer „Tabelle zur Berechnung des
+Kurzarbeitergeldes". Sie entsteht aus demselben Programmablaufplan, aber mit
+einer eingeschränkten Vorsorgepauschale (§153 Abs. 1 Satz 2 Nr. 2 SGB III
+verweist nur auf §39b Abs. 2 Satz 5 Nr. 3 Buchstabe a und b EStG). Bei üblichen
+Entgelten stimmt das Ergebnis überein, bei niedrigen kann es um einige Euro
+abweichen. Wer den Tabellenwert abliest, trägt ihn ein — dann gilt er, und das
+Programm nennt die eigene Abweichung, damit ein systematischer Fehler auffällt
+statt sich zwölf Monate zu wiederholen.
+
+### Nebenbei geregelt: Pfändung trifft Kurzarbeit
+Kurzarbeitergeld tritt an die Stelle des ausgefallenen Entgelts und ist deshalb
+pfändbar wie Arbeitseinkommen (§850 Abs. 4 ZPO). Es geht in die
+Pfändungsbemessung ein — sonst bliebe bei Kurzarbeit zu wenig einbehalten, und
+dafür haftet der Betrieb dem Gläubiger persönlich (§840 ZPO).
+
+### Für die Agentur
+Die **Abrechnungsliste** je Monat: Person, Personalnummer, Soll- und
+Iststunden, Soll- und Istentgelt, Ausfall in Prozent, Leistungssatz,
+Kurzarbeitergeld und die Beiträge auf das fiktive Entgelt, mit Summen und der
+Betriebsschwelle nach §96 Abs. 1 Nr. 4 SGB III. Sie stellt die
+Unternehmensebene; die Standortleitung sieht ihre Leute, aber stellt keinen
+Antrag.
+
+Nachweis: 34 Modultests und 45 Prüfungen am laufenden System
+(`pruefungen/d19-kurzarbeit.mjs`) — darunter, dass das Kurzarbeitergeld weder
+im Steuer- noch im Beitragsbrutto noch im Netto steht und dass es unter
+60 % der Bruttodifferenz bleibt. Gesamtlauf: **1258/1258 in 35 Prüfungen**,
+872 Modultests, Bauen sauber.
+
+## Block §158 (26.09.) — Lohn Teil 4: Zwei Arbeitgeber und die Abfindung
+
+### Die Beitragsbemessungsgrenze gehört der Person, nicht dem Arbeitgeber
+Zwei halbe Stellen in zwei Häusern, Festanstellung plus Wochenenddienst beim
+Nachbarträger — in der Pflege der Normalfall. Wenn jeder Arbeitgeber die
+Grenze voll auf sein eigenes Entgelt anwendet, zahlt die Person auf denselben
+Euro **zweimal** Beiträge. §22 Abs. 2 SGB IV teilt die Grenze deshalb im
+Verhältnis der Entgelte auf: Wer die Hälfte des Gesamtentgelts zahlt,
+verbeitragt die Hälfte der Grenze.
+
+Ohne Angabe des anderen Entgelts wird ganz normal gerechnet — mit voller
+Grenze. Das ist bewusst der sichere Weg: Zu viel abgeführte Beiträge holt sich
+die Person über die Krankenkasse zurück, zu wenig abgeführte holt sich die
+Rentenversicherung beim Betrieb. Und das letzte Wort hat ohnehin die Kasse, die
+das Gesamtentgelt feststellt (§28i SGB IV); bis dahin ist die Zahl im Programm
+die Angabe des Beschäftigten, und die Abrechnung sagt das.
+
+Dazu die Regel, die am häufigsten überrascht: **Ein** Minijob neben einer
+Hauptbeschäftigung bleibt geringfügig, der **zweite** wird mit ihr
+zusammengerechnet und ist versicherungspflichtig (§8 Abs. 2 SGB IV) — nur die
+Arbeitslosenversicherung bleibt außen vor.
+
+### Die Abfindung: eine Änderung, die viele Programme noch nicht kennen
+Bis einschließlich 2024 durfte der Arbeitgeber die **Fünftelregelung** schon
+beim Lohnsteuerabzug anwenden. Das Wachstumschancengesetz hat die dafür nötige
+Vorschrift (**§39b Abs. 3 Satz 9 EStG**) zum **1. Januar 2025 gestrichen**.
+
+Seitdem versteuert der Arbeitgeber die Abfindung als gewöhnlichen sonstigen
+Bezug. Die Ermäßigung nach §34 EStG gibt es weiterhin — aber die Person holt
+sie sich über ihre Einkommensteuererklärung. Wer das nicht mitbekommen hat,
+behält zu wenig Lohnsteuer ein; das fehlt nicht dem Finanzamt, sondern der
+Person, die einen Bescheid mit einer Nachzahlung bekommt.
+
+Der Hinweis steht deshalb an drei Stellen: **beim Erfassen** (vor der
+Unterschrift), **im Lohnlauf** und **auf dem Beleg**, neben dem Betrag. Dazu
+eine Abschätzung der **Zusammenballung** (§34 Abs. 1, Abs. 2 Nr. 2 EStG) — ob
+die Abfindung die bis Jahresende entgangenen Einnahmen übersteigt. Das Programm
+entscheidet das nicht; es rechnet die Faustregel und sagt, wie es dazu kommt.
+
+Sozialversicherung: eine echte Abfindung ist **vollständig beitragsfrei**
+(§14 SGB IV) — kein Arbeitsentgelt, sondern Entschädigung. Restlohn,
+Urlaubsabgeltung oder Karenzentschädigung wären es dagegen nicht, und auch das
+steht dabei.
+
+### Nebenbei gefunden: die beitragsfreie Zahlung verbrauchte eine Grenze
+Die anteilige Jahres-Beitragsbemessungsgrenze für Einmalzahlungen wurde aus
+`svBrutto + sonstigeBezuege` der Vormonate gebildet — **einschließlich
+beitragsfreier** Zahlungen. Eine Abfindung im März verkleinerte damit den
+Rahmen für das Weihnachtsgeld im November, und das Weihnachtsgeld wurde zu
+niedrig verbeitragt. Beitragsfreie Bezüge werden jetzt abgezogen.
+
+Nachweis: 24 Modultests und 25 Prüfungen am laufenden System
+(`pruefungen/d20-mehrfach-abfindung.mjs`) — darunter, dass bei zwei gleich
+hohen Entgelten genau die Hälfte der Beiträge anfällt. Gesamtlauf:
+**1283/1283 in 36 Prüfungen**, 896 Modultests, Bauen sauber.
+
+## Block §159 (26.09.) — Lohn Teil 5: die Umlagen U1, U2 und Insolvenzgeld
+
+**Eine Lücke, die beim Aufräumen auffiel.** Jeder Arbeitgeber zahlt diese drei
+Umlagen, jeden Monat, auf jedes Entgelt — und sie standen nirgends. Eine
+Abrechnung ohne sie zeigt die Arbeitgeberkosten zu niedrig, und bei der
+Betriebsprüfung fehlt Geld, das nie abgeführt wurde.
+
+### Drei Umlagen, drei verschiedene Regeln
+- **U1** — Entgeltfortzahlung im Krankheitsfall (§1 Abs. 1 AAG). Nur für
+  **kleine** Betriebe bis 30 Arbeitnehmer. Dafür erstattet die Kasse einen
+  Teil der fortgezahlten Vergütung.
+- **U2** — Mutterschaft (§1 Abs. 2 AAG). Für **alle** Arbeitgeber, ohne
+  Größengrenze. Dafür erstattet die Kasse Mutterschutzlohn und Zuschuss zum
+  Mutterschaftsgeld zu 100 % — genau deshalb gibt es sie für alle: Sonst wäre
+  die Einstellung einer Frau im gebärfähigen Alter für einen kleinen Betrieb
+  ein Risiko.
+- **Insolvenzgeldumlage** (§358 SGB III). Bundeseinheitlicher Satz durch
+  Rechtsverordnung, für alle außer der öffentlichen Hand.
+
+### Die Betriebsgröße wird nicht nach Köpfen gezählt
+§3 AAG rechnet Teilzeit **anteilig**: bis 10 Wochenstunden 0,25, bis 20 dann
+0,5, bis 30 dann 0,75, darüber 1,0 — und Auszubildende zählen gar nicht mit.
+Eine Einrichtung mit 40 Teilzeitkräften zu je 20 Stunden hat 20 Arbeitnehmer
+im Sinne des AAG und nimmt am U1-Verfahren teil. Wer nach Köpfen zählt,
+verzichtet auf eine Erstattung, die ihm zusteht.
+
+### Die Sätze stehen nicht im Gesetz
+U1 und U2 legt **jede Krankenkasse in ihrer Satzung** fest — U1 zwischen rund
+1 % und 3 %, oft in mehreren Erstattungsstufen zur Wahl. Sie werden deshalb je
+Kasse hinterlegt und **nicht geraten**: Eine erfundene Umlage fällt niemandem
+auf, eine fehlende schon. Fehlt ein Satz, wird nichts gerechnet und der
+Lohnlauf sagt es — einmal für das Unternehmen, nicht hundertmal je Person.
+
+Die Übersicht zeigt dazu, welche Kassen bei den eigenen Beschäftigten
+überhaupt vorkommen und für welche davon noch nichts hinterlegt ist. Eine
+Einstellung, die man erst suchen muss, wird nicht gepflegt.
+
+### Die Feinheiten, die sonst untergehen
+- Beim **Minijob** rechnet die Minijob-Zentrale mit eigenen,
+  bundeseinheitlichen Sätzen ab. Das Programm rechnet mit denen der Kasse und
+  sagt, dass der Betrag mit dem Beitragsnachweis abzugleichen ist.
+- Bei einer **kurzfristigen Beschäftigung** fällt **keine**
+  Insolvenzgeldumlage an: Sie bemisst sich nach dem
+  rentenversicherungspflichtigen Entgelt (§358 Abs. 2 SGB III), und das gibt es
+  dort nicht. Die U1 setzt einen Anspruch auf Entgeltfortzahlung voraus, den es
+  erst nach vier Wochen gibt (§3 Abs. 3 EFZG) — auch das steht als Hinweis da.
+- Bemessungsgrundlage ist das Entgelt **bis zur Beitragsbemessungsgrenze der
+  Rentenversicherung** (§7 Abs. 2 AAG).
+
+> **Vor dem Jahresabschluss zu prüfen:** Der Satz der Insolvenzgeldumlage für
+> 2026 ist aus 2025 fortgeschrieben (0,15 %) und **nicht** gegen die
+> Rechtsverordnung abgeglichen. Der Lohnlauf sagt das bei jedem Durchgang.
+
+Nachweis: 18 Modultests und 30 Prüfungen am laufenden System
+(`pruefungen/d21-umlagen.mjs`) — darunter, dass die Umlagen die
+Arbeitgeberkosten erhöhen und das Netto des Arbeitnehmers nicht anrühren.
+Gesamtlauf: **1315/1315 in 37 Prüfungen**, 914 Modultests, Bauen sauber.
+
+## Block §160 (26.09.) — Lohn Teil 6: die Bescheinigungen
+
+**Eine Bescheinigung ist keine Gefälligkeit.** Wer sie falsch ausstellt, kostet
+einen Menschen Geld: ein zu niedriges Regelentgelt heißt ein zu niedriges
+Krankengeld für bis zu 78 Wochen, ein falscher Beendigungsgrund eine Sperrzeit
+von bis zu zwölf Wochen. Und wer sie zu spät ausstellt, verzögert die Leistung
+bei jemandem, der gerade kein Einkommen hat.
+
+### Was das Programm tut — und was nicht
+Alle drei gehen heute elektronisch: die Arbeitsbescheinigung über **BEA**, die
+Entgeltbescheinigungen über **EEL**. Beides braucht einen zertifizierten
+Zugang, den wir nach derselben Überlegung wie bei den SV-Meldungen nicht
+anstreben: *wir rechnen, der Steuerberater meldet.*
+
+Was hier entsteht, sind die **Zahlen** — vollständig, aus den abgerechneten
+Monaten gezogen, mit der Vorschrift daneben, aus der sie folgen. Wer sie
+einträgt, muss nichts suchen und nichts nachrechnen.
+
+### Arbeitsbescheinigung (§312 SGB III)
+Bemessungsentgelt aus den letzten zwölf abgerechneten Monaten, je Kalendertag,
+**einschließlich Einmalzahlungen**. Reicht der Rahmen nicht, sagt die Antwort,
+dass die Agentur ihn auf zwei Jahre erweitert (§150 Abs. 3 SGB III).
+
+Fünf Angaben bleiben **ausdrücklich offen**, weil sie in keinen Daten stehen
+und nicht geraten werden dürfen: Beendigungsgrund (§159 SGB III — Sperrzeit),
+Kündigungsfrist (§158 SGB III — Ruhen), Abfindung, Urlaubsabgeltung
+(§157 Abs. 2 SGB III) und ob ordentlich kündbar war. Sie stehen als Fragen da,
+nicht als leere Felder.
+
+### Entgeltbescheinigung Krankengeld (§47 SGB V, §23c SGB IV)
+Regelentgelt = Entgelt des letzten abgerechneten Zeitraums ÷ 30, **plus die
+Einmalzahlungen der letzten zwölf Monate ÷ 360** (§47 Abs. 2 Satz 6 SGB V) —
+das Vergessen dieser Zeile ist der häufigste Fehler und kostet bei einem
+Weihnachtsgeld schnell zehn Euro am Tag. Gedeckelt auf die
+Beitragsbemessungsgrenze der Krankenversicherung.
+
+Die Vorschau zeigt 70 % des Regelentgelts, höchstens 90 % des Nettoentgelts —
+ausdrücklich als Vorschau, damit ein Zahlendreher auffällt, bevor er beim
+Menschen ankommt. Rechnen tut die Kasse.
+
+### Zuschuss zum Mutterschaftsgeld (§20 MuSchG)
+Kalendertägliches Nettoentgelt aus den letzten **drei** abgerechneten Monaten,
+minus das Mutterschaftsgeld der Kasse von höchstens **13 € je Kalendertag**;
+den Rest zahlt der Arbeitgeber. **Einmalzahlungen bleiben außer Ansatz**
+(§21 Abs. 1 Satz 2 MuSchG) — wer sie mitrechnet, setzt den Zuschuss zu hoch an
+und bekommt die Differenz nicht erstattet.
+
+Erstattet wird der Zuschuss über die **U2 zu 100 %** (§159) — das schließt den
+Kreis zum vorigen Block: Deshalb zahlen alle Arbeitgeber diese Umlage.
+
+Nachweis: 22 Modultests und 30 Prüfungen am laufenden System
+(`pruefungen/d22-bescheinigungen.mjs`) — darunter, dass ein Weihnachtsgeld das
+Regelentgelt um genau ein Dreihundertsechzigstel je Kalendertag erhöht.
+Gesamtlauf: **1345/1345 in 38 Prüfungen**, 936 Modultests, Bauen sauber.
+
+### Damit ist der Lohn-Block abgeschlossen
+Offen bleibt bewusst nur eines: eine **Oberfläche** für Pfändung,
+Entgeltumwandlung, Kurzarbeit und die Umlagesätze. Alles vier ist derzeit nur
+über die Schnittstelle erfassbar. Die Rechenwege stehen, sind geprüft und
+belegt — was fehlt, sind Eingabemasken.
+
+## Block §161 (26.09.) — Das Musterregelpaket
+
+**Die Lücke zwischen Vertragsabschluss und Aufnahmegespräch.** Ein Regelpaket
+entsteht im Gespräch über den Betriebsablauf. Bis dieses Gespräch stattgefunden
+hat, steht ein neuer Kunde ohne Paket da: Der Rechendienst kennt nur die
+allgemeinen Grenzen — Arbeitszeit, Ruhezeit, Tage am Stück — und weiß nichts
+über Fachkraftquoten, Leitung oder Auszubildende. Sein erster Plan sieht gut
+aus und ist fachlich falsch. Das ist der schlechteste denkbare erste Eindruck.
+
+### Was das Musterpaket abdeckt
+Sechs Regeln, die in fast jeder Einrichtung gelten:
+
+| Regel | Warum |
+|---|---|
+| In Früh-, Spät- und Nachtdienst mindestens eine Fachkraft | Rechnerisch ist eine Schicht nur aus Hilfskräften besetzt; fachlich ist sie ein Kunstfehler |
+| Wer in Ausbildung ist, steht nie allein im Dienst | Wer allein steht und nicht verantworten darf, ist im Ernstfall ausgeliefert |
+| Und nie im Nachtdienst | Nachts ist niemand da, den man fragen kann |
+| Leitung ohne feste Gruppe | Sonst sieht der Plan besetzt aus und ist es nicht |
+| Leitung nicht im Nachtdienst | Sie muss am nächsten Vormittag erreichbar sein |
+| Höchstens drei Nachtdienste am Stück | Drei Nächte sind etwas anderes als drei Frühdienste |
+| Mindestens ein ganzes Wochenende frei | Wer jeden Samstag arbeitet und jeden Sonntag frei hat, hat nie ein Wochenende |
+
+### Der Unterschied zum Kundenpaket — und warum er wichtig ist
+| Musterpaket | Kundenpaket |
+|---|---|
+| kennt den Betrieb nicht | entsteht aus dem Gespräch |
+| spricht über **Rollen** | spricht über **Namen** |
+| **überspringt**, was nicht passt | **scheitert laut**, wenn etwas fehlt |
+| für alle gleich | für diesen einen Betrieb |
+
+Bisher galt im Rechendienst ein einziger Grundsatz: *Eine Regel, die ins Leere
+läuft, ist der teuerste Fehler überhaupt — sie sieht aus, als würde sie
+wirken.* Für ein Kundenpaket bleibt das so. Ein Musterpaket kennt den Betrieb
+aber nicht: Ob es Nachtdienste gibt, ob mit Gruppen geplant wird, ob jemand als
+Auszubildender geführt ist — das weiß es nicht, und dass eine Regel nicht
+greift, ist dort der Normalfall.
+
+Deshalb gibt es `versuche()`: Passt eine Regel nicht, steht im Plan-Protokoll,
+**warum** sie übersprungen wurde. **Diese Liste ist die Tagesordnung für das
+Gespräch**, aus dem das eigene Paket entsteht. Die Prüfung zeigt beides: Das
+Musterpaket läuft auch auf einer Einrichtung ohne Nachtdienst, ohne Gruppen
+und ohne Azubi durch — das Kundenpaket der Kita scheitert auf derselben
+Einrichtung weiterhin laut.
+
+### Neue Bausteine
+`rolle_ohne_gruppe`, `rolle_niemals_dienst` (dieselben Regeln über die Rolle
+statt über den Namen), `hoechstens_am_stueck` (Blöcke einer Dienstart über
+Kalendertage), `freies_wochenende` (ganze Wochenenden, nicht einzelne Tage),
+`nie_allein` und `versuche`.
+
+### In der Oberfläche
+Das Paket heißt in der Auswahl *„Muster Pflege (Vorlage) — Vorlage"* und trägt
+am zugeordneten Standort einen Hinweis: Es ist ein Ausgangspunkt, kein
+Kundenpaket. Wer es zuordnet und dann vergisst, plant dauerhaft mit Regeln, die
+für niemanden gemacht wurden — und merkt es nicht, weil der Plan ja entsteht.
+
+Nachweis: 40 Tests im Rechendienst (`solver-service/test_rulepacks.py`, davon
+19 neu) und 6 Prüfungen am laufenden System in `pruefungen/f5-regelpakete.mjs`.
+Geprüft wird nicht, ob ein Baustein durchläuft, sondern ob der **gelöste Plan**
+sich daran hält. Gesamtlauf: **1351/1351 in 38 Prüfungen**, 936 Modultests,
+Bauen sauber.
+
+## Block §162 (26.09.) — Die vier fehlenden Masken
+
+**Die Rechenwege standen, erfassen konnte man sie nicht.** Pfändung,
+Entgeltumwandlung, Kurzarbeit und die Umlagesätze waren nur über die
+Schnittstelle erreichbar — und keine Lohnbuchhaltung in einem Pflegeheim setzt
+einen HTTP-Aufruf ab. Jetzt liegen alle vier auf einer Seite:
+`/company/lohnverwaltung`.
+
+### Warum eine eigene Seite und nicht die Lohnabrechnung
+Zwei Gründe, und der zweite wiegt schwerer. Erstens sind es **Stammdaten**,
+keine Monatsarbeit: Ein bAV-Vertrag läuft Jahre, ein Umlagesatz ändert sich
+einmal im Jahr. Zweitens die **Rolle**: `/company/payroll` ist dieselbe Seite
+wie `/admin/payroll`, die Standortleitung sieht sie — und eine Pfändung darf
+sie nicht sehen (§155). Die Seite liegt deshalb allein unter `/company`, und
+die Schnittstellen dahinter prüfen die Rolle noch einmal selbst. Eine Seite,
+die man nicht verlinkt, ist keine Sicherung.
+
+### Was die Masken sagen, bevor ein Fehler passiert
+- **bAV**: beide Grenzen stehen oben, *bevor* ein Betrag eingetragen ist — und
+  während des Tippens rechnet die Maske mit: „600 € liegen über der
+  monatlichen Beitragsgrenze von 338 €. Beitragsfrei bleiben davon 338 €, der
+  Rest ist steuerfrei, aber beitragspflichtig." Wer das erst auf der
+  Abrechnung liest, hat den Vertrag schon unterschrieben.
+- **Umlagen**: die Seite zeigt von sich aus, welche Kassen bei den eigenen
+  Beschäftigten vorkommen und für welche noch nichts hinterlegt ist. Dazu die
+  gewichtete Betriebsgröße mit der Zählweise nach §3 AAG.
+- **Pfändung**: der Hinweis, dass die Standortleitung sie nicht sieht; bei
+  einer Unterhaltspfändung erscheint das Pflichtfeld aus dem Beschluss mit dem
+  Satz, dass ohne ihn nichts einbehalten wird.
+- **Kurzarbeit**: die Ausschlussfrist steht ungefragt oben — „noch 96 Tage" —
+  und färbt sich, wenn es knapp wird. Die Monatsfelder erscheinen erst, wenn
+  eine Anzeige da ist, denn ohne sie besteht kein Anspruch.
+
+### Nebenbei gefunden: „undefined" als Pfändungsart
+Die erste Ansicht der neuen Liste zeigte `undefined · Stadtkasse …`. Der
+Grund war in zwei Schnittstellen derselbe:
+
+```ts
+const art = (String(body.art ?? 'normal') in ARTEN ? String(body.art) : 'normal')
+```
+
+Der Rückfall wird auf dem **gedefaulteten** Wert geprüft — `'normal'` besteht
+die Prüfung — übernommen wird aber der **rohe**: `String(undefined)` ist die
+Zeichenkette `"undefined"`. Fehlte das Feld, stand sie in der Spalte. Dieselbe
+Zeile gab es beim Durchführungsweg der bAV. Beides korrigiert, beides hat
+jetzt seine Gegenprüfung (`d17`, `d18`).
+
+Das ist genau, wofür eine Oberfläche gut ist: Die HTTP-Prüfungen schickten das
+Feld immer mit, weil sie wussten, dass es existiert.
+
+Nachweis: 24 Prüfungen im echten Browser
+(`pruefungen/browser/lohnverwaltung.mjs`, bewusst außerhalb des Gesamtlaufs —
+Playwright ist keine Projektabhängigkeit) und zwei neue Gegenprüfungen im
+Gesamtlauf. **1355/1355 in 38 Prüfungen**, 938 Modultests, Bauen sauber.
+
+## Block §163 (26.09.) — Kundenpaket Kita: zwei Etagen, acht Gruppen
+
+Das erste Regelpaket, das ein vollständiges schriftliches Regelwerk eines
+Kunden abbildet: 16 Kräfte, zwei Etagen, acht Gruppen, geöffnet 06:00–17:00.
+
+### Regelpakete konnten bisher nur verbieten
+Das war die eigentliche Arbeit. Ein Baustein konnte sagen „das ist nicht
+erlaubt" — und damit lässt sich die Hälfte dessen, was ein Betrieb über seinen
+Dienstplan sagt, nicht ausdrücken: *möglichst nicht*, *fair über die Wochen*,
+*nur im Notfall* sind Bewertungen, keine Verbote. Wer ein Verbot daraus macht,
+bekommt einen unlösbaren Plan oder eine Regel, die im Ernstfall alles
+blockiert.
+
+`PlanKontext` hat deshalb drei neue Fähigkeiten:
+- **`strafe(gewicht, term)`** — das Paket steuert Kostenterme zum Ziel des
+  Solvers bei, im Verhältnis zu dessen eigenen Gewichten (unbesetzte Stelle
+  10.000, Gruppenwechsel 300, Minute über der Sollzeit 30).
+- **`melde_wenn(variable, art, text)`** — Anzeiger, die **nach** dem Lösen
+  ausgewertet werden. Ob eine weiche Regel wirklich gerissen ist, weiß man
+  erst, wenn der Plan steht.
+- **Netto-Arbeitszeit je Dienst** — 06:00–14:30 sind 8:30 Anwesenheit und 8:00
+  Arbeitszeit. Wer mit der Anwesenheit rechnet, schreibt jedem Achtstündler
+  zweieinhalb Stunden Mehrarbeit in die Woche.
+
+### Die Gewichtsleiter — sie ist die eigentliche Fachlichkeit
+| Gewicht | Was |
+|---|---|
+| 50.000 | Gruppe 1 unter zwei Personen |
+| 30.000 | Eine Etage wird nicht geöffnet oder geschlossen |
+| 10.000 | Eine Gruppe unbesetzt *(Rechendienst)* |
+| **9.000** | **Die Leitung springt ein** |
+| 8.000 | Jemand bekommt einen zweiten Früh- oder Spätdienst in der Woche |
+| 2.000 | Eine persönliche Vorliebe wird verletzt |
+| 1.500 | Die Springerin verlässt ihre Etage |
+| 800 / 300 | Gruppenwechsel über die Etage / innerhalb *(Rechendienst)* |
+| 200 | Die Springerin verlässt ihre Lieblingsgruppe |
+
+Die Leitung steht bewusst zwischen „zweiter Spätdienst" und „Gruppe
+unbesetzt": Sie ist die **letzte** Reserve, aber sie ist eine. Ein höherer
+Wert macht sie zur Zierde — dann bleibt lieber eine Gruppe leer.
+
+### Vier Fehler, die die Abnahme gefunden hat
+**1. `ctx.etagen` war immer leer.** Der Rechendienst las sie aus
+`rule_model["etagen"]` — den Schlüssel schickt die App gar nicht, die Etagen
+stehen in `einheiten` mit `typ: "etage"`. Jede Paketregel über Etagen lief ins
+Leere, ohne dass etwas auffiel.
+
+**2. Eine Mindestbesetzung von 0 war nicht ausdrückbar.** `max(1, minStaff)`
+machte aus jeder ausdrücklichen Null eine Eins. Diese Kita führt von jeder
+Dienstart vier Längen (8, 7, 6, 5 Stunden je nach Vertrag) — der Solver
+verlangte für **jede** Variante täglich eine Besetzung, obwohl der Betrieb
+genau einen Frühdienst je Etage braucht. Ergebnis: 400.000 Strafpunkte, die
+sich nicht abbauen ließen, und weil sie alles überdeckten, kam der Solver in
+seinen 15 Sekunden nicht mehr zum Feinschliff.
+
+> **Vorher:** 60 Sekunden, `FEASIBLE`, Kosten 581.100.
+> **Nachher:** 1,2 Sekunden, `OPTIMAL`, Kosten 97.100.
+
+Sichtbar wurde es daran, dass eine Vorliebe nicht durchkam, die leicht zu
+erfüllen gewesen wäre.
+
+**3. Das Paket widersprach sich selbst.** „Leitung keiner Gruppe zuordnen" und
+„Leitung darf im Notfall die Gruppe abdecken" standen beide drin. Das Verbot
+gewann — und damit konnte sie auch dann nicht einspringen, wenn eine Etage
+sonst zubliebe. Jetzt regelt es allein das Gewicht.
+
+**4. Zwei Kolleginnen heißen Katrin.** Das Regelwerk nennt sie „Katrin K" und
+„Katrin"; nach dem zweiten allein zu suchen trifft beide. `person()` weigert
+sich zu Recht zu raten — die Regel wurde still übersprungen. Neu:
+`person_in_gruppe(name, gruppe)`. Absichtlich nicht der Nachname: Wer heiratet,
+heißt anders, und dann läuft die Regel ins Leere.
+
+### Was das Paket bewusst NICHT festlegt
+Die Dienstzeiten — sie stehen in den Schichten des Standorts. Das Paket spricht
+über **Arbeitsstunden** und findet die passenden Dienste selbst; legt der
+Betrieb eine weitere Achtstundenschicht an, gilt die Regel weiter. Und welcher
+von Heikes vier Arbeitstagen der Sechsstundentag ist: Das Regelwerk lässt es
+offen, also entscheidet es der Plan. Eine erfundene Festlegung wäre schlimmer
+als keine.
+
+### Die Abnahme: drei Läufe am wirklich gelösten Plan
+`solver-service/test_kita_zwei_etagen.py` — **51 Prüfungen**, gegen den echten
+`solve()`, nicht gegen ein nachgebautes Modell. (Der erste Anlauf *war* ein
+Nachbau und meldete prompt zwei Fehler, die es im echten Modell nie gab: Die
+Hälfte dessen, was einen brauchbaren Plan ausmacht, steuert der Rechendienst
+selbst bei.)
+
+- **Der leere Lauf** — alle da. Jede harte Regel muss punktgenau sitzen:
+  Wochenstunden auf die Minute, Tagesmuster, feste freie Tage, genau ein Früh-
+  und Spätdienst je Etage, Gruppe 1 zu zweit, Leitung außen vor, keine einzige
+  gemeldete Verletzung.
+- **Der schwere Lauf** — zwei Wochen Urlaub, drei Krankmeldungen, Gruppe 2
+  fällt eine Woche komplett aus, Wunschliste, Vorbelastung aus den Vorwochen.
+  Geprüft: die harten Regeln halten, die Springerin verlässt Gruppe 1 und
+  besetzt Gruppe 2, die Vorbelastung verschiebt die Frühdienste, keine harte
+  Verletzung.
+- **Der Notlauf** — nur noch vier Kräfte. Dienstags steht die obere Etage mit
+  einer einzigen Person da, die nicht gleichzeitig öffnen und schließen kann.
+  Geprüft: es gibt trotzdem einen Plan, die Leitung springt ein, **und es steht
+  im Bericht**. Der feste freie Tag gilt auch jetzt.
+
+Die Verletzungen laufen bis in die Oberfläche durch: `plan-verifier` meldet
+harte als **kritisch**, weiche als **niedrig** — „obere Etage: kein Frühdienst
+am 6.10." ist etwas anderes als „Marin: zweiter Frühdienst in der Woche, wegen
+Unterbesetzung".
+
+Gesamtlauf: **1358/1358 in 38 Prüfungen**, 941 Modultests, 91 Tests im
+Rechendienst, Bauen sauber.
+
+### Offen und bewusst benannt
+Der Kunde hat keinen Namen genannt — das Paket heißt `kita_zwei_etagen` und
+trägt den Anzeigenamen „Kita – zwei Etagen, acht Gruppen". Sobald der richtige
+Name feststeht, gehört er in `META`.
+
+## Block §165 (26.09.) — Vertretung sucht man zuerst nebenan
+
+**Die Regel.** Fällt jemand aus, wird die Lücke zuerst auf derselben Etage
+geschlossen. Erst wenn dort niemand frei ist, wird jemand hoch- oder
+runtergezogen.
+
+Der Rechendienst bestraft den Wechsel schon von sich aus — 300 im Haus, 800
+über die Etage hinweg. Das reicht, solange **eine** Lücke zu füllen ist; bei
+zweien wird die Rechnung knapp, und dann holt er jemanden von der anderen
+Etage, obwohl nebenan jemand frei gewesen wäre. Das Paket legt deshalb 2.500
+drauf — unter der Strafe für eine unbesetzte Gruppe (10.000), damit die
+Reihenfolge stimmt und trotzdem jemand kommt, wenn es sein muss.
+
+Im Betrieb zählt das: Wer die Etage wechselt, kennt die Kinder nicht — weiß
+nicht, wer wo schläft, wer was nicht isst und wer wen beißt.
+
+### Die Probe: Gruppe 8 am Mittwoch
+Katrin hat mittwochs fest frei, Felix fällt aus. Gruppe 8 steht an beiden
+Mittwochen ohne eigene Kraft da. Ergebnis:
+
+| | Vertretung | Herkunft |
+|---|---|---|
+| Mi 7.10. | Daniel, 07:30–15:00 | Gruppe 7 — **obere Etage** |
+| Mi 14.10. | Heike, 07:00–15:30 | Gruppe 5 — **obere Etage** |
+
+Kein einziger Etagenwechsel im ganzen Plan. Alle übrigen treffen ihre Sollzeit
+weiter auf die Minute — die Lücke wird nicht auf die Kollegen umgelegt. Nur
+Felix steht bei 32:00 statt 40:00, und das ist richtig so.
+
+### Nebenbei: ein Test, der ein Ergebnis verlangte statt einer Regel
+Die neue Regel ließ eine bestehende Prüfung umkippen: *„Marin bekommt trotz
+Vorbelastung keinen einzigen Frühdienst."* Das war eine Forderung an das
+**Ergebnis**, nicht an die Regel — und sie wurde falsch, sobald sich etwas
+anderes verschob:
+
+- **KW 41** — sieben Kräfte auf der unteren Etage, fünf Frühdienste. Marin
+  kann verschont werden, und sie wird es auch. Die Vorgeschichte wirkt.
+- **KW 42** — Kristine im Urlaub, Stephanie und Christina krank: fünf Kräfte,
+  fünf Frühdienste, höchstens einer je Person. **Jede muss einen nehmen.**
+  Keine Fairnessregel der Welt ändert daran etwas.
+
+Geprüft wird jetzt die Woche, in der es eine Wahl gibt — und dass die
+Fairnessregel in der knappen Woche *nachgibt* statt zu brechen.
+
+Nachweis: 66 Prüfungen am gelösten Plan (davon 6 neu für diese Regel), 106
+Tests im Rechendienst. Gesamtlauf: **1358/1358 in 38 Prüfungen**, 941
+Modultests.
+
+## Block §166/§167 (26.09.) — Wenn es nicht mehr reicht
+
+Drei Regeln aus dem Betrieb und die Antwort auf die Frage, was passiert, wenn
+kein gültiger Plan mehr möglich ist.
+
+### Höchstens eine fremde Kraft je Gruppe
+Nicht „höchstens einer wechselt die Etage". Müssen zwei Gruppen besetzt
+werden, dürfen auch zwei Leute kommen — aber **je eine in jede**, nicht zwei in
+dieselbe. Eine Gruppe, die nur aus Vertretungen besteht, ist keine Gruppe mehr:
+Dann kennt niemand die Kinder.
+
+### Jede Gruppe ist besetzt — und eine Lücke wird gemeldet
+Der Rechendienst bestrafte eine leere Gruppe schon mit 10.000 Punkten, **meldete
+sie aber nicht**. In der letzten Abnahme stand Gruppe 7 zwei Tage leer, und der
+Bericht sagte *„hart verletzt: 0"*. Ein Plan, in dem eine Gruppe fehlt, sah aus
+wie ein normaler Plan.
+
+Jetzt gibt es die Meldung — mit der **Rechnung dazu**:
+
+> *Gruppe 7 am 8.10. unbesetzt — auf dieser Etage waren 3 Kräfte eingeteilt für
+> 4 Gruppen.*
+
+Eine Leitung, die um sechs Uhr morgens entscheiden muss, braucht die Lücke in
+Zahlen, nicht ein rotes Ausrufezeichen.
+
+### Aus der Eingewöhnung wird niemand abgezogen
+Eine Gruppe kann als *„gibt niemanden ab"* markiert werden — mit **Ablaufdatum**,
+weil eine Sperre ohne eines in zwei Jahren noch dasteht. Die Kinder lernen
+gerade ein Gesicht; wer es ihnen wegnimmt, fängt von vorne an. Zu pflegen im
+Etagen- und Gruppeneditor unter *Modell*.
+
+### Der Vorschlag — und warum er nachgerechnet ist
+Reißt eine harte Regel, bleibt es nicht bei der Meldung. Der Rechendienst
+rechnet **ein zweites Mal**, diesmal mit den Maßnahmen, die zu den gemeldeten
+Lücken passen:
+
+> **Nicht regulär umsetzbar — 4 Lücken**
+> Gruppe 5 am 9.10. unbesetzt — 3 Kräfte für 4 Gruppen · …
+> **Vorschlag — nachgerechnet: damit ist der Plan umsetzbar.**
+> Gruppe 5 am 9.10. aufteilen — die Kinder nach dem internen Aufteilungsplan
+> auf die anderen Gruppen · …
+
+`loest: true` ist keine Vermutung. Ein Vorschlag, den man nicht nachprüfen kann,
+hilft um sechs Uhr morgens niemandem.
+
+**Aufteilen heißt nicht zusammenlegen.** Die Gruppe entfällt für diesen Tag, die
+Kinder gehen nach dem internen Aufteilungsplan der Einrichtung in andere
+Gruppen. Welches Kind wohin, entscheidet das System nicht — das steht im Plan
+der Kita und bleibt dort.
+
+Die Reihenfolge, in der nachgegeben wird, steht in den Gewichten: erst
+Vertretung aus der Nachbargruppe (300), dann von der anderen Etage (3.300),
+dann die Leitung (9.000), dann eine unbesetzte Gruppe (25.000) — und erst dann
+der Vorschlag, aufzuteilen.
+
+### Zwei Szenarien aus dem Betrieb, durchgerechnet
+
+**Geht auf:** Beide Katrins im Urlaub, Heike krank, Daniel Do+Fr weg, Stephanie
+freitags weg, Gruppe 1, 3 und 4 in der Eingewöhnung. → Christina geht aus
+Gruppe 2 hoch in Gruppe 7; freitags, wenn Stephanie fehlt, übernimmt **Nicole
+Gruppe 2**. Keine Verletzung, alle Sollzeiten auf die Minute.
+
+**Geht nicht auf:** zusätzlich Nicole und Corinna krank, auch Gruppe 2 gesperrt.
+→ 4 Lücken benannt, Franke springt an 4 Tagen ein, Vorschlag: Gruppe 5 und 7 an
+vier Tagen aufteilen — nachgerechnet, dann trägt der Plan.
+
+### Nebenbei gefunden: ein Vorschlag, der nie kam
+Die Zählung der harten Verletzungen stand im Rechendienst **unter** der Stelle,
+die sie abfragt. `pack_report.get("hartVerletzt")` war beim Probelauf noch
+`None` — der Vorschlag blieb still aus, obwohl vier Gruppen leer standen.
+Aufgefallen ist es nur, weil das Szenario durchgespielt wurde.
+
+Nachweis: 76 Prüfungen am gelösten Plan (davon 10 neu), 116 Tests im
+Rechendienst, 944 Modultests. Gesamtlauf: **1358/1358 in 38 Prüfungen**, Bauen
+sauber.
+
+## Block §168 (26.09.) — Wer geht, lässt jemanden zurück
+
+**Ein Fehler, den erst der Betrieb im Plan gesehen hat.** Im Szenario mit der
+ausgefallenen oberen Etage schickte der Plan Christina aus Gruppe 2 nach oben
+— auch am Freitag, an dem Stephanie krank war. Gruppe 2 blieb formal besetzt:
+Die Springerin rückte nach.
+
+Auf dem Papier war alles in Ordnung. Jede Gruppe besetzt, keine Verletzung.
+In Wirklichkeit stand eine Gruppe, deren eigene Kraft anwesend war, den ganzen
+Tag mit einer Fremden da — und oben hätte die Springerin genauso gut selbst
+einspringen können.
+
+### Meine falsche Annahme
+Im Block davor hatte ich geschrieben, die Regel *„jede Gruppe ist besetzt"*
+erzwinge schon, dass die Herkunftsgruppe hält. Das stimmt nicht: Die Gruppe
+kann besetzt sein — von einer Vertretung. Die beiden Regeln greifen aneinander
+vorbei.
+
+### Die Regel
+> **Eine Kraft verlässt ihre Stammgruppe nur, wenn dort eine andere eigene
+> Kraft bleibt.**
+
+Sie verbietet *nicht*, dass eine Fremde eine Gruppe allein führt, wenn von
+deren eigenen Leuten niemand da ist — dann gibt es keine Wahl, und eine
+Vertretung ist besser als eine geschlossene Gruppe. Und ist die Gruppe für den
+Tag aufgeteilt, gilt sie nicht: Dann sind die Kinder ohnehin woanders.
+
+### Was der Plan jetzt macht
+| | Gruppe 2 | Gruppe 7 |
+|---|---|---|
+| **Do** (Stephanie da) | Christina bleibt | **Stephanie** hilft aus |
+| **Fr** (Stephanie krank) | **Christina bleibt** | **Nicole** hilft aus |
+
+Genau die Reihenfolge, die eine Leitung von Hand wählen würde — erst die
+Kollegin aus der Nachbargruppe, und wenn die gebraucht wird, die Springerin.
+
+Nachweis: 80 Prüfungen am gelösten Plan (davon 4 neu, darunter der konkrete
+Freitag), 120 Tests im Rechendienst, 944 Modultests. Gesamtlauf:
+**1358/1358 in 38 Prüfungen**, Bauen sauber.
+
+## Block §169/§170 (27.09.) — Die Maßnahme wird entschieden
+
+**Was fehlte.** Wenn eine Gruppe nicht besetzbar ist, rechnet das System die
+Aufteilung durch und zeigt sie an — nachgerechnet, nicht vermutet. Aber
+niemand konnte darauf antworten. Der Vorschlag stand da, und die Leitung
+klärte ihn außerhalb des Programms. Um sechs Uhr morgens ist das genau der
+Moment, in dem eine Software nützlich sein müsste.
+
+### Was jetzt geht
+Genehmigen, ablehnen, zurücknehmen — und einen Satz dazu schreiben. Wer
+entschieden hat und wann, steht dabei. Der Kommentar ist ein eigenes Feld,
+weil „nein" allein niemandem hilft: Wer in vier Wochen fragt, warum an diesem
+Donnerstag die Gruppe geschlossen blieb, findet hier den Satz der Leitung und
+nicht nur ein Kreuz.
+
+### Die Entscheidung hängt am Tag, nicht am Rechenlauf
+„Gruppe 7 ist am 8. Oktober aufgeteilt" ist eine Tatsache über diesen Tag,
+keine Eigenschaft eines Rechendurchgangs. Nach jeder Krankmeldung wird neu
+gerechnet — hinge die Entscheidung am Lauf, müsste die Leitung sie jedes Mal
+neu treffen. Gespeichert wird deshalb unter (Standort, Typ, Ziel, Tag).
+
+### Der Kreis schließt sich
+Genehmigte Maßnahmen gehen in das Regelmodell des **nächsten** Laufs. Das
+Kita-Paket fragt sie ab: Eine aufgeteilte Gruppe braucht keine Besetzung mehr
+und wird nicht erneut als Lücke gemeldet. Abgelehntes ändert nichts — sonst
+hätte „nein" dieselbe Wirkung wie „ja", und das wäre der schlimmste Fehler,
+den dieses Feld machen kann. Drei Prüfungen im Rechendienst decken genau das
+ab, einschließlich der Gegenprobe mit einer fremden Maßnahme.
+
+### §170 Ein Fund nebenbei
+Die Abnahme scheiterte an einer Stelle, die mit Maßnahmen nichts zu tun hat:
+Eine Paketzuordnung mitten in einem laufenden Plan meldete *„Der Rechendienst
+ist nicht erreichbar"*. Er war erreichbar — er antwortete nur nicht. `solve`
+rechnete direkt in der Ereignisschleife von FastAPI, und solange blieb auch
+`/health` und `/version` stumm. Die App fragt dort mit fünf Sekunden Geduld
+die Paketliste ab.
+
+Behoben: Das Rechnen läuft in einem Arbeitsfaden. CP-SAT rechnet in C++ und
+gibt die GIL dabei frei, deshalb wirkt das wirklich und nicht nur auf dem
+Papier. Die Prüfung dazu holt die Paketliste ab, **während** ein Plan
+gerechnet wird.
+
+### Zwei weitere Funde nebenbei
+**Das Löschkonzept hätte die neue Tabelle übersehen.** Die
+Vollständigkeitsprüfung aus §128 sucht nach Modellen mit `employeeId` —
+`PlanungsMassnahme` hat keine, hält aber fest, WER entschieden hat. Genau der
+stille Fehler, vor dem §128 warnt, nur an der Heuristik vorbei. Die Maßnahme
+steht jetzt im Katalog (`dienstplan`, anonymisieren): Warum eine Gruppe an
+einem Tag aufgeteilt war, bleibt eine Tatsache über den Betrieb — nur der
+Name der Leitung und ihr Kommentar verschwinden. Dafür steht neben dem
+Klartextnamen die Kennung des Kontos: Über einen Namen ist eine Person nicht
+sicher auffindbar, wer heiratet heißt anders, und zwei Menschen heißen gleich.
+
+**`d12-lohnrechnung` bestand nur aus Zufall.** Die Prüfung braucht einen
+freigegebenen Monatsabschluss, gab ihn aber nie selbst frei — sie lief nur,
+weil eine andere Prüfung ihn vorher zufällig freigegeben hatte. Nach dem
+ersten Zurücksetzen der Datenbank war das weg und die Prüfung brach ab. Sie
+stellt ihren Ausgangszustand jetzt selbst her (Regel 1 der README).
+
+Nachweis: 32 neue Prüfungen am laufenden System (`f6-massnahmen.mjs`) —
+entscheiden, umentscheiden, zurücknehmen, wiederfinden, und die Gegenproben:
+fremde Leitung, Mitarbeiter, erfundener Typ, erfundener Status, Datum in
+falscher Form, fehlendes Feld nicht als „undefined". Dazu 3 neue Prüfungen im
+Rechendienst und 1 in `f5-regelpakete`. Gesamtlauf: **1393/1393 in 39
+Prüfungen** — zum ersten Mal auf einer frisch aufgesetzten Datenbank, also
+ohne angesammelten Zustand aus früheren Läufen. 123 im Rechendienst,
+944 Modultests, Bauen sauber.
+
+## Block §171/§172 (27.09.) — Der Weg durch die Oberfläche
+
+**Warum das nötig war.** Die Maßnahmen-Schnittstelle war mit 32 Prüfungen
+abgedeckt, die Maske selbst hatte niemand angeklickt. Genau dort hatte eine
+Woche vorher der „undefined"-Fehler in der Pfändungsliste gesteckt, den keine
+HTTP-Prüfung finden konnte. Diesmal wurde der ganze Weg gegangen: anmelden,
+Woche vorblättern, rechnen lassen, Lücke sehen, genehmigen, Notiz schreiben,
+neu rechnen.
+
+Der Weg brauchte einen Betrieb, an dem das Kita-Regelpaket überhaupt läuft —
+den gab es in der App nicht. **`npm run seed:kita` legt ihn jetzt an**: ein
+eigener Mandant mit den zwei Etagen, acht Gruppen, achtzehn Kräften und zwölf
+Dienstzeiten aus dem Kundenregelwerk. Zugang `leitung@kita-regenbogen.de`.
+
+### §171 Der Fund, auf den es ankam: die Rolle fehlte
+Ein Regelpaket fragt nach der Funktion — *„die Leitung springt nur im
+Notfall ein"*, *„die Springerin hat keine Frühdienste"*. Der Rechendienst
+sucht dafür in `rolle`, `position` und `funktion`. **Die App schickte keins
+davon.** Jede rollenbasierte Regel des Pakets lief ins Leere.
+
+In der Abnahme am Rechendienst konnte das nicht auffallen: Deren Prüfmodell
+setzt die Felder von Hand. Erst der erste echte Lauf aus der App zeigte es —
+und zwar sofort, weil die Bausteine bei einer Regel ohne Treffer laut
+scheitern statt still zu schweigen.
+
+### §171 Der zweite Fund: Vertragszeit ist nicht Planzeit
+Danach stand die Leitung an **zehn von zehn Tagen** in einer Gruppe. Der
+Grund war keine Regel, sondern Arithmetik: Sie hat 40 Vertragsstunden, und
+die muss der Rechendienst irgendwo unterbringen. Leitungszeit ist aber keine
+Gruppenzeit.
+
+Neu im Planungsprofil: **Planstunden pro Woche**, leer = Vertragsstunden. Für
+alle, deren Vertragszeit nicht ihre Planzeit ist — eine Leitung, eine
+Freistellung, eine Einarbeitung. Eine ausdrückliche 0 ist ein gültiger Wert
+und fällt nicht auf die Vertragsstunden zurück; dafür gibt es eine eigene
+Prüfung. Danach: Leitung an **0 von 10 Tagen** in der Gruppenbesetzung, Plan
+ohne jede Verletzung, alle 43 Regeln des Pakets angewendet.
+
+### §171 Der dritte Fund, nebenbei: eine offene Tür
+`/api/employees/[id]/planning-profile` prüfte die Rolle, aber **nicht den
+Standort**. Jede Leitung konnte damit das Planungsprofil jedes Mitarbeiters
+lesen und überschreiben — auch beim Wettbewerber, sobald sie eine Kennung
+kannte. Schichtvorliebe, Wochenendvereinbarung, Kinderabholzeiten und
+Planungsnotiz sind dabei nicht harmlos: Aus ihnen lassen sich
+Familienverhältnisse ablesen. `assertEmployeeAccess` (§109) hat hier von
+Anfang an gefehlt und steht jetzt drin, mit vier Gegenproben.
+
+### §172 Was der Browser-Durchlauf selbst gefunden hat
+Nach dem Genehmigen wurde neu gerechnet — und die eigene Entscheidung war vom
+Bildschirm verschwunden. Richtig gerechnet hatte das System: Die Lücke war zu,
+also schlug es nichts mehr vor. Nur sah die Leitung damit nicht mehr, was sie
+entschieden hatte, und konnte es nicht zurücknehmen.
+
+Die Maske zeigt jetzt beides: die Vorschläge dieses Laufs **und** alles, was
+für den Zeitraum schon entschieden wurde, mit dem Zusatz *„Früher entschieden
+— der Plan schlägt sie nicht mehr vor."*
+
+Nachweis: 22 Prüfungen im echten Browser (`pruefungen/browser/massnahmen.mjs`)
+— darunter, dass für den genehmigten Tag keine Lücke mehr gemeldet wird und
+dass die Notiz den zweiten Lauf übersteht. Dazu 8 neue Prüfungen am laufenden
+System für das Planungsprofil. Gesamtlauf: **1401/1401 in 39 Prüfungen**, 123
+im Rechendienst, 944 Modultests, Bauen sauber.
+
+## Block §173 (27.09.) — Zum Herunterladen
+
+**Was gebaut wurde.** OKUN Workforce als Programm für Windows, macOS und
+Linux: Symbol im Startmenü, eigenes Fenster, kein Browsertab zwischen zwanzig
+anderen. Hier gebaut und gestartet wurden das Installationsprogramm für
+Windows (112 MB, ohne Administratorrechte installierbar), ein AppImage
+(126 MB) und ein .deb (100 MB).
+
+### Es ist eine Hülle, und das ist der Punkt
+Dieselbe Überlegung wie bei der Telefon-App (§139): Die Seiten entstehen auf
+dem Server, dort liegen Lohn, Zeiten und Rechte. Ein Programm, das den Stand
+vom Tag der Auslieferung mitbrächte, wäre am Tag darauf falsch — und jede
+Korrektur an der Lohnabrechnung müsste den Weg über eine neue Installation bei
+jedem Kunden nehmen.
+
+Was es trotzdem bringt, ist nicht „dieselbe Seite ohne Adressleiste": ein
+Programm im Startmenü statt eines Lesezeichens, gemerkte Fenstergröße,
+**Drucken ohne Browserrand** (ein Lohnbeleg mit „1/2 — workforce.example/…"
+am Rand gehört nicht in eine Personalakte), eine **einstellbare Adresse** für
+Kunden mit eigenem Server, und eine Seite im Klartext statt einer weißen
+Fläche, wenn die Anlage nicht antwortet.
+
+Es hält **keine Daten auf dem Rechner** — kein Zwischenspeicher mit Gehältern
+in einem Ordner, den die nächste Datenrettung findet. Gespeichert werden zwei
+Kleinigkeiten: die Adresse und die Fenstergröße.
+
+### Der Fund beim Bauen: 280 MB, von denen 180 nicht hätten mitgehen dürfen
+Der erste Versuch ergab ein Paket von 280 MB. Der Grund war nicht Electron,
+sondern dass der Paketbauer **immer alle Produktionsabhängigkeiten des
+Projekts** einpackt — eine Liste in `files` ändert daran nichts. Mitgegangen
+wären Prisma samt Rechenkern, der Anthropic-Zugang und der Mailversand.
+
+Das ist keine Frage der Dateigröße. Jedes dieser Pakete läge auf jedem
+Kundenrechner und wäre dort auf Sicherheitslücken zu pflegen — für ein
+Fenster, das eine Webseite lädt. `desktop/` ist deshalb ein eigenes
+npm-Paket **ohne Abhängigkeiten**, gebaut mit `--project desktop`. Im fertigen
+Paket liegen sieben Dateien.
+
+### Sicherheit
+`nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`. Was die
+geladene Seite auf dem Rechner darf, steht vollständig in
+`desktop/bruecke.js`: die eigene Adresse erfragen, sie ändern, drucken, die
+Fassung erfragen. Fremde Adressen werden weder im Fenster noch in einem neuen
+Fenster geöffnet, sondern gehen in den Systembrowser — eine fremde Seite im
+selben Fenster sähe aus wie ein Teil des Programms. Kein `http` außer auf dem
+eigenen Rechner. Kamera, Mikrofon und Ort werden abgelehnt.
+
+**Keine Selbstaktualisierung, mit Absicht.** Die Hülle enthält keine
+Anwendung; Korrekturen gehen über den Server und sind beim nächsten Öffnen da.
+Eine Selbstaktualisierung bräuchte einen dauerhaft erreichbaren Ausgabekanal
+und eine Signatur — zwei Angriffsflächen für einen Nutzen, den es kaum gibt.
+
+Nachweis: 17 Prüfungen an einem echten Fenster (`pruefungen/desktop/huelle.mjs`,
+über Playwright gegen Electron) — welche Anlage gezeigt wird, dass fremde
+Adressen draußen bleiben, dass die Seite kein Node bekommt, und dass bei einer
+nicht erreichbaren Anlage eine Seite im Klartext erscheint. Das gebaute
+AppImage wurde zusätzlich von Hand gestartet. Ausführlich: `DESKTOP.md`.
+
+**Offen und nicht programmierbar:** Die .exe braucht ein
+Code-Signing-Zertifikat, sonst warnt Windows vor einem „unbekannten
+Herausgeber". Das .dmg braucht einen Mac und die Beglaubigung über das
+Apple-Developer-Konto.
+
+## Block §174 (27.09.) — Eine flackernde Prüfung, drei Ursachen
+
+Bei einem von drei pytest-Läufen kippte `test_donnerstags_darf_christina_hoch`
+um. Die Meldung sprach von einer Regel, die nicht greife. Keine der drei
+wirklichen Ursachen hatte mit der Regel zu tun.
+
+### 1. Die Prüfung erwartete ein Ergebnis, keine Regel
+Christina und Stephanie sind beide Stammkräfte von Gruppe 2. Geht eine hoch,
+bleibt die andere — für den Rechendienst sind beide Pläne **exakt gleich gut**
+(Kosten 305.100 in jedem Lauf), und bei Gleichstand wählt er irgendeinen. Die
+Prüfung verlangte namentlich Christina.
+
+Das ist derselbe Fehler, der in diesem Repo schon einmal aufgeschrieben wurde,
+nur subtiler. Sie prüft jetzt, was die Regel wirklich sagt: **genau eine von
+beiden oben, genau eine unten.** Dazu ein eigener Lauf, in dem die Springerin
+donnerstags fehlt — sonst wäre gar keine Vertretung nötig und die Prüfung
+bewiese nichts.
+
+### 2. Eine Sperre klebte an der Vorlage
+`regelmodell()` gab die Modul-Dikts der Gruppen **als Verweis** zurück.
+`modell_mit_sperre` schrieb die Abgabesperre hinein — also nicht in einen
+Lauf, sondern in die Vorlage. **Jeder spätere Lauf erbte sie**, auch der leere
+und der Notlauf. Deshalb bestand die Prüfung allein und fiel im Gesamtlauf um:
+Gruppe 2 war aus einem fremden Fall noch gesperrt und durfte niemanden
+abgeben. Jetzt Kopien, mit eigener Gegenprobe.
+
+Das ist Regel 1 der Nachweis-README — „jede Prüfung stellt ihren
+Ausgangszustand selbst her" — an einer Stelle, an der niemand sie vermutet
+hätte.
+
+### 3. Ein abgebrochener Rechenlauf sah aus wie eine verletzte Regel
+Unter Last kam der Löser nicht immer zum Optimum und lieferte einen
+brauchbaren, aber nicht den besten Plan. Prüfungen, die weiche Entscheidungen
+ablesen, gelten nur für den besten — sie schlugen dann fehl und behaupteten,
+eine Regel greife nicht.
+
+Neu: **`abnehmen(plan, was)`** vor jedem Fixture. Kommt der Löser nicht zum
+Optimum, sagt die Abnahme genau das, nennt den Abschlusszustand
+(`FEASIBLE`, `UNKNOWN`) und schickt den Leser nicht in die falsche Richtung.
+`optimal=False` gibt es für den Notlauf, wo ein brauchbarer Plan der Punkt
+ist. Das Zeitbudget steht jetzt bei 60 Sekunden statt 30 — das Paket rechnet
+in unter zwei, die Differenz ist der Abstand zur Grenze.
+
+Nachweis: 128 im Rechendienst (5 neu, darunter vier Gegenproben zur Abnahme
+selbst und eine gegen die klebende Sperre), **drei vollständige Läufe
+hintereinander ohne Ausreißer**. Dazu unverändert 1401/1401 in 39 Prüfungen,
+22 im Browser, 17 am Programmfenster, 944 Modultests, Bauen sauber.
+
+## Block §175 (27.09.) — Die Erstattungsstufe wählen statt Zahlen tippen
+
+**Die Frage war: „Kann der Kunde bei uns die Stufe wählen?"** Die Antwort war
+nein. Die Maske hatte drei Eingabefelder — U1-Satz, Erstattung, U2-Satz —, und
+der Betrieb musste alle drei aus der Satzung abtippen. Was die Techniker
+Krankenkasse für eine 80-Prozent-Erstattung verlangt, ist aber für jeden
+Arbeitgeber dieselbe Zahl. Dreißig Kunden tippen dieselbe Zahl, und einer
+vertippt sich.
+
+### Der Katalog
+Neu ist `UmlageKatalog`: die Satzung der Kasse, einmal fürs ganze System, mit
+Quelle und Stichtag. Der Betrieb wählt jetzt aus einer Liste —
+*„80 % Erstattung → U1 3,20 % · U2 0,44 %"* — statt zu tippen. Eine Stufe,
+die es bei dieser Kasse nicht gibt, wird abgelehnt und die möglichen werden
+genannt.
+
+Für Kassen, die nicht im Katalog stehen, bleibt die Handeingabe. Ein Betrieb
+mit einer kleinen BKK soll nicht warten müssen, bis wir sie aufgenommen
+haben — und sein eigener Eintrag schlägt den Katalog, damit eine
+Sondervereinbarung nicht überstimmt wird.
+
+**Eingelesen sind 79 Sätze von 24 Kassen** aus einer Recherche, die der Kunde
+über `recherche-auftrag-umlagen.md` beauftragt hat. Vier Kassen wurden gegen
+ihre eigene Veröffentlichung geprüft (TK, BARMER, DAK, Knappschaft) — alle
+vier deckungsgleich. Der Rest trägt seine Quelle, aber keinen Haken:
+`geprueft: false`, und die Maske sagt es. Bei den Pfändungstabellen waren zwei
+von acht falsch; aufgefallen ist es nur, weil es dieses Feld gab.
+
+### Der ernstere Fund: unterjährige Änderungen
+Die Recherche brachte etwas zutage, das die alte Bauweise gar nicht abbilden
+konnte: **Kassen ändern ihre Sätze mitten im Jahr.** Allein 2026 die DAK zum
+1. September (U1 von 3,90 auf 1,80 % bei 80 % Erstattung), die IKK classic zum
+1. August, die AOK Sachsen-Anhalt die U2 zum 1. Juli.
+
+Der Schlüssel war `(Kunde, Kasse)` — **ein** Satz je Kasse, ohne Datum, und der
+Lohnlauf nahm ihn, egal für welchen Monat er rechnete. Eine Augustabrechnung
+mit dem Januarsatz wäre falsch gewesen, ohne dass etwas fehlt oder warnt.
+
+Jetzt trägt sowohl der Katalog als auch die Wahl des Betriebs einen Stichtag,
+und `saetzeFuerMonat` sucht den Stand heraus, der im Abrechnungsmonat gilt.
+Maßgeblich ist der Monatserste: Ein Satz ab 1. September gilt für den
+September ganz.
+
+### Die Falle, die dabei auffiel
+Sobald mehrere Stände möglich sind, entsteht eine neue: Wer im September einen
+Satz einträgt, den Vertipper bemerkt und ihn mit Stichtag 1. Januar neu
+einträgt, hat danach **zwei** Stände — und der falsche vom September ist der
+jüngere und gilt weiter. Gerechnet wird richtig, nur mit der falschen Zahl.
+
+Aufgefallen ist es in der eigenen Prüfung: Die U1 kam auf 630 statt 63 Euro.
+Die Maske zeigt deshalb bei mehreren Ständen jeden einzeln, mit Datum, welcher
+gilt, und einem eigenen Papierkorb daneben.
+
+Nachweis: 53 Prüfungen in `d21-umlagen` (11 neu) und 15 neue Modultests zum
+Stichtagswechsel — auch die Gegenproben: eine Stufe, die es nicht gibt; ein
+Monat vor dem ersten Stand; der eigene Eintrag, der den Katalog schlägt.
+Der Erstbestand kommt als **Datenmigration**, nicht als Skript: Ein Skript,
+das jemand ausführen muss, wird beim nächsten Aufsetzen vergessen, und dann
+rechnet eine Anlage still ohne Umlagen. Gesamtlauf: **1424/1424 in 39
+Prüfungen**, 958 Modultests, 128 im Rechendienst, Bauen sauber.
+
+## Block §176 (27.09.) — Der Katalog ist geprüft
+
+Nach dem Katalog standen 20 von 24 Kassen als „übernommen, ungeprüft" da.
+Geprüft heißt hier: jemand hat die Zahl gegen die Veröffentlichung der Kasse
+selbst gehalten — Webseite, Merkblatt oder Rechengrößen-PDF.
+
+**Alle 79 Stände von 24 Kassen nachgeschlagen. Keine einzige Abweichung.**
+
+Zum Vergleich: Bei den Pfändungsfreigrenzen (§155) waren zwei von acht
+Tabellen falsch, eine davon um 31,31 € — genug, um den Arbeitgeber nach §840
+ZPO haften zu lassen. Dass hier nichts daneben lag, ist ein gutes Zeichen für
+die Recherche und kein Argument gegen das Nachschlagen.
+
+### Zwei Stellen, an denen es hätte schiefgehen können
+
+**VIACTIV** führt auf ihrer Umlagen-Seite die Sätze noch als Stand
+*1. Januar 2025* und verweist auf eine „Rechengrößen 2026" zum Herunterladen.
+Die Zahlen sind identisch, aber die Seite belegt nicht das Jahr, für das wir
+sie eingetragen haben. Erst die Beitragsübersicht 2026 selbst bestätigt sie.
+Das steht so in der Prüfnotiz — wer nächstes Jahr nachzieht, weiß, dass die
+Seite hier hinterherhinkt.
+
+**Die Knappschaft** nennt in ihrem Merkblatt U1 0,80 % und U2 0,22 %, aber
+nicht die Erstattungsstufe. 0,80 % ist für eine 80-Prozent-Erstattung
+auffällig niedrig — der nächste Wert im Katalog liegt bei 1,50 %. Die
+Pressemitteilung vom 9.12.2025 klärt es: Die Knappschaft hat die U1 zum
+1. Januar 2026 von 1,1 auf 0,8 % gesenkt und erstattet weiterhin 80 %. Sie ist
+schlicht die günstigste im Katalog.
+
+### Drei Bestätigungen nebenbei
+Knappschaft, VIACTIV und IKK classic nennen alle drei die
+**Insolvenzgeldumlage mit 0,15 %** — derselbe Wert, den das System in
+`lohnjahre.ts` führt (§358 SGB III). Der stand dort bisher als geprüft, ohne
+dass drei unabhängige Quellen ihn bestätigt hätten.
+
+### Was das für die Oberfläche heißt
+Die Kennzeichnung „übernommen, ungeprüft" verschwindet — nicht weil sie
+abgeschafft wurde, sondern weil sie auf keinen Eintrag mehr zutrifft. Sie
+greift wieder, sobald eine neue Kasse dazukommt: Der Haken kommt erst, wenn
+jemand ihre Satzung wirklich aufgeschlagen hat. Die Prüfung in `d21` ist
+entsprechend umgestellt — sie verlangt jetzt, dass jeder Eintrag Auskunft
+gibt und dass der Erstbestand vollständig geprüft ist.
+
+Je Kasse hält eine Notiz fest, wogegen geprüft wurde und was herauskam. Wer
+nächstes Jahr die neuen Sätze holt, sieht daran, was beim letzten Mal wie
+belegt war. Der Haken kommt als Datenmigration, damit er überall ankommt und
+nicht nur hier.
+
+Nachweis: 53 Prüfungen in `d21-umlagen` unverändert grün, Gesamtlauf
+**1424/1424 in 39 Prüfungen**, 958 Modultests, 128 im Rechendienst, Bauen
+sauber.
+
+## Block §200 (19.10.) — Am richtigen Ort, und eine Adresse, die sich ändern lässt
+
+### Die Dienstplanung wird am Standort eingerichtet
+Regelpaket zuordnen, freischalten, Hinweis für den Kunden und die Belegschaft
+einspielen stehen jetzt unter **Kunden → Kunde → Standort aufklappen** — je
+Standort, denn ein Kunde mit zehn Standorten kann zehn Pakete haben. Schon die
+zugeklappte Zeile zeigt Paket und Stand, und sie warnt, wenn ein Standort
+freigeschaltet ist, aber kein Paket hat. `/okun/dienstplanung` leitet um.
+
+Nachweis: `pruefungen/browser/dienstplanung-am-standort.mjs`, 20 Checks. Die
+Gegenprobe ist ein zweiter Standort desselben Kunden, der beim Zuweisen am
+ersten unverändert bleiben muss.
+
+### E-Mail-Adresse tauschen und neu einladen — Standort und Unternehmen
+In den Mitarbeiterdetails (Standortleitung) und auf der Mitarbeiterseite
+(Geschäftsführung) steht jetzt der **Zugang**: Adresse, ob das Konto steht oder
+die Einladung offen ist, „Adresse ändern" und „Einladung erneut senden".
+
+- [x] Der alte Einladungslink wird beim Tausch ungültig.
+- [x] Ein bestehendes Konto zieht mit um und bleibt **ein** Konto. Vorher legte
+      die Annahme einer Einladung an die neue Adresse ein zweites an.
+- [x] Die alte Adresse erfährt davon (nur wenn es ein Konto gab — sonst war sie
+      meist ein Tippfehler, und das Postfach gehört jemand anderem).
+- [x] Die normale Bearbeitung hat dieselbe Wirkung. Vorher änderte sie nur die
+      Mitarbeiterzeile, und der alte Link blieb gültig.
+- [x] Leitungskonten werden so nicht umgestellt.
+- [x] An Platzhalter-Adressen (§183) wird auch hier nicht eingeladen.
+
+**Fund dabei:** `/api/employees/[id]/invite` prüfte nur die Rolle. Eine fremde
+Leitung konnte für jeden Mitarbeiter eine Einladung auslösen. Jetzt nur noch
+im eigenen Bereich — die Gegenprobe gegen den alten Stand ist rot geworden.
+
+**Fund dabei:** Resend 6 wirft nicht, wenn es eine Mail ablehnt, sondern gibt
+`{ error }` zurück. Eine abgelehnte Einladung meldete „versendet". Für
+Einladungen wird das jetzt ausgewertet; für alle anderen Mails noch nicht
+(siehe Übergabe).
+
+Nachweis: `pruefungen/a5-zugang.mjs`, 38 Checks (gegen den alten Stand: 25
+rot), dazu `pruefungen/browser/zugang-und-planungsprofil.mjs`.
+
+### Das Planungsprofil ohne das, was nie in einen Plan floss
+Kinder-Abholzeiten, Wochenend-Vereinbarung, maximale Folgetage je Person und
+die dauerhafte Planungsnotiz sind entfernt. Nachgesehen: Sie gingen in keinen
+Rechenkern und kein Regelpaket — nur in einen Freitext, den der Rechendienst
+nicht liest, und in den KI-Chat. Wer „Abholung Mo 15:30" eintrug, durfte
+glauben, der Plan richte sich danach. Er tat es nie.
+
+**Geblieben:** die Schichtvorliebe (das Kita-Paket liest sie, §181), die
+Planstunden (§171), die Zuschlagsregelung. Die Datenbankspalten der entfernten
+Felder stehen noch; sie zu löschen berührt Produktionsdaten und ist ein eigener
+Schritt.
+
+### Zwei Funde nebenbei
+- Wer mit einer fremden Rolle auf eine Seite kam (die Geschäftsführung auf
+  `/okun/customers`), sah „Etwas ist schiefgelaufen" statt seiner eigenen
+  Seite: Die Seite wurde gezeichnet, bekam 403 und stürzte ab, und der Absturz
+  verdrängte die Umleitung. Das Layout zeichnet jetzt nichts, bis umgeleitet ist.
+- `f-dienstplan.mjs` setzte voraus, dass sein Standort freigeschaltet ist. In
+  einer frisch befüllten Datenbank ist er es nicht. Die Prüfung stellt das
+  jetzt selbst her und hinterher zurück.
+
+## Block §202 (19.10.) — Das Regelpaket bringt seine Einrichtung mit
+
+Der Eigentümer weist einem Standort ein Regelpaket zu — und danach muss
+geplant werden können. Das ging nicht: Das Paket brachte Regeln, aber keine
+Dienstzeiten, und die sollte der Kunde in einer Einrichtung anlegen, die er
+nicht mehr selbst machen soll. Die Kita „Krümelkiste" stand so da: Paket
+zugewiesen, „Noch keine Dienstzeiten … Zu den Dienstzeiten", kein Plan.
+
+### Das Paket bringt mit, was ein Standort braucht
+- [x] `EINRICHTUNG` im Paket: Arbeitstage, Dienstzeiten, Etagen und Gruppen,
+      Basiswerte — Kita zwei Etagen (12 Dienstzeiten), Kita Sonnenschein (2),
+      Wohngruppe (18, sieben Tage). Übernommen aus Testdaten bzw.
+      `scripts/kunde-wohngruppe.mjs`, nicht neu erfunden. Die Vorlage
+      `muster_pflege` bringt bewusst keine mit.
+- [x] Der Rechendienst prüft sie: Uhrzeiten, Dienstarten, Etagen der Gruppen.
+      Eine fehlerhafte Einrichtung wird ganz abgelehnt, nicht halb angelegt.
+- [x] **Zuweisen legt an, was am Standort fehlt** — und überschreibt nie
+      etwas, das schon da ist. Arbeitstage nur, wenn sie etwas ändern (Mo–Fr
+      gilt ohnehin; die Wohngruppe braucht ihre sieben Tage ausdrücklich).
+- [x] Für Standorte, deren Paket schon vorher zugewiesen war: Der Dienstplan
+      holt es beim Öffnen nach, spätestens der Planungslauf. OKUN sieht am
+      Standort, wie viele Dienstzeiten und Gruppen da sind.
+
+### Was der Standort nicht mehr selbst einrichtet
+- [x] „Einrichtung" (Betriebsform, Struktur, Dienste, Team & Regeln),
+      „Regeln & Wartung" und das KI-Onboarding sind weg; die Adressen leiten in
+      den Dienstplan. Mit ihnen: der „Regeln"-Knopf im Dienstplan, das Fenster
+      „Standortmodell erzeugen", die Vorstellung „Dein Standort – dein Modell",
+      die Tour-Station dazu.
+- [x] Dienste, Etagen/Gruppen, Basiswerte, eigene Regeln, Standortmodell
+      schreibt nur noch OKUN — auch nicht mehr über den Assistenten.
+- [x] **Geblieben**, weil es Tagesgeschäft ist und keine Einrichtung:
+      „Eingewöhnung" (§166) und „Gruppe unterwegs" (§182) — jetzt unter
+      „Gruppen" im Dienstplan.
+- [x] Dauerhafte Regeln aus den Dienstplan-Chats gingen ins alte
+      Standortmodell, dessen Regeltexte der Rechendienst nicht liest. Jetzt
+      gehen sie als Wunsch an OKUN (Funde), fürs Regelpaket.
+
+### Fund dabei: Der Dienstplan-Knopf umging zwei Sperren
+`/api/ai/solve-schedule` — der Weg, den die Oberfläche nimmt — prüfte weder
+die Standortgrenze (§112) noch die Freischaltung (§127). Beides stand nur in
+`/api/planning/runs`, den die Oberfläche nicht benutzt. Eine fremde Leitung
+konnte also rechnen lassen, und ein gesperrter Standort auch. Jetzt prüfen
+beide Wege dasselbe, an einer Stelle (`src/lib/planungsstart.ts`). Die
+Gegenprobe gegen den alten Stand ist rot geworden.
+
+Nachweis: `pruefungen/f10-paket-einrichtung.mjs` (30, gegen den alten Stand
+16 rot), `pruefungen/browser/einrichtung-kommt-mit-dem-paket.mjs` (17),
+5 neue Tests im Rechendienst.
+
+## Zur Zertifizierung — Stand der Überlegung
+
+Zwei getrennte Dinge, die oft verwechselt werden:
+
+- **ELStAM selbst abrufen** braucht ERiC und ein Organisationszertifikat.
+  Abgegrenzt und machbar, laufender Aufwand: einmal im Jahr die neue Version.
+  Sinnvoll, sobald der monatliche Handgriff bei genug Kunden Arbeit macht.
+- **SV-Meldungen (ITSG)** brauchen eine jährlich zu wiederholende Systemprüfung
+  des ganzen Programms. Eine Dauerverpflichtung, keine einmalige Hürde. Lohnt
+  nur, wenn die Lohnabrechnung ein eigenes Produkt wird.
+
+Der jetzige Stand ist bewusst dazwischen: **wir rechnen, der Steuerberater
+meldet.** Kein einziger externer Zugang nötig.
+
+## Offen und bewusst so
+- Der Zugriff auf **ELStAM** braucht einen zertifizierten Zugang, den der
+  Arbeitgeber hat und nicht die Software. Die Liste holt er oder sein
+  Steuerberater; wir lesen sie ein (D8). Dass er sie holt, kann ihm niemand
+  abnehmen — wir warnen, wenn der Stand veraltet. Gehört in seinen Vertrag.
+- **npm audit** meldet 12 Befunde, alle in `postcss` innerhalb von Next.js und
+  alle schon vor diesem Block vorhanden. Die Behebung hieße Next 16 — eigener
+  Vorgang, nicht nebenbei.
+
+## Noch offen aus der Nachweis-Phase
+- [x] **Krankenschein mit Fehlzeit verknüpfen** — fertig. Siehe Block C6 oben.
+
+## §201 Die zweite Tür vor den eigenen Lohndaten
+
+**Der Anlass.** Eine Sitzung hält dreißig Tage. In einer Wohngruppe steht ein
+Tablet im Dienstzimmer, und wer es in die Hand nimmt, ist angemeldet als der,
+der es zuletzt benutzt hat. Zwischen „Dienstplan ansehen" und „sehen, was die
+Kollegin verdient" lag ein Fingertipp. Das Gehalt ist die Angabe, die
+Mitarbeiter am wenigsten voneinander wissen wollen.
+
+**Kein zweites Passwort.** Vorgeschlagen war „wie ein extra Passwort". Ein
+zweites Passwort wird einmal vergeben, selten gebraucht, prompt vergessen —
+und dann braucht es einen Weg, es zurückzusetzen, und dieser Weg ist am Ende
+die eigentliche Tür. Abgefragt wird deshalb das **eigene Anmeldepasswort**.
+Dasselbe Geheimnis, aber eine andere Aussage: nicht „dieses Gerät gehört
+jemandem, der sich einmal angemeldet hat", sondern „die Person, die hier gerade
+steht, kennt das Passwort". Danach ist eine **Viertelstunde** frei, sichtbar
+ablaufend, mit „Wieder sperren" daneben.
+
+**Was beim Prüfen auffiel — und größer war als die Sperre selbst.** Die
+Lohnabrechnung liegt als PDF in der Personalakte. Dieselben Zahlen kommen aber
+noch auf drei anderen Wegen heraus, die jedem Angemeldeten offenstanden:
+
+| Weg | Was herauskam |
+|---|---|
+| `/api/dsgvo/auskunft` | **alle** Abrechnungszeilen auf einmal, als JSON |
+| `/api/payroll/bescheinigung` | Personalnummer, SV-Nummer, Krankenkasse, Monate |
+| `/api/payroll/bav` | die Entgeltumwandlung mit Monatsbetrag |
+
+Die Auskunft ist dabei die schlimmere Tür als die Abrechnung: Sie gibt nicht
+einen Monat heraus, sondern alles. Eine Sperre nur am PDF hätte wie Schutz
+ausgesehen und keiner gewesen. Alle vier Wege hängen jetzt an **einer**
+Entscheidung (`siegelSperre` in `src/lib/lohnsiegel.ts`).
+
+**Zu Art.15 DSGVO.** Die Auskunft ist ein Recht der Person und darf nicht
+erschwert werden. Eine Identitätsprüfung ist aber ausdrücklich vorgesehen
+(Art.12 Abs.6); verlangt wird nichts Neues, sondern das Passwort, das die
+Person ohnehin hat, und die Auskunft kommt danach sofort.
+
+**Warum nur für Mitarbeiter.** Für die Leitung wäre dieselbe Sperre
+Schaufenster-Sicherheit: Sie hat die Lohnliste aller Beschäftigten ohnehin
+offen. Ein PDF zu verriegeln, während die Tabelle mit denselben Zahlen daneben
+steht, schützt nichts und kostet jeden Abrechnungslauf Zeit.
+
+**Die Bremse ist dieselbe wie bei der Anmeldung** (§152). Hätte diese Stelle
+eine eigene, großzügigere Zählung, wäre sie der bequemere Weg, Passwörter
+durchzuprobieren — eine Tür zusätzlich einzubauen und sie schlechter zu
+sichern als die erste macht das Haus unsicherer.
+
+**Nachweis.** `pruefungen/m-lohnsiegel.mjs` (28 Checks) gegen das laufende
+System: ohne Bestätigung kommen keine Bytes; der eigene Arbeitsvertrag bleibt
+offen (Gegenprobe gegen eine zu weit geratene Sperre); die Leitung wird nicht
+gefragt; falsches Passwort stellt kein Siegel aus; **das Siegel des Kollegen am
+selben Gerät gilt nicht** — genau der Fall, gegen den gebaut wurde. Dazu 14
+Modultests für das Ablaufen nach der Viertelstunde, das in einer Prüfung
+fünfzehn Minuten Wartezeit hieße. Die vier bestehenden Prüfungen, die vorher
+ohne Bestätigung an die Daten kamen (`d-lohn`, `d22-bescheinigungen`,
+`g1-dsgvo`, `b4-app`), haben den neuen Weg **und je eine Gegenprobe** bekommen.
+
+Gesamtlauf **1685/1685 in 46 Prüfungen**, 1069 Modultests, tsc und Bauen
+sauber.
+
+## §201 Die Fensterleiste — und das Aufblitzen der Verkaufsseite
+
+**Wie der Eigentümer es gemeldet hat.** Zum Desktop-Programm: „Das will ich
+auf jeden Fall geändert haben, weil ich finde, es sieht hässlich aus." Und
+dazu: „dass jedes Mal kurz die Website aufpoppt". Zwei Dinge, eine Ursache —
+das Programm sah aus wie eine Webseite in einem Kasten.
+
+### Das Aufblitzen
+
+Es stand so im Code, und zwar ehrlich (§177, `AngemeldeteWeiterleiten`):
+
+> „Die Verkaufsseite ist dabei kurz sichtbar. Das ist gewollt."
+
+Für eine Website war das eine vertretbare Abwägung: Die Weiterleitung lief im
+Browser, damit die Startseite statisch ausgeliefert werden konnte — wichtig
+für Google und für das erste Laden auf einem alten Telefon. Im Programm war es
+keine Abwägung mehr, sondern ein Fehler.
+
+Entschieden wird jetzt in `src/middleware.ts`, also VOR der Seite. Das
+Gegenargument von §177 trifft dort nicht: Wer kein Sitzungs-Cookie mitbringt —
+jeder Interessent, jede Suchmaschine — fällt sofort durch und bekommt
+dieselbe statisch erzeugte Seite wie bisher. Der Bau bestätigt das: `○ /`,
+weiterhin vorgerendert.
+
+Die Unterschrift wird trotzdem geprüft, obwohl ein erfundenes Cookie nur auf
+eine Seite führte, die den Betreffenden ohnehin abweist. Sonst wäre das eine
+Weiche, die sich von außen stellen lässt — und solche Weichen werden später
+als Berechtigung missverstanden.
+
+### Die Fensterleiste
+
+Oben saß die helle Fensterleiste des Betriebssystems über einer App, die ihre
+eigene Kopfleiste mitbringt: zwei Kanten, zwei Farben. Der Rahmen ist jetzt
+ausgeblendet (`titleBarStyle: 'hidden'`); das System zeichnet nur noch die drei
+Knöpfe, und zwar über unsere Leiste. Eine zweite Leiste zu bauen wäre falsch
+gewesen — die 70 Pixel hohe `CommandRail` mit dem Logo gab es schon.
+
+**Was dabei still kaputtgehen kann.** Ein rahmenloses Fenster lässt sich nur
+dort anfassen, wo eine Fläche ausdrücklich zum Ziehen erklärt ist. Fehlt sie,
+ist das Fenster festgenagelt; ist zu viel erklärt, verschiebt ein Klick auf
+einen Knopf das Fenster, statt ihn zu drücken. Die Anmeldung hat keine
+Kopfleiste und bekam deshalb einen eigenen, unsichtbaren Streifen.
+
+**Die Farbe sagt die Seite, nicht die Hülle.** Die Anmeldung ist dunkel, die
+App dahinter hell. Eine Liste der dunklen Seiten in der Hülle wäre beim
+nächsten neuen Bildschirm veraltet — und niemand merkte es, weil nur die
+Knöpfe schlecht zu sehen wären. Also meldet sich jeder Bildschirm selbst
+(`fensterleiste()` in `src/lib/drucken.ts`).
+
+Dass die Brücke dadurch um einen Eintrag wächst, hat `pruefungen/desktop/
+huelle.mjs` sofort rot gemeldet — die Prüfung zählt die erlaubte Liste
+namentlich auf. Genau dafür ist sie da: In `bruecke.js` steht „Wer diese Liste
+erweitert, öffnet eine Tür und muss sie begründen."
+
+### Nachweise
+
+`pruefungen/browser/fensterleiste.mjs` (12 Checks) gegen die **echte** App mit
+dem echten Stylesheet: Streifen vorhanden, wirklich zum Ziehen erklärt, 70 px
+hoch, über die volle Breite — und die Gegenproben: im Browser ist nichts davon
+sichtbar und nichts zieht; das Anmeldefeld bleibt anklickbar; von fünf
+Bedienelementen in der Leiste zieht keines; der Platz für die Fensterknöpfe
+ist im Browser nicht reserviert, sonst klaffte dort eine Lücke.
+
+Im Hüllen-Test steht bewusst nur, was die **Hülle** tut (Fenster bleibt
+verschiebbar, Klasse wird vor dem ersten Bild gesetzt, Farbe lässt sich
+stellen). Die Attrappe dort hat kein Stylesheet; die CSS-Regel dort zu prüfen
+hieße, eine Abschrift zu prüfen.
+
+In `k-website.mjs` neun Checks zur Weiche, davon fünf Gegenproben — eine
+Weiche, die auch Unangemeldete umleitet, hätte die Website über Nacht aus
+Google genommen.
+
+### Nebenbefund
+
+Auf dem Bildschirmfoto der Unternehmensübersicht standen vier fremde Standorte
+(„F10 mvf7fum5 ohne Paket") zwischen den echten, als aktiv mitgezählt. Reste
+aus abgebrochenen Läufen von `f10-dienstzeiten-fehlen`: Das Aufräumen stand
+nur am Ende. Eine Prüfung, die bei Erfolg aufräumt und bei Misserfolg nicht,
+räumt genau dann nicht auf, wenn etwas schiefgegangen ist. Sie räumt jetzt
+auch bei Abbruch weg — nachgewiesen mit einem absichtlich eingebauten Abbruch.
+
+**Stand:** 1732/1732 in 47 Prüfungen, 1069 Modultests, 154 im Rechendienst,
+Desktop 49/49, Browser 12+20+17+31+25+22+17, tsc und Bauen sauber.
+
+## §203 Fünf Meldungen aus der App — und was dahinter steckte
+
+### 1. „Wenn ich mich 10:19 einlogge, steht da 8:19"
+
+Der schwerste der fünf. Die Uhrzeit wurde mit `toTimeString()` gebildet, der
+Tag mit `getFullYear()`/`getMonth()`. Beide nehmen die Zeitzone des Rechners,
+auf dem der Code läuft: auf dem Entwicklungsrechner Berlin, bei Railway UTC.
+**Es lief hier richtig und im Betrieb falsch** — die schlimmste Sorte Fehler.
+
+Die DAUER stimmte immer, die wird aus `clockInAt` gerechnet. Falsch waren die
+geschriebenen Felder `clockIn`, `clockOut` und `date`. Also:
+
+* Auf jedem Stundenzettel stand eine falsche Uhrzeit. Ein Arbeitszeitnachweis
+  mit falschen Uhrzeiten ist als Nachweis wertlos (§16 Abs. 2 ArbZG).
+* Bei Nachtdiensten war auch der **Tag** falsch: Wer um 00:30 Berlin kommt,
+  kam um 22:30 UTC — also am Vortag. Am Monatsersten damit im falschen
+  Abrechnungsmonat.
+
+Jetzt kommt beides aus `src/lib/zeitzone.ts`, über `Intl` und nicht über eine
+selbst gerechnete Verschiebung: In der Nacht der Zeitumstellung liegt jede
+gerechnete Verschiebung um eine Stunde daneben, und das ist eine Nacht, in
+der gearbeitet wird.
+
+**Der Test, der ihn hätte finden müssen, hat ihn gedeckt.** Er lautete
+`new Date(2026, 8, 5, 22, 30)` — und dieser Aufruf nimmt ebenfalls die Zone
+des Rechners. Zwei Fehler, die sich gegenseitig aufheben. Er steht jetzt mit
+festen UTC-Zeitpunkten da und prüft genau das, worauf es ankommt: Das
+Ergebnis darf von der Uhr des Servers nicht abhängen.
+
+Dasselbe in `b3-warteschlange`: Dort stand `.slice(11, 16)` auf der
+ISO-Zeichenkette, also wieder die UTC-Stunde. Beim ersten Lauf nach der
+Behebung schlug die Prüfung an — „gebucht 06:43, gestempelt 04:43". Das war
+die Bestätigung.
+
+**Offen und bewusst so:** Die bereits geschriebenen Werte bleiben falsch. Sie
+ließen sich aus `clockInAt` zurückrechnen; das berührt Produktionsdaten und
+ist nicht ohne Freigabe zu machen.
+
+### 2. Zwei Stempeluhren
+
+Gestempelt wurde an zwei Stellen: auf „Mein Tag" und auf „Meine Zeiten". Zwei
+Uhren für denselben Handgriff sind nicht doppelt bequem, sondern doppelt
+unsicher — jede hatte ihre eigene Logik, und die auf „Meine Zeiten" sperrte
+das Einstempeln ohne Dienst („Einstempeln nicht möglich"), während die andere
+es zuließ.
+
+Die zweite ist weg; die Seite zeigt nur noch an, was läuft. Mit ihr ging
+`handleClockOut` samt eigener Überstundenfrage: Die verglich die **Uhrzeit**
+des Gehens mit dem Dienstende, in der Zeitzone des Browsers. Wer eine Stunde
+später kam und eine Stunde später ging, bekam eine Überstundenfrage für
+Stunden, die er nie gearbeitet hatte — und hätte er sie bestätigt, wären sie
+bezahlt worden.
+
+### 3. und 4. Stempeln ohne Dienst, Abweichung vom Plan
+
+Gesperrt wird nicht — es gibt den Einspringer, die Übergabe, den Notfall, und
+wer dann nicht stempeln kann, arbeitet unbezahlt. Was fehlt, ist nicht die
+Erlaubnis, sondern die Erklärung:
+
+| Wann | Was passiert |
+|---|---|
+| Einstempeln ohne geplanten Dienst | Rückfrage **vorher**, Grund ist Pflicht |
+| Ausstempeln, Dauer ≠ Plan (±15 min) | Rückfrage **danach**, Stempel sitzt schon |
+| Länger geblieben | dazu Kategorie, daraus entsteht der Überstundenantrag |
+
+Verglichen wird die **Dauer**, nicht die Uhrzeit des Gehens: Wer eine halbe
+Stunde später kommt und später geht, hat seinen Dienst voll gearbeitet. Die
+Rückfrage beim Gehen kommt **nach** dem Stempeln — die gearbeitete Zeit ist
+Lohn, die Begründung ist Erklärung, und das eine darf das andere nicht
+blockieren.
+
+Gefragt wird im Browser (damit es auch im Funkloch geht) **und** geprüft auf
+dem Server (damit ein Gerät, das die Rückfrage überspringt, nicht die Lücke
+ist).
+
+### 5. „Die Profilbilder sind rangezoomt"
+
+```js
+ctx.drawImage(img, x, y, img.width, img.height)
+```
+
+Die beiden letzten Werte sind bei dieser Form die **Ziel**maße, nicht die
+Quellmaße. Ein Handyfoto mit 3000×4000 Punkten wurde in Originalgröße auf
+eine 256er Fläche gemalt — übrig blieb ein 256×256-Ausschnitt aus der Mitte,
+bei einem Porträt die Augen. Die Rechnung steht jetzt in
+`src/lib/bildzuschnitt.ts` und ist nachgerechnet; im Datei-Handler sah sie
+niemand an, und prüfbar war sie dort nicht (`canvas` gibt es im Testlauf
+nicht).
+
+**Bereits hochgeladene Bilder bleiben, wie sie sind** — das Original ist weg,
+gespeichert wurde nur der Ausschnitt. Sie müssen neu hochgeladen werden.
+
+### Nebenbefund
+
+Für **Überstundenanträge gibt es keinen Löschweg** — weder für die Leitung
+noch für den Antragsteller, der sich vertippt hat. Nicht behoben: Das ist
+eine eigene Entscheidung, kein Nebenbei.
+
+### Nachweise
+
+`pruefungen/b5-stempelgrund.mjs`, 30 Checks gegen das laufende System, mit den
+Gegenproben: Bei der abgelehnten Stempelung entsteht **keine** Zeitbuchung;
+ein Punkt als Grund genügt nicht; eine fremde Kennung lässt sich nicht
+beschriften; **wer seinen Dienst arbeitet, wird nicht gefragt**. Dazu die
+Uhrzeit gegen die echte Ortszeit geprüft. 22 Modultests zur Zeitzone
+(Sommerzeit, Winterzeit, Mitternacht, Nachtdienst, Nacht der Umstellung), 16
+zur Begründungslogik, 6 zum Bildzuschnitt.
+
+**Stand nach dem Zusammenführen mit §202:** 1780/1780 in 48 Prüfungen, 1096
+Modultests, 158 im Rechendienst, Desktop 49/49,
+Browser 12+25+31+22+17+20+17, tsc und Bauen sauber.
+
+**Eine Falle, die zweimal zugeschnappt ist:** Nach dem Zusammenführen war
+`f10-paket-einrichtung` rot („dienstzeiten: 0"), und dasselbe vorher bei den
+Browser-Prüfungen. Beide Male lag es nicht am Code, sondern an einem ALTEN
+Prozess, der den Port noch hielt — der neu gestartete konnte sich nicht
+binden und starb still. Wer hier etwas prüft, sollte vorher
+`ps -eo pid,lstart,args | grep -E "next-server|uvicorn"` ansehen: Steht dort
+eine Startzeit von vor der eigenen Änderung, prüft man den alten Stand.
+
+## §204 Den eigenen Überstundenantrag zurückziehen — und ein größerer Fund dabei
+
+### Der Nebenbefund aus §203
+
+Für Überstundenanträge führte nichts heraus. Wer sich beim Ausstempeln
+vertippt oder versehentlich Mehrarbeit gemeldet hatte, bekam den Antrag nicht
+mehr weg; die Leitung konnte ihn nur genehmigen oder ablehnen. Ein Mensch
+musste also eine fremde Entscheidung über seinen eigenen Irrtum erbitten.
+
+**Wer und wann:** nur der Antragsteller selbst, und nur solange nichts
+entschieden ist.
+
+* Die **Leitung darf hier nicht löschen**. Sie hat zwei Werkzeuge,
+  genehmigen und ablehnen, und beide hinterlassen eine Spur. Ein stilles
+  Verschwinden eines fremden Antrags wäre etwas anderes: Dann stünde Aussage
+  gegen Aussage darüber, ob er je gestellt wurde.
+* Ein **entschiedener Antrag bleibt**. „Zurückziehen" nach der Genehmigung
+  hieße, eine Entscheidung zu tilgen, an der womöglich schon eine Auszahlung
+  hängt.
+
+**Warum wirklich gelöscht und nicht nur umgeschaltet:** Der Antrag trägt die
+Spur nicht. Was passiert ist, steht am Zeiteintrag — `abweichung` und
+`grundGehen` bleiben unberührt. Ein Status „zurückgezogen" wäre dagegen eine
+Zeile, die jede Liste und jede Auswertung ab jetzt mitschleppen müsste, ohne
+je etwas zu bedeuten. Den Vorgang hält das Protokoll fest; dort gehören
+Spuren hin.
+
+### Der Fund, der größer war als die Aufgabe
+
+Die Gegenprobe zu „die Spur bleibt am Zeiteintrag" war rot. Sie blieb auch —
+nur **sehen konnte sie niemand**: `grundKommen`, `grundGehen` und
+`abweichung` gab es seit §203 in der Datenbank, aber `toTimeLog` ließ sie
+weg, und im Typ `TimeLog` standen sie nicht.
+
+Damit war die ganze Nachfrage aus §203 **write-only**. Gefragt wurde,
+gespeichert wurde, gelesen von niemandem. Die Leitung sah weiter eine Zahl
+ohne Erklärung — also genau das, was §203 abstellen sollte. Eine Funktion,
+die zur Hälfte fehlt, sieht im Betrieb aus wie eine, die nicht funktioniert.
+
+Die Felder stehen jetzt im Typ, im Mapper und an beiden Stellen, an denen
+Zeiten gelesen werden: beim Monatsabschluss der Leitung und in der eigenen
+Liste des Beschäftigten. Steht eine Abweichung ohne Begründung da, wird das
+auch so gesagt — „länger geblieben, ohne Angabe" ist eine ehrliche Auskunft;
+ein leeres Feld sähe aus, als wäre nichts gewesen.
+
+### Nachweise
+
+`b5-stempelgrund` wächst auf 44 Checks. Die Gegenproben tragen hier die
+Prüfung: Ein **fremder** Antrag lässt sich nicht zurückziehen, auch **nicht
+von der Leitung**, auch nicht **ohne Anmeldung** — und nach allen drei
+Fehlversuchen steht er unverändert da. Ein **entschiedener** Antrag ergibt
+409 mit Begründung. Und die beiden Checks, die den Mapper-Fehler gefunden
+haben, stehen jetzt ausdrücklich auch aus Sicht der Leitung da.
+
+**Stand:** 1794/1794 in 48 Prüfungen, 1096 Modultests, tsc und Bauen sauber.
+
+## §205 Der Installationsassistent und die Selbstaktualisierung
+
+**Der Anlass.** Der Eigentümer: „Ich möchte, dass ich was runterlade, was ein
+richtiges Programm ist, was ich dann installiere … und nicht, was so billig
+aussieht." Von den Wegen, die dafür offenstanden, sind das die beiden mit dem
+besten Verhältnis von Arbeit zu Wirkung — und die Selbstaktualisierung ist
+die Voraussetzung für alles Weitere: Ohne sie erreicht keine künftige
+Verbesserung jemanden, der das Programm schon installiert hat.
+
+### Eine Absage zurückgenommen — mit Begründung
+
+In §173 stand: keine Selbstaktualisierung, und zwar bewusst. Die Begründung
+war gut und gilt immer noch: Die Hülle enthält keine Anwendung, Korrekturen
+an Lohn und Dienstplan gehen über den Server.
+
+Was sich geändert hat, ist die Hülle selbst. Seit §201 trägt sie den
+Fensterrahmen; als Nächstes kommen Offlinebetrieb und Benachrichtigungen. Sie
+ist damit zu etwas geworden, das sich ändert — und das war die Bedingung, an
+der die alte Entscheidung hing.
+
+### Der Ausgabeort — und warum „keiner" besser ist als „einer ins Leere"
+
+Alles hängt an einer Variablen beim Bauen:
+
+| Ohne `OKUN_UPDATE_URL` | Mit ihr |
+|---|---|
+| `publish: null`, kein `app-update.yml` im Paket | `provider: generic` mit dieser Adresse |
+| Das Programm merkt das und sucht **gar nicht erst** | 20 s nach dem Start, danach alle sechs Stunden |
+
+Ein eingetragener Ausgabeort, an dem nichts liegt, liefe bei **jedem Start**
+ins Leere — beim Kunden, täglich, unsichtbar. Deshalb ist das `null` kein
+Versäumnis, sondern die Entscheidung.
+
+`generic` und nicht GitHub: Ein privates Repository bräuchte ein Zugriffswort
+in jedem ausgelieferten Programm — ein Geheimnis auf dem Rechner jedes
+Kunden.
+
+### Die stille Falle beim Packen
+
+`files` war in der Bauanleitung eine ausdrückliche Liste. Sobald sie gesetzt
+ist, gilt **nur** noch sie — `node_modules/**` fehlte darin, und damit wäre
+`electron-updater` nicht im Paket gelandet. Das Programm hat für genau diesen
+Fall einen Rückfallweg (`require` in `try`), also hätte nichts gemeldet, dass
+die Selbstaktualisierung fehlt. Sie wäre einfach nie gelaufen.
+
+Nachgesehen wurde deshalb am fertigen Paket, nicht in der Bauanleitung:
+`electron-updater` liegt im `app.asar`, `app-update.yml` in `resources/` —
+und ohne die Variable ist es nicht da.
+
+### Die Bilder
+
+NSIS kann nur BMP, und nur in zwei festen Größen. Wer andere liefert, bekommt
+kein skaliertes Bild, sondern einen abgeschnittenen Rand. Erzeugt werden sie
+von `scripts/installer-bilder.mjs` aus dem Logo und den Hausfarben —
+eingecheckt werden sie trotzdem, damit der Bau nicht von einem Skript
+abhängt, das jemand zu laufen vergisst.
+
+**Dabei ein eigener Fehler, gefunden durch Nachmessen:** Als senkrechte Mitte
+des Kopfstreifens stand `(57 - 42) / 2` da, also **7,5**. Ein halber
+Zeilenversatz wird beim Rechnen zu `7,5 × 150 = 1125` — einer ganzen Zahl,
+nur eben der falschen. Das Zeichen landete 75 Punkte weiter links: statt
+rechts fast in der Mitte, wo im Assistenten die Überschrift steht. Nichts
+stürzte ab, nichts warnte. Aufgefallen ist es erst, als ich das fertige Bild
+vermessen habe, statt es anzusehen — auf 150 Punkten Breite sieht man den
+Unterschied mit dem Auge nicht sicher.
+
+### Was bewusst fehlt
+
+* **Keine Lizenzseite im Assistenten.** Welche Nutzungsbedingungen dort
+  stehen, ist eine juristische Entscheidung und keine, die beim Programmieren
+  getroffen wird.
+* **Kein Ort für die Dateien.** Die Selbstaktualisierung ist gebaut und
+  geprüft, aber bis `latest.yml` und die `.exe` irgendwo liegen, läuft sie
+  nicht. Das ist jetzt der Punkt, an dem alles Weitere hängt — in `DESKTOP.md`
+  entsprechend hochgestuft.
+
+### Nachweise
+
+`pruefungen/desktop/huelle.mjs` wächst von 49 auf 61 Checks: beide Bilder
+vorhanden, BMP, **und genau in den geforderten Maßen**; der Assistent führt
+durch Schritte; `node_modules/**` steht in `files`; und die Gegenprobe, auf
+die es ankommt — **ohne Ausgabeort wird keiner eingetragen**.
+
+**Stand:** 61/61 Desktop-Checks, 1794/1794 in 48 Prüfungen, 1096 Modultests,
+tsc und Bauen sauber.
+
+## §206 „Die Zeiten stimmen nicht überein" — eine Spalte mit zwei Bedeutungen
+
+**Was gemeldet wurde.** Ein Zeitnachweis zeigte **3 h 32 min**, die Kachel
+darüber für denselben Tag **0 h 44 min**. Nachgerechnet: 212 − 168 = 44. Die
+Pause war ein zweites Mal abgezogen.
+
+Das war das Symptom. Die Ursache war schlimmer.
+
+### Dieselbe Spalte, drei Schreibweisen
+
+`TimeLog.totalMinutes` bedeutete nicht überall dasselbe:
+
+| Wer schreibt | Was drinstand |
+|---|---|
+| Stempeluhr (§137) | **netto** — Pause abgezogen |
+| Korrektur der Leitung | **brutto** — Ende minus Anfang |
+| Nacherfassung der Leitung | **brutto** — und über Mitternacht null |
+
+Gelesen wurde sie ebenfalls zweierlei: Die **Lohnabrechnung**
+(`payroll-monat.ts`) nahm den Wert unverändert als bezahlte Zeit, **sechzehn
+Anzeigestellen** zogen die Pause noch einmal ab. In der Kombination:
+
+* eine **gestempelte** Buchung wurde in jeder Übersicht **zu niedrig** gezeigt
+  — auch im Nachweis nach §16 Abs. 2 ArbZG, also in der Zahl, auf die sich
+  bei einer Prüfung jemand beruft;
+* eine von der Leitung **korrigierte oder nacherfasste** Buchung wurde **zu
+  hoch bezahlt**, und zwar genau um die eingetragene Pause.
+
+Das Zweite ist der eigentliche Schaden. Es fällt niemandem auf, weil beide
+Zahlen für sich plausibel aussehen.
+
+### Die Entscheidung: netto
+
+Weil `totalMinutes` das ist, was ausgezahlt wird, und bezahlt wird
+Arbeitszeit, nicht Anwesenheit. Die andere Richtung hätte bedeutet, die
+Lohnrechnung zu ändern **und** alle bestehenden Stempelungen umzurechnen. Bei
+einer Zahl, an der Geld hängt, nimmt man den Weg, der die vorhandenen Daten
+in Ruhe lässt.
+
+Der Name bleibt irreführend; deshalb steht die Bedeutung jetzt an **einer**
+Stelle (`src/lib/arbeitszeit.ts`), und alles liest über `nettoMinuten()`.
+Nebenbei behoben: Beide Leitungs-Wege rechnen jetzt über Mitternacht — ein
+Nachtdienst von 22:00 bis 06:00 ergab vorher null Minuten.
+
+### Noch zwei Kleinigkeiten aus demselben Bild
+
+* **„0 Arbeitstage" neben „Soll 176 h".** Der Wert zählt Tage mit einer
+  Buchung, nicht Arbeitstage, und er wurde beim Anlegen des Monats
+  eingefroren und nie wieder nachgeführt. Jetzt wird er mitgerechnet, zählt
+  **Tage statt Buchungen** (wer vor- und nachmittags stempelt, hat einen
+  Arbeitstag) und heißt in der Oberfläche, was er ist: „3 Tage erfasst".
+* **Ein totes Feld entfernt.** Der Monatsnachweis reichte ein `totalMinutes`
+  durch, das niemand las — ein unbenutzter, mehrdeutig benannter Wert ist
+  genau das, woraus dieser Fehler entstanden ist.
+
+### Nachweise
+
+`b5-stempelgrund` wächst auf **52 Checks**. Der entscheidende ist die
+Gegenprobe, die das gefunden hätte: **derselbe Eintrag, beide Schreibwege.**
+Erst stempeln (mit Pause), dann die Leitung korrigieren lassen — und danach
+muss die Pause immer noch genau einmal abgezogen sein. Dazu: „gearbeitet +
+Pause ergibt wieder die Anwesenheit" und „das Stundenkonto zählt dieselben
+Minuten wie die Einträge". 11 Modultests zur Bedeutung der Spalte.
+
+**Offen und nur mit Freigabe:** Bestehende Buchungen, die über Korrektur oder
+Nacherfassung entstanden sind, tragen weiterhin den Bruttowert — sie wurden
+zu hoch bewertet. Das ließe sich zurückrechnen; es berührt Produktionsdaten.
+
+**Stand:** 1802/1802 in 48 Prüfungen, 1107 Modultests, 61/61 Desktop, tsc und
+Bauen sauber.
+
+## §207 Die untere Leiste auf dem Telefon
+
+**Was gemeldet wurde.** „Wenn man darauf klickt, sieht das sehr
+unprofessionell aus. Diese Kacheln, der Effekt muss da weg. Weil wenn die
+groß werden, dann geht es aus dem Bereich raus. Aber nur auf der mobilen
+Variante."
+
+Drei Dinge waren schuld, und alle drei sind Antworten auf einen **Mauszeiger**:
+
+| Was | Wirkung |
+|---|---|
+| Vergrößerung | Die Kachel wuchs auf das 1,42-fache — und blieb so |
+| Welle | wächst auf das Dreifache |
+| Lichtkranz | vierzehn Punkte Schatten rundherum |
+
+Dass die Vergrößerung auf einem Telefon überhaupt auftritt, liegt daran, dass
+Browser beim Antippen ein **künstliches `mousemove`** erzeugen. Danach folgt
+kein `mouseleave` — die Kachel blieb also dauerhaft vergrößert und stand über
+der Leiste.
+
+### Warum nach dem Zeigegerät gefragt wird und nicht nach der Breite
+
+Es geht nicht um die Größe des Bildschirms, sondern um die Art der Bedienung.
+`(hover: hover) and (pointer: fine)` ist die Frage „gibt es hier einen Zeiger,
+der über etwas fahren kann". Ein schmales Fenster am Schreibtisch behält die
+Effekte; ein Tablet im Querformat ist breit und bekommt sie zu Recht nicht.
+
+Abgeschaltet wird in JavaScript und nicht per Media Query: Die Wellen
+entfernen sich selbst, wenn ihre Animation endet — eine Animation, die per
+CSS auf `none` steht, endet nie, und die Elemente blieben für immer stehen.
+
+### Die Prüfung, die zuerst nichts bewiesen hat
+
+Erster Entwurf: antippen, nachsehen. **Acht von acht grün — auch als ich die
+Sperre zur Probe wieder herausnahm.** Zwei Gründe:
+
+1. Playwrights `tap()` erzeugt kein künstliches Mausereignis. Ein echtes
+   Telefon erzeugt es, und genau daran hing der Fehler. Die Prüfung löst es
+   jetzt ausdrücklich aus — das ist nicht geschummelt, sondern stellt her,
+   was auf dem Gerät wirklich passiert.
+2. Gemessen wurde **nach** dem Antippen. Das Antippen löst ein `mouseleave`
+   aus, das die Vergrößerung zurücksetzt — es stand also immer 1 da, mit
+   Sperre wie ohne. Jetzt wird vorher gemessen.
+
+Danach wurden mit herausgenommener Sperre **drei** Checks rot statt einem.
+Erst damit ist die Prüfung etwas wert.
+
+Und die Gegenprobe ist die halbe Prüfung: Am Schreibtisch bleiben Wellen
+(2 gefunden) und Vergrößerung (1,42× unter dem Zeiger). Eine Änderung, die
+die Effekte überall abschaltet, wäre genauso falsch wie keine.
+
+### Nebenbefund an der eigenen Arbeit
+
+`b5-stempelgrund` bestand allein, aber nicht im Gesamtlauf: Sie suchte ihre
+Zeitbuchung über das Datum, und b2 und b3 stempeln für dieselbe Person am
+selben Tag. Sie sucht jetzt über die Kennung. Eine Prüfung, die nur allein
+besteht, ist kein Sicherheitsnetz.
+
+**Stand:** 1802/1802 in 48 Prüfungen, 1107 Modultests, Browser 8+31+12,
+tsc und Bauen sauber.
+
+## Block §216 (22.10.) — Google sagen, dass eine Stelle online ist
+
+**Was fehlte:** Seit §148 trägt jede Anzeige ein `JobPosting` im Quelltext —
+die Eintrittskarte zu Google for Jobs, der wirksamste kostenlose Kanal für
+einen kleinen Träger. Nur musste Google bisher von selbst vorbeikommen. Bei
+einer frisch eingerichteten Karriereseite ohne eingehende Links dauert das
+Tage, und eine Stelle, die in drei Tagen auffindbar wird, ist drei Tage lang
+unsichtbar.
+
+**Was jetzt passiert:** Beim Veröffentlichen meldet die Anlage die Adresse bei
+Googles Indexing API (`URL_UPDATED`), beim Schließen meldet sie sie ab
+(`URL_DELETED`). Dasselbe, wenn ein Betrieb seine ganze Karriereseite ein-
+oder ausschaltet oder ihre Adresse ändert.
+
+**Und was ausdrücklich nicht passiert:** eine Zusage auf Aufnahme. Die
+Schnittstelle meldet eine Änderung an; ob Google die Seite aufnimmt, bleibt
+Googles Entscheidung. Sie ist laut Google nur für Seiten mit `JobPosting`
+oder `BroadcastEvent` vorgesehen — für alles andere wäre die Benutzung ein
+Verstoß gegen die Bedingungen, und der Zugang kann entzogen werden.
+
+### Die vier Entscheidungen, die nicht offensichtlich sind
+
+**Ein Dienstkonto für alle Mandanten, und das geht nur, weil alle
+Karriereseiten auf unserer Domain liegen.** `okun-workforce.com/karriere/<kunde>`
+ist eine einzige Property in der Search Console; das Dienstkonto wird dort
+einmal als Inhaber eingetragen und deckt damit jeden Kunden ab. Gäbe es
+eigene Kundendomains, bräuchte jede ihre eigene Bestätigung — und die könnte
+nur der Kunde geben. Solange wir keine Kundendomains anbieten, ist das
+einfach; wenn wir sie je anbieten, ist es diese Stelle, die es merkt.
+
+**Das Tageskontingent gilt für alle Mandanten zusammen.** Google sieht je
+Projekt 200 Meldungen am Tag vor, zurückgesetzt um Mitternacht pazifischer
+Zeit. Deshalb zählt die Anlage mit, und deshalb gibt es zwei Grenzen: die
+Tagesgrenze und ein Deckel von 50 Meldungen je einzelner Handlung. Ein
+Betrieb, der seine Seite mit achtzig Anzeigen abschaltet, soll nicht das
+Kontingent aller anderen für diesen Tag aufbrauchen.
+
+**Ein Entwurf geht Google nichts an.** Die Entscheidung, ob überhaupt
+gemeldet wird, steht als eigene Funktion da und vergleicht zwei Zustände:
+Wer zehnmal an einem Entwurf schreibt, löst nichts aus; wer eine
+veröffentlichte Anzeige ändert, löst eine Meldung aus. Dieselbe
+Sichtbarkeitsregel wie in `karriere.ts` — Seite eingeschaltet, Impressum
+vorhanden, Anzeige veröffentlicht. Wer hier großzügiger rechnete, meldete
+Google Adressen, die 404 liefern, und das beschädigt den Ruf der Domain.
+
+**Gelöschte Entwürfe werden nicht abgemeldet.** Löschen darf man nur, was nie
+veröffentlicht war. Was Google nie kannte, muss ihm nicht abgemeldet werden.
+Das steht als Kommentar im Code, damit es niemand für ein Versehen hält.
+
+### Ohne fremdes Paket
+
+Wie bei §210: `googleapis` zieht Dutzende Pakete nach, gebraucht werden zwei
+Dinge — ein signiertes Token holen und eine Adresse melden. Der Weg über
+JWT-Bearer ist von Google festgelegt. Achtzig Zeilen, kein Paket.
+
+Nachweis: **32 Modultests**, darunter die eine, die wirklich zählt — das
+selbst gebaute JWT wird mit dem öffentlichen Schlüssel eines im Test
+erzeugten Schlüsselpaars **nachgeprüft**. Eine falsch gebaute Signatur meldet
+sich bei Google als „invalid_grant" ohne jeden Hinweis worauf. Dazu
+Gegenproben: ohne Zugangsdaten wird das Netz nicht einmal gefragt, bei
+erreichter Tagesgrenze erfolgt keine weitere Anfrage, und dieselbe Meldung
+zweimal hintereinander verbraucht nur eine Einheit.
+
+**Was von Hand geprüft werden muss:** dass Google die Signatur annimmt. Das
+braucht ein echtes Dienstkonto und die eingetragene Inhaberschaft — kein Test
+kann das ersetzen.
+
+## Block §217 (22.10.) — Vier Befunde am Zahlungsweg, bevor EBICS gebaut wird
+
+Entstanden aus einer Untersuchung des Ist-Stands für die geplante
+EBICS-Anbindung (`EBICS-ARCHITEKTUR-IST-SOLL.md`). Gesucht war der Stand der
+Bankanbindung; gefunden wurden vier Dinge am bestehenden Zahlungsweg, die
+ohnehin behoben gehören — und die mit EBICS größer würden, weil dann ein
+Auftrag die Anlage verlässt, statt auf einem Bildschirm zu landen.
+
+### 1 · Die Standortleitung konnte die Zahldatei des ganzen Trägers abrufen
+
+`payroll/export/route.ts` prüfte den Standortbezug **nur, wenn ein Standort
+mitgegeben wurde** — und warf das Ergebnis dann weg. Ohne den Parameter
+lautete die Abfrage `{ customerId, year, month }`. Herunterladbar war damit
+eine Datei mit **Name, IBAN und Auszahlungsbetrag jeder beschäftigten Person
+des gesamten Unternehmens**.
+
+Dass es ein Versehen war und keine Entscheidung, zeigt der Vergleich: Sechs
+andere Wege der Lohnabrechnung rufen `allowedLocationScope` auf und schränken
+ein. Dieser war die Ausnahme.
+
+**Dieselbe Lücke schreibend im Belegweg** (`payroll/beleg/route.ts`): Ohne
+Standortangabe erzeugte eine Standortleitung die Entgeltabrechnungen des
+ganzen Trägers, legte sie in fremde Personalakten und benachrichtigte fremde
+Beschäftigte.
+
+**Nachgewiesen statt behauptet.** Im Seed hat jeder Träger genau einen
+Standort — eine Prüfung hätte dort auch mit der Lücke bestanden. Sie legt sich
+deshalb **einen zweiten Standort mit einer Person selbst an**, unter festem
+Namen, damit ein zweiter Lauf ihn wiederfindet statt ihn zu vermehren.
+Gegengeprüft mit entfernter Sperre: Dann steht der fremde Name in der Datei
+der Leitung.
+
+### 2 · Entwürfe waren auszahlbar
+
+Der Export filterte nicht auf den Stand der Abrechnung. Die Regel „kein Lohn
+ohne freigegebenen Monat" (§136) greift beim **Rechnen** — beim **Auszahlen**
+griff sie nicht. Jetzt entsteht eine Zahldatei nur aus `approved` oder `paid`,
+und wer nichts freigegeben hat, bekommt das gesagt statt einer Suche nach
+einer fehlenden Bankverbindung.
+
+### 3 · Kein Schutz gegen die doppelte Gehaltszahlung
+
+Die Nachrichtenkennung war `OKUN-${Date.now()}`. Zwei Abrufe desselben Monats
+ergaben zwei verschiedene Kennungen — für eine Bank zwei verschiedene
+Aufträge, und sie nimmt beide an. Wer zweimal herunterlud und zweimal
+einreichte, zahlte zweimal. Die Bank konnte auch nichts dagegen tun: Sie sah
+nie zweimal dasselbe.
+
+Die Kennung wird jetzt **aus dem Inhalt gerechnet** — Mandant, Monat,
+Standortauswahl und die sortierte Liste aus Empfängerkonto und Betrag. Daraus
+folgen beide Eigenschaften, auf die es ankommt:
+
+* **Derselbe Lauf trägt dieselbe Kennung.** Erst dadurch *kann* die Bank die
+  Dublette erkennen.
+* **Ein korrigierter Lauf trägt eine andere.** Ein starrer Wert je Monat hätte
+  die berechtigte Nachzahlung mit blockiert — der Fehler, den die naheliegende
+  Lösung gemacht hätte.
+
+Sortiert wird vor dem Rechnen, damit die Reihenfolge der Abrechnungen die
+Kennung nicht verändert.
+
+### 4 · Weder Zahldatei noch Bankverbindung hinterließen eine Spur
+
+Kein Protokolleintrag beim Export, keiner beim Ändern einer IBAN — weder beim
+Unternehmen noch bei einer Person. Jetzt drei Spuren: der SEPA-Export mit
+Kennung, Anzahl und **Summe**, der DATEV-Export, und jede Änderung einer
+Kontoverbindung mit der Angabe, ob sie **erstmalig gesetzt oder getauscht**
+wurde.
+
+Die IBAN steht dabei nur gekürzt im Protokoll (`DE89…3000`): genug, um eine
+Änderung zu erkennen, zu wenig, um davon zu überweisen. Diese Abwägung ist der
+Grund, warum überhaupt etwas von der IBAN dort steht — **der häufigste Betrug
+bei Gehaltszahlungen ist nicht der gehackte Bankzugang, sondern die
+stillschweigend getauschte Kontonummer.**
+
+### Was dabei offen bleibt
+
+Der Zahllauf als eigener Vorgang mit Zuständen und gespeicherter Datei, damit
+die Anlage weiß, ob ein Monat bezahlt wurde — `paid` setzt bis heute niemand,
+weil ein Download nicht weiß, ob die Datei wirklich eingereicht wurde. Dazu
+die Verschlüsselung der Kontoverbindungen auf Anwendungsebene und die
+Feiertage beim Ausführungsdatum. Alles drei steht in
+`EBICS-ARCHITEKTUR-IST-SOLL.md`, Abschnitt 5.
+
+Nachweis: **1177 Modultests** (13 neue für Kennung und gekürzte IBAN) und
+`pruefungen/d-lohn.mjs` **53/53** statt vorher 40 — darunter die Gegenprobe
+„Aus Entwürfen entsteht keine Zahldatei", die vor der Freigabe steht, weil sie
+nur dort etwas zeigt.
+
+## Block §218 (22.10.) — Die Gehaltszahlung als Vorgang
+
+Der Abschluss dessen, was §217 begonnen hat. Dort wurden vier Befunde am
+Zahlungsweg behoben; hier wird aus dem Download ein Vorgang, über den die
+Anlage Bescheid weiß.
+
+**Was vorher fehlte:** Nach einem Klick auf „SEPA-Datei" wusste das Programm
+nichts mehr. Nicht, ob die Datei eingereicht wurde. Nicht, was in ihr stand.
+Nicht, ob derselbe Monat schon einmal gezahlt worden war. `status: 'paid'`
+gab es im Datenmodell, gesetzt hat es nie jemand — ein Download weiß nicht,
+ob ein Mensch die Datei wirklich zur Bank getragen hat.
+
+### Der Vorgang
+
+```
+erzeugt ─► eingereicht ─► ausgefuehrt
+   │            └─────────► abgelehnt
+   └─► verworfen
+```
+
+**`eingereicht` ist der Punkt, an dem es ernst wird.** Ab da gelten die
+enthaltenen Abrechnungen als bezahlt, und für denselben Zeitraum entsteht
+**keine zweite Datei mehr**, solange nicht feststeht, was aus dem Lauf
+geworden ist. Das ist der eigentliche Schutz vor der doppelten
+Gehaltszahlung — er wirkt in der Anlage, nicht erst bei der Bank.
+
+### Vier Entscheidungen, die nicht offensichtlich sind
+
+**Ein nur erzeugter Lauf wird abgelöst, ein eingereichter blockiert.**
+Heruntergeladen heißt nicht eingereicht; der häufigste Fall ist: Fehler
+bemerkt, korrigiert, neu heruntergeladen. Das zu blockieren wäre Schikane.
+Eingereicht heißt dagegen: Geld ist unterwegs.
+
+**„Bezahlt" wird beim Einreichen gesetzt, nicht beim Ausführen.** Wer wartet,
+bis die Bank ausgeführt hat, lässt dazwischen ein Fenster offen, in dem
+dieselbe Abrechnung in einen zweiten Lauf geraten kann. Lehnt die Bank ab,
+wird es zurückgenommen — der seltenere und harmlosere Fall.
+
+**Die gespeicherte Datei wird erneut ausgegeben, nicht neu erzeugt.** Eine
+neu erzeugte trüge einen neuen Erstellungszeitpunkt und wäre Byte für Byte
+eine andere. Wer zwei Dateien vergleicht, sähe Unterschiede, wo keine sind.
+
+**Im Zahllauf stehen keine Personendaten.** Keine Namen, keine
+Kontoverbindungen, keine Beträge je Person — er ist der Vorgang, nicht sein
+Inhalt. Der Personenbezug hängt an der einzelnen Abrechnung
+(`PayrollEntry.zahllaufId`) und verschwindet mit ihr, dort wo das
+Löschkonzept (§128) ihn ohnehin führt. Die gespeicherte Zahldatei enthält
+Namen und Konten und steht trotzdem bewusst nicht im personenbezogenen
+Löschkatalog: Ein Zahlungsauftrag ist ein **Sammelbeleg des Arbeitgebers**,
+und eine einzelne Zeile daraus zu entfernen zerstörte das Dokument, das eine
+Betriebsprüfung sehen will.
+
+### Nebenbei: das Ausführungsdatum kennt jetzt die Feiertage
+
+Vorher wurden nur Samstag und Sonntag übersprungen. Am 1. Mai stand damit ein
+Datum in der Datei, das die Bank zurückweist — und zwar erst beim Einreichen.
+Maßgeblich ist das Bundesland des Standorts. **Ist dort keines hinterlegt —
+und das ist der Normalfall — gilt jeder Tag als Feiertag, der irgendwo in
+Deutschland einer ist.** Das kostet im schlimmsten Fall einen Tag und erspart
+eine zurückgewiesene Gehaltszahlung; von beiden Fehlern ist das der
+harmlosere. Ein **gewünschtes** Datum wird dagegen nicht stillschweigend
+verschoben, sondern mit Begründung abgelehnt.
+
+### Zwei Fehler, die erst die Prüfung gefunden hat
+
+**Ein Lauf ohne Standort war für die Unternehmensebene unsichtbar.** Der
+Filter `locationId IN (...)` schließt NULL aus — und ein unternehmensweiter
+Lauf hat genau das. Die Sichtbarkeit entscheidet jetzt die Rolle: Die
+Unternehmensebene sieht alles ihres Mandanten, eine Standortleitung nur Läufe
+ihrer Standorte.
+
+**Ein wiederbelebter Lauf lief in die Eindeutigkeitssperre.** Wurde ein Lauf
+verworfen und entstand später derselbe Inhalt erneut, scheiterte das Anlegen
+an `(Mandant, Kennung)` — Serverfehler. Es ist kein zweiter Auftrag, sondern
+derselbe noch einmal: Jetzt wird die Zeile wiederbelebt statt neu angelegt.
+
+Nachweis: **1204 Modultests** (27 neue für die Zustandsfolge, die
+Ablöse-Entscheidung und das Ausführungsdatum) und die neue Prüfung
+`pruefungen/d23-zahllauf.mjs` mit **33 Checks** am laufenden System — vom
+ersten Abruf über das Einreichen bis zur Ablehnung, einschließlich der
+Gegenproben: Eine Standortleitung darf nicht einreichen, ein eingereichter
+Lauf lässt sich nicht verwerfen, aus einer Ablehnung wird nachträglich keine
+Ausführung, und ein Mitarbeiter kommt an die Datei nicht heran.
+
+Die Prüfung musste zweimal umgebaut werden, bevor sie etwas wert war: Beim
+ersten Versuch war ihr Inhalt bei jedem Durchlauf derselbe — und damit bekam
+der zweite Durchgang die gespeicherte Datei des ersten zurückgereicht und
+prüfte etwas anderes als gedacht. Sie erzeugt sich ihren Inhalt jetzt selbst
+neu, über eine Einmalzahlung mit einem Betrag, den es so noch nie gab.
+
+**Gesamtstand der Lohn-Prüfungen: 531/531 in 17 Dateien.**
+
+## Block §221 (23.10.) — Dateien im Chat, und drei Arten zu löschen
+
+Zwei Meldungen aus dem Betrieb: „Im Chat kann man keine Bilder schicken —
+auch keine Dateien, Audios etc." und „Man kann keine Chats löschen."
+
+### Dateien
+
+Eine Nachricht konnte Text sein und sonst nichts. Wer ein Foto vom
+Dienstplan an der Wand schicken wollte, eine Sprachnachricht mit vollen
+Händen oder die PDF vom Träger, musste auf WhatsApp ausweichen — und **dort
+liegen Personaldaten dann wirklich falsch.** Genau deshalb ist das kein
+Schmuck, sondern Datenschutz.
+
+Jetzt: Bilder, Tonaufnahmen, Videos, PDF, Office-Dateien und Text, bis 25 MB.
+Bilder werden **gezeigt**, Ton und Video **abgespielt** — eine
+Sprachnachricht, die man erst herunterladen muss, hört niemand.
+
+**Eine eigene Liste erlaubter Dateitypen, nicht die der Personalakte.** Dort
+gehören Verträge und Bescheinigungen hin, und genau deshalb steht da kein Ton
+und kein Tabellenblatt: Eine Akte, in die alles darf, ist keine Akte. Im Chat
+ist es umgekehrt. Was in beiden nicht geht: alles Ausführbare und Archive.
+
+**Der Raum ist der Besitzer der Datei, nicht die Person.** Wer eine Gruppe
+verlässt, nimmt das Bild nicht mit, das er dort geteilt hat — sonst stünde
+bei den anderen eine Lücke im Verlauf. Und der Zugriff wird im Chat
+entschieden, nicht in `/api/files`: Dort gilt „die Akte gehört dieser
+Person", hier gilt „wer im Raum ist, sieht den Verlauf". Zwei Regeln an einer
+Tür sind eine Tür zu viel.
+
+### Löschen — drei Dinge, die oft verwechselt werden
+
+Der Eigentümer hat es genau beschrieben, und so ist es gebaut:
+
+| Weg | Wirkung |
+|---|---|
+| **Gespräch bei mir löschen** | Mein Verlauf ist weg, die andere Seite behält ihren |
+| **Nachricht bei mir wegräumen** | Nur bei mir weg — immer möglich |
+| **Nachricht zurückziehen** | Bei allen weg — **nur solange niemand sie gelesen hat** |
+
+**Warum nicht einfach „löschen".** Ein Gespräch gehört zwei Menschen. Es für
+beide zu entfernen, weil einer aufräumt, wäre ein Eingriff in fremde
+Unterlagen: Der andere verlöre seinen Verlauf, ohne gefragt worden zu sein.
+
+**Warum Zurückziehen vor dem Lesen endet.** Eine Nachricht, die niemand
+gesehen hat, spurlos zurückzunehmen ist ehrlich — sie hat nie gewirkt. Eine
+gelesene zurückzunehmen wäre das Gegenteil: Der andere hat sie, und das
+Programm täte so, als hätte es sie nie gegeben. Wer sich vertan hat, schreibt
+eine zweite Nachricht. Ob es noch geht, entscheidet der **Server** und sagt
+es der Oberfläche — der Browser kennt den Lesestand der anderen nicht und
+soll ihn nicht erraten müssen.
+
+**Ein gelöschtes Gespräch kommt zurück, wenn jemand schreibt.** Alles andere
+hieße, eine Nachricht stillschweigend zu verschlucken. Sichtbar ist dann nur,
+was nach dem Aufräumen kam.
+
+**Eine eigene Tabelle für „bei mir weggeräumt"** (`ChatVerborgen`) statt eines
+Feldes an der Nachricht: „Gelöscht" gilt hier nicht für alle, und ein Feld an
+der Nachricht könnte das gar nicht ausdrücken. Die Zeile verschwindet mit der
+Nachricht — wird sie später für alle zurückgezogen, bleibt kein Rest.
+
+Nachweis: `e5-chat.mjs` **106/106** (vorher 81). Darunter die Gegenproben, auf
+die es ankommt: Etwas Ausführbares wird abgelehnt, eine Fremde kommt an die
+Datei nicht heran (404), nach dem Lesen ist Zurückziehen vorbei (409), eine
+fremde Nachricht zieht niemand zurück (403) — und bei „nur bei mir" steht sie
+**beim anderen noch**, was der ganze Unterschied ist.
+
+Die Prüfung musste nachgebessert werden: Beim ersten Durchlauf ließ sie eine
+ungelesene Nachricht liegen, und beim zweiten scheiterte daran eine ganz
+andere Prüfung weiter oben — an Zustand aus dem vorigen Lauf, nicht am
+Programm. Sie räumt jetzt hinter sich auf.
+
+## Block §222 (24.10.) — Drei Nachbesserungen, alle gemeldet
+
+Der Eigentümer hat §220 und §221 am Telefon ausprobiert. Drei Dinge gingen
+nicht, und zwei davon waren gebaut — nur an der falschen Stelle.
+
+### 1 · Es gibt zwei Glocken
+
+Wegwischen war in `Header.tsx` eingebaut. Auf dem Telefon ist aber die Glocke
+der Leiste zu sehen (`CommandRail.tsx`), und dort fehlte alles. Die
+Rückmeldung „geht immer noch nicht" war völlig richtig: **Der Weg war da, nur
+nicht dort, wo jemand steht.**
+
+Jetzt beide — X je Eintrag (auf dem Telefon mit 32 Pixel Zielfläche),
+„Alle gelesen", „Gelesene aufräumen".
+
+### 2 · Löschen lag hinter einer Tür, die es nur für Gruppen gibt
+
+„Bei mir löschen" stand in der Verwalten-Maske. Die öffnet ein Knopf, den es
+nur bei `art === 'gruppe'` gibt. In einem Gespräch zu zweit führte damit kein
+Weg dorthin — und das ist der häufigste Fall überhaupt.
+
+Der Löschknopf steht jetzt im Kopf **jedes** Gesprächs.
+
+### 3 · Die Rückfrage lag unter der schwebenden Leiste
+
+Sie war ein eigenes `fixed inset-0 z-50`. Auf dem Telefon verdeckte die
+schwebende Leiste den Knopf „Nur bei mir löschen" zur Hälfte.
+
+**Derselbe Fehler war schon einmal da** — bei der Stempeluhr (§203), und dort
+steht die Lösung als Kommentar im Code: Die Maske muss über `Modal` laufen.
+Das rendert über ein Portal am `body` und kündigt sein Öffnen an
+(`modal:open`), worauf die Leiste sich zurücknimmt. Beide Chat-Rückfragen
+laufen jetzt darüber.
+
+> Daraus eine Regel, die hier aufgeschrieben gehört: **Eine Maske in dieser
+> Anwendung wird nicht von Hand gebaut.** Es gibt `Modal`, und es gibt ihn
+> genau wegen dieser zwei Fallen — Stapelkontext und schwebende Leiste.
+
+### Nachgewiesen auf dem Telefon, nicht am Schreibtisch
+
+Neu: `pruefungen/browser/wegwischen-und-loeschen.mjs`, **9/9**, auf einem
+iPhone-Fenster. Sie klickt wirklich: Die Glocke hat zwei Einträge, einer wird
+weggewischt, danach ist einer übrig. Sie öffnet ausdrücklich ein Gespräch **zu
+zweit** — eine Prüfung, die irgendeines nähme, könnte eine Gruppe erwischen
+und wäre grün, ohne das Gemeldete berührt zu haben. Und sie rechnet die
+Überschneidung des Knopfes mit der Leiste aus: **0 px².** Das ist die
+Beschwerde, übersetzt in eine Zahl.
+
+Beim ersten Lauf fand sie null Knöpfe — Annas Postfach war leer, weil eine
+andere Prüfung vorher aufgeräumt hatte. Sie legt sich ihre Benachrichtigungen
+jetzt selbst an. Ein „kein Knopf gefunden" in einem leeren Postfach beweist
+nichts.
+
+## Block §223 (24.10.) — Ein Gespräch ist auf dem Telefon eine eigene Seite
+
+**Die Meldung:** „Wenn ich auf der Übersicht von allen Chats bin und auf einen
+Chat gehe, will ich nur auf dem Chat sein. Sonst ist es so unaufgeräumt. Und
+dann scroll ich nach oben, dann bin ich wieder bei den ganz vielen Chats, dann
+wieder bei dem Chat, wo ich gerade schreibe — das ist alles so
+unübersichtlich."
+
+### Zwei Ursachen, und die zweite war die unsichtbare
+
+**Erstens** standen Liste und Verlauf untereinander. Auf einem Bildschirm mit
+Platz ist das eine Übersicht; auf einem Telefon ist es ein Stapel. Jetzt gilt
+auf dem Telefon: Liste **oder** Gespräch, mit einem Pfeil zurück. Am
+Schreibtisch bleibt das Nebeneinander — dort ist es kein Durcheinander,
+sondern der Grund, warum man schneller arbeitet.
+
+**Zweitens — und das war das eigentliche Rutschen:** Das Gerüst hält unter
+jeder Seite **176 px** für die schwebende Leiste frei (`main` mit `pb-44`),
+obwohl die Leiste nur rund **90 px** hoch ist. Auf einem iPhone 13 waren damit
+**86 px mehr Seite da als Bildschirm**. Beim Wischen ging deshalb die ganze
+Seite mit, und das Gespräch rutschte unter dem Daumen weg. Solange ein
+Gespräch offen ist, nimmt die Seite sich diesen Platzhalter jetzt zurück
+(`-mb-44 lg:mb-0`) — und ist damit exakt so hoch wie der Bildschirm.
+
+### Gemessen, nicht geschätzt
+
+Die Höhe des Verlaufs steht nicht aus dem Gefühl da. Auf dem iPhone 13
+(664 px) beginnt die Karte bei 102 px, die Leiste bei 574 px — bleiben 472.
+`100dvh - 13rem` ergibt 456, also ein Finger breit Luft. Nachgemessen endet
+der Verlauf bei 558 px, die Leiste beginnt bei 574.
+
+**Ein Umweg, der verworfen wurde:** Erst hatte ich das Scrollen der Seite
+gesperrt (`overflow: hidden` auf `html` und `body`). Das behandelte das
+Symptom und half nicht einmal zuverlässig — die Seite war weiterhin zu hoch.
+Die Ursache war der Platzhalter. Eine Sperre, die eine falsche Höhe verdeckt,
+ist schlechter als keine: Sie macht das Problem unsichtbar, statt es zu
+beheben.
+
+Nachweis: `pruefungen/browser/chat-auf-dem-telefon.mjs`, **12/12**. Sie prüft
+auf dem Telefon, dass die Liste verschwindet, dass es zurückgeht — und rechnet
+nach: **0 px Überhang, 0 px nach einem Scrollversuch**, Verlauf endet über der
+Leiste. Dazu die Gegenprobe am Schreibtisch: Dort steht die Liste weiter
+daneben, die Kopfzeile bleibt, und einen Zurück-Pfeil gibt es nicht. Ohne sie
+wäre „die Liste ist weg" auch dann grün, wenn sie überall verschwände.
+
+## Block §224 (24.10.) — Der Absendeknopf lag unter dem Hilfeknopf
+
+**Die Meldung, mit Bildschirmfoto:** „Der Absendeknopf ist genau da, wo das
+Fragezeichen ist. Darunter."
+
+Gemessen stimmte das aufs Pixel. Auf einem iPhone 13:
+
+| | links | rechts | oben | unten |
+|---|---|---|---|---|
+| Absenden | 326 | 361 | 510 | 545 |
+| Hilfeknopf | 326 | 374 | 504 | 552 |
+
+Der Hilfeknopf schwebt (`fixed`, z-40), die Eingabezeile steht im normalen
+Fluss — er gewinnt. **Vom Absenden war nichts zu sehen; es sah aus, als gäbe
+es keinen.** Geschrieben hat man trotzdem senden können, mit der
+Eingabetaste — nur wusste das niemand.
+
+**Behoben mit 64 px Innenabstand rechts**, nur auf dem Telefon: Der
+Absendeknopf rückt auf x 274–309, der Hilfeknopf beginnt bei 326 — siebzehn
+Pixel Luft. Am Schreibtisch ist der Hilfeknopf weit weg, dort bleibt der
+schmale Rand.
+
+### Warum nicht den Hilfeknopf verschieben
+
+Weil er überall gleich stehen muss. Ein Knopf, der je nach Seite woanders
+sitzt, ist kein Anker mehr — und gesucht wird er genau dann, wenn etwas nicht
+klappt. Die Seite, die ihm im Weg steht, macht Platz, nicht umgekehrt.
+
+Nachweis: in `chat-auf-dem-telefon.mjs`, jetzt **15/15**. Die Prüfung rechnet
+die Überschneidung der beiden Rechtecke aus — 0 px². **Gegengeprüft:** Mit
+entferntem Abstand wird sie rot. Eine Prüfung, die den alten Zustand nicht
+anzeigt, wäre keine.
+
+## Block §225 (24.10.) — Das Tagesmuster ließ sich nirgends eintragen
+
+**Die Meldung:** „Bei Juliane war es die ersten drei Tage richtig — 7:30 bis
+15:00. Und dann 7:00 bis 15:30, was ja eine Achtstundenschicht ist. Und dann
+dafür 8:00 bis 13:00, also wieder kürzer. Dadurch kommt es auf die 35 Stunden,
+aber das kann nicht sein. Bei 35 Stunden muss es starr fünfmal sieben sein."
+
+### Der Befund war ein anderer als vermutet
+
+Das Regelpaket der Kita ist in Ordnung. Es sagt wörtlich: *„Die Muster kommen
+aus den Stammdaten, nicht von hier. Wer keines hinterlegt hat, wird wie bisher
+frei verplant."*
+
+Das Feld `tagesmuster` gab es in der Datenbank. Die Prüfung dazu gab es in
+`tagesmuster.ts` — mit Fehlertexten, Grenzen und Abgleich gegen die
+Stundenzahl. Die Schnittstelle schrieb es. Der Rechendienst las es.
+
+**Nur gab es keine einzige Stelle im Programm, an der man es ausfüllen
+konnte.** Setzen ließ es sich allein beim Belegschafts-Import. Wer danach
+jemanden anlegte oder die Stunden änderte, bekam einen Menschen ohne Muster —
+und der Rechendienst tat genau das, was der Kommentar ankündigt.
+
+Dass es bei den Vollzeitkräften stimmte, passt dazu: Bei 40 Stunden und den
+vorhandenen Diensten fällt fünfmal acht fast von allein heraus.
+
+### Die Maske
+
+Angeklickt statt getippt — **und trotzdem frei.** Je Zeile eine Dienstlänge
+und wie oft sie vorkommt, beides aus einer Liste; bis zu vier verschiedene
+Längen nebeneinander, in Viertelstunden von 1 bis 12.
+
+| | |
+|---|---|
+| „fünfmal sieben" | `5 × 7 Std.` |
+| „einmal sechs, dreimal acht, ein fester freier Tag" | `1 × 6 Std.` + `3 × 8 Std.` |
+
+**Warum kein Freitext:** „Dreimal acht und einmal sechs" ist für einen
+Menschen eindeutig und für ein Programm nicht. Ein falsch geratenes Muster
+erzeugt keinen schlechteren Plan, sondern gar keinen — CP-SAT INFEASIBLE, und
+die Fehlermeldung nennt dann Urlaube und Ruhezeiten, von denen keine zutrifft.
+
+**Warum keine feste Auswahl aus „5×7" und „5×8":** Weil die Wirklichkeit nicht
+aus zwei Fällen besteht.
+
+**„Gleichmäßig verteilen"** rechnet aus Stunden und verfügbaren Tagen das
+naheliegende Muster — ein Vorschlag, keine Festlegung.
+
+Die Rückmeldung unter der Maske kommt aus **derselben Funktion**, die auf dem
+Server entscheidet. Zwei Prüfungen mit eigenen Grenzen laufen auseinander, und
+dann lehnt die Maske etwas ab, was gespeichert würde — oder schlimmer:
+umgekehrt.
+
+Nachweis: `zugang-und-planungsprofil.mjs` **21/21** (vorher 16). Nachgemessen
+an der Schnittstelle: `5 × 7` wird für eine 35-Stunden-Kraft gespeichert,
+`5 × 8` mit „Das Muster ergibt 40 Wochenstunden, geplant werden 35" abgelehnt,
+`4 × 8 + 1 × 3` gespeichert und unverändert wieder gelesen.
+
+## Block §226 (24.10.) — Gleich lange Tage als Hausregel, nicht als Handarbeit
+
+**Die Rückmeldung auf §225:** „Aber ich finde das kacke. Wollten wir das nicht
+so machen, dass es einfach mit dem Regelpaket festgelegt wird? Das ist mir
+wieder zu viel Unsicherheit. Vor allem müsste ich das jetzt bei allen
+Mitarbeitern irgendwie nachtragen. Das einzige Negative wäre natürlich, dass
+es schwer individualisierbar ist."
+
+Beides stimmt, und beides ist derselbe Satz: Eine Maske, die jeder ausfüllen
+**muss**, ist eine Maske, die irgendwann jemand vergisst — und dann schwankt
+der Dienst wieder. §225 hat das Feld nachgeliefert, das in der Datenbank schon
+lange auf etwas wartete. Es hat aber nichts daran geändert, dass 16 leere
+Felder genau 16 Gelegenheiten für den alten Fehler sind.
+
+### Die Regel
+
+Wer **kein** eigenes Muster hinterlegt hat, bekommt gleich lange Tage:
+Wochenstunden geteilt durch Arbeitstage, jeden Tag dieselbe Länge.
+
+| Vertrag | ergibt | vorher |
+|---|---|---|
+| 35 Std., 5 Tage | `5 × 7 Std.` | 7:30–15:00, dann 7:00–15:30, dann 8:00–13:00 |
+| 40 Std., 5 Tage | `5 × 8 Std.` | stimmte meist von allein |
+| 30 Std., 4 Tage | `4 × 7,5 Std.` | frei verplant |
+
+`tagesmuster_gleich_lange_tage` in `bausteine.py`, aufgerufen **nach**
+`tagesmuster_aus_stammdaten`. **Die Reihenfolge ist die Individualisierung:**
+Wer ein Muster in der Akte hat, hat es schon angewandt, bevor die Hausregel
+überhaupt hinsieht — sie überschreibt nichts, sie füllt nur Lücken. Heike
+arbeitet weiter dreimal acht und einmal sechs, ohne dass dafür jemand etwas
+abschalten muss.
+
+**Wo die Regel schweigt, statt zu raten:** 38 Stunden auf 5 Tage sind 7,6
+Stunden am Tag — keine Viertelstunde, und damit kein Dienst, den es gibt.
+Ebenso, wenn die passende Länge im Dienstkatalog fehlt. In beiden Fällen bleibt
+die Person frei verplant, und der Plan trägt eine Notiz mit ihrem Namen. Ein
+stilles Aufrunden auf acht wäre eine halbe Stunde unbezahlte Mehrarbeit pro
+Tag — als Voreinstellung, für niemanden sichtbar.
+
+Nachweis: `test_kita_zwei_etagen.py` **169/169** (vorher 164). Die fünf neuen
+messen die **einzelne Dienstlänge**, nicht die Wochensumme — genau darin
+bestand der Fehler, die Summe stimmte ja. Gegenprobe inbegriffen: Mit
+entferntem Muster bei allen **außer** Heike behält Heike ihre 6/8/8/8.
+
+## Block §227 (24.10.) — Eine Krankmeldung verschwand im Nichts
+
+**Die Meldung:** „Dann habe ich mal Juliane krank gemeldet. Da steht auch nicht
+krank, und dadurch hat sie halt nur 16 von 35 Stunden. Bei ihr steht dann drin
+frei und nicht krank. Und ich habe hier auch als Standortleitung nirgendwo die
+Nachricht bekommen, dass sie sich krank gemeldet hat. Ich muss dann auch
+irgendwie einen Bereich mit meinen Krankmeldungen haben, wenn ich auf
+Krankmelden klicke."
+
+### Fünf Befunde an einer Meldung
+
+**1. Der Plan wusste es und zeigte es nicht.** Die Fehlzeiten waren geladen,
+und die eine Zeile, die sie in eine Liste umrechnete, wurde nirgends benutzt —
+nachgemessen mit einer einzigen Fundstelle im ganzen Modul, ihrer eigenen
+Zuweisung. Die Zelle fragte nur nach einem Dienst und zeichnete sonst den Knopf
+zum Zuweisen. Eine krankgemeldete Person sah aus wie eine, für die noch niemand
+geplant hat.
+
+**2. Ein Krankheitstag zahlte null.** Bei Monatsgehalt fiel das nicht auf. Bei
+**Stundenlohn** ist `regularPay = stundenlohn × Stunden`, und die Stunden kamen
+allein aus der Stempeluhr. Eine Woche Krankheit war eine Woche ohne Geld. Das
+ist kein Rundungsfehler, sondern ein Verstoß gegen §3 EntgFG.
+
+**3. Niemand erfuhr davon.** Es gab eine Route dafür
+(`/api/time-tracking/notify-admin`) — nur rief die niemand auf: Das Krankmelden
+vom Telefon schreibt direkt an `/api/absences`. Und sie nahm `find()`, also die
+erste Leitung des Standorts; wo zwei die Leitung teilen, erfuhr es immer
+dieselbe.
+
+**4. Das Monatssoll wurde um Kalendertage gekürzt.** Die Maske fragt „seit
+wann, voraussichtlich bis wann" und schickt **sieben** für Montag bis Sonntag.
+Das Stundenkonto nahm sieben Arbeitstage weg, obwohl es fünf gab — zwei
+Tagesschichten im Plus, für jede Krankmeldung über ein Wochenende neu.
+
+**5. Das Tagessoll teilte immer durch fünf.** Für eine 30-Stunden-Kraft an vier
+Tagen ergab das sechs Stunden statt siebeneinhalb. Ihr Konto wuchs an jedem
+gearbeiteten Tag um anderthalb Stunden, die niemand genehmigt hatte.
+
+### Eine Stelle, die die Frage beantwortet
+
+`src/lib/ausfallstunden.ts`. Dieselbe Rechnung für den Dienstplan, die
+Mitarbeitersicht, das Stundenkonto und die Lohnabrechnung — zwei Rechnungen für
+dieselbe Gutschrift laufen auseinander, und dann stimmt entweder der Plan oder
+der Lohnzettel.
+
+| Fall | gutgeschrieben |
+|---|---|
+| 35 Std., 5 Tage | **7,0** je Tag — aus „16 von 35" wird „35,0 / 35" |
+| 40 Std., 5 Tage | **8,0** je Tag — die Zahl aus der Meldung |
+| 3 × 8 + 1 × 6 (30 Std.) | **7,5** je Tag |
+| Samstag, Sonntag, fester freier Tag | **0** |
+| Feiertag | **0** — der ist schon bezahlt |
+| Tag mit Dienst im Plan | dessen Länge, nicht der Durchschnitt |
+
+**Warum der Durchschnitt und nicht „der Tag, der war":** Ein Muster aus dreimal
+acht und einmal sechs sagt nicht, WELCHER Wochentag der sechsstündige ist. Das
+hat niemand aufgeschrieben, und es zu raten heißt, mal acht gutzuschreiben, wo
+sechs zustanden.
+
+**Warum ein gestempelter Tag die Gutschrift schlägt:** Wer sich für den
+Nachmittag krankmeldet, hat am selben Tag gestempelt. Sonst bekäme er ihn
+doppelt bezahlt.
+
+### Nebenbefund: Ein Feld bedeutete an zwei Stellen Verschiedenes
+
+`workDaysPerWeek` wird vom Belegschafts-Import **netto** geschrieben (Heike: `4`
++ `['Fr']`, und „fünf Arbeitstage, freitags frei" lehnt er ausdrücklich ab) und
+von der Maske **brutto** (`5` + `['Fr']`). Die Differenz zu bilden war deshalb
+für die eine Hälfte der Datensätze richtig und für die andere falsch —
+nachgemessen: Bei `4` + `['Fr']` kam „Das Muster belegt 4 Arbeitstage, zur
+Verfügung stehen 3" heraus. **Heikes Muster, genau wie es im Vertrag steht,
+ließ sich nicht speichern.** Jetzt das Kleinere von „so viele Arbeitstage hat
+der Vertrag" und „so viele Tage sind offen und nicht fest frei": unter beiden
+Lesarten richtig, ohne Datenwanderung.
+
+### Was sonst noch dazugehört
+
+**Die Leitung bekommt die Nachricht** — alle Leitungen des Standorts, nicht die
+erste. Mit Name und Zeitraum und **ohne die Notiz aus der Meldung:** Was
+jemandem fehlt, ist ein Gesundheitsdatum nach Art. 9 DSGVO und gehört nicht auf
+einen Sperrbildschirm.
+
+**„Meine Krankmeldungen"** unter dem Formular: Zeitraum, Tage, und ob eine
+Bescheinigung fehlt — aus `nachweisLage`, derselben Rechnung, die auch direkt
+nach dem Melden antwortet. Mit einem Knopf zum Nachreichen.
+
+**Im eigenen Plan steht „Krankgemeldet"**, nicht „Frei". Wer sich selbst
+gemeldet hat und am nächsten Tag „Frei" liest, weiß nicht, ob es angekommen
+ist.
+
+**Auf dem Lohnzettel steht „davon Entgeltfortzahlung"** als eigene Zeile. Ein
+Beleg, der 35 Stunden zahlt, wo 16 gestempelt wurden, ist ohne sie nicht
+nachrechenbar — am wenigsten für die Person, um deren Lohn es geht. Und die
+Erstattung nach dem AAG (U1) betrifft genau diesen Teil.
+
+### Nachweise
+
+`ausfallstunden.test.ts` **28**, `c3-krankmeldung.mjs` **18**,
+`d24-entgeltfortzahlung.mts` **9**, `browser/krank-im-plan.mjs` **12**.
+Insgesamt **1923/1923** Prüfungen am laufenden System und **1245** Modultests.
+
+Gemessen wird der Betrag, nicht die Absicht: Eine Woche krank bei 20 €/Std.
+ergibt **800 €** statt null. Mit beiden Gegenproben — ohne Krankmeldung bleibt
+dasselbe Monat bei null, und ein halb gearbeiteter Tag ergibt 720 € statt 800.
+
+**Zwei eigene Fehler, die die Prüfung gefunden hat.** Die Liste aller
+Planungsprofile eines Standorts gab zuerst jedem angemeldeten Mitarbeiter die
+Stundenzahl der ganzen Belegschaft (HTTP 200, wo 403 hingehört):
+`locationFilter` ist ein Standortfilter und kein Rollenschloss. Und die Prüfung
+selbst legte ihre zweite Krankmeldung in denselben Monat wie die erste und
+zählte dann sechs Krankheitstage statt fünf — eine Prüfung, die sich selbst in
+die Rechnung stellt, prüft nicht mehr das Programm.
+
+## Block §228 (24.10.) — Die Abo-Adresse kam aus dem Browserfenster
+
+**Die Meldung:** „Dann hier bei dem Google Sync steht noch die alte Domain. Das
+muss geändert werden."
+
+### Warum das mehr ist als das falsche Logo
+
+Die Maske baute die Adresse des Kalender-Abos aus `window.location.origin` —
+also aus dem Fenster, in dem die Person gerade stand. Wer über
+`therapie-production.up.railway.app` angemeldet war, bekam ein Abo auf diesen
+Namen.
+
+**Ein Kalender-Abo liegt Jahre im Telefon.** Es wird einmal eingerichtet und
+nie wieder angesehen. Fällt der alte Name weg, hört der Dienstplan einfach auf,
+sich zu aktualisieren — ohne Fehlermeldung, ohne dass jemand es merkt, bis eine
+Schicht verpasst wird.
+
+Die Adresse kommt deshalb jetzt vom Server, aus `APP_URL` — derselben Quelle,
+aus der auch jeder Link in einer E-Mail kommt (`getAppOrigin`). Nachgemessen
+mit einem gefälschten `Host`-Kopf, wie ihn ein zweiter Domainname mitschickt:
+Die Adresse ändert sich nicht.
+
+### Der zweite Befund, gefunden beim Beheben des ersten
+
+**`/api/calendar-sync` hatte keine Zugriffsprüfung.** `requireRole(req)` ohne
+Rollenliste lässt jede angemeldete Person herein, und danach wurde die Kennung
+aus dem Abfrageteil ungeprüft benutzt.
+
+Der Token ist der **Schlüssel zum Dienstplan**: Wer ihn hat, liest über
+`/api/calendar-feed/<token>` **ohne Anmeldung**, wer wann wo arbeitet. Jede
+angemeldete Person konnte ihn für jede andere abrufen — und über `PATCH` sogar
+deren Abo ein- und ausschalten.
+
+Jetzt entscheidet `assertEmployeeAccess`: die eigene Person, und für die
+Leitung die des eigenen Standorts. Die Gegenprobe gehört dazu — „403 für alle"
+wäre grün und das Abo für niemanden einrichtbar, der Hilfe braucht.
+
+**Der rohe Schlüssel steht nicht mehr eigens in der Antwort.** Die Maske
+braucht ihn nicht; er steckt in der Adresse. Ein Feld, das niemand liest, ist
+bei einem Schlüssel kein harmloses Feld — es landet in jedem Protokoll, das
+Antworten mitschreibt.
+
+### Und die 38 Stunden
+
+**Gemeldet:** „Bei Shelley — hat 40 Stunden und nicht 38."
+
+Im ganzen Programm steht sie mit 40 Stunden und richtig geschrieben; die 38
+kamen aus dem Rechendienst, der die Wochenstunden frei verteilte und aus den
+vorhandenen Dienstlängen 40 nicht immer genau traf. **Die Hausregel aus §226
+behebt das**: Fünfmal acht kann nur 40 ergeben. Nachgewiesen auf ihren Namen —
+`test_ohne_muster_die_wochensumme_stimmt_auf_die_stunde` rechnet beide Wochen
+auf die Stunde nach.
+
+Steht sie im laufenden Betrieb noch mit 38 Stunden oder als „Shelly" in der
+Personalakte, ist das ein Eintrag und keine Programmsache: zwei Felder in der
+Personalakte. Einen Lohnwert in der Produktionsdatenbank ändere ich nicht von
+hier aus.
+
+Nachweis: `n-kalender-abo.mjs` **12/12**, Solver **173** Tests.
+Insgesamt **1935/1935** Prüfungen am laufenden System.
+
+## Block §229 (24.10.) — Der Dienstwunsch zeigte auf einen Dienst, den man nicht haben darf
+
+**Die Frage:** „Fließt es denn überhaupt ein, was du da als deine Wünsche und
+Präferenzen für Dienste angibst?"
+
+### Die Antwort war: ja — und für die meisten ins Leere
+
+Die dauerhafte Vorliebe („ich mag Frühdienste") wurde für jeden Planungstag in
+einen Wunsch übersetzt. Nur wurde daraus **ein bestimmter Dienst**:
+`schichten.find(s => s.typ === 'frueh')`, also der erste gefundene. Im Paket
+der Kita gibt es drei Frühdienste — mit acht, sieben und sechs Stunden —, und
+`find` liefert den achtstündigen.
+
+Juliane arbeitet fünfmal sieben Stunden. **Den Achtstundendienst darf sie nicht
+bekommen.** Ihr Wunsch war damit strukturell unerfüllbar, und in der Zelle
+stand jeden Tag ein rotes Kreuz, ohne dass irgendwo stand, warum. Seit §226 die
+Tageslängen festhält, trifft das jeden, dessen Tag nicht der längste ist.
+
+Die Oberfläche hat dabei **immer schon über die Art geurteilt**
+(`shift.type === w.preferredShiftType`). Nur der Rechendienst bekam eine
+einzelne Kennung. Zwei Lesarten derselben Angabe — und die eine, die zählt,
+war die engere.
+
+### Gemessen, nicht behauptet
+
+| | erfüllte Wünsche |
+|---|---|
+| vorher (Wunsch auf eine Kennung) | **0** |
+| jetzt (Wunsch auf die Dienstart) | **2** |
+
+Gezählt wird die Begründung des Rechendienstes selbst („Wunschdienst erfüllt"),
+nicht die Anzahl bestimmter Dienstarten.
+
+**Warum nicht einfach zwei Pläne vergleichen:** Der Rechendienst hat für dieses
+Paket mehrere gleich gute Lösungen und wählt zwischen zwei Läufen verschieden.
+Nachgemessen am 24.10.2026: Zweimal „ohne Wunsch" ergab einmal 0 und einmal 2
+Frühdienste für dieselbe Person. Ein Vergleich zweier Einzelpläne hätte das
+Rauschen gemessen und nicht die Wirkung.
+
+**Zwei Gegenproben gehören dazu.** Eine Vorliebe ist ein Wunsch und keine
+Erlaubnis: Juliane bekommt weiter nur Siebenstundendienste, sonst wäre der
+erfüllte Wunsch eine Stunde unbezahlte Mehrarbeit am Tag. Und ein Wunsch nach
+einem **bestimmten** Dienst bleibt einer — wer „am Freitag den Spätdienst 8"
+beantragt, meint den und nicht irgendeinen.
+
+### Der Feldbestand, nach dem gefragt wurde
+
+„Bei den Bildern 2, 3, 4 und 5 siehst du mal so Sachen, wo ich mich frage,
+brauchen wir das noch?"
+
+| Angabe | wer liest sie |
+|---|---|
+| Dienstvorliebe (`shiftPreference`) | **der Rechendienst** — seit §229 erfüllbar |
+| Feste freie Wochentage | **der Rechendienst**, als Nichtverfügbarkeit |
+| Tagesmuster | **der Rechendienst** (§181), und die Ausfallstunden (§227) |
+| Wunschfrei und Tageswünsche | **der Rechendienst**, mit Vorrang nach Priorität |
+| „Persönliches" (Stärken, Lebensumstände) | nur der **KI-Assistent** und die Maske — **nicht** der Rechendienst |
+| Urlaubswünsche (`preferredMonths`) | nur **Menschen**, in der Jahresplanung |
+
+Zwei davon sind offene Fragen und keine Befunde, deshalb stehen sie hier und
+nicht im Code:
+
+**Die Urlaubswünsche kennen nur Monate.** `preferredMonths` ist eine Liste von
+Monatszahlen. Sagen drei Leute „Juli", weiß die Leitung nicht, ob sie
+kollidieren — und genau dafür ist die Jahresplanung da. Ein Zeitraum statt
+eines Monats würde das lösen; das ist eine Erweiterung und keine Behebung.
+
+**Doppelt gemoppelt mit den Urlaubsanträgen sind sie nicht:** Der Wunsch kommt
+vor dem Jahr und ist unverbindlich, der Antrag ist der verbindliche mit Datum.
+Verschiedene Zwecke — nur taugt der Wunsch in dieser Form kaum für seinen.
+
+Nachweis: Solver **176** Tests (vorher 173), `f`-Prüfungen **211/211**.
+
+## Block §230 (24.10.) — Im Plan stand jemand, der nicht kommt
+
+**Die Bitte:** „Dann müssen wir uns auch nochmal die Logik von unseren
+Ausfällen angucken."
+
+### Der Befund
+
+Für einen Dienst, der ausfällt, gibt es den Weg: im Plan anklicken, „fällt
+aus", Empfänger wählen. Der Dienst verschwindet aus dem Plan, eine
+Vertretungsanfrage entsteht, die Betroffenen werden benachrichtigt (§101).
+
+**Eine Krankmeldung löste davon nichts aus.** Wer am Montagmorgen im
+veröffentlichten Plan steht und sich krankmeldet, bleibt dort stehen. Niemand
+wird gefragt, nichts wird markiert — die Leitung sieht eine besetzte Schicht.
+
+### Warum der Dienst trotzdem stehen bleibt
+
+Ihn automatisch zu löschen wäre schlimmer. „Voraussichtlich bis" ist eine
+Schätzung: Wer sich für zwei Wochen krankmeldet und nach vier Tagen
+zurückkommt, hätte dann einen leeren Plan, aus dem seine Dienste
+unwiederbringlich verschwunden sind. Und eine Meldung für den nächsten Monat
+würde Dienste löschen, die noch stattfinden.
+
+**Also sichtbar machen, nicht entscheiden.** Die Zelle trägt eine rote
+Markierung „KRANK — nicht da" am Dienst, der noch besetzt ist, und der Weg
+„fällt aus" liegt daneben wie immer. Die Entscheidung bleibt bei der Leitung;
+nur die Grundlage dafür war vorher nicht da.
+
+**Und die Zahl steht in der Benachrichtigung:** „Anna Fischer hat sich am
+08.06. krankgemeldet. Ein geplanter Dienst ist betroffen und im Plan noch
+besetzt." Das ist der Unterschied zwischen „gute Besserung" und „heute fehlen
+drei Leute".
+
+### Drei Zustände, drei Darstellungen
+
+| Lage | Zelle |
+|---|---|
+| Dienst, keine Fehlzeit | der Dienst, wie immer |
+| Fehlzeit, kein Dienst | „Krank" mit den gutgeschriebenen Stunden (§227) |
+| **beides** | der Dienst **plus** „KRANK — nicht da" |
+
+Nachweis: `c3-krankmeldung.mjs` **22/22** (vorher 18),
+`browser/krank-im-plan.mjs` **16/16** (vorher 12). Mit Gegenprobe: Ohne
+Krankmeldung trägt derselbe Dienst keine Markierung — sonst wäre „ist
+markiert" grün, weil die Seite jeden Dienst markiert. Und nachgerechnet, dass
+der Dienst seine Zelle ÜBERNIMMT und nicht zusätzlich dasteht: vier
+Fehlzeit-Zellen plus eine Markierung sind die fünf Tage der Woche.
+
+Insgesamt **1939/1939** Prüfungen am laufenden System.
+
+## Block §231 (24.10.) — Die Urlaubswünsche konnten nicht zeigen, was sie zeigen sollten
+
+**Die Frage:** „Bei der Urlaubsplanung kann man angeben, in welchem Monat man
+gerne Urlaub haben möchte, aber nicht an welchem Tag. Ist es doppelt gemoppelt,
+wenn wir Urlaubsanträge haben und dann Wünsche für den Urlaub?"
+
+**Die Entscheidung:** „Ganz weg, denn dafür hat man ja die Anträge. Man könnte
+es so machen, dass anhand der Anträge der Urlaubsplan erstellt wird; man kann
+ja als Leitung eine Frist setzen zum Einreichen."
+
+### Der Befund war schärfer als die Frage
+
+Doppelt gemoppelt waren sie nicht — der Wunsch kam vor dem Jahr und war
+unverbindlich, der Antrag ist der verbindliche mit Datum. **Nur taugte der
+Wunsch in dieser Form nicht für seinen Zweck.**
+
+Sagen drei Leute „Juli", weiß die Leitung nicht, ob sie kollidieren. Und das
+zu sehen ist der ganze Grund, warum es eine Jahresplanung gibt. Aus zwei
+Monatsangaben folgt keine Überschneidung, nur ein Verdacht.
+
+Dazu bewertete jede Person ihre eigenen Wünsche selbst — „Priorität: hoch". Das
+ging als Rangfolge in die Planung ein. Als Kriterium bei Streit ist eine
+Selbsteinschätzung kein Kriterium.
+
+### Was an ihre Stelle tritt
+
+**Die Frist.** Die Leitung setzt ein Datum: „Anträge einreichen bis 30.11."
+Alles, was bis dahin da ist, wird gemeinsam geplant — nicht nach Reihenfolge
+des Eingangs. Danach gilt: wer zuerst kommt. Das ist, was die Monatswünsche
+leisten sollten: Zeit zum Überlegen, ohne dass der schnellste Antrag den
+besten Zeitraum bekommt.
+
+**Die Engstellen.** Die Seite rechnet Tag für Tag, wie viele Menschen
+gleichzeitig weg wären, und vergleicht mit der erlaubten Zahl. Zusammenhängende
+Tage werden zu einem Zeitraum gefasst:
+
+> **13.07.2028 – 17.07.2028** · 3 gleichzeitig abwesend, erlaubt sind 2
+> (Maria Schneider, Thomas Weber, Michael Braun)
+
+Nachgemessen mit drei Anträgen, von denen zwei vom 6.–17. und einer vom
+13.–24. gehen: Die Engstelle nennt **13.–17.**, nicht den ganzen Juli.
+
+**Die Planung entscheidet über Anträge statt über Monate.** Die Rangfolge bei
+Konflikten ist jetzt: fristgerecht vor nachträglich, dann wer mehr Resturlaub
+offen hat, dann die Ferienregelung, und erst zuletzt der Zeitpunkt der
+Einreichung. Bereits genehmigte Anträge stehen fest und werden nicht
+verschoben. Wo ein Antrag nicht gehen kann, schlägt die Planung einen nahen
+Zeitraum vor und sagt, wie weit verschoben wurde.
+
+### Was dabei sonst noch auffiel
+
+**`setVacationRules` gab `void` zurück**, und die Route antwortete darauf mit
+`{ rules: undefined }`. Wer speicherte, bekam nichts zurück und musste seinem
+eigenen Entwurf glauben.
+
+**Die Kachel „Mit Schulferien-Priorität"** zählte aus den Urlaubswünschen —
+also nur die, die überhaupt einen Wunsch eingetragen hatten. Wer Kinder hat und
+nie etwas eintrug, fehlte in der Zahl, obwohl die Ferienregelung für ihn
+genauso gilt. Gezählt wird jetzt am Feld, in dem es steht.
+
+### Was mit den Daten geschieht
+
+`VacationPlanPreference` ist gelöscht. Darin standen unverbindliche
+Monatsangaben für eine Planung, die es in dieser Form nicht mehr gibt; in einen
+Antrag lassen sie sich nicht übersetzen, weil ihnen das Datum fehlt. Die
+verbindlichen Angaben — die Urlaubsanträge — liegen in `VacationRequest` und
+bleiben unberührt. Der Eintrag im DSGVO-Verzeichnis, die Auskunft und die
+Löschroutine sind im selben Schritt mitgegangen; eine Tabelle, die nur in einem
+der drei fehlt, ist schlimmer als eine, die überall steht.
+
+Nachweis: `c-abwesenheit.mjs` **30/30**, `browser/urlaub-aus-antraegen.mjs`
+**15/15**, DSGVO **63/63** und **66/66**. Insgesamt **1942/1942** Prüfungen am
+laufenden System.
+
+Mitgeprüft wird, dass die alte Schnittstelle **nicht mehr antwortet** und dass
+die Monatsknöpfe aus der Maske verschwunden sind — eine entfernte
+Schnittstelle, die weiter antwortet, ist eine, die noch jemand benutzt.
+
+## Block §232 (24.10.) — Das „Persönliche" versprach etwas, das es nicht hielt
+
+**Die Frage:** „Bei den Bildern 2, 3, 4 und 5 siehst du mal so Sachen, wo ich
+mich frage, brauchen wir das noch?"
+
+### Vier Befunde, und zwei davon sind schwer
+
+**1. Zwei Felder für dieselbe Antwort.** Unter „Persönliches" standen
+„Bevorzugte Gruppen / Bereiche" und „Schicht-Vorlieben" als Freitext. Beides
+gab es ein zweites Mal an einer Stelle, die den Plan **wirklich** ändert: die
+Gruppe am Mitarbeiter und `EmployeePlanningProfile.shiftPreference`. Wer
+„lieber Frühdienst" in das freiwillige Feld schrieb, hatte es gesagt und nichts
+erreicht — und wusste es nicht. §229 hat gezeigt, was ein Schattenfeld kostet;
+dies hier war der zweite Fall in derselben Woche. Beide Felder sind entfallen,
+der Weg zum richtigen steht jetzt als Hinweis daneben.
+
+**2. Die Maske versprach das Gegenteil der Wahrheit.** Dort stand:
+
+> „Sie helfen der KI, faire und menschlichere Dienstpläne zu erstellen."
+
+Und der Chat war angewiesen zu sagen: *„Damit die Dienstplanung darauf
+Rücksicht nehmen kann, frage ich…"*
+
+**Keines dieser Felder erreicht den Rechendienst.** `rule-model-service.ts`
+lädt sie nicht einmal. Das ist die schlechteste Art, eine freiwillige Angabe
+einzusammeln: Sie kostet Vertrauen und bringt nichts. Wer seine
+Lebenssituation erzählt, weil er einen Plan erwartet, der darauf Rücksicht
+nimmt, wird enttäuscht, ohne es je zu erfahren.
+
+Jetzt steht da, was geschieht: Die Leitung sieht es in der Personalakte, und
+der OKUN-Assistent kann es auf Frage heranziehen. **Nachgeprüft am
+aufgezeichneten Regelmodell eines echten Rechenlaufs** — Stärken,
+Lebenssituation und Absprache stehen nicht darin, die Dienstvorliebe schon.
+
+**3. Das Lesen war offen — und ohne Kennung gab es alles.** `GET` hatte keine
+Zugriffsprüfung. Fehlte `employeeId`, kam **die Tabelle vollständig** zurück:
+über alle Standorte und alle Kunden hinweg. Nachgemessen: HTTP 200 für die
+Angaben einer Kollegin, HTTP 200 für die Leitung eines **fremden Kunden**.
+
+Was dort steht, ist nicht harmlos. „Lebenssituation" meint alleinerziehend,
+Pflege von Angehörigen, gesundheitliche Einschränkungen, regelmäßige
+Arzttermine — danach fragt der Chat ausdrücklich. Das sind Gesundheits- und
+Familiendaten nach **Art. 9 DSGVO**, freiwillig gegeben, und sie lagen für
+jeden angemeldeten Menschen offen.
+
+**4. Die eigene Maske konnte nicht speichern.** `PATCH` verlangte
+`['admin', 'company', 'okun']`. Im Mitarbeiterportal steht aber genau diese
+Maske, mit Speicherknopf. Wer dort etwas eintrug, bekam 403. Über den KI-Chat
+ging es, über die Maske daneben nicht — dieselbe Angabe, zwei Wege, einer
+davon tot.
+
+### Was noch dazugehörte
+
+Der KI-Chat (`/api/ai/human-context-chat`) schreibt in dieselbe Akte und hatte
+dieselbe Lücke: Jede angemeldete Person konnte ein Gespräch über eine fremde
+Kennung führen. **Der Umweg über ein Sprachmodell macht aus einem fremden
+Schreibzugriff keinen eigenen.**
+
+Und dort wurde der **API-Schlüssel vor dem Zugriff geprüft**. Ein Aufrufer, der
+an diese Akte gar nicht darf, erfuhr als erstes, ob der Betrieb einen
+KI-Schlüssel hinterlegt hat. In der Prüfung verdeckte der 500er sogar den
+403er, den es zu messen galt — aufgefallen ist es genau daran.
+
+### Nebenbefund zu den Tätigkeiten
+
+Beim Nachsehen fiel eine ganze Kette auf, die stillsteht:
+
+| Teil | Zustand |
+|---|---|
+| `/admin/tasks` — Tätigkeiten anlegen und Leuten zuordnen | funktioniert, speichert |
+| `Employee.allowedTasks` | wird geschrieben, von keinem Rechenkern gelesen |
+| `aufgaben` an Einheiten und Diensten | immer `[]`, und `solver.py` liest das Feld nie |
+| `taskBlocks` am Dienstplan-Eintrag | wird in zwei Ansichten **angezeigt** und von nichts geschrieben |
+
+Eine Seite zum Zuordnen, eine Anzeige für das Ergebnis — und zwischen beiden
+nichts. Das ist eine Entscheidung und kein Befund: entweder der Rechendienst
+beachtet Tätigkeiten, oder die Seite sagt, dass sie Dokumentation ist. Steht
+offen.
+
+Nachweis: `o-persoenliches.mjs` **21/21**. Insgesamt **1963/1963** Prüfungen am
+laufenden System und **1245** Modultests.
+
+Die Gegenproben gehören dazu: Die vier verbliebenen Felder lassen sich weiter
+speichern und lesen („alles weg" wäre auch grün), die Dienstvorliebe hat weiter
+ihr eigenes Feld, und die eigene Leitung darf die Angaben sehen — „403 für
+alle" wäre kein Zugriffsschutz, sondern ein kaputtes Feld.
+
+## Block §233 (24.10.) — Die Tätigkeiten erreichen den Plan
+
+**Die Entscheidung auf §232:** „Der Plan soll sie beachten: Wer eine Tätigkeit
+nicht darf, bekommt den Dienst nicht, der sie verlangt."
+
+### Was stillstand
+
+| Teil | vorher |
+|---|---|
+| `/admin/tasks` legt Tätigkeiten an und ordnet sie zu | funktionierte, speicherte |
+| `Employee.allowedTasks` | wurde geschrieben, von keinem Rechenkern gelesen |
+| `aufgaben` an Diensten und Einheiten | immer `[]` — und `solver.py` las das Feld nie |
+
+Eine Seite zum Zuordnen, eine Anzeige für das Ergebnis, und zwischen beiden
+keine Leitung.
+
+### Jetzt
+
+Ein Dienst kann Tätigkeiten **verlangen** (`Shift.requiredTasks`), und wer eine
+davon nicht zugeordnet hat, bekommt ihn nicht — als harte Regel im
+Rechendienst, in derselben Form wie die Qualifikationen (H8b neben H8).
+
+Das Gefälle bleibt wie bei allem anderen der Einrichtung (§202): **Welcher
+Dienst was verlangt, steht im Regelpaket** und kommt mit ihm an den Standort;
+**wer was darf, ordnet die Leitung zu.** Nachgewiesen: Die Leitung bekommt beim
+Versuch, die Anforderung zu ändern, HTTP 403.
+
+**Warum eine leere Liste „verlangt nichts" heißt.** Jeder bestehende Standort
+plant unverändert weiter. Die Umkehrung — ein Dienst verlangt im Zweifel alles
+— hätte jedem Betrieb, der die Seite nie benutzt hat, über Nacht den Plan
+genommen.
+
+**Und warum eine leere Zuordnung nicht „darf alles" heißt.** Das ist die
+Gegenprobe, die zählt: Sonst bekäme genau der Mensch den Dienst, bei dem noch
+niemand geprüft hat, ob er die Tätigkeit überhaupt darf.
+
+### Die Fehlermeldung nennt jetzt die Ursache
+
+> Der Dienst „Frühdienst 7" verlangt die Tätigkeit „Erste Hilfe", und niemand
+> in der Belegschaft hat sie zugeordnet.
+
+Diese Prüfung steht **vor** allen anderen in der Diagnose, weil sie die einzige
+ist, die sich mit Sicherheit benennen lässt. §181 hat vorgeführt, was sonst
+passiert: Dort nannte die Meldung Urlaube, Ruhezeiten und das Stundenlimit —
+drei Ursachen, von denen keine zutraf — und niemand kam auf das Tagesmuster.
+Für Qualifikationen gilt sie mit; die waren schon hart geprüft, nur ohne
+Diagnose.
+
+Dasselbe steht auch **in der Maske**, bevor überhaupt gerechnet wird: Verlangt
+ein Dienst eine Tätigkeit, die niemandem zugeordnet ist, sagt
+`/admin/tasks` es rot, samt der Namen der betroffenen Dienste.
+
+### Was beim Prüfen auffiel
+
+Der Nachweis zur Fehlermeldung läuft **gegen die Funktion**, nicht gegen einen
+ganzen Lauf — und das ist nachgemessen begründet. Dreimal versucht, diesen Plan
+unlösbar zu machen: erst ein gesperrter Frühdienst (der Plan wich auf einen
+anderen aus), dann alle Frühdienste (die Etagenregel des Pakets ist weich und
+wird mit Abzug übergangen), dann zusätzlich eine Mindestbesetzung am Dienst —
+die ist in `solver.py` ebenfalls weich, und **mit Regelpaket wird sie ganz
+übergangen**. Dreimal 160 Einträge und keine Meldung. Das ist die Bauart des
+Pakets: Es gibt lieber einen Plan mit Abzug als keinen.
+
+Und zwei eigene Fehler im Nachweis, beide derselbe Fehlertyp — gegen den
+falschen Stand gemessen. Erst zählte er Dienstplan-Einträge, die ein Rechenlauf
+gar nicht schreibt: „0 Dienste im Zeitraum, davon 0 ohne Recht", grün und
+nichtssagend. Dann verglich er mit der Belegschaftsliste von **vor** der
+Zuordnung und meldete alle zehn Zuteilungen als unberechtigt, obwohl sie
+sämtlich an die berechtigte Person gingen. Gemessen wird jetzt am Modell des
+Laufs selbst.
+
+### Ein offenes Ende, ausdrücklich benannt
+
+`ScheduleEntry.taskBlocks` — Tätigkeiten **innerhalb** eines Dienstes („von 9
+bis 11 Dokumentation") — wird in zwei Ansichten gezeigt und von nichts
+geschrieben. Dafür müsste der Rechendienst die Zeit im Dienst auflösen; das tut
+er nicht. Die Anzeige bleibt (sie zeichnet bei leerer Liste nichts), und am
+Feld steht jetzt, dass dort keine Daten zu erwarten sind — damit niemand
+danach sucht. Das ist etwas anderes als `Shift.requiredTasks`, und nur das
+zweite plant.
+
+Nachweis: `p-taetigkeiten.mjs` **15/15**, Solver **182** Tests (vorher 176).
+Insgesamt **1978/1978** Prüfungen am laufenden System und **1245** Modultests.
+
+Die Gegenprobe, die den Unterschied zeigt: Solange der Dienst nichts verlangte,
+gingen **972** Zuteilungen an andere als die berechtigte Person. Danach keine
+mehr.
+
+## Block §234 (24.10.) — Die Fehlermeldungen, ohne die Bilder zu haben
+
+**Die Frage:** „Und die anderen ganzen Fehlermeldungen hast du auch gemacht,
+was ich dir geschickt habe mit den ganzen Bildern?"
+
+### Erst die ehrliche Auskunft
+
+Die Bilder liegen nicht mehr vor — nur die Notizen dazu. Was darin **benannt**
+war, ist abgearbeitet und steht oben:
+
+| aus den Bildern | erledigt in |
+|---|---|
+| Urlaubsplanung kennt nur Monate, keine Tage | §231 |
+| „Brauchen wir das noch?" — Dienstwünsche | §229 |
+| „Brauchen wir das noch?" — „Persönliches" | §232 |
+| „Brauchen wir das noch?" — Tätigkeiten | §233 |
+| Google-Kalender zeigt die alte Domain | §228 |
+| „Werden die Dienstwünsche richtig beachtet?" | §229 |
+
+Ob auf den Bildern **zusätzlich** rote Meldungen standen, lässt sich nicht
+nachsehen. Also wurde nicht geraten, sondern gesucht.
+
+### Der Durchgang
+
+`browser/alle-seiten-ohne-fehler.mjs` öffnet **54 Seiten in vier Rollen** und
+meldet, was nach Panne aussieht: die Fehlerseite des Gerüsts, verdächtigen
+Text, eine Ausnahme im Browser, eine eigene Schnittstelle mit 5xx.
+
+Ergebnis: **keine einzige.** Alle 54 Seiten öffnen sauber, in allen vier
+Rollen.
+
+**Was ausdrücklich nicht als Fehler gilt:** leere Listen, „noch keine Daten",
+fehlende Berechtigung. Eine Seite ohne Inhalt ist kein Fehler, und eine 403 auf
+eine fremde Kennung ist der gewünschte Zustand. Ohne diese Unterscheidung wäre
+die Prüfung ein Rauschmelder und würde nach dem dritten Fehlalarm nicht mehr
+gelesen. Und sie trägt ihre eigene Gegenprobe: Sie ruft eine Seite auf, die es
+nicht gibt, und muss den Fehler dort **finden** — sonst bewiese ein grüner Lauf
+nur, dass sie nichts sucht.
+
+### Was die Gegenprobe gefunden hat
+
+Genau dort stand eine Fehlermeldung, nach der niemand gefragt hatte:
+
+> 404 — This page could not be found.
+
+**Englisch, ohne Logo, ohne Weg zurück.** Next.js zeigt diese Vorlage, solange
+es keine eigene `not-found.tsx` gibt — und es gab keine. Mitten in einem
+Programm, das sonst durchgehend Deutsch spricht. Wer dort landet, weiß nicht,
+ob er sich vertippt hat oder ob das Programm kaputt ist.
+
+Jetzt: „Diese Seite gibt es nicht. Die Adresse führt ins Leere — vielleicht ein
+Tippfehler oder ein alter Link." Mit einem Knopf zur Startseite. Und
+ausdrücklich **nicht** mit „etwas ist schiefgelaufen": Eine falsche Adresse ist
+keine Panne, und der Satz soll das sagen, ohne jemanden zu beunruhigen.
+
+### Und der Befund, der schwerer wiegt
+
+Sechs Schnittstellen gaben im Fehlerfall `err.message` ungeprüft heraus:
+
+```
+catch (err) {
+  return NextResponse.json(
+    { error: err instanceof Error ? err.message : 'Fehler beim Einstempeln' },
+    { status: 400 })
+}
+```
+
+Für die eigenen Fehler des Programms war das richtig — „Es läuft bereits eine
+Zeiterfassung. Bitte zuerst ausstempeln." ist genau der Satz, den die Person
+lesen soll. Für alles andere war es auf zwei Weisen gleichzeitig falsch:
+
+**Die Person liest Kauderwelsch.** Fällt die Datenbank aus, steht beim
+Einstempeln „Can't reach database server at 127.0.0.1:5432". Nachgemessen in
+dieser Sitzung: Genau diese Meldung kam zweimal vor, als Postgres im Container
+stehen blieb.
+
+**Und es ist eine Auskunft über die Anlage.** Wirtsname, Port, Tabellen- und
+Spaltennamen, bei einem Prisma-Fehler auch der gescheiterte Teil der Abfrage.
+Das gehört nicht auf den Bildschirm einer Pflegekraft — und erst recht nicht in
+einen Screenshot, der danach in einem Chat landet.
+
+**`Fachfehler` dreht die Richtung um.** Wer eine Meldung für einen Menschen
+wirft, zeichnet sie aus; alles andere wird nach außen ein fester Satz und innen
+protokolliert. Vorher musste man an jeder Fundstelle daran denken, das
+Technische abzufangen — jetzt muss man daran denken, den eigenen Satz
+auszuzeichnen, und das merkt man sofort, weil er sonst nicht ankommt.
+`ZugangKonflikt` machte das seit Langem so, nur ohne gemeinsame Grundlage.
+
+**Der KI-Assistent bekommt den technischen Text weiter** — er braucht ihn, um
+einen anderen Weg zu finden. Nur darf er ihn nicht wörtlich weitergeben; das
+steht jetzt als Regel in seinem Systemtext.
+
+Nachweise: `browser/alle-seiten-ohne-fehler.mjs` **60/60**,
+`fachfehler.test.ts` **10**, und in `b-zeit.mjs` die Gegenprobe, dass der
+eigene Satz weiterhin durchkommt: „Es läuft bereits eine Zeiterfassung. Bitte
+zuerst ausstempeln." — ohne jede technische Innerei. Die Umstellung durfte den
+eigenen Satz nicht mitverschlucken, und das ist der Test dafür.
+
+## Block §235 (25.10.) — Zwei Zahlen für denselben Resturlaub, und zwei Masken ohne Wirkung
+
+Vier Meldungen aus einer Bilderstrecke.
+
+### 1. Die Urlaubstage stimmten nicht überein
+
+**„Bei Bild 1 und 2 stimmen die Urlaubstage nicht überein. Bei dem einen steht
+die eine Zahl, bei dem anderen die andere. Das ist sehr schlecht."**
+
+Nachgemessen bei Juliane Saul:
+
+| | |
+|---|---|
+| Urlaubsseite | „Resturlaub 2026: **12** von 30 Tagen" |
+| Profilseite | „**16** Resturlaub" |
+
+Beide rechneten für sich richtig. Die Urlaubsseite zog die offenen Anträge ab
+(30 − 14 − 4), das Profil nicht (30 − 14). **Der Fehler war nicht die Rechnung,
+sondern dass beide Zahlen „Resturlaub" hießen** — und der Unterschied waren
+genau die vier Tage, über die noch niemand entschieden hatte.
+
+`urlaubskonto.ts` rechnet jetzt beides und **benennt es**: `verfuegbar` ist,
+was noch beantragt werden kann; `offen`, was dieses Jahr noch zusteht. Beide
+Masken zeigen dieselbe Zahl — die, nach der jemand handelt.
+
+**Warum nicht einfach eine Zahl:** Die Maske zum Beantragen braucht die eine
+(sonst beantragt jemand Tage, die schon weg sind), der Jahresüberblick die
+andere (sonst sieht ein abgelehnter Antrag aus wie verbrauchter Urlaub). Eine
+für beides wäre an einer Stelle falsch — und zwar still.
+
+Dabei gefunden: `Number(null)` ist 0 und nicht NaN. Ein Mensch ohne gesetzten
+Anspruch hätte „0 von 0 Tagen" gelesen und geglaubt, er habe seinen Urlaub
+verbraucht.
+
+### 2. „Dienstpräferenzen" — das Abzeichen war falsch
+
+**„Diese Dienstpräferenzen, diese ganzen Dienstwünsche … ist doch gar nicht
+mehr relevant, seitdem wir das Regelpaket haben. Das heißt, es könnte raus."**
+
+Der Block trug das Abzeichen **„wird bei KI berücksichtigt"** und speicherte
+fünf Felder nach `Employee.preferences` — ein Feld, das
+`rule-model-service.ts` an **keiner** Stelle liest.
+
+| Feld | wo es wirklich steht |
+|---|---|
+| Bevorzugte Dienste | „Mein Dienstwunsch" — und nur der plant (§229) |
+| Kein Frühdienst nach Spätdienst | die Ruhezeit, als Betriebsregel im Regelpaket |
+| Maximale Folgetage | ebenfalls Regelpaket (`maxFolgetage`) |
+| Sonstige Notizen | Freitext, den kein Rechenkern liest — §200 hat dasselbe Feld anderswo schon entfernt |
+| Nicht verfügbar an | `fixedOffDays` — und nur das plant |
+
+**Das letzte war das gefährlichste.** Wer hier Samstag und Sonntag abwählte,
+bekam seinen Urlaub anders gezählt (`workdays.ts` las dieses Feld), während der
+Dienstplan ihn weiter einplante. Zwei Felder für „an diesem Wochentag bin ich
+nicht da", und nur eines davon hat je geplant. `workdays.ts` und `fairness.ts`
+lesen jetzt `fixedOffDays`; die alte Angabe bleibt als Rückfall, solange
+`fixedOffDays` leer ist — **ohne das bekäme ein bestehender Urlaubsantrag über
+Nacht eine andere Tagezahl als gestern.**
+
+Was NICHT entfernt wurde: „Mein Dienstwunsch". Der trägt das Abzeichen „fließt
+in Planung ein", und das stimmt seit §229 — dort ist nachgemessen, dass er von
+0 auf 2 erfüllte Wünsche kam.
+
+### 3. „Persönliches" — ganz weg
+
+**„Das mit den Stärken und Schwächen, das kann auch raus, es braucht kein
+Mensch mehr. Das hat doch nie Sinn gemacht."**
+
+§232 hatte schon die Schattenfelder entfernt und den Satz korrigiert, der
+behauptete, die Angaben hülfen bei der Planung. Übrig blieb eine Erhebung, die
+den Rechendienst nicht erreicht.
+
+Jetzt ganz weg: Maske, Tabelle, beide Routen, der KI-Chat, die Anzeige in
+Personalakte und Unternehmenssicht, die Einträge in DSGVO-Verzeichnis, Auskunft
+und Löschroutine.
+
+**Warum gelöscht und nicht ausgeblendet:** „Lebenssituation" meint
+alleinerziehend, Pflege von Angehörigen, gesundheitliche Einschränkungen —
+Art. 9 DSGVO. Wer solche Daten nicht mehr braucht, darf sie nicht aufbewahren.
+Eine ausgeblendete Tabelle wäre weiterhin eine Verarbeitung, nur eine
+unsichtbare — und unsichtbare Verarbeitung ist die, die in einer Auskunft
+vergessen wird.
+
+### 4. Die alte Domain in den Push-Nachrichten
+
+**„Bei dieser Google-Synchronisation steht noch die alte Railway-Domain. Und
+die steht auch bei den Pop-Up-Nachrichten, die ich aufs Handy bekomme."**
+
+§228 hat die Abo-Adresse auf `APP_URL` umgestellt. Das war richtig und reichte
+nicht: **Die Push-Meldung zeigt die Adresse, unter der die App installiert
+wurde** — das entscheidet der Browser, nicht die Nutzlast. Im Code steht die
+alte Domain nirgends; sie steckt in der Installation.
+
+Solange der alte Name beide Seiten ausliefert, bleibt jede dort installierte
+App darauf. Eine Weiterleitung ist der einzige Ort, an dem sich das beheben
+lässt. **Nicht umgeleitet wird** ohne `APP_URL`, bei POST (eine Weiterleitung
+verliert den Rumpf — ein abgeschickter Urlaubsantrag wäre still weg), für
+`/api` und lokal.
+
+Dabei ein eigener Fehler: Die Rollenweiterleitung galt über den Matcher nur für
+`/`. Mit dem neuen, weiten Matcher hätte sie jeden angemeldeten Menschen von
+`/employee/schedule` zurück auf `/employee` geschickt. Die Einschränkung ist in
+die Funktion gewandert, nicht verschwunden.
+
+### Was der Seitendurchgang dabei fand
+
+**`/admin/time-tracking` stürzte ab** — „Cannot read properties of undefined
+(reading 'variant')", statt der Seite stand „Etwas ist schiefgelaufen".
+
+Die Ursache war zwei Ebenen tiefer: In `OvertimeRequest.status` standen **67
+Datensätze mit „rejected"** — ein Wort, das der Typ gar nicht kennt
+(`'pending' | 'approved' | 'denied' | 'partial'`) und das `VacationRequest`
+daneben als „denied" schreibt. **Die Schnittstelle nahm den Status ungeprüft
+entgegen**; was eine Maske schickte, landete in der Datenbank.
+
+Drei Dinge behoben: Die Schnittstelle prüft jetzt (und übersetzt „rejected",
+damit eine Maske, die jahrelang so geschrieben hat, nicht ab heute Fehler
+bekommt), die Bestandsdaten sind vereinheitlicht, und die Masken zeigen einen
+unbekannten Status **an** statt die Seite mitzunehmen — dann sieht man beim
+nächsten Mal, welcher es war.
+
+**`/company/reports` zeigte „NaNh"** in der Summenzeile: `reduce(...) /
+employees.length` bei leerer Liste. Die beiden Zeilen darüber prüfen den Nenner
+seit jeher; nur diese eine nicht, und sie steht dort, wo es am meisten
+auffällt.
+
+**Und ein Fehler in der Prüfung selbst:** „Failed to fetch" wanderte zwischen
+den Läufen von einer Seite zur anderen — der Browser bricht beim Weiterblättern
+die laufenden Anfragen ab. Das gehört zur Prüfung, nicht zur Anwendung, und
+wird jetzt ausgenommen. Mitgezählt hätte es sie zum Rauschmelder gemacht, und
+das verbietet ihr eigener Kopf.
+
+### Noch ein Befund, den erst der kalte Cache zeigte
+
+Die Resturlaubs-Kachel im Profil stand beim ersten Aufruf **eine Sekunde lang
+auf 16 und danach auf 13**. Die Rechnung war dieselbe — ihr fehlten nur
+anfangs die offenen Anträge, die asynchron nachkommen. Auf warmem Cache war es
+nie zu sehen.
+
+Ausgerechnet an der Kachel, deren falsche Zahl gemeldet wurde. Sie zeigt jetzt
+einen Strich, bis die Anträge da sind: **Ein Strich, der zur richtigen Zahl
+wird, ist ehrlich; eine Zahl, die sich nachträglich ändert, ist es nicht.**
+Auch im Fehlerfall gilt „geladen" — sonst stünde dort für immer ein Strich, und
+niemand wüsste, ob gerechnet wird oder etwas kaputt ist.
+
+Die Prüfung wartet entsprechend auf eine Zahl statt auf das Element. Ohne das
+maß sie den Zwischenzustand und meldete einen Fehler, den es nicht gab.
+
+### Und zwei rote Prüfungen, die keine waren
+
+`j-recruiting` und `k-website` schlugen im Gesamtlauf fehl — HTTP 500 auf den
+öffentlichen Karriereseiten. Ursache war ein zerschossener Build-Cache
+(`Cannot find module './vendor-chunks/@swc.js'`), weil in dieser Sitzung
+`npm run build` und `npm run dev` abwechselnd dasselbe `.next` benutzt haben.
+Genau davor warnt die Projektregel. Nach `rm -rf .next`: **78/78** und
+**114/114**.
+
+Nachweise: `urlaubskonto.test.ts` **9**, `kanonische-domain.test.ts` **11**,
+`browser/urlaubstage-stimmen-ueberein.mjs` **9/9**, `o-persoenliches.mjs`
+**11/11** (misst jetzt das Gegenteil: dass es weg ist),
+`browser/alle-seiten-ohne-fehler.mjs` **60/60**. Insgesamt **1970/1970**
+Prüfungen am laufenden System und **1275** Modultests.
+
+## Block §236 (25.10.) — Die dauerhafte Dienstvorliebe entfällt
+
+**Die Meldung:** „Ich möchte, dass diese Dienstpräferenz rausfliegt, weil ich
+nicht möchte, dass dann auf einmal jemand dauernd Spätdienste bekommt, obwohl
+das dann halt nicht mehr mit der Fairness kollidiert. Es gibt ja Regeln."
+
+### Der Einwand ist besser als meine Verteidigung
+
+In §235 hatte ich „Mein Dienstwunsch" stehen lassen und nachgefragt — mit dem
+Argument, das Abzeichen „fließt in Planung ein" stimme, §229 habe ihn
+nachweislich von 0 auf 2 erfüllte Wünsche gebracht.
+
+Das stimmte und war der Grund, ihn zu entfernen, nicht ihn zu behalten.
+
+Ein Wunsch für **einen Tag** konkurriert mit anderen Wünschen desselben Tages.
+Ein Wunsch, der an **jedem** Tag gilt, konkurriert mit nichts — er schiebt die
+Verteilung über Monate in eine Richtung. Wer dauerhaft Frühdienst wünscht,
+bekommt dauerhaft Frühdienst; was dabei bei den anderen ankommt, stand in
+keinem Feld. Das Gewicht lag bewusst unter dem der Fairness, und das half
+nicht: Es wirkte eben jeden Tag.
+
+### Was entfernt wurde
+
+| | |
+|---|---|
+| „Mein Dienstwunsch" im Profil | entfällt |
+| „Dauerhafte Schichtpräferenz" im Dienstplan-Reiter | entfällt — dieselbe Angabe, zweimal bedienbar |
+| „Schicht-Präferenz" in der Personalakte | entfällt |
+| `/api/employee/preferences` | entfällt |
+| `PUT /api/employee-planning-profile` | entfällt — danach hätte sie nichts mehr geschrieben |
+| `EmployeePlanningProfile.shiftPreference` | gelöscht |
+| Übersetzung in Tageswünsche (`rule-model-service`) | entfällt |
+| `vorliebe` im Regelmodell | wird nicht mehr geschickt |
+| `vorlieben_aus_stammdaten` im Regelpaket | tut nichts mehr |
+
+**Was den Plan jetzt bestimmt:** das Regelpaket, das Tagesmuster, die festen
+freien Tage und die Fairness über den Zeitraum. Wünsche für einzelne Tage
+bleiben.
+
+### Zwei Entscheidungen, die nicht offensichtlich sind
+
+**Der Baustein im Regelpaket bleibt stehen und tut nichts.** Die Pakete rufen
+ihn auf; ein fehlender Baustein ließe einen Rechenlauf scheitern, und dann
+stünde ein ganzer Standort ohne Dienstplan da — wegen einer Regel, die
+abgeschafft wurde. Er notiert jetzt im Bericht, dass es ihn nicht mehr gibt.
+
+**Die Spalte „Vorliebe" im Belegschafts-Import wird weiter gelesen und
+verworfen.** Eine Betriebsliste mit acht Spalten darf nicht ab heute einen
+Fehler werfen, nur weil die letzte nicht mehr gebraucht wird. Vorher war
+„mittags" dort ein Fehler, der die ganze Datei verwarf — eine Spalte, die
+niemand mehr liest, darf das nicht mehr können.
+
+**Und was dabei fehlt, ausdrücklich:** Wer die Spalte ausfüllt, erfährt nicht,
+dass sie wirkungslos ist. Der Einlesebericht kennt nur `fehler`; ein Hinweis
+dort stünde unter „Fehler" und verwürfe womöglich die Datei. Eine eigene
+Hinweisliste wäre der richtige Ort — sie anzulegen ist eine Änderung am
+Bericht und gehört nicht in denselben Schritt wie das Entfernen einer
+Planungsregel.
+
+### Nachweise
+
+Solver **183** Tests. Der Test, der vorher „Vorlieben werden beachtet" hieß,
+misst jetzt das Gegenteil — und zwar am **Bericht** des Regelpakets, nicht am
+einzelnen Plan: Bei zwölf Diensten und sechzehn Menschen erfüllt ein Plan eine
+Vorliebe auch zufällig; die Zusage ist, dass sie nicht mehr bevorzugt erfüllt
+wird. Dazu die Gegenprobe, dass überhaupt noch ein Plan entsteht — ein
+Baustein, der nichts mehr tut, darf den Rechenlauf nicht anhalten.
+
+`a-mitarbeiter` **35/35**, `f7-durchstich` **33/33**, `f9-belegschaft`
+**37/37**, `o-persoenliches` **13/13**, **1276** Modultests.
+
+In `f7-durchstich` ist die Zusage dabei stärker geworden, nicht schwächer:
+Vorher „eine Kollegin darf ein fremdes Profil nicht überschreiben" (403), jetzt
+„überschreiben kann sie es gar nicht — die Route gibt es nicht mehr".
+
+## Block §236 (Nachtrag, 25.10.) — Warum drei Ausrollungen verworfen wurden
+
+**Die Meldung:** „Du hast ja nichts gemacht von all dem, was ich gesagt habe."
+Dann, nach meinem Fehlschluss: „Ich glaube ehrlich gesagt, dass da was falsch
+ist, weil da steht jetzt ja auch, wird die KI berücksichtigt — das stand da
+vorher nicht da. Das heißt, es scheint da angekommen zu sein, du hast es falsch
+gemacht." Und schließlich, mit den Bildern aus Railway: „Die letzten drei sind
+alle wegen Health-Check-Failure gescheitert."
+
+### Was wirklich passiert war
+
+Nichts von §235 war im Betrieb angekommen — aber nicht, weil es nicht gebaut
+wurde. Build und Migration liefen jedes Mal sauber durch. Danach prüft Railway,
+ob die neue Fassung antwortet, und ruft dafür `/` auf, mit `Host:
+healthcheck.railway.app`.
+
+Die Weiterleitung aus §235 antwortete darauf mit **308**. Railway wertet alles
+außer einer Antwort der Anwendung als „antwortet nicht", versuchte es achtmal,
+verwarf die Fassung und ließ die alte stehen. Dreimal in Folge.
+
+Das heißt: Die Änderung, die unsichtbar blieb, war genau die Änderung, die sich
+selbst unsichtbar machte. Sie hat sich und alles danach aus dem Betrieb
+gehalten.
+
+### Mein zweiter Fehler war der Umgang damit
+
+Auf „du hast ja nichts gemacht" habe ich zuerst auf eine nicht zusammengeführte
+Änderung und auf CI getippt. Falsch. Korrigiert hat mich der Hinweis, dass auf
+der Seite ein Satz stand, den ich erst eingebaut hatte — also **war** etwas
+angekommen, und meine Diagnose konnte nicht stimmen.
+
+Dahinter steckt ein Arbeitsfehler, der benannt gehört: Ich habe stundenlang
+gegen `localhost` gemessen, während der Blick aufs laufende System ging. Alle
+Prüfungen waren grün und alle am falschen Ort. Eine Zusage über den Betrieb
+lässt sich in der Entwicklung nicht einlösen.
+
+### Was jetzt gilt — zwei Absicherungen, nicht eine
+
+| | |
+|---|---|
+| `healthcheck.railway.app` | wird nie umgeleitet (Ausnahme in `kanonische-domain.ts`) |
+| `*.railway.internal` | wird nie umgeleitet — Dienst zu Dienst im Projekt |
+| `healthcheckPath` | `/api/health` statt `/` |
+| `GET /api/health` | neu, antwortet `{"status":"ok"}` |
+
+**Warum beides.** Die Ausnahmeliste ist die naheliegende Lösung und die
+schwächere: Benennt Railway seinen Prüfer eines Tages anders, veraltet sie
+still. Der Pfad hält unabhängig davon, denn unter `/api` greift die
+Weiterleitung grundsätzlich nicht. Nachgemessen, beide einzeln: `/` mit dem
+Prüfer-Host gibt 200, `/api/health` gibt 200.
+
+**Warum „alles unter railway.app ausnehmen" nicht geht.** Der alte öffentliche
+Name liegt selbst unter `railway.app` — das ist genau der, von dem weggeleitet
+werden soll. Darum eine Aufzählung und kein Muster, und darum die Gegenprobe:
+`therapie-production.up.railway.app` muss weiter 308 bekommen.
+
+**Warum das Lebenszeichen die Datenbank nicht anfragt.** Es beantwortet „läuft
+der Dienst", nicht „ist alles in Ordnung". Hinge es an der Datenbank, nähme
+eine kurze Störung dort die laufende Fassung mit — Railway verwürfe sie und
+startete eine neue, die dieselbe Datenbank genauso nicht erreicht.
+
+### Nachweise
+
+**1280** Modultests. Vier davon sind neu in `kanonische-domain.test.ts` und
+messen genau die Lücke: der Prüfer-Host wird nicht umgeleitet, auch nicht mit
+Port und in anderer Schreibweise, die interne Vernetzung auch nicht — und als
+Gegenprobe, ohne die die Ausnahme zu weit griffe, dass die alte öffentliche
+Railway-Adresse weiterhin umgeleitet wird.
+
+Dazu fünf Proben gegen eine echte gebaute Fassung mit `APP_URL` wie im Betrieb,
+weil die Funktion allein genau das nicht gezeigt hätte, was schiefging — die
+Weiterleitung sitzt in der Middleware, nicht in der Funktion:
+
+| Anfrage | Erwartet | Gemessen |
+|---|---|---|
+| `/api/health` mit Prüfer-Host | 200 | 200 `{"status":"ok"}` |
+| `/` mit Prüfer-Host | 200 | 200 |
+| `/` mit alter Railway-Adresse | 308 | 308 → `okun-workforce.com` |
+| `/` mit kanonischer Adresse | 200 | 200 |
+| `/` mit `*.railway.internal` | 200 | 200 |
+
+## Block §237 (25.10.) — Die Weiterleitung lief rückwärts, und wer wirklich plant
+
+### Teil 1: `APP_URL` zeigt auf den alten Namen
+
+Nach dem Ausrollen von §236 habe ich am laufenden System gemessen statt an
+`localhost` — und genau das hat es gefunden:
+
+| Anfrage | Erwartet | Gemessen |
+|---|---|---|
+| `okun-workforce.com/` | 200 | **308 → therapie-production.up.railway.app/** |
+| `therapie-production.up.railway.app/` | 308 | **200** |
+
+Genau umgekehrt. Die Weiterleitung schob jeden Besucher **vom richtigen Namen
+auf den alten**. Der Grund steht nicht im Code: In Railway trägt `APP_URL` den
+von Railway erzeugten Namen, und die Weiterleitung hat getreu getan, was dort
+stand.
+
+**Das ist die Wurzel der ursprünglichen Meldung.** Gemeldet war: „Bei dieser
+Google-Synchronisation steht noch die alte generierte Railway-Domain. Und die
+steht auch bei den Pop-Up-Nachrichten, die ich aufs Handy bekomme." §228 hatte
+richtig auf `APP_URL` umgestellt — aber `APP_URL` selbst trägt den alten Namen.
+Daran hängt mehr als vermutet:
+
+| | |
+|---|---|
+| Kalender-Abo | `calendar-sync` baut die Abo-Adresse daraus |
+| **Alle Links in E-Mails** | Registrierung, Passwort zurücksetzen (`email.ts`) |
+| Stellenmeldung an Google | `google-indexing.ts` |
+| Push-Meldung auf dem Telefon | mittelbar: zeigt die Adresse, unter der die App installiert wurde — und die Weiterleitung führte dorthin |
+
+**Was der Code jetzt tut, und was er nicht kann.** Er lehnt diese Einstellung
+ab: Wird auf den erzeugten Railway-Namen gezeigt, wird nicht umgeleitet. Das
+ist zulässig, ohne die Einstellung zu kennen — der einzige Zweck dieser
+Weiterleitung ist, Menschen VOM erzeugten Namen wegzubringen; eine
+Konfiguration, die ihn zum Ziel macht, widerspricht der Regel selbst. Damit
+antwortet wieder jeder Name selbst, also der Zustand von vor §235 und nicht ein
+schlimmerer.
+
+Richtigstellen kann der Code die Einstellung nicht. Dazu muss in Railway
+`APP_URL` auf `https://okun-workforce.com` stehen. Solange das nicht geschieht,
+tragen E-Mail-Links, Kalender-Abo und Stellenmeldung weiterhin den alten Namen
+— und die Push-Meldung auch. **Das ist der offene Punkt dieses Blocks, und er
+liegt nicht im Code.**
+
+Damit es nicht wieder still bleibt, schreibt die Middleware beim Start eine
+Warnung ins Protokoll, wenn `APP_URL` fehlt oder den erzeugten Namen trägt.
+Geworfen wird nichts: Eine falsche Adresse ist kein Grund, niemanden mehr
+hereinzulassen.
+
+### Teil 2: Es plant keine KI — aber es gibt KI
+
+**Die Meldung:** „Auch mit diesen anderen, wo steht bei KI berücksichtigt, aber
+es gibt ja gar keine KI mehr, die das plant. Weil es macht jetzt ja der Solver,
+das heißt, es muss auch raus."
+
+Richtig. Nachgesehen stand es an elf Stellen, und dabei fiel ein Muster auf:
+Die **Texte** waren schon korrigiert („Der Rechendienst plant mit dem
+Regelpaket"), die **Überschriften** darüber nicht — „KI plant für dich",
+„Ersten KI-Dienstplan erstellen". Ein halb gemachter Durchgang sieht von weitem
+aus wie keiner.
+
+| vorher | jetzt |
+|---|---|
+| „Dienstplan KI" (Schnellzugriff) | „Dienstplan" |
+| „KI-Dienstplan erstellen" | „Dienstplan erstellen" |
+| „Konfliktstrategie der KI" | „So entscheidet der Planungslauf bei Konflikten" |
+| „wie die KI das Konto berücksichtigen soll" | „wie der Planungslauf …" |
+| „die KI plant entsprechend mehr oder weniger Dienste" | „der Planungslauf verteilt …" |
+| „KI plant für dich" | „Dienstpläne nach euren Regeln" |
+| „die KI braucht diese Daten für die Planung" | „der Planungslauf braucht diese Daten" |
+| „bei jeder neuen KI-Planung" | „bei jedem neuen Planungslauf" |
+| „Bei Konflikten entscheidet die KI …" | „… entscheidet der Planungslauf …" |
+
+**Was bewusst BLEIBT, und warum das die wichtigere Hälfte ist.** Es gibt
+sieben Stellen mit echter KI, und die müssen weiter so heißen: der Urlaubsplan
+(`/api/ai/vacation`), die Antragsempfehlung, das Ändern des Plans per Satz, das
+Anlegen per Chat, die Controlling-Fragen, die Zuschlags-Einrichtung, der
+Assistent. „KI überall löschen" wäre durch Suchen-und-Ersetzen erfüllbar
+gewesen und hätte diese sieben kaputt gemacht — grün gemeldet.
+
+Inhaltlich war der Satz zur Rangfolge übrigens richtig: Der Rechendienst wertet
+Dringlichkeit, Fairness-Schuld und Einreichzeit (`solver.py:695-699`). Falsch
+war allein der Akteur.
+
+### Teil 3: Drei Felder, die etwas versprachen, das nirgends ankommt
+
+Beim Nachsehen aufgefallen, nicht gemeldet. Am Formular stand:
+
+> „Freitext – beliebig ausführlich. **Die KI berücksichtigt diese Angaben bei
+> der Dienstplanung.**"
+
+Nachgemessen trifft daran nichts zu. `rule-model-service.ts` baut sein Feld
+`besonderheiten` aus `fixedLocations` und der Planungsnotiz — nicht aus diesem
+Formularfeld. Und der Rechendienst liest `besonderheiten` an **keiner** Stelle;
+mit Gegenprobe geprüft, denn `erlaubteAufgaben` liest er sehr wohl.
+
+| Feld | versprach | trifft zu |
+|---|---|---|
+| Persönliche Besonderheiten | KI beachtet es bei der Planung | nein, dreifach nicht |
+| Individuelle Absprachen | durch Beispiel „nie Spätdienst am Freitag" | nein |
+| Feste Einsatzorte | „nur an bestimmten Standorten einsetzbar" | gegenstandslos — der Plan wird je Standort gerechnet, eingeplant wird ohnehin nur die eigene Belegschaft |
+
+Die Felder bleiben, denn eine Leitung liest sie. Die Hinweise sagen jetzt, was
+sie sind — Notizen für Menschen — und wohin eine echte Bindung gehört: feste
+freie Tage, erlaubte Aufgaben, Qualifikationen.
+
+### Teil 4: Die Jahresplanung sprach noch von Wünschen
+
+§231 hat die Wunschmonate durch Anträge ersetzt. Vier Stellen hatten das nicht
+mitbekommen, und eine widersprach sich selbst: Die Benachrichtigung forderte
+auf, **Urlaub zu beantragen** — die Erfolgsmeldung danach sagte, die Leute seien
+aufgefordert worden, „ihre Urlaubswünsche einzutragen".
+
+Ebenso „{n} von {m} **Wünschen** erfüllt", wo die Schnittstelle Anträge zählt,
+und der Ladeschritt „Berücksichtige Mitarbeiter-Wünsche…".
+
+### Nachweise
+
+**1282** Modultests (zwei neu: die Weiterleitung niemals AUF den erzeugten
+Namen, mit Gegenprobe, dass sie mit richtiger `APP_URL` weiterhin weg­leitet —
+ohne die hätte die Absicherung §235 stillgelegt).
+
+Neu: `pruefungen/browser/wer-plant-den-dienstplan.mjs` **19/19**. Sie misst
+beide Richtungen, und die zweite ist die eigentliche: Beim Dienstplan darf
+keine KI genannt werden, bei den sieben echten Stellen **muss** sie weiter
+genannt werden.
+
+**Zweimal musste ich diese Prüfung reparieren, und beide Male war sie grün.**
+Zuerst las sie den Satz gar nicht — er steht im Dialog „Dienstwunsch abgeben",
+der erst beim Klicken erscheint; gemessen wurden 607 Zeichen, und die alte
+Fassung hätte genauso bestanden. Dann hielt eine Längenschwelle dieselben 607
+Zeichen für einen Ladezustand, obwohl sie der volle Inhalt sind — die Seite ist
+einfach kompakt. Jetzt wartet sie je Seite auf ein **Merkmal** statt auf Uhr
+oder Länge, klickt den Dialog auf und sichert zu, dass er offen ist.
+
+`alle-seiten-ohne-fehler` **60/60**, `o-persoenliches` **13/13**,
+`a-mitarbeiter` **35/35**, `p-taetigkeiten` **15/15**.
+
+## Block §237 (Nachtrag) — Drei Reste, die die Typprüfung nicht sehen konnte
+
+Beim Durchsehen, ob von der Dienstvorliebe wirklich nichts übrig ist,
+aufgefallen. Keiner der drei Punkte war gemeldet, und keinen hätte `tsc`
+gefunden.
+
+### Das Demo-Seed war kaputt
+
+`prisma/seed-kita-demo.ts` schrieb weiter `shiftPreference` — die Spalte, die
+§236 gelöscht hat. Nachgemessen bricht Prisma ab:
+
+    Invalid `prisma.employeePlanningProfile.upsert()` invocation:
+    Unknown argument `shiftPreference`. Available options are marked with ?.
+
+**Warum die Typprüfung das nicht sah.** Die Werte gehen über eine
+Zwischenvariable (`const werte = {...}`), und die Prüfung überzähliger
+Eigenschaften greift nur bei einem Objekt, das direkt übergeben wird. Für
+`tsc` war alles in Ordnung; aufgefallen wäre es erst dem, der ein neues
+Demo-System aufsetzt.
+
+Dabei lag noch `mag: 'frueh'` bei zwei Menschen in den Seed-Daten — ab jetzt
+Angaben, die nirgends mehr ankommen. Sie sind mit raus: Daten, die aussehen wie
+Absicht und keine sind, führen den nächsten Leser in die Irre.
+
+### Dem Sprachmodell wurde gesagt, es kenne Dinge, die es nicht bekommt
+
+Die Anweisung an `/api/ai/schedule-edit-chat` lautete:
+
+> „Du erhältst alle relevanten Planungsdaten pro Mitarbeiter: … Qualifikationen,
+> **Schichtpräferenzen und Planungsnotizen**. **Du HAST Zugriff auf alle diese
+> Daten.**"
+
+Geschickt werden aber nur Name, Wochenstunden, Beschäftigungsart, feste freie
+Tage, Arbeitstage, Tage pro Woche und Qualifikationen. Planungsnotiz und
+Wochenend-Vereinbarung hat §200 entfernt, die Schichtvorliebe §236 — die
+Anweisung blieb stehen.
+
+Das ist der schädlichste der drei Reste. Ein Modell, dem man ausdrücklich
+versichert, es kenne etwas, das es nicht bekommt, denkt sich etwas aus — und
+zwar über Menschen. Die Anweisung nennt jetzt genau die sieben Felder, die
+mitgehen, und sagt dazu, dass alles andere unbekannt ist.
+
+### Eine Abfrage über die ganze Belegschaft, deren Ergebnis niemand liest
+
+Dieselbe Route holte bei **jeder** Chat-Anfrage alle Planungsprofile des
+Standorts und legte sie in eine Zuordnung, aus der seit §200 nichts mehr
+entnommen wird (`const profile = profileByEmpId.get(emp.id)` — zugewiesen,
+nicht verwendet). Entfernt.
+
+### Nachweise
+
+**1282** Modultests, `wer-plant-den-dienstplan` **19/19**,
+`alle-seiten-ohne-fehler` **60/60**, `e5-chat` **106/106**. Das gültige
+Schreiben ins Planungsprofil mit Gegenprobe am echten Prisma nachgemessen:
+vorher „Unknown argument", jetzt angelegt und wieder entfernt.
+
+### Und was am laufenden System angekommen ist
+
+Nach dem Ausrollen von §237 dort gemessen, nicht an `localhost`:
+
+| | |
+|---|---|
+| `okun-workforce.com/` | **200** (vorher 308 auf den alten Namen) |
+| `okun-workforce.com/employee/vacation` | 200 |
+| `okun-workforce.com/api/health` | 200 |
+| `/api/employee-human-context` | 404 — §235 ist da |
+| `/api/employee/preferences` | 404 — §236 ist da |
+| `/api/vacation-preferences` | 404 — §231 ist da |
+
+**Offen bleibt `APP_URL` in Railway.** Bis dort die eigene Domain steht, tragen
+E-Mail-Links, Kalender-Abo und Stellenmeldung weiterhin den erzeugten Namen.
+Das ist eine Einstellung, keine Codeänderung.
+
+## Block §238 (26.10.) — Eine Zahl, eine Adresse, und was ich dreimal übersehen habe
+
+**Die Meldung:** „Bei zwei Sachen stimmt jetzt die Urlaubszahl überein, aber
+einem steht trotzdem noch 16. Das macht keinen Sinn. Bitte auch mal checken, ob
+die Zeiten wenigstens alle überall stimmen. Und Urlaubsdings muss jetzt endlich
+mal gefixt werden. Und bei dieser Google-Kalender-Synchronisation steht immer
+noch diese Therapie-Domain. … Das muss auf okun-workforce.com gesetzt werden."
+
+### Teil 1: Der Urlaub — warum zwei Anläufe nicht gereicht haben
+
+§235 hat Urlaubsseite und Profil auf eine gemeinsame Rechnung gebracht. Das war
+richtig und hat nicht gereicht, weil es die **dritte** Maske gab:
+
+| | |
+|---|---|
+| Mein Tag | **16** |
+| Mein Profil | 12 |
+| Urlaub | 12 von 30 |
+
+Beim Nachsehen lagen hinter dieser dritten noch **elf weitere** Stellen, die
+`vacationDaysTotal − vacationDaysUsed` selbst rechnen: die Belegschaftsliste der
+Leitung, die Berichte, die Unternehmensübersicht, der Urlaubsplan — und zweimal
+das, was einem Sprachmodell über einen Menschen erzählt wird.
+
+**Warum eine gemeinsame Funktion das nicht löst.** Sie hilft nur den Stellen,
+die sie aufrufen. Solange die Zahl im Mitarbeiterdatensatz nicht dabeisteht,
+rechnet jede Maske, die sie braucht, wieder selbst — und jede neue fängt wieder
+von vorn an. Das ist kein Versehen einzelner Entwickler, das ist die Bauform.
+
+Darum liefert **`/api/employees` das Urlaubskonto jetzt mit**. Zwei Zahlen, weil
+es zwei Fragen sind:
+
+| | |
+|---|---|
+| `verfuegbar` | was noch **beantragt** werden kann (offene Anträge abgezogen) |
+| `offen` | was dieses Jahr noch **zusteht** (die rechtliche Zahl) |
+
+Alle zwölf Stellen lesen jetzt eine davon. Fehlt das Konto, steht ein Strich —
+nie eine 0, denn „0 Urlaub übrig" ist die eine falsche Antwort, die niemand
+nachprüft.
+
+**Die zwei Stellen für das Sprachmodell bekommen `offen`, nicht `verfuegbar`.**
+Der Antrag, über den geurteilt werden soll, ist selbst ein offener und in
+`verfuegbar` schon abgezogen — das Modell sähe weniger Tage, als die Person hat,
+und zwar genau um den Antrag, um den es geht.
+
+**Und die Sperre von §108 gilt weiter.** Das gerechnete Konto geht eine Kollegin
+so wenig an wie die Zahlen, aus denen es entsteht. Ohne diese Zeile hätte die
+neue Angabe die Sperre von hinten wieder aufgemacht — mit Gegenprobe geprüft,
+dass es am **eigenen** Datensatz sehr wohl ankommt.
+
+### Teil 2: Die Zeiten — die Zahlen stimmten, ein Wort nicht
+
+Nachgemessen über vier Messpunkte, zwei Rollen und zwei Schreibweisen („Mein
+Tag" zeigt `+7:30`, alle anderen `+7.5h` — derselbe Wert): **Das Stundenkonto
+stimmt überall überein.** Alle Masken lesen dasselbe Feld.
+
+Zwei Dinge waren trotzdem nicht in Ordnung, beide an der Beschriftung:
+
+**„8 Krankheitstage" neben „0 Fehlzeiten".** Das liest sich als Widerspruch, und
+zu Recht — Krankheitstage *sind* Fehlzeiten. Gezählt wurde `type !== 'krankheit'`,
+also alles andere. Die Zahl stimmte, das Wort nicht. Heißt jetzt „Andere
+Fehlzeiten".
+
+**„+0h Stundenkonto" neben „1,6h Überstunden 2026".** Auch das stimmt: Das Konto
+wird an genau einer Stelle fortgeschrieben, beim Freigeben eines
+Monatsabschlusses (`release-closing`). Stehen alle Monate auf „Offen", ist +0
+richtig. Von außen ist das nicht zu erraten, darum steht es jetzt dort: „zählt
+freigegebene Monate".
+
+### Teil 3: Die Domain — der Code braucht die Einstellung nicht mehr
+
+§237 hatte gefunden, dass `APP_URL` in Railway den erzeugten Namen trägt, und
+die Weiterleitung dagegen abgesichert. Das machte die Einstellung unschädlich —
+richtig wurde sie nicht, und vier Stellen trugen weiter den falschen Namen:
+Kalender-Abo, **alle Links in E-Mails**, Stellenmeldung an Google und mittelbar
+die Push-Meldung.
+
+`kanonische-basis.ts` entscheidet das jetzt an einer Stelle. **`APP_URL` behält
+den Vorrang** und greift, wo eine eigene Adresse darin steht; nur wenn dort
+nichts steht oder der erzeugte Name, springt die Betriebsadresse ein.
+
+Nachgemessen gegen eine echte gebaute Fassung mit **genau der Einstellung aus
+Railway**:
+
+| | |
+|---|---|
+| Kalender-Abo | `https://okun-workforce.com/api/calendar-feed/…` |
+| alter Name `/` | 308 → `https://okun-workforce.com/` |
+| `okun-workforce.com/` | 200 |
+| Healthcheck | 200 |
+| Protokoll beim Start | `[APP_URL] steht auf dem von Railway erzeugten Namen … bitte richtigstellen` |
+
+**Offen gesagt, der Preis:** Eine Testumgebung, die `APP_URL` nicht setzt,
+verschickt Links auf den Betrieb. Vorher wären es Links auf den erzeugten Namen
+gewesen — auch falsch, nur stiller. Die Warnung beim Start ist dafür da.
+
+Und §216 bleibt gewahrt: An Google wird weiterhin **nichts** gemeldet, wenn nur
+eine `localhost`-Adresse zur Verfügung steht. Ohne diese Zeile hätte mein Umbau
+die Zusage von §216 stillschweigend aufgehoben.
+
+### Was ich an meinen eigenen Prüfungen gelernt habe
+
+**Die Urlaubsprüfung war grün, während die Zahl falsch war.** Sie las die zwei
+Masken, die auf den Bildern waren, und fragte nicht, ob es weitere gibt. Eine
+Prüfung, die nur das misst, was gemeldet wurde, bestätigt den Bericht und nicht
+die Sache. Sie liest jetzt **vier** Stellen über zwei Rollen, und für jede gibt
+es die Gegenprobe, dass sie sich auch wirklich bewegt.
+
+**Ein Prüfpunkt im Durchstich war seit §236 falsch und zweimal grün.** „Die
+Vorliebe aus der Personalakte wirkt im Plan" misst eine Regel, die §236
+abgeschafft hat. Bestanden hat er, weil ein Plan die Vorliebe auch zufällig
+erfüllt — bei zwölf Diensten und sechzehn Menschen keine seltene Ziehung. Heute
+fiel die Münze andersherum. Entfallen; dass die Vorliebe nicht mehr bevorzugt
+wird, steht dort, wo es sich messen lässt: im Bericht des Regelpakets.
+
+### Nachweise
+
+**1294** Modultests (zwölf neu: `kanonische-basis` in beiden Richtungen, und die
+Gegenprobe, dass eine eigene `APP_URL` den Vorrang behält).
+
+| | |
+|---|---|
+| `urlaubstage-stimmen-ueberein` | **13/13** — vier Stellen, zwei Rollen |
+| `zeiten-stimmen-ueberein` (neu) | **13/13** — zwei Schreibweisen, positiv und negativ |
+| `a-mitarbeiter` | **37/37** — darin §108 für das neue Feld |
+| `f7-durchstich` | **32/32**, dreimal hintereinander stabil |
+| `f9-belegschaft` | 37/37 · `o-persoenliches` 13/13 · `n-kalender-abo` 12/12 |
+| `alle-seiten-ohne-fehler` | **60/60** · `urlaub-aus-antraegen` 15/15 |
+
+### §238 Nachtrag — ein fehlendes Urlaubskonto wird nicht zur Null
+
+Beim Durchsehen der eigenen Änderung aufgefallen: Die zwei Stellen, die einem
+Sprachmodell den Resturlaub nennen, schickten `null`, wenn das Konto fehlt.
+Beide Schnittstellen erwarten eine Zahl — im Rumpf wäre `"remainingDays": null`
+gelandet, und „noch 0 Tage übrig" ist die eine Auskunft, die ein Modell ohne
+Rückfrage gegen einen Antrag verwendet.
+
+Jetzt geht das Feld **gar nicht mit**, wenn das Konto fehlt, und beide
+Anweisungen sagen, was das bedeutet: unbekannt, nicht 0, nicht unbegrenzt — und
+dann wird eine Empfehlung nicht mit dem Resturlaub begründet.
+
+Dazu steht in der Anweisung zur Antragsempfehlung jetzt ausdrücklich, dass die
+Tage **dieses** Antrags in der Zahl noch nicht abgezogen sind. Ohne diesen Satz
+hätte das Modell sie womöglich ein zweites Mal abgezogen.
+
+### §238 Am laufenden System gemessen
+
+Nach dem Ausrollen dort nachgemessen, nicht an `localhost`:
+
+| | |
+|---|---|
+| `therapie-production.up.railway.app/` | **308 → `https://okun-workforce.com/`** |
+| `…/employee/vacation` | 308 → `https://okun-workforce.com/employee/vacation` (Pfad bleibt) |
+| `okun-workforce.com/` | 200 |
+| `okun-workforce.com/api/health` | 200 |
+
+Die Richtung stimmt damit wieder, und zwar ohne dass `APP_URL` in Railway
+angefasst wurde. Dass die **Kalender-Adresse** dasselbe Ziel trägt, folgt
+daraus unmittelbar: Das `Location:` dieser Weiterleitung und die Abo-Adresse
+werden aus derselben `kanonischeBasis()` gebaut. Gemessen ist das `Location:`;
+die Abo-Adresse selbst ist gegen eine gebaute Fassung mit genau der
+Railway-Einstellung geprüft (`https://okun-workforce.com/api/calendar-feed/…`),
+weil dafür eine Anmeldung nötig ist und im Betrieb keine stattfinden soll.
+
+## Block §239–§242 (29.10.) — Glocke, App-Start, Haken, Anhänge, Krankenschein
+
+Sechs Meldungen in einem Durchgang. Zwei davon hatten dieselbe Ursache, und
+zwei waren nicht das, wonach sie aussahen.
+
+### §239 Die Glocke führt jetzt irgendwohin
+
+**Die Meldung:** „Wenn man eine Benachrichtigung hat bei der Glocke, möchte ich,
+dass man draufklickt und dahin geleitet wird, worum es geht. Also dich hat
+jemand angefragt für einen Schichttausch, dann klicke ich rauf und dann möchte
+ich, dass ich zu dieser Schichttauschanfrage hingeleitet werde."
+
+Nachgesehen: Die Zieladresse gab es längst — sie wurde an die Push-Meldung
+übergeben und dann **weggeworfen**. Gespeichert wurden Titel, Text und Art; die
+Adresse nicht. Ein Klick in der Glocke markierte deshalb nur als gelesen.
+
+| | |
+|---|---|
+| `Notification.url` | neu — jede neue Benachrichtigung trägt ihr Ziel |
+| `benachrichtigungsziel.ts` | leitet für **bestehende** Zeilen ein Ziel aus der Art her |
+| Glocke im Kopf und in der Leiste | führt beim Antippen dorthin |
+
+**Warum beides.** Hätte ich nur das Feld eingebaut, wäre die Glocke für jeden,
+der heute hineinschaut, unverändert tot — die Verbesserung käme erst bei der
+nächsten Benachrichtigung an. Die Herleitung ist rollenabhängig: Eine gemeldete
+Abwesenheit führt die Leitung dorthin, wo sie sie bearbeitet, die betroffene
+Person zu ihrer eigenen Krankmeldung.
+
+**Und eine Sperre, die vorher niemand brauchte:** Ein Ziel wird nur verfolgt,
+wenn es innerhalb des Programms liegt. Die Rundmeldung nimmt eine Adresse von
+außen entgegen — ohne diese Prüfung wäre das ein Weg, jemanden aus der App
+heraus auf eine fremde Seite zu schicken.
+
+### §239 Die App startet nicht mehr auf der Verkaufsseite
+
+**Die Meldung:** „Wenn ich auf die App gehe, dann kommt immer erst diese
+Kack-Website. Das hatten wir ja schon mal."
+
+§201 hatte die Weiterleitung in die Middleware verlegt, und die funktioniert:
+Nachgemessen antwortet `/` mit gültiger Sitzung mit 307 auf `/employee`. **Nur
+erreicht die App diese Antwort gar nicht.** Zwei Dinge wirkten zusammen:
+
+1. Im Manifest stand `start_url: "/"` — die App fragte nach der Adresse der
+   Verkaufsseite.
+2. Der Dienst-Arbeiter hatte **genau diese Seite vorgespeichert**. Bei
+   langsamem Netz lieferte er sie aus; dann läuft keine Middleware, sondern es
+   erscheint die Werbeseite, und erst danach leitet der Browser um.
+
+Eine Weiterleitung lässt sich nicht zwischenspeichern — eine Seite schon.
+Darum: neue Startadresse `/app`, auf der nie etwas anderes steht als die
+Entscheidung, wohin. `/` fliegt aus dem Zwischenspeicher, die Fassung wurde auf
+v5 erhöht, damit die gespeicherte Verkaufsseite auf allen Geräten verschwindet.
+
+Nachgemessen: `/app` → `/employee`, `/admin`, `/company` je nach Rolle, ohne
+Anmeldung → `/login`.
+
+### §240 Ein Haken, zwei Haken, türkis
+
+**Die Meldung:** „Ich konnte eine Nachricht nicht löschen, weil da stand, dass
+es schon gelesen wurde … obwohl das wurde noch gar nicht gelesen."
+
+**Das war kein Anzeigefehler.** Die Oberfläche sieht alle zehn Sekunden nach, ob
+etwas Neues da ist — und meldete bei **jedem** dieser Durchläufe „gelesen". Wer
+ein Gespräch irgendwo offen liegen hatte, auch in einem Hintergrund-Reiter von
+gestern, las damit alles binnen zehn Sekunden, ohne hinzusehen. Die Auskunft war
+nicht falsch gerechnet, sondern auf einer falschen Tatsache aufgebaut.
+
+Und genau daran hing §221: Zurückziehen geht nur, solange niemand gelesen hat.
+Eine Zusage, die an einem Wert hängt, der sich von selbst hochzählt, verbietet
+irgendwann alles.
+
+| Zustand | Haken | heißt |
+|---|---|---|
+| gesendet | einer, blass | Der Server hat sie |
+| zugestellt | zwei, blass | Sie liegt auf dem Gerät des anderen |
+| gelesen | zwei, türkis | Jemand hat das Gespräch geöffnet, während das Fenster sichtbar war |
+
+Was der Takt vorher fälschlich „gelesen" nannte, heißt jetzt **zugestellt** —
+kein neues Verhalten, das alte unter dem richtigen Namen. Gelesen wird beim
+Öffnen gemeldet und beim Zurückkommen ins Fenster, und nur bei
+`visibilityState === 'visible'`. Zurückziehen ist erst gesperrt, wenn **gelesen**
+erreicht ist, wie gewünscht.
+
+In der Gruppe zählt der Langsamste: Zwei Haken, weil einer von acht das Gerät
+angehabt hat, wären eine Auskunft über niemanden.
+
+**Was NICHT passiert ist:** Die bestehenden Lesestände wurden nicht geleert.
+Sauber wäre es — rückwirkend lässt sich nicht feststellen, wer hingesehen hat.
+Dann stünde aber bei jedem Menschen jedes alte Gespräch wieder auf ungelesen.
+Die Korrektur wirkt ab jetzt, nicht rückwirkend; das steht so auch in der
+Migration.
+
+### §241 Dateien, für die der Browser keinen Typ meldet
+
+**Die Meldung:** „Man konnte Bilder und Dokumente zwar auswählen, aber man
+konnte es nicht hochladen" — und, an anderer Stelle: „außerdem konnte man da
+auch keine Bescheinigung hochladen".
+
+Zwei Meldungen, **eine Ursache**. Die Schnittstellen waren in Ordnung: Bild, PDF,
+HEIC und ein vier Megabyte großes Foto gingen alle durch. Abgewiesen wurde genau
+ein Fall:
+
+    Datei ohne gemeldeten Typ  →  HTTP 400
+    „Dateien dieser Art lassen sich hier nicht verschicken
+     (application/octet-stream)."
+
+Und das ist am Telefon der Normalfall: Wer auf dem iPhone über „Dateien" oder
+aus iCloud etwas auswählt, bekommt häufig ein `File` mit leerem `type`. Eine
+ganz normale `Krankenschein.pdf` fiel damit durch — und in der Oberfläche sah es
+aus, als passiere beim Senden nichts.
+
+`dateityp.ts` bestimmt die Art jetzt aus **Endung und ersten Bytes**. Beides
+zusammen, nicht eines davon: Nur Endung wäre eine Einladung (`schadsoftware.exe`
+in `foto.jpg` umbenannt), nur Bytes ginge nicht (eine .docx ist ein ZIP wie
+jedes andere).
+
+**Der neue Weg ist strenger als der alte, nicht lockerer.** Vorher wurde dem
+gemeldeten Typ blind geglaubt: Eine Datei mit `type: 'application/pdf'` kam
+durch, was immer darin stand. Jetzt wird eine PDF, die sich „harmlos.png" nennt,
+abgewiesen — nachgemessen.
+
+### §242 „Ab dem vierten Tag" war für diesen Betrieb falsch
+
+**Die Meldung:** „Dann wurde behauptet, dass Krankenschein erst am vierten Tag
+nötig ist, obwohl das gar nicht stimmt. Das ist ab dem ersten Tag nötig. Das
+muss auch möglich sein, dass es eingestellt wird."
+
+Einstellbar war es seit §130 (`auNachweisAbTag`, unter Einstellungen →
+Krankmeldung), und der Server rechnet auch damit. **Nur die Krankmeldeseite hat
+die Einstellung nie gelesen** — dort stand dreimal eine feste 4. Wer sie auf 1
+setzte, bekam am Bildschirm weiterhin „ab dem vierten Kalendertag" zu sehen:
+eine Zusage, die der Betrieb gar nicht macht, und zwar in der gefährlichen
+Richtung — sie sagte „brauchst du nicht".
+
+Nachgemessen über die ganze Kette: Leitung setzt 1 → Mitarbeiter liest 1 → eine
+eintägige Krankmeldung ist nachweispflichtig. Mit der Gegenprobe, dass sie es
+bei der gesetzlichen Grenze **nicht** ist.
+
+Die gesetzliche Grenze steht jetzt in `krankmeldung-regel.ts` — einer Datei ohne
+Datenbankbezug. `krankmeldung.ts` zieht Prisma nach; dass der Bündler das aus
+dem Browser-Bauteil wegoptimiert, ist heute wahr und keine Zusicherung.
+
+### Nachweise
+
+**1330** Modultests (35 neu). Neu `pruefungen/q-glocke-und-anhaenge.mjs`
+**23/23** — Glocke mit und ohne gespeichertes Ziel, die drei Hakenzustände samt
+Sperre, Anhang und Bescheinigung ohne gemeldeten Typ, und die Krankenschein-Regel
+über Leitung und Mitarbeiter hinweg. Jeweils mit Gegenprobe.
+
+`alle-seiten-ohne-fehler` **60/60**, `e5-chat` **106/106**.
+
+## Block §243 (29.10.) — Der Widerspruch beim Stundenkonto, und die Suche nach mehr davon
+
+**Die Meldung:** „Es gibt eine Diskrepanz zwischen dem Stundenkonto, was da
+angezeigt wird — du bist offiziell eigentlich im Minus, aber dann wird
+Stundenkonto 0 angezeigt ganz oft. Das beißt sich halt wieder. Auf solche
+Fehler bitte auch nochmal testen, ne, ob es mehr solche Sachen gibt, wo sich
+Sachen widersprechen." Dazu: „Ich finde, das sind zu viele Punkte. Könnte man
+das irgendwie aufräumen?"
+
+### Ein echter Rechenfehler, der dabei herausfiel
+
+Die Zeiterfassung zeigte **Soll 112h · Ist 6h 10min · Minusstunden 105h 50min**
+— am 29. Oktober. Nachgerechnet stimmte jede Zahl für sich. Nur zählte das Soll
+den **ganzen Monat**, auch Tage, an denen noch niemand hätte arbeiten können.
+
+Am 1. eines Monats hätten dort sofort volle 112 Minusstunden gestanden, ohne
+dass irgendetwas versäumt worden wäre. Eine Zahl, die einen Rückstand
+behauptet, bevor die Zeit vergangen ist, ist keine Auskunft, sondern ein
+Vorwurf.
+
+`workdaysInMonth` schneidet den laufenden Monat jetzt bei heute ab. Nachgemessen:
+Oktober 147h statt 154h, September zählt weiterhin voll.
+
+**Der Monatsabschluss bleibt ausdrücklich beim ganzen Monat.** Sein Saldo wandert
+dauerhaft ins Stundenkonto — würde er mitten im Monat mit gekürztem Soll
+festgeschrieben, fehlte der Rest für immer.
+
+### Der Widerspruch selbst
+
+Beide Zahlen stimmten. Das Stundenkonto zählt nur freigegebene Monate (§238),
+und solange keiner freigegeben ist, steht da null. Daneben zeigt die
+Zeiterfassung den laufenden Monat. Wer beides sieht, liest zwei Antworten auf
+dieselbe Frage.
+
+Statt eine zu verschweigen oder beide zu einer zusammenzurechnen — und damit
+einen halben Stand als ganzen auszugeben — steht die zweite Zahl jetzt
+**benannt** daneben: „−12:30 diesen Monat". Zwei Zahlen mit zwei Namen
+widersprechen sich nicht.
+
+### „Mein Tag" aufgeräumt — und eine Dopplung dabei gefunden
+
+Elf Zeilen in vier Gruppen. Zwei davon führten **auf dieselbe Seite**:
+
+> „Meine Unterlagen" → `/employee/profile`
+> „Profil und Einstellungen" → `/employee/profile`
+
+Zwei Einträge, ein Ziel, zwei verschiedene Versprechen. Wer den oberen nahm und
+seine Kontaktdaten suchte, hatte sie vor sich und wusste es nicht. Geblieben ist
+einer („Mein Profil"), dessen Untertitel beides nennt.
+
+Punkte, Datenauskunft, Fehlermeldung und Impressum liegen jetzt unter einem
+Aufklapper „Mehr" — **weggeklappt, nicht weg**: Die Auskunft nach Art. 15/17
+DSGVO und das Impressum müssen in der App erreichbar bleiben (§139, §153). Von
+elf immer sichtbaren Zeilen sind sechs geblieben.
+
+### Die Suche nach weiteren Widersprüchen
+
+`pruefungen/browser/widersprueche.mjs` sucht nach einer **Art** von Fehler, ohne
+die einzelnen Fälle zu kennen — das ist der Unterschied zwischen „ich habe den
+gemeldeten Fehler behoben" und „ich habe nachgesehen, ob es mehr davon gibt".
+
+| Art | gefunden |
+|---|---|
+| Ein Ziel, zwei Versprechen | „Meine Unterlagen" / „Profil und Einstellungen" |
+| Ein Weg ins Leere | `/admin/settings` — 404, und zwar seit Langem |
+| Überschrift gegen eigene Aufstellung | Stundenkonto +0:00 über 105 Minusstunden |
+| Dieselbe Größe zweimal verschieden | deckt bereits `urlaubstage-` und `zeiten-stimmen-ueberein` ab |
+
+**Zweimal hat die Prüfung mich korrigiert, nicht das Programm.** Erst schlug sie
+bei „Dienstplan" / „Dienstplan anpassen" an — eine Kachel und ein Knopf daneben
+sind die normale Bauform einer Übersicht, kein Widerspruch. Meine Regel war zu
+grob, und eine Prüfung, die bei richtigem Verhalten rot wird, liest nach dem
+dritten Mal niemand mehr. Dann maß sie auf `/company` null Ziele, weil die Seite
+noch nicht fertig war.
+
+### Und ein Befund, der das Programm wirklich betraf
+
+Nach dem Warten blieben auf `/company` trotzdem **null Verweise** — die
+Unternehmensübersicht navigierte durchgehend über `<button onClick>`. Ein Knopf
+lässt sich nicht in einem neuen Reiter öffnen, zeigt sein Ziel nicht beim
+Darüberfahren und wird Vorlesehilfen als Knopf angesagt.
+
+Vier Stellen sind jetzt Verweise. Die Prüfung sieht dort statt null **544
+Ziele** — und prüft jedes davon.
+
+### Nachweise
+
+**1330** Modultests. Neu `widersprueche` **15/15** mit Gegenprobe am Suchmuster
+selbst. `alle-seiten-ohne-fehler` 60/60, `urlaubstage-stimmen-ueberein` 13/13,
+`zeiten-stimmen-ueberein` 13/13, `q-glocke-und-anhaenge` 23/23,
+`a-mitarbeiter` 37/37, `e5-chat` 106/106.
+
+**Eine Prüfung hat eine andere gestört**, und das ist mir aufgefallen, weil
+`e5-chat` einmal 105 statt 106 meldete: `q-glocke-und-anhaenge` verstellt
+Lesestände eines echten Gesprächs und hat sie nicht zurückgestellt. Nicht jedes
+Mal — nur bei passender Reihenfolge, und genau solche Fehlalarme kosten eine
+Prüfung ihren Ruf. Sie räumt jetzt auf; beide laufen abwechselnd wiederholt grün.
+
+## Block §244 (29.10.) — Die Seite, die es nicht gab, und niemand vermisste
+
+Entstanden aus §243: Der Seitendurchgang wurde so geschärft, dass eine fehlende
+Seite ein Befund ist. Er meldete genau eine — `/admin/settings`.
+
+### Warum das niemandem auffiel
+
+**Es führte nichts dorthin.** Der Menüpunkt „Einstellungen" der Standortleitung
+listete Nachweise, Recruiting, Aufgabenkatalog, Support und Funde — aber keinen
+Weg zu den Einstellungen selbst.
+
+Und der Seitendurchgang rief die Adresse zwar auf, meldete aber **grün**: Er
+sucht nach Fehlertext, und die eigene 404-Seite (§234) enthält keinen. Sie sagt
+ruhig und auf Deutsch, dass es die Seite nicht gibt. Eine gute Fehlerseite hat
+also eine Prüfung blind gemacht — das ist die Art Nebenwirkung, die man nur
+findet, wenn man nach ihr sucht.
+
+### Warum es jetzt zählte
+
+Gemeldet war: „Das muss auch möglich sein, dass es eingestellt wird" — die Regel
+zum Krankenschein. §242 hat die Mitarbeiterseite auf die Einstellung umgestellt.
+**Nur kam die Leitung an diese Einstellung nicht heran.** Sie liegt unter
+`/company/settings`, und dorthin führt im Menü der Leitung nichts.
+
+### Warum nicht einfach ein Verweis dorthin
+
+Weil eine Leitung dort Felder sähe, die sie nicht speichern darf — Anschrift,
+Betriebsnummer, IBAN, DATEV-Nummern. Der Server weist das seit §113/§114 zurecht
+ab, aber ein Formular, dessen halbe Felder beim Speichern eine Absage ergeben,
+ist schlimmer als keines.
+
+`/admin/settings` zeigt deshalb nur, was eine Standortleitung wirklich ändern
+darf — dieselbe Liste wie `ERLAUBT_ALLE` in der Schnittstelle:
+
+| | |
+|---|---|
+| Krankmeldung | Bescheinigung ab dem … Kalendertag |
+| Urlaubsgenehmigung | automatisch bis … Tage |
+| Vorgaben für neue Mitarbeitende | Wochenstunden, Urlaubstage |
+| Benachrichtigungen | E-Mail für Hinweise an die Leitung |
+
+Unter der Krankmeldungs-Einstellung steht in einem Satz, **was sie auslöst** —
+wer eine Zahl ändert, soll sehen, was passiert, statt es einmal zu setzen und
+die Wirkung nie zu sehen.
+
+Gespeichert werden nur diese fünf Felder, nicht das ganze geladene Objekt:
+Sonst schickte die Leitung die Unternehmensfelder mit und finge eine Absage für
+etwas ein, das sie gar nicht bearbeitet hat.
+
+### Nachweise
+
+`alle-seiten-ohne-fehler` **60/60** — und diesmal heißt das etwas: Die Prüfung
+scheiterte vorher an genau dieser Adresse, nachdem sie fehlende Seiten melden
+gelernt hat. Nachgemessen: `/admin/settings` als Leitung HTTP 200, und ein
+Mitarbeiter bekommt beim Speichern weiterhin 403.
+
+`widersprueche` 15/15, `q-glocke-und-anhaenge` 23/23, **1330** Modultests.
+
+## Block §245–§248 (29.10.) — Dreimal dasselbe gemeldet, dreimal falsch behoben
+
+Drei Meldungen, die ich schon als erledigt gemeldet hatte. Das ist der
+eigentliche Befund dieses Blocks: Zweimal habe ich an einer Stelle repariert,
+an der das Problem nicht saß, und einmal eine Lösung gebaut, die die Frage
+nicht beantwortet hat.
+
+### §245 Die Verkaufsseite blitzt auf — diesmal nachgestellt
+
+**Die Meldung, zum zweiten Mal:** „Ich sehe immer noch, wenn ich auf die App
+gehe, erstmal für eine Sekunde die Website und dann erst werde ich in die App
+geschickt."
+
+**Zwei Vermutungen, beide widerlegt.** Erst dachte ich an `SESSION_SECRET`, das
+in der Edge-Umgebung beim Bauen eingesetzt wird und zur Laufzeit fehlen könnte
+— nachgemessen mit einem Bau ohne die Variable: Sie wird zur Laufzeit gelesen,
+die Weiterleitung funktioniert. Dann an den Dienst-Arbeiter — im echten
+Browser, angemeldet, zeigt `/` zu keinem Zeitpunkt die Verkaufsseite.
+
+**Nachgestellt habe ich ihn schließlich doch:** mit einer Sitzung im
+`sessionStorage`, aber ohne gültiges Cookie. Dann greift die Weiterleitung des
+Servers nicht, die Seite erscheint, und erst danach schiebt sich die
+Weiterleitung des Browsers davor. Genau eine Sekunde.
+
+Drei Lagen, weil ich die Ursache im Betrieb nach wie vor nicht kenne:
+
+| | |
+|---|---|
+| Middleware | leitet weiter, sobald ÜBERHAUPT ein Cookie da ist — ohne Unterschriftsprüfung, die fehlschlagen könnte. Die Berechtigung trifft weiterhin `requireRole`; hier wird nur gelenkt |
+| Startseite | ein winziges Skript setzt beim Einlesen ein Merkmal, wenn im Browser eine Sitzung liegt; eine CSS-Regel verdeckt die Seite damit **vor dem ersten Zeichnen** |
+| Aufräumen | sagt der Server, dass keine Sitzung besteht, wird das Merkmal entfernt — sonst sähe ein Interessent mit altem `sessionStorage` einen leeren Bildschirm |
+
+Der erste Versuch war eine Decke, die React nach dem Aufbau zeichnet. Im Test
+war die Seite davor sichtbar — eine Decke, die zu spät kommt, ist keine.
+
+### §246 Bilder lassen sich nicht verschicken — zum zweiten Mal
+
+**Die Meldung:** „Zusätzlich kann ich immer noch keine Bilder verschicken. Da
+steht dann immer, die Datei konnte nicht gesendet werden."
+
+§241 hat den Fall behoben, dass der Browser **gar keinen** Typ meldet. Der
+übrige Fall ist ein anderer: Ein iPhone meldet für dasselbe Foto je nach
+Herkunft `image/heic`, `image/heif` oder `image/jpg`. In der Liste erlaubter
+Arten stand nur `image/heic` und `image/jpeg` — die beiden anderen fielen
+durch, und zwar **mit** gemeldetem Typ. §241 griff da gar nicht.
+
+Zwei Dinge dagegen:
+
+- eine Tabelle gleichbedeutender Schreibweisen (`image/heif` → `image/heic`,
+  `audio/x-m4a` → `audio/mp4`, …)
+- und die Regel darunter, die jede künftige Schreibweise auffängt, **ohne dass
+  jemand eine Tabelle pflegen muss**: Ein gemeldeter Typ, den diese Stelle gar
+  nicht annimmt, tritt gegen die Endung zurück.
+
+Nachgemessen gehen jetzt `image/heif`, `image/HEIF`, `image/jpg`,
+`image/pjpeg` und „kein Typ" durch — im Chat und in der Personalakte. Eine
+Datei, die nicht ist, was sie vorgibt, wird weiterhin abgewiesen.
+
+### §247 Stundenkonto 0 über minus 98 Stunden
+
+**Die Meldung:** „Es macht keinen Sinn, dass das Stundenkonto auf 0 steht und
+darunter minus 98 Stunden in diesem Monat. Macht gar keinen Sinn."
+
+§243 hatte die zweite Zahl **benannt** danebengestellt, mit der Begründung:
+zwei Zahlen mit zwei Namen widersprächen sich nicht. Das war falsch gedacht.
+Über der Kachel steht ein Wort — „Stundenkonto" —, und was darunter steht,
+liest jeder als dieselbe Sache.
+
+Jetzt steht dort **eine** Zahl: der freigegebene Stand plus alles, was seitdem
+offen ist. Gerechnet in `/api/hours-account/laufend`, weil dafür mehrere Monate
+durchgegangen werden müssen.
+
+**Warum nicht einfach „freigegeben plus dieser Monat".** Dann fehlten die
+Monate dazwischen. Bei einem Betrieb, der seit August keinen Abschluss
+freigegeben hat, wären August und September still unter den Tisch gefallen —
+ein halber Stand mit dem Etikett des ganzen. Gerechnet wird ab dem Monat nach
+dem letzten freigegebenen Abschluss, höchstens achtzehn Monate; dass die Grenze
+gegriffen hat, sagt die Antwort, damit die Oberfläche nicht so tun muss, als
+sei die Zahl vollständig.
+
+**Die Folge, die ich fast übersehen hätte.** Zeigen die Mitarbeiterseiten den
+laufenden Stand und die Listen der Leitung weiter den freigegebenen, ist der
+Widerspruch nur verschoben — Leitung und Person sähen zwei Zahlen unter
+demselben Wort. Für eine ganze Belegschaft ist der laufende Stand zu teuer zu
+rechnen, und für eine Abrechnungsliste ist der freigegebene auch die richtige
+Zahl. Deshalb heißt er dort jetzt **„abgerechnet"** und nicht mehr „Konto".
+
+### §248 Die Haken in Gold
+
+**Die Meldung:** „Dass die Haken türkis sind, macht keinen Sinn, weil die
+Nachrichtenbox von einem selber ist schon türkis. Die Haken müssen, wenn sie
+gelesen sind, irgendwie golden werden."
+
+Trifft zu. §240 hatte auf der türkisen Blase ein kräftiges Weiß genommen — ein
+Zustand, den man nur an einem Helligkeitssprung erkennt, ist keiner. Gold hebt
+sich wirklich ab und ist im Programm bereits besetzt: Wappen und Assistent
+tragen es.
+
+### Nachweise
+
+**1334** Modultests (vier neu für die Schreibweisen samt Gegenprobe, dass ein
+angenommener Typ den Vorrang behält).
+
+`widersprueche` **17/17** — die Prüfung misst jetzt das Gegenteil von vorher:
+Unter „Stundenkonto" darf **keine** zweite Zahl mehr stehen, und weist die
+Zeiterfassung eine Abweichung aus, darf das Konto nicht null sein.
+
+`zeiten-stimmen-ueberein` 13/13, `urlaubstage-stimmen-ueberein` 13/13,
+`alle-seiten-ohne-fehler` 60/60, `q-glocke-und-anhaenge` 23/23, `e5-chat`
+106/106, `a-mitarbeiter` 37/37.
+
+**Ein Fehler in meiner eigenen Änderung**, gefunden vom eigenen Test: Ohne
+brauchbaren Typ und ohne bekannte Endung stand als Quelle „endung", obwohl
+nichts ausgewertet wurde. Der Typ stimmte, die Auskunft darüber nicht — und die
+entscheidet über die Fehlermeldung.
+
+## Block §249–§251 (29.10.) — Das Foto, die Zahl und der hartnäckige Aufblitzer
+
+Drei Meldungen zum dritten Mal. Diesmal mit Messwerten statt Vermutungen.
+
+### §249 Warum die Bilder nicht ankamen
+
+**Die Meldung:** „Die Bilder funktionieren immer noch nicht."
+
+§241 und §246 haben zwei echte Fehler behoben, und beide sind nachweisbar weg:
+Durch die **echte Oberfläche**, im Browser, angemeldet, geht ein JPEG wie ein
+PNG mit HTTP 200 durch, ohne Fehlermeldung. Auch fünf Megabyte gehen örtlich in
+anderthalb Sekunden durch.
+
+Der Fehler saß also nicht mehr in der Prüfung. Und die Meldung, die dabei
+erscheint, ist die **allgemeine** — sie steht nur da, wenn die Antwort
+überhaupt kein JSON enthält, also wenn nicht die Anwendung abgelehnt hat,
+sondern etwas davor.
+
+**Im Code stand die Antwort bereits.** §139 hatte das Problem für die App-Hülle
+gelöst und dabei genau benannt:
+
+> „Ein Krankenschein aus einer Telefonkamera sind sonst fünf Megabyte — die
+> überträgt sich mit einem Balken Empfang nicht, und genau da steht die Person,
+> wenn sie den Schein beim Arzt abfotografiert."
+
+Für die Hülle. **Wer die App im Browser benutzt, bekam weiterhin das volle Bild
+auf die Leitung** — und das ist die Mehrheit.
+
+Fotos werden jetzt im Browser verkleinert, bevor überhaupt etwas losgeschickt
+wird. Nachgemessen an einem echten Kamerafoto:
+
+| | |
+|---|---|
+| vorher | 4032 × 3024, **6923 kB** |
+| nachher | 2000 × 1500, **864 kB** |
+
+Das löst drei Dinge auf einmal: die Größe, die Umwandlung von HEIC nach JPEG
+(Safari kann HEIC zeichnen, und die Leinwand gibt immer JPEG aus), und die
+Drehung nach der Lageangabe der Kamera — ohne die liegen Hochformatfotos beim
+Empfänger auf der Seite.
+
+**Was es nicht tut:** Es rührt nichts an, was kein Bild ist, und wenn etwas
+daran scheitert, geht die Datei unverändert hinaus. Eine Verbesserung, die beim
+Scheitern das Senden verhindert, wäre schlimmer als das Problem. Das greift
+auch, wenn das Ergebnis größer wäre als das Original — nachgemessen bei einem
+künstlichen Bild, das sich als PNG besser komprimiert.
+
+Und die Fehlermeldung nennt jetzt **Nummer und Größe**. Ohne sie sieht eine
+Abweisung durch die Vermittlungsschicht genauso aus wie eine durch die
+Anwendung — dreimal wurde „geht nicht" gemeldet, und dreimal war daraus nicht
+abzulesen, woran es lag.
+
+### §250 Die Zahl im Stundenkonto — nachgerechnet
+
+**Die Frage:** „Kannst du prüfen, ob da jetzt die richtige geprüfte Zahl steht
+und nicht irgendwie alles irgendwie berücksichtigt."
+
+Berechtigt. `pruefungen/r-stundenkonto.mjs` stellt einen bekannten Zustand her
+und rechnet die Zahl aus denselben Bausteinen nach, die die Zeiterfassung
+anzeigt. **Die Prüfung hat beim ersten Lauf zwei echte Fehler gefunden.**
+
+**Erstens wurde zu viel gezählt.** Die Rechnung summierte achtzehn Monate zu
+rund **−2700 Stunden** auf — bei einem Menschen, der die Stempeluhr schlicht
+nicht benutzt. Das ist keine Messung, sondern ein Vorwurf: Ein Monat ohne eine
+einzige Buchung sagt nicht „es wurde nicht gearbeitet", sondern „es wurde nicht
+erfasst". Gezählt wird jetzt nur, **wo überhaupt gemessen wurde**. Wurde in
+einem Monat auch nur einmal gestempelt, war die Uhr in Gebrauch — dann zählt er
+vollständig. Wer aufhört zu stempeln, fällt also nicht heraus.
+
+Dieselbe Zahl: **vorher −2737 Stunden, jetzt −147.**
+
+**Zweitens konnte etwas verschwinden.** Die Rechnung begann „nach dem letzten
+freigegebenen Abschluss". Wird der Oktober freigegeben, der August aber nicht,
+fing sie im November an — und der offene August fiel heraus, ohne dass irgendwo
+etwas fehlte. Abschlüsse werden nicht zwingend der Reihe nach freigegeben.
+Jetzt wird ein fester Zeitraum durchgegangen und darin jeder freigegebene Monat
+übersprungen.
+
+Die Prüfung misst beide Richtungen: dass ein freigegebener Monat **nicht**
+doppelt zählt, und dass ein offener Monat **sehr wohl** zählt — sonst wäre
+„nichts doppelt" trivial dadurch zu erfüllen, dass nichts gezählt wird.
+
+### §251 Der Aufblitzer — drei neue Messwerte
+
+**Die Meldung, zum dritten Mal.** Diesmal habe ich die Kopfzeilen im Betrieb
+angesehen, und dort stand etwas:
+
+```
+GET /        cache-control: s-maxage=31536000, stale-while-revalidate
+             x-nextjs-cache: HIT
+GET /sw.js   cache-control: public, max-age=0
+```
+
+Drei Befunde daraus:
+
+**Der Dienst-Arbeiter speicherte die Startseite doch.** §239 hat `'/'` aus der
+Vorspeicherung genommen — aber die Regel darunter speichert **jede**
+erfolgreiche Seitenantwort. Wer abgemeldet auf `/` geht, bekommt die
+Verkaufsseite mit HTTP 200, und damit liegt sie wieder im Speicher. Ist das
+Netz dann langsam, greift der Rückfall und liefert sie aus. **Dann läuft keine
+Middleware.** Für `/` gibt es jetzt weder Speichern noch Rückfall auf eine
+Kopie; ohne Netz erscheint die Offline-Seite.
+
+**Die Startseite durfte im Browser liegen bleiben.** `s-maxage` gilt nur für
+gemeinsame Zwischenspeicher — ein Browser sucht sich ohne `max-age` seine
+eigene Regel. Liegt die Seite dort, wird der Server gar nicht erst gefragt.
+Sie trägt jetzt `private, no-cache, must-revalidate`: nicht „nicht speichern",
+sondern „vor jeder Benutzung nachfragen".
+
+**Und der Dienst-Arbeiter selbst durfte es auch.** Er trägt die Regeln, nach
+denen alles andere gespeichert wird — eine alte Fassung, die hängenbleibt, hält
+alle alten Regeln am Leben. Das kann erklären, warum eine Korrektur am
+Zwischenspeicher ein Gerät tagelang nicht erreicht. Jetzt `no-store`.
+
+**Nebenbei gefunden:** Neben `next.config.js` lag eine **leere**
+`next.config.mjs`. Next.js nimmt `.js` zuerst, sie hatte also keine Wirkung —
+aber wäre die `.js` je umbenannt worden, hätte still eine Konfiguration ohne
+Inhalt übernommen. Entfernt.
+
+### Nachweise
+
+**1334** Modultests. Neu `r-stundenkonto` **11/11**, `widersprueche` 17/17,
+`zeiten-stimmen-ueberein` 13/13, `alle-seiten-ohne-fehler` 60/60,
+`q-glocke-und-anhaenge` 23/23, `e5-chat` 106/106.
+
+Das Verkleinern ist **durch die echte Oberfläche** nachgemessen, nicht nur an
+der Schnittstelle: Foto auswählen, senden, und am Server kommen 864 statt 6923
+Kilobyte an.
+
+**Offen gesagt:** Ein Lauf der Modultests meldete einen Fehlschlag, den ich in
+acht weiteren Läufen nicht reproduzieren konnte — vermutlich eine
+Überschneidung mit dem gleichzeitig startenden Rechendienst. Ich weiß nicht,
+welcher Test es war.
+
+## Block §252–§253 (29.10.) — „Fehler 500, 204 kB" — und warum ich blind war
+
+**Die Meldung:** „Immer noch und die Website auch langsam, bin ich sauer."
+Dazu ein Bild mit dem Satz, auf den ich drei Runden gewartet habe:
+
+> Die Datei ließ sich nicht senden (Fehler 500, 204 kB).
+
+### Was diese eine Zeile beweist
+
+**Das Verkleinern aus §249 funktioniert.** Aus 6,9 Megabyte sind 204 Kilobyte
+geworden. Keine Größengrenze, kein Zeitablauf, keine Typprüfung.
+
+**Und die Anwendung stürzt ab.** 500 heißt: Sie ist über etwas gestolpert, und
+der Browser bekam keine Auskunft, sondern nichts. Darum stand dort auch die
+allgemeine Meldung — es gab kein JSON, das einen Grund genannt hätte.
+
+### Was ich ausgeschlossen habe
+
+| | |
+|---|---|
+| Größengrenze | 5 MB gehen örtlich in 1,4 s durch |
+| Oberfläche | durch die **echte** Maske, angemeldet: HTTP 200, keine Fehlermeldung |
+| Ein bestimmtes Gespräch | dieselbe Datei durch **alle** Gespräche: durchweg 200 |
+| Push-Meldung | ist abgefangen, kann nicht werfen |
+| `customerId` fehlt | beide Spalten sind nicht-optional |
+| Langsamer Server | 150–450 ms im Betrieb, für jede Seite |
+
+Örtlich ließ sich der Fall **nicht nachstellen**. Damit war ich blind — und
+das, nicht der Fehler selbst, ist nach drei Runden der eigentliche Mangel.
+
+### §252 Die Anwendung sagt jetzt, woran sie gescheitert ist
+
+Beide Hochladewege tragen einen Mantel. Was unerwartet scheitert, wird zu
+einer Antwort mit **Kennung** statt zu einer leeren 500:
+
+> Die Datei ließ sich nicht speichern. Datenbank überlastet. (Kennung: a7f3c1)
+
+Dieselbe Kennung steht im Serverprotokoll neben dem vollen Fehler — und als
+**Fund** im OKUN-Bereich, mit Fehlertext, Stelle und Zeitpunkt. Damit muss
+niemand mehr auf eine Rückfrage warten, um die Ursache zu sehen.
+
+Die **Art** des Fehlers geht nach außen, wo sie eindeutig und harmlos ist:
+Datenbank nicht erreichbar, Datenbank überlastet, Datenbankstand veraltet,
+Inhalt zu groß, Speicher voll, Arbeitsspeicher erschöpft. Im besten Fall
+erspart das die Rückfrage ganz.
+
+**Was NICHT nach außen geht**, und §234 hatte den Grund schon aufgeschrieben:
+Wirtsname, Port, Tabellen- und Spaltennamen. Das gehört nicht auf den
+Bildschirm einer Pflegekraft und erst recht nicht in einen Screenshot. Mit
+Gegenprobe geprüft: Aus „Can't reach database server at `postgres.internal`:
+`5432`" wird „Datenbank nicht erreichbar", und weder Wirtsname noch Port
+stehen in der Antwort.
+
+### §253 Die Langsamkeit — und sie geht auf mein Konto
+
+Der Server antwortet in 150–450 ms. Die Langsamkeit sitzt also in dem, was die
+App danach lädt — und da habe ich selbst etwas verschlimmert.
+
+**Vier Seiten der Mitarbeiter-App holten die ganze Belegschaft**, um darin den
+eigenen Datensatz zu suchen: Startseite, Profil, Urlaub, Krankmeldung. Seit
+§238 wird dabei für **jeden** Menschen das Urlaubskonto berechnet — auch für
+die fünfzehn, die niemanden interessieren.
+
+Mit `?employeeId=` kommt genau ein Datensatz:
+
+| | |
+|---|---|
+| vorher | **183 899** Bytes, 42 ms |
+| jetzt | **559** Bytes, 12 ms |
+
+Das ist der Faktor 330 — viermal pro Besuch, über eine mobile Verbindung. Die
+Zugriffsprüfung bleibt dieselbe: Eine fremde Kennung wird mit 403 abgewiesen,
+nachgemessen.
+
+### Nachweise
+
+**1342** Modultests (acht neu für die Fehlerkennung, darunter die Gegenprobe,
+dass aus einem Datenbankfehler keine Angaben über die Anlage nach außen
+dringen).
+
+`a-mitarbeiter` 37/37, `r-stundenkonto` 11/11, `q-glocke-und-anhaenge` 23/23,
+`alle-seiten-ohne-fehler` 60/60, `urlaubstage-stimmen-ueberein` 13/13,
+`widersprueche` 17/17, `e5-chat` 106/106.
+
+**Offen gesagt:** Der 500er ist damit nicht behoben, sondern sichtbar gemacht.
+Ich kenne die Ursache nicht und kann sie von hier aus nicht erreichen. Beim
+nächsten Versuch nennt die Meldung sie — oder sie steht als Fund im Programm.
+
+## Block §254 (29.10.) — Dreimal richtig gemessen, dreimal die falsche Frage
+
+**Die Meldung, zum vierten Mal:** „Ich sehe immer noch die Webseite, wenn ich
+auf die App gehe. Immer noch. Es kann nicht sein, ich bin immer noch bei
+meinem ersten Auftrag."
+
+### Der Denkfehler
+
+Ich habe dreimal die Weiterleitung repariert — in der Middleware (§201, §245),
+im Dienst-Arbeiter (§239, §251), in den Kopfzeilen (§251). Jede einzelne
+Messung war richtig. `/` antwortet mit einer Weiterleitung, die Verkaufsseite
+wird nicht ausgeliefert, der Zwischenspeicher hält sie nicht mehr.
+
+**Und trotzdem war alles am Problem vorbei, weil eine Weiterleitung nichts
+zeichnet.**
+
+Ein iPhone zeigt beim Öffnen einer Adresse zuerst ein **Standbild** dessen, was
+dort zuletzt zu sehen war, und holt die Seite im Hintergrund. Unter `/` war
+zuletzt die Verkaufsseite zu sehen. Und weil dort seit meinen Korrekturen
+**nie wieder etwas gezeichnet wird** — es wird ja sofort weitergeleitet —,
+bleibt dieses Standbild für immer stehen.
+
+Jede weitere Verbesserung an der Weiterleitung konnte daran nichts ändern. Sie
+hat das alte Bild im Gegenteil festgenagelt.
+
+Das ist die unangenehmste Art Fehler: Jede Messung stimmt, und die
+Schlussfolgerung ist trotzdem falsch, weil die falsche Frage gemessen wurde.
+Ich habe geprüft, *ob weitergeleitet wird* — gefragt war, *was man sieht*.
+
+### Was jetzt passiert
+
+Die Middleware **leitet nicht mehr weiter, sie schreibt um**. Die Adresse
+bleibt `/`, ausgeliefert wird `/start`: der dunkle Hintergrund der App mit dem
+Wappen, nichts sonst. Ab dem ersten Öffnen ist das Standbild unter `/` damit
+die App.
+
+Danach geht es im Browser weiter, ohne weitere Anfrage an den Server — das
+Ziel steht schon in der Seite.
+
+| | |
+|---|---|
+| mit Sitzung | 200, **10 952** Bytes, kein Verkaufstext, `location.replace("/employee")` |
+| ohne Sitzung | 200, **57 469** Bytes, die Verkaufsseite unverändert |
+
+Im Browser nachgesehen: Ein Interessent bekommt die Verkaufsseite, ein
+Angemeldeter sieht sie zu keinem Zeitpunkt.
+
+### Warum nicht gleich so
+
+Weil ich die Frage falsch gestellt hatte. Die drei vorigen Blöcke haben
+trotzdem echte Fehler behoben — der Dienst-Arbeiter speicherte die
+Verkaufsseite wirklich, die Kopfzeilen waren wirklich falsch. Sie waren nur
+nicht die Ursache dessen, was gemeldet wurde.
+
+### Nachweise
+
+**1342** Modultests, `alle-seiten-ohne-fehler` 60/60, `widersprueche` 17/17,
+`q-glocke-und-anhaenge` 23/23, `a-mitarbeiter` 37/37, `r-stundenkonto` 11/11.
+
+## Block §255 (29.10.) — Die Kennung hat geredet
+
+**Die Meldung:** „Die Datei ließ sich nicht senden. (Kennung: 88e511)"
+
+Die Kennung aus §252 hat getan, wozu sie da ist. Zwei Dinge stehen in dieser
+einen Zeile:
+
+**Kein Datenbankfehler.** Die Einordnung hätte sonst „Datenbank überlastet",
+„Datenbankstand veraltet" oder „Speicher voll" dazugeschrieben. Sie schwieg —
+also keine der bekannten Ursachen.
+
+**Und es ist die äußere Meldung, nicht die innere.** „Ließ sich nicht senden"
+kommt vom Mantel um den ganzen Weg; „ließ sich nicht speichern" wäre die
+Ablage gewesen. Der Fehler passierte also **außerhalb** des Speicherns.
+
+### Was dann noch übrig bleibt
+
+Ein Aufruf war nicht abgefangen: `datei.arrayBuffer()`. Er liest den Rumpf der
+Anfrage fertig ein. Bricht die Verbindung dabei ab — ein Funkloch, ein Wechsel
+von WLAN auf Mobilfunk, ein gesperrter Bildschirm —, wirft er. Daraus wurde
+eine 500.
+
+Das passt zum Bild: Es geschieht am Telefon, nicht am Schreibtisch, und nicht
+jedes Mal.
+
+**Das ist keine Störung der Anlage, sondern eine der Leitung.** Entsprechend
+lautet die Antwort jetzt:
+
+> Die Übertragung wurde unterbrochen. Bitte noch einmal versuchen — am besten
+> mit WLAN oder vollem Empfang.
+
+Mit HTTP 400 statt 500, in beiden Hochladewegen. Nachgestellt mit einer
+Anfrage, die mehr ankündigt, als sie sendet: vorher 500, jetzt 400.
+
+### Nachweise
+
+**1342** Modultests, darunter die Einordnung abgebrochener Übertragungen.
+
+## Block §256 (29.10.) — Der Rechtsraum des Objektspeichers
+
+Vorbereitung für den Umzug der Dateien aus der Datenbank in einen
+Objektspeicher. Nachgesehen, bevor die Einrichtung beginnt — und dabei einen
+Fehler gefunden, der einen Nachmittag gekostet hätte.
+
+### Was aufgefallen ist
+
+Cloudflare bietet an, einen Eimer auf einen **Rechtsraum** festzulegen. Für
+dieses Programm ist das keine Kür: Hier liegen
+Arbeitsunfähigkeitsbescheinigungen, und das sind Gesundheitsdaten nach Art. 9
+DSGVO. Ein Eimer mit `eu` speichert und verarbeitet sie nur in der
+Europäischen Union.
+
+Solche Eimer sind **nur über eine andere Adresse erreichbar**:
+
+| | |
+|---|---|
+| ohne Festlegung | `<konto>.r2.cloudflarestorage.com` |
+| mit `eu` | `<konto>.eu.r2.cloudflarestorage.com` |
+
+In `r2.ts` stand die erste Form **fest eingetragen**. Wer einen EU-Eimer
+anlegt und die Zugangsdaten einträgt, hätte `SignatureDoesNotMatch` bekommen
+— eine Meldung, die mit der Ursache nichts zu tun hat.
+
+`R2_BEREICH` entscheidet das jetzt: leer heißt ohne Festlegung, `eu` bindet an
+die EU.
+
+### Nachweise
+
+**1347** Modultests, fünf davon neu für den Rechtsraum — darunter zwei
+Gegenproben: dass ein leerer Wert nicht zu `abc123..r2…` führt (ein Punkt zu
+viel wäre wieder ein Wirtsname, den es nicht gibt), und dass sich die Signatur
+mit der Adresse ändert. Täte sie das nicht, wäre die Umstellung wirkungslos
+und der Fehler bliebe unerklärlich.
+
+## Block §257 (29.10.) — Der Speicher kann jetzt auch beschrieben werden
+
+Vorbereitung für den Umzug der Dateien. `r2.ts` konnte bisher nur **lesen** —
+ausgestellte Download-Adressen für die Programmdateien (§210). Zum Hochladen
+fehlte alles.
+
+### Was dazugekommen ist
+
+| | |
+|---|---|
+| `uploadAdresse` | eine zeitlich begrenzte Adresse zum **Schreiben**, fünf Minuten gültig |
+| `loeschAdresse` | zum Aufräumen, wenn ein halber Upload eine Leiche hinterlässt |
+
+**Warum das die ganze Sache ändert:** Heute geht jede Datei durch die
+Anwendung — das Telefon lädt zum Server, der Server liest sie vollständig in
+den Arbeitsspeicher und schreibt sie in die Datenbank. Drei Stationen, an
+denen etwas schiefgehen kann, und drei Runden Fehlersuche haben genau das
+gezeigt. Mit einer ausgestellten Adresse lädt das Telefon **direkt** zum
+Speicher; die Anwendung sagt nur, wohin.
+
+### Zwei Entscheidungen, die nicht offensichtlich sind
+
+**Der Dateityp wird mitsigniert.** Ohne ihn könnte jemand mit einer Adresse
+für ein Bild eine ausführbare Datei ablegen. So steht der Typ in der
+Signatur, und wer beim Hochladen einen anderen angibt, bekommt die Absage von
+Cloudflare — nicht von uns, und damit auch dann, wenn unsere eigene Prüfung
+einmal danebenliegt.
+
+**Eine gemeinsame Rechenvorschrift, keine zweite Abschrift.** Die Signatur für
+`PUT` ein zweites Mal hinzuschreiben wäre die Art Dublette, die in §229, §232
+und §235 dreimal als Fehler aufgefallen ist. Zwei Abschriften laufen
+auseinander, und der Unterschied meldet sich als `SignatureDoesNotMatch` ohne
+Hinweis worauf.
+
+### Nachweise
+
+**1355** Modultests. Die **21 bestehenden Tests zum Lesen laufen unverändert
+durch** — das ist der eigentliche Nachweis, dass die Verallgemeinerung nichts
+kaputt gemacht hat.
+
+Acht neu, darunter die Gegenprobe, die zählt: Dieselbe Datei, dieselbe Zeit,
+andere Methode muss eine **andere** Signatur ergeben. Täte sie das nicht, wäre
+eine Leseadresse zugleich eine Schreibadresse.
+
+### Was noch fehlt
+
+Die Zugangsdaten. Ohne sie lässt sich nicht prüfen, ob Cloudflare die Signatur
+annimmt — das geht nur gegen den echten Speicher und wird von Hand gemacht,
+bevor irgendetwas umgestellt wird.
+
+## Block §258–§259 (29.10.) — Der Prüfknopf, und ein Fehler, den der Eigentümer gefunden hat
+
+### §259 Zwei Speicher, die nichts voneinander wissen
+
+**Beim Einrichten wäre fast etwas kaputtgegangen**, und gemerkt hat es nicht
+ich, sondern der Eigentümer:
+
+> „Problem ist, wir haben schon einen anderen R2-Bucket drin und R2-Geheimnis,
+> R2-Konto-ID, R2-Schlüssel für irgendeine andere Funktion."
+
+Er hat recht. `R2_BUCKET` zeigt auf `okun-programm` — dort holt sich das
+Windows-Programm seine Aktualisierungen (§210). Meine Anleitung hätte diese
+Variable überschrieben, und die Selbstaktualisierung wäre **still**
+kaputtgegangen. Still, weil sie niemand täglich benutzt: Es wäre erst
+aufgefallen, wenn jemand eine neue Fassung gebraucht hätte.
+
+Die beiden Zwecke sind jetzt getrennt:
+
+| | Programm | Dateien |
+|---|---|---|
+| Eimer | `R2_BUCKET` | `R2_DATEIEN_BUCKET` |
+| Schlüssel | `R2_SCHLUESSEL` | `R2_DATEIEN_SCHLUESSEL` |
+| Geheimnis | `R2_GEHEIMNIS` | `R2_DATEIEN_GEHEIMNIS` |
+| Rechtsraum | `R2_BEREICH` | `R2_DATEIEN_BEREICH` (`eu`) |
+| Konto | `R2_KONTO_ID` | geteilt, mit eigener Überschreibung |
+
+**Warum nicht ein Eimer für beides.** Weil die beiden nichts miteinander zu
+tun haben: Im einen liegen Programmdateien, die jeder herunterladen darf, im
+anderen Krankenscheine. Der Schlüssel für den einen soll den anderen nicht
+öffnen können — und der Dateieimer liegt im EU-Rechtsraum, der Programmeimer
+nicht.
+
+Die wichtigste Gegenprobe: **Fehlt der Dateispeicher, springt NICHT
+stillschweigend der Programmeimer ein.** Sonst lägen Krankenscheine neben den
+Programmdateien, und zwar ohne Rechtsraum.
+
+### §258 Der Prüfknopf
+
+Die Signatur nach AWS' Verfahren Version 4 lässt sich örtlich nicht prüfen.
+Jeder denkbare Fehler darin — ein nicht kodiertes Zeichen, eine falsche
+Reihenfolge der Köpfe, die falsche Adresse für einen EU-Eimer — meldet sich
+bei Cloudflare mit **derselben** Auskunft: `SignatureDoesNotMatch`, ohne
+Hinweis worauf.
+
+Unter **OKUN → Speicher** steht jetzt ein Knopf. Er legt eine Testdatei ab,
+holt sie zurück, **vergleicht den Inhalt** und räumt wieder auf. Nur abzulegen
+würde nichts beweisen: Eine Datei, die danach niemand lesen kann, ist keine
+abgelegte Datei.
+
+Das Lebenszeichen (`/api/health`) meldet außerdem, welcher der beiden Speicher
+eingerichtet ist — ein Ja oder Nein, kein Eimername, keine Kontonummer, kein
+Schlüssel.
+
+Beides zusammen ersetzt das, was bisher passiert ist: ein Foto in einen Chat
+laden und aus einem Fehler 500 raten, woran es lag.
+
+### Nachweise
+
+**1362** Modultests, `r2.test.ts` allein **36** — darunter sieben neue für die
+Trennung der beiden Speicher. Der Prüfknopf ist gegen eine Rolle abgesichert,
+die ihn nicht drücken darf: Ein Mitarbeiter bekommt 403, nachgemessen.

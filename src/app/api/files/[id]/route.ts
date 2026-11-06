@@ -1,0 +1,223 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { requireRole } from '@/lib/session'
+import { assertEmployeeAccess, allowedLocationScope } from '@/lib/scope'
+import { prisma } from '@/lib/prisma'
+import {
+  dateiInhalt, dateiOrt, dateiLoeschen, mitarbeiterDarfSehen, DATEI_FELDER,
+} from '@/lib/file-storage'
+import { downloadAdresseMit } from '@/lib/r2'
+import { verknuepfen, nachweisKennzeichenAktualisieren } from '@/lib/krankmeldung'
+import { SIEGEL_KEKS, siegelSperre } from '@/lib/lohnsiegel'
+import type { SessionPayload } from '@/lib/session'
+
+export const dynamic = 'force-dynamic'
+
+/**
+ * §100 Gemeinsame Zugriffsprüfung für eine einzelne Datei.
+ * Steht bewusst an einer Stelle: Ein Krankenschein, der über einen vergessenen
+ * Pfad einsehbar ist, ist ein Datenschutzvorfall, kein Schönheitsfehler.
+ */
+async function pruefeZugriff(session: SessionPayload, id: string) {
+  const datei = await prisma.storedFile.findFirst({
+    where: { id, deletedAt: null },
+    select: { ...DATEI_FELDER, hochgeladenVon: true },
+  })
+  if (!datei) {
+    return { fehler: NextResponse.json({ error: 'Datei nicht gefunden' }, { status: 404 }) }
+  }
+
+  if (datei.ownerType === 'employee') {
+    const verweigert = await assertEmployeeAccess(session, datei.ownerId)
+    if (verweigert) return { fehler: verweigert }
+  } else {
+    const scope = await allowedLocationScope(session)
+    if (scope.kind !== 'all' && !scope.ids.includes(datei.ownerId)) {
+      return { fehler: NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 }) }
+    }
+  }
+
+  // Der Mitarbeiter darf auch in der eigenen Akte nicht alles sehen —
+  // interne Vermerke der Leitung gehören ihm nicht.
+  if (session.role === 'employee'
+      && !mitarbeiterDarfSehen(datei, session.employeeId ?? '', session.userId)) {
+    return { fehler: NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 }) }
+  }
+
+  return { datei }
+}
+
+// GET /api/files/[id] — Datei herunterladen
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = requireRole(req, ['employee', 'admin', 'company', 'okun'])
+  if (session instanceof NextResponse) return session
+
+  const { fehler, datei } = await pruefeZugriff(session, params.id)
+  if (fehler) return fehler
+
+  /*
+   * §201 Die zweite Tür vor der Lohnabrechnung.
+   *
+   * Sie steht AM INHALT, nicht an der Seite. Eine Sperre, die nur die
+   * Oberfläche zumacht, ist keine: Die Datei hat eine Adresse, und die steht
+   * im Verlauf des Browsers. Wer `/api/files/<id>` aufruft, muss abgewiesen
+   * werden — auch wenn er nie eine Seite von uns gesehen hat.
+   *
+   * Die Kopfdaten (Monat, Dateiname, Größe) bleiben sichtbar. Dass es eine
+   * Abrechnung für September gibt, ist keine Auskunft, die geschützt werden
+   * müsste; was darin steht, schon.
+   */
+  const sperre = siegelSperre({
+    rolle: session.role,
+    marke: req.cookies.get(SIEGEL_KEKS)?.value,
+    userId: session.userId,
+    kategorie: datei!.kategorie,
+    was: 'deine Lohnabrechnung zu öffnen',
+  })
+  if (sperre) return NextResponse.json(sperre, { status: sperre.status })
+
+  /*
+   * §261 Liegt die Unterlage im Objektspeicher, wird der Weg dorthin gewiesen.
+   *
+   * Alle Türen oben sind zu diesem Zeitpunkt durchlaufen — Rollenprüfung,
+   * Aktenzugriff, die Sicht des Mitarbeiters und das Siegel vor der
+   * Lohnabrechnung. Die ausgestellte Adresse gilt eine Minute und nur für
+   * diese eine Datei.
+   *
+   * WAS DABEI NICHT VERLOREN GEHEN DARF
+   * Die beiden Köpfe, die der alte Weg gesetzt hat: `Content-Disposition` mit
+   * dem richtigen Namen und `Cache-Control: private, no-store`. Beide gehen
+   * mit in die Adresse und werden mitsigniert — ohne sie wäre die Umstellung
+   * ein Rückschritt im Datenschutz, denn eine Lohnabrechnung gehört in keinen
+   * Zwischenspeicher.
+   */
+  const ort = await dateiOrt(params.id)
+  if (!ort) return NextResponse.json({ error: 'Inhalt nicht verfügbar' }, { status: 404 })
+
+  // inline für PDFs und Bilder (Vorschau), sonst Download erzwingen
+  const sichtbar = ort.mimeType === 'application/pdf' || ort.mimeType.startsWith('image/')
+
+  if (ort.art === 'r2') {
+    const adresse = downloadAdresseMit({
+      schluesselPfad: ort.objektSchluessel,
+      /*
+       * §261 Eine Minute, und das ist hier kürzer als beim Chat-Anhang.
+       *
+       * Was mit dieser Umstellung einhergeht, soll nicht unter den Tisch
+       * fallen: Die ausgestellte Adresse öffnet die Datei OHNE Anmeldung,
+       * solange sie gilt. Beim alten Weg stand sie an einer Adresse, die
+       * jedes Mal den Keks verlangte.
+       *
+       * Hier klickt ein Mensch und der Browser folgt sofort — eine Minute
+       * reicht dafür mit Abstand. Ein Bild im Gespräch darf länger gelten,
+       * weil es auch dann noch nachgeladen wird, wenn jemand weit nach oben
+       * scrollt. Eine Lohnabrechnung wird geklickt, nicht nachgeladen.
+       */
+      gueltigSekunden: 60,
+      zweck: 'dateien',
+      anzeigeName: ort.dateiname,
+      anzeigeArt: sichtbar ? 'inline' : 'attachment',
+      zwischenspeicher: 'private, no-store',
+    })
+    if (!adresse) {
+      return NextResponse.json(
+        { error: 'Der Dateispeicher ist gerade nicht erreichbar.' }, { status: 503 },
+      )
+    }
+    return NextResponse.redirect(adresse, 302)
+  }
+
+  const inhalt = await dateiInhalt(params.id)
+  if (!inhalt) return NextResponse.json({ error: 'Inhalt nicht verfügbar' }, { status: 404 })
+
+  const anzeigbar = sichtbar
+  return new NextResponse(new Uint8Array(inhalt.inhalt), {
+    headers: {
+      'Content-Type': inhalt.mimeType,
+      'Content-Length': String(inhalt.inhalt.length),
+      'Content-Disposition': `${anzeigbar ? 'inline' : 'attachment'}; filename="${inhalt.dateiname}"`,
+      // Personalunterlagen gehören nicht in Zwischenspeicher
+      'Cache-Control': 'private, no-store',
+    },
+  })
+}
+
+// PATCH /api/files/[id] — Freigabe, Notiz, Gültigkeit und Zuordnung ändern
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  // §130 Der Mitarbeiter darf hier eines: seinen eigenen Krankenschein der
+  // richtigen Fehlzeit zuordnen. Er reicht ihn ein, er weiß am besten, wozu er
+  // gehört — und wenn er es nicht selbst kann, bleibt die Zuordnung liegen.
+  // Alles andere an einer Personalakte bleibt der Leitung vorbehalten.
+  const session = requireRole(req, ['employee', 'admin', 'company', 'okun'])
+  if (session instanceof NextResponse) return session
+
+  const { fehler, datei } = await pruefeZugriff(session, params.id)
+  if (fehler) return fehler
+
+  const body = await req.json().catch(() => ({})) as {
+    sichtbarFuerMitarbeiter?: boolean
+    notiz?: string | null
+    kategorie?: string
+    gueltigVon?: string | null
+    gueltigBis?: string | null
+    absenceId?: string | null
+  }
+
+  const nurZuordnung = Object.keys(body).length === 1 && 'absenceId' in body
+  if (session.role === 'employee'
+      && !(nurZuordnung && datei!.kategorie === 'krankenschein'
+           && datei!.ownerId === session.employeeId)) {
+    return NextResponse.json(
+      { error: 'Als Mitarbeiter kannst du nur deinen eigenen Krankenschein einer Fehlzeit zuordnen.' },
+      { status: 403 },
+    )
+  }
+
+  // §130 Die Fehlzeit muss zu derselben Person gehören. Sonst ließe sich ein
+  // Nachweis an eine fremde Krankheit hängen — und die sähe damit gedeckt aus.
+  if (body.absenceId) {
+    const passt = await prisma.absence.findFirst({
+      where: { id: body.absenceId, employeeId: datei!.ownerId },
+      select: { id: true },
+    })
+    if (!passt) {
+      return NextResponse.json(
+        { error: 'Diese Fehlzeit gehört nicht zu dieser Person.' }, { status: 400 },
+      )
+    }
+  }
+
+  if ('absenceId' in body) {
+    await verknuepfen(params.id, body.absenceId ?? null)
+  }
+
+  const aktualisiert = await prisma.storedFile.update({
+    where: { id: params.id },
+    data: {
+      ...(body.sichtbarFuerMitarbeiter !== undefined && { sichtbarFuerMitarbeiter: body.sichtbarFuerMitarbeiter }),
+      ...(body.notiz !== undefined && { notiz: body.notiz }),
+      ...(body.kategorie !== undefined && { kategorie: body.kategorie }),
+      ...(body.gueltigVon !== undefined && { gueltigVon: body.gueltigVon }),
+      ...(body.gueltigBis !== undefined && { gueltigBis: body.gueltigBis }),
+    },
+    select: DATEI_FELDER,
+  })
+  return NextResponse.json({ datei: aktualisiert })
+}
+
+// DELETE /api/files/[id] — weich löschen (Aufbewahrungsfristen)
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = requireRole(req, ['admin', 'company', 'okun'])
+  if (session instanceof NextResponse) return session
+
+  const { fehler, datei } = await pruefeZugriff(session, params.id)
+  if (fehler) return fehler
+
+  await dateiLoeschen(params.id)
+
+  // §130 War es der letzte Nachweis einer Fehlzeit, gilt sie wieder als
+  // unbelegt. Ohne diese Zeile bliebe „Nachweis vorhanden" stehen, obwohl
+  // nichts mehr da ist — und genau darauf verlässt sich nachher jemand.
+  if (datei?.absenceId) await nachweisKennzeichenAktualisieren(datei.absenceId)
+
+  return NextResponse.json({ ok: true })
+}

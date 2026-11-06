@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OKUN Workforce</string>
+    <string name="title_activity_main">OKUN Workforce</string>
+    <string name="package_name">de.okun.workforce</string>
+    <string name="custom_url_scheme">de.okun.workforce</string>
+</resources>
