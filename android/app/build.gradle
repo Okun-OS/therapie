@@ -42,8 +42,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // §279 Fassung 2: Die Hülle startete auf `/` — auf der Verkaufsseite,
         // und damit auf der einen Adresse, die ohne Netz nichts ausliefert.
-        versionCode 2
-        versionName "1.0.1"
+        // §280 Fassung 3: Ohne Netz erscheint jetzt eine Seite aus dem Paket,
+        // auf der gestempelt werden kann. Statt eines schwarzen Bildschirms.
+        versionCode 3
+        versionName "1.0.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

@@ -11,6 +11,10 @@ import {
 import { OVERTIME_REASONS } from '@/lib/types'
 import { Modal } from '@/components/ui/Modal'
 import { schlangeGeaendert, SCHLANGE_EREIGNIS } from '@/components/offline/Warteschlange'
+import { useAuth } from '@/lib/auth-context'
+import {
+  schnappschussSchreiben, offeneStempel, stempelLeeren, rufname,
+} from '@/lib/offline-bruecke'
 
 /**
  * §137 Die Stempeluhr.
@@ -71,6 +75,7 @@ const ZEIT = (ms: number) => {
 }
 
 export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; bis: string } | null }) {
+  const { user } = useAuth()
   const [zustand, setZustand] = useState<Zustand>({ laeuft: false, pause: false })
   const [log, setLog] = useState<Log | null>(null)
   const [laedt, setLaedt] = useState(true)
@@ -121,6 +126,53 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
     }
   }, [])
 
+  /*
+   * §280 Was im Funkloch auf der mitgelieferten Seite gestempelt wurde,
+   * übernehmen — EINMAL, und bevor irgendetwas anderes passiert.
+   *
+   * Die Seite, die ohne Netz erscheint, läuft unter einem anderen Ursprung
+   * und kann nichts abschicken. Sie legt nur ab. Abgeschickt wird hier, über
+   * dieselbe Warteschlange wie alles andere: Die kennt Reihenfolge,
+   * Wiederholung und die Beurteilung der Antwort schon, und eine zweite
+   * Übertragung daneben wäre eine zweite Wahrheit.
+   *
+   * Geleert wird erst NACH dem Einreihen. Ein Absturz dazwischen kostet
+   * einen doppelten Stempel — der Server erkennt ihn (§138). Andersherum
+   * wäre es ein verlorener Arbeitstag.
+   */
+  const uebernommen = useRef(false)
+  useEffect(() => {
+    if (uebernommen.current) return
+    uebernommen.current = true
+
+    const { gueltig, verworfen } = offeneStempel()
+    if (gueltig.length === 0 && verworfen === 0) return
+
+    let alleEingereiht = true
+    for (const s of gueltig) {
+      const { ok } = einreihen('stempeln', '/api/time-tracking/stempeln', {
+        aktion: s.aktion, zeitpunkt: s.zeitpunkt,
+      })
+      if (!ok) alleEingereiht = false
+    }
+
+    if (alleEingereiht) {
+      stempelLeeren()
+      if (gueltig.length > 0) {
+        schlangeGeaendert()
+        setHinweis(gueltig.length === 1
+          ? 'Ein Stempel von unterwegs wurde übernommen.'
+          : `${gueltig.length} Stempel von unterwegs wurden übernommen.`)
+      }
+    }
+
+    // §280 Nichts verschwindet still — auch nicht, was unbrauchbar war.
+    if (verworfen > 0) {
+      setFehler(`${verworfen} ohne Netz gemerkte Eintragungen waren unbrauchbar `
+        + 'und wurden nicht übernommen. Bitte der Standortleitung Bescheid geben.')
+    }
+  }, [])
+
   useEffect(() => {
     holen()
     // Sobald die Warteschlange etwas losgeworden ist, gilt wieder der Server.
@@ -131,6 +183,23 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
       window.removeEventListener('online', holen)
     }
   }, [holen])
+
+  /*
+   * §280 Und umgekehrt: Was die Offline-Seite anzeigen soll, hier ablegen.
+   *
+   * Bei jeder Änderung neu, nicht einmal beim Start — die Brücke der Hülle
+   * ist beim allerersten Seitenaufbau unter Umständen noch nicht eingehängt
+   * (Android hängt ein solches Objekt erst beim nächsten Aufbau ein).
+   */
+  useEffect(() => {
+    if (laedt) return
+    schnappschussSchreiben({
+      stand: new Date().toISOString(),
+      name: rufname(user?.name),
+      zustand: { laeuft: zustand.laeuft, pause: zustand.pause },
+      dienst: dienst ? { von: dienst.von, bis: dienst.bis, name: dienst.name } : null,
+    })
+  }, [laedt, zustand.laeuft, zustand.pause, dienst, user?.name])
 
   // Die laufende Zeit tickt mit. Eine Minute Takt reicht — sekundengenau
   // flackert nur und kostet Strom.

@@ -10,10 +10,15 @@
     steht hier alles im Dokument selbst: kein Stilblatt, keine Schriftart und
     kein Bild von außen, denn nichts davon käme an.
 
-    Ohne diese Seite zeigte die App einen weißen Bildschirm. Ein Prüfer bei
-    Apple sieht dann nichts, wovon er auf eine Anwendung schließen könnte, und
-    lehnt ab. Und ein Mitarbeiter im Zug wüsste nicht, ob sein Telefon kaputt
-    ist oder nur der Tunnel zu lang.
+    §280 Und sie kann jetzt etwas. Bis zum 06.11.2026 stand hier nur „Keine
+    Verbindung" — und darunter der Satz, Gestempeltes sei gespeichert. Das
+    stimmte nicht: Auf DIESER Seite ließ sich gar nichts stempeln. Jetzt
+    schon, über die Brücke `OkunOffline`, die die Hülle in jede Seite legt
+    (siehe MainActivity.java).
+
+    §280 Der zweite Fehler, der hier steckte: „Erneut versuchen" rief
+    `location.reload()` — das lud DIESE Seite neu, nicht die Anwendung. Man
+    kam nie zurück, auch mit Netz nicht.
   -->
   <style>
     :root { color-scheme: dark }
@@ -21,30 +26,54 @@
     body {
       margin: 0; min-height: 100vh; background: #1A1D1F; color: #fff;
       display: flex; flex-direction: column; align-items: center;
-      justify-content: center; text-align: center;
-      padding: 24px max(24px, env(safe-area-inset-left)) 24px max(24px, env(safe-area-inset-right));
+      justify-content: center;
+      padding: 28px max(20px, env(safe-area-inset-left))
+               max(28px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-right));
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       -webkit-user-select: none; user-select: none;
     }
+    .mitte { width: 100%; max-width: 420px; text-align: center }
     .zeichen {
-      width: 76px; height: 76px; border-radius: 22px; margin-bottom: 24px;
+      width: 64px; height: 64px; border-radius: 20px; margin: 0 auto 18px;
       background: rgba(45, 212, 191, .16);
       display: flex; align-items: center; justify-content: center;
     }
-    h1 { font-size: 22px; margin: 0 0 10px; font-weight: 700 }
-    p { margin: 0 0 8px; max-width: 22em; line-height: 1.55; color: rgba(255,255,255,.66); font-size: 15px }
-    .klein { font-size: 13px; color: rgba(255,255,255,.4); margin-top: 18px }
-    button {
-      margin-top: 26px; border: 0; border-radius: 16px; padding: 15px 30px;
-      background: #2DD4BF; color: #0F172A; font-size: 16px; font-weight: 700;
-      font-family: inherit;
+    h1 { font-size: 21px; margin: 0 0 8px; font-weight: 700 }
+    p { margin: 0 0 8px; line-height: 1.5; color: rgba(255,255,255,.66); font-size: 15px }
+    .klein { font-size: 13px; color: rgba(255,255,255,.4); margin-top: 14px }
+
+    .karte {
+      margin-top: 22px; padding: 18px; border-radius: 18px; text-align: left;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
     }
-    button:active { transform: scale(.98) }
+    .karte h2 { font-size: 13px; margin: 0 0 12px; font-weight: 700;
+                letter-spacing: .06em; text-transform: uppercase;
+                color: rgba(255,255,255,.45) }
+    .zeile { display: flex; justify-content: space-between; gap: 12px;
+             font-size: 15px; padding: 5px 0 }
+    .zeile span:first-child { color: rgba(255,255,255,.55) }
+    .zeile span:last-child { font-weight: 600; font-variant-numeric: tabular-nums }
+
+    button {
+      width: 100%; margin-top: 10px; border: 0; border-radius: 15px;
+      padding: 15px 20px; font-size: 16px; font-weight: 700;
+      font-family: inherit; background: #2DD4BF; color: #0F172A;
+    }
+    button.leise { background: rgba(255,255,255,.1); color: #fff }
+    button:active { transform: scale(.985) }
+    button[disabled] { opacity: .45 }
+
+    .gemerkt { margin-top: 16px; font-size: 14px; text-align: left }
+    .gemerkt div { padding: 5px 0; color: rgba(255,255,255,.66);
+                   font-variant-numeric: tabular-nums }
+    .haken { color: #2DD4BF; font-weight: 700 }
+    [hidden] { display: none !important }
   </style>
 </head>
 <body>
+<div class="mitte">
   <div class="zeichen" aria-hidden="true">
-    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF"
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF"
          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="1" y1="1" x2="23" y2="23" />
       <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
@@ -56,19 +85,149 @@
     </svg>
   </div>
 
-  <h1>Keine Verbindung</h1>
-  <p>OKUN Workforce ist gerade nicht erreichbar. Meist liegt es am Empfang.</p>
-  <p class="klein">
-    Was du ohne Netz gestempelt oder gemeldet hast, ist gespeichert und geht
-    raus, sobald die Verbindung wieder steht.
+  <h1 id="gruss">Keine Verbindung</h1>
+  <p id="vorspann">OKUN Workforce ist gerade nicht erreichbar. Meist liegt es am Empfang.</p>
+
+  <div class="karte" id="dienstkarte" hidden>
+    <h2>Dein Stand</h2>
+    <div class="zeile"><span>Heutiger Dienst</span><span id="dienst">—</span></div>
+    <div class="zeile"><span>Stempeluhr</span><span id="zustand">—</span></div>
+    <div class="zeile"><span>Stand von</span><span id="standvon">—</span></div>
+  </div>
+
+  <div id="knoepfe" hidden></div>
+
+  <div class="gemerkt" id="gemerkt" hidden></div>
+
+  <button class="leise" id="nochmal">Erneut versuchen</button>
+
+  <p class="klein" id="fusszeile">
+    Was du hier stempelst, bleibt auf dem Gerät und geht raus, sobald die
+    Verbindung wieder steht.
   </p>
+</div>
 
-  <button onclick="location.reload()">Erneut versuchen</button>
+<script>
+(function () {
+  'use strict'
 
-  <script>
-    // Sobald das Telefon wieder Netz meldet, von selbst weiterversuchen —
-    // niemand soll auf einen Knopf starren müssen.
-    addEventListener('online', function () { location.reload() })
-  </script>
+  var APP_VORGABE = 'https://okun-workforce.com/app'
+  var b = window.OkunOffline || null
+
+  function appAdresse() {
+    try {
+      var a = b && b.appAdresse ? b.appAdresse() : ''
+      return a || APP_VORGABE
+    } catch (e) { return APP_VORGABE }
+  }
+
+  /* Zurück in die Anwendung — nicht diese Seite neu laden. */
+  function zurueck() { location.replace(appAdresse()) }
+
+  document.getElementById('nochmal').onclick = zurueck
+  addEventListener('online', zurueck)
+
+  /* ── Ohne Brücke bleibt es bei der Meldung ──────────────────────────── */
+  if (!b || !b.schnappschussLesen) {
+    document.getElementById('fusszeile').textContent =
+      'Sobald wieder Empfang da ist, geht es von selbst weiter.'
+    return
+  }
+
+  var stand = null
+  try { stand = JSON.parse(b.schnappschussLesen() || 'null') } catch (e) { stand = null }
+
+  var zustand = (stand && stand.zustand) || { laeuft: false, pause: false }
+  var gemerkt = []
+
+  function uhr(iso) {
+    var d = new Date(iso)
+    if (isNaN(d.getTime())) return '—'
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2)
+  }
+
+  function zustandText() {
+    if (!zustand.laeuft) return 'nicht eingestempelt'
+    return zustand.pause ? 'in Pause' : 'eingestempelt'
+  }
+
+  function zeichnen() {
+    if (stand) {
+      if (stand.name) {
+        document.getElementById('gruss').textContent = 'Kein Netz, ' + stand.name
+        document.getElementById('vorspann').textContent =
+          'Die Anlage ist gerade nicht erreichbar. Stempeln geht trotzdem.'
+      }
+      document.getElementById('dienstkarte').hidden = false
+      document.getElementById('dienst').textContent = stand.dienst
+        ? stand.dienst.von + ' – ' + stand.dienst.bis + ' Uhr'
+        : 'kein Dienst geplant'
+      document.getElementById('zustand').textContent = zustandText()
+      document.getElementById('standvon').textContent = uhr(stand.stand) + ' Uhr'
+    }
+
+    var kasten = document.getElementById('knoepfe')
+    kasten.innerHTML = ''
+    kasten.hidden = false
+
+    var moeglich = []
+    if (!zustand.laeuft) {
+      moeglich.push(['kommen', 'Einstempeln', false])
+    } else {
+      if (zustand.pause) moeglich.push(['pause-ende', 'Pause beenden', false])
+      else moeglich.push(['pause-start', 'Pause beginnen', true])
+      moeglich.push(['gehen', 'Ausstempeln', zustand.pause])
+    }
+
+    moeglich.forEach(function (m) {
+      var knopf = document.createElement('button')
+      knopf.textContent = m[1]
+      if (m[2]) knopf.className = 'leise'
+      knopf.onclick = function () { stempeln(m[0]) }
+      kasten.appendChild(knopf)
+    })
+  }
+
+  function stempeln(aktion) {
+    /*
+     * Der Zeitpunkt entsteht HIER, nicht beim späteren Absenden. Im Funkloch
+     * zählt die Zeit des Stempelns — alles andere verschiebt Arbeitszeit und
+     * damit Geld.
+     */
+    var eintrag = { aktion: aktion, zeitpunkt: new Date().toISOString() }
+    try {
+      b.stempelMerken(JSON.stringify(eintrag))
+    } catch (e) {
+      document.getElementById('fusszeile').textContent =
+        'Der Stempel ließ sich nicht merken. Bitte der Leitung Bescheid geben.'
+      return
+    }
+
+    gemerkt.push(eintrag)
+    if (aktion === 'kommen') { zustand.laeuft = true; zustand.pause = false }
+    if (aktion === 'gehen') { zustand.laeuft = false; zustand.pause = false }
+    if (aktion === 'pause-start') zustand.pause = true
+    if (aktion === 'pause-ende') zustand.pause = false
+
+    var benennung = {
+      'kommen': 'Eingestempelt', 'gehen': 'Ausgestempelt',
+      'pause-start': 'Pause begonnen', 'pause-ende': 'Pause beendet'
+    }
+    var liste = document.getElementById('gemerkt')
+    liste.hidden = false
+    liste.innerHTML = '<h2 style="font-size:13px;letter-spacing:.06em;'
+      + 'text-transform:uppercase;color:rgba(255,255,255,.45);margin:0 0 6px">'
+      + 'Gemerkt</h2>'
+      + gemerkt.map(function (g) {
+          return '<div><span class="haken">✓</span> ' + benennung[g.aktion]
+            + ' um ' + uhr(g.zeitpunkt) + ' Uhr</div>'
+        }).join('')
+
+    zeichnen()
+  }
+
+  zeichnen()
+})()
+</script>
 </body>
 </html>
