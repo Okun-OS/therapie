@@ -59,6 +59,15 @@ export type Abweichungsart =
   | 'frueher'
   /** Deutlich länger gearbeitet als geplant. */
   | 'laenger'
+  /**
+   * §282 Wahrscheinlich vergessen auszustempeln.
+   *
+   * Ab einer Spanne, die kein Dienst mehr sein kann. „Mehr Stunden als
+   * geplant: 112 h" wäre rechnerisch richtig und als Auskunft wertlos —
+   * niemand hat 112 Stunden am Stück gearbeitet. Wer das liest, soll
+   * gleich wissen, was wirklich passiert ist.
+   */
+  | 'vergessen'
 
 /**
  * §219 Der Text, den die Standortleitung in der Liste liest.
@@ -77,7 +86,19 @@ export const ABWEICHUNG_TEXT: Record<Abweichungsart, string> = {
   'kommen-spaet': 'später angefangen als geplant',
   frueher: 'weniger Stunden als geplant',
   laenger: 'mehr Stunden als geplant',
+  vergessen: 'vermutlich das Ausstempeln vergessen',
 }
+
+/**
+ * §282 Ab wann eine Spanne kein Dienst mehr sein kann.
+ *
+ * Zwanzig Stunden. Der längste Dienst, den dieses Programm kennt, ist ein
+ * Vierundzwanzig-Stunden-Dienst in der Bereitschaft — der wird aber als
+ * solcher geplant und hat dann einen Plan, an dem er gemessen wird. Ohne
+ * Plan und über zwanzig Stunden am Stück ist die wahrscheinlichste
+ * Erklärung ein vergessener Ausstempler, nicht ein sehr langer Tag.
+ */
+export const VERGESSEN_AB_MINUTEN = 20 * 60
 
 export interface Dienstzeit {
   /** „HH:MM" */
@@ -184,9 +205,35 @@ export function abweichungBeimGehen(
   plan: Dienstzeit | null | undefined,
   ist: Dienstzeit,
   toleranz: number = TOLERANZ_MINUTEN,
+  /**
+   * §282 Die WIRKLICH gearbeiteten Minuten, aus Zeitstempeln gerechnet.
+   *
+   * GEMELDET: „Ich hatte mich eingeloggt, aber nicht ausgestempelt, und war
+   * mehrere hundert Stunden zu viel. Da stand dann, ich hätte angeblich
+   * 3 Stunden zu wenig gearbeitet."
+   *
+   * Genau so war es: `dauer()` kennt nur Uhrzeiten, keine Tage. Wer montags
+   * um 08:00 einstempelt und freitags um 11:00 ausstempelt, bekam drei
+   * Stunden — die vier Tage dazwischen fielen weg, und gegen einen
+   * Sechs-Stunden-Plan ergab das „3 h zu wenig".
+   *
+   * Die aufrufende Stelle kennt die Zeitstempel und damit die Wahrheit. Wird
+   * sie übergeben, gilt sie. Ohne Angabe bleibt es beim alten Weg — für
+   * Aufrufer, die nur Uhrzeiten haben.
+   */
+  tatsaechlicheMinuten?: number,
 ): Abweichung | null {
-  const gearbeitet = dauer(ist.von, ist.bis)
+  const gearbeitet = tatsaechlicheMinuten ?? dauer(ist.von, ist.bis)
   if (gearbeitet === null) return null
+
+  /*
+   * §282 Zuerst der Fall, der alles andere sinnlos macht. Eine Spanne von
+   * über zwanzig Stunden mit einem Plan von sechs zu vergleichen ergibt
+   * eine Zahl, aber keine Auskunft.
+   */
+  if (gearbeitet >= VERGESSEN_AB_MINUTEN) {
+    return { art: 'vergessen', minuten: gearbeitet, ...(plan ? { plan } : {}) }
+  }
 
   if (!plan) {
     return { art: 'ohne-dienst', minuten: gearbeitet }

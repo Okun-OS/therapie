@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/Select'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { Palmtree, Plus, Calendar, CheckCircle, XCircle, Clock, CalendarClock } from 'lucide-react'
+import { Zeitraumwahl } from '@/components/ui/Zeitraumwahl'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate } from '@/lib/utils'
 import { countWorkdays } from '@/lib/workdays'
@@ -327,23 +328,15 @@ export default function EmployeeVacation() {
       {/* Request Modal */}
       <Modal open={modal} onClose={() => setModal(false)} title="Urlaub beantragen">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Von"
-              type="date"
-              required
-              value={form.startDate}
-              onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-            />
-            <Input
-              label="Bis"
-              type="date"
-              required
-              value={form.endDate}
-              min={form.startDate}
-              onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-            />
-          </div>
+          {/*
+            §283 Ein Kalender statt zweier Felder. Warum, steht in
+            `src/components/ui/Zeitraumwahl.tsx` — kurz: Das zweite Feld
+            wusste nichts vom ersten und öffnete im laufenden Monat.
+          */}
+          <Zeitraumwahl
+            wert={{ von: form.startDate, bis: form.endDate }}
+            onChange={s => setForm(f => ({ ...f, startDate: s.von, endDate: s.bis }))}
+          />
 
           {requestDays > 0 && (
             <div className="flex items-center gap-3 bg-blue-50 rounded-xl p-3">

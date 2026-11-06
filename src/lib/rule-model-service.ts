@@ -16,6 +16,7 @@ import type {
   CustomConstraintEntry,
 } from '@/lib/company-model-types'
 import { letzterDienst } from './belastung'
+import { wunschSchicht, istWunschFrei } from './wunsch-zuordnung'
 
 const DAY_NAME_TO_DOW: Record<string, number> = {
   Mo: 1, Di: 2, Mi: 3, Do: 4, Fr: 5, Sa: 6, So: 0,
@@ -233,6 +234,15 @@ export async function buildRuleModel(
     unitLookup.set(u.name.toLowerCase(), u.id)
   })
 
+  /*
+   * §281 Wünsche, zu denen es an diesem Standort keinen Dienst gibt.
+   *
+   * Gesammelt statt verschwiegen. Sie werden unten protokolliert — ein
+   * Wunsch, der nicht erfüllt werden KANN, ist eine Auskunft für die
+   * Leitung und kein Grund zum Schweigen.
+   */
+  const unerfuellbar: Array<{ mitarbeiter: string; datum: string; gewuenscht: string }> = []
+
   // §77: schichten come EXCLUSIVELY from the Shift table (human-entered via
   // Editor/Onboarding-Bestätigung). LLM model schichten are never planned.
   const schichten: SchichtDefinition[] = dbShifts.map(s => ({
@@ -403,21 +413,49 @@ export async function buildRuleModel(
 
     const explicitWishes: PlanungsWunsch[] = [
       // WishSubmission single-date wishes
+      /*
+       * §281 Der Dienstwunsch eines einzelnen Tages.
+       *
+       * GEMELDET: „Ein einziger Wunsch im ganzen System, also sicher
+       * erfüllbar — nicht vergeben, nicht einmal angezeigt."
+       *
+       * Hier stand ein Abgleich über `s.name` und `s.id`. Die
+       * Mitarbeiter-App reicht aber eine ART ein: `early`, `late`, `mid`
+       * oder `frei`. Keines davon ist jemals ein Name oder eine Kennung —
+       * es blieb nie ein Treffer, und als Dienstkennung wanderte die rohe
+       * Zeichenkette `early` weiter. Die kennt der Rechendienst nicht, und
+       * der Wunsch verschwand lautlos. Jeder Wunsch, seit es sie gibt.
+       *
+       * Gesetzt wird jetzt BEIDES: die Kennung des gefundenen Dienstes und
+       * seine Art. Wer „Frühdienst" wünscht, meint jeden Frühdienst — und
+       * `schichtTyp` ist genau dafür da (§229).
+       */
       ...wishes
         .filter(w => w.employeeId === emp.id)
         .map(w => {
-          const matchedShift = schichten.find(
-            s => s.name.toLowerCase() === (w.preferredShiftType ?? '').toLowerCase()
-              || s.id === w.preferredShiftType,
-          )
+          const frei = istWunschFrei(w.preferredShiftType)
+          const treffer = wunschSchicht(w.preferredShiftType, schichten)
+          if (!frei && !treffer) {
+            // Einen Dienst, den es an diesem Standort nicht gibt, kann der
+            // Rechendienst nicht vergeben. Verschluckt wird das nicht: Die
+            // Leitung sieht den Wunsch in der Planung und entscheidet.
+            unerfuellbar.push({
+              mitarbeiter: emp.name, datum: w.date,
+              gewuenscht: w.preferredShiftType ?? '—',
+            })
+          }
           return {
             datum: w.date,
-            schichtId: matchedShift?.id ?? w.preferredShiftType ?? '',
-            typ: (w.preferredShiftType === 'frei' ? 'wunschfrei' : 'wunsch') as 'wunsch' | 'wunschfrei',
+            schichtId: treffer?.id ?? '',
+            ...(treffer?.typ ? { schichtTyp: treffer.typ } : {}),
+            typ: (frei ? 'wunschfrei' : 'wunsch') as 'wunsch' | 'wunschfrei',
             prioritaet: importanceToPrioraet(w.importance),
             eingereichtAm: w.submittedAt,
           }
-        }),
+        })
+        // Ohne Dienst und ohne „frei" bliebe eine leere Kennung übrig — die
+        // würde der Rechendienst stillschweigend übergehen.
+        .filter(w => w.typ === 'wunschfrei' || w.schichtId !== ''),
       // §19: EmployeeRequest shift_wish with date ranges → expand into per-day wishes
       ...empReqs
         .filter(r => r.type === 'shift_wish' && r.shiftId)
@@ -630,6 +668,23 @@ export async function buildRuleModel(
     description: c.description,
     code: c.code,
   }))
+
+  /*
+   * §281 Was nicht erfüllbar war, steht im Protokoll.
+   *
+   * Nicht im `kontext`: Der geht an den Rechendienst, und ein Wunsch nach
+   * einem Dienst, den dieser Standort gar nicht führt, ist für ihn keine
+   * Auskunft, sondern Rauschen. Auf dem Bildschirm sieht die Leitung
+   * denselben Fall ohnehin — die Oberfläche beurteilt ihn mit derselben
+   * Funktion. Hier geht es darum, dass es sich nachher nachlesen lässt.
+   */
+  if (unerfuellbar.length > 0) {
+    console.warn(
+      `[Planung ${locationId}] ${unerfuellbar.length} Dienstwunsch/-wünsche ohne `
+      + 'passenden Dienst an diesem Standort: '
+      + unerfuellbar.map(u => `${u.mitarbeiter} am ${u.datum} → „${u.gewuenscht}"`).join('; '),
+    )
+  }
 
   return {
     sessionId,

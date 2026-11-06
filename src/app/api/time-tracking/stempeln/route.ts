@@ -217,8 +217,14 @@ export async function POST(req: NextRequest) {
      * Folgetags hat damit nichts zu tun.
      */
     const plan = await geplanterDienst(employeeId, laufenderLog!.date)
+    /*
+     * §282 Gemessen wird an `gesamt` — den Minuten aus den Zeitstempeln,
+     * Pausen abgezogen. Hier standen nur die beiden Uhrzeiten, und die
+     * kennen keine Tage: Ein vergessener Ausstempler über vier Tage kam als
+     * „3 Stunden zu wenig" heraus.
+     */
     const abw = abweichungBeimGehen(
-      plan, { von: laufenderLog!.clockIn, bis: ende })
+      plan, { von: laufenderLog!.clockIn, bis: ende }, undefined, gesamt)
 
     /*
      * §219 Eine beim Kommen vermerkte Abweichung wird nicht überschrieben.

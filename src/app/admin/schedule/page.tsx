@@ -24,7 +24,8 @@ import { AU_ARTEN } from '@/lib/bem'
 import { displayColors, SHIFT_PALETTE } from '@/lib/shift-colors'
 import { AusfallDialog, type AusfallDaten } from '@/components/schedule/AusfallDialog'
 import { MassnahmenPanel } from '@/components/schedule/MassnahmenPanel'
-import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, PlanningUnit, TaskBlock } from '@/lib/types'
+import type { Employee, Location, ScheduleEntry, Shift, VacationRequest, Absence, WishSubmission, WishStatus, PlanningUnit, TaskBlock } from '@/lib/types'
+import { wunschText, wunschSchicht, istWunschFrei } from '@/lib/wunsch-zuordnung'
 import type { ScheduleEditChange } from '@/lib/schedule-edit-draft'
 import type { PlanBewertung, PaketVorschlag } from '@/lib/company-model-types'
 import {
@@ -201,6 +202,10 @@ export default function AdminSchedule() {
     Record<string, { planungsStundenSoll: number | null; tagesmuster: unknown }>>({})
   const [allHistoricalEntries, setAllHistoricalEntries] = useState<ScheduleEntry[]>([])
   const [wishSubmissions, setWishSubmissions] = useState<WishSubmission[]>([])
+  // §281 Der Zwischenschritt vor dem Planen: offene Dienstwünsche entscheiden.
+  const [wunschFrage, setWunschFrage] = useState<PlanContext | null>(null)
+  const [wunschWahl, setWunschWahl] = useState<Record<string, boolean>>({})
+  const [wunschSpeichert, setWunschSpeichert] = useState(false)
   const [planningUnits, setPlanningUnits] = useState<PlanningUnit[]>([])
   const [scheduleView, setScheduleView] = useState<'mitarbeiter' | 'einheiten'>('mitarbeiter')
   const [locationArbeitstage, setLocationArbeitstage] = useState<string[]>(['Mo', 'Di', 'Mi', 'Do', 'Fr'])
@@ -838,12 +843,75 @@ export default function AdminSchedule() {
     return parts.join('. ')
   }
 
+  /*
+   * §281 Offene Dienstwünsche im geplanten Zeitraum.
+   *
+   * GEMELDET: „Es wurde mir nicht mal angezeigt, dass da ein Wunschdienst
+   * besteht." Es gab einen Reiter mit einer kleinen Zahl — und die sieht
+   * niemand, der gerade auf „Plan erstellen" gedrückt hat.
+   *
+   * Entschieden wird deshalb DORT, wo geplant wird: vorher, in einem
+   * Zwischenschritt, mit Namen, Tag und gewünschtem Dienst im Klartext.
+   */
+  const offeneWuensche = useMemo(
+    () => wishSubmissions
+      .filter(w => w.status === 'pending' && w.date >= solverFrom && w.date <= solverTo)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.employeeName.localeCompare(b.employeeName, 'de')),
+    [wishSubmissions, solverFrom, solverTo],
+  )
+
   function handlePlanConfirm(planCtx: PlanContext) {
+    /*
+     * Erst fragen, dann rechnen. Wer die Wünsche kennt, kann sie ablehnen —
+     * ein abgelehnter Wunsch ist eine Entscheidung, ein übergangener ist ein
+     * Versprechen, das niemand eingelöst hat.
+     */
+    if (offeneWuensche.length > 0) {
+      setShowPlanPanel(false)
+      setWunschWahl(Object.fromEntries(offeneWuensche.map(w => [w.id, true])))
+      setWunschFrage(planCtx)
+      return
+    }
+    planenMit(planCtx)
+  }
+
+  function planenMit(planCtx: PlanContext) {
     const k = buildKontext(planCtx)
     setLastUsedKontext(k)
     setLastOvertimeDecisions(planCtx.overtimeDecisions)
     setShowPlanPanel(false)
     runAI(k, planCtx.overtimeDecisions)
+  }
+
+  /**
+   * Die Entscheidungen festschreiben und dann planen.
+   *
+   * Festgeschrieben wird in der Wunschliste selbst (`status`), nicht in
+   * einem Beiwert für diesen einen Lauf: So steht die Entscheidung auch im
+   * nächsten Plan noch da, und der Mitarbeiter sieht sie in seiner App.
+   */
+  async function wuenscheEntscheidenUndPlanen() {
+    const planCtx = wunschFrage
+    if (!planCtx) return
+    setWunschSpeichert(true)
+    try {
+      await Promise.all(offeneWuensche.map(w =>
+        fetch(`/api/wish-submissions/${w.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: wunschWahl[w.id] ? 'approved' : 'rejected' }),
+        }).catch(() => null),
+      ))
+      setWishSubmissions(liste => liste.map(w =>
+        w.id in wunschWahl
+          ? { ...w, status: (wunschWahl[w.id] ? 'approved' : 'rejected') as WishStatus }
+          : w,
+      ))
+    } finally {
+      setWunschSpeichert(false)
+    }
+    setWunschFrage(null)
+    planenMit(planCtx)
   }
 
   const handleCreateSubstitution = async () => {
@@ -2332,6 +2400,96 @@ export default function AdminSchedule() {
             onCancel={() => setShowPlanPanel(false)}
           />
         )}
+      </Modal>
+
+      {/*
+        §281 Der Zwischenschritt: offene Dienstwünsche entscheiden, bevor
+        gerechnet wird. Vorher gab es dafür nur einen Reiter mit einer
+        kleinen Zahl — und den sieht niemand, der gerade auf „Plan erstellen"
+        gedrückt hat.
+      */}
+      <Modal
+        open={!!wunschFrage}
+        onClose={() => setWunschFrage(null)}
+        title={offeneWuensche.length === 1 ? 'Ein offener Dienstwunsch' : `${offeneWuensche.length} offene Dienstwünsche`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            In diesem Zeitraum liegen Wünsche vor, über die noch niemand
+            entschieden hat. Was du hier festlegst, gilt auch für spätere
+            Pläne — und der Mitarbeiter sieht es in seiner App.
+          </p>
+
+          <div className="space-y-2">
+            {offeneWuensche.map(w => {
+              const passend = istWunschFrei(w.preferredShiftType)
+                || !!wunschSchicht(w.preferredShiftType, locationShifts)
+              const gewaehlt = wunschWahl[w.id] ?? true
+              return (
+                <div key={w.id} className="rounded-xl border border-gray-200 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-navy text-sm">{w.employeeName}</p>
+                      <p className="text-sm text-gray-600">
+                        {formatDateShort(w.date)} · {wunschText(w.preferredShiftType, locationShifts)}
+                        {w.importance !== 'normal' && (
+                          <span className="ml-1 text-amber-700 font-semibold">
+                            ({w.importance === 'urgent' ? 'dringend' : 'wichtig'})
+                          </span>
+                        )}
+                      </p>
+                      {w.reason && <p className="text-xs text-gray-500 mt-0.5">{w.reason}</p>}
+                      {/*
+                        Ein Wunsch nach einem Dienst, den dieser Standort gar
+                        nicht führt, lässt sich nicht erfüllen. Das wird
+                        gesagt, statt ihn stumm durchlaufen zu lassen.
+                      */}
+                      {!passend && (
+                        <p className="text-xs text-red-600 mt-1 font-medium">
+                          Diesen Dienst gibt es an diesem Standort nicht — er kann nicht vergeben werden.
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        onClick={() => setWunschWahl(v => ({ ...v, [w.id]: true }))}
+                        disabled={!passend}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          gewaehlt && passend ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        } ${!passend ? 'opacity-40' : ''}`}
+                      >
+                        Berücksichtigen
+                      </button>
+                      <button
+                        onClick={() => setWunschWahl(v => ({ ...v, [w.id]: false }))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          !gewaehlt || !passend ? 'bg-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        Ablehnen
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <Button variant="ghost" onClick={() => setWunschFrage(null)} className="flex-1">
+              Zurück
+            </Button>
+            <Button
+              onClick={wuenscheEntscheidenUndPlanen}
+              disabled={wunschSpeichert}
+              className="flex-1 gap-2"
+            >
+              {wunschSpeichert ? <Loader size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              Entscheiden und planen
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Manual Shift Picker Modal */}

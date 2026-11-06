@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -127,6 +127,22 @@ export default function AdminTimeTracking() {
   }, [employees.length, locationId])
 
   const [timeLogsByClosing, setTimeLogsByClosing] = useState<Record<string, TimeLog[]>>({})
+
+  /*
+   * §282 Alle Abweichungen über alle Monatsabschlüsse hinweg, die jüngste
+   * zuerst. Gelesen wird aus den Daten, die ohnehin geladen sind — eine
+   * zweite Abfrage wäre eine zweite Quelle und damit eine zweite Wahrheit
+   * darüber, was gebucht wurde.
+   */
+  const abweichungen = useMemo(() => {
+    const nameJeAbschluss = new Map(closings.map(c => [c.id, c.employeeName]))
+    return Object.entries(timeLogsByClosing)
+      .flatMap(([abschlussId, logs]) => logs
+        .filter(l => l.abweichung)
+        .map(log => ({ log, name: nameJeAbschluss.get(abschlussId) ?? 'Unbekannt' })))
+      .sort((a, b) => b.log.date.localeCompare(a.log.date))
+      .slice(0, 25)
+  }, [timeLogsByClosing, closings])
   useEffect(() => {
     closings.forEach(closing => {
       fetch(`/api/time-logs?employeeId=${closing.employeeId}&year=${closing.year}&month=${closing.month}`)
@@ -454,6 +470,46 @@ export default function AdminTimeTracking() {
 
         {/* ── MONATSABSCHLUSS ──────────────────────────────────── */}
         {tab === 'closings' && (
+          <>
+          {/*
+            §282 Abweichungen stehen oben, nicht eingeklappt.
+
+            GEMELDET: „Als ich das abgeschickt hatte, konnte ich das als
+            Standortleitung nicht sehen, was ich da eingegeben hatte."
+
+            Zu sehen war es — drei Klicks tief: Monatsabschluss des richtigen
+            Menschen aufklappen, „Gebuchte Zeiten" durchsuchen, die Zeile
+            finden. Der Sinn von §203/§204 war aber, dass die Leitung die
+            Erklärung LIEST. Was man suchen muss, liest niemand.
+          */}
+          {abweichungen.length > 0 && (
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle>Abweichungen mit Begründung</CardTitle>
+                <Badge variant="warning">{abweichungen.length}</Badge>
+              </CardHeader>
+              <div className="space-y-2">
+                {abweichungen.map(({ log, name }) => (
+                  <div key={log.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                    <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0 text-xs">
+                      <p className="font-semibold text-navy">
+                        {name} · {formatDate(log.date)} · {log.clockIn}–{log.clockOut ?? '–'} Uhr
+                      </p>
+                      <p className="text-amber-800">
+                        {ABWEICHUNG_TEXT[log.abweichung as Abweichungsart] ?? log.abweichung}
+                        {' — '}
+                        {log.grundGehen || log.grundKommen || (
+                          <span className="text-gray-500">ohne Angabe</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Monatsabschluss</CardTitle>
@@ -584,6 +640,7 @@ export default function AdminTimeTracking() {
               })}
             </div>
           </Card>
+          </>
         )}
       </div>
 

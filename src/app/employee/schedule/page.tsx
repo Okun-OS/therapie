@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
+import { Zeitraumwahl } from '@/components/ui/Zeitraumwahl'
 import { Textarea } from '@/components/ui/Textarea'
 import { Select } from '@/components/ui/Select'
 import { SwapModal } from '@/components/schedule/SwapModal'
@@ -1236,28 +1237,18 @@ export default function EmployeeSchedule() {
             <option value="free">Freier Tag</option>
             <option value="no_early_after_late">Kein Frühdienst nach Spätdienst</option>
           </Select>
+          {/* §283 Ein Kalender statt zweier Felder — siehe Zeitraumwahl. */}
           {wish.mode === 'single' ? (
-            <Input
-              label="Datum"
-              type="date"
-              value={wish.date}
-              onChange={e => setWish(w => ({ ...w, date: e.target.value }))}
+            <Zeitraumwahl
+              einzeltag
+              wert={{ von: wish.date, bis: wish.date }}
+              onChange={s => setWish(w => ({ ...w, date: s.von }))}
             />
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Von"
-                type="date"
-                value={wish.dateFrom}
-                onChange={e => setWish(w => ({ ...w, dateFrom: e.target.value }))}
-              />
-              <Input
-                label="Bis"
-                type="date"
-                value={wish.dateTo}
-                onChange={e => setWish(w => ({ ...w, dateTo: e.target.value }))}
-              />
-            </div>
+            <Zeitraumwahl
+              wert={{ von: wish.dateFrom, bis: wish.dateTo }}
+              onChange={s => setWish(w => ({ ...w, dateFrom: s.von, dateTo: s.bis }))}
+            />
           )}
           <div>
             <label className="block text-sm font-semibold text-navy mb-1.5">Priorität</label>

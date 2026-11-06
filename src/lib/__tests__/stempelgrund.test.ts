@@ -192,8 +192,77 @@ describe('§219 Der Wortlaut sagt, worum es geht', () => {
   })
 
   it('hat für jede Abweichungsart einen Text', () => {
-    for (const art of ['ohne-dienst', 'kommen-frueh', 'kommen-spaet', 'frueher', 'laenger'] as const) {
+    for (const art of ['ohne-dienst', 'kommen-frueh', 'kommen-spaet', 'frueher', 'laenger', 'vergessen'] as const) {
       expect(ABWEICHUNG_TEXT[art]?.length, art).toBeGreaterThan(5)
     }
+  })
+})
+
+describe('§282 Das vergessene Ausstempeln', () => {
+  const plan = { von: '08:00', bis: '14:00' }   // sechs Stunden
+
+  /*
+   * DER GEMELDETE FALL, Wort für Wort: „Ich hatte mich eingeloggt, aber
+   * nicht ausgestempelt, und war mehrere hundert Stunden zu viel. Da stand
+   * dann, ich hätte angeblich 3 Stunden zu wenig gearbeitet."
+   *
+   * Genau so kam es heraus: Montag 08:00 bis Freitag 11:00 sind vier Tage.
+   * `dauer()` kennt aber nur Uhrzeiten — 08:00 bis 11:00 sind drei Stunden,
+   * gegen sechs geplante ergibt das „3 h zu wenig".
+   */
+  it('ohne die wahre Dauer kam die alte, falsche Antwort heraus', () => {
+    const ohne = abweichungBeimGehen(plan, { von: '08:00', bis: '11:00' })
+    expect(ohne?.art).toBe('frueher')
+    expect(ohne?.minuten).toBe(180)
+  })
+
+  it('mit der wahren Dauer heißt es, was es ist', () => {
+    // Vier Tage und drei Stunden = 99 Stunden.
+    const echt = abweichungBeimGehen(plan, { von: '08:00', bis: '11:00' }, undefined, 99 * 60)
+    expect(echt?.art).toBe('vergessen')
+    expect(echt?.minuten).toBe(99 * 60)
+  })
+
+  it('und der Text redet nicht von zu wenig Stunden', () => {
+    expect(ABWEICHUNG_TEXT.vergessen).toMatch(/Ausstempeln/)
+    expect(ABWEICHUNG_TEXT.vergessen).not.toMatch(/weniger/)
+  })
+
+  /*
+   * Die Gegenprobe: Ein langer, aber möglicher Tag bleibt eine normale
+   * Abweichung. Sonst hieße jede Mehrarbeit „vergessen", und die Meldung
+   * wäre nach zwei Wochen nichts mehr wert.
+   */
+  it('ein langer Tag ist kein vergessenes Ausstempeln', () => {
+    const lang = abweichungBeimGehen(plan, { von: '08:00', bis: '22:00' }, undefined, 14 * 60)
+    expect(lang?.art).toBe('laenger')
+    expect(lang?.minuten).toBe(8 * 60)
+  })
+
+  it('auch knapp unter der Grenze noch nicht', () => {
+    const knapp = abweichungBeimGehen(plan, { von: '08:00', bis: '03:00' }, undefined, 19 * 60 + 59)
+    expect(knapp?.art).toBe('laenger')
+  })
+
+  it('ab zwanzig Stunden schon', () => {
+    expect(abweichungBeimGehen(plan, { von: '08:00', bis: '04:00' }, undefined, 20 * 60)?.art)
+      .toBe('vergessen')
+  })
+
+  /*
+   * Und ohne geplanten Dienst gilt dasselbe: Über zwanzig Stunden am Stück
+   * ist die wahrscheinlichste Erklärung nicht „hat ohne Dienst gearbeitet",
+   * sondern ein vergessener Ausstempler.
+   */
+  it('auch ohne geplanten Dienst', () => {
+    expect(abweichungBeimGehen(null, { von: '08:00', bis: '11:00' }, undefined, 60 * 60)?.art)
+      .toBe('vergessen')
+  })
+
+  it('eine übergebene Dauer von null Minuten wird nicht als „fehlt" gelesen', () => {
+    // 0 ist ein gültiger Wert und darf nicht auf den alten Weg zurückfallen.
+    const sofort = abweichungBeimGehen(plan, { von: '08:00', bis: '08:00' }, undefined, 0)
+    expect(sofort?.art).toBe('frueher')
+    expect(sofort?.minuten).toBe(6 * 60)
   })
 })
