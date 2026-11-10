@@ -73,9 +73,7 @@ await prisma.vacationRequest.deleteMany({
   where: { employeeId: annaId, startDate: { gte: `${jahr}-01-01` } },
 })
 
-const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-})
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 const ctx = await browser.newContext({ ...devices['iPhone 13'] })
 await ctx.addInitScript(() => {
   localStorage.setItem('okun_whats_new_v2_location_model', '1')
@@ -84,10 +82,10 @@ await ctx.addInitScript(() => {
   }
 })
 const seite = await ctx.newPage()
-await seite.goto(`${BASIS}/login`)
+await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seite.fill('input[type="email"]', 'anna.fischer@rheinblick-reha.de')
 await seite.fill('input[type="password"]', 'Test1234!')
-await seite.click('button[type="submit"]')
+await seite.click('button[type="submit"]', { force: true })
 await seite.waitForTimeout(5000)
 
 /*
@@ -101,15 +99,15 @@ await ctxLeitung.addInitScript(() => {
   }
 })
 const seiteLeitung = await ctxLeitung.newPage()
-await seiteLeitung.goto(`${BASIS}/login`)
+await seiteLeitung.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seiteLeitung.fill('input[type="email"]', 'leitung@rheinblick-reha.de')
 await seiteLeitung.fill('input[type="password"]', 'Test1234!')
-await seiteLeitung.click('button[type="submit"]')
+await seiteLeitung.click('button[type="submit"]', { force: true })
 await seiteLeitung.waitForTimeout(5000)
 
 /** Die große Zahl auf der Urlaubsseite. */
 async function aufDerUrlaubsseite() {
-  await seite.goto(`${BASIS}/employee/vacation`)
+  await seite.goto(`${BASIS}/employee/vacation`, { waitUntil: 'domcontentloaded' })
   await seite.waitForTimeout(3000)
   return seite.evaluate(() => {
     const text = document.body.innerText
@@ -152,7 +150,7 @@ async function beiDerLeitung(seiteLeitung, name) {
  * letzte umgestellt wurde.
  */
 async function aufMeinTag() {
-  await seite.goto(`${BASIS}/employee/ich`)
+  await seite.goto(`${BASIS}/employee/ich`, { waitUntil: 'domcontentloaded' })
   const treffer = seite.locator('[data-test="urlaubstage-uebrig"]')
   for (let versuch = 0; versuch < 40; versuch++) {
     if (await treffer.count() > 0) {
@@ -166,7 +164,7 @@ async function aufMeinTag() {
 
 /** Die Kachel „Resturlaub" im Profil. */
 async function imProfil() {
-  await seite.goto(`${BASIS}/employee/profile`)
+  await seite.goto(`${BASIS}/employee/profile`, { waitUntil: 'domcontentloaded' })
   await seite.waitForTimeout(3000)
   // `textContent` ist eine Eigenschaft, kein Attribut — `getAttribute` gibt
   // dafür null zurück, und der Vergleich wäre still gescheitert.

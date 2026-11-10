@@ -32,9 +32,7 @@ const check = (name, wahr, info = '') => {
   wahr ? ok++ : fail++
 }
 
-const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-})
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 
 async function anmelden(geraet) {
   const ctx = await browser.newContext(geraet)
@@ -45,12 +43,12 @@ async function anmelden(geraet) {
     }
   })
   const seite = await ctx.newPage()
-  await seite.goto(`${BASIS}/login`)
+  await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
   await seite.fill('input[type="email"]', 'anna.fischer@rheinblick-reha.de')
   await seite.fill('input[type="password"]', 'Test1234!')
-  await seite.click('button[type="submit"]')
+  await seite.click('button[type="submit"]', { force: true })
   await seite.waitForTimeout(4500)
-  await seite.goto(`${BASIS}/employee/nachrichten`)
+  await seite.goto(`${BASIS}/employee/nachrichten`, { waitUntil: 'domcontentloaded' })
   await seite.waitForTimeout(3000)
   return seite
 }

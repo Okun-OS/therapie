@@ -71,9 +71,7 @@ if (!paket) {
   await aufraeumen(); process.exit(1)
 }
 
-const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-})
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 
 async function anmelden(email) {
   const ctx = await browser.newContext()
@@ -84,10 +82,10 @@ async function anmelden(email) {
     }
   })
   const seite = await ctx.newPage()
-  await seite.goto(`${BASIS}/login`)
+  await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
   await seite.fill('input[type="email"]', email)
   await seite.fill('input[type="password"]', 'Test1234!')
-  await seite.click('button[type="submit"]')
+  await seite.click('button[type="submit"]', { force: true })
   await seite.waitForTimeout(5000)
   return { ctx, seite }
 }
@@ -132,7 +130,7 @@ const stand = id => prisma.location.findUnique({
 try {
   console.log('=== Unter Kunden, als OKUN ===')
   const { ctx, seite } = await anmelden('okun@okun.de')
-  await seite.goto(`${BASIS}/okun/customers`)
+  await seite.goto(`${BASIS}/okun/customers`, { waitUntil: 'domcontentloaded' })
   await seite.waitForLoadState('networkidle')
 
   const zeileA = seite.locator(`[data-standort="${standortA.id}"]`)
@@ -189,7 +187,7 @@ try {
     /Freigeschaltet, aber ohne Regelpaket/.test(await blockB.innerText()))
 
   console.log('\n=== Die alte Seite ===')
-  await seite.goto(`${BASIS}/okun/dienstplanung`)
+  await seite.goto(`${BASIS}/okun/dienstplanung`, { waitUntil: 'domcontentloaded' })
   await seite.waitForLoadState('networkidle')
   check('/okun/dienstplanung leitet zu den Kunden weiter',
     new URL(seite.url()).pathname === '/okun/customers', seite.url())
@@ -205,7 +203,7 @@ try {
 
   console.log('\n=== Gegenprobe: das Unternehmen kommt nicht heran ===')
   const { ctx: c2, seite: gf } = await anmelden('gf@rheinblick-reha.de')
-  await gf.goto(`${BASIS}/okun/customers`)
+  await gf.goto(`${BASIS}/okun/customers`, { waitUntil: 'domcontentloaded' })
   await gf.waitForTimeout(3000)
   check('Keine Einrichtung der Dienstplanung für die Geschäftsführung',
     await gf.locator('[data-test="standort-dienstplanung"]').count() === 0

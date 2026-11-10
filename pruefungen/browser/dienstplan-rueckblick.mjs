@@ -69,12 +69,12 @@ await ctx.addInitScript(() => {
 })
 
 const seite = await ctx.newPage()
-await seite.goto(`${BASIS}/login`)
+await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seite.fill('input[type="email"]', ZUGANG)
 await seite.fill('input[type="password"]', 'Test1234!')
-await seite.click('button[type="submit"]')
+await seite.click('button[type="submit"]', { force: true })
 await seite.waitForTimeout(4500)
-await seite.goto(`${BASIS}/employee/schedule`)
+await seite.goto(`${BASIS}/employee/schedule`, { waitUntil: 'domcontentloaded' })
 await seite.waitForFunction(
   () => /Dienste diese Woche/.test(document.body.innerText), { timeout: 20000 },
 ).catch(() => {})
@@ -90,7 +90,19 @@ const zurueck = async () => {
 }
 
 const zeitraum = (t) => t.match(/(\d\d\.\d\d\. – \d\d\.\d\d\.)/)?.[1] ?? '?'
-const dienstzeilen = (t) => (t.match(/\d\d:\d\d – \d\d:\d\d Uhr geplant/g) ?? []).length
+/*
+ * §285 Der Wortlaut hat sich geändert, die Frage nicht.
+ *
+ * Bis dahin stand in einer Dienstzeile „07:00 – 15:30 Uhr geplant", und
+ * genau danach wurde hier gesucht. Weil sich die Plakette mit dem Status
+ * über das Wort legte, steht der Status jetzt an der Namenszeile und die
+ * Uhrzeit für sich: „21:00 – 06:30 Uhr".
+ *
+ * Gesucht wird deshalb nach einer Uhrzeitspanne, hinter der NICHT
+ * „gearbeitet" steht — das ist die geplante Zeit, und die gestempelte ist
+ * sie ausdrücklich nicht.
+ */
+const dienstzeilen = (t) => (t.match(/\d\d:\d\d – \d\d:\d\d Uhr(?! gearbeitet)/g) ?? []).length
 const istzeilen = (t) => (t.match(/\d\d:\d\d – \d\d:\d\d Uhr gearbeitet/g) ?? []).length
 
 /** Die innersten Zeilen, in denen eine Stempelzeit steht. */
@@ -156,7 +168,8 @@ const alleZeilen = mitPlan.flatMap(g => g.zeilen)
 alleZeilen.slice(0, 4).forEach(z => console.log(`           ${z}`))
 
 check('Soll und Ist stehen in derselben Zeile beieinander',
-  alleZeilen.some(z => /Uhr geplant/.test(z) && /Uhr gearbeitet/.test(z)),
+  alleZeilen.some(z => /\d\d:\d\d – \d\d:\d\d Uhr(?! gearbeitet)/.test(z)
+    && /Uhr gearbeitet/.test(z)),
   alleZeilen[0] ?? 'keine Zeile gefunden')
 
 /*

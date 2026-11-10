@@ -30,9 +30,7 @@ const check = (name, wahr, info = '') => {
   wahr ? ok++ : fail++
 }
 
-const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-})
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 
 async function anmelden(email) {
   const ctx = await browser.newContext()
@@ -43,10 +41,10 @@ async function anmelden(email) {
     }
   })
   const seite = await ctx.newPage()
-  await seite.goto(`${BASIS}/login`)
+  await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
   await seite.fill('input[type="email"]', email)
   await seite.fill('input[type="password"]', 'Test1234!')
-  await seite.click('button[type="submit"]')
+  await seite.click('button[type="submit"]', { force: true })
   await seite.waitForTimeout(5000)
   return { ctx, seite }
 }
@@ -55,7 +53,7 @@ const MARKE = Date.now().toString(36)
 
 console.log('=== Die Seite als Unternehmen ===')
 const { ctx: c1, seite } = await anmelden('gf@rheinblick-reha.de')
-await seite.goto(`${BASIS}/company/lohnverwaltung`)
+await seite.goto(`${BASIS}/company/lohnverwaltung`, { waitUntil: 'domcontentloaded' })
 await seite.waitForLoadState('networkidle')
 await seite.waitForTimeout(1200)
 
@@ -161,7 +159,7 @@ check('Die Monatsfelder erscheinen erst mit einer Anzeige',
 // ── Abschottung ────────────────────────────────────────────────────────────
 console.log('\n=== Abschottung ===')
 const { ctx: c2, seite: leitung } = await anmelden('leitung@rheinblick-reha.de')
-await leitung.goto(`${BASIS}/company/lohnverwaltung`)
+await leitung.goto(`${BASIS}/company/lohnverwaltung`, { waitUntil: 'domcontentloaded' })
 
 /*
  * §193 Auf die Umleitung WARTEN, nicht drei Sekunden hoffen.

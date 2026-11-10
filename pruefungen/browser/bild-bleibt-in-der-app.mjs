@@ -47,10 +47,10 @@ await ctx.addInitScript(() => {
 })
 
 const seite = await ctx.newPage()
-await seite.goto(`${BASIS}/login`)
+await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seite.fill('input[type="email"]', 'anna.fischer@rheinblick-reha.de')
 await seite.fill('input[type="password"]', 'Test1234!')
-await seite.click('button[type="submit"]')
+await seite.click('button[type="submit"]', { force: true })
 await seite.waitForTimeout(4500)
 
 // Ein zweites Fenster würde genau das bedeuten, was gemeldet wurde.
@@ -63,7 +63,7 @@ ctx.on('page', () => { zweitesFenster += 1 })
  * darauf, dass irgendwo schon eines liegt — sonst bestünde sie an einem Tag
  * und scheiterte am nächsten, ohne dass sich etwas geändert hätte.
  */
-await seite.goto(`${BASIS}/employee/nachrichten`)
+await seite.goto(`${BASIS}/employee/nachrichten`, { waitUntil: 'domcontentloaded' })
 await seite.waitForTimeout(2500)
 
 await seite.locator('button').filter({ hasText: 'OKUN Assistent' }).first().click()

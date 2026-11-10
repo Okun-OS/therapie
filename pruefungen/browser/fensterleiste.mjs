@@ -50,7 +50,7 @@ async function anmelden(email, passwort = 'Test1234!') {
   // Vor der Hydrierung tut der Klick nichts — dann stünde hier eine
   // Zeitüberschreitung statt eines Befunds.
   await seite.waitForTimeout(1500)
-  await seite.click('button[type="submit"]')
+  await seite.click('button[type="submit"]', { force: true })
   await seite.waitForURL(/\/(company|admin|employee|okun)/, { timeout: 30000 })
   await seite.waitForTimeout(1500)
 }

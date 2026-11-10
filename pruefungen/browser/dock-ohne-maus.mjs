@@ -41,7 +41,7 @@ async function anmelden(seite) {
   await seite.fill('input[type="email"]', 'maria.schneider@rheinblick-reha.de')
   await seite.fill('input[type="password"]', 'Test1234!')
   await seite.waitForTimeout(1200)
-  await seite.click('button[type="submit"]')
+  await seite.click('button[type="submit"]', { force: true })
   await seite.waitForURL(/\/employee/, { timeout: 30000 })
   await seite.evaluate(() => {
     for (const k of Object.keys(localStorage)) {

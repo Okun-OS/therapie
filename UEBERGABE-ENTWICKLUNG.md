@@ -29,7 +29,7 @@ Zweig löst eine Auslieferung samt `prisma migrate deploy` aus).
 ## Wie hier gearbeitet wird — das ist der Kern
 
 * **Kommentare auf Deutsch, und sie erklären das Warum.** Durchnummeriert mit
-  `§`; Stand **§236**, nächste Nummer §237. Wo ein Fehler behoben wird, steht
+  `§`; Stand **§286**, nächste Nummer §287. Wo ein Fehler behoben wird, steht
   dabei, was vorher dastand und warum es falsch war — damit niemand es
   zurückbaut.
 * **Nichts behaupten, was nicht gemessen ist.** Zahlen, Preise, Fristen,
@@ -73,6 +73,30 @@ cd .. && npm run dev
   einsammeln.
 * Beim Warten auf den Server auf **HTTP 200** prüfen, nicht nur darauf, dass
   curl antwortet — 404 heißt auch „antwortet".
+* Die Umgebungsvariable für den Rechendienst heißt **`SOLVER_SERVICE_URL`**
+  (nicht `SOLVER_URL`). Steht sie falsch, scheitern f7, f8, f9, f-dienstplan
+  und f5 alle an „es entsteht kein Plan" — und das sieht nach einem Fehler im
+  Planer aus, obwohl nur die Variable fehlt.
+* `node_modules` fehlt in einem frischen Behälter ebenfalls: `npm ci`. Ohne
+  das greift `npx tsc` auf eine fremde TypeScript-Fassung zu und meldet
+  `target=ES5 is deprecated` — ein Fehler, der nichts mit dem Code zu tun hat.
+* **Die Browser-Prüfungen laufen gegen `next start`, nicht gegen `next dev`.**
+  §285: Dass Playwright hier angeblich „vom Entwicklungsserver blockiert"
+  wird, war eine Fehldeutung. Es waren zwei andere Dinge, beide in den
+  Prüfdateien selbst:
+    – `seite.goto(url)` wartet voreingestellt auf `load`; danach blieb der
+      nächste Klick in „scrolling into view if needed" hängen. Mit
+      `{ waitUntil: 'domcontentloaded' }` läuft es.
+    – Der Anmeldeklick braucht `{ force: true }`: Playwright wartet sonst
+      darauf, dass der Knopf „stabil" liegt, und das wird er auf dieser Seite
+      sporadisch nie.
+  Beides steht jetzt in allen Prüfdateien. Dazu zeigte ein fest
+  einprogrammierter Pfad `/opt/pw-browsers/chromium-1194/…` ins Leere — der
+  Behälter bringt eine andere Fassung mit; ohne `executablePath` nimmt
+  Playwright die richtige von selbst.
+* Zwanzig Browser-Prüfungen **hintereinander** laufen zu lassen, bringt sie
+  reihenweise zum Abbruch. Einzeln laufen dieselben Prüfungen grün. Also
+  einzeln messen und nicht dem Reihenlauf glauben.
 
 ## Prüfen — vollständig, vor jedem Commit
 

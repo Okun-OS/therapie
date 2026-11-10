@@ -81,7 +81,7 @@ await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seite.waitForSelector('input[type="email"]', { timeout: 30000 })
 await seite.fill('input[type="email"]', ZUGANG)
 await seite.fill('input[type="password"]', 'Test1234!')
-await seite.click('button[type="submit"]')
+await seite.click('button[type="submit"]', { force: true })
 /*
  * Nach dem Abschicken wird selbst weitergefahren statt auf die Umleitung zu
  * warten. Der Keks sitzt, sobald die Anmeldung durch ist; ob die Oberfläche

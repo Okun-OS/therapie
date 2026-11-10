@@ -84,9 +84,7 @@ const MERKMAL = {
   '/employee/profile': /Resturlaub|Mein Profil|Meine Daten|Meine Aufgaben/i,
 }
 
-const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-})
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 
 /** Angemeldet eine Seite öffnen und ihren sichtbaren Text holen. */
 async function alsRolle(email, seiten) {
@@ -98,10 +96,10 @@ async function alsRolle(email, seiten) {
     }
   })
   const seite = await ctx.newPage()
-  await seite.goto(`${BASIS}/login`)
+  await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
   await seite.fill('input[type="email"]', email)
   await seite.fill('input[type="password"]', 'Test1234!')
-  await seite.click('button[type="submit"]')
+  await seite.click('button[type="submit"]', { force: true })
   await seite.waitForTimeout(5000)
 
   const texte = {}
@@ -180,10 +178,10 @@ console.log('\n=== §237 Und im Dialog „Dienstwunsch abgeben" ===')
     }
   })
   const seite = await ctx.newPage()
-  await seite.goto(`${BASIS}/login`)
+  await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
   await seite.fill('input[type="email"]', 'anna.fischer@rheinblick-reha.de')
   await seite.fill('input[type="password"]', 'Test1234!')
-  await seite.click('button[type="submit"]')
+  await seite.click('button[type="submit"]', { force: true })
   await seite.waitForTimeout(5000)
   await seite.goto(`${BASIS}/employee/schedule`, { waitUntil: 'domcontentloaded' })
   await seite.waitForTimeout(6000)

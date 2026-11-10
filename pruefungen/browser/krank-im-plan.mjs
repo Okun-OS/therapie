@@ -74,9 +74,7 @@ for (const a of (await hole(leitung, `/api/absences?employeeId=${tim.id}`)).body
   }
 }
 
-const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-})
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
 await ctx.addInitScript(() => {
   localStorage.setItem('okun_whats_new_v2_location_model', '1')
@@ -85,15 +83,15 @@ await ctx.addInitScript(() => {
   }
 })
 const seite = await ctx.newPage()
-await seite.goto(`${BASIS}/login`)
+await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seite.fill('input[type="email"]', 'leitung@rheinblick-reha.de')
 await seite.fill('input[type="password"]', 'Test1234!')
-await seite.click('button[type="submit"]')
+await seite.click('button[type="submit"]', { force: true })
 await seite.waitForTimeout(5000)
 
 /** In die Prüfwoche springen und die Zeile von Tim auslesen. */
 async function zeileLesen() {
-  await seite.goto(`${BASIS}/admin/schedule`)
+  await seite.goto(`${BASIS}/admin/schedule`, { waitUntil: 'domcontentloaded' })
   await seite.waitForTimeout(4000)
   for (let i = 0; i < WOCHEN_VOR; i++) {
     await seite.click('[data-test="woche-vor"]')

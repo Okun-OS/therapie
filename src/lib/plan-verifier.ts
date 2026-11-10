@@ -5,7 +5,7 @@ import type {
   FreigabeEmpfehlung,
   RegelVerletzung,
 } from '@/lib/company-model-types'
-import { dienstMinuten } from './dienstzeit'
+import { geplanteMinuten } from './dienstzeit'
 
 // §72: NET working hours of one plan entry — individual presence window
 // (startzeit/endzeit trims) minus the unpaid break above the threshold.
@@ -21,10 +21,13 @@ function entryNetHours(
    * auf volle Stunden ungerundet weitergerechnet, weil diese Zahl in eine
    * Prüfung eingeht und nicht auf einen Bildschirm. Eine Rundung an dieser
    * Stelle würde Grenzfälle verschieben.
+   *
+   * §284 Der Pausenabzug kommt jetzt ebenfalls von dort. Hier stand die
+   * letzte eigene Abschrift von „ab der Schwelle den Abzug wegnehmen" — und
+   * genau solche Abschriften sind in §266 und §284 auseinandergelaufen.
+   * `geplanteMinuten` rundet nicht, die Bedingung oben bleibt also erfüllt.
    */
-  let mins = dienstMinuten(von, bis)
-  if (mins >= pausen.thresholdMinutes) mins -= pausen.deductionMinutes
-  return mins / 60
+  return geplanteMinuten(von, bis, pausen) / 60
 }
 
 function weekKey(dateStr: string): string {

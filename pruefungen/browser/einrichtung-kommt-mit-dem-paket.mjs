@@ -51,7 +51,7 @@ async function standortMitLeitung(name, rulePackId) {
   return { standort, mail }
 }
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 
 async function anmelden(email) {
   const ctx = await browser.newContext()
@@ -59,10 +59,10 @@ async function anmelden(email) {
     for (const r of ['employee', 'admin', 'company', 'okun']) localStorage.setItem(`okun_tour_done_v6:${r}`, '1')
   })
   const seite = await ctx.newPage()
-  await seite.goto(`${BASIS}/login`)
+  await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
   await seite.fill('input[type="email"]', email)
   await seite.fill('input[type="password"]', 'Test1234!')
-  await seite.click('button[type="submit"]')
+  await seite.click('button[type="submit"]', { force: true })
   await seite.waitForTimeout(5000)
   return { ctx, seite }
 }
@@ -72,7 +72,7 @@ try {
   const kita = await standortMitLeitung('Kita', 'kita_zwei_etagen')
   check('Ausgangslage: keine Dienstzeiten', await prisma.shift.count({ where: { locationId: kita.standort.id } }) === 0)
   const { ctx, seite } = await anmelden(kita.mail)
-  await seite.goto(`${BASIS}/admin/schedule`)
+  await seite.goto(`${BASIS}/admin/schedule`, { waitUntil: 'domcontentloaded' })
   await seite.waitForLoadState('networkidle')
   await seite.waitForTimeout(2500)
   const dienste = await prisma.shift.count({ where: { locationId: kita.standort.id } })
@@ -101,7 +101,7 @@ try {
   await seite.keyboard.press('Escape')
 
   for (const alt of ['/admin/setup', '/admin/model', '/admin/onboarding']) {
-    await seite.goto(`${BASIS}${alt}`)
+    await seite.goto(`${BASIS}${alt}`, { waitUntil: 'domcontentloaded' })
     await seite.waitForLoadState('networkidle')
     check(`${alt} leitet in den Dienstplan`, new URL(seite.url()).pathname === '/admin/schedule', seite.url())
   }
@@ -116,7 +116,7 @@ try {
   console.log('\n=== Gegenprobe: ein Paket ohne Dienstzeiten ===')
   const vorlage = await standortMitLeitung('Vorlage', 'muster_pflege')
   const { ctx: c2, seite: s2 } = await anmelden(vorlage.mail)
-  await s2.goto(`${BASIS}/admin/schedule`)
+  await s2.goto(`${BASIS}/admin/schedule`, { waitUntil: 'domcontentloaded' })
   await s2.waitForLoadState('networkidle')
   await s2.waitForTimeout(2500)
   const hinweis = s2.locator('[data-test="keine-dienstzeiten"]')

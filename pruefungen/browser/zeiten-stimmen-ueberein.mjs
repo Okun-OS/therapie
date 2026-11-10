@@ -79,9 +79,7 @@ function inMinuten(text) {
   return null
 }
 
-const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-})
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 
 /** Angemeldet bleiben und Seiten abfragen. */
 async function sitzung(email) {
@@ -93,10 +91,10 @@ async function sitzung(email) {
     }
   })
   const seite = await ctx.newPage()
-  await seite.goto(`${BASIS}/login`)
+  await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
   await seite.fill('input[type="email"]', email)
   await seite.fill('input[type="password"]', 'Test1234!')
-  await seite.click('button[type="submit"]')
+  await seite.click('button[type="submit"]', { force: true })
   await seite.waitForTimeout(5000)
   return { ctx, seite }
 }

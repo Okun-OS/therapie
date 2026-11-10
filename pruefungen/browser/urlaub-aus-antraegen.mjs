@@ -87,9 +87,7 @@ async function antrag(emp, von, bis, tage, eingereichtAm) {
   })
 }
 
-const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-})
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 const ctx = await browser.newContext({ viewport: { width: 1500, height: 1100 } })
 await ctx.addInitScript(() => {
   localStorage.setItem('okun_whats_new_v2_location_model', '1')
@@ -98,15 +96,15 @@ await ctx.addInitScript(() => {
   }
 })
 const seite = await ctx.newPage()
-await seite.goto(`${BASIS}/login`)
+await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seite.fill('input[type="email"]', 'leitung@rheinblick-reha.de')
 await seite.fill('input[type="password"]', 'Test1234!')
-await seite.click('button[type="submit"]')
+await seite.click('button[type="submit"]', { force: true })
 await seite.waitForTimeout(5000)
 
 /** Die Jahresplanung öffnen, den Zeitraum setzen und auslesen. */
 async function planungLesen() {
-  await seite.goto(`${BASIS}/admin/urlaub`)
+  await seite.goto(`${BASIS}/admin/urlaub`, { waitUntil: 'domcontentloaded' })
   await seite.waitForTimeout(3500)
 
   // Zur Jahresplanung, falls die Seite mit Registern arbeitet.

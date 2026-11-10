@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/auth-context'
 import {
   schnappschussSchreiben, offeneStempel, stempelLeeren, rufname,
 } from '@/lib/offline-bruecke'
+import { laufzeitText, zeitversatz } from '@/lib/laufzeit'
 
 /**
  * §137 Die Stempeluhr.
@@ -69,10 +70,8 @@ interface Log {
   quelle?: string | null
 }
 
-const ZEIT = (ms: number) => {
-  const min = Math.floor(ms / 60000)
-  return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`
-}
+// §286 Hier stand die Rechnung, die „-1:-1" ergab. Sie steht jetzt in
+// `laufzeit.ts` — mit Prüfungen, darunter der gemeldete Fall.
 
 export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; bis: string } | null }) {
   const { user } = useAuth()
@@ -83,6 +82,15 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
   const [fehler, setFehler] = useState('')
   const [hinweis, setHinweis] = useState('')
   const [jetzt, setJetzt] = useState(() => Date.now())
+  /*
+   * §286 Der Gangunterschied zwischen Server und Telefon.
+   *
+   * `clockInAt` kommt vom Server, `Date.now()` vom Telefon. Gehen die beiden
+   * Uhren ein paar Sekunden auseinander — und das tun sie immer —, ist die
+   * Differenz direkt nach dem Einstempeln negativ. Gerechnet wird deshalb
+   * gegen die Serverzeit, so gut sie sich von hier aus schätzen lässt.
+   */
+  const [versatz, setVersatz] = useState(0)
   const [offline, setOffline] = useState(false)
   const ersterLauf = useRef(true)
 
@@ -110,6 +118,13 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
       const d = await r.json()
       const vomServer: Zustand = d.zustand ?? { laeuft: false, pause: false }
       if (!gespeichert) standSchreiben(vomServer)
+      /*
+       * §286 Nur aus einer FRISCHEN Antwort. Die aus dem Zwischenspeicher
+       * trägt die Serverzeit von vorhin — daraus einen Gangunterschied zu
+       * rechnen hieße, die Uhr um das Alter des Zwischenspeichers
+       * zurückzustellen.
+       */
+      if (!gespeichert) setVersatz(zeitversatz(d.serverZeit, Date.now()))
       // §138 Was noch in der Warteschlange liegt, kennt der Server nicht —
       // angezeigt wird der Stand INKLUSIVE dieser Vorgänge.
       setZustand(zustandMitWarteschlange(vomServer, alle()))
@@ -288,6 +303,7 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
       }
       standSchreiben(d.zustand)
       setZustand(d.zustand); setLog(d.log ?? null)
+      setVersatz(zeitversatz(d.serverZeit, Date.now()))
       setJetzt(Date.now())
       setOffline(false)
       if (d.hinweis) setHinweis(d.hinweis)
@@ -357,9 +373,13 @@ export function Stempeluhr({ dienst }: { dienst?: { name: string; von: string; b
   }
 
   const seit = log?.clockInAt ? new Date(log.clockInAt).getTime() : null
-  const dauer = seit ? ZEIT(jetzt - seit) : null
-  // Über acht Stunden ohne Ausstempeln: fast immer ein vergessener Stempel.
-  const verdaechtigLang = seit ? (jetzt - seit) / 3600000 > 12 : false
+  // §286 Gerechnet wird gegen die geschätzte Serverzeit — aus ihr stammt
+  // `clockInAt`. Negativ kann die Dauer damit kaum noch werden; und falls
+  // doch, zeigt `laufzeitText` „0:00" statt „-1:-1".
+  const verstrichen = seit ? (jetzt + versatz) - seit : null
+  const dauer = verstrichen === null ? null : laufzeitText(verstrichen)
+  // Über zwölf Stunden ohne Ausstempeln: fast immer ein vergessener Stempel.
+  const verdaechtigLang = verstrichen !== null ? verstrichen / 3600000 > 12 : false
 
   return (
     <div className="rounded-3xl bg-navy text-white p-5 shadow-lg">

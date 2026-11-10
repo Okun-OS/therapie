@@ -29,7 +29,9 @@ import { getPublicHolidayName } from '@/lib/holidays'
 import type { ScheduleEntry, Absence, TimeLog } from '@/lib/types'
 import { ausfallStundenAmTag } from '@/lib/ausfallstunden'
 import { AU_ARTEN } from '@/lib/bem'
-import { dienstMinuten } from '@/lib/dienstzeit'
+import { geplanteMinuten } from '@/lib/dienstzeit'
+import { usePausenregel } from '@/lib/use-pausenregel'
+import { laufzeitText } from '@/lib/laufzeit'
 import { dienstSymbol } from '@/lib/dienstsymbole'
 
 // §266 Hier stand eine Abschrift der Symbolkarte OHNE `night`. Ein
@@ -140,6 +142,10 @@ export default function EmployeeSchedule() {
   const employee = EMPLOYEES.find(e => e.id === user?.employeeId)
   const location = LOCATIONS.find(l => l.id === employee?.locationId)
 
+  // §284 Ab wann wie viel Pause abgezogen wird — dieselbe Regel, nach der die
+  // Leitung plant. Ohne sie stünden hier Anwesenheitsstunden.
+  const pausenregel = usePausenregel(employee?.locationId)
+
   /**
    * §267 Den Dienstplan neu holen.
    *
@@ -241,11 +247,23 @@ export default function EmployeeSchedule() {
    * davon die gemeldeten „−58h Stunden geplant". In der Leitungsansicht und
    * auf dem Ausdruck stimmte dieselbe Rechnung seit jeher — nur in den beiden
    * Ansichten des Mitarbeiters nicht.
+   *
+   * §284 Und hier stand die Spanne statt der Arbeitszeit: Fünf Dienste von
+   * 07:00 bis 15:30 ergaben „42h 30min Stunden geplant". Die Leitung sah für
+   * dieselbe Woche 40 — sie zieht die Pause ab, diese Kachel nicht. Jetzt
+   * rechnen beide gleich, und zwar in `dienstzeit.ts`.
+   *
+   * Der Zeitraum der Kachel ist die ANGEZEIGTE Woche, nicht die laufende:
+   * Wer vorblättert, will wissen, was ihn erwartet.
    */
   const totalHours = weekEntries.reduce((sum, e) => {
     const shift = getShift(e.shiftId)
     if (!shift) return sum
-    return sum + dienstMinuten(shift.startTime, shift.endTime)
+    return sum + geplanteMinuten(
+      e.startTime ?? shift.startTime,
+      e.endTime ?? shift.endTime,
+      pausenregel,
+    )
   }, 0)
 
   const handleSwapSubmit = async (targetEmpId: string, targetDate: string, targetShiftId: string, message: string) => {
@@ -622,6 +640,11 @@ export default function EmployeeSchedule() {
               <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
                 <p className="text-2xl font-bold text-navy">{Math.floor(totalHours / 60)}h {totalHours % 60 > 0 ? `${totalHours % 60}min` : ''}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Stunden geplant</p>
+                {/*
+                  §284 Dass die Pause nicht mitzählt, steht dabei — sonst
+                  rechnet der Nächste wieder nach und meldet dieselbe Zahl.
+                */}
+                <p className="text-[10px] text-gray-400">ohne Pausen</p>
               </div>
             </div>
 
@@ -640,11 +663,27 @@ export default function EmployeeSchedule() {
                 const ausfall = entry ? null : ausfallAmTag(dateStr)
 
                 return (
+                  /*
+                    * §285 Die Maße der Zeile.
+                    *
+                    * Auf einem Telefon mit 390 Pixeln blieben für den Text
+                    * 133 übrig — „21:00 – 06:30 Uhr · geplant" braucht 158.
+                    * Vorher fiel das nicht auf, weil der Text einfach über
+                    * seine Nachbarn hinweggezeichnet wurde; das war der
+                    * gemeldete Haken mitten im Wort.
+                    *
+                    * Also Platz geschaffen, wo keiner gebraucht wurde: Der
+                    * Datumsblock trägt „Mo" und eine Zahl und kam mit 56
+                    * Pixeln nie auf seine Breite, der Innenabstand war
+                    * großzügiger als die Nachbarkarten. Zusammen sind das
+                    * dreißig Pixel — genug, dass beide Zeilen stehen, statt
+                    * zu brechen.
+                    */
                   <div
                     key={dateStr}
-                    className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${todayFlag ? 'border-brand bg-amber-50' : holiday ? 'border-red-200 bg-red-50/40' : 'border-gray-100 bg-white'} ${isPast && !todayFlag ? 'opacity-60' : ''}`}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border-2 transition-all ${todayFlag ? 'border-brand bg-amber-50' : holiday ? 'border-red-200 bg-red-50/40' : 'border-gray-100 bg-white'} ${isPast && !todayFlag ? 'opacity-60' : ''}`}
                   >
-                    <div className={`w-14 text-center flex-shrink-0 ${todayFlag ? 'text-navy' : holiday ? 'text-red-600' : 'text-gray-500'}`}>
+                    <div className={`w-11 text-center flex-shrink-0 ${todayFlag ? 'text-navy' : holiday ? 'text-red-600' : 'text-gray-500'}`}>
                       <p className="text-xs font-medium">{getDayName(dateStr, true)}</p>
                       <p className="text-xl font-bold">{day.getDate()}</p>
                       {todayFlag && <div className="w-1.5 h-1.5 rounded-full bg-brand mx-auto mt-0.5" />}
@@ -652,72 +691,150 @@ export default function EmployeeSchedule() {
                     </div>
 
                     {shift && Icon && entry ? (
-                      <div className="flex-1 flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: shift.bgColor }}>
-                          <Icon size={18} style={{ color: shift.color }} />
-                          {entry.isSubstitution && (
-                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-white" title={`Vertretung${entry.substitutionFor ? `: ${entry.substitutionFor}` : ''}`} />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-navy">{shift.name}</p>
-                          <p className="text-xs text-gray-500 whitespace-nowrap">
-                            {entry.startTime ?? shift.startTime} – {entry.endTime ?? shift.endTime} Uhr
-                            <span className="text-gray-400"> geplant</span>
-                          </p>
-                          {/*
-                            * §270 Und darunter, was wirklich war.
-                            *
-                            * „Wenn ich jetzt von 7 bis 15:30 hatte und ich war
-                            * eingeloggt von 6:59 bis 15:32, dass dann auch diese
-                            * Uhrzeit dasteht für den abgeschlossenen Dienst."
-                            *
-                            * Steht nur da, wenn gestempelt wurde — ein leeres
-                            * „gearbeitet: —" unter jedem künftigen Dienst wäre
-                            * Lärm. Und die Soll-Zeit bleibt daneben stehen: Eine
-                            * Ist-Zeit ohne Soll-Zeit sagt nichts darüber, ob sie
-                            * in Ordnung war.
-                            */}
-                          <Gearbeitet buchung={buchungAm(dateStr)} knapp />
-                          {(entry.gruppe || entry.funktion) && (
-                            <p className="text-xs text-gray-400 truncate">{[entry.gruppe, entry.funktion].filter(Boolean).join(' · ')}</p>
-                          )}
-                        </div>
+                      <div className="flex-1 flex items-center gap-2.5 min-w-0">
                         {/*
-                          * §270 An einem vergangenen Tag steht rechts weniger.
+                          * §285 Die Zeile selbst öffnet die Einzelheiten.
                           *
-                          * „Geplant" ist bei einem Dienst, der vorbei ist, keine
-                          * Auskunft mehr, und tauschen lässt er sich auch nicht.
-                          * Beides stand trotzdem da und nahm den Platz weg, den
-                          * jetzt die Uhrzeiten brauchen: Auf einem Telefon brach
-                          * „08:00 – 16:30 Uhr geplant" über vier Zeilen um, und
-                          * die Zeile wurde dreimal so hoch.
-                          *
-                          * Das Fragezeichen für die Einzelheiten bleibt — gerade
-                          * im Rückblick ist das die Stelle, an der jemand nachsieht.
+                          * Ein echter Knopf und nicht ein `div` mit einem
+                          * Klickhörer: So geht es auch mit der Tastatur und
+                          * mit einer Vorlesehilfe, ohne dass irgendwo
+                          * Sonderbehandlung dafür steht. Der Tauschknopf liegt
+                          * deshalb DANEBEN und nicht darin — ein Knopf im
+                          * Knopf ist ungültig, und welcher von beiden dann
+                          * reagiert, entscheidet der Browser.
                           */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {!isPast && (
-                            <Badge variant={entry.status === 'confirmed' ? 'success' : 'default'}>
-                              {entry.status === 'confirmed' ? '✓' : 'Geplant'}
-                            </Badge>
-                          )}
-                          <button
-                            onClick={() => setSelectedEntry(entry)}
-                            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                            title="Details"
-                          >
-                            <Info size={14} className="text-gray-400" />
-                          </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedEntry(entry)}
+                          className="flex-1 flex items-center gap-2.5 min-w-0 text-left"
+                          aria-label={`Einzelheiten zu ${shift.name} am ${formatDate(dateStr)}`}
+                        >
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: shift.bgColor }}>
+                            <Icon size={17} style={{ color: shift.color }} />
+                            {entry.isSubstitution && (
+                              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-white" title={`Vertretung${entry.substitutionFor ? `: ${entry.substitutionFor}` : ''}`} />
+                            )}
+                          </div>
+                          {/*
+                            * §285 GEMELDET: „Da überschneidet sich der Haken und
+                            * das zum Tauschen mit der Schrift. Das muss so
+                            * gebaut werden, dass es schöner aussieht,
+                            * professioneller aussieht und sich nicht
+                            * überschneidet."
+                            *
+                            * Auf dem Bild stand „07:00 – 15:30 Uhr gepla✓t" —
+                            * die grüne Plakette lag mitten im Wort.
+                            *
+                            * DIE URSACHE war keine Enge, sondern eine fehlende
+                            * Regel: Die Zeile trug `whitespace-nowrap` (gegen
+                            * den Umbruch über vier Zeilen aus §270), aber
+                            * nichts, was den Überlauf begrenzt. Ein Text, der
+                            * weder umbrechen noch abgeschnitten werden darf,
+                            * läuft über seinen Kasten hinaus und wird ÜBER die
+                            * Nachbarn gezeichnet.
+                            *
+                            * NACHGEMESSEN: Auf einem Telefon mit 390 Pixeln
+                            * blieben für den Text 142 übrig; „21:00 – 06:30 Uhr
+                            * · geplant" braucht 158. Es fehlten sechzehn.
+                            *
+                            * DREI ÄNDERUNGEN, und jede hat einen eigenen Grund:
+                            *
+                            *   Der Status steht jetzt in der Namenszeile. Dort
+                            *   ist Platz — ein Dienstname ist kurz —, und er
+                            *   gehört ohnehin zum Eintrag und nicht zur
+                            *   Uhrzeit. Nebenbei verschwindet die Doppelung:
+                            *   Rechts stand die Plakette „Geplant" direkt neben
+                            *   dem Wort „geplant".
+                            *
+                            *   Die ganze Zeile öffnet die Einzelheiten. Damit
+                            *   fällt der Knopf dafür weg — und mit ihm die 40
+                            *   Pixel, die gefehlt haben. Ein Pfeil am Rand
+                            *   zeigt, dass es etwas zu sehen gibt; eine ganze
+                            *   Zeile trifft der Daumen besser als ein Knopf von
+                            *   36 Pixeln.
+                            *
+                            *   Und die Uhrzeit hält als Einheit zusammen,
+                            *   alles andere darf umbrechen. Wird es auf einem
+                            *   kleineren Gerät doch einmal eng, rutscht ein
+                            *   Wort in die nächste Zeile — statt sich über den
+                            *   Nachbarn zu legen. Das ist der eigentliche Fund:
+                            *   Umbrechen ist hässlich, Überlagern ist falsch.
+                            */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2">
+                              <p className="text-sm font-semibold text-navy truncate">{shift.name}</p>
+                              {/*
+                                Unter 360 Pixeln tritt der Status zurück: Dort
+                                bliebe für den Dienstnamen sonst nur „Nachtdie…".
+                                Welcher Dienst es ist, wiegt schwerer als die
+                                Auskunft, dass er geplant ist.
+                              */}
+                              <span className={`text-[11px] flex-shrink-0 hidden min-[360px]:inline ${
+                                !isPast && entry.status === 'confirmed'
+                                  ? 'text-emerald-600 font-semibold' : 'text-gray-400'}`}>
+                                {!isPast && entry.status === 'confirmed' ? 'bestätigt' : 'geplant'}
+                              </span>
+                            </div>
+                            {/*
+                              §285 Auf 320 Pixeln blieben für diese Zeile 92
+                              Pixel, „21:00 – 06:30 Uhr" braucht 105 — und ein
+                              `whitespace-nowrap` über dem ganzen Absatz hätte
+                              sie wieder über den Nachbarn gezeichnet. Jede
+                              Uhrzeit hält für sich zusammen; getrennt werden
+                              darf nur am Gedankenstrich, dort, wo ein Setzer
+                              eine Spanne auch trennen würde.
+                            */}
+                            <p className="text-xs text-gray-500">
+                              <span className="whitespace-nowrap">
+                                {entry.startTime ?? shift.startTime} –
+                              </span>{' '}
+                              <span className="whitespace-nowrap">
+                                {entry.endTime ?? shift.endTime} Uhr
+                              </span>
+                            </p>
+                            {/*
+                              * §270 Und darunter, was wirklich war.
+                              *
+                              * „Wenn ich jetzt von 7 bis 15:30 hatte und ich war
+                              * eingeloggt von 6:59 bis 15:32, dass dann auch diese
+                              * Uhrzeit dasteht für den abgeschlossenen Dienst."
+                              *
+                              * Steht nur da, wenn gestempelt wurde — ein leeres
+                              * „gearbeitet: —" unter jedem künftigen Dienst wäre
+                              * Lärm. Und die Soll-Zeit bleibt daneben stehen: Eine
+                              * Ist-Zeit ohne Soll-Zeit sagt nichts darüber, ob sie
+                              * in Ordnung war.
+                              */}
+                            <Gearbeitet buchung={buchungAm(dateStr)} knapp />
+                            {(entry.gruppe || entry.funktion) && (
+                              <p className="text-xs text-gray-400 truncate">{[entry.gruppe, entry.funktion].filter(Boolean).join(' · ')}</p>
+                            )}
+                          </div>
+                        </button>
+                        {/*
+                          * §270 An einem vergangenen Tag steht rechts weniger:
+                          * Ein Dienst, der vorbei ist, lässt sich nicht mehr
+                          * tauschen.
+                          *
+                          * §285 Der Knopf für die Einzelheiten ist dem Pfeil
+                          * gewichen — angetippt wird jetzt die Zeile selbst
+                          * (siehe oben). Der Pfeil ist kein Knopf, sondern
+                          * ein Hinweis darauf, dass es weitergeht; deshalb
+                          * ist er schmal und für Hilfsmittel versteckt.
+                          */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
                           {!isPast && (
                             <button
                               onClick={() => setSwapEntry(entry)}
-                              className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg
+                                         hover:bg-blue-50 transition-colors"
                               title="Tauschen"
+                              aria-label="Dienst tauschen"
                             >
-                              <ArrowLeftRight size={14} className="text-blue-500" />
+                              <ArrowLeftRight size={16} className="text-blue-500" />
                             </button>
                           )}
+                          <ChevronRight size={16} className="text-gray-300" aria-hidden />
                         </div>
                       </div>
                     ) : ausfall ? (
@@ -1334,15 +1451,30 @@ export default function EmployeeSchedule() {
 function Gearbeitet({ buchung, knapp = false }: { buchung?: TimeLog; knapp?: boolean }) {
   if (!buchung) return null
 
+  /*
+   * §286 Dieselbe Formatierung wie in der Stempeluhr — und zwar dieselbe
+   * FUNKTION. Hier stand die vierte Abschrift von `h:mm`; eine davon hat
+   * „-1:-1" erzeugt, und niemand hätte gewusst, dass es die anderen drei
+   * genauso können.
+   */
   const dauer = buchung.totalMinutes
-    ? `${Math.floor(buchung.totalMinutes / 60)}:${String(buchung.totalMinutes % 60).padStart(2, '0')} Std.`
+    ? `${laufzeitText(buchung.totalMinutes * 60_000)} Std.`
     : null
 
+  /*
+   * §285 Hier stand `whitespace-nowrap` auf dem ganzen Absatz — dieselbe
+   * Regel, die eine Zeile höher das Häkchen mitten ins Wort „geplant"
+   * geschoben hat. Ein Text, der weder umbrechen noch abgeschnitten werden
+   * darf, wird über seine Nachbarn gezeichnet.
+   *
+   * Zusammenhalten muss nur die Uhrzeit: „12:03 – 14:05" über zwei Zeilen
+   * ist unlesbar, „gearbeitet" in der nächsten Zeile nicht.
+   */
   return (
-    <p className="text-xs text-teal-700 mt-0.5 whitespace-nowrap">
+    <p className="text-xs text-teal-700 mt-0.5">
       {buchung.clockOut
-        ? `${buchung.clockIn} – ${buchung.clockOut} Uhr gearbeitet`
-        : `seit ${buchung.clockIn} Uhr eingestempelt`}
+        ? <><span className="whitespace-nowrap">{buchung.clockIn} – {buchung.clockOut} Uhr</span>{' gearbeitet'}</>
+        : <><span className="whitespace-nowrap">seit {buchung.clockIn} Uhr</span>{' eingestempelt'}</>}
       {/*
         * §270 In der Wochenzeile nur die Uhrzeit.
         *

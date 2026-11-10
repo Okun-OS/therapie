@@ -106,9 +106,7 @@ async function notlageHerstellen() {
 
 await notlageHerstellen()
 
-const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-})
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 const ctx = await browser.newContext()
 await ctx.addInitScript(() => {
   localStorage.setItem('okun_whats_new_v2_location_model', '1')
@@ -119,13 +117,13 @@ await ctx.addInitScript(() => {
 const seite = await ctx.newPage()
 
 console.log('=== Anmelden und planen ===')
-await seite.goto(`${BASIS}/login`)
+await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seite.fill('input[type="email"]', 'leitung@kita-regenbogen.de')
 await seite.fill('input[type="password"]', 'Test1234!')
-await seite.click('button[type="submit"]')
+await seite.click('button[type="submit"]', { force: true })
 await seite.waitForTimeout(5000)
 
-await seite.goto(`${BASIS}/admin/schedule`)
+await seite.goto(`${BASIS}/admin/schedule`, { waitUntil: 'domcontentloaded' })
 await seite.waitForLoadState('networkidle')
 await seite.waitForTimeout(2000)
 

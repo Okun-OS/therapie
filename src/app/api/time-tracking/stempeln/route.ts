@@ -305,6 +305,10 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     zustand: { laeuft: !!jetztLog, pause: !!jetztLog?.breakStart },
     log: jetztLog,
+    // §286 Die Uhr des Servers. Der Einstempelzeitpunkt stammt von ihr, die
+    // laufende Anzeige bisher von der Uhr des Telefons — ein paar Sekunden
+    // Gangunterschied ergaben kurz nach dem Stempeln eine negative Dauer.
+    serverZeit: new Date().toISOString(),
     quelle: zeit.quelle,
     hinweis,
     // §203 Gesetzt, wenn die gearbeitete Zeit nicht zum Plan passt. Der
@@ -335,5 +339,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     zustand: { laeuft: !!log, pause: !!log?.breakStart },
     log,
+    // §286 Siehe oben — damit die laufende Zeit auch nach einem Neuladen
+    // gegen dieselbe Uhr gerechnet wird, aus der `clockInAt` stammt.
+    serverZeit: new Date().toISOString(),
   })
 }

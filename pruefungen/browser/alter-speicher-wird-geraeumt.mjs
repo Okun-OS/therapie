@@ -38,10 +38,10 @@ const browser = await chromium.launch({ args: ['--no-sandbox'] })
 const ctx = await browser.newContext()
 const seite = await ctx.newPage()
 
-await seite.goto(`${BASIS}/login`)
+await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seite.fill('input[type="email"]', 'anna.fischer@rheinblick-reha.de')
 await seite.fill('input[type="password"]', 'Test1234!')
-await seite.click('button[type="submit"]')
+await seite.click('button[type="submit"]', { force: true })
 await seite.waitForTimeout(4000)
 
 // Warten, bis der Dienst-Arbeiter die Seite wirklich führt.
@@ -139,7 +139,7 @@ check('Die Offline-Seite liegt wieder bereit — es wurde nicht nur geleert',
 // ── Die Regel selbst ──────────────────────────────────────────────────────
 console.log('\n=== §251 Und `/` landet gar nicht erst wieder im Speicher ===')
 
-await seite.goto(`${BASIS}/`)
+await seite.goto(`${BASIS}/`, { waitUntil: 'domcontentloaded' })
 await seite.waitForTimeout(2500)
 const wiederDrin = await messen(async () => Boolean(await caches.match('/')))
 check('Nach einem Besuch der Startseite liegt sie NICHT im Speicher', !wiederDrin)

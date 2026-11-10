@@ -17,7 +17,9 @@ import { PlayCircle, StopCircle, Clock, Timer, TrendingUp, Calendar, Coffee, Ale
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate, formatTime, getWeekDays, toDateString } from '@/lib/utils'
 import { nettoMinuten } from '@/lib/arbeitszeit'
-import { dienstMinuten } from '@/lib/dienstzeit'
+import { geplanteMinuten } from '@/lib/dienstzeit'
+import { usePausenregel } from '@/lib/use-pausenregel'
+import { laufzeitGenau } from '@/lib/laufzeit'
 
 const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 
@@ -68,6 +70,17 @@ export default function TimeTracking() {
 
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null)
   const [myEmployee, setMyEmployee] = useState<Employee | null>(null)
+
+  /*
+   * §284 Die Pausenregel des Standorts.
+   *
+   * Gebraucht wird sie eine Zeile weiter unten in der Liste der
+   * Zeitnachweise: Dort wurde die GEARBEITETE Zeit (Pause schon heraus, siehe
+   * `arbeitszeit.ts`) mit der SPANNE des geplanten Dienstes verglichen. Wer
+   * seinen Dienst von 07:00 bis 15:30 genau abarbeitete, hatte 480 Minuten
+   * gegen 510 stehen — und eine halbe Stunde Mehrarbeit blieb unsichtbar.
+   */
+  const pausenregel = usePausenregel(myEmployee?.locationId ?? user?.locationId)
   const [TIME_LOGS, setTIME_LOGS] = useState<TimeLog[]>([])
   const [SCHEDULE_ENTRIES, setSCHEDULE_ENTRIES] = useState<ScheduleEntry[]>([])
   const [SHIFTS, setSHIFTS] = useState<Shift[]>([])
@@ -96,7 +109,9 @@ export default function TimeTracking() {
     const interval = setInterval(() => {
       setCurrentTime(new Date())
       if (clockedIn && clockInTime) {
-        setElapsed(Math.floor((Date.now() - clockInTime.getTime()) / 1000))
+        // §286 Nie unter null — siehe `laufzeit.ts`. Die zweite Stelle, die
+        // denselben Wert setzt, hatte diese Schranke schon.
+        setElapsed(Math.max(0, Math.floor((Date.now() - clockInTime.getTime()) / 1000)))
       }
     }, 1000)
     return () => clearInterval(interval)
@@ -209,12 +224,10 @@ export default function TimeTracking() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.employeeId, myEmployee?.id])
 
-  const formatElapsed = (seconds: number) => {
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    const s = seconds % 60
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  }
+  // §286 Die Formatierung steht jetzt in `laufzeit.ts`. Hier ergab eine
+  // Sekunde Gangunterschied zwischen Server und Telefon „00:-1:-1" —
+  // derselbe Fund wie in der Stempeluhr auf der Startseite.
+  const formatElapsed = (seconds: number) => laufzeitGenau(seconds * 1000)
 
   /*
    * §137 Gestempelt wird ueber EINEN Aufruf.
@@ -516,13 +529,25 @@ export default function TimeTracking() {
                 const mins = log.totalMinutes || 0
                 const scheduleEntry = SCHEDULE_ENTRIES.find(e => e.employeeId === log.employeeId && e.date === log.date)
                 const shift = scheduleEntry ? getShiftById(scheduleEntry.shiftId) : undefined
-                let plannedMinutes = 480
-                if (shift) {
-                  const [sh, sm] = shift.startTime.split(':').map(Number)
-                  const [eh, em] = shift.endTime.split(':').map(Number)
-                  // §266 Mitternacht eingerechnet — siehe `dienstzeit.ts`.
-                  plannedMinutes = dienstMinuten(shift.startTime, shift.endTime)
-                }
+                /*
+                 * §266 Mitternacht eingerechnet — siehe `dienstzeit.ts`.
+                 *
+                 * §284 Und die Pause heraus. `mins` oben ist die gearbeitete
+                 * Zeit OHNE Pause; stand hier die Anwesenheitsspanne, wurden
+                 * Äpfel mit Birnen verglichen. Der Fehler ging immer in
+                 * dieselbe Richtung: Mehrarbeit in Höhe der Pause fiel unter
+                 * den Tisch.
+                 *
+                 * Bleibt kein Dienst übrig, gelten acht Stunden — die übliche
+                 * Vollzeitschicht, ebenfalls ohne Pause gerechnet.
+                 */
+                const plannedMinutes = shift
+                  ? geplanteMinuten(
+                    scheduleEntry?.startTime ?? shift.startTime,
+                    scheduleEntry?.endTime ?? shift.endTime,
+                    pausenregel,
+                  )
+                  : 480
                 const isOver = mins > plannedMinutes
                 return (
                   <div key={log.id} className="flex items-center gap-4 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">

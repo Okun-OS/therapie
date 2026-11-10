@@ -79,13 +79,13 @@ await ctx.addInitScript(() => {
 })
 
 const seite = await ctx.newPage()
-await seite.goto(`${BASIS}/login`)
+await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seite.fill('input[type="email"]', 'deniz.yilmaz@beispielbetrieb.de')
 await seite.fill('input[type="password"]', 'Test1234!')
-await seite.click('button[type="submit"]')
+await seite.click('button[type="submit"]', { force: true })
 await seite.waitForTimeout(4500)
 
-await seite.goto(`${BASIS}/employee/schedule`)
+await seite.goto(`${BASIS}/employee/schedule`, { waitUntil: 'domcontentloaded' })
 await seite.waitForTimeout(3500)
 
 /*

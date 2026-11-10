@@ -34,9 +34,7 @@ const check = (name, wahr, info = '') => {
   wahr ? ok++ : fail++
 }
 
-const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-})
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
 const ctx = await browser.newContext({ ...devices['iPhone 13'] })
 await ctx.addInitScript(() => {
   localStorage.setItem('okun_whats_new_v2_location_model', '1')
@@ -45,10 +43,10 @@ await ctx.addInitScript(() => {
   }
 })
 const seite = await ctx.newPage()
-await seite.goto(`${BASIS}/login`)
+await seite.goto(`${BASIS}/login`, { waitUntil: 'domcontentloaded' })
 await seite.fill('input[type="email"]', 'anna.fischer@rheinblick-reha.de')
 await seite.fill('input[type="password"]', 'Test1234!')
-await seite.click('button[type="submit"]')
+await seite.click('button[type="submit"]', { force: true })
 await seite.waitForTimeout(5000)
 
 // ── Die Glocke ─────────────────────────────────────────────────────────────
@@ -71,7 +69,7 @@ for (const n of [1, 2]) {
   })
 }
 
-await seite.goto(`${BASIS}/employee`)
+await seite.goto(`${BASIS}/employee`, { waitUntil: 'domcontentloaded' })
 await seite.waitForTimeout(2500)
 
 const glocke = seite.locator('button[aria-label="Benachrichtigungen"], button:has(svg.lucide-bell)').first()
@@ -97,7 +95,7 @@ check('Und es gibt den Weg für alle auf einmal', sammel > 0, `${sammel} Sammelk
 // ── Das Gespräch ───────────────────────────────────────────────────────────
 console.log('\n=== §222 Löschen im Gespräch ===')
 
-await seite.goto(`${BASIS}/employee/nachrichten`)
+await seite.goto(`${BASIS}/employee/nachrichten`, { waitUntil: 'domcontentloaded' })
 await seite.waitForTimeout(3000)
 
 /*
