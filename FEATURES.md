@@ -1332,17 +1332,29 @@ zurück. Ein Krankenschein aus einer Telefonkamera sind sonst fünf Megabyte, un
 die überträgt sich mit einem Balken Empfang nicht. Genau dort steht die Person
 aber, wenn sie den Schein beim Arzt abfotografiert.
 
-### 3. Face ID und Fingerabdruck
-Hinter zwei Fingertipps liegt eine Lohnabrechnung, hinter drei die
-Personalliste des Standorts. Telefone liegen im Dienstzimmer und werden
-verliehen. Eine Anmeldung, die Wochen hält — und das soll sie —, braucht eine
-zweite, schnelle Tür.
+### 3. Face ID und Fingerabdruck — §288 ENTFERNT
+Es gab eine Gerätesperre: freiwillig, erst nach einer Minute Pause, im
+Zweifel zu, und **nicht einschaltbar ohne funktionierenden Sensor** — „sonst
+käme jemand nie wieder hinein".
 
-**Freiwillig** (erzwungen schalten die Leute das Telefonschloss ganz ab),
-**erst nach einer Minute** (wer zur Kamera wechselt, wird nicht gesperrt),
-**im Zweifel zu** (Abbruch und Fehler lassen nicht durch), und **nicht
-einschaltbar ohne funktionierenden Sensor** — sonst käme jemand nie wieder
-hinein.
+Genau das ist trotzdem passiert. Die Vorsichtsmaßnahme galt dem EINSCHALTEN;
+für den Fall, dass der Sensor DANACH nicht mehr antwortet, gab es keine. Der
+einzige Ausweg aus der Sperre hieß „Stattdessen abmelden", und er führte
+zurück in die Sperre: Der Schalter gehörte zum Gerät (`localStorage`), die
+Abmeldung räumte nur die Sitzung ab. Ein Mitarbeiter kam nicht mehr in die
+App.
+
+Entfernt auf Entscheidung des Eigentümers: „Wenn wir es selber anbieten, muss
+es doch funktionieren, ansonsten machen wir das, was das Handy von alleine
+sowieso anbietet." Dazu gehört die Einschränkung, die dabei nachgesehen
+wurde: Das iPhone kann ab iOS 18 jede App einzeln hinter Face ID legen, reines
+Android kann das nicht — dort hat nur ein Teil der Hersteller eine eigene
+App-Sperre. Auf einem Android-Telefon bleibt also nur das Telefonschloss.
+
+Was den Zugriff weiterhin schützt: der Anmeldeschutz (Sperre nach
+Fehlversuchen, §-Modul `anmeldeschutz.ts`), die Zwei-Faktor-Anmeldung und das
+Lohnsiegel — Lohnabrechnung, Bescheinigung und DSGVO-Auskunft verlangen das
+Kennwort noch einmal, auch wenn die App offen ist.
 
 ### 4. Löschen des Kontos, in der App
 Apple verlangt seit 2022, dass eine App mit Konto das Löschen auch **in** der

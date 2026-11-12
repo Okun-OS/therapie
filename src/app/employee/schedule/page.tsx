@@ -19,7 +19,7 @@ import { googleCalendarLink, appleCalendarDownload } from '@/lib/calendar-export
 import {
   ChevronLeft, ChevronRight, Sun, Moon, Briefcase, MessageSquare,
   CalendarPlus, ArrowLeftRight, Info, CheckCircle, XCircle, Clock,
-  Download, ExternalLink, Apple, AlertTriangle, Stethoscope,
+  Download, ExternalLink, Apple, AlertTriangle, Stethoscope, Palmtree,
 } from 'lucide-react'
 import {
   getWeekDays, toDateString, formatDateShort, formatDate,
@@ -28,7 +28,7 @@ import {
 import { getPublicHolidayName } from '@/lib/holidays'
 import type { ScheduleEntry, Absence, TimeLog } from '@/lib/types'
 import { ausfallStundenAmTag } from '@/lib/ausfallstunden'
-import { AU_ARTEN } from '@/lib/bem'
+import { fehltagAm, fehltagKurz } from '@/lib/fehltag'
 import { geplanteMinuten } from '@/lib/dienstzeit'
 import { usePausenregel } from '@/lib/use-pausenregel'
 import { laufzeitText } from '@/lib/laufzeit'
@@ -107,6 +107,15 @@ export default function EmployeeSchedule() {
    * nicht, ob die Meldung angekommen ist.
    */
   const [meineFehlzeiten, setMeineFehlzeiten] = useState<Absence[]>([])
+  /**
+   * §287 Der eigene genehmigte Urlaub.
+   *
+   * Die Leitungsansicht zeigt ihn im Plan seit §227, der eigene Dienstplan
+   * nicht — dort war der Urlaub schlicht nicht geladen. Wer nachsehen wollte,
+   * ob sein Urlaub steht, sah eine Woche voller Dienste.
+   */
+  const [meineUrlaube, setMeineUrlaube] = useState<
+    { status: string; startDate: string; endDate: string }[]>([])
   const [meinProfil, setMeinProfil] = useState<
     { planungsStundenSoll: number | null; tagesmuster: unknown } | null>(null)
 
@@ -136,6 +145,11 @@ export default function EmployeeSchedule() {
     fetch(`/api/absences?employeeId=${user.employeeId}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => setMeineFehlzeiten(d?.absences ?? []))
+      .catch(() => undefined)
+    // §287 Dazu der genehmigte Urlaub — sonst steht er im eigenen Plan nicht.
+    fetch(`/api/vacation-requests?employeeId=${user.employeeId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setMeineUrlaube(d?.requests ?? []))
       .catch(() => undefined)
   }, [user?.employeeId])
 
@@ -194,23 +208,45 @@ export default function EmployeeSchedule() {
    * Dieselbe Rechnung wie im Leitungsplan (`ausfallstunden.ts`). Stünde hier
    * eine eigene, könnte dieselbe Krankheit in zwei Ansichten zwei
    * verschiedene Stundenzahlen ergeben — und beide würden geglaubt.
+   *
+   * §287 Und dieselbe ENTSCHEIDUNG wie dort: Ob ein Tag ein Fehltag ist,
+   * beantwortet `fehltag.ts`. Hier stand eine eigene Fassung, die den Urlaub
+   * nicht kannte und „krankheit" gegen eine eigene Liste prüfte.
+   *
+   * Die geplanten Stunden gehen mit ein, wo es sie gibt: Ein Dienst, der
+   * ausfällt, ist der tatsächliche Ausfall und keine Schätzung.
    */
-  const ausfallAmTag = (dateStr: string): { text: string; krank: boolean; stunden: number } | null => {
-    const fehlzeit = meineFehlzeiten.find(a => a.verificationStatus !== 'abgelehnt'
-      && a.startDate <= dateStr && a.endDate >= dateStr)
-    if (!fehlzeit || !employee) return null
+  const ausfallAmTag = (dateStr: string) => {
+    const fehltag = fehltagAm(dateStr, {
+      fehlzeiten: meineFehlzeiten,
+      urlaube: meineUrlaube,
+    })
+    if (!fehltag || !employee) return null
+    const eintrag = myEntries.find(e => e.date === dateStr)
+    const dienst = eintrag ? getShift(eintrag.shiftId) : null
     const stunden = ausfallStundenAmTag({
       weeklyHours: employee.weeklyHours,
       planungsStundenSoll: meinProfil?.planungsStundenSoll ?? null,
       tagesmuster: meinProfil?.tagesmuster,
       workDaysPerWeek: employee.workDaysPerWeek,
       fixedOffDays: employee.fixedOffDays,
-    }, dateStr, { feiertag: !!getPublicHolidayName(dateStr, location?.bundesland) })
-    const krank = AU_ARTEN.includes(fehlzeit.type)
+    }, dateStr, {
+      feiertag: !!getPublicHolidayName(dateStr, location?.bundesland),
+      geplanteStunden: dienst
+        ? geplanteMinuten(
+          eintrag?.startTime ?? dienst.startTime,
+          eintrag?.endTime ?? dienst.endTime,
+          pausenregel,
+        ) / 60
+        : null,
+    })
     return {
-      text: krank ? 'Krankgemeldet' : 'Abwesend',
-      krank,
+      ...fehltag,
+      krank: fehltag.art === 'krank',
       stunden,
+      /** Der Dienst, der an diesem Tag ausfällt — falls einer geplant war. */
+      dienst,
+      eintrag: eintrag ?? null,
     }
   }
 
@@ -529,6 +565,7 @@ export default function EmployeeSchedule() {
               const shift = entry ? getShift(entry.shiftId) : null
               const todayFlag = isToday(dateStr)
               const holiday = getPublicHolidayName(dateStr, undefined)
+              const ausfallHeute = ausfallAmTag(dateStr)
               return (
                 <div className="space-y-3">
                   <div className={`rounded-2xl border-2 p-5 ${todayFlag ? 'border-teal-400 bg-teal-50' : 'border-gray-100 bg-white'}`}>
@@ -537,7 +574,42 @@ export default function EmployeeSchedule() {
                       {todayFlag && <span className="ml-2 bg-teal-600 text-white text-[10px] rounded-full px-1.5 py-0.5">Heute</span>}
                     </p>
                     {holiday && <p className="text-xs text-red-600 font-medium mb-2">🏖 {holiday}</p>}
-                    {entry && shift ? (
+                    {/*
+                      §287 Die Tagesansicht kannte Fehlzeiten überhaupt nicht.
+                      Wer am Krankheitstag auf „Tag" stellte, las „Kein Dienst
+                      geplant" — die Krankmeldung war unsichtbar, und der
+                      Dienst daneben stand weiter da, als würde er stattfinden.
+                    */}
+                    {ausfallHeute ? (() => {
+                      const a = ausfallHeute
+                      return (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            {a.art === 'urlaub'
+                              ? <Palmtree size={18} className="text-teal-700" />
+                              : <Stethoscope size={18} className={a.krank ? 'text-red-600' : 'text-gray-500'} />}
+                            <p className={`text-lg font-bold ${
+                              a.krank ? 'text-red-700' : a.art === 'urlaub' ? 'text-teal-800' : 'text-navy'}`}>
+                              {a.text}
+                            </p>
+                          </div>
+                          {a.dienst ? (
+                            <p className="text-sm text-gray-600">
+                              {a.dienst.name} · {a.eintrag?.startTime ?? a.dienst.startTime} – {a.eintrag?.endTime ?? a.dienst.endTime} Uhr
+                              <span className="text-gray-400"> entfällt</span>
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-400">An diesem Tag stand kein Dienst an</p>
+                          )}
+                          {a.stunden > 0 && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              {a.stunden.toFixed(1).replace('.', ',')} Std. gutgeschrieben
+                            </p>
+                          )}
+                          <Gearbeitet buchung={buchungAm(dateStr)} />
+                        </div>
+                      )
+                    })() : entry && shift ? (
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: shift.color }} />
@@ -589,22 +661,44 @@ export default function EmployeeSchedule() {
                           const shift = entry ? getShift(entry.shiftId) : null
                           const isT = ds === todayStr
                           const isPast = day < new Date() && !isT
+                          /*
+                            §287 Auch im Monatsraster. Hier stand bisher an
+                            jedem Krankheitstag das Kürzel des Dienstes, der
+                            gar nicht stattfindet — und im Überblick über
+                            einen ganzen Monat ist das die Ansicht, in der
+                            jemand nachsieht, wie lange er krank war.
+                          */
+                          const fehlt = fehltagAm(ds, {
+                            fehlzeiten: meineFehlzeiten, urlaube: meineUrlaube,
+                          })
                           return (
                             <div
                               key={ci}
                               className={`aspect-square rounded-xl flex flex-col items-center justify-center p-0.5 ${
-                                isT ? 'bg-teal-50 border-2 border-teal-400' : entry ? 'bg-gray-50 border border-gray-100' : ''
+                                isT ? 'bg-teal-50 border-2 border-teal-400'
+                                  : fehlt ? (fehlt.art === 'krank' ? 'bg-red-50 border border-red-100'
+                                    : fehlt.art === 'urlaub' ? 'bg-teal-50 border border-teal-100'
+                                      : 'bg-gray-100 border border-gray-200')
+                                    : entry ? 'bg-gray-50 border border-gray-100' : ''
                               } ${isPast ? 'opacity-50' : ''}`}
+                              title={fehlt ? fehlt.text : shift?.name}
                             >
                               <span className={`text-[10px] font-semibold ${isT ? 'text-teal-700' : 'text-gray-600'}`}>{day.getDate()}</span>
-                              {shift && (
+                              {fehlt ? (
+                                <span className={`text-[8px] rounded-full px-1 font-semibold mt-0.5 leading-tight text-center ${
+                                  fehlt.art === 'krank' ? 'bg-red-100 text-red-700'
+                                    : fehlt.art === 'urlaub' ? 'bg-teal-100 text-teal-800'
+                                      : 'bg-gray-200 text-gray-700'}`}>
+                                  {fehltagKurz(fehlt)}
+                                </span>
+                              ) : shift ? (
                                 <span
                                   className="text-[8px] rounded-full px-1 font-medium mt-0.5 leading-tight text-center"
                                   style={{ backgroundColor: shift.bgColor, color: shift.color }}
                                 >
                                   {shift.name.slice(0, 3)}
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                           )
                         })}
@@ -660,7 +754,18 @@ export default function EmployeeSchedule() {
                 // verschwinden lassen. Genau daran lag das „Frei" über dem Nachtdienst.
                 const Icon = shift ? dienstSymbol(shift.type) : null
                 const holiday = getPublicHolidayName(dateStr, location?.bundesland)
-                const ausfall = entry ? null : ausfallAmTag(dateStr)
+                /*
+                 * §287 Hier stand `entry ? null : ausfallAmTag(dateStr)` —
+                 * „steht ein Dienst da, frag gar nicht erst nach der
+                 * Krankmeldung". Damit konnte eine Krankmeldung nur an den
+                 * Tagen erscheinen, an denen ohnehin nichts geplant war.
+                 * Genau das wurde gemeldet: Sa und So krank, Mi bis Fr
+                 * weiterhin Dienst.
+                 *
+                 * Jetzt gilt die Fehlzeit, und der Dienst, der ausfällt,
+                 * steht darunter — nicht an ihrer Stelle.
+                 */
+                const ausfall = ausfallAmTag(dateStr)
 
                 return (
                   /*
@@ -690,7 +795,14 @@ export default function EmployeeSchedule() {
                       {holiday && <p className="text-[8px] font-bold text-red-500 leading-tight mt-0.5 truncate">{holiday}</p>}
                     </div>
 
-                    {shift && Icon && entry ? (
+                    {/*
+                      * §287 `!ausfall` davor: Eine Krankmeldung oder ein
+                      * genehmigter Urlaub schlägt den geplanten Dienst. Der
+                      * Dienst verschwindet dabei nicht — er steht im Zweig
+                      * darunter, als das, was er geworden ist: ein Dienst,
+                      * der entfällt.
+                      */}
+                    {!ausfall && shift && Icon && entry ? (
                       <div className="flex-1 flex items-center gap-2.5 min-w-0">
                         {/*
                           * §285 Die Zeile selbst öffnet die Einzelheiten.
@@ -838,20 +950,53 @@ export default function EmployeeSchedule() {
                         </div>
                       </div>
                     ) : ausfall ? (
-                      <div className="flex-1 flex items-center gap-3 min-w-0">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                          ausfall.krank ? 'bg-red-100' : 'bg-gray-100'}`}>
-                          <Stethoscope size={18} className={ausfall.krank ? 'text-red-600' : 'text-gray-500'} />
+                      <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          ausfall.krank ? 'bg-red-100'
+                            : ausfall.art === 'urlaub' ? 'bg-teal-100' : 'bg-gray-100'}`}>
+                          {ausfall.art === 'urlaub'
+                            ? <Palmtree size={17} className="text-teal-700" />
+                            : <Stethoscope size={17} className={ausfall.krank ? 'text-red-600' : 'text-gray-500'} />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-semibold ${ausfall.krank ? 'text-red-700' : 'text-navy'}`}>
+                          <p className={`text-sm font-semibold ${
+                            ausfall.krank ? 'text-red-700'
+                              : ausfall.art === 'urlaub' ? 'text-teal-800' : 'text-navy'}`}>
                             {ausfall.text}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            {ausfall.stunden > 0
-                              ? `${ausfall.stunden.toFixed(1).replace('.', ',')} Std. gutgeschrieben`
-                              : 'An diesem Tag stand kein Dienst an'}
-                          </p>
+                          {/*
+                            §287 Der Dienst, der ausfällt, steht beim Namen.
+                            „Krankgemeldet" allein beantwortet die Frage nicht,
+                            die jemand hat, der auf den Tag sieht: Was war denn
+                            geplant? Und für die Leitung ist es die Zeile, an
+                            der sie sieht, dass jemand nachbesetzt werden muss.
+                          */}
+                          {/*
+                            §285 Nachgemessen: Für diese Zeilen sind 228 Pixel
+                            da. „Frühdienst 8 · 06:00 – 14:30 Uhr entfällt"
+                            braucht genau 228 und bricht damit um — der
+                            Trennpunkt landete am Anfang der nächsten Zeile.
+                            Drei kurze Zeilen statt einer langen: was ausfällt,
+                            wann es gewesen wäre, was dafür gutgeschrieben wird.
+                          */}
+                          {ausfall.dienst ? (
+                            <>
+                              <p className="text-xs text-gray-500">
+                                {ausfall.dienst.name} <span className="text-gray-400">entfällt</span>
+                              </p>
+                              <p className="text-xs text-gray-400 whitespace-nowrap">
+                                {ausfall.eintrag?.startTime ?? ausfall.dienst.startTime} – {ausfall.eintrag?.endTime ?? ausfall.dienst.endTime} Uhr
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-xs text-gray-400">An diesem Tag stand kein Dienst an</p>
+                          )}
+                          {ausfall.stunden > 0 && (
+                            <p className="text-xs text-gray-400 whitespace-nowrap">
+                              {ausfall.stunden.toFixed(1).replace('.', ',')} Std. gutgeschrieben
+                            </p>
+                          )}
+                          <Gearbeitet buchung={buchungAm(dateStr)} knapp />
                         </div>
                       </div>
                     ) : buchungAm(dateStr) ? (

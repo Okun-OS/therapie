@@ -20,7 +20,7 @@ import { calculateFairnessData, resolveWishConflict } from '@/lib/fairness'
 import { getWeekDays, getWeeksInRange, toDateString, formatDateShort, getDayName, sanitizeAiText } from '@/lib/utils'
 import { getPublicHolidayName } from '@/lib/holidays'
 import { ausfallStundenAmTag } from '@/lib/ausfallstunden'
-import { AU_ARTEN } from '@/lib/bem'
+import { fehltagAm, fehltagKurz } from '@/lib/fehltag'
 import { displayColors, SHIFT_PALETTE } from '@/lib/shift-colors'
 import { AusfallDialog, type AusfallDaten } from '@/components/schedule/AusfallDialog'
 import { MassnahmenPanel } from '@/components/schedule/MassnahmenPanel'
@@ -36,20 +36,12 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { dienstStunden } from '@/lib/dienstzeit'
 import { dienstSymbol, STANDARD_SYMBOL } from '@/lib/dienstsymbole'
 
-/**
- * §227 Wie eine Abwesenheit in der Zelle heißt.
- *
- * „Abwesend" steht dort, wo die Art nichts Genaueres sagt — besser als ein
- * Datenbankwort wie „unentschuldigt" in Großbuchstaben mitten im Plan.
+/*
+ * §227/§287 Wie eine Abwesenheit in der Zelle heißt, steht jetzt in
+ * `fehltag.ts` — zusammen mit der Entscheidung, wann überhaupt eine
+ * dasteht. Hier war die Liste nur für die Leitung da; der Mitarbeiter sah
+ * in seinem eigenen Plan eine andere.
  */
-const ABWESENHEIT_TEXT: Record<string, string> = {
-  krankheit: 'Krank',
-  krank: 'Krank',
-  fortbildung: 'Fortbildung',
-  unentschuldigt: 'Fehlt',
-  entschuldigt: 'Abwesend',
-  sonstige: 'Abwesend',
-}
 
 type PeriodMode = 'week' | 'twoWeeks' | 'month' | 'custom'
 
@@ -577,26 +569,30 @@ export default function AdminSchedule() {
       feiertag: !!getPublicHolidayName(dateStr),
     })
 
-    const fehlzeit = ABSENCES.find(a => a.employeeId === empId
-      && a.verificationStatus !== 'abgelehnt'
-      && a.startDate <= dateStr && a.endDate >= dateStr)
-    if (fehlzeit) {
-      // §227 Die Schreibweisen stehen in `bem.ts` — ältere Datensätze haben
-      // „krank", die Oberfläche schreibt „krankheit". Eine zweite Liste hier
-      // wäre eine zweite Gelegenheit, eine davon zu vergessen.
-      const krank = AU_ARTEN.includes(fehlzeit.type)
-      return {
-        art: krank ? 'krank' : 'abwesend',
-        text: krank ? 'Krank' : ABWESENHEIT_TEXT[fehlzeit.type] ?? 'Abwesend',
-        stunden: stunden(),
-      }
+    /*
+     * §287 Die Entscheidung „ist das ein Fehltag" steht jetzt in
+     * `fehltag.ts`. Hier stand eine eigene Fassung — und im eigenen
+     * Dienstplan des Mitarbeiters noch eine dritte, die den Urlaub nicht
+     * kannte und die Krankmeldung nur an Tagen OHNE Dienst zeigte. Das war
+     * der gemeldete Fehler, und es ist nach §266 und §284 das dritte Mal,
+     * dass zwei Fassungen derselben Frage auseinandergelaufen sind.
+     *
+     * Die Stunden bleiben hier: Sie brauchen die Angaben der Person und die
+     * Betriebstage des Standorts, und die haben in `fehltag.ts` nichts zu
+     * suchen.
+     */
+    const fehltag = fehltagAm(dateStr, {
+      fehlzeiten: ABSENCES.filter(a => a.employeeId === empId),
+      urlaube: VACATION_REQUESTS.filter(v => v.employeeId === empId),
+    })
+    if (!fehltag) return null
+    return {
+      art: fehltag.art,
+      // In einer Zelle der Planungstabelle ist kein Platz für
+      // „Krankgemeldet" — dort steht die kurze Form.
+      text: fehltagKurz(fehltag),
+      stunden: stunden(),
     }
-
-    const urlaub = VACATION_REQUESTS.find(v => v.employeeId === empId
-      && v.status === 'approved' && v.startDate <= dateStr && v.endDate >= dateStr)
-    if (urlaub) return { art: 'urlaub', text: 'Urlaub', stunden: stunden() }
-
-    return null
   }, [EMPLOYEES, planProfile, ABSENCES, VACATION_REQUESTS, locationArbeitstage])
 
   // §60: per-entry wish fulfillment map for schedule grid ✓/✕ indicators

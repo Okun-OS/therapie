@@ -6,12 +6,12 @@ import { useAuth } from '@/lib/auth-context'
 import {
   istApp, anzeigeEinrichten, pushAnmelden, pushAntippenBehandeln,
 } from '@/lib/nativ'
-import { Geraetesperre } from './Geraetesperre'
+import { altlastenRaeumen } from './altlasten'
 
 /**
  * §139 Was die native Hülle beim Start tut.
  *
- * Vier Handgriffe, die im Browser nichts tun und in der App alles ausmachen:
+ * Drei Handgriffe, die im Browser nichts tun und in der App alles ausmachen:
  *
  *   1. Die Statusleiste einfärben und den Startbildschirm wegnehmen. Ohne das
  *      sieht die App aus wie eine Seite in einem Browser ohne Adressleiste —
@@ -24,7 +24,10 @@ import { Geraetesperre } from './Geraetesperre'
  *      Sonst landet man auf der Startseite und sucht selbst — bei „Dienst am
  *      Samstag frei geworden" ist das die Reibung, an der das Einspringen
  *      scheitert.
- *   4. Die Sperre (Face ID) hängen, falls sie eingeschaltet ist.
+ *
+ * §288 Der vierte Handgriff — „die Sperre (Face ID) hängen" — ist weg. Warum,
+ * steht in `altlasten.ts`; dort wird auch der Schlüssel entfernt, den sie
+ * hinterlassen hat.
  *
  * Alles hier ist beiläufig: Schlägt etwas davon fehl, läuft die Anwendung
  * weiter. Eine App, die nicht startet, weil Google keine Gerätekennung
@@ -35,6 +38,10 @@ export function AppRahmen() {
   const router = useRouter()
 
   useEffect(() => {
+    // §288 Auch im Browser: Dieselbe Anwendung lief dort mit demselben
+    // Schlüssel, und wer die Seite auf dem Telefon zum Startbildschirm
+    // hinzugefügt hatte, trug ihn ebenfalls.
+    altlastenRaeumen()
     if (!istApp()) return
     anzeigeEinrichten()
     pushAntippenBehandeln(pfad => router.push(pfad))
@@ -53,5 +60,5 @@ export function AppRahmen() {
     pushAnmelden()
   }, [user?.employeeId])
 
-  return <Geraetesperre />
+  return null
 }

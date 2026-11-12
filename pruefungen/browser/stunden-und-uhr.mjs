@@ -336,11 +336,24 @@ try {
  * alten Rechnung (480 + 75 = 555 gegen 570 Spanne) wäre das NICHT auffällig
  * gewesen, unter der neuen (555 gegen 480) ist es das.
  */
-const letzter = await prisma.scheduleEntry.findFirst({
+/*
+ * Gesucht wird der jüngste vergangene Dienst, zu dem es AUCH eine Buchung
+ * gibt. Ein erster Entwurf nahm einfach den jüngsten — und wurde rot, sobald
+ * der Kalender über den letzten gestempelten Tag der Beispieldaten hinweg
+ * ist. Das war kein Fund, sondern ein Fehlalarm, und ein Fehlalarm ist
+ * schlimmer als keine Prüfung.
+ */
+const vergangene = await prisma.scheduleEntry.findMany({
   where: { employeeId: mit.id, date: { lt: new Date().toISOString().slice(0, 10) } },
   orderBy: { date: 'desc' },
+  take: 40,
   select: { date: true, shiftId: true, startTime: true, endTime: true },
 })
+const gebucht = new Set((await prisma.timeLog.findMany({
+  where: { employeeId: mit.id, date: { in: vergangene.map(e => e.date) } },
+  select: { date: true },
+})).map(l => l.date))
+const letzter = vergangene.find(e => gebucht.has(e.date)) ?? null
 const dienstDazu = letzter
   ? await prisma.shift.findUnique({
     where: { id: letzter.shiftId }, select: { startTime: true, endTime: true },

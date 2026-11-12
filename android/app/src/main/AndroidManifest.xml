@@ -54,8 +54,12 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
-    <!-- Fingerabdruck und Gesichtserkennung fuer die Sperre. -->
-    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!--
+      §288 Hier stand USE_BIOMETRIC fuer die Geraetesperre. Die Sperre ist
+      entfernt (siehe src/components/app/altlasten.ts), also auch die
+      Berechtigung: Google fragt im Pruefverfahren, wofuer eine App eine
+      Berechtigung braucht, und auf diese Frage gaebe es keine Antwort mehr.
+    -->
 
     <!--
       Die Kamera ist KEINE Voraussetzung: Ein Tablet ohne Kamera soll die App

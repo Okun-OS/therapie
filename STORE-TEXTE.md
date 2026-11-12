@@ -71,9 +71,10 @@ verloren, und niemand muss daran denken.
 
 DEINE DATEN
 
-Lohn- und Personaldaten lassen sich hinter Face ID oder Fingerabdruck legen —
-ein Telefon wandert im Dienstzimmer schneller durch die Hände, als einem lieb
-ist. Unterlagen liegen in Rechenzentren in der Europäischen Union.
+Die Anmeldung ist geschützt: Sperre nach zu vielen Fehlversuchen, auf Wunsch
+Zwei-Faktor-Anmeldung. Lohnabrechnungen und die eigene Akte verlangen das
+Kennwort noch einmal, auch wenn die App offen ist. Unterlagen liegen in
+Rechenzentren in der Europäischen Union.
 
 Das Löschen deiner Daten kannst du in der App beantragen (Ich → Meine Daten).
 Sofort gelöscht wird nicht, und das hat einen Grund: Für Lohnunterlagen gelten

@@ -74,61 +74,19 @@ export async function kameraFoto(): Promise<File | null> {
   }
 }
 
-// ── Face ID und Fingerabdruck ──────────────────────────────────────────────
-
-export interface Biometrielage {
-  moeglich: boolean
-  /** Wie es auf diesem Gerät heißt — „Face ID" ist kein „Fingerabdruck" */
-  name: string
-}
-
-export async function biometrielage(): Promise<Biometrielage> {
-  if (!istApp()) return { moeglich: false, name: '' }
-  try {
-    const { BiometricAuth, BiometryType } = await import('@aparajita/capacitor-biometric-auth')
-    const lage = await BiometricAuth.checkBiometry()
-    const namen: Record<number, string> = {
-      [BiometryType.touchId]: 'Touch ID',
-      [BiometryType.faceId]: 'Face ID',
-      [BiometryType.fingerprintAuthentication]: 'Fingerabdruck',
-      [BiometryType.faceAuthentication]: 'Gesichtserkennung',
-      [BiometryType.irisAuthentication]: 'Iriserkennung',
-    }
-    return {
-      moeglich: lage.isAvailable,
-      name: namen[lage.biometryType] ?? 'Gerätesperre',
-    }
-  } catch {
-    return { moeglich: false, name: '' }
-  }
-}
-
-/**
- * Nach dem Gesicht oder dem Finger fragen.
+/*
+ * §139/§288 HIER STAND DIE BRÜCKE ZU FACE ID UND FINGERABDRUCK.
  *
- * `true` heißt: erkannt. Alles andere heißt `false` — auch der Abbruch. Die
- * Sperre lässt im Zweifel NICHT durch; bei Lohn- und Personaldaten ist das
- * die einzig vertretbare Richtung.
+ * Sie ist entfernt, zusammen mit der Gerätesperre, die als Einzige sie
+ * benutzt hat. Der Grund steht in `components/app/altlasten.ts`: Der einzige
+ * Ausweg aus der Sperre führte zurück in die Sperre, und ein Mensch kam
+ * deshalb nicht mehr in die App.
+ *
+ * Mit der Brücke geht auch das Zusatzpaket `@aparajita/capacitor-biometric-auth`
+ * und die Berechtigung `USE_BIOMETRIC` aus dem Android-Projekt. Eine
+ * Berechtigung, die im Programm niemand mehr braucht, ist eine Frage, die
+ * Google im Prüfverfahren stellt — und eine Antwort, die es nicht gibt.
  */
-export async function biometriePruefen(grund: string): Promise<boolean> {
-  if (!istApp()) return false
-  try {
-    const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth')
-    await BiometricAuth.authenticate({
-      reason: grund,
-      cancelTitle: 'Abbrechen',
-      androidTitle: 'OKUN Workforce',
-      androidSubtitle: grund,
-      // Wer den Finger nicht ans Telefon bekommt (Handschuhe, Pflegehandschuhe,
-      // Verband), muss trotzdem an seinen Dienstplan kommen.
-      allowDeviceCredential: true,
-      iosFallbackTitle: 'Code eingeben',
-    })
-    return true
-  } catch {
-    return false
-  }
-}
 
 // ── Push ───────────────────────────────────────────────────────────────────
 

@@ -90,7 +90,6 @@ Store-Prüfung, die zwei Tage bis zwei Wochen dauert.
 |---|---|
 | Echte Push-Nachrichten (APNs/FCM), auch bei geschlossener App | `src/lib/push-geraet.ts`, `/api/push/geraet` |
 | Kamera für den Krankenschein, verkleinert statt fünf Megabyte | `src/lib/nativ.ts` → `kameraFoto()` |
-| Face ID / Fingerabdruck als Sperre vor Lohn- und Dienstdaten | `src/components/app/Geraetesperre.tsx` |
 | Warteschlange fürs Funkloch (§138) | `src/lib/warteschlange.ts` |
 | Löschantrag in der App (Apple 5.1.1 v) | `/employee/daten` |
 | Eigene Fehlerseite statt weißem Bildschirm ohne Netz | `native/web/fehler.html` |
@@ -253,8 +252,7 @@ Frei übersetzbar, sinngemäß:
 
 > Diese App ist das Werkzeug für Beschäftigte eines Pflege- und
 > Therapieunternehmens. Sie ist kein Browser-Lesezeichen: Sie nutzt die Kamera
-> (Arbeitsunfähigkeitsbescheinigung abfotografieren), Face ID / Touch ID
-> (Sperre vor Lohn- und Personaldaten, unter „Ich" einschaltbar), Push über
+> (Arbeitsunfähigkeitsbescheinigung abfotografieren), Push über
 > APNs (kurzfristige Dienstausfälle) und arbeitet ohne Netz weiter: Stempeln,
 > Krankmeldung und Anträge werden auf dem Gerät gemerkt und später übertragen.
 > Das Löschen des Kontos lässt sich in der App beantragen (Ich → Meine Daten);
@@ -291,10 +289,16 @@ rechtfertigen.
 Ehrlich aufgelistet, damit niemand überrascht wird:
 
 1. **Richtlinie 4.2 bleibt das Hauptrisiko.** Die App lädt eine Website. Die
-   sechs nativen Punkte oben sind die Antwort darauf, und sie sind echt — aber
+   nativen Punkte oben sind die Antwort darauf, und sie sind echt — aber
    die Entscheidung trifft ein Mensch. Falls abgelehnt: auf die Notiz
    verweisen, die Funktionen einzeln benennen, und notfalls ein kurzes Video
-   beilegen, das Kamera, Face ID und das Stempeln im Flugmodus zeigt.
+   beilegen, das Kamera, Push und das Stempeln im Flugmodus zeigt.
+
+   §288 Ein Punkt ist seit der Entfernung der Gerätesperre weg: Face ID /
+   Touch ID. Das schwächt die Antwort auf 4.2 — gewusst, abgewogen, und die
+   Sperre war nicht zu halten (sie hat einen Menschen ausgesperrt). Die
+   verbleibenden Punkte sind Kamera, Push über APNs, der Betrieb ohne Netz
+   mit eigener Offline-Seite, Statusleiste und Startbildschirm.
 2. **Die Datenschutzerklärung muss öffentlich stehen**, bevor eingereicht wird
    — ohne erreichbare URL wird gar nicht erst geprüft.
 3. **Eine Domain auf `up.railway.app`** wirkt provisorisch. Kein formaler

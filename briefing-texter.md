@@ -231,8 +231,7 @@ Gesetz die Aufbewahrung verlangt. Verarbeitungsverzeichnis. Technische und
 organisatorische Maßnahmen. Anmeldeschutz. Zwei-Faktor-Anmeldung.
 
 ### 11 · Auf jedem Gerät
-App für iPhone und Android. **Gesichts- oder Fingerabdruck-Sperre** vor
-Lohn- und Personaldaten. Kamera für Nachweise. Programm für Windows, macOS
+App für iPhone und Android. Kamera für Nachweise. Programm für Windows, macOS
 und Linux mit eigenem Symbol im Startmenü. Drucken ohne Browserrand.
 Funktioniert offline.
 
