@@ -364,6 +364,22 @@ model User {
   // ist bereits belegt, denn über sie kam die Einladung, mit der das Konto
   // überhaupt entstanden ist.
   emailOtpEnabled Boolean @default(false)
+
+  /// §289 Beim Öffnen der App erneut mit dem zweiten Faktor bestätigen.
+  ///
+  /// Gewuenscht als Ersatz fuer die Geraetesperre aus §139, die in §288
+  /// entfernt wurde, weil sie jemanden ausgesperrt hat: „Man einstellen kann,
+  /// dass man bei jedem Öffnen der App neu mit 2FA gefragt wird" — und
+  /// ausdruecklich „bei 2fa mit sms, nicht bei Fingerabdruck".
+  ///
+  /// Der entscheidende Unterschied zur alten Sperre: Das Tor ist DASSELBE wie
+  /// beim Anmelden. Wer es nicht passieren kann, kann sich auch nicht
+  /// anmelden — die Sperre kann also niemanden aussperren, der sonst
+  /// hereinkaeme. Genau daran ist §139 gescheitert.
+  ///
+  /// Einschaltbar nur mit eingerichtetem zweiten Faktor; faellt dieser
+  /// spaeter weg, gilt die Einstellung als aus (siehe `oeffnungssiegel.ts`).
+  faktorBeimOeffnen Boolean @default(false)
   bereichIds    String[] @default([])
   avatarUrl     String?
   createdAt     DateTime @default(now())

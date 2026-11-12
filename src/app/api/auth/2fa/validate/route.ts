@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyPendingToken, setSessionCookie, type SessionRole } from '@/lib/session'
+import { verifyPendingToken, setSessionCookie, sitzungsangabenAus } from '@/lib/session'
 import { verifyTotp } from '@/lib/totp'
 
 export const dynamic = 'force-dynamic'
@@ -36,15 +36,13 @@ export async function POST(req: NextRequest) {
       customerId: user.customerId ?? undefined,
     },
   })
-  setSessionCookie(res, {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role as SessionRole,
-    employeeId: user.employeeId ?? undefined,
-    locationId: user.locationId ?? undefined,
-    customerId: user.customerId ?? undefined,
-    customerName: user.customerName ?? undefined,
-  })
+  /*
+   * §289 Hier fehlten `bereichIds` — dieselbe Lücke, die §196 beim SMS-Weg
+   * gefunden und dort behoben hat; die App-Variante blieb übrig. Wer auf
+   * Bereiche eingeschränkt ist und sich mit der Authenticator-App anmeldet,
+   * bekam eine Sitzung OHNE diese Einschränkung. Jetzt bauen alle drei
+   * Anmeldewege dieselben Angaben.
+   */
+  setSessionCookie(res, sitzungsangabenAus(user))
   return res
 }

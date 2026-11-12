@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyPassword, hashPassword } from '@/lib/auth'
-import { setSessionCookie, createPendingToken, type SessionRole } from '@/lib/session'
+import { setSessionCookie, createPendingToken, sitzungsangabenAus } from '@/lib/session'
 import { logAudit } from '@/lib/audit'
 import {
   kennungAus, pruefeSperre, zaehleFehlversuch, versucheLoeschen,
@@ -142,16 +142,9 @@ export async function POST(req: NextRequest) {
       customerId: user.customerId ?? undefined,
     },
   })
-  setSessionCookie(res, {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role as SessionRole,
-    employeeId: user.employeeId ?? undefined,
-    locationId: user.locationId ?? undefined,
-    customerId: user.customerId ?? undefined,
-    customerName: user.customerName ?? undefined,
-    bereichIds: user.bereichIds.length > 0 ? user.bereichIds : undefined,
-  })
+  // §289 Die Angaben stehen jetzt an einer Stelle (`sitzungsangabenAus`).
+  // Vorher dreimal abgeschrieben — und §196 hat daran schon einen Fehler
+  // gefunden.
+  setSessionCookie(res, sitzungsangabenAus(user))
   return res
 }

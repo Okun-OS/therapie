@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
-import { setSessionCookie, type SessionRole } from './session'
+import { setSessionCookie, sitzungsangabenAus } from './session'
 import type { NextResponse } from 'next/server'
 
 /**
@@ -111,16 +111,6 @@ export async function sitzungSetzen(res: NextResponse, userId: string): Promise<
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) return false
 
-  setSessionCookie(res, {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role as SessionRole,
-    employeeId: user.employeeId ?? undefined,
-    locationId: user.locationId ?? undefined,
-    customerId: user.customerId ?? undefined,
-    customerName: user.customerName ?? undefined,
-    bereichIds: user.bereichIds.length > 0 ? user.bereichIds : undefined,
-  })
+  setSessionCookie(res, sitzungsangabenAus(user))
   return true
 }

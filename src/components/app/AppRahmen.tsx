@@ -7,6 +7,7 @@ import {
   istApp, anzeigeEinrichten, pushAnmelden, pushAntippenBehandeln,
 } from '@/lib/nativ'
 import { altlastenRaeumen } from './altlasten'
+import { Oeffnungssperre } from './Oeffnungssperre'
 
 /**
  * §139 Was die native Hülle beim Start tut.
@@ -28,6 +29,12 @@ import { altlastenRaeumen } from './altlasten'
  * §288 Der vierte Handgriff — „die Sperre (Face ID) hängen" — ist weg. Warum,
  * steht in `altlasten.ts`; dort wird auch der Schlüssel entfernt, den sie
  * hinterlassen hat.
+ *
+ * §289 An ihrer Stelle hängt die Bestätigung mit dem ZWEITEN FAKTOR. Sie
+ * hängt hier und nicht nur in der Hülle: Gesperrt wird am Server, und wer
+ * die Anwendung im Browser öffnet, soll dieselbe Tür vorfinden. Nur das
+ * Erkennen der Rückkehr aus dem Hintergrund gibt es allein in der App —
+ * ein Browser weiß nicht, wann ein Telefon weggelegt wurde.
  *
  * Alles hier ist beiläufig: Schlägt etwas davon fehl, läuft die Anwendung
  * weiter. Eine App, die nicht startet, weil Google keine Gerätekennung
@@ -60,5 +67,5 @@ export function AppRahmen() {
     pushAnmelden()
   }, [user?.employeeId])
 
-  return null
+  return <Oeffnungssperre />
 }

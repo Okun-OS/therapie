@@ -25,6 +25,16 @@ export default function SecurityPage() {
 
   const [status, setStatus] = useState<TwoFAStatus | null>(null)
 
+  /*
+   * §289 Die Bestätigung beim Öffnen der App. Eigener Zustand, weil sie
+   * eine eigene Schnittstelle hat — sie betrifft nicht, WELCHE zweiten
+   * Faktoren es gibt, sondern WANN danach gefragt wird.
+   */
+  const [oeffnung, setOeffnung] = useState<{
+    moeglich: boolean; eingeschaltet: boolean } | null>(null)
+  const [oeffnungLaeuft, setOeffnungLaeuft] = useState(false)
+  const [oeffnungFehler, setOeffnungFehler] = useState('')
+
   // TOTP state
   const [setupStep, setSetupStep] = useState<SetupStep>('idle')
   const [qrDataUrl, setQrDataUrl] = useState('')
@@ -81,6 +91,11 @@ export default function SecurityPage() {
       .then(r => r.json())
       .then(d => setStatus(d))
       .catch(() => setStatus({ totpEnabled: false, smsOtpEnabled: false, phoneVerified: false, phone: null, emailOtpEnabled: false, email: null }))
+
+    fetch('/api/auth/oeffnung')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setOeffnung(d ? { moeglich: !!d.moeglich, eingeschaltet: !!d.eingeschaltet } : null))
+      .catch(() => setOeffnung(null))
   }, [])
 
   // TOTP handlers
@@ -146,6 +161,25 @@ export default function SecurityPage() {
     navigator.clipboard.writeText(secret)
     setSecretCopied(true)
     setTimeout(() => setSecretCopied(false), 2000)
+  }
+
+  async function oeffnungUmschalten() {
+    if (!oeffnung) return
+    setOeffnungLaeuft(true); setOeffnungFehler('')
+    try {
+      const r = await fetch('/api/auth/oeffnung', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ an: !oeffnung.eingeschaltet }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setOeffnungFehler(d.error ?? 'Das hat nicht geklappt.'); return }
+      setOeffnung(o => (o ? { ...o, eingeschaltet: !!d.eingeschaltet } : o))
+    } catch {
+      setOeffnungFehler('Kein Netz — die Einstellung wurde nicht geändert.')
+    } finally {
+      setOeffnungLaeuft(false)
+    }
   }
 
   // SMS 2FA handlers
@@ -592,6 +626,92 @@ export default function SecurityPage() {
             </p>
           </div>
         </Card>
+
+        {/*
+          §289 Die Einstellung, nach der gefragt wurde: „Man einstellen kann,
+          dass man bei jedem Öffnen der App neu mit 2FA gefragt wird."
+
+          Sie steht ganz unten und nicht oben, weil sie von den drei Karten
+          darüber ABHÄNGT: Ohne zweiten Faktor gibt es nichts zu fragen. Der
+          Schalter sagt das auch, statt nur grau zu sein — ein ausgegrauter
+          Schalter ohne Begründung ist eine Frage, die niemand gestellt hat.
+        */}
+        {oeffnung && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={18} className={
+                  oeffnung.eingeschaltet ? 'text-teal-600' : 'text-gray-400'} />
+                <CardTitle>Beim Öffnen der App erneut fragen</CardTitle>
+              </div>
+            </CardHeader>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Wird die App geschlossen und wieder geöffnet, verlangt sie denselben
+              zweiten Faktor wie beim Anmelden — den SMS-Code, den E-Mail-Code oder
+              die Authenticator-App. Gedacht für Telefone und Tablets, die im
+              Dienstzimmer liegen bleiben.
+            </p>
+
+            {oeffnung.moeglich ? (
+              <>
+                <button
+                  type="button"
+                  onClick={oeffnungUmschalten}
+                  disabled={oeffnungLaeuft}
+                  className="flex w-full items-center gap-3 rounded-xl border border-gray-200
+                             px-4 py-3 text-left hover:bg-gray-50 disabled:opacity-60"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-navy">
+                      {oeffnung.eingeschaltet ? 'Eingeschaltet' : 'Ausgeschaltet'}
+                    </span>
+                    <span className="block text-xs text-gray-500">
+                      {oeffnung.eingeschaltet
+                        ? 'Beim nächsten Öffnen wird nach dem Code gefragt.'
+                        : 'Die Anmeldung hält wie bisher dreißig Tage.'}
+                    </span>
+                  </span>
+                  <span className={`shrink-0 w-11 h-6 rounded-full transition-colors relative ${
+                    oeffnung.eingeschaltet ? 'bg-brand' : 'bg-gray-200'}`}>
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow
+                                      transition-all ${
+                      oeffnung.eingeschaltet ? 'left-[22px]' : 'left-0.5'}`} />
+                  </span>
+                </button>
+
+                {/*
+                  Beides gehört dazugesagt, bevor jemand den Schalter umlegt:
+                  die Minute Nachsicht (sonst meldet sich die App nach jedem
+                  Foto zurück) und der Ausweg, falls kein Code ankommt. Der
+                  Ausweg ist der Satz, der in §288 gefehlt hat.
+                */}
+                <p className="text-xs text-gray-400 mt-3">
+                  Kurzes Wechseln zur Kamera oder zu einer anderen App zählt nicht —
+                  gefragt wird erst, wenn die App länger als eine Minute weg war.
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Kommt einmal kein Code an, führt &bdquo;Stattdessen abmelden&ldquo; zur normalen
+                  Anmeldung. Die verlangt dasselbe — du sitzt also nie fest.
+                </p>
+              </>
+            ) : (
+              <div className="flex items-start gap-3 rounded-xl bg-amber-50 border
+                              border-amber-100 px-4 py-3">
+                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800">
+                  Dafür brauchst du zuerst einen zweiten Faktor — richte oben
+                  SMS, E-Mail oder eine Authenticator-App ein. Ohne ihn ließe sich
+                  diese Sperre nicht mehr öffnen.
+                </p>
+              </div>
+            )}
+
+            {oeffnungFehler && (
+              <p className="text-xs text-red-600 mt-3">{oeffnungFehler}</p>
+            )}
+          </Card>
+        )}
 
         <p className="text-xs text-gray-400">
           Konto: <strong>{user?.email}</strong>

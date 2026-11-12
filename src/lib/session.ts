@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual, randomBytes } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from './prisma'
+import { oeffnungSperre, OEFFNUNG_KEKS } from './oeffnungssiegel'
 
 const SESSION_COOKIE = 'okun_session'
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30 // 30 days
@@ -17,6 +18,15 @@ export interface SessionPayload {
   customerId?: string
   customerName?: string
   bereichIds?: string[]
+  /**
+   * §289 Verlangt dieses Konto beim Öffnen der App den zweiten Faktor?
+   *
+   * Steht in der Marke und nicht in der Datenbank, weil `requireRole` an
+   * JEDER Schnittstelle läuft und dort keine Abfrage stehen darf. Gesetzt
+   * wird der Wert beim Anmelden und beim Umschalten der Einstellung — und
+   * nur dann, wenn das Konto wirklich einen zweiten Faktor hat.
+   */
+  faktorBeimOeffnen?: boolean
   iat: number
 }
 
@@ -81,6 +91,58 @@ export function setSessionCookie(res: NextResponse, payload: Omit<SessionPayload
   })
 }
 
+/**
+ * §289 Die Angaben einer Sitzung — aus einem Benutzerdatensatz, an EINER
+ * Stelle.
+ *
+ * WARUM DAS JETZT HIER STEHT
+ * Dieselben zehn Zeilen standen dreimal im Programm: in der Anmeldung, beim
+ * zweiten Faktor über SMS/E-Mail und beim zweiten Faktor über die App. §196
+ * hat an genau dieser Doppelung schon einen Fehler gefunden — eine der
+ * Abschriften setzte `bereichIds` nicht, und wer auf Bereiche eingeschränkt
+ * war, bekam über den SICHEREREN Anmeldeweg MEHR Rechte.
+ *
+ * Mit `faktorBeimOeffnen` wäre es dasselbe noch einmal geworden: Eine
+ * Abschrift, die den Wert nicht setzt, lässt die Sperre still aus. Deshalb
+ * zuerst zusammengeführt, dann erweitert.
+ *
+ * `faktorBeimOeffnen` wird NUR gesetzt, wenn das Konto wirklich einen
+ * zweiten Faktor hat. Das ist die Schranke aus §288 — eine Tür ohne
+ * Schlüssel baut man nicht, auch dann nicht, wenn in der Datenbank noch ein
+ * Haken von früher steht.
+ */
+export interface SitzungsBenutzer {
+  id: string
+  email: string
+  name: string
+  role: string
+  employeeId?: string | null
+  locationId?: string | null
+  customerId?: string | null
+  customerName?: string | null
+  bereichIds?: string[]
+  totpEnabled?: boolean
+  smsOtpEnabled?: boolean
+  emailOtpEnabled?: boolean
+  faktorBeimOeffnen?: boolean
+}
+
+export function sitzungsangabenAus(user: SitzungsBenutzer): Omit<SessionPayload, 'iat'> {
+  const hatFaktor = Boolean(user.totpEnabled || user.smsOtpEnabled || user.emailOtpEnabled)
+  return {
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role as SessionRole,
+    employeeId: user.employeeId ?? undefined,
+    locationId: user.locationId ?? undefined,
+    customerId: user.customerId ?? undefined,
+    customerName: user.customerName ?? undefined,
+    bereichIds: user.bereichIds && user.bereichIds.length > 0 ? user.bereichIds : undefined,
+    faktorBeimOeffnen: Boolean(user.faktorBeimOeffnen) && hatFaktor ? true : undefined,
+  }
+}
+
 export function clearSessionCookie(res: NextResponse): void {
   res.cookies.set(SESSION_COOKIE, '', {
     httpOnly: true,
@@ -107,6 +169,30 @@ export function requireRole(
   if (roles && roles.length > 0 && !roles.includes(session.role)) {
     return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
   }
+
+  /*
+   * §289 Die Bestätigung beim Öffnen der App.
+   *
+   * Sie steht HIER und nicht in den einzelnen Routen, und das ist der
+   * Unterschied zwischen Schutz und Schaufenster: Wer das Telefon in der
+   * Hand hält, hat auch den Sitzungskeks. Eine Sperre, die nur die
+   * Oberfläche verdeckt, ließe jede Adresse offen.
+   *
+   * Welche Wege trotzdem offen bleiben müssen — allen voran das Abmelden —
+   * steht in `oeffnungssiegel.ts`. Ohne diesen Ausweg wäre es wieder die
+   * Falle aus §288.
+   */
+  const sperre = oeffnungSperre({
+    verlangt: session.faktorBeimOeffnen,
+    marke: req.cookies.get(OEFFNUNG_KEKS)?.value,
+    userId: session.userId,
+    pfad: req.nextUrl.pathname,
+  })
+  if (sperre) {
+    return NextResponse.json(
+      { error: sperre.error, code: sperre.code }, { status: sperre.status })
+  }
+
   return session
 }
 
