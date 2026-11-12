@@ -167,6 +167,102 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
 
   const ende = useRef<HTMLDivElement>(null)
   const dateiFeld = useRef<HTMLInputElement>(null)
+
+  /**
+   * §291 Der Verlauf und die Frage, ob man unten steht.
+   *
+   * GEMELDET: „Wenn ich einen Chat öffne, öffnet sich nicht die letzte
+   * Nachricht, sondern irgendwo in der Mitte. Es war zweimal da, wo gerade
+   * Bilder verschickt wurden."
+   *
+   * Der Zusammenhang mit den Bildern ist genau der Grund. Ein `<img>` ohne
+   * angegebene Maße ist vor dem Laden NULL Pixel hoch. Der Sprung ans Ende
+   * geschah 50 Millisekunden nach dem Eintreffen der Nachrichten — also an
+   * das Ende eines Verlaufs OHNE Bilder. Danach luden die Bilder und
+   * schoben alles nach unten weg, und die zuletzt geschriebene Nachricht
+   * lag plötzlich weit unterhalb des Sichtfensters.
+   *
+   * Die Mitte war also kein Zufall: Es war genau so weit daneben, wie die
+   * Bilder hoch sind.
+   *
+   * `warAmEnde` merkt sich die zuletzt bekannte Stellung des MENSCHEN. Sie
+   * ändert sich nur, wenn wirklich gescrollt wird — ein nachgeladenes Bild
+   * löst kein Scroll-Ereignis aus. Damit lässt sich beim Laden eines Bildes
+   * entscheiden: Stand er unten, bleibt er unten; hat er nach oben gescrollt,
+   * um etwas nachzulesen, wird ihm die Ansicht nicht weggerissen.
+   */
+  const verlauf = useRef<HTMLDivElement>(null)
+  const warAmEnde = useRef(true)
+
+  /**
+   * §291 ES GIBT ZWEI SCHIEBER, UND AUF DEM TELEFON IST ES DER ANDERE.
+   *
+   * Nachgemessen auf einem iPhone-Fenster, mit einem offenen Gespräch:
+   *
+   *     Fensterhöhe 664, Seitenhöhe 731, Seite steht auf 0
+   *     innerer Verlauf: gar nicht scrollbar
+   *
+   * Die Nachrichtenliste hat also oft GAR KEINEN eigenen Schieber — sie ist
+   * kürzer als ihr Kasten, und stattdessen wächst die ganze Seite. Wer beim
+   * Öffnen nur den inneren Kasten ans Ende setzt, bewegt nichts.
+   *
+   * Dazu kommt §223: Beim Öffnen wird die SEITE bewusst nach ganz oben
+   * gesetzt, damit man nicht auf der Scrollhöhe der Gesprächsliste stehen
+   * bleibt. Lädt danach ein Bild nach, wird die Seite länger — und die
+   * neueste Nachricht rutscht unter den Rand. Man sieht die Mitte.
+   *
+   * Genau das war die Meldung, und genau deshalb „da, wo gerade Bilder
+   * verschickt wurden": Die Bilder sind es, die die Seite nachträglich
+   * länger machen.
+   *
+   * Beide Schieber müssen also mitgenommen werden. `scrollIntoView` auf der
+   * Marke am Ende tut genau das — es bewegt JEDEN scrollbaren Vorfahren,
+   * auch das Fenster.
+   */
+  const istAmEnde = () => {
+    const el = verlauf.current
+    const innen = !el || el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    const se = document.scrollingElement
+    const aussen = !se || se.scrollHeight - se.scrollTop - se.clientHeight < 80
+    return innen && aussen
+  }
+
+  /**
+   * Ans Ende springen — beide Schieber.
+   *
+   * Beim Öffnen OHNE Animation: Eine weiche Fahrt über einen Verlauf, der
+   * sich währenddessen durch nachladende Bilder verlängert, endet irgendwo —
+   * und „irgendwo" war die Meldung.
+   */
+  const ansEnde = useCallback((sanft = false) => {
+    warAmEnde.current = true
+    const el = verlauf.current
+    if (el) el.scrollTop = el.scrollHeight
+    ende.current?.scrollIntoView({
+      block: 'end', behavior: sanft ? 'smooth' : 'auto',
+    })
+  }, [])
+
+  /** Ein Anhang ist geladen und hat die Höhe verändert. */
+  const anhangGeladen = useCallback(() => {
+    if (warAmEnde.current) ansEnde(false)
+  }, [ansEnde])
+
+  /*
+   * §291 Und das Fenster selbst beobachten, nicht nur den inneren Kasten.
+   *
+   * Auf dem Telefon ist das Fenster der Schieber, der sich bewegt — der
+   * innere Kasten hat oft gar keinen. Ohne diesen Hörer wüsste
+   * `warAmEnde` nie, dass jemand nach oben gegangen ist, und ein
+   * nachgeladenes Bild risse ihn mitten im Lesen nach unten.
+   */
+  useEffect(() => {
+    if (!offen) return
+    const merken = () => { warAmEnde.current = istAmEnde() }
+    window.addEventListener('scroll', merken, { passive: true })
+    return () => window.removeEventListener('scroll', merken)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offen])
   // §221 Welche Nachricht gerade weggeräumt werden soll — und ob „für alle"
   // überhaupt noch zur Wahl steht.
   const [loeschMaske, setLoeschMaske] =
@@ -206,9 +302,15 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ zugestellt: true }),
       })
-      if (scrollen) setTimeout(() => ende.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      /*
+       * §291 Sofort und ohne Animation. Vorher: `scrollIntoView` mit weicher
+       * Fahrt, 50 ms nach dem Eintreffen der Nachrichten — zu früh für die
+       * Bilder und zu langsam, um vor ihnen fertig zu sein. Was danach
+       * nachlädt, fängt `anhangGeladen` ab.
+       */
+      if (scrollen) requestAnimationFrame(() => ansEnde(false))
     } catch { setFehler('Gespräch konnte nicht geladen werden') }
-  }, [])
+  }, [ansEnde])
 
   useEffect(() => { listeLaden() }, [listeLaden])
 
@@ -310,7 +412,7 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
       zurueckziehbar: true,
     }])
     setEntwurf('')
-    setTimeout(() => ende.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    setTimeout(() => ansEnde(true), 50)
     listeLaden()
   }
 
@@ -426,7 +528,7 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
       if (!r.ok) { setFehler(d.error ?? 'Nachricht konnte nicht gesendet werden'); return }
       setNachrichten(prev => [...prev, d.nachricht])
       setEntwurf('')
-      setTimeout(() => ende.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      setTimeout(() => ansEnde(true), 50)
       listeLaden()
     } catch {
       // §138 Ohne Netz wird die Nachricht gemerkt. Sie erscheint erst im
@@ -1007,7 +1109,16 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                 )}
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+              {/*
+                §291 Der Ref und der Scroll-Hörer. Gemerkt wird NUR, was der
+                Mensch selbst tut — nachladende Bilder lösen kein
+                Scroll-Ereignis aus und ändern die Stellung deshalb nicht.
+              */}
+              <div
+                ref={verlauf}
+                onScroll={() => { warAmEnde.current = istAmEnde() }}
+                className="flex-1 overflow-y-auto px-4 py-3 space-y-2"
+              >
                 {nachrichten.length === 0 && (
                   <p className="text-xs text-gray-400 text-center py-8">
                     Noch nichts geschrieben.
@@ -1034,6 +1145,7 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
                           name={n.dateiName ?? n.text}
                           groesse={n.dateiGroesse ?? null}
                           hell={n.vonMir}
+                          onGeladen={anhangGeladen}
                         />
                       )}
                       {(!n.dateiId || n.text !== n.dateiName) && (
@@ -1220,13 +1332,21 @@ export function Nachrichten({ darfGruppen }: { darfGruppen: boolean }) {
  * das als Datei danebensteht, sieht niemand an. Alles andere — PDF, Tabelle,
  * Textdatei — bekommt eine Zeile zum Öffnen, mit Name und Größe.
  */
-function Anhang({ raum, dateiId, typ, name, groesse, hell }: {
+function Anhang({ raum, dateiId, typ, name, groesse, hell, onGeladen }: {
   raum: string
   dateiId: string
   typ: string
   name: string
   groesse: number | null
   hell: boolean
+  /**
+   * §291 Meldung, dass dieser Anhang jetzt seine wirkliche Höhe hat.
+   *
+   * Ohne sie springt der Verlauf ans Ende eines Verlaufs ohne Bilder, und
+   * die Bilder schieben ihn danach weg. Gemeldet als: „Es öffnet sich nicht
+   * die letzte Nachricht, sondern irgendwo in der Mitte."
+   */
+  onGeladen?: () => void
 }) {
   const adresse = `/api/chat/${raum}/datei?id=${dateiId}`
   const [schau, setSchau] = useState(false)
@@ -1260,6 +1380,13 @@ function Anhang({ raum, dateiId, typ, name, groesse, hell }: {
           <img
             src={adresse}
             alt={name}
+            onLoad={onGeladen}
+            /*
+              §291 Auch wenn das Bild NICHT kommt, muss der Verlauf wieder
+              ans Ende: Das Ersatzzeichen des Browsers ist ebenfalls höher
+              als nichts.
+            */
+            onError={onGeladen}
             className="rounded-xl max-h-64 w-auto object-contain bg-black/5"
           />
         </button>
@@ -1277,7 +1404,8 @@ function Anhang({ raum, dateiId, typ, name, groesse, hell }: {
 
   if (typ.startsWith('audio/')) {
     return (
-      <audio controls preload="none" src={adresse} className="mb-1 w-56 max-w-full">
+      <audio controls preload="none" src={adresse} onLoadedMetadata={onGeladen}
+        className="mb-1 w-56 max-w-full">
         Dein Browser kann diese Aufnahme nicht abspielen.
       </audio>
     )
