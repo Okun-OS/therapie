@@ -1,0 +1,13 @@
+-- §289 Beim Öffnen der App erneut mit dem zweiten Faktor bestätigen.
+--
+-- Ersatz für die Gerätesperre aus §139, die in §288 entfernt wurde, weil sie
+-- jemanden ausgesperrt hat. Der Unterschied: Das Tor ist dasselbe wie bei der
+-- Anmeldung — wer es nicht passieren kann, käme auch sonst nicht herein.
+--
+-- `IF NOT EXISTS`, weil `prisma migrate dev` beim Erzeugen dieser Datei auch
+-- Spalten aus `20261019111131_email_zweiter_faktor` noch einmal anlegen
+-- wollte (emailOtpEnabled, SmsTotpCode.kanal, zwei DROP DEFAULT). Die gibt es
+-- längst; ein zweites ADD COLUMN hätte die Auslieferung abgebrochen. Hier
+-- steht deshalb nur die eine Spalte, um die es geht — und sie verträgt einen
+-- zweiten Lauf.
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "faktorBeimOeffnen" BOOLEAN NOT NULL DEFAULT false;

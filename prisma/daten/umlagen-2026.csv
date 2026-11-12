@@ -1,0 +1,80 @@
+﻿kasse;u1_erstattung_prozent;u1_satz_prozent;u2_satz_prozent;gueltig_ab;quelle
+Techniker Krankenkasse;50;1.30;0.44;2026-01-01;https://www.tk.de/firmenkunden/versicherung/beitraege-faq-und-mehr/umlagen-u1-u2-und-insolvenzgeld/hoehe-umlagesaetze-u1-und-u2-2031720
+Techniker Krankenkasse;70;2.10;0.44;2026-01-01;https://www.tk.de/firmenkunden/versicherung/beitraege-faq-und-mehr/umlagen-u1-u2-und-insolvenzgeld/hoehe-umlagesaetze-u1-und-u2-2031720
+Techniker Krankenkasse;80;3.20;0.44;2026-01-01;https://www.tk.de/firmenkunden/versicherung/beitraege-faq-und-mehr/umlagen-u1-u2-und-insolvenzgeld/hoehe-umlagesaetze-u1-und-u2-2031720
+BARMER;50;1.90;0.42;2026-01-01;https://www.barmer.de/firmenkunden/sozialversicherung/umlage/umlage-erstattungssaetze-1003284
+BARMER;65;2.50;0.42;2026-01-01;https://www.barmer.de/firmenkunden/sozialversicherung/umlage/umlage-erstattungssaetze-1003284
+BARMER;80;4.00;0.42;2026-01-01;https://www.barmer.de/firmenkunden/sozialversicherung/umlage/umlage-erstattungssaetze-1003284
+DAK-Gesundheit;50;1.30;0.39;2026-01-01;https://www.dak.de/arbeitgeber-portal/sozialversicherung/aag-umlage-und-erstattung/umlage-u1-und-u2_57160
+DAK-Gesundheit;60;1.90;0.39;2026-01-01;https://www.dak.de/arbeitgeber-portal/sozialversicherung/aag-umlage-und-erstattung/umlage-u1-und-u2_57160
+DAK-Gesundheit;70;2.40;0.39;2026-01-01;https://www.dak.de/arbeitgeber-portal/sozialversicherung/aag-umlage-und-erstattung/umlage-u1-und-u2_57160
+DAK-Gesundheit;80;3.90;0.39;2026-01-01;https://www.dak.de/arbeitgeber-portal/sozialversicherung/aag-umlage-und-erstattung/umlage-u1-und-u2_57160
+DAK-Gesundheit;50;0.80;0.39;2026-09-01;https://www.dak.de/arbeitgeber-portal/sozialversicherung/aag-umlage-und-erstattung/umlage-u1-und-u2_57160
+DAK-Gesundheit;60;1.00;0.39;2026-09-01;https://www.dak.de/arbeitgeber-portal/sozialversicherung/aag-umlage-und-erstattung/umlage-u1-und-u2_57160
+DAK-Gesundheit;70;1.30;0.39;2026-09-01;https://www.dak.de/arbeitgeber-portal/sozialversicherung/aag-umlage-und-erstattung/umlage-u1-und-u2_57160
+DAK-Gesundheit;80;1.80;0.39;2026-09-01;https://www.dak.de/arbeitgeber-portal/sozialversicherung/aag-umlage-und-erstattung/umlage-u1-und-u2_57160
+Kaufmännische Krankenkasse – KKH;50;1.80;0.44;2026-01-01;https://www.kkh.de/firmenkunden/beitrag-sozialversicherung/erstattung-umlage
+Kaufmännische Krankenkasse – KKH;70;2.50;0.44;2026-01-01;https://www.kkh.de/firmenkunden/beitrag-sozialversicherung/erstattung-umlage
+Kaufmännische Krankenkasse – KKH;80;3.80;0.44;2026-01-01;https://www.kkh.de/firmenkunden/beitrag-sozialversicherung/erstattung-umlage
+hkk Krankenkasse (Handelskrankenkasse);50;1.60;0.50;2026-01-01;https://www.hkk.de/firmenservice/versicherung-beitraege-und-meldungen/umlageverfahren
+hkk Krankenkasse (Handelskrankenkasse);60;1.90;0.50;2026-01-01;https://www.hkk.de/firmenservice/versicherung-beitraege-und-meldungen/umlageverfahren
+hkk Krankenkasse (Handelskrankenkasse);80;2.70;0.50;2026-01-01;https://www.hkk.de/firmenservice/versicherung-beitraege-und-meldungen/umlageverfahren
+IKK classic;50;2.30;0.33;2026-01-01;https://cdn.ikk-classic.de/exporter/18900-rechengroessen-ikk-classic-01-2026.pdf
+IKK classic;65;3.10;0.33;2026-01-01;https://cdn.ikk-classic.de/exporter/18900-rechengroessen-ikk-classic-01-2026.pdf
+IKK classic;50;2.00;0.33;2026-08-01;https://cdn.ikk-classic.de/exporter/19769-rechengroessen-ikk-classic-08-2026.pdf
+IKK classic;65;2.80;0.33;2026-08-01;https://cdn.ikk-classic.de/exporter/19769-rechengroessen-ikk-classic-08-2026.pdf
+SBK Siemens-Betriebskrankenkasse;50;1.70;0.39;2026-01-01;https://www.sbk.org/arbeitgeberservice/fachthemen/umlage/umlageversicherung-u1u2/
+SBK Siemens-Betriebskrankenkasse;70;2.90;0.39;2026-01-01;https://www.sbk.org/arbeitgeberservice/fachthemen/umlage/umlageversicherung-u1u2/
+KNAPPSCHAFT;80;0.80;0.22;2026-01-01;https://www.arbeitgeberversicherung.de/SharedDocs/Downloads/DE/VersicherungsrechtBeitraegeMeldungen/GroessenVBR/GroessenVersicherungsBeitragsrechtJan26.pdf?__blob=publicationFile
+BIG direkt gesund;60;2.20;0.29;2026-01-01;https://www.big-direkt.de/de/daten-fakten-zahlen-fuer-arbeitgeber
+BIG direkt gesund;80;3.30;0.29;2026-01-01;https://www.big-direkt.de/de/daten-fakten-zahlen-fuer-arbeitgeber
+VIACTIV Krankenkasse;50;1.90;0.39;2026-01-01;https://www.viactiv.de/arbeitgeber/arbeitgeber/versicherung-beitraege/umlage/umlage-und-erstattungssaetze
+VIACTIV Krankenkasse;60;2.40;0.39;2026-01-01;https://www.viactiv.de/arbeitgeber/arbeitgeber/versicherung-beitraege/umlage/umlage-und-erstattungssaetze
+VIACTIV Krankenkasse;80;4.50;0.39;2026-01-01;https://www.viactiv.de/arbeitgeber/arbeitgeber/versicherung-beitraege/umlage/umlage-und-erstattungssaetze
+mhplus Betriebskrankenkasse;50;1.50;0.36;2026-01-01;https://www.mhplus-krankenkasse.de/firmenkunden/versicherung-beitraege/beitraege/umlageversicherungen
+mhplus Betriebskrankenkasse;70;2.50;0.36;2026-01-01;https://www.mhplus-krankenkasse.de/firmenkunden/versicherung-beitraege/beitraege/umlageversicherungen
+mhplus Betriebskrankenkasse;80;3.00;0.36;2026-01-01;https://www.mhplus-krankenkasse.de/firmenkunden/versicherung-beitraege/beitraege/umlageversicherungen
+Pronova BKK;50;1.80;0.37;2026-01-01;https://www.pronovabkk.de/fuer-firmen/wissen-zur-sozialversicherung/beitrags-und-rechengroessen/
+Pronova BKK;60;2.40;0.37;2026-01-01;https://www.pronovabkk.de/fuer-firmen/wissen-zur-sozialversicherung/beitrags-und-rechengroessen/
+SECURVITA Krankenkasse;50;1.73;0.40;2026-01-01;https://www.securvita.de/krankenkasse-securvita/infos-fuer-arbeitgeber/daten-2026-im-ueberblick.html
+SECURVITA Krankenkasse;60;2.10;0.40;2026-01-01;https://www.securvita.de/krankenkasse-securvita/infos-fuer-arbeitgeber/daten-2026-im-ueberblick.html
+SECURVITA Krankenkasse;80;4.00;0.40;2026-01-01;https://www.securvita.de/krankenkasse-securvita/infos-fuer-arbeitgeber/daten-2026-im-ueberblick.html
+AOK Baden-Württemberg;50;1.90;0.44;2026-01-01;https://www.aok.de/fk/bw/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Baden-Württemberg;60;2.50;0.44;2026-01-01;https://www.aok.de/fk/bw/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Baden-Württemberg;70;2.80;0.44;2026-01-01;https://www.aok.de/fk/bw/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Baden-Württemberg;80;4.05;0.44;2026-01-01;https://www.aok.de/fk/bw/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Bayern;50;1.60;0.49;2026-01-01;https://www.aok.de/fk/bayern/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Bayern;60;2.10;0.49;2026-01-01;https://www.aok.de/fk/bayern/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Bayern;70;2.50;0.49;2026-01-01;https://www.aok.de/fk/bayern/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Bayern;80;3.70;0.49;2026-01-01;https://www.aok.de/fk/bayern/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Bremen/Bremerhaven;50;1.80;0.50;2026-01-01;https://www.aok.de/fk/bremen/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Bremen/Bremerhaven;60;2.30;0.50;2026-01-01;https://www.aok.de/fk/bremen/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Bremen/Bremerhaven;70;3.50;0.50;2026-01-01;https://www.aok.de/fk/bremen/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Hessen;50;1.50;0.43;2026-01-01;https://www.aok.de/fk/hessen/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Hessen;60;2.10;0.43;2026-01-01;https://www.aok.de/fk/hessen/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Hessen;70;2.40;0.43;2026-01-01;https://www.aok.de/fk/hessen/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Hessen;80;3.30;0.43;2026-01-01;https://www.aok.de/fk/hessen/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Niedersachsen;55;2.00;0.60;2026-01-01;https://www.aok.de/fk/niedersachsen/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Niedersachsen;65;2.50;0.60;2026-01-01;https://www.aok.de/fk/niedersachsen/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Niedersachsen;75;3.00;0.60;2026-01-01;https://www.aok.de/fk/niedersachsen/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Nordost;55;1.80;0.47;2026-01-01;https://www.aok.de/fk/nordost/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Nordost;65;2.50;0.47;2026-01-01;https://www.aok.de/fk/nordost/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK NordWest;50;1.69;0.44;2026-01-01;https://www.aok.de/fk/nordwest/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK NordWest;60;2.29;0.44;2026-01-01;https://www.aok.de/fk/nordwest/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK NordWest;70;2.75;0.44;2026-01-01;https://www.aok.de/fk/nordwest/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK NordWest;80;4.09;0.44;2026-01-01;https://www.aok.de/fk/nordwest/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK PLUS;50;2.15;0.44;2026-01-01;https://www.aok.de/fk/plus/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK PLUS;65;2.95;0.44;2026-01-01;https://www.aok.de/fk/plus/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Rheinland/Hamburg;50;1.60;0.45;2026-01-01;https://www.aok.de/fk/rh/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Rheinland/Hamburg;60;2.05;0.45;2026-01-01;https://www.aok.de/fk/rh/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Rheinland/Hamburg;70;2.89;0.45;2026-01-01;https://www.aok.de/fk/rh/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Rheinland-Pfalz/Saarland;50;1.90;0.59;2026-01-01;https://www.aok.de/fk/rps/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Rheinland-Pfalz/Saarland;60;2.40;0.59;2026-01-01;https://www.aok.de/fk/rps/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Rheinland-Pfalz/Saarland;70;3.00;0.59;2026-01-01;https://www.aok.de/fk/rps/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Rheinland-Pfalz/Saarland;80;4.10;0.59;2026-01-01;https://www.aok.de/fk/rps/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Sachsen-Anhalt;40;1.60;0.43;2026-01-01;https://www.aok.de/fk/sachsen-anhalt/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Sachsen-Anhalt;50;2.00;0.43;2026-01-01;https://www.aok.de/fk/sachsen-anhalt/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Sachsen-Anhalt;70;2.60;0.43;2026-01-01;https://www.aok.de/fk/sachsen-anhalt/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Sachsen-Anhalt;40;1.60;0.49;2026-07-01;https://www.aok.de/fk/sachsen-anhalt/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Sachsen-Anhalt;50;2.00;0.49;2026-07-01;https://www.aok.de/fk/sachsen-anhalt/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/
+AOK Sachsen-Anhalt;70;2.60;0.49;2026-07-01;https://www.aok.de/fk/sachsen-anhalt/tools/weitere-inhalte/beitraege-und-rechengroessen-der-sozialversicherung/umlage-und-erstattungssaetze/

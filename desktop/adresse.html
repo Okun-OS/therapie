@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>OKUN Workforce — Adresse der Anlage</title>
+  <!--
+    §173 Wo steht Ihre Anlage?
+    Ein Kunde mit eigener Domain oder eigenem Server tippt sie hier einmal
+    ein. Er soll dafür nichts neu bauen und niemanden anrufen müssen.
+    Die Seite liegt im Programm — sie muss auch dann funktionieren, wenn gar
+    keine Anlage erreichbar ist.
+  -->
+  <style>
+    :root { color-scheme: dark }
+    * { box-sizing: border-box }
+    body {
+      margin: 0; min-height: 100vh; background: #1A1D1F; color: #fff;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 32px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .karte { width: 100%; max-width: 30rem }
+    h1 { font-size: 21px; margin: 0 0 8px; font-weight: 700 }
+    p { margin: 0 0 20px; line-height: 1.55; color: rgba(255,255,255,.62); font-size: 14px }
+    label { display: block; font-size: 12px; color: rgba(255,255,255,.5); margin-bottom: 6px }
+    input {
+      width: 100%; padding: 13px 14px; border-radius: 12px; font-size: 15px;
+      background: rgba(255,255,255,.06); color: #fff; font-family: inherit;
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    input:focus { outline: 2px solid #2DD4BF; outline-offset: 1px }
+    .knoepfe { display: flex; gap: 10px; margin-top: 18px }
+    button {
+      border: 0; border-radius: 12px; padding: 13px 24px; font-size: 15px;
+      font-weight: 700; font-family: inherit; cursor: pointer;
+    }
+    .haupt { background: #2DD4BF; color: #0F172A }
+    .neben { background: rgba(255,255,255,.08); color: #fff }
+    .meldung { margin-top: 14px; font-size: 13px; min-height: 1.2em }
+    .fehler { color: #FCA5A5 }
+    .gut { color: #6EE7B7 }
+    .hinweis { margin-top: 22px; font-size: 12px; color: rgba(255,255,255,.34); line-height: 1.6 }
+  </style>
+</head>
+<body>
+  <div class="karte">
+    <h1>Wo steht Ihre Anlage?</h1>
+    <p>
+      Das Programm zeigt die Anlage Ihrer Einrichtung. Lohn, Zeiten und
+      Dienstpläne liegen dort — nicht auf diesem Rechner.
+    </p>
+
+    <label for="adresse">Adresse</label>
+    <input id="adresse" type="url" inputmode="url" spellcheck="false"
+           data-test="adresse-eingabe" placeholder="https://workforce.ihre-einrichtung.de">
+
+    <div class="knoepfe">
+      <button class="haupt" id="speichern" data-test="adresse-speichern">Speichern und öffnen</button>
+      <button class="neben" id="zurueck">Abbrechen</button>
+    </div>
+
+    <p class="meldung" id="meldung" data-test="adresse-meldung"></p>
+
+    <p class="hinweis">
+      Nur verschlüsselte Adressen (https). Bei Lohndaten ist ein unverschlüsselter
+      Weg nicht vertretbar — er ließe sich im selben Netz mitlesen.
+    </p>
+  </div>
+
+  <script>
+    const feld = document.getElementById('adresse')
+    const meldung = document.getElementById('meldung')
+    const vorhanden = new URLSearchParams(location.search).get('adresse')
+
+    async function vorbelegen() {
+      if (vorhanden) { feld.value = vorhanden; return }
+      if (window.okun) feld.value = await window.okun.adresse()
+    }
+    vorbelegen()
+    feld.focus()
+
+    async function speichern() {
+      meldung.className = 'meldung'
+      meldung.textContent = ''
+      if (!window.okun) {
+        meldung.className = 'meldung fehler'
+        meldung.textContent = 'Diese Seite gehört zum Programm und läuft im Browser nicht.'
+        return
+      }
+      const antwort = await window.okun.adresseSetzen(feld.value)
+      if (antwort.ok) {
+        meldung.className = 'meldung gut'
+        meldung.textContent = 'Gespeichert. ' + antwort.adresse + ' wird geöffnet…'
+      } else {
+        meldung.className = 'meldung fehler'
+        meldung.textContent = antwort.fehler
+      }
+    }
+
+    document.getElementById('speichern').onclick = speichern
+    feld.addEventListener('keydown', e => { if (e.key === 'Enter') speichern() })
+    document.getElementById('zurueck').onclick = async () => {
+      if (window.okun) location.href = await window.okun.adresse()
+    }
+  </script>
+</body>
+</html>

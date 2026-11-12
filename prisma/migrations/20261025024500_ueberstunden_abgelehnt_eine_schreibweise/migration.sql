@@ -1,0 +1,24 @@
+-- §235 Eine Schreibweise für „abgelehnt" bei Überstundenanträgen.
+--
+-- In `OvertimeRequest.status` standen 67 Datensätze mit „rejected" — ein Wort,
+-- das der Typ gar nicht kennt (`'pending' | 'approved' | 'denied' |
+-- 'partial'`) und das `VacationRequest` daneben als „denied" schreibt. Die
+-- Schnittstelle nahm den Status ungeprüft entgegen; was eine Maske schickte,
+-- landete in der Datenbank.
+--
+-- Die Maske schlug das Wort nach, bekam nichts und nahm beim Zugriff auf
+-- `.variant` die ganze Seite mit: Statt der Zeiterfassung stand „Etwas ist
+-- schiefgelaufen". Gefunden beim Seitendurchgang (§234), nicht durch eine
+-- Meldung — gemeldet hätte es wohl irgendwann jemand, der seine Überstunden
+-- sucht.
+--
+-- WAS SICH INHALTLICH ÄNDERT: NICHTS
+-- „rejected" und „denied" meinen denselben Zustand, und nur einer davon war je
+-- vorgesehen. Die Zeile vereinheitlicht die Schreibweise; keine Entscheidung
+-- über einen Antrag wird dadurch anders.
+--
+-- Die Schnittstelle prüft den Status jetzt, bevor er gespeichert wird, und
+-- übersetzt „rejected" weiter — eine Maske, die jahrelang so geschrieben hat,
+-- soll nicht ab heute Fehler bekommen.
+
+UPDATE "OvertimeRequest" SET "status" = 'denied' WHERE "status" = 'rejected';

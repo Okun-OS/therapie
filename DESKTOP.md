@@ -1,0 +1,523 @@
+# OKUN Workforce zum Herunterladen
+
+Ein Programm für Windows, macOS und Linux, das man installiert wie jedes
+andere: Symbol im Startmenü, eigenes Fenster, kein Browsertab zwischen
+zwanzig anderen.
+
+> **Es ist eine Hülle, keine zweite Anwendung.** Alles, was OKUN Workforce
+> kann, kann es weiterhin genau einmal — auf dem Server. Was hier gebaut wird,
+> ist das Fenster darum.
+
+---
+
+## Warum eine Hülle und keine mitgelieferte Anwendung
+
+Dieselbe Überlegung wie bei der Telefon-App (§139): Die Seiten entstehen auf
+dem Server, dort liegen Lohn, Zeiten und Rechte. Ein Programm, das den Stand
+vom Tag der Auslieferung mitbrächte, wäre am Tag darauf falsch — und jede
+Korrektur an der Lohnabrechnung müsste den Weg über eine neue Installation bei
+jedem Kunden nehmen. Bei einem Programm, das Gehälter rechnet, ist das
+untragbar.
+
+### Was es dann überhaupt bringt
+
+Nicht „dieselbe Seite in einem Fenster ohne Adressleiste":
+
+| | |
+|---|---|
+| **Es ist ein Programm** | Startmenü, Taskleiste, Dock — mit eigenem Symbol. Wer morgens den Rechner anmacht, klickt ein Programm an und sucht kein Lesezeichen. |
+| **Es merkt sich das Fenster** | Größe und Lage über das Beenden hinaus. |
+| **Es druckt sauber** | Ohne Kopf- und Fußzeile des Browsers. Ein Lohnbeleg mit „1/2 — workforce.beispiel.de/company/payroll?id=…" am Rand gehört nicht in eine Personalakte. |
+| **Die Anlage ist einstellbar** | Eigene Domain, eigener Server, Testanlage. Einmal eintippen, bleibt gespeichert. |
+| **Fremde Seiten bleiben draußen** | Ein Link nach außen geht in den Systembrowser. Eine fremde Seite im selben Fenster sähe aus wie ein Teil des Programms. |
+| **Kein weißer Bildschirm** | Antwortet die Anlage nicht, steht im Klartext da, welche Adresse versucht wurde und woran es lag. |
+
+### Was es bewusst nicht tut
+
+Es hält **keine Daten auf dem Rechner**. Kein Zwischenspeicher mit Gehältern
+in einem Ordner, den die nächste Datenrettung findet. Was die Anlage schickt,
+lebt im Fenster und verschwindet mit ihm. Gespeichert werden genau zwei
+Kleinigkeiten: die Adresse der Anlage und die Fenstergröße.
+
+---
+
+## Bauen
+
+```bash
+npm run desktop            # einmal starten, ohne zu paketieren
+npm run desktop:pruefen    # die 17 Nachweise der Hülle
+npm run desktop:linux      # AppImage + .deb
+npm run desktop:win        # Installationsprogramm für Windows (.exe)
+npm run desktop:mac        # .dmg — nur auf einem Mac
+```
+
+Die fertigen Dateien liegen in `desktop/pakete/` (nicht im Repo — über hundert
+Megabyte je Stück).
+
+### Die Adresse der Anlage mitgeben
+
+```bash
+OKUN_APP_URL=https://workforce.ihre-einrichtung.de npm run desktop:linux
+```
+
+Ohne Angabe zeigt das Programm auf die Anlage von OKUN. **Im Programm selbst
+lässt sich die Adresse ändern** (Menü → Datei → Adresse der Anlage) — ein Kunde
+mit eigenem Server muss dafür nichts neu bauen und niemanden anrufen.
+
+Nur `https`. Die einzige Ausnahme ist `localhost` für die Entwicklung: Dort
+gibt es kein Netz, über das mitgelesen werden könnte.
+
+### Für das .deb-Paket
+
+Debian verlangt einen Verantwortlichen mit E-Mail-Adresse. Er kommt aus
+denselben Angaben wie das Impressum:
+
+```bash
+OKUN_FIRMA="…" OKUN_KONTAKT="…" npm run desktop:linux
+```
+
+---
+
+## Was gebaut wird
+
+| Ziel | Datei | Größe | Was der Benutzer tut |
+|---|---|---|---|
+| Windows | `.exe` (NSIS) | ~112 MB | Doppelklick, Weiter, fertig — **ohne Administratorrechte**. In Einrichtungen hat die Verwaltung die selten, und auf die IT zu warten heißt oft: es passiert nie. |
+| Linux | `.AppImage` | ~126 MB | Herunterladen, ausführbar machen, starten. Keine Installation. |
+| Linux | `.deb` | ~100 MB | Für verwaltete Arbeitsplätze. |
+| macOS | `.dmg` | — | Ins Programme-Verzeichnis ziehen. **Nur auf einem Mac zu bauen.** |
+
+Die hundert Megabyte sind die Chrome-Grundlage von Electron und nicht die
+Anwendung: Im Paket selbst liegen sieben Dateien.
+
+> **Warum `desktop/` ein eigenes npm-Paket ist.** Der Paketbauer packt immer
+> alle Produktionsabhängigkeiten des Projekts ein, in dem er läuft — eine
+> Liste in `files` ändert daran nichts. Der erste Versuch aus dem
+> Hauptverzeichnis heraus ergab **280 MB**: Prisma mit seinem Rechenkern, der
+> Anthropic-Zugang, der Mailversand. Nichts davon braucht ein Fenster, das
+> eine Webseite lädt — und jedes Stück davon wäre auf jedem Kundenrechner zu
+> pflegen und auf Sicherheitslücken zu prüfen. Deshalb hat
+> `desktop/package.json` **keine Abhängigkeiten**, und gebaut wird mit
+> `--project desktop`.
+
+---
+
+## Sicherheit
+
+Die drei Zeilen, auf die es ankommt, stehen in `desktop/haupt.js`:
+
+```js
+nodeIntegration: false,   // die Seite bekommt kein Node
+contextIsolation: true,   // sie lebt in ihrem eigenen Kontext
+sandbox: true,            // und in einer Sandbox
+```
+
+Was die geladene Seite auf dem Rechner darf, steht vollständig in
+`desktop/bruecke.js` und ist eine kurze Liste: die eigene Adresse erfragen,
+sie ändern, drucken, die Fassung erfragen. **Wer diese Liste erweitert, öffnet
+eine Tür und muss sie begründen.**
+
+Dazu:
+
+- **Fremde Adressen** werden weder im Fenster geöffnet noch in einem neuen
+  Fenster — sie gehen in den Systembrowser.
+- **Kein `http`** außer auf dem eigenen Rechner.
+- **Kein Debug-Zugang**, keine `webview`-Elemente.
+- **Kamera, Mikrofon, Ort** werden abgelehnt. Die Anlage braucht sie nicht;
+  wer sie anfragt, ist nicht die Anlage.
+- **Ein zweiter Start** holt das vorhandene Fenster nach vorn. Zwei Fenster
+  mit demselben Lohnmonat sind ein Weg, versehentlich zweimal freizugeben.
+
+### Keine Selbstaktualisierung — mit Absicht
+
+Die Hülle enthält keine Anwendung. Korrekturen an Lohn, Dienstplan oder Recht
+gehen über den Server und sind beim nächsten Öffnen da; niemand wartet auf ein
+Programm-Update. Was sich hier ändern könnte, ist das Fenster selbst — selten.
+Eine Selbstaktualisierung bräuchte dafür einen dauerhaft erreichbaren
+Ausgabekanal und eine Signatur: zwei Angriffsflächen für einen Nutzen, den es
+kaum gibt.
+
+Wird das später anders gesehen: `publish: { provider: 'generic', url: … }` in
+`desktop/electron-builder.js` plus `electron-updater`.
+
+---
+
+## Nachweise
+
+```bash
+npm run desktop:pruefen
+```
+
+17 Prüfungen an einem echten Fenster (`pruefungen/desktop/huelle.mjs`). Sie
+prüfen nicht die Anwendung — das tun die 1401 Nachweise daneben —, sondern die
+vier Entscheidungen, die nur in der Hülle stecken:
+
+1. Die Hülle zeigt die eingestellte Anlage.
+2. Sie geht nirgendwo anders hin.
+3. Antwortet die Anlage nicht, steht das im Klartext da.
+4. Die Seite bekommt kein Node, kein Dateisystem, sondern genau die kurze
+   Liste aus `bruecke.js`.
+
+Sie laufen nicht im Gesamtlauf: Sie brauchen Electron, Playwright und einen
+Bildschirm (`xvfb`), und eine Prüfung, die aus Umgebungsgründen rot wird, wird
+nach zwei Wochen ignoriert.
+
+---
+
+## Was noch fehlt
+
+| | Was | Warum es noch nicht geht |
+|---|---|---|
+| 🔴 | **Die .exe signieren** | Der Bau ist vorbereitet (§187, siehe unten) — es fehlt das Zertifikat. Ein Kauf, keine Programmierarbeit. |
+| 🔴 | **.dmg bauen und beglaubigen** | Braucht einen Mac und das Apple-Developer-Konto. Ohne Beglaubigung („notarization") warnt macOS beim ersten Start. Hängt an derselben D-U-N-S-Nummer wie der App Store — siehe `APP-STORES.md`. |
+| 🔴 | **Ein Ort für die Dateien** | Seit §205 kann sich das Programm selbst aktualisieren — aber nur, wenn `latest.yml` und die `.exe` irgendwo liegen, wo es sie findet. Ohne das bleibt die Selbstaktualisierung aus (und zwar still, siehe unten). Das ist jetzt der Punkt, an dem alles Weitere hängt. |
+| 🟡 | **Eine Seite zum Herunterladen** | Dasselbe für Menschen: eine Seite auf okun-workforce.com, die zu den Dateien führt. |
+| 🟢 | Fassungsnummer gemeinsam führen | `desktop/package.json` hat eine eigene Version. Solange die Hülle sich kaum ändert, ist das in Ordnung; sobald sie öfter ausgeliefert wird, sollte ein Befehl beide setzen. |
+
+🔴 dringend · 🟡 bald · 🟢 wenn ein Kunde kommt
+
+---
+
+## §205 Der Installationsassistent und die Selbstaktualisierung
+
+### Der Assistent
+
+Daran misst jeder in den ersten dreißig Sekunden, ob eine Software ernst
+gemeint ist — lange bevor er eine Funktion gesehen hat.
+
+| Einstellung | Wirkung |
+|---|---|
+| `oneClick: false` | Ein Assistent mit Schritten statt einer Datei, die sich wortlos entpackt |
+| `allowToChangeInstallationDirectory` | Der Ordner lässt sich wählen |
+| `perMachine: false` | Keine Administratorrechte nötig — in Einrichtungen hat die Verwaltung die selten, und auf die IT zu warten heißt oft: es passiert nie |
+| `installerSidebar` / `installerHeader` | Die beiden Bilder des Assistenten |
+| `uninstallDisplayName` | Was unter „Apps & Features" steht |
+| `runAfterFinish` | Nach der Installation gleich starten |
+| `deleteAppDataOnUninstall: false` | Adresse und Fensterlage bleiben liegen. Es sind keine Kunden- und keine Lohndaten — die liegen auf dem Server |
+| `differentialPackage` | Nur den Unterschied zur vorigen Fassung laden |
+
+**Die Bilder erzeugt ein Skript:**
+
+```bash
+node scripts/installer-bilder.mjs
+```
+
+Sie werden trotzdem eingecheckt — der Bau soll nicht von einem Skript
+abhängen, das jemand zu laufen vergisst. NSIS kann nur **BMP**, und nur in
+genau zwei Größen: `164×314` für die Seitenfläche, `150×57` für den
+Kopfstreifen. Wer andere Maße liefert, bekommt kein skaliertes Bild, sondern
+einen abgeschnittenen Rand.
+
+> **Noch offen und bewusst so: keine Lizenzseite.** Die meisten Assistenten
+> zeigen eine. Welche Nutzungsbedingungen dort stehen, ist eine juristische
+> Entscheidung und keine, die beim Programmieren getroffen wird. Ist der Text
+> da, kommt er als `nsis.license` dazu.
+
+### Die Selbstaktualisierung
+
+In §173 stand hier eine Absage mit Begründung: Die Hülle enthält keine
+Anwendung, Korrekturen gehen über den Server. Das stimmt weiterhin — nur
+ändert sich seit §201 die **Hülle selbst**, und ohne Selbstaktualisierung
+erreicht davon nichts jemanden, der das Programm schon installiert hat.
+
+**Gesteuert wird alles über eine Variable beim Bauen:**
+
+```bash
+OKUN_UPDATE_URL=https://… npm run desktop:win
+```
+
+| Ohne sie | Mit ihr |
+|---|---|
+| `publish: null`, kein `app-update.yml` im Paket | `provider: generic` mit dieser Adresse |
+| Das Programm merkt das und sucht **gar nicht erst** | Einmal 20 Sekunden nach dem Start, danach alle sechs Stunden |
+
+Ein eingetragener Ausgabeort, an dem nichts liegt, wäre schlechter als keiner:
+Dann liefe bei jedem Start eine Suche ins Leere — beim Kunden, täglich,
+unsichtbar.
+
+**`generic` und nicht GitHub:** Ein privates Repository bräuchte ein
+Zugriffswort in jedem ausgelieferten Programm, also ein Geheimnis auf dem
+Rechner jedes Kunden.
+
+**Was dort liegen muss:** `latest.yml` und die `.exe` aus `desktop/pakete/`.
+Beide entstehen beim Bauen; hochgeladen werden müssen sie von Hand oder von
+einem Ausliefervorgang, den es noch nicht gibt.
+
+**Was das Programm tut und was nicht:**
+
+* Es erzwingt nichts. Gefragt wird erst, wenn die neue Fassung fertig geladen
+  ist, und „Später" ist eine vollwertige Antwort.
+* Es meldet sich nicht, wenn nichts da ist. Eine Suche, die bei jedem Start
+  „Sie sind aktuell" sagt, ist Lärm.
+* Es meldet sich nicht, wenn die Suche scheitert — außer, der Mensch hat
+  selbst gesucht (*Hilfe → Nach Aktualisierung suchen…*).
+
+**Sicherheit:** electron-updater vergleicht unter Windows den Herausgeber der
+heruntergeladenen Signatur mit dem, der beim Bauen in `app-update.yml`
+geschrieben wurde, und lehnt ab, wenn beides nicht zusammenpasst. Ein
+unsigniert gebautes Programm scheitert damit an der eigenen Prüfung — und das
+ist richtig so. **Erst signieren (§187), dann ausliefern.**
+
+---
+
+## §187 Die Signatur für Windows — was zu kaufen ist und warum
+
+Ohne Signatur zeigt Windows beim ersten Start „Unbekannter Herausgeber". Bei
+einem Programm, das Gehälter anzeigt, installiert das niemand.
+
+### Die eine Sache, die man vorher wissen muss
+
+**Seit dem 1. Juni 2023 gibt es kein Zertifikat mehr als Datei mit Kennwort.**
+Die Zertifizierungsstellen müssen den privaten Schlüssel auf zertifizierter
+Hardware halten — entweder auf einem USB-Stick, den sie per Post schicken, oder
+in einem Cloud-Tresor.
+
+Das klingt nach einer Fußnote und entscheidet alles:
+
+* **Mit USB-Stick** kann nur die Person signieren, die den Stick eingesteckt
+  hat. Der Bau läuft hier auf einem Server — er könnte dann nicht signieren.
+  Jede Auslieferung ginge über einen Windows-Rechner von Hand.
+* **Mit Cloud-Tresor** signiert der Bau selbst. Das Zertifikat liegt beim
+  Anbieter, der Bau ruft ihn über einen Befehl.
+
+Wer den Stick nimmt, kauft sich eine Handarbeit bei jeder Auslieferung ein.
+
+### Die drei Wege
+
+| | Was | Kosten (nachgesehen 05.10.2026) | Signiert der Bau selbst? |
+|---|---|---|---|
+| **A** | **Azure Artifact Signing** (früher Trusted Signing) | **9,99 $/Monat**, 5.000 Signaturen, 1 Zertifikatsprofil. Kein Zertifikatskauf. | ja |
+| **B** | **Standard Code Signing in der Cloud, Certum** (EU, Polen) | **ab 209 €** für die Laufzeit, Cloud-Signatur „SimplySign" kostenlos dabei | ja |
+| **C** | **OV + eSigner, SSL.com** | 129 $/Jahr Zertifikat **plus** 180 $/Jahr Cloud-Signatur = 309 $ | ja |
+| **D** | **Zertifikat auf USB-Stick**, beliebige Stelle | wie B/C, aber per Post | **nein** |
+
+**Empfehlung: A.** Am billigsten, kein Zertifikatskauf, keine Hardware, und der
+Bau signiert selbst. Deutschland ist als EU-Land zugelassen (Organisationen in
+EU, UK, USA, Kanada, Australien, Neuseeland, Japan, Südkorea, Singapur,
+Schweiz, Norwegen, Israel).
+
+**Region: North Europe** (Irland). West Europe wäre naheliegender, nimmt aber
+keine neuen Kunden mehr auf — der Versuch endet mit
+`RequestDisallowedByAzure: The selected region is currently not accepting new
+customers`. North Europe liegt weiterhin in der EU. Weitere Ausweichregionen,
+falls auch die einmal dichtmacht: Poland Central (EU), Switzerland North.
+
+> **Die 3-Jahres-Hürde gilt nicht mehr.** In der Vorschauphase 2025 verlangte
+> Azure drei Jahre nachweisbare Firmengeschichte — für eine junge UG ein
+> Ausschluss. Das steht noch in vielen Texten und auch in automatisch
+> erzeugten Antworten im Microsoft-Forum. Ein Microsoft-Moderator hat am
+> 17.08.2026 ausdrücklich klargestellt: „country/region onboarding pre-reqs,
+> **no minimum org age restrictions**". Die offizielle Voraussetzungsliste
+> nennt nur Land und Region.
+
+**EV statt OV lohnt für SmartScreen nicht mehr.** Hier stand vorher, EV
+überspringe die Aufwärmphase. Das war bis 2024 richtig und ist es nicht mehr:
+Microsoft hat den Sofort-Vertrauensvorschuss für EV abgeschafft. Seitdem
+sammeln EV und OV ihren Ruf gleich — über Installationszahlen, nicht über die
+Zertifikatsklasse. Auch EV-signierte Programme zeigen am Anfang die Warnung.
+**Das heißt für uns: Es gibt keinen Grund, für EV das Dreifache zu zahlen.**
+
+Was wirklich hilft, ist Stetigkeit: **immer mit derselben Signaturidentität
+signieren.** Jeder Wechsel des Zertifikats oder des Herausgebernamens setzt den
+gesammelten Ruf zurück. Deshalb steht der Name an einer Stelle
+(`desktop/package.json`) und nicht an vier.
+
+### Was für die Prüfung bereitliegen muss
+
+Die Angaben müssen zum Handelsregister passen — und zum Impressum:
+
+* **OKUN Systems UG (haftungsbeschränkt)**, genau so geschrieben
+* Die Anschrift aus dem Handelsregister
+* Die Registernummer als „Business Identifier": **HRB 292175 B**
+* Die Website des Unternehmens: `https://okun-workforce.com`
+* **Zwei E-Mail-Adressen auf einer Domain des Unternehmens**, verschieden,
+  beide gelesen, beide für Nachrichten von außen mit Links erreichbar
+  (Bestätigungslinks laufen nach sieben Tagen ab). Die zweite darf eine
+  Verteilerliste sein, muss aber auf derselben Domain liegen.
+* Der Handelsregisterauszug; falls nachgefragt wird, muss er **in den letzten
+  zwölf Monaten ausgestellt** worden sein und noch mindestens zwei Monate
+  gelten. Für Nachreichungen gibt es **drei Versuche**.
+
+**Und eine Person weist sich persönlich aus.** Das überrascht die meisten: Zur
+Organisationsprüfung gehört eine Identitätsprüfung des Vertreters — Vor- und
+Nachname genau wie im Ausweis, dann ein Lichtbildausweis (Pass,
+Personalausweis oder Führerschein) über ein Mobiltelefon, per
+Microsoft-Authenticator-App. Also: **Felix Okun braucht seinen Ausweis und ein
+Handy**, und der Name muss im Antrag genau so stehen wie im Ausweis.
+
+Der Name im Zertifikat ist später der, den Windows im Installationsprogramm
+anzeigt. Deshalb steht er seit §187 wortgleich in `desktop/package.json`. Und
+weil jede Änderung eine **neue** Identitätsprüfung erfordert — nachträglich
+korrigieren geht nicht —, lohnt es sich, die Felder vor dem Absenden mit der
+Vorschau („Certificate subject preview") zu vergleichen.
+
+### Wie signiert wird, wenn es da ist
+
+**Bei Azure (Weg A) braucht es keinen Befehl.** electron-builder 26 redet
+selbst mit Azure Artifact Signing. Drei Angaben aus dem Portal, dazu die
+Anmeldedaten, die Azure selbst liest:
+
+```bash
+OKUN_AZURE_ENDPUNKT=https://neu.codesigning.azure.net \
+OKUN_AZURE_KONTO=<Name des Artifact-Signing-Kontos> \
+OKUN_AZURE_PROFIL=<Name des Zertifikatsprofils> \
+AZURE_TENANT_ID=… AZURE_CLIENT_ID=… AZURE_CLIENT_SECRET=… \
+  npm run desktop:win
+```
+
+Der Endpunkt muss zur Region des Kontos passen: `neu` für North Europe, `weu`
+für West Europe, `plc` für Poland Central, `swn` für Switzerland North. Der **Herausgebername kommt nicht aus der Umgebung**, sondern
+aus `desktop/package.json`: Es gibt ihn an einer Stelle, damit er nicht an
+zweien auseinanderlaufen kann.
+
+Stehen nur zwei der drei Variablen, **bricht der Bau ab**. Sonst liefe er still
+über den anderen Weg oder unsigniert weiter, und niemand sähe, dass Azure
+gemeint war.
+
+### §201 Das Fenster hat keinen eigenen Rahmen mehr
+
+Oben saß die helle Fensterleiste des Betriebssystems über einer App, die ihre
+eigene Kopfleiste mitbringt — zwei Kanten, zwei Farben, und genau deshalb der
+Eindruck „Webseite in einem Kasten". Der Rahmen ist jetzt ausgeblendet
+(`titleBarStyle: 'hidden'`, unter macOS `hiddenInset`); das System zeichnet
+nur noch die drei Knöpfe, und zwar über die `CommandRail` der App.
+
+Drei Dinge hängen daran und müssen zusammenpassen:
+
+| Wo | Was |
+|---|---|
+| `desktop/haupt.js` → `LEISTE.hoehe` | 70 — dieselbe Höhe wie die `CommandRail` |
+| `src/app/globals.css` → `.zieh-flaeche` | macht die Leiste anfassbar und hält rechts 150 px für die Knöpfe frei |
+| `desktop/bruecke.js` | setzt `im-programm` auf dem Wurzelelement, **bevor** gezeichnet wird |
+
+Wird die Kopfleiste der App einmal höher oder niedriger, muss `LEISTE.hoehe`
+mit — sonst sitzen die Knöpfe neben der Leiste. Das fällt keinem Test auf,
+weil beides für sich genommen richtig bleibt; deshalb steht es hier.
+
+Die Farbe der Knöpfe meldet jede Seite selbst (`fensterleiste()` in
+`src/lib/drucken.ts`): die Anmeldung dunkel, die App dahinter hell. Die Hülle
+führt bewusst keine Liste der dunklen Seiten.
+
+### §210 Wo die Dateien liegen — `okun-workforce.com/programm/…`
+
+Die Adresse, unter der das Programm nach Aktualisierungen sucht, wird in
+**jedes ausgelieferte Programm eingebacken**. Was heute installiert wird,
+schaut in zwei Jahren noch genau dort nach. Deshalb ist es eine Adresse auf
+der eigenen Domain und nicht die eines Speicheranbieters:
+
+```
+okun-workforce.com/programm/latest.yml                        ← durchgereicht
+okun-workforce.com/programm/OKUN-Workforce-0.2.0-win-x64.exe  ← umgeleitet
+```
+
+Dahinter liegt Cloudflare R2 als **privater** Bucket. Die Anlage holt die
+kleine `latest.yml` selbst heraus und stellt für die große `.exe` eine
+Adresse aus, die nach 15 Minuten verfällt — der Download läuft dadurch
+direkt beim Speicher und nicht über Railway, kostet also keinen
+ausgehenden Verkehr.
+
+**Der Speicher ist damit austauschbar.** Liegt morgen alles bei Hetzner,
+merkt kein installiertes Programm etwas. Nur die vier Variablen wechseln.
+
+| Variable | Woher |
+|---|---|
+| `R2_KONTO_ID` | Cloudflare → R2 → Account ID (steht auch in der Adresszeile) |
+| `R2_BUCKET` | `okun-programm` |
+| `R2_SCHLUESSEL` | R2 → Manage API Tokens → Access Key ID |
+| `R2_GEHEIMNIS` | dieselbe Stelle → Secret Access Key |
+
+> **Der Token darf nur lesen, und nur diesen einen Bucket.** Die Anlage lädt
+> nichts hoch und löscht nichts — das macht ein Mensch im Cloudflare-Fenster.
+> Ein Schlüssel auf einem Server, der schreiben darf, ist ein Weg, über den
+> sich eine übernommene Anlage selbst verteilt.
+
+Fehlt eine der vier Angaben, antwortet die Adresse mit **503 und sagt warum**
+— nicht mit 404. „Gibt es nicht" und „noch nicht eingerichtet" sind zwei
+verschiedene Auskünfte.
+
+Kein AWS-Paket im Projekt: Die Signatur (AWS SigV4) steht in sechzig Zeilen
+in `src/lib/r2.ts`. Das Paket `@aws-sdk/client-s3` zöge rund vierzig weitere
+nach, für zwei Handgriffe.
+
+### Ausliefern, Schritt für Schritt
+
+1. `OKUN_UPDATE_URL=https://okun-workforce.com/programm/ npm run desktop:win`
+2. **Alles** aus `desktop/pakete/` in den Bucket `okun-programm` hochladen —
+   flach, ohne Unterordner
+3. Fertig. Jedes installierte Programm merkt es von allein.
+
+---
+
+### Eingerichtet am 19.10.2026 — die echten Werte
+
+| Variable | Wert |
+|---|---|
+| `OKUN_AZURE_ENDPUNKT` | `https://neu.codesigning.azure.net` (North Europe) |
+| `OKUN_AZURE_KONTO` | `okunsignatur` — **ohne Bindestrich**, anders als die Ressourcengruppe `okun-signatur` |
+| `OKUN_AZURE_PROFIL` | `okun-public` |
+| `AZURE_TENANT_ID` | Verzeichnis-ID des Standardverzeichnisses |
+| `AZURE_CLIENT_ID` | App-Registrierung `okun-signatur-bau` |
+| `AZURE_CLIENT_SECRET` | steht **nur** bei Railway |
+
+Dazu gehört die Rollenzuweisung **Artifact Signing Certificate Profile Signer**
+für `okun-signatur-bau` auf dem Konto `okunsignatur`. Ohne sie darf die App
+sich anmelden, aber nicht signieren — der Bau läuft dann bis zur Signatur und
+bricht mit „Forbidden" ab.
+
+> **Zwei Termine zum Vormerken**
+>
+> * **18.10.2028** — der geheime Clientschlüssel läuft ab. Danach bricht jeder
+>   Bau ab. Ersatz: Entra ID → App-Registrierungen → `okun-signatur-bau` →
+>   Zertifikate & Geheimnisse → neuer Schlüssel, Wert bei Railway ersetzen.
+>   Zertifikat und Profil bleiben davon unberührt.
+> * **7.1.2029** — die Identitätsüberprüfung
+>   `e339bb25-b6de-4e49-9e8e-ebdc493b4283` läuft ab und muss erneuert werden.
+>
+> Das **Zertifikat selbst gilt nur drei Tage** und erneuert sich von allein.
+> Das ist kein Fehler, sondern der Sinn des Dienstes: Ein Schlüssel mit drei
+> Tagen Laufzeit ist für einen Dieb fast wertlos. Dass eine einmal signierte
+> Datei trotzdem jahrelang gültig bleibt, macht der Zeitstempel — Windows
+> prüft nicht, ob das Zertifikat heute gilt, sondern ob es galt, als signiert
+> wurde.
+
+**Bei jedem anderen Weg (B, C, D)** kommt der Befehl des Anbieters über eine
+Umgebungsvariable; `{datei}` wird durch den Pfad der zu signierenden Datei
+ersetzt:
+
+```bash
+OKUN_SIGN_BEFEHL='signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 "{datei}"' \
+  npm run desktop:win
+```
+
+**Ohne diese Variable wird unsigniert gebaut — und der Bau sagt es.** Für jede
+unsignierte Datei erscheint eine Warnung mit ihrem Pfad. Zum Ausprobieren ist
+das in Ordnung; still unsigniert auszuliefern wäre es nicht. Nachgemessen am
+Bau vom 05.10.2026: vier Dateien, vier Warnungen — das Programm selbst,
+`elevate.exe`, das Deinstallationsprogramm und das Installationsprogramm.
+
+**Scheitert der Befehl, scheitert der Bau.** Auch das ist nachgewiesen: Mit
+einem Befehl, der Fehlercode 7 zurückgibt, bricht `npm run desktop:win` ab und
+hinterlässt keine `.exe`. Eine Signatur, die klemmt, darf nicht in einem
+scheinbar erfolgreichen Bau untergehen.
+
+Zeitstempel nicht vergessen (`-tr`): Ohne ihn werden alle ausgelieferten
+Dateien ungültig, sobald das Zertifikat abläuft. Mit ihm bleiben sie gültig.
+
+### Zwei Dinge, die beim Einhängen hochkamen
+
+**Der Haken ist umgezogen.** Bis electron-builder 24 lag er unter `win.sign`,
+seit 25 unter `win.signtoolOptions.sign`. Der alte Platz wird nicht ignoriert,
+sondern bricht den Bau mit `configuration.win should be one of these: null`
+ab — eine Meldung, die nichts verrät. `npm run desktop:pruefen` prüft die
+Bauanleitung jetzt gegen das Schema des **installierten** Paketbauers; zieht
+die nächste Fassung wieder einen Schlüssel um, wird das in zwei Sekunden rot
+statt nach einem vollständigen Bau.
+
+**Der Verantwortliche im `.deb` war erfunden.** In der Bauanleitung stand
+`OKUN_FIRMA || 'OKUN'` und `OKUN_KONTAKT || 'kontakt@okun.de'`. Diese Variablen
+stehen nur in der Umgebung des Servers, nicht in der eines Baus — also griff
+praktisch immer der Rückfallwert, und jedes gebaute `.deb` trug einen Absender
+auf einer Domain, die es nicht gibt. Jetzt ist `desktop/package.json` die eine
+Quelle für beides; fehlt die Angabe dort, bricht der Bau ab, statt etwas
+einzusetzen. Die Umgebungsvariablen überschreiben weiterhin — für einen Bau im
+Auftrag eines anderen Hauses.
