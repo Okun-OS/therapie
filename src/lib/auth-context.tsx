@@ -23,6 +23,26 @@ interface AuthContextType {
   loginWithSms: (userId: string, code: string) => Promise<LoginResult>
   loginWithEmailCode: (userId: string, code: string) => Promise<LoginResult>
   logout: () => void
+  /**
+   * §290 Die eigenen Angaben neu vom Server holen.
+   *
+   * GEMELDET: „Wenn ich mein Profilbild ändere, wird eine längere Zeit
+   * trotzdem noch das alte angezeigt und nicht richtig aktualisiert —
+   * obwohl ich das alte sogar entfernt hatte."
+   *
+   * Woran es lag: Der angemeldete Mensch steht hier im Zustand und zusätzlich
+   * im `sessionStorage`. Gefüllt wird beides EINMAL, beim Aufbau dieses
+   * Rahmens — also bei einem vollständigen Seitenaufbau. Wer sein Bild
+   * wechselt, ändert damit den Datensatz auf dem Server und die Anzeige auf
+   * der Profilseite, aber nicht diese Kopie. Die Leiste zeigte deshalb
+   * weiter das alte Bild, und zwar bis zum nächsten echten Neuladen —
+   * innerhalb der App kommt das praktisch nie vor, weil zwischen den Seiten
+   * nicht neu geladen wird.
+   *
+   * Es war also nie ein Bild im Zwischenspeicher. Es war eine Kopie, die
+   * niemand auffrischt.
+   */
+  aktualisieren: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -161,6 +181,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
 
+  /**
+   * §290 Die Angaben neu holen und ÜBERALL hinterlegen — Zustand und
+   * `sessionStorage`. Nur eins von beidem zu setzen hieße, dass der nächste
+   * Seitenaufbau das alte Bild zurückholt.
+   */
+  const aktualisieren = async () => {
+    try {
+      const res = await fetch('/api/auth/me')
+      if (!res.ok) return
+      const { user: frisch } = await res.json()
+      if (!frisch) return
+      setUser(frisch)
+      sessionStorage.setItem('dienstplan_user', JSON.stringify(frisch))
+    } catch { /* Ohne Netz bleibt der letzte Stand stehen. */ }
+  }
+
   const logout = () => {
     // §139 Zuerst das Gerät austragen, dann abmelden — danach fehlt die
     // Sitzung, und der Eintrag bliebe für immer stehen. Auf einem geteilten
@@ -173,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginWithTotp, loginWithSms, loginWithEmailCode, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginWithTotp, loginWithSms, loginWithEmailCode, logout, aktualisieren }}>
       {children}
     </AuthContext.Provider>
   )

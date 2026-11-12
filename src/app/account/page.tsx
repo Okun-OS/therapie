@@ -47,7 +47,7 @@ function Avatar({ name, avatarUrl, size = 80 }: { name: string; avatarUrl?: stri
 }
 
 export default function AccountPage() {
-  const { user, logout } = useAuth()
+  const { user, logout, aktualisieren } = useAuth()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -131,6 +131,13 @@ export default function AccountPage() {
         setAvatarError(data.error ?? 'Fehler beim Hochladen')
       } else {
         setAvatarUrl(data.avatarUrl)
+        /*
+         * §290 Und dem ganzen Programm sagen, dass es ein neues Bild gibt.
+         * Ohne diese Zeile stand in der Leiste weiter das alte — die
+         * Anmeldedaten im Browser werden sonst nur bei einem vollständigen
+         * Seitenaufbau neu geholt, und den gibt es innerhalb der App nicht.
+         */
+        await aktualisieren()
       }
     } catch {
       setAvatarError('Netzwerkfehler')
@@ -144,6 +151,9 @@ export default function AccountPage() {
     try {
       await fetch('/api/auth/avatar', { method: 'DELETE' })
       setAvatarUrl(undefined)
+      // §290 Auch das Entfernen muss ankommen — gemeldet war ausdrücklich,
+      // dass selbst nach dem Entfernen das alte Bild stehen blieb.
+      await aktualisieren()
     } finally {
       setAvatarLoading(false)
     }
@@ -166,6 +176,10 @@ export default function AccountPage() {
       } else {
         setNameSaved(true)
         setTimeout(() => setNameSaved(false), 3000)
+        // §290 Derselbe Grund wie beim Bild: Der Name steht in der Leiste
+        // und in der Begrüßung auf der Startseite, und beide lesen aus den
+        // Anmeldedaten im Browser.
+        await aktualisieren()
       }
     } catch {
       setNameError('Netzwerkfehler')

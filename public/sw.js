@@ -78,7 +78,24 @@ async function allesLeeren() {
   await Promise.all(namen.map(n => caches.delete(n)))
 }
 
+/*
+ * §290 Lösen wir hier einen VORGÄNGER ab — oder ist das die erste
+ * Anmeldung dieses Arbeiters in diesem Browser?
+ *
+ * Das zu unterscheiden ist der ganze Punkt des Fundes unten. Gemerkt wird es
+ * beim Einbauen, weil `self.registration.active` NUR dort noch den alten
+ * Arbeiter zeigt; beim Aktivieren sind wir selbst längst eingetragen.
+ *
+ * Wird der Arbeiter zwischen Einbauen und Aktivieren vom Browser beendet,
+ * steht hier wieder `false`, und es wird nicht neu geladen. Das ist die
+ * ungefährliche Richtung: Dann sieht jemand einmal einen älteren Stand und
+ * kann auffrischen — statt dass ihm die Seite unter den Händen weggezogen
+ * wird.
+ */
+let loestVorgaengerAb = false
+
 self.addEventListener('install', event => {
+  loestVorgaengerAb = Boolean(self.registration.active)
   self.skipWaiting()
   event.waitUntil(
     allesLeeren()
@@ -106,11 +123,45 @@ self.addEventListener('activate', event => {
      * `navigate` ist dafür das richtige Mittel: Es braucht keine Mithilfe der
      * Seite. Eine Nachricht an die Seite zu schicken würde hier nichts nützen
      * — die alte Seite hat auch das alte Programm und hörte gar nicht zu.
+     *
+     * ──────────────────────────────────────────────────────────────────
+     * §290 ABER NICHT BEIM ALLERERSTEN MAL. Das war ein Fehler mit Folgen.
+     *
+     * GEMELDET: „Wenn man sich anmeldet, wird am Anfang für ein paar
+     * Sekunden nichts richtig geladen. Erst wenn man neu lädt oder woanders
+     * draufklickt und zurückgeht, wird es angezeigt."
+     *
+     * NACHGEMESSEN im Browser: Mit abgeschaltetem Dienst-Arbeiter lädt
+     * `/login` vollständig (`readyState=complete`, keine offene Anfrage).
+     * Mit eingeschaltetem blieb die Anfrage nach dem Dokument selbst für
+     * immer offen, und die Seite reagierte nicht mehr. Nimmt man diese drei
+     * Zeilen heraus, ist es wieder in Ordnung — dreimal gemessen, hin und
+     * zurück.
+     *
+     * Was passiert war: Der Arbeiter meldet sich beim ERSTEN Laden an,
+     * aktiviert sofort (`skipWaiting`) — und lädt dann das Fenster neu, das
+     * gerade erst dabei ist, zu laden. Die laufende Anfrage wird abgebrochen.
+     * Wer sich in diesem Moment angemeldet hat, wird zurück auf die
+     * Anmeldeseite geworfen: Der Wechsel in den Dienstplan war gerade erst
+     * angestoßen, die Adresse des Fensters stand noch auf `/login` — und
+     * genau die wird neu geladen.
+     *
+     * Beim ersten Mal ist das Neuladen auch ohne Nutzen: Die Seite ist schon
+     * die neue. Gebraucht wird es nur, wenn ein ALTER Stand im Fenster steht
+     * — und das weiß `loestVorgaengerAb`.
+     *
+     * Die Anmeldeseite wird zusätzlich ausgenommen. Wer dort gerade sein
+     * Passwort eingetippt hat, verliert es beim Neuladen.
      */
-    const fenster = await self.clients.matchAll({ type: 'window' })
-    await Promise.all(fenster.map(f => {
-      try { return f.navigate(f.url).catch(() => undefined) } catch { return undefined }
-    }))
+    if (loestVorgaengerAb) {
+      const fenster = await self.clients.matchAll({ type: 'window' })
+      await Promise.all(fenster.map(f => {
+        try {
+          if (new URL(f.url).pathname.startsWith('/login')) return undefined
+          return f.navigate(f.url).catch(() => undefined)
+        } catch { return undefined }
+      }))
+    }
   })())
 })
 
